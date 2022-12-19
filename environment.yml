@@ -1,0 +1,19 @@
+name: SNAPRed
+channels:
+- conda-forge
+- default
+- mantid
+dependencies:
+- python=3.8
+- mantidworkbench
+- qtpy
+- pytest
+- pytest-cov
+- pytest-qt==3.3.0
+- flake8
+- versioningit
+- conda-build
+- conda-verify
+- setuptools
+- pip:
+  - check-wheel-contents
