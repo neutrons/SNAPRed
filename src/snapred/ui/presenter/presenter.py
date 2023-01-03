@@ -1,6 +1,6 @@
 from PyQt5 import QtGui, QtCore
 from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao.RecipeConfig import RecipeConfig
+from snapred.backend.dao.ReductionRequest import ReductionRequest
 from snapred.backend.dao.RunConfig import RunConfig
 
 
@@ -22,8 +22,9 @@ class LogTablePresenter(object):
       self.view.show()
 
     def handle_button_clicked(self):
-        recipeConfig = RecipeConfig(mode="Config Lookup", runs=[RunConfig("000001")])
-        reductionConfig = self.interfaceController.executeRecipe(recipeConfig)
-        
-        self.model.setRecipeConfig(reductionConfig)
-        self.view.addRecipeConfig(self.model.getRecipeConfig())
+        reductionRequest = ReductionRequest(mode="Config Lookup", runs=[RunConfig("000001")])
+        reductionResponse = self.interfaceController.executeRequest(reductionRequest)
+        if reductionResponse.responseCode == 200:
+            reductionConfig = reductionResponse.responseData  
+            self.model.addRecipeConfig(reductionConfig)
+            self.view.addRecipeConfig(self.model.getRecipeConfig())

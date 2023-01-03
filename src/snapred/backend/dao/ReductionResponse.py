@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from snapred.backend.dao.RunConfig import RunConfig
 
 # https://docs.python.org/3/library/dataclasses.html
 @dataclass
-class RecipeConfig:
-    """Class to hold the instrument configuration."""
-    mode: str
-    runs: list #[RunConfig]
+class ReductionResponse:
+    """"""
+    responseCode: int
+    responseMessage: str
+    responseData: dict
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

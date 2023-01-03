@@ -1,6 +1,8 @@
 from snapred.meta.Singleton import Singleton
 from snapred.backend.dao.ReductionState import ReductionState
 
+from mantid.api import AnalysisDataService as ADS
+
 @Singleton
 class DataFactoryService:
     def __init__(self):

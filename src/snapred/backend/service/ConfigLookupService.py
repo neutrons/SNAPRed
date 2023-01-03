@@ -8,9 +8,9 @@ class ConfigLookupService:
     def __init__(self):
         return
 
-    def executeRecipe(self, recipeConfig):
-        data = []
-        for run in recipeConfig.runs:
-            data.append(self.dataFactoryService.getReductionState(run.runId))
+    def executeRecipe(self, reductionRequest):
+        data = {}
+        for run in reductionRequest.runs:
+            data[run.runId] = self.dataFactoryService.getReductionState(run.runId)
         return data 
 
