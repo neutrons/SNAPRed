@@ -1,40 +1,27 @@
 from PyQt5 import QtGui, QtCore
+
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.ReductionRequest import ReductionRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.ui.threading.worker_pool import WorkerPool
 
+from time import sleep
 
-from mantidqt.utils.asynchronous import AsyncTask
-
-
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
-# Snip...
-
-# Step 1: Create a worker class
-class Worker(QObject):
-    finished = pyqtSignal()
-    result = pyqtSignal(object)
-    progress = pyqtSignal(int)
-
-    target = None
-    args = None
-
-    def __init__(self, target, args=None):
-        super().__init__()
-        self.target = target
-        self.args = args
-
-    def run(self):
-        """Long-running task."""
-        self.finished.emit()
-        self.result.emit(self.target(self.args))
-
-
+class Spinner:
+    i = 0
+    symbols = ['|', '/', '-', '\\']
+    def getAndIterate(self):
+        symbol = self.symbols[self.i % 4]
+        self.i += 1
+        if self.i > 3:
+            self.i = 0
+        return symbol
 
 
 class LogTablePresenter(object):
 
     interfaceController = InterfaceController()
+    worker_pool = WorkerPool()
 
     def __init__(self, view, model):
         self.view = view
@@ -55,25 +42,37 @@ class LogTablePresenter(object):
             self.model.addRecipeConfig(reductionConfig)
             self.view.addRecipeConfig(self.model.getRecipeConfig())
 
+    def buttonSpinner(self, spinner):
+        sleep(.25)
+        return "Loading " + spinner.getAndIterate()
+
+    def updateButton(self, text):
+        self.view.button.setText(text)
+
     def handle_button_clicked(self):
         self.view.button.setEnabled(False)
-        # Step 2: Create a QThread object
-        self.thread = QThread()
-        # Step 3: Create a worker object
+
         reductionRequest = ReductionRequest(mode="Reduction", runs=[RunConfig("000001")])
-        self.worker = Worker(target=self.interfaceController.executeRequest, args=(reductionRequest))
-        # Step 4: Move worker to the thread
-        self.worker.moveToThread(self.thread)
-        # Step 5: Connect signals and slots
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
+
+        # setup workers with work targets and args
+        self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(reductionRequest))
+        self.infworker = self.worker_pool.createInfiniteWorker(target=self.buttonSpinner, args=(Spinner()))
+
+        # update according to results
+        self.infworker.result.connect(self.updateButton)
         self.worker.result.connect(self.update_reduction_config_element)
-        # Step 6: Start the thread
-        self.thread.start()
 
         # Final resets
-        self.thread.finished.connect(
+        self.worker.finished.connect(self.infworker.stop)
+        self.worker.finished.connect(
             lambda: self.view.button.setEnabled(True)
         )
+        self.infworker.finished.connect(
+            lambda: self.infworker.stop()
+        )
+        self.infworker.finished.connect(
+            lambda: self.updateButton("load dummy")
+        )
+
+        self.worker_pool.submitWorker(self.worker)
+        self.worker_pool.submitWorker(self.infworker)
