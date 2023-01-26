@@ -9,7 +9,7 @@ class ConfigLookupService:
     def __init__(self):
         return
 
-    def executeRecipe(self, reductionRequest):
+    def orchestrateRecipe(self, reductionRequest):
         data = {}
         for run in reductionRequest.runs:
             data[run.runId] = self.dataFactoryService.getReductionState(run.runId)

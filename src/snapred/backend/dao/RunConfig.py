@@ -4,7 +4,12 @@ from dataclasses import dataclass
 @dataclass
 class RunConfig:
     """Class to hold the instrument configuration."""
-    runId: str
+    IPTS: str
+    runNumber: str
+    maskFileName: str
+    maskFileDirectory: str
+    gsasFileDirectory: str
+    calibrationState: str
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property
