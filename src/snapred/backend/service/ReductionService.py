@@ -12,7 +12,7 @@ class ReductionService:
     def executeRecipe(self, reductionRequest):
         data = {}
         for run in reductionRequest.runs:
-            reductionState = self.dataFactoryService.getReductionState(run.runId)
-            data[run.runId] = ReductionRecipe().executeRecipe(reductionState)
+            reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runId)
+            data[run.runId] = ReductionRecipe().executeRecipe(reductionIngredients)
         return data 
 

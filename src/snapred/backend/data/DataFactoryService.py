@@ -1,6 +1,8 @@
 from snapred.meta.Singleton import Singleton
 
 from snapred.backend.dao.ReductionState import ReductionState
+from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.ReductionWorkspaces import ReductionWorkspaces
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
@@ -18,6 +20,18 @@ class DataFactoryService:
 
     def __init__(self, lookupService=LocalDataService()):
         self.lookupService = lookupService
+
+    def getReductionIngredients(self, runId):
+        return ReductionIngredients(reductionState=self.getReductionState(runId), reductionWorkspaces=self.getReductionWorkspaces(runId))
+
+    def getReductionWorkspaces(self, runId):
+        reductionState = self.getReductionState(runId)
+        return ReductionWorkspaces( \
+            rawWorkspace=self.loadNexusFile(reductionState), \
+            calibrationWorkspace=self.loadCalibrationFile(reductionState, \
+            calibrationGeometryWorkspace=self.loadCalibrationGeometryFile(reductionState)), \
+            rawVanadiumCorrectionWorkspace=self.loadRawVanadiumCorrectionFile(reductionState), \
+            calibrationMaskWorkspace=self.loadCalibrationMaskFile(reductionState))
 
     def getReductionState(self, runId):
         # lookup and package data

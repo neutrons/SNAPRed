@@ -1,28 +1,26 @@
 from snapred.meta.Singleton import Singleton
-from snapred.backend.recipe.algorithm.DummyAlgo import DummyAlgo
+from snapred.backend.recipe.algorithm.ReductionAlgorithm import name as ReductionAlgorithm
 from snapred.backend.log.logger import snapredLogger
 
-from mantid.api import AlgorithmManager, AlgorithmObserver
+from mantid.api import AlgorithmManager
 
 logger = snapredLogger.getLogger(__name__)
 
 # TODO: Need progress reporting but should this be an algo? algos are instantiated, recipes are stateless
 @Singleton
 class ReductionRecipe:
-    reductionAlgoName = "DummyAlgo"
+    reductionAlgorithmName = ReductionAlgorithm
 
     def __init__(self):
         return
 
-    def executeRecipe(self, reductionState):
-        logger.info("Executing recipe for runId: %s" % reductionState.runId)
+    def executeRecipe(self, reductionIngredients):
+        logger.info("Executing recipe for runId: %s" % reductionIngredients.reductionState.runId)
         data = {}
-        algo = AlgorithmManager.create(self.reductionAlgoName)
+        algo = AlgorithmManager.create(self.reductionAlgorithmName)
+        algo.setProperty("ReductionIngredients", reductionIngredients)
 
         data["result"] = algo.execute()
 
-        logger.info("Finished executing recipe for runId: %s" % reductionState.runId)
+        logger.info("Finished executing recipe for runId: %s" % reductionIngredients.reductionState.runId)
         return data 
-
-    def executeRecipe(self, reductionRequest):
-        return
