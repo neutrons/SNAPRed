@@ -1,18 +1,12 @@
+from snapred.backend.dao.ReductionState import ReductionState
+
 from dataclasses import dataclass
 
 # https://docs.python.org/3/library/dataclasses.html
 @dataclass
-class InstrumentConfig:
-    """Class to hold the instrument parameters."""
-    name: str
-    nexusFileExtension: str
-    nexusFilePrefix: str
-    calibrationFileExtension: str
-    calibrationFilePrefix: str
-    calibrationDirectory: str
-    sharedDirectory: str
-    nexusDirectory: str
-    reducedDataDirectory: str
+class ReductionIngredients:
+    """Class to hold the instrument configuration."""
+    reductionState: ReductionState
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

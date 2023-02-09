@@ -2,6 +2,8 @@ from mantid.kernel import *
 from mantid.api import *
 import time
 
+name = "DummyAlgo"
+
 class DummyAlgo(PythonAlgorithm):
 
     def PyInit(self):

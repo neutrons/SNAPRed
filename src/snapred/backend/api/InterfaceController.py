@@ -19,7 +19,7 @@ class InterfaceController:
         print(self.serviceFactory.getServiceNames())
         result = self.serviceFactory \
         .getService(reductionRequest.mode) \
-        .executeRecipe(reductionRequest)
+        .orchestrateRecipe(reductionRequest)
         # except Exception as e:
         #     # handle exceptions, inform client if recoverable
         #     return {"exception": str(e)}
