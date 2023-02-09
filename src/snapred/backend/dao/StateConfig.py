@@ -12,10 +12,6 @@ from dataclasses import dataclass
 class StateConfig:
    diffractionCalibrant: DiffractionCalibrant
    emptyInstrumentRunNumber: int
-   numAnnuli: int
-   numSlices: int
-   attenuationCrossSection: float
-   attenuationHeight: float
    normalizationCalibrant: NormalizationCalibrant
    geometryCalibrationFileName: str
    calibrationAuthor: str 
@@ -30,3 +26,4 @@ class StateConfig:
    tofMin: float
    version: str
    wallclockTof: float
+   temporalProximity: int # diffrence between current run number and calibration run number, - == before, + == after

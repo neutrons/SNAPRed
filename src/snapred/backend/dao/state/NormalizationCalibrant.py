@@ -7,9 +7,14 @@ from dataclasses import dataclass
 @dataclass
 class NormalizationCalibrant:
     runNumber: int
+    numAnnuli: int
+    numSlices: int
+    attenuationCrossSection: float
+    attenuationHeight: float
     geometry: str
     FWHM: List[int]
     mask: str
+    material: str
     peaks: List[float]
     radius: float
     sampleNumberDensity: float

@@ -1,5 +1,4 @@
 from snapred.backend.dao.ReductionState import ReductionState
-from snapred.backend.dao.ReductionWorkspaces import ReductionWorkspaces
 
 from dataclasses import dataclass
 
@@ -8,7 +7,6 @@ from dataclasses import dataclass
 class ReductionIngredients:
     """Class to hold the instrument configuration."""
     reductionState: ReductionState
-    reductionWorkspaces: ReductionWorkspaces
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

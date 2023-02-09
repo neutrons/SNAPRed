@@ -2,7 +2,6 @@ from snapred.meta.Singleton import Singleton
 
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
-from snapred.backend.dao.ReductionWorkspaces import ReductionWorkspaces
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
@@ -17,53 +16,35 @@ from mantid.api import AnalysisDataService as ADS
 class DataFactoryService:
 
     lookupService = None
+    # TODO: rules for busting cache
+    cache = {}
 
     def __init__(self, lookupService=LocalDataService()):
         self.lookupService = lookupService
 
     def getReductionIngredients(self, runId):
-        return ReductionIngredients(reductionState=self.getReductionState(runId), reductionWorkspaces=self.getReductionWorkspaces(runId))
-
-    def getReductionWorkspaces(self, runId):
-        reductionState = self.getReductionState(runId)
-        return ReductionWorkspaces( \
-            rawWorkspace=self.loadNexusFile(reductionState), \
-            calibrationWorkspace=self.loadCalibrationFile(reductionState, \
-            calibrationGeometryWorkspace=self.loadCalibrationGeometryFile(reductionState)), \
-            rawVanadiumCorrectionWorkspace=self.loadRawVanadiumCorrectionFile(reductionState), \
-            calibrationMaskWorkspace=self.loadCalibrationMaskFile(reductionState))
+        return ReductionIngredients(reductionState=self.getReductionState(runId))
 
     def getReductionState(self, runId):
-        # lookup and package data
-        # reductionState.geometricConfig = self._getGeometricConfig
-        return ReductionState(instrumentConfig=self.getInstrumentConfig(runId), stateConfig=self.getStateConfig(runId))
+        if runId in self.cache:
+            return self.cache[runId]
+        else:
+            # lookup and package data
+            reductionState = ReductionState(instrumentConfig=self.getInstrumentConfig(runId), stateConfig=self.getStateConfig(runId))
+            self.cache[runId] = reductionState
+            return reductionState
 
     def getInstrumentConfig(self, runId):
-        # throw unimplemented exception
-        raise NotImplementedError("getInstrumentConfig() is not implemented")
-        return InstrumentConfig()
+        return self.lookupService.readInstrumentConfig(runId)
     
     def getStateConfig(self, runId):
-        raise NotImplementedError("getStateConfig() is not implemented")
-        return StateConfig()
+        return self.lookupService.readStateConfig(runId)
 
     def loadNexusFile(self, reductionState, deepcopy=True):
         # cacheService.get(filepath)
         # else lookupService.loadFile(filepath);cacheService.put(filepath, data)
         # if deepcopy: clone workspace
         raise NotImplementedError("_loadNexusFile() is not implemented")
-    
-    def loadCalibrationFile(self, reductionState, deepcopy=True):
-        raise NotImplementedError("_loadCalibrationFile() is not implemented")
-
-    def loadCalibrationGeometryFile(self, reductionState, deepcopy=True):
-        raise NotImplementedError("_loadCalibrationGeometryFile() is not implemented")
-
-    def loadRawVanadiumCorrectionFile(self, reductionState, deepcopy=True):
-        raise NotImplementedError("_loadRawVanadiumCorrectionFile() is not implemented")
-    
-    def loadCalibrationMaskFile(self, reductionState, deepcopy=True):
-        raise NotImplementedError("_loadCalibrationMaskFile() is not implemented")
 
     def _getDiffractionCalibrant(self, runId):
         raise NotImplementedError("_getDiffractionCalibrant() is not implemented")

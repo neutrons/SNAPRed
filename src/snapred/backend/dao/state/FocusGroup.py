@@ -7,7 +7,9 @@ from dataclasses import dataclass
 @dataclass
 class FocusGroup:
     name: str
-    nHst: int  #what is nHst? number of histograms?
+    FWHM: List[float]
+    # these props apply to allgroups? TODO: Move up a level?
+    nHst: int
     dBin: List[float]
     dMax: List[float]
     dMin: List[float]
