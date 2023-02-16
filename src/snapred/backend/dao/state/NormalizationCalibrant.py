@@ -6,7 +6,6 @@ from dataclasses import dataclass
 # https://docs.python.org/3/library/dataclasses.html
 @dataclass
 class NormalizationCalibrant:
-    runNumber: int
     numAnnuli: int
     numSlices: int
     attenuationCrossSection: float

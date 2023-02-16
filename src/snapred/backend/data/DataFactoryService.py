@@ -23,7 +23,7 @@ class DataFactoryService:
         self.lookupService = lookupService
 
     def getReductionIngredients(self, runId):
-        return ReductionIngredients(reductionState=self.getReductionState(runId))
+        return ReductionIngredients(reductionState=self.getReductionState(runId), runNumber=runId)
 
     def getReductionState(self, runId):
         if runId in self.cache:

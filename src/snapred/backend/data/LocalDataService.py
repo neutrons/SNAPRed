@@ -2,6 +2,10 @@ from snapred.meta.Singleton import Singleton
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateId import StateId
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
+from snapred.backend.dao.StateConfig import StateConfig
+from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
+from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 
 from mantid.api import AlgorithmManager
 
@@ -9,6 +13,7 @@ import hashlib
 import json
 import glob
 import os
+import h5py
 
 """
     Looks up data on disk
@@ -20,9 +25,10 @@ class LocalDataService:
     reductionParameterCache = {}
     # TODO: Read these values from config file
     instrument = 'SNAP' # refered to as inst in the prototype
+    stateId = None
     nexusFileExt='.nxs.h5'
     nexusFilePre='SNAP_'
-    stateLoc='/SNS/SNAP/shared/Calibration/' #location of all statefolders
+    stateLoc='/SNS/users/wqp/SNAP/shared/Calibration/' #location of all statefolders
     calibFilePre='SNAPcalibLog'
     calibFileExt='json'
     # relative paths from main IPTS folder. Full paths generated from these for specific runs
@@ -35,11 +41,77 @@ class LocalDataService:
 
     def readInstrumentConfig(self, runId):
         reductionParameters = self._readReductionParameters(runId)
-        return InstrumentConfig()
+
+        return InstrumentConfig(name=self.instrument,
+        nexusFileExtension=self.nexusFileExt,
+        nexusFilePrefix=self.nexusFilePre,
+        calibrationFileExtension=self.calibFileExt,
+        calibrationFilePrefix=self.calibFilePre,
+        calibrationDirectory=self.stateLoc,
+        sharedDirectory=self.sharedDirLoc,
+        nexusDirectory=self.nexusDirLoc,
+        reducedDataDirectory=self.reducedDirLoc)
 
     def readStateConfig(self, runId):
         reductionParameters = self._readReductionParameters(runId)
-        return StateConfig()
+
+        return StateConfig(diffractionCalibrant=self._readDiffractionCalibrant(runId),
+        emptyInstrumentRunNumber=reductionParameters['VBRun'][0],
+        normalizationCalibrant=self._readNormalizationCalibrant(runId),
+        geometryCalibrationFileName=None, #TODO: missing, reductionParameters['GeomCalFileName'],
+        calibrationAuthor=reductionParameters.get('calibBy'),
+        calibrationDate=reductionParameters.get('calibDate'),
+        focusGroups=self._readFocusGroups(runId),
+        isLiteMode=True, #TODO: Support non lite mode
+        rawVanadiumCorrectionFileName=reductionParameters['rawVCorrFileName'],
+        calibrationMaskFileName=reductionParameters.get('CalibrationMaskFilename'),
+        stateId=self.stateId,
+        tofBin=reductionParameters['tofBin'],
+        tofMax=reductionParameters['tofMax'],
+        tofMin=reductionParameters['tofMin'],
+        version=reductionParameters['version'],
+        wallclockTof=reductionParameters['wallClockTol'],
+        temporalProximity=None) #TODO: fill with real value
+
+    def _readDiffractionCalibrant(self, runId):
+        reductionParameters = self._readReductionParameters(runId)
+        return DiffractionCalibrant(
+    name=reductionParameters.get('CalibrantName'),
+    latticeParameters=None, #TODO: missing, reductionParameters['CalibrantLatticeParameters'],
+    reference=None) #TODO: missing, reductionParameters['CalibrantReference'])
+
+    def _readNormalizationCalibrant(self, runId):
+        reductionParameters = self._readReductionParameters(runId)
+        return NormalizationCalibrant(
+    numAnnuli=reductionParameters['NAnnul'],
+    numSlices=None, #TODO: missing, reductionParameters['Nslice'],
+    attenuationCrossSection=reductionParameters['VAttenuationXSection'],
+    attenuationHeight=reductionParameters['VHeight'],
+    geometry=None, #TODO: missing, reductionParameters['VGeometry'],
+    FWHM=reductionParameters['VFWHM'],
+    mask=reductionParameters['VMsk'],
+    material=None, #TODO: missing, 
+    peaks=reductionParameters['VPeaks'],
+    radius=reductionParameters['VRad'],
+    sampleNumberDensity=reductionParameters['VSampleNumberDensity'],
+    scatteringCrossSection=reductionParameters['VScatteringXSection'],
+    smoothPoints=reductionParameters['VSmoothPoints'],
+    calibrationState=None) #TODO: missing, reductionParameters['VCalibState'])
+
+    def _readFocusGroups(self, runId):
+        reductionParameters = self._readReductionParameters(runId)
+        focusGroupNames = reductionParameters['focGroupLst']
+        focusGroups = []
+        for i, name in enumerate(focusGroupNames):
+            focusGroups.append(FocusGroup(name=name,
+            nHst=reductionParameters['focGroupNHst'][i],
+            FWHM=reductionParameters['VFWHM'][i],
+            dBin=reductionParameters['focGroupDBin'][i],
+            dMax=reductionParameters['focGroupDMax'][i],
+            dMin=reductionParameters['focGroupDMin'][i],
+            definition=None #TODO: missing, reductionParameters['focGroupDefinition'][i]
+            ))
+        return focusGroups
 
     def readRunConfig(self, runId):
         return self._readRunConfig(runId)
@@ -50,7 +122,8 @@ class LocalDataService:
         algorithm = AlgorithmManager.create("GetIPTS")
         algorithm.setProperty("RunNumber", runId)
         algorithm.setProperty("Instrument", "SNAP")
-        path = algoritm.execute()
+        algorithm.execute()
+        path = algorithm.getProperty('Directory').value
         return path
 
     def _readRunConfig(self, runId):
@@ -64,9 +137,9 @@ class LocalDataService:
                                 calibrationState=None) #TODO: where to find case? "before" "after"
 
     def _generateStateId(self, runConfig):
-        fName = runConfig.IPTS + self.nexusDirLoc + '/SNAP_' + str(runNum) + self.nexusFileExt
+        fName = runConfig.IPTS + self.nexusDirLoc + '/SNAP_' + str(runConfig.runNumber) + self.nexusFileExt
 
-        if exists(fName):
+        if os.path.exists(fName):
             f = h5py.File(fName, 'r')
         else:
             raise FileNotFoundError('File {} does not exist'.format(fName))
@@ -103,7 +176,9 @@ class LocalDataService:
     def _readReductionParameters(self, runId):
         # lookup IPST number
         runConfig = self._readRunConfig(runId)
-        stateId, _ = self._generateStateId(runId)
+        run = int(runId)
+        stateId, _ = self._generateStateId(runConfig)
+        self.stateId = stateId
 
         calibrationPath = self.stateLoc + stateId + '/powder/'
         calibSearchPattern=f'{calibrationPath}{self.calibFilePre}*.{self.calibFileExt}'
@@ -118,11 +193,12 @@ class LocalDataService:
                 calibFileList.append(file)
 
         calibRunList = []
+        # TODO: Why are we overwriting dictIn every iteration?
         for str in calibFileList:
             runStr = str[str.find(self.calibFilePre)+len(self.calibFilePre):].split('.')[0]
             calibRunList.append(int(runStr))
 
-            relRuns = [ x-run for x in calibRunList ] 
+            relRuns = [ x-run != 0 for x in calibRunList ] 
 
             pos  = [i for i,val in enumerate(relRuns)if val >= 0] 
             neg  = [i for i,val in enumerate(relRuns)if val <= 0] 
@@ -132,16 +208,15 @@ class LocalDataService:
             calIndx = calibRunList.index(closestAfter)
 
 
-        with open(calibFileList[calIndx], "r") as json_file:
-            dictIn = json.load(json_file)
+            with open(calibFileList[calIndx], "r") as json_file:
+                dictIn = json.load(json_file)
 
-        #useful to also path location of calibration directory
-        fullCalPath = calibFileList[calIndx]
-        fSlash = [pos for pos, char in enumerate(fullCalPath) if char == '/']
-        dictIn['calPath']=fullCalPath[0:fSlash[-1]+1]
+            #useful to also path location of calibration directory
+            fullCalPath = calibFileList[calIndx]
+            fSlash = [pos for pos, char in enumerate(fullCalPath) if char == '/']
+            dictIn['calPath']=fullCalPath[0:fSlash[-1]+1]
 
 
-        # Now push data into DAO objects
-        import pds; pds.set_trace()
-        reductionParameterCache[runId] = dictIn
+        # Now push data into DAO object
+        self.reductionParameterCache[runId] = dictIn
         return dictIn

@@ -9,12 +9,13 @@ class ReductionService:
     def __init__(self):
         return
 
-    def executeRecipe(self, reductionRequest):
+    def orchestrateRecipe(self, reductionRequest):
         data = {}
         # TODO: collect runs by state then by calibration of state, execute sets of runs by calibration of thier state
         for run in reductionRequest.runs:
-            reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runId)
+            reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
             # TODO: Refresh workspaces
-            data[run.runId] = ReductionRecipe().executeRecipe(reductionIngredients)
+            import json
+            data[run.runNumber] = json.dumps(reductionIngredients.__dict__, default=lambda o: o.__dict__)#ReductionRecipe().executeRecipe(reductionIngredients)
         return data 
 

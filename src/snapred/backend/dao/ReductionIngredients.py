@@ -6,6 +6,7 @@ from dataclasses import dataclass
 @dataclass
 class ReductionIngredients:
     """Class to hold the instrument configuration."""
+    runNumber: str
     reductionState: ReductionState
 
     # if we need specific getter and setter methods, we can use the @property decorator

@@ -52,7 +52,7 @@ class LogTablePresenter(object):
     def handle_button_clicked(self):
         self.view.button.setEnabled(False)
 
-        reductionRequest = ReductionRequest(mode="Reduction", runs=[RunConfig("000001")])
+        reductionRequest = ReductionRequest(mode="Reduction", runs=[RunConfig(runNumber="48741")])
 
         # setup workers with work targets and args
         self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(reductionRequest))

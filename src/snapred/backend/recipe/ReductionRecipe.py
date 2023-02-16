@@ -15,12 +15,12 @@ class ReductionRecipe:
         return
 
     def executeRecipe(self, reductionIngredients):
-        logger.info("Executing recipe for runId: %s" % reductionIngredients.reductionState.runId)
+        logger.info("Executing recipe for runId: %s" % reductionIngredients.runNumber)
         data = {}
         algo = AlgorithmManager.create(self.reductionAlgorithmName)
         algo.setProperty("ReductionIngredients", reductionIngredients)
 
         data["result"] = algo.execute()
 
-        logger.info("Finished executing recipe for runId: %s" % reductionIngredients.reductionState.runId)
+        logger.info("Finished executing recipe for runId: %s" % reductionIngredients.runNumber)
         return data 
