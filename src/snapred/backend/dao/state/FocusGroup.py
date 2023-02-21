@@ -1,11 +1,7 @@
-from typing import List
-from dataclasses import dataclass
+from typing import List, Optional
+from pydantic import BaseModel
 
-
-
-# https://docs.python.org/3/library/dataclasses.html
-@dataclass
-class FocusGroup:
+class FocusGroup(BaseModel):
     name: str
     FWHM: List[float]
     # these props apply to allgroups? TODO: Move up a level?
@@ -13,4 +9,4 @@ class FocusGroup:
     dBin: List[float]
     dMax: List[float]
     dMin: List[float]
-    definition: List[int]
+    definition: Optional[List[int]]

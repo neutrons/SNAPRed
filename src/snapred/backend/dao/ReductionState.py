@@ -1,12 +1,9 @@
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
-
-from dataclasses import dataclass
 from typing import Optional
+from pydantic import BaseModel
 
-# https://docs.python.org/3/library/dataclasses.html
-@dataclass
-class ReductionState:
+class ReductionState(BaseModel):
     """Class to hold the instrument configuration."""
     instrumentConfig: InstrumentConfig
     stateConfig: StateConfig

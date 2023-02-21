@@ -4,6 +4,8 @@ from snapred.backend.log.logger import snapredLogger
 
 from mantid.api import AlgorithmManager
 
+import json
+
 logger = snapredLogger.getLogger(__name__)
 
 # TODO: Need progress reporting but should this be an algo? algos are instantiated, recipes are stateless
@@ -15,12 +17,13 @@ class ReductionRecipe:
         return
 
     def executeRecipe(self, reductionIngredients):
-        logger.info("Executing recipe for runId: %s" % reductionIngredients.runNumber)
+        logger.info("Executing recipe for runId: %s" % reductionIngredients.runConfig.runNumber)
         data = {}
+     
         algo = AlgorithmManager.create(self.reductionAlgorithmName)
-        algo.setProperty("ReductionIngredients", reductionIngredients)
+        algo.setProperty("ReductionIngredients", reductionIngredients.json())
 
         data["result"] = algo.execute()
 
-        logger.info("Finished executing recipe for runId: %s" % reductionIngredients.runNumber)
+        logger.info("Finished executing recipe for runId: %s" % reductionIngredients.runConfig.runNumber)
         return data 

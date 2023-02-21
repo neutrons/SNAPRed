@@ -91,7 +91,7 @@ class LocalDataService:
     FWHM=reductionParameters['VFWHM'],
     mask=reductionParameters['VMsk'],
     material=None, #TODO: missing, 
-    peaks=reductionParameters['VPeaks'],
+    peaks=reductionParameters['VPeaks'].split(','),
     radius=reductionParameters['VRad'],
     sampleNumberDensity=reductionParameters['VSampleNumberDensity'],
     scatteringCrossSection=reductionParameters['VScatteringXSection'],

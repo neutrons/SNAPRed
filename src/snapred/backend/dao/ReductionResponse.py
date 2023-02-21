@@ -1,12 +1,12 @@
-from dataclasses import dataclass
+from typing import Optional
 
-# https://docs.python.org/3/library/dataclasses.html
-@dataclass
-class ReductionResponse:
+from pydantic import BaseModel
+
+class ReductionResponse(BaseModel):
     """"""
     responseCode: int
-    responseMessage: str
-    responseData: dict
+    responseMessage: Optional[str]
+    responseData: Optional[dict]
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

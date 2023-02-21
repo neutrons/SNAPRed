@@ -23,7 +23,7 @@ class DataFactoryService:
         self.lookupService = lookupService
 
     def getReductionIngredients(self, runId):
-        return ReductionIngredients(reductionState=self.getReductionState(runId), runNumber=runId)
+        return ReductionIngredients(reductionState=self.getReductionState(runId), runConfig=self.getRunConfig(runId))
 
     def getReductionState(self, runId):
         if runId in self.cache:
@@ -33,6 +33,9 @@ class DataFactoryService:
             reductionState = ReductionState(instrumentConfig=self.getInstrumentConfig(runId), stateConfig=self.getStateConfig(runId))
             self.cache[runId] = reductionState
             return reductionState
+
+    def getRunConfig(self, runId):
+        return self.lookupService.readRunConfig(runId)
 
     def getInstrumentConfig(self, runId):
         return self.lookupService.readInstrumentConfig(runId)

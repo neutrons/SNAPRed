@@ -15,7 +15,8 @@ class ReductionService:
         for run in reductionRequest.runs:
             reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
             # TODO: Refresh workspaces
-            import json
-            data[run.runNumber] = json.dumps(reductionIngredients.__dict__, default=lambda o: o.__dict__)#ReductionRecipe().executeRecipe(reductionIngredients)
+            # import json
+            # data[run.runNumber] = json.dumps(reductionIngredients.__dict__, default=lambda o: o.__dict__)
+            ReductionRecipe().executeRecipe(reductionIngredients)
         return data 
 

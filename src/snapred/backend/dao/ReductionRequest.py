@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from snapred.backend.dao.RunConfig import RunConfig
+from typing import List
 
-# https://docs.python.org/3/library/dataclasses.html
-@dataclass
-class ReductionRequest:
+from pydantic import BaseModel
+
+class ReductionRequest(BaseModel):
     """"""
     mode: str
-    runs: list #[RunConfig]
+    runs: List[RunConfig]
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

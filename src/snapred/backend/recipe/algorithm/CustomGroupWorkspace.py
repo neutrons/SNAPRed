@@ -10,11 +10,13 @@ class CustomGroupWorkspace(PythonAlgorithm):
         # declare properties
         self.declareProperty('FocusGroups', None)
         self.declareProperty('InstrumentName', "SNAP")
+        self.declareProperty('OutputWorkspace', "CommonRed")
         pass
 
     def PyExec(self):
         focusGroups = self.getProperty("FocusGroups").value
         instrumentName = self.getProperty("InstrumentName").value
+        outputWorkspace = self.getProperty("OutputWorkspace").value
 
         # createGroupWorkspace = self.createChildAlgorithm("CreateGroupWorkspace")
         CreateGroupingWorkspace(InputWorkspace='TOF_rawVmB',GroupDetectorsBy='Column',OutputWorkspace='gpTemplate')
@@ -38,7 +40,7 @@ class CustomGroupWorkspace(PythonAlgorithm):
             gpString = gpString + ',' + currentWorkspaceName
 
             GroupWorkspaces(InputWorkspaces=gpString,
-                OutputWorkspace='CommonRed'
+                OutputWorkspace=outputWorkspace
                 )
 
         print('State pixel groups initialised')

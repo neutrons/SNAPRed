@@ -1,9 +1,7 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 from typing import Optional
 
-# https://docs.python.org/3/library/dataclasses.html
-@dataclass
-class RunConfig:
+class RunConfig(BaseModel):
     """Class to hold the instrument configuration."""
     runNumber: str
     IPTS: Optional[str] = None

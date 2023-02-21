@@ -1,22 +1,18 @@
-from typing import List
-from dataclasses import dataclass
+from typing import List, Optional
+from pydantic import BaseModel
 
-
-
-# https://docs.python.org/3/library/dataclasses.html
-@dataclass
-class NormalizationCalibrant:
+class NormalizationCalibrant(BaseModel):
     numAnnuli: int
-    numSlices: int
+    numSlices: Optional[int]
     attenuationCrossSection: float
     attenuationHeight: float
-    geometry: str
-    FWHM: List[int]
+    geometry: Optional[str]
+    FWHM: List[List[int]]
     mask: str
-    material: str
+    material: Optional[str]
     peaks: List[float]
     radius: float
     sampleNumberDensity: float
     scatteringCrossSection: float
     smoothPoints: int
-    calibrationState: str
+    calibrationState: Optional[str]

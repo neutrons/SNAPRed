@@ -1,8 +1,6 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
-# https://docs.python.org/3/library/dataclasses.html
-@dataclass
-class InstrumentConfig:
+class InstrumentConfig(BaseModel):
     """Class to hold the instrument parameters."""
     name: str
     nexusFileExtension: str
