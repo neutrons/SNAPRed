@@ -8,7 +8,6 @@ import json
 
 logger = snapredLogger.getLogger(__name__)
 
-# TODO: Need progress reporting but should this be an algo? algos are instantiated, recipes are stateless
 @Singleton
 class ReductionRecipe:
     reductionAlgorithmName = ReductionAlgorithm

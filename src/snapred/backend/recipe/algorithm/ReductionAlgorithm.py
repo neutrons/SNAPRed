@@ -27,19 +27,19 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.declareProperty('ReductionIngredients', defaultValue='', direction=Direction.Input)
         self.declareProperty('OutputWorkspace', defaultValue='', direction=Direction.Output)
 
-    def createChildAlgorithm(self, name):
+    def createChildAlgorithm(self, name, isChild=True):
         alg = AlgorithmManager.create(name)
-        alg.setChild(True)
+        alg.setChild(isChild)
         return alg
 
-    def executeAlgorithm(self, name, **kwargs):
-        algorithm = self.createChildAlgorithm(name)
+    def executeAlgorithm(self, name, isChild=True, **kwargs):
+        algorithm = self.createChildAlgorithm(name, isChild)
         for prop, val in kwargs.items():
             algorithm.setProperty(prop, val)
         algorithm.execute()
 
-    def enqueueAlgorithm(self, name, message, **kwargs):
-        self._algorithmQueue.append((name, message, kwargs))
+    def enqueueAlgorithm(self, name, message, isChild=True, **kwargs):
+        self._algorithmQueue.append((name, message, isChild, kwargs))
         self._endrange += 1
 
     def reportAndIncrement(self, message):
@@ -51,16 +51,15 @@ class ReductionAlgorithm(PythonAlgorithm):
         for algorithmTuple in self._algorithmQueue:
             self.reportAndIncrement(algorithmTuple[1])
             self.log().notice(algorithmTuple[1])
-            import pdb; pdb.set_trace()
-            self.executeAlgorithm(name=algorithmTuple[0], **algorithmTuple[2])
+            self.executeAlgorithm(name=algorithmTuple[0], isChild=algorithmTuple[2], **algorithmTuple[3])
 
     
     def loadEventNexus(self, Filename, OutputWorkspace):
-        self.enqueueAlgorithm("LoadEventNexus", "Loading Event Nexus for {} ...".format(Filename), Filename=Filename, OutputWorkspace=OutputWorkspace)
+        self.enqueueAlgorithm("LoadEventNexus", "Loading Event Nexus for {} ...".format(Filename), False, Filename=Filename, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
     def loadNexus(self, Filename, OutputWorkspace):
-        self.enqueueAlgorithm("LoadNexus","Loading Event Nexus for {} ...".format(Filename), Filename=Filename, OutputWorkspace=OutputWorkspace)
+        self.enqueueAlgorithm("LoadNexus","Loading Nexus for {} ...".format(Filename), False, Filename=Filename, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
     def normaliseByCurrent(self, InputWorkspace, OutputWorkspace):
@@ -94,16 +93,17 @@ class ReductionAlgorithm(PythonAlgorithm):
     #     # must be Unit aware, cannot cross units, -- please check and validate
 
 
-    def createGroupWorkspace(self, FocusGroups, InstrumentName):
-        self.enqueueAlgorithm(CustomGroupWorkspace, "Creating Group Workspace...", FocusGroups=FocusGroups, InstrumentName=InstrumentName, OutputWorkspace='CommonRed')
+    def createGroupWorkspace(self, StateConfig, InstrumentName, CalibrantWorkspace):
+
+        self.enqueueAlgorithm(CustomGroupWorkspace, "Creating Group Workspace...", False, StateConfig=StateConfig.json(), InstrumentName=InstrumentName, CalibrantWorkspace=CalibrantWorkspace, OutputWorkspace='CommonRed')
         return 'CommonRed'
 
-    def convertUnits(self, InputWorkspace, EMde, Target, OutputWorkspace, ConvertFromPointData):
-        self.enqueueAlgorithm("ConvertUnits", "Converting to Units of {} ...".format(Target), InputWorkspace=InputWorkspace, EMde=EMde, Target=Target, OutputWorkspace=OutputWorkspace, ConvertFromPointData=ConvertFromPointData)
+    def convertUnits(self, InputWorkspace, EMode, Target, OutputWorkspace, ConvertFromPointData):
+        self.enqueueAlgorithm("ConvertUnits", "Converting to Units of {} ...".format(Target), False, InputWorkspace=InputWorkspace, EMode=EMode, Target=Target, OutputWorkspace=OutputWorkspace, ConvertFromPointData=ConvertFromPointData)
         return OutputWorkspace
     
     def diffractionFocusing(self, InputWorkspace, GroupingWorkspace, OutputWorkspace):
-        self.enqueueAlgorithm("DiffractionFocussing", "Performing Diffraction Focusing ...", InputWorkspace=InputWorkspace, GroupingWorkspace=GroupingWorkspace, OutputWorkspace=OutputWorkspace)
+        self.enqueueAlgorithm("DiffractionFocussing", "Performing Diffraction Focusing ...", False, InputWorkspace=InputWorkspace, GroupingWorkspace=GroupingWorkspace, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
     
     def stripPeaks(self, InputWorkspace, FWHM, PeakPositions, OutputWorkspace):
@@ -123,7 +123,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         return OutputWorkspace
 
     def renameWorkspace(self, InputWorkspace, OutputWorkspace):
-        self.enqueueAlgorithm("RenameWorkspace", "Renaming output workspace to something sensible...", InputWorkspace=InputWorkspace, OutputWorkspace=OutputWorkspace)
+        self.enqueueAlgorithm("RenameWorkspace", "Renaming output workspace to something sensible...", False, InputWorkspace=InputWorkspace, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
     def cleanup(self):
@@ -137,7 +137,6 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.log().notice("Execution of ReductionAlgorithm START!")
 
         # TODO: Reorg how filepaths are stored
-        snapHome = '/SNS/users/wqp/SNAP/'
         ipts = reductionIngredients.runConfig.IPTS
         rawDataPath = ipts + 'nexus/SNAP_{}.nxs.h5'.format(reductionIngredients.runConfig.runNumber)
 
@@ -170,10 +169,10 @@ class ReductionAlgorithm(PythonAlgorithm):
         # 7 Does it have a container? Apply Container Mask to Raw Vanadium and Data output from SumNeighbours -- done to both data and vanadium
         # self.applyCotainerMask()
         # 8 CreateGroupWorkspace      TODO: Assess performance, use alternative Andrei came up with that is faster
-        groupingworkspace = self.createGroupWorkspace(reductionIngredients.reductionState.stateConfig.focusGroups, reductionIngredients.reductionState.instrumentConfig.name)
+        groupingworkspace = self.createGroupWorkspace(reductionIngredients.reductionState.stateConfig, reductionIngredients.reductionState.instrumentConfig.name, vanadium)
 
         # 9 Does it have a container? Apply Container Attenuation Correction
-        data = self.convertUnits(InputWorkspace=raw_data, EMde="elastic", Target="dspacing", OutputWorkspace="data", ConvertFromPointData=True)
+        data = self.convertUnits(InputWorkspace=raw_data, EMode="Elastic", Target="dSpacing", OutputWorkspace="data", ConvertFromPointData=True)
 
         # 11 For each Group (no for each loop, the algos apply things based on groups of group workspace)
         self.diffractionFocusing(InputWorkspace=data, GroupingWorkspace=groupingworkspace, OutputWorkspace=data)

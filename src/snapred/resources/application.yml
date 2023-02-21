@@ -1,0 +1,19 @@
+environment: dev
+
+instrument:
+  name: SNAP
+  home: /SNS/SNAP/
+
+nexus:
+  home: nexus/
+  file:
+    extension: .nxs.h5
+    prefix: SNAP_
+
+calibration:
+  file:
+    extension: .json
+    prefix: SNAPcalibLog
+
+logging:
+  format: '%(asctime)s - %(levelname)s - %(name)s - %(message)s'

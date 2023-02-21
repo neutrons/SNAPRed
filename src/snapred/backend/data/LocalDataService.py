@@ -6,6 +6,7 @@ from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
 from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.meta.Config import Config
 
 from mantid.api import AlgorithmManager
 
@@ -23,17 +24,16 @@ import h5py
 @Singleton
 class LocalDataService:
     reductionParameterCache = {}
-    # TODO: Read these values from config file
-    instrument = 'SNAP' # refered to as inst in the prototype
+    instrument = Config['instrument.name'] # refered to as inst in the prototype
     stateId = None
-    nexusFileExt='.nxs.h5'
-    nexusFilePre='SNAP_'
-    stateLoc='/SNS/users/wqp/SNAP/shared/Calibration/' #location of all statefolders
-    calibFilePre='SNAPcalibLog'
-    calibFileExt='json'
+    nexusFileExt = Config['nexus.file.extension']
+    nexusFilePre = Config['nexus.file.prefix']
+    stateLoc=Config['instrument.home'] + 'shared/Calibration/' #location of all statefolders
+    calibFileExt = Config['calibration.file.extension']
+    calibFilePre = Config['calibration.file.prefix']
     # relative paths from main IPTS folder. Full paths generated from these for specific runs
     sharedDirLoc='shared/'
-    nexusDirLoc='nexus/' #relative to ipts directory 
+    nexusDirLoc=Config['nexus.home'] #relative to ipts directory 
     reducedDirLoc='shared/test/reduced/' #temporary location
 
     def __init__(self):
@@ -169,7 +169,9 @@ class LocalDataService:
         for fname in glob.glob(pattern, recursive=True):
             if os.path.isfile(fname):
                 fileList.append(fname)
-        # TODO: raise exception if no files found
+        if len(fileList) == 0:
+            raise ValueError('No files could be found with pattern: {}'.format(pattern))
+        
         return fileList 
 
 
@@ -181,7 +183,7 @@ class LocalDataService:
         self.stateId = stateId
 
         calibrationPath = self.stateLoc + stateId + '/powder/'
-        calibSearchPattern=f'{calibrationPath}{self.calibFilePre}*.{self.calibFileExt}'
+        calibSearchPattern=f'{calibrationPath}{self.calibFilePre}*{self.calibFileExt}'
 
         foundFiles = self._findMatchingFileList(calibSearchPattern)
 

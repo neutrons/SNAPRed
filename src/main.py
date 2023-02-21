@@ -5,6 +5,7 @@ from snapred.ui.widget.MainWidget import DummyWidget
 
 from mantidqt.widgets.instrumentview.api import get_instrumentview
 from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
+from mantidqt.widgets.workspacewidget.workspacetreewidget import WorkspaceTreeWidget
 from mantid.simpleapi import CreateSampleWorkspace
 
 import snapred as sr
@@ -19,12 +20,12 @@ class DummyGUI(QtWidgets.QMainWindow):
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         splitter.addWidget(dummyWidget.widget)
-        ws = CreateSampleWorkspace()
+        
         # myiv = get_instrumentview(ws)
         # myiv.show_view()
 
         # import pdb; pdb.set_trace()
-
+        splitter.addWidget(WorkspaceTreeWidget())
         splitter.addWidget(AlgorithmProgressWidget())
 
         self.setCentralWidget(splitter)
