@@ -1,9 +1,8 @@
 from mantid.kernel import *
 from mantid.api import *
+
 import time
 import json
-
-from mantid.api import AlgorithmManager
 
 from snapred.backend.recipe.algorithm.CustomGroupWorkspace import name as CustomGroupWorkspace
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
@@ -51,6 +50,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         for algorithmTuple in self._algorithmQueue:
             self.reportAndIncrement(algorithmTuple[1])
             self.log().notice(algorithmTuple[1])
+            # import pdb; pdb.set_trace()
             self.executeAlgorithm(name=algorithmTuple[0], isChild=algorithmTuple[2], **algorithmTuple[3])
 
     
@@ -62,24 +62,29 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.enqueueAlgorithm("LoadNexus","Loading Nexus for {} ...".format(Filename), False, Filename=Filename, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
+    def loadDiffCal(self, Filename, InputWorkspace, WorkspaceName):
+        self.enqueueAlgorithm("LoadDiffCal","Loading DiffCal for {} ...".format(Filename), False, InstrumentFilename='/SNS/SNAP/shared/Calibration/PixelGroupingDefinitions/SNAPLite.xml', Filename='/SNS/SNAP/shared/Calibration/14100-10/SNAP048705_calib_geom_20220907.lite.h5', MakeGroupingWorkspace=False, MakeMaskWorkspace=True, WorkspaceName=WorkspaceName)
+        return WorkspaceName
+
     def normaliseByCurrent(self, InputWorkspace, OutputWorkspace):
         self.enqueueAlgorithm("NormaliseByCurrent", "Normalizing By Current...", InputWorkspace=InputWorkspace, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
-    def applyDiffCal(self, InputWorkspace, CalibrationWorkspace):
-        self.enqueueAlgorithm("ApplyDiffCal", "Applying DiffCal...", InputWorkspace=InputWorkspace, CalibrationWorkspace=CalibrationWorkspace)
-        return InputWorkspace
+    def applyDiffCal(self, InstrumentWorkspace, CalibrationWorkspace):
+        self.enqueueAlgorithm("ApplyDiffCal", "Applying DiffCal...", False, InstrumentWorkspace=InstrumentWorkspace, CalibrationWorkspace=CalibrationWorkspace)
+        return InstrumentWorkspace
     
     def sumNeighbours(self, InputWorkspace, SumX, SumY, OutputWorkspace):
         self.enqueueAlgorithm("SumNeighbours", "Summing Neighbours...", InputWorkspace=InputWorkspace, SumX=SumX, SumY=SumY, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
     
-    # def applyCalibrationPixelMask(self):
-    #     # always a pixel mask
-    #     # loadmask
-    #     LoadMask(instrumentName=snap, MaskFile=".xml", OutputWorkspace="mask")
-    #     MaskDetectors(Workspace=raw_data, MaskedWorkspace="mask")
-    #     return OutputWorkspace
+    def applyCalibrationPixelMask(self, Workspace, MaskedWorkspace):
+        # always a pixel mask
+        # loadmask
+        # LoadMask(instrumentName=snap, MaskFile=".xml", OutputWorkspace="mask")
+        # MaskDetectors(Workspace=Workspace, MaskedWorkspace=MaskedWorkspace)
+        self.enqueueAlgorithm("MaskDetectors", "Applying Pixel Mask...", Workspace=Workspace, MaskedWorkspace=MaskedWorkspace)
+        return Workspace
 
     # def applyContainerMask(self):
     #     # can be a pixel mask or bin mask(swiss cheese)  -- switch based on input param
@@ -118,8 +123,12 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.enqueueAlgorithm("Divide", "Dividing out vanadium from data ...", LHSWorkspace=LHSWorkspace, RHSWorkspace=RHSWorkspace, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
+    def rebinToWorkspace(self, WorkspaceToRebin, WorkspaceToMatch, OutputWorkspace, PreserveEvents):
+        self.enqueueAlgorithm("RebinToWorkspace", "Rebinning to workspace...", WorkspaceToRebin=WorkspaceToRebin, WorkspaceToMatch=WorkspaceToMatch, OutputWorkspace=OutputWorkspace, PreserveEvents=PreserveEvents)
+        return OutputWorkspace
+
     def rebinRagged(self, InputWorkspace, XMin, XMax, Delta, OutputWorkspace):
-        self.enqueueAlgorithm("RebingRagged", "Rebinning ragged bins...", InputWorkspace=InputWorkspace, XMin=XMin, XMax=XMax, Delta=Delta, OutputWorkspace=OutputWorkspace)
+        self.enqueueAlgorithm("RebinRagged", "Rebinning ragged bins...", False, InputWorkspace=InputWorkspace, XMin=XMin, XMax=XMax, Delta=Delta, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
     def renameWorkspace(self, InputWorkspace, OutputWorkspace):
@@ -138,57 +147,72 @@ class ReductionAlgorithm(PythonAlgorithm):
 
         # TODO: Reorg how filepaths are stored
         ipts = reductionIngredients.runConfig.IPTS
-        rawDataPath = ipts + 'nexus/SNAP_{}.nxs.h5'.format(reductionIngredients.runConfig.runNumber)
-
-        raw_data = self.loadEventNexus(Filename=rawDataPath, OutputWorkspace="raw_data")    
-        
+        rawDataPath = ipts + 'shared/lite/SNAP_{}.lite.nxs.h5'.format(reductionIngredients.runConfig.runNumber)
         calibrationDirectory = reductionIngredients.reductionState.instrumentConfig.calibrationDirectory
         stateId = reductionIngredients.reductionState.stateConfig.stateId
         rawVanadiumCorrectionFileName = reductionIngredients.reductionState.stateConfig.rawVanadiumCorrectionFileName
-
-        vanadiumFilePath = calibrationDirectory + stateId + '/powder/RVMB48707.lite.nxs'#TODO: not sure how rawVanadiumCorrectionFileName is missing now
+        vanadiumFilePath = calibrationDirectory + stateId + '/powder/' + rawVanadiumCorrectionFileName
+        diffCalPath = calibrationDirectory + stateId + '/powder/' + reductionIngredients.reductionState.stateConfig.diffractionCalibrant.filename
         
+        raw_data = self.loadEventNexus(Filename=rawDataPath, OutputWorkspace="raw_data")    
         vanadium = self.loadNexus(Filename=vanadiumFilePath, OutputWorkspace="vanadium")
 
-        #also neec to load diffcal workspace
-        #  Instrument.calibrationDirectory + State.stateId (now the 16-digit hash string) + Instrument.calibrationFilePrefix + State.DiffractionCalibrant.runNumber + Instrument.calibrationFileExtension
-
-        # 2 NormalizeByCurrent -- just apply to data
+      # 2 NormalizeByCurrent -- just apply to data
         self.normaliseByCurrent(InputWorkspace=raw_data, OutputWorkspace=raw_data)
 
-        # 3 ApplyDiffCal  -- just apply to data
-        # self.applyDiffCal(InputWorkspace=raw_data, CalibrationWorkspace=reductionIngredients.reductionState.stateConfig.diffractionCalibrant.name)
 
         # 4 Not Lite? SumNeighbours  -- just apply to data
         # self.sumNeighbours(InputWorkspace=raw_data, SumX=SuperPixEdge, SumY=SuperPixEdge, OutputWorkspace=raw_data)
 
-
-        # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours -- done to both data, can be applied to vanadium per state
-        # self.applyCalibrationPixelMask()
 
         # 7 Does it have a container? Apply Container Mask to Raw Vanadium and Data output from SumNeighbours -- done to both data and vanadium
         # self.applyCotainerMask()
         # 8 CreateGroupWorkspace      TODO: Assess performance, use alternative Andrei came up with that is faster
         groupingworkspace = self.createGroupWorkspace(reductionIngredients.reductionState.stateConfig, reductionIngredients.reductionState.instrumentConfig.name, vanadium)
 
+        # 3 ApplyDiffCal  -- just apply to data
+        diffCalPrefix = self.loadDiffCal(Filename=diffCalPath, InputWorkspace='idf', WorkspaceName="diffcal")
+        
+        # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours -- done to both data, can be applied to vanadium per state
+        self.applyCalibrationPixelMask(Workspace=raw_data, MaskedWorkspace=diffCalPrefix+"_mask")
+        self.applyCalibrationPixelMask(Workspace=vanadium, MaskedWorkspace=diffCalPrefix+"_mask")
+        
+        self.applyDiffCal(InstrumentWorkspace=raw_data, CalibrationWorkspace=diffCalPrefix+"_cal")
+
         # 9 Does it have a container? Apply Container Attenuation Correction
         data = self.convertUnits(InputWorkspace=raw_data, EMode="Elastic", Target="dSpacing", OutputWorkspace="data", ConvertFromPointData=True)
+        vanadium = self.convertUnits(InputWorkspace=vanadium, EMode="Elastic", Target="dSpacing", OutputWorkspace="vanadium_dspacing", ConvertFromPointData=True)
 
         # 11 For each Group (no for each loop, the algos apply things based on groups of group workspace)
-        self.diffractionFocusing(InputWorkspace=data, GroupingWorkspace=groupingworkspace, OutputWorkspace=data)
-        diffraction_focused_vanadium = self.diffractionFocusing(InputWorkspace=vanadium, GroupingWorkspace=groupingworkspace, OutputWorkspace="diffraction_focused_vanadium")
+        data = self.diffractionFocusing(InputWorkspace=data, GroupingWorkspace=groupingworkspace, OutputWorkspace='focused_data')
+        vanadium = self.diffractionFocusing(InputWorkspace=vanadium, GroupingWorkspace=groupingworkspace, OutputWorkspace="diffraction_focused_vanadium")
         
         # sum chunks if files are large
         # TODO: Implement New Strip Peaks that allows for multiple FWHM, one per group, for now just grab the first one to get it to run
-        self.stripPeaks(InputWorkspace=diffraction_focused_vanadium, FWHM=reductionIngredients.reductionState.stateConfig.focusGroups[0].FWHM, PeakPositions=reductionIngredients.reductionState.stateConfig.normalizationCalibrant.peaks, OutputWorkspace=diffraction_focused_vanadium)
-        self.smoothData(InputWorkspace=diffraction_focused_vanadium, NPoints=reductionIngredients.reductionState.stateConfig.normalizationCalibrant.smoothPoints, OutputWorkspace=diffraction_focused_vanadium)
-        self.divide(LHSWorkspace=data, RHSWorkspace=diffraction_focused_vanadium, OutputWorkspace=data)
-        self.rebinRagged(InputWorkspace=data, XMin=reductionIngredients.reductionState.stateConfig.focusGroups[0].dMin, XMax=reductionIngredients.reductionState.stateConfig.focusGroups[0].dMax, Delta=reductionIngredients.reductionState.stateConfig.focusGroups[0].dBin, OutputWorkspace=data)
-        self.renameWorkspace(InputWorkspace=data, OutputWorkspace="SomethingSensible")
+        peakPositions = ','.join(str(s) for s in reductionIngredients.reductionState.stateConfig.normalizationCalibrant.peaks)
+        
+        vanadium = self.stripPeaks(InputWorkspace=vanadium, FWHM=reductionIngredients.reductionState.stateConfig.focusGroups[0].FWHM[0], PeakPositions=peakPositions, OutputWorkspace='peaks_stripped_vanadium')
+        vanadium = self.smoothData(InputWorkspace=vanadium, NPoints=reductionIngredients.reductionState.stateConfig.normalizationCalibrant.smoothPoints, OutputWorkspace='smoothed_data_vanadium')
+        
+        data = self.rebinToWorkspace(WorkspaceToRebin=data, WorkspaceToMatch=vanadium, OutputWorkspace="rebinned_data", PreserveEvents=True)
+        data = self.divide(LHSWorkspace=data, RHSWorkspace=vanadium, OutputWorkspace='data_minus_vanadium')
+        
+        # TODO: Refactor so excute only needs to be called once
+        self.executeReduction()
+        self._algorithmQueue = []
 
+        focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
+        groupedData = data
+        for workspaceIndex in range(len(focusGroups)): 
+            data = self.rebinRagged(InputWorkspace=mtd[groupedData].getItem(workspaceIndex),
+            XMin=focusGroups[workspaceIndex].dMin,
+            XMax=focusGroups[workspaceIndex].dMax,
+            Delta=focusGroups[workspaceIndex].dBin,
+            OutputWorkspace='data_rebinned_ragged_'+str(focusGroups[workspaceIndex].name))
+
+        # self.renameWorkspace(InputWorkspace=data, OutputWorkspace="SomethingSensible")
 
         self.executeReduction()
-
 
         self.cleanup()
         self.log().notice("Execution of ReductionAlgorithm COMPLETE!")

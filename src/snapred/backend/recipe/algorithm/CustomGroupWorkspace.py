@@ -21,41 +21,29 @@ class CustomGroupWorkspace(PythonAlgorithm):
         self.declareProperty('OutputWorkspace', "CommonRed")
         pass
 
+
+    # TODO: This was largely copied from Malcolm's prototype and is due for a refactor
     def PyExec(self):
         stateConfig = StateConfig(**json.loads(self.getProperty("StateConfig").value))
         focusGroups = stateConfig.focusGroups
         instrumentName = self.getProperty("InstrumentName").value
         calibrantWorkspace = self.getProperty("CalibrantWorkspace").value
-        gpString = '' # Expects a string
         outputWorkspace = self.getProperty("OutputWorkspace").value
 
-        # createGroupWorkspace = self.createChildAlgorithm("CreateGroupWorkspace")
-        CreateGroupingWorkspace(InputWorkspace=calibrantWorkspace,GroupDetectorsBy='Column',OutputWorkspace='gpTemplate')
+        CreateWorkspace(OutputWorkspace='idf',DataX=1,DataY=1)
+        LoadInstrument(Workspace='idf',Filename='/SNS/SNAP/shared/Calibration/SNAPLite.xml', MonitorList='-2--1', RewriteSpectraMap=False)
+
+
+
 
         for grpIndx,focusGroup in enumerate(focusGroups):
-            CloneWorkspace(InputWorkspace='gpTemplate',
-            OutputWorkspace=f'{instrumentName}{focusGroup.name}Gp')
+            LoadDetectorsGroupingFile(InputFile=focusGroup.definition, InputWorkspace='idf', OutputWorkspace=focusGroup.name)
 
-            currentWorkspaceName = f'{instrumentName}{focusGroup.name}Gp'
-
-            ws = mtd[currentWorkspaceName]
-            nh = ws.getNumberHistograms()
-            NSubGrp = len(focusGroup.definition if focusGroup.definition != None else [])
-            # print(f'creating grouping for {focusGroup} with {NSubGrp} subgroups')
-            for pixel in range(nh):
-                ws.setY(pixel,np.array([0.0])) #set to zero to ignore unless pixel is defined as part of group beklow.
-                for subGrp in range(NSubGrp):
-                    if pixel in focusGroup.definition[subGrp]:
-                        ws.setY(pixel,np.array([subGrp+1]))
-
-            gpString = gpString + ',' + currentWorkspaceName
-
-        GroupWorkspaces(InputWorkspaces=gpString,
+        GroupWorkspaces(InputWorkspaces=[focusGroup.name for focusGroup in focusGroups],
                 OutputWorkspace=outputWorkspace
                 )
-
+        
         print('State pixel groups initialised')
-        DeleteWorkspace(Workspace='gpTemplate')
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(CustomGroupWorkspace)

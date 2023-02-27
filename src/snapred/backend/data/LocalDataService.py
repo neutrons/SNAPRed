@@ -24,33 +24,28 @@ import h5py
 @Singleton
 class LocalDataService:
     reductionParameterCache = {}
-    instrument = Config['instrument.name'] # refered to as inst in the prototype
+    dataPath = Config['instrument.home']
+    instrumentConfigPath = dataPath + Config['instrument.config']
+    instrumentConfig = None
     stateId = None
-    nexusFileExt = Config['nexus.file.extension']
-    nexusFilePre = Config['nexus.file.prefix']
-    stateLoc=Config['instrument.home'] + 'shared/Calibration/' #location of all statefolders
-    calibFileExt = Config['calibration.file.extension']
-    calibFilePre = Config['calibration.file.prefix']
-    # relative paths from main IPTS folder. Full paths generated from these for specific runs
-    sharedDirLoc='shared/'
-    nexusDirLoc=Config['nexus.home'] #relative to ipts directory 
-    reducedDirLoc='shared/test/reduced/' #temporary location
 
     def __init__(self):
-        pass
+        self.instrumentConfig = self.readInstrumentConfig()
 
-    def readInstrumentConfig(self, runId):
-        reductionParameters = self._readReductionParameters(runId)
+    def readInstrumentConfig(self):
+        # TODO: Read from /SNS/SNAP/shared/Calibration/SNAPInstPrm.json
+        instrumentParameterMap = self._readInstrumentParameters()
+        
+        instrumentConfig = InstrumentConfig(**instrumentParameterMap)
+        if self.dataPath: instrumentConfig.calibrationDirectory = self.dataPath + 'shared/Calibration/'
+        
+        return instrumentConfig
 
-        return InstrumentConfig(name=self.instrument,
-        nexusFileExtension=self.nexusFileExt,
-        nexusFilePrefix=self.nexusFilePre,
-        calibrationFileExtension=self.calibFileExt,
-        calibrationFilePrefix=self.calibFilePre,
-        calibrationDirectory=self.stateLoc,
-        sharedDirectory=self.sharedDirLoc,
-        nexusDirectory=self.nexusDirLoc,
-        reducedDataDirectory=self.reducedDirLoc)
+    def _readInstrumentParameters(self):
+        instrumentParameterMap = {}
+        with open(self.instrumentConfigPath, 'r') as json_file:
+            instrumentParameterMap = json.load(json_file)
+        return instrumentParameterMap
 
     def readStateConfig(self, runId):
         reductionParameters = self._readReductionParameters(runId)
@@ -76,6 +71,8 @@ class LocalDataService:
     def _readDiffractionCalibrant(self, runId):
         reductionParameters = self._readReductionParameters(runId)
         return DiffractionCalibrant(
+    filename=reductionParameters['calFileName'],
+    runNumber=reductionParameters['CRun'][0],
     name=reductionParameters.get('CalibrantName'),
     latticeParameters=None, #TODO: missing, reductionParameters['CalibrantLatticeParameters'],
     reference=None) #TODO: missing, reductionParameters['CalibrantReference'])
@@ -109,7 +106,7 @@ class LocalDataService:
             dBin=reductionParameters['focGroupDBin'][i],
             dMax=reductionParameters['focGroupDMax'][i],
             dMin=reductionParameters['focGroupDMin'][i],
-            definition=None #TODO: missing, reductionParameters['focGroupDefinition'][i]
+            definition=self.instrumentConfig.calibrationDirectory + self.instrumentConfig.pixelGroupingDirectory + reductionParameters['focGroupDefinition'][i]
             ))
         return focusGroups
 
@@ -132,12 +129,12 @@ class LocalDataService:
         return RunConfig(  IPTS=iptsPath,
                                 runNumber=runId,
                                 maskFileName='',
-                                maskFileDirectory=iptsPath + self.sharedDirLoc,
-                                gsasFileDirectory=iptsPath + self.reducedDirLoc,
+                                maskFileDirectory=iptsPath + self.instrumentConfig.sharedDirectory,
+                                gsasFileDirectory=iptsPath + self.instrumentConfig.reducedDataDirectory,
                                 calibrationState=None) #TODO: where to find case? "before" "after"
 
     def _generateStateId(self, runConfig):
-        fName = runConfig.IPTS + self.nexusDirLoc + '/SNAP_' + str(runConfig.runNumber) + self.nexusFileExt
+        fName = runConfig.IPTS + self.instrumentConfig.nexusDirectory + '/SNAP_' + str(runConfig.runNumber) + self.instrumentConfig.nexusFileExtension
 
         if os.path.exists(fName):
             f = h5py.File(fName, 'r')
@@ -182,8 +179,8 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runConfig)
         self.stateId = stateId
 
-        calibrationPath = self.stateLoc + stateId + '/powder/'
-        calibSearchPattern=f'{calibrationPath}{self.calibFilePre}*{self.calibFileExt}'
+        calibrationPath = self.instrumentConfig.calibrationDirectory + stateId + '/powder/'
+        calibSearchPattern=f'{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}'
 
         foundFiles = self._findMatchingFileList(calibSearchPattern)
 
@@ -197,7 +194,7 @@ class LocalDataService:
         calibRunList = []
         # TODO: Why are we overwriting dictIn every iteration?
         for str in calibFileList:
-            runStr = str[str.find(self.calibFilePre)+len(self.calibFilePre):].split('.')[0]
+            runStr = str[str.find(self.instrumentConfig.calibrationFilePrefix)+len(self.instrumentConfig.calibrationFilePrefix):].split('.')[0]
             calibRunList.append(int(runStr))
 
             relRuns = [ x-run != 0 for x in calibRunList ] 

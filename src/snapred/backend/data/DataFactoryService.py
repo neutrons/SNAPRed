@@ -38,7 +38,7 @@ class DataFactoryService:
         return self.lookupService.readRunConfig(runId)
 
     def getInstrumentConfig(self, runId):
-        return self.lookupService.readInstrumentConfig(runId)
+        return self.lookupService.readInstrumentConfig()
     
     def getStateConfig(self, runId):
         return self.lookupService.readStateConfig(runId)

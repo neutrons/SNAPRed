@@ -30,6 +30,7 @@ class _Config:
         keys = key.split('.')
         val = self._config[keys[0]]
         for k in keys[1:]:
+            if val == None: break
             val = val[k]
         return val
 

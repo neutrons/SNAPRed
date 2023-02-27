@@ -3,6 +3,7 @@ environment: dev
 instrument:
   name: SNAP
   home: /SNS/SNAP/
+  config: shared/Calibration/SNAPInstPrm.json
 
 nexus:
   home: nexus/
