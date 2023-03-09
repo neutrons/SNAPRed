@@ -24,6 +24,7 @@ import h5py
 @Singleton
 class LocalDataService:
     reductionParameterCache = {}
+    iptsCache = {}
     dataPath = Config['instrument.home']
     instrumentConfigPath = dataPath + Config['instrument.config']
     instrumentConfig = None
@@ -116,11 +117,16 @@ class LocalDataService:
 
     def _findIPTS(self, runId):
         # lookup IPST number
+        if runId in self.iptsCache:
+            return self.iptsCache[runId]
+        
         algorithm = AlgorithmManager.create("GetIPTS")
         algorithm.setProperty("RunNumber", runId)
         algorithm.setProperty("Instrument", "SNAP")
         algorithm.execute()
         path = algorithm.getProperty('Directory').value
+        
+        self.iptsCache[runId] = path
         return path
 
     def _readRunConfig(self, runId):

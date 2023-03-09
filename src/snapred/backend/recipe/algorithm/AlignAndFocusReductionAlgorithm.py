@@ -7,21 +7,19 @@ import json
 from snapred.backend.recipe.algorithm.CustomGroupWorkspace import name as CustomGroupWorkspace
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 
-name = "ReductionAlgorithm"
+name = "AlignAndFocusReductionAlgorithm"
 
 #######################################################
 # ATTENTION: Could be replaced by alignAndFocusPowder #
 # please confirm that attenutation correction before  #
 # and after is equivalent                             #
 #######################################################
-class ReductionAlgorithm(PythonAlgorithm):
+class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
 
     _endrange=0
     _progressCounter = 0
     _prog_reporter = None
     _algorithmQueue = []
-    _exportScript = ""
-    _export = True
 
     def PyInit(self):
         # declare properties
@@ -47,18 +45,9 @@ class ReductionAlgorithm(PythonAlgorithm):
         self._prog_reporter.reportIncrement(self._progressCounter, message)
         self._progressCounter += 1
 
-
-
-    def executeQueue(self):
+    def executeReduction(self):
         self._prog_reporter = Progress(self, start=0.0, end=1.0, nreports=self._endrange)
         for algorithmTuple in self._algorithmQueue:
-            if self._export:
-                self._exportScript += "{}(".format(algorithmTuple[0])
-                for prop, val in algorithmTuple[3].items():
-                    self._exportScript += "{}={}, ".format(prop, val if not isinstance(val, str) else "'{}'".format(val))
-                self._exportScript = self._exportScript[:-2]
-                self._exportScript += ")\n"
-            
             self.reportAndIncrement(algorithmTuple[1])
             self.log().notice(algorithmTuple[1])
             # import pdb; pdb.set_trace()
@@ -73,8 +62,8 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.enqueueAlgorithm("LoadNexus","Loading Nexus for {} ...".format(Filename), False, Filename=Filename, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
-    def loadDiffCal(self, Filename, WorkspaceName):
-        self.enqueueAlgorithm("LoadDiffCal","Loading DiffCal for {} ...".format(Filename), False, InstrumentFilename='/SNS/SNAP/shared/Calibration/PixelGroupingDefinitions/SNAPLite.xml', Filename=Filename, MakeGroupingWorkspace=False, MakeMaskWorkspace=True, WorkspaceName=WorkspaceName)
+    def loadDiffCal(self, Filename, InputWorkspace, WorkspaceName):
+        self.enqueueAlgorithm("LoadDiffCal","Loading DiffCal for {} ...".format(Filename), False, InstrumentFilename='/SNS/SNAP/shared/Calibration/PixelGroupingDefinitions/SNAPLite.xml', Filename='/SNS/SNAP/shared/Calibration/14100-10/SNAP048705_calib_geom_20220907.lite.h5', MakeGroupingWorkspace=False, MakeMaskWorkspace=True, WorkspaceName=WorkspaceName)
         return WorkspaceName
 
     def normaliseByCurrent(self, InputWorkspace, OutputWorkspace):
@@ -94,7 +83,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         # loadmask
         # LoadMask(instrumentName=snap, MaskFile=".xml", OutputWorkspace="mask")
         # MaskDetectors(Workspace=Workspace, MaskedWorkspace=MaskedWorkspace)
-        self.enqueueAlgorithm("MaskDetectors", "Applying Pixel Mask...", isChild=False, Workspace=Workspace, MaskedWorkspace=MaskedWorkspace)
+        self.enqueueAlgorithm("MaskDetectors", "Applying Pixel Mask...", Workspace=Workspace, MaskedWorkspace=MaskedWorkspace)
         return Workspace
 
     # def applyContainerMask(self):
@@ -119,8 +108,8 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.deleteWorkspace(Workspace=InputWorkspace)
         return OutputWorkspace
     
-    def diffractionFocusing(self, InputWorkspace, GroupingWorkspace, OutputWorkspace, PreserveEvents=False):
-        self.enqueueAlgorithm("DiffractionFocussing", "Performing Diffraction Focusing ...", False, InputWorkspace=InputWorkspace, GroupingWorkspace=GroupingWorkspace, OutputWorkspace=OutputWorkspace, PreserveEvents=PreserveEvents)
+    def diffractionFocusing(self, InputWorkspace, GroupingWorkspace, OutputWorkspace):
+        self.enqueueAlgorithm("DiffractionFocussing", "Performing Diffraction Focusing ...", False, InputWorkspace=InputWorkspace, GroupingWorkspace=GroupingWorkspace, OutputWorkspace=OutputWorkspace)
         self.deleteWorkspace(Workspace=InputWorkspace)
         return OutputWorkspace
     
@@ -160,6 +149,9 @@ class ReductionAlgorithm(PythonAlgorithm):
 
     def deleteWorkspace(self, Workspace):
         self.enqueueAlgorithm("DeleteWorkspace", "Freeing workspace...", False, Workspace=Workspace)
+        
+    def generatePythonScript(self, InputWorkspace, Filename):
+        self.enqueueAlgorithm("GeneratePythonScript", "Generating Script", False, InputWorkspace=InputWorkspace, Filename=Filename)
 
     def cleanup(self):
         self._prog_reporter.report(self._endrange, "Done")
@@ -168,9 +160,8 @@ class ReductionAlgorithm(PythonAlgorithm):
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
-        focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
         # run the algo
-        self.log().notice("Execution of ReductionAlgorithm START!")
+        self.log().notice("Execution of AlignAndFocusReductionAlgorithm START!")
 
         # TODO: Reorg how filepaths are stored
         ipts = reductionIngredients.runConfig.IPTS
@@ -181,8 +172,12 @@ class ReductionAlgorithm(PythonAlgorithm):
         vanadiumFilePath = calibrationDirectory + stateId + '/powder/' + rawVanadiumCorrectionFileName
         diffCalPath = calibrationDirectory + stateId + '/powder/' + reductionIngredients.reductionState.stateConfig.diffractionCalibrant.filename
         
-        raw_data = self.loadEventNexus(Filename=rawDataPath, OutputWorkspace="raw_data")    
+        
+        # raw_data = self.loadEventNexus(Filename=rawDataPath, OutputWorkspace="raw_data")    
         vanadium = self.loadNexus(Filename=vanadiumFilePath, OutputWorkspace="vanadium")
+
+      # 2 NormalizeByCurrent -- just apply to data
+        # self.normaliseByCurrent(InputWorkspace=raw_data, OutputWorkspace=raw_data)
 
 
         # 4 Not Lite? SumNeighbours  -- just apply to data
@@ -195,76 +190,69 @@ class ReductionAlgorithm(PythonAlgorithm):
         groupingworkspace = self.createGroupWorkspace(reductionIngredients.reductionState.stateConfig, reductionIngredients.reductionState.instrumentConfig.name, vanadium)
 
         # 3 ApplyDiffCal  -- just apply to data
-        diffCalPrefix = self.loadDiffCal(Filename=diffCalPath, WorkspaceName="diffcal")
-        
-        # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours -- done to both data, can be applied to vanadium per state
-        self.applyCalibrationPixelMask(Workspace=raw_data, MaskedWorkspace=diffCalPrefix+"_mask")
-        self.applyCalibrationPixelMask(Workspace=vanadium, MaskedWorkspace=diffCalPrefix+"_mask")
-        
-        self.applyDiffCal(InstrumentWorkspace=raw_data, CalibrationWorkspace=diffCalPrefix+"_cal")
+        diffCalPrefix = self.loadDiffCal(Filename=diffCalPath, InputWorkspace='idf', WorkspaceName="diffcal")
 
-        self.deleteWorkspace(Workspace=diffCalPrefix+"_mask")
-        self.deleteWorkspace(Workspace=diffCalPrefix+"_cal")
-        self.deleteWorkspace(Workspace="idf")
-
-        # 9 Does it have a container? Apply Container Attenuation Correction
-        data = self.convertUnits(InputWorkspace=raw_data, EMode="Elastic", Target="dSpacing", OutputWorkspace="data", ConvertFromPointData=True)
-        vanadium = self.convertUnits(InputWorkspace=vanadium, EMode="Elastic", Target="dSpacing", OutputWorkspace="vanadium_dspacing", ConvertFromPointData=True)
-
-        # TODO: May impact performance of lite mode data
-        # TODO: Params is supposed to be smallest dmin, smalled dbin, largest dmax
-        # self.enqueueAlgorithm('Rebin', "Rebinning", isChild=False,  InputWorkspace=data, Params='0.338, -0.00086, 5.0', PreserveEvents=False, OutputWorkspace="rebinned_data_before_focus")
-        # data = "rebinned_data_before_focus"
-        # vanadium = self.enqueueAlgorithm('Rebin', "Rebinning", isChild=False, InputWorkspace=vanadium, Params='0.338, -0.00086, 5.0', PreserveEvents=False, OutputWorkspace="rebinned_vanadium_before_focus")
-        # vanadium = "rebinned_vanadium_before_focus"
-        # 11 For each Group (no for each loop, the algos apply things based on groups of group workspace)
-        data = self.diffractionFocusing(InputWorkspace=data, GroupingWorkspace=groupingworkspace, OutputWorkspace='focused_data')
-        vanadium = self.diffractionFocusing(InputWorkspace=vanadium, GroupingWorkspace=groupingworkspace, OutputWorkspace="diffraction_focused_vanadium")
-        
-        # 2 NormalizeByCurrent -- just apply to data
-        self.normaliseByCurrent(InputWorkspace=data, OutputWorkspace=data)
-        
-        # self.deleteWorkspace(Workspace=rebinned_data_before_focus)
-        self.deleteWorkspace(Workspace="CommonRed")
-        
-        # compress data
-        # data = self.compressEvents(InputWorkspace=data, OutputWorkspace='event_compressed_data')
-        
-        # sum chunks if files are large
-        # TODO: Implement New Strip Peaks that allows for multiple FWHM, one per group, for now just grab the first one to get it to run
-        peakPositions = ','.join(str(s) for s in reductionIngredients.reductionState.stateConfig.normalizationCalibrant.peaks)
-        
-        vanadium = self.stripPeaks(InputWorkspace=vanadium, FWHM=reductionIngredients.reductionState.stateConfig.focusGroups[0].FWHM[0], PeakPositions=peakPositions, OutputWorkspace='peaks_stripped_vanadium')
-        vanadium = self.smoothData(InputWorkspace=vanadium, NPoints=reductionIngredients.reductionState.stateConfig.normalizationCalibrant.smoothPoints, OutputWorkspace='smoothed_data_vanadium')
-        
-        data = self.rebinToWorkspace(WorkspaceToRebin=data, WorkspaceToMatch=vanadium, OutputWorkspace="rebinned_data", PreserveEvents=False)
-        data = self.divide(LHSWorkspace=data, RHSWorkspace=vanadium, OutputWorkspace='data_minus_vanadium')
-        
-        # TODO: Refactor so excute only needs to be called once
-        self.executeQueue()
+        self.executeReduction()
         self._algorithmQueue = []
+        
+        DMin = reductionIngredients.reductionState.stateConfig.focusGroups[0].dMin
+        DMax = reductionIngredients.reductionState.stateConfig.focusGroups[0].dMax
+        DeltaRagged = reductionIngredients.reductionState.stateConfig.focusGroups[0].dBin
+        
+        self.enqueueAlgorithm("AlignAndFocusPowderFromFiles", "Executing AlignAndFocusPowder...", False, 
+                              Filename=rawDataPath,
+                              MaxChunkSize=5,
+                            # UnfocussedWorkspace="?",
+                              GroupingWorkspace="Column",
+                              CalibrationWorkspace=diffCalPrefix+"_cal",
+                              MaskWorkspace=diffCalPrefix+"_mask",
+                            #   Params="",  
+                              DMin=DMin,
+                              DMax=DMax,
+                              DeltaRagged=DeltaRagged,
+                            #   ReductionProperties="?",
+                              OutputWorkspace="output")
+        
+        # self.enqueueAlgorithm("AlignAndFocusPowderFromFiles", "Executing AlignAndFocusPowder...", False, 
+        #                       Filename=vanadiumFilePath,
+        #                       MaxChunkSize=5,
+        #                     # UnfocussedWorkspace="?",
+        #                       GroupingWorkspace="Column",
+        #                       CalibrationWorkspace=diffCalPrefix+"_cal",
+        #                       MaskWorkspace=diffCalPrefix+"_mask",
+        #                     #   Params="",  
+        #                       DMin=DMin,
+        #                       DMax=DMax,
+        #                       DeltaRagged=DeltaRagged,
+        #                     #   ReductionProperties="?",
+        #                       OutputWorkspace="vanadium")
+        
 
-        groupedData = data
-        for workspaceIndex in range(len(focusGroups)): 
-            data = self.rebinRagged(InputWorkspace=mtd[groupedData].getItem(workspaceIndex),
-            XMin=focusGroups[workspaceIndex].dMin,
-            XMax=focusGroups[workspaceIndex].dMax,
-            Delta=focusGroups[workspaceIndex].dBin,
-            OutputWorkspace='data_rebinned_ragged_'+str(focusGroups[workspaceIndex].name))
-        self.deleteWorkspace(Workspace="data_minus_vanadium")
-        # self.renameWorkspace(InputWorkspace=data, OutputWorkspace="SomethingSensible")
+    
+        import yappi
 
-        self.executeQueue()
+        # Dont use wall time as Qt event loop runs for entire duration
+        output_path = './profile.out'
+        yappi.set_clock_type("cpu")
+        yappi.start(builtins=False, profile_threads=True, profile_greenlets=True)
+        try:
+            self.executeReduction()
+        finally:
+            # Qt will try to sys.exit so wrap in finally block before we go down
+            print(f"Saving kcachegrind to {output_path}")
+            yappi.stop()
+            prof_data = yappi.get_func_stats()
+            prof_data.save(output_path, type="callgrind")
 
 
-        if self._export:
-            with open('/SNS/users/wqp/git/snapred/snap_reduction.py', 'w') as file:
-                file.write(self._exportScript)
+        self.generatePythonScript("output", "/SNS/users/wqp/git/snapred/script.py")
+        self.executeReduction()
+        
         self.cleanup()
-        self.log().notice("Execution of ReductionAlgorithm COMPLETE!")
-        return data
+        self.log().notice("Execution of AlignAndFocusReductionAlgorithm COMPLETE!")
+        # return data
 
         # set outputworkspace to data
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(ReductionAlgorithm)
+AlgorithmFactory.subscribe(AlignAndFocusReductionAlgorithm)

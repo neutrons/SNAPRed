@@ -1,5 +1,6 @@
 from snapred.meta.Singleton import Singleton
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import name as ReductionAlgorithm
+from snapred.backend.recipe.algorithm.AlignAndFocusReductionAlgorithm import name as AlignAndFocusReductionAlgorithm
 from snapred.backend.log.logger import snapredLogger
 
 from mantid.api import AlgorithmManager
