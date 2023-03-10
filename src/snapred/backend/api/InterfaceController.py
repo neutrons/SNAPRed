@@ -16,7 +16,6 @@ class InterfaceController:
         # execute the recipe
         # return the result
         # try:
-        print(self.serviceFactory.getServiceNames())
         result = self.serviceFactory \
         .getService(reductionRequest.mode) \
         .orchestrateRecipe(reductionRequest)

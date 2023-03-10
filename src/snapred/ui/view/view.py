@@ -16,7 +16,6 @@ class LogTableView(QtWidgets.QWidget):
         self.grid.addWidget(self.button)
 
     def addRecipeConfig(self, reductionConfigs):
-        print(reductionConfigs)
         self.grid.addWidget(QtWidgets.QLabel(str(reductionConfigs)), self.position, 0)
         self.position += 1
 
@@ -24,7 +23,7 @@ class LogTableView(QtWidgets.QWidget):
         self.buttonAction()
 
     def _empty(self):
-        print("missing")
+        pass
 
     def on_button_clicked(self, slot):
         self.buttonAction = slot

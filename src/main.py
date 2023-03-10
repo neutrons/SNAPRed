@@ -8,6 +8,11 @@ from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
 from mantidqt.widgets.workspacewidget.workspacetreewidget import WorkspaceTreeWidget
 from mantid.simpleapi import CreateSampleWorkspace
 
+from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import ROOT_DIR
+
+logger = snapredLogger.getLogger(__name__)
+
 import snapred as sr
 import inspect
 
@@ -45,6 +50,10 @@ if __name__ == "__main__":
     try:
         ex = DummyGUI()
         #ex.resize(700, 700)
+        asciiPath = ROOT_DIR + '/snapred/resources/ascii.txt'
+        with open(asciiPath, 'r') as asciiArt:
+            print(asciiArt.read())
+        logger.info("Welcome User! Happy Reducing!")
         ex.show()
         app.exec_()
     except RuntimeError as error:
