@@ -3,6 +3,7 @@ from snapred.meta.Singleton import Singleton
 # cant think of a good way around requireing the services to be imported
 # here in order to autoregister them
 from snapred.backend.service.ConfigLookupService import ConfigLookupService
+from snapred.backend.service.ReductionService import ReductionService
 
 # import regex
 import re
@@ -15,6 +16,7 @@ class ServiceFactory:
     def __init__(self):
         # register the services
         self.registerService(ConfigLookupService())
+        self.registerService(ReductionService())
 
     def registerService(self, service):
         # register the service

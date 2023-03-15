@@ -9,7 +9,6 @@ class DummyWidget(object):
         model = LogTableModel()
         view = LogTableView(name, parent)
         self._presenter = LogTablePresenter(view, model)
-        print(view.__dict__)
 
     @property
     def presenter(self):

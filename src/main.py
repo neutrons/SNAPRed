@@ -3,36 +3,18 @@ import sys
 
 from snapred.ui.widget.MainWidget import DummyWidget
 
+from mantidqt.widgets.instrumentview.api import get_instrumentview
+from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
+from mantidqt.widgets.workspacewidget.workspacetreewidget import WorkspaceTreeWidget
+from mantid.simpleapi import CreateSampleWorkspace
+
+from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import ROOT_DIR
+
+logger = snapredLogger.getLogger(__name__)
+
 import snapred as sr
 import inspect
-
-# print(inspect.getmembers(sr, predicate=inspect.ismodule))
-
-is_namespace = (
-    lambda module: hasattr(module, "__path__")
-    and getattr(module, "__file__", None) is None
-)
-
-def get_all_module_files(modules=None):
-    module_files = []
-    while len(modules) > 0:
-        module = modules.pop()
-        if is_namespace(module[1]):
-            modules.extend(inspect.getmembers(module[1], predicate=inspect.ismodule))
-        else:
-            module_files.append(module[1])
-        
-        # import pdb ; pdb.set_trace()
-
-    return module_files
-
-modules = get_all_module_files([("snapred", sr)])
-
-print(modules)
-
-for module in modules:
-    print(inspect.getmembers(module, predicate=inspect.isclass))
-
 
 class DummyGUI(QtWidgets.QMainWindow):
 
@@ -43,6 +25,13 @@ class DummyGUI(QtWidgets.QMainWindow):
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
         splitter.addWidget(dummyWidget.widget)
+        
+        # myiv = get_instrumentview(ws)
+        # myiv.show_view()
+
+        # import pdb; pdb.set_trace()
+        splitter.addWidget(WorkspaceTreeWidget())
+        splitter.addWidget(AlgorithmProgressWidget())
 
         self.setCentralWidget(splitter)
         self.setWindowTitle("DummyGUI")
@@ -61,6 +50,10 @@ if __name__ == "__main__":
     try:
         ex = DummyGUI()
         #ex.resize(700, 700)
+        asciiPath = ROOT_DIR + '/snapred/resources/ascii.txt'
+        with open(asciiPath, 'r') as asciiArt:
+            print(asciiArt.read())
+        logger.info("Welcome User! Happy Reducing!")
         ex.show()
         app.exec_()
     except RuntimeError as error:

@@ -17,14 +17,9 @@ activate SNAPRed
 conda env update --file environment.yml  --prune
 ```
 
-### Build App
-
-todo...
-
 
 ## Run
 
-... todo
 ```
 python ./src/main.py
 ```

@@ -1,12 +1,12 @@
-from dataclasses import dataclass
+from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
 
-# https://docs.python.org/3/library/dataclasses.html
-@dataclass
-class RecipeConfig:
+from pydantic import BaseModel
+
+class ReductionIngredients(BaseModel):
     """Class to hold the instrument configuration."""
-    mode: str
-    runs: list #[RunConfig]
+    runConfig: RunConfig
+    reductionState: ReductionState
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

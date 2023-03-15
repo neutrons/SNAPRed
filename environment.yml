@@ -5,6 +5,7 @@ channels:
 - mantid
 dependencies:
 - python=3.8
+- pydantic
 - mantidworkbench
 - qtpy
 - pytest

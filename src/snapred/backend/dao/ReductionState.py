@@ -1,10 +1,13 @@
-from dataclasses import dataclass
+from snapred.backend.dao.InstrumentConfig import InstrumentConfig
+from snapred.backend.dao.StateConfig import StateConfig
+from typing import Optional
+from pydantic import BaseModel
 
-# https://docs.python.org/3/library/dataclasses.html
-@dataclass
-class ReductionState:
+class ReductionState(BaseModel):
     """Class to hold the instrument configuration."""
-    key: str
+    instrumentConfig: InstrumentConfig
+    stateConfig: StateConfig
+    overrides: Optional[InstrumentConfig] = None
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

@@ -4,6 +4,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 class LogTableView(QtWidgets.QWidget):
 
+    position = 1
+
     def __init__(self, name, parent=None):
         super(LogTableView, self).__init__(parent)
         self.grid = QtWidgets.QGridLayout(self)
@@ -14,14 +16,14 @@ class LogTableView(QtWidgets.QWidget):
         self.grid.addWidget(self.button)
 
     def addRecipeConfig(self, reductionConfigs):
-        print(reductionConfigs)
-        self.grid.addWidget(QtWidgets.QLabel(reductionConfigs[0].key), 1, 0)
+        self.grid.addWidget(QtWidgets.QLabel(str(reductionConfigs)), self.position, 0)
+        self.position += 1
 
     def execButtonAction(self):
         self.buttonAction()
 
     def _empty(self):
-        print("missing")
+        pass
 
     def on_button_clicked(self, slot):
         self.buttonAction = slot
