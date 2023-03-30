@@ -7,7 +7,7 @@ A desktop application that performs calibrations and reductions on data collcete
 ### Conda
 Create your conda envirionment:
 ```
-conda env create --file environment.yml 
+conda env create --file environment.yml
 activate SNAPRed
 ```
 
@@ -29,3 +29,7 @@ python ./src/main.py
 
 ... todo
 
+
+## Documentation
+
+https://snapred.readthedocs.io/en/latest/
