@@ -61,9 +61,8 @@ class DataFactoryService:
         raise NotImplementedError("_getFocusGroups() is not implemented")
         return [FocusGroup()]
 
-    def _constructStateId(self, runId):
-        raise NotImplementedError("_constructStateId() is not implemented")
-        return "stateId"
+    def constructStateId(self, runId):
+        return self.lookupService._generateStateId(self.getRunConfig(runId))
 
     def _getGetometricConfig(self, runId):
         raise NotImplementedError("_getGetometricConfig() is not implemented")

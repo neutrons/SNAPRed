@@ -8,19 +8,28 @@ import sys
 
 ROOT_DIR = os.path.dirname(sys.modules['__main__'].__file__)
 
+@Singleton
+class _Resource:
+    _resourcesPath = ROOT_DIR + '/snapred/resources/'
+    
+    def getPath(self, subPath):
+        return self._resourcesPath + subPath
+    
+    def open(self, subPath, mode):
+        return open(self.getPath(subPath), mode)
+Resource = _Resource()
 
 @Singleton
 class _Config:
-    _resourcesPath = ROOT_DIR + '/snapred/resources/'
     _config = {}
     def __init__(self):
-        baseConfigFile = self._resourcesPath + 'application.yml'
+        baseConfigFile = Resource.getPath('application.yml')
         with open(baseConfigFile, 'r') as file:
              self._config = yaml.safe_load(file)
              # TODO: Read env from Environment Variable, not yml
              env = self._config.get("environment", None)
              if(env != None):
-                envConfigFile = self._resourcesPath + '{}.yml'.format(env)
+                envConfigFile = Resource.getPath('{}.yml'.format(env))
                 with open(envConfigFile, 'r') as file:
                     envConfig = yaml.safe_load(file)
                     self._config = deep_update(self._config, envConfig)
@@ -33,5 +42,4 @@ class _Config:
             if val == None: break
             val = val[k]
         return val
-
 Config = _Config()

@@ -43,7 +43,6 @@ class CustomGroupWorkspace(PythonAlgorithm):
                 OutputWorkspace=outputWorkspace
                 )
         
-        print('State pixel groups initialised')
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(CustomGroupWorkspace)

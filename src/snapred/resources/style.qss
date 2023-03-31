@@ -1,0 +1,65 @@
+
+
+QWidget {
+    /* background-color: #F5E9E2; */
+    color: #0B0014;
+}
+
+QMainWindow {
+    background: transparent;
+}
+QMainWindow, QWidget#centralwidget {
+    background-color: qlineargradient(spread:pad, x1:0.42, y1:0, x2:0.528, y2:1, stop:0 #773344, stop:1 #650c10);
+    border-top-right-radius: 10px;
+    border-top-left-radius: 10px;
+}
+
+QStatusBar {
+    background-color: qlineargradient(spread:pad, x1:0.42, y1:0, x2:0.528, y2:1, stop:0 #650c10, stop:1 #773344);
+    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+
+QListWidget::item {
+    height: 50px;
+}
+
+
+QListWidget::item:selected {
+    background-color: #E3B5A4;
+}
+
+QPushButton, QMenu {
+    background-color: #D44D5C;
+    font-size: 18px;
+}
+
+QProgressBar {
+    border: 2px solid grey;
+    border-radius: 5px;
+    text-align: center;
+}
+
+QProgressBar::chunk {
+    background-color: #D44D5C;
+    width: 10px;
+    /* margin: 0.5px; */
+}
+
+QLabel#headerTitle {
+    background-color: transparent;
+    color: #F5E9E2;
+    font-size: 18px;
+}
+
+QWidget#WorkspaceTree, QLineEdit {
+    background-color: #F5E9E2;
+    color: #0B0014;
+}
+
+QWidget#header {
+    background-color: hsl(17, 70%, 89%);
+    color: #0B0014;
+    border-radius: 10px;
+}

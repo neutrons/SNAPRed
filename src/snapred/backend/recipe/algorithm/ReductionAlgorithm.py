@@ -6,6 +6,7 @@ import json
 
 from snapred.backend.recipe.algorithm.CustomGroupWorkspace import name as CustomGroupWorkspace
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+from snapred.backend.error.AlgorithmException import AlgorithmException
 
 name = "ReductionAlgorithm"
 
@@ -21,23 +22,31 @@ class ReductionAlgorithm(PythonAlgorithm):
     _prog_reporter = None
     _algorithmQueue = []
     _exportScript = ""
-    _export = True
+    _export = False
 
     def PyInit(self):
         # declare properties
         self.declareProperty('ReductionIngredients', defaultValue='', direction=Direction.Input)
         self.declareProperty('OutputWorkspace', defaultValue='', direction=Direction.Output)
+        self.setRethrows(True)
 
-    def createChildAlgorithm(self, name, isChild=True):
+    def createAlgorithm(self, name, isChild=True):
         alg = AlgorithmManager.create(name)
         alg.setChild(isChild)
+        alg.setAlwaysStoreInADS(True)
+        alg.setRethrows(True)
         return alg
 
     def executeAlgorithm(self, name, isChild=True, **kwargs):
-        algorithm = self.createChildAlgorithm(name, isChild)
-        for prop, val in kwargs.items():
-            algorithm.setProperty(prop, val)
-        algorithm.execute()
+        algorithm = self.createAlgorithm(name, isChild)
+        try:
+            for prop, val in kwargs.items():
+                algorithm.setProperty(prop, val)
+            if not algorithm.execute():
+                raise Exception("")
+        except Exception as e:
+            raise AlgorithmException(name, str(e))
+            
 
     def enqueueAlgorithm(self, name, message, isChild=True, **kwargs):
         self._algorithmQueue.append((name, message, isChild, kwargs))
@@ -66,15 +75,15 @@ class ReductionAlgorithm(PythonAlgorithm):
 
     
     def loadEventNexus(self, Filename, OutputWorkspace):
-        self.enqueueAlgorithm("LoadEventNexus", "Loading Event Nexus for {} ...".format(Filename), False, Filename=Filename, OutputWorkspace=OutputWorkspace)
+        self.enqueueAlgorithm("LoadEventNexus", "Loading Event Nexus for {} ...".format(Filename), Filename=Filename, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
     def loadNexus(self, Filename, OutputWorkspace):
-        self.enqueueAlgorithm("LoadNexus","Loading Nexus for {} ...".format(Filename), False, Filename=Filename, OutputWorkspace=OutputWorkspace)
+        self.enqueueAlgorithm("LoadNexus","Loading Nexus for {} ...".format(Filename), Filename=Filename, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
     def loadDiffCal(self, Filename, WorkspaceName):
-        self.enqueueAlgorithm("LoadDiffCal","Loading DiffCal for {} ...".format(Filename), False, InstrumentFilename='/SNS/SNAP/shared/Calibration/PixelGroupingDefinitions/SNAPLite.xml', Filename=Filename, MakeGroupingWorkspace=False, MakeMaskWorkspace=True, WorkspaceName=WorkspaceName)
+        self.enqueueAlgorithm("LoadDiffCal","Loading DiffCal for {} ...".format(Filename), InstrumentFilename='/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml', Filename=Filename, MakeGroupingWorkspace=False, MakeMaskWorkspace=True, WorkspaceName=WorkspaceName)
         return WorkspaceName
 
     def normaliseByCurrent(self, InputWorkspace, OutputWorkspace):
@@ -82,7 +91,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         return OutputWorkspace
 
     def applyDiffCal(self, InstrumentWorkspace, CalibrationWorkspace):
-        self.enqueueAlgorithm("ApplyDiffCal", "Applying DiffCal...", False, InstrumentWorkspace=InstrumentWorkspace, CalibrationWorkspace=CalibrationWorkspace)
+        self.enqueueAlgorithm("ApplyDiffCal", "Applying DiffCal...", InstrumentWorkspace=InstrumentWorkspace, CalibrationWorkspace=CalibrationWorkspace)
         return InstrumentWorkspace
     
     def sumNeighbours(self, InputWorkspace, SumX, SumY, OutputWorkspace):
@@ -94,7 +103,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         # loadmask
         # LoadMask(instrumentName=snap, MaskFile=".xml", OutputWorkspace="mask")
         # MaskDetectors(Workspace=Workspace, MaskedWorkspace=MaskedWorkspace)
-        self.enqueueAlgorithm("MaskDetectors", "Applying Pixel Mask...", isChild=False, Workspace=Workspace, MaskedWorkspace=MaskedWorkspace)
+        self.enqueueAlgorithm("MaskDetectors", "Applying Pixel Mask...", Workspace=Workspace, MaskedWorkspace=MaskedWorkspace)
         return Workspace
 
     # def applyContainerMask(self):
@@ -111,21 +120,21 @@ class ReductionAlgorithm(PythonAlgorithm):
 
     def createGroupWorkspace(self, StateConfig, InstrumentName, CalibrantWorkspace):
 
-        self.enqueueAlgorithm(CustomGroupWorkspace, "Creating Group Workspace...", False, StateConfig=StateConfig.json(), InstrumentName=InstrumentName, CalibrantWorkspace=CalibrantWorkspace, OutputWorkspace='CommonRed')
+        self.enqueueAlgorithm(CustomGroupWorkspace, "Creating Group Workspace...", StateConfig=StateConfig.json(), InstrumentName=InstrumentName, CalibrantWorkspace=CalibrantWorkspace, OutputWorkspace='CommonRed')
         return 'CommonRed'
 
     def convertUnits(self, InputWorkspace, EMode, Target, OutputWorkspace, ConvertFromPointData):
-        self.enqueueAlgorithm("ConvertUnits", "Converting to Units of {} ...".format(Target), False, InputWorkspace=InputWorkspace, EMode=EMode, Target=Target, OutputWorkspace=OutputWorkspace, ConvertFromPointData=ConvertFromPointData)
+        self.enqueueAlgorithm("ConvertUnits", "Converting to Units of {} ...".format(Target), InputWorkspace=InputWorkspace, EMode=EMode, Target=Target, OutputWorkspace=OutputWorkspace, ConvertFromPointData=ConvertFromPointData)
         self.deleteWorkspace(Workspace=InputWorkspace)
         return OutputWorkspace
     
     def diffractionFocusing(self, InputWorkspace, GroupingWorkspace, OutputWorkspace, PreserveEvents=False):
-        self.enqueueAlgorithm("DiffractionFocussing", "Performing Diffraction Focusing ...", False, InputWorkspace=InputWorkspace, GroupingWorkspace=GroupingWorkspace, OutputWorkspace=OutputWorkspace, PreserveEvents=PreserveEvents)
+        self.enqueueAlgorithm("DiffractionFocussing", "Performing Diffraction Focusing ...", InputWorkspace=InputWorkspace, GroupingWorkspace=GroupingWorkspace, OutputWorkspace=OutputWorkspace, PreserveEvents=PreserveEvents)
         self.deleteWorkspace(Workspace=InputWorkspace)
         return OutputWorkspace
     
     def compressEvents(self, InputWorkspace, OutputWorkspace):
-        self.enqueueAlgorithm("CompressEvents", "Compressing events ...", False, InputWorkspace=InputWorkspace, OutputWorkspace=OutputWorkspace)
+        self.enqueueAlgorithm("CompressEvents", "Compressing events ...", InputWorkspace=InputWorkspace, OutputWorkspace=OutputWorkspace)
         self.deleteWorkspace(Workspace=InputWorkspace)
         return OutputWorkspace
     
@@ -151,15 +160,15 @@ class ReductionAlgorithm(PythonAlgorithm):
         return OutputWorkspace
 
     def rebinRagged(self, InputWorkspace, XMin, XMax, Delta, OutputWorkspace):
-        self.enqueueAlgorithm("RebinRagged", "Rebinning ragged bins...", False, InputWorkspace=InputWorkspace, XMin=XMin, XMax=XMax, Delta=Delta, OutputWorkspace=OutputWorkspace)
+        self.enqueueAlgorithm("RebinRagged", "Rebinning ragged bins...", InputWorkspace=InputWorkspace, XMin=XMin, XMax=XMax, Delta=Delta, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
     def renameWorkspace(self, InputWorkspace, OutputWorkspace):
-        self.enqueueAlgorithm("RenameWorkspace", "Renaming output workspace to something sensible...", False, InputWorkspace=InputWorkspace, OutputWorkspace=OutputWorkspace)
+        self.enqueueAlgorithm("RenameWorkspace", "Renaming output workspace to something sensible...", InputWorkspace=InputWorkspace, OutputWorkspace=OutputWorkspace)
         return OutputWorkspace
 
     def deleteWorkspace(self, Workspace):
-        self.enqueueAlgorithm("DeleteWorkspace", "Freeing workspace...", False, Workspace=Workspace)
+        self.enqueueAlgorithm("DeleteWorkspace", "Freeing workspace...", Workspace=Workspace)
 
     def cleanup(self):
         self._prog_reporter.report(self._endrange, "Done")
@@ -260,6 +269,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         if self._export:
             with open('/SNS/users/wqp/git/snapred/snap_reduction.py', 'w') as file:
                 file.write(self._exportScript)
+                
         self.cleanup()
         self.log().notice("Execution of ReductionAlgorithm COMPLETE!")
         return data
