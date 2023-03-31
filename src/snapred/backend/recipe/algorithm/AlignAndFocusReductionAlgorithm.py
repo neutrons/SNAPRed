@@ -239,7 +239,6 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
             self.executeReduction()
         finally:
             # Qt will try to sys.exit so wrap in finally block before we go down
-            print(f"Saving kcachegrind to {output_path}")
             yappi.stop()
             prof_data = yappi.get_func_stats()
             prof_data.save(output_path, type="callgrind")

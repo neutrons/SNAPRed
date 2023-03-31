@@ -27,7 +27,10 @@ class _SnapRedLogger:
         # Output only the message text and let Python take care of formatting.
         config["logging.formatters.f1.class"] = "PatternFormatter"
         config["logging.formatters.f1.pattern"] = self._mantidFormat
-        config["logging.channels.consoleChannel.class"] = "PythonStdoutChannel"
+        
+        # flip flop class to trigger update to mantid logger
+        config["logging.channels.consoleChannel.class"] = "PythonLoggingChannel"
+        config["logging.channels.consoleChannel.class"] = "StdoutChannel"
 
     def _logLevelToString(self, code):
         return self._logLevels[code]

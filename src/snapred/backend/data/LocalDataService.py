@@ -54,7 +54,7 @@ class LocalDataService:
         return StateConfig(diffractionCalibrant=self._readDiffractionCalibrant(runId),
         emptyInstrumentRunNumber=reductionParameters['VBRun'][0],
         normalizationCalibrant=self._readNormalizationCalibrant(runId),
-        geometryCalibrationFileName=None, #TODO: missing, reductionParameters['GeomCalFileName'],
+        geometryCalibrationFileName=None, #TODO: missing, reductionParameters['GeomCalFileName'], null, #TODO: Editable in niche diagnosis case
         calibrationAuthor=reductionParameters.get('calibBy'),
         calibrationDate=reductionParameters.get('calibDate'),
         focusGroups=self._readFocusGroups(runId),
@@ -66,8 +66,8 @@ class LocalDataService:
         tofMax=reductionParameters['tofMax'],
         tofMin=reductionParameters['tofMin'],
         version=reductionParameters['version'],
-        wallclockTof=reductionParameters['wallClockTol'],
-        temporalProximity=None) #TODO: fill with real value
+        wallclockTof=reductionParameters['wallClockTol'], # TODO: delete when version controlled
+        temporalProximity=None) #TODO: replace with an index file for instrument/calib state
 
     def _readDiffractionCalibrant(self, runId):
         reductionParameters = self._readReductionParameters(runId)
@@ -137,7 +137,7 @@ class LocalDataService:
                                 maskFileName='',
                                 maskFileDirectory=iptsPath + self.instrumentConfig.sharedDirectory,
                                 gsasFileDirectory=iptsPath + self.instrumentConfig.reducedDataDirectory,
-                                calibrationState=None) #TODO: where to find case? "before" "after"
+                                calibrationState=None) #TODO: delete, replace with an index file
 
     def _generateStateId(self, runConfig):
         fName = runConfig.IPTS + self.instrumentConfig.nexusDirectory + '/SNAP_' + str(runConfig.runNumber) + self.instrumentConfig.nexusFileExtension

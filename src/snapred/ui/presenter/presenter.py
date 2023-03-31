@@ -1,4 +1,6 @@
 from PyQt5 import QtGui, QtCore
+from PyQt5.QtWidgets import QMessageBox
+
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.ReductionRequest import ReductionRequest
@@ -37,10 +39,15 @@ class LogTablePresenter(object):
       self.view.show()
 
     def update_reduction_config_element(self, reductionResponse):
+        # import pdb; pdb.set_trace()
         if reductionResponse.responseCode == 200:
             reductionConfig = reductionResponse.responseData  
-            self.model.addRecipeConfig(reductionConfig)
-            self.view.addRecipeConfig(self.model.getRecipeConfig())
+        else:
+            messageBox = QMessageBox()
+            messageBox.setIcon(QMessageBox.Critical)
+            messageBox.setText(reductionResponse.responseMessage)
+            messageBox.setFixedSize(500,200)
+            messageBox.exec()
 
     def buttonSpinner(self, spinner):
         sleep(.25)

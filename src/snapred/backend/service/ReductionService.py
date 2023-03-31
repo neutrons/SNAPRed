@@ -17,6 +17,9 @@ class ReductionService:
             # TODO: Refresh workspaces
             # import json
             # data[run.runNumber] = json.dumps(reductionIngredients.__dict__, default=lambda o: o.__dict__)
-            ReductionRecipe().executeRecipe(reductionIngredients)
+            try:
+                ReductionRecipe().executeRecipe(reductionIngredients)
+            except:
+                raise
         return data 
 
