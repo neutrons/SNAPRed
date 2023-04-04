@@ -1,9 +1,3 @@
-# SNAPRed
-## Description
-
-A desktop application for Lifecycle Managment of data collected from the SNAP instrument.
-Planned to include: Reduction, Calibration, Data Exploration, and Diagnosis
-
 ## Build
 ### Conda
 Create your conda envirionment:
@@ -31,8 +25,3 @@ python ./src/main.py
 ```
 pytest
 ```
-
-
-## Documentation
-
-https://snapred.readthedocs.io/en/latest/

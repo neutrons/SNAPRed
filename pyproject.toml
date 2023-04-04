@@ -20,3 +20,18 @@ default-tag = "0.0.1"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "./src"
+]
+
+[flake8]
+max-line-length = 120
+ignore = 'E203'
+
+[[tool.mypy.overrides]]
+module = [
+    "yaml",
+]
+ignore_missing_imports = true
