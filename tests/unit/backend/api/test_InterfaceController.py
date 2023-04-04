@@ -37,13 +37,9 @@ def mockedSuccessfulInterfaceController():
     mockService = mock.Mock()
     mockService.orchestrateRecipe.return_value = {"result": "Success!"}
 
-    def side_effect(x):
-        if x == "Test Service":
-            return mockService
-        else:
-            return None
-
-    interfaceController.serviceFactory.getService.side_effect = side_effect
+    interfaceController.serviceFactory.getService.side_effect = (
+        lambda x: mockService if x == "Test Service" else None
+    )
     return interfaceController
 
 
