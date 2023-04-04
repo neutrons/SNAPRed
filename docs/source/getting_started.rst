@@ -1,27 +1,38 @@
-## Build
-### Conda
+Getting Started
+===============
+
+.. _getting_started:
+
+
+Build
+-----
+Conda
+`````
 Create your conda envirionment:
-```
-conda env create --file environment.yml
-activate SNAPRed
-```
+::
+    conda env create --file environment.yml
+    activate SNAPRed
+
 
 Update if its been a while:
-```
-activate SNAPRed
-conda env update --file environment.yml  --prune
-```
+::
+    activate SNAPRed
+    conda env update --file environment.yml  --prune
 
 
-## Run
 
-```
-python ./src/main.py
-```
+Run
+---
+
+.. code-block::
+
+    python ./src/main.py
 
 
-## Test
 
-```
-pytest
-```
+Test
+----
+
+.. code-block::
+
+    pytest
