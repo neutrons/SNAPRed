@@ -26,7 +26,7 @@ jobs:
         
     - name: Build Conda Package
       run: |
-        condta install -y anaconda-client boa
+        conda install -y anaconda-client boa
         cd conda.recipe
         VERSION=$(versioningit ../) conda mambabuild --output-folder . -c conda-forge . || exit 1
         conda verify noarch/snapred*.tar.bz2 || exit 1
