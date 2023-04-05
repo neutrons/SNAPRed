@@ -23,6 +23,13 @@ jobs:
         auto-update-conda: true
         mamba-version: "*"
         environment-file: environment.yml
+        
+    - name: Install linters
+      run: |
+        conda install flake8
+        conda install black
+        conda install mypy
+        conda install pytest
 
   lint:
     runs-on: ubuntu-latest
@@ -36,17 +43,14 @@ jobs:
         
     - name: Lint with flake8
       run: |
-        conda install flake8
         flake8 . 
     
     - name: Lint with black
       run: |
-        conda install black
         black . --check
     
     - name: Type-check with myy
       run: |
-        conda install mypy
         mypy src/
 
   tests:
