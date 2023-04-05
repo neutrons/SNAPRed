@@ -4,68 +4,81 @@ from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
+from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
 from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 
 from snapred.backend.data.LocalDataService import LocalDataService
 
+from typing import Dict, List, Any, Optional
+
 from mantid.api import AnalysisDataService as ADS
+
 
 @Singleton
 class DataFactoryService:
 
-    lookupService = None
+    lookupService: Optional[LocalDataService]
     # TODO: rules for busting cache
-    cache = {}
+    cache: Dict[str, ReductionState] = {}
 
-    def __init__(self, lookupService=LocalDataService()):
+    def __init__(self, lookupService: LocalDataService = LocalDataService()) -> None:
         self.lookupService = lookupService
 
-    def getReductionIngredients(self, runId):
-        return ReductionIngredients(reductionState=self.getReductionState(runId), runConfig=self.getRunConfig(runId))
+    def getReductionIngredients(self, runId: str) -> ReductionIngredients:
+        return ReductionIngredients(
+            reductionState=self.getReductionState(runId),
+            runConfig=self.getRunConfig(runId),
+        )
 
-    def getReductionState(self, runId):
+    def getReductionState(self, runId: str) -> ReductionState:
+        reductionState: ReductionState
+
         if runId in self.cache:
-            return self.cache[runId]
+            reductionState = self.cache[runId]
+
         else:
             # lookup and package data
-            reductionState = ReductionState(instrumentConfig=self.getInstrumentConfig(runId), stateConfig=self.getStateConfig(runId))
+            reductionState = ReductionState(
+                instrumentConfig=self.getInstrumentConfig(runId),
+                stateConfig=self.getStateConfig(runId),
+            )
             self.cache[runId] = reductionState
-            return reductionState
 
-    def getRunConfig(self, runId):
+        return reductionState
+
+    def getRunConfig(self, runId: str) -> RunConfig:
         return self.lookupService.readRunConfig(runId)
 
-    def getInstrumentConfig(self, runId):
+    def getInstrumentConfig(self, runId: str) -> InstrumentConfig:
         return self.lookupService.readInstrumentConfig()
-    
-    def getStateConfig(self, runId):
+
+    def getStateConfig(self, runId: str) -> StateConfig:
         return self.lookupService.readStateConfig(runId)
 
-    def loadNexusFile(self, reductionState, deepcopy=True):
+    def loadNexusFile(self, reductionState, deepcopy=True) -> None:
         # cacheService.get(filepath)
         # else lookupService.loadFile(filepath);cacheService.put(filepath, data)
         # if deepcopy: clone workspace
         raise NotImplementedError("_loadNexusFile() is not implemented")
 
-    def _getDiffractionCalibrant(self, runId):
+    def _getDiffractionCalibrant(self, runId) -> DiffractionCalibrant:
         raise NotImplementedError("_getDiffractionCalibrant() is not implemented")
         return DiffractionCalibrant()
-    
-    def _getNormalizationCalibrant(self, runId):
+
+    def _getNormalizationCalibrant(self, runId) -> NormalizationCalibrant:
         raise NotImplementedError("_getNormalizationCalibrant() is not implemented")
         return NormalizationCalibrant()
-    
-    def _getFocusGroups(self, runId):
+
+    def _getFocusGroups(self, runId) -> List[FocusGroup]:
         raise NotImplementedError("_getFocusGroups() is not implemented")
         return [FocusGroup()]
 
-    def _constructStateId(self, runId):
+    def _constructStateId(self, runId) -> str:
         raise NotImplementedError("_constructStateId() is not implemented")
         return "stateId"
 
-    def _getGetometricConfig(self, runId):
+    def _getGetometricConfig(self, runId) -> None:
         raise NotImplementedError("_getGetometricConfig() is not implemented")
         # call additional data service, specify shallow copy
- 
