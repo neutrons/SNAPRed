@@ -59,7 +59,7 @@ jobs:
         environment-file: environment.yml
     - name: Test with pytest
       run: |
-        xvfb-run --server-ags="-screen 0 1920x1080x24" -a python -m pytest --cov=srv --cov-report=xml --cov-report=term
+        xvfb-run -a python -m pytest --cov=srv --cov-report=xml --cov-report=term
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
 
