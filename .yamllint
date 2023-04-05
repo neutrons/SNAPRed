@@ -1,0 +1,9 @@
+---
+
+yaml-files:
+  - '*.yaml'
+  - '*.yml'
+  - '.yamllint'
+
+ignore: |
+  conda.recipe/meta.yaml
