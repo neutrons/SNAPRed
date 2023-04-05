@@ -30,15 +30,15 @@ jobs:
         conda install flake8
         git fetch origin ${{ github.event.pull_request.base.ref }}
         echo $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$")
-        flake8 $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py")
+        flake8 $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$")
     
     - name: Lint with black
       continue-on-error: true
       run: |
         conda install black
-        git fetch origin next
-        echo $(git diff --name-only origin/next | grep ".py$")
-        black $(git diff --name-only origin/next | grep ".py$")
+        git fetch origin ${{ github.event.pull_request.base.ref }}
+        echo $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$")
+        black $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$") --check
     
     - name: Type-check with myy
       continue-on-error: true
