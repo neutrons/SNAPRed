@@ -57,7 +57,7 @@ class LocalDataService:
 
     def readStateConfig(self, runId: str) -> StateConfig:
         reductionParameters = self._readReductionParameters(runId)
-
+        
         return StateConfig(
             diffractionCalibrant=self._readDiffractionCalibrant(runId),
             emptyInstrumentRunNumber=reductionParameters["VBRun"][0],
@@ -80,6 +80,7 @@ class LocalDataService:
 
     def _readDiffractionCalibrant(self, runId: str) -> DiffractionCalibrant:
         reductionParameters = self._readReductionParameters(runId)
+        
         return DiffractionCalibrant(
             filename=reductionParameters["calFileName"],
             runNumber=reductionParameters["CRun"][0],
@@ -150,13 +151,14 @@ class LocalDataService:
     def _readRunConfig(self, runId: str) -> RunConfig:
         # lookup IPST number
         iptsPath = self._findIPTS(runId)
+
         return RunConfig(
-            IPTS=iptsPath,
-            runNumber=runId,
-            maskFileName="",
-            maskFileDirectory=iptsPath + self.instrumentConfig.sharedDirectory,
-            gsasFileDirectory=iptsPath + self.instrumentConfig.reducedDataDirectory,
-            calibrationState=None,
+              IPTS=iptsPath,
+              runNumber=runId,
+              maskFileName="",
+              maskFileDirectory=iptsPath + self.instrumentConfig.sharedDirectory,
+              gsasFileDirectory=iptsPath + self.instrumentConfig.reducedDataDirectory,
+              calibrationState=None,
         )  # TODO: where to find case? "before" "after"
 
     def _generateStateId(self, runConfig: RunConfig) -> Tuple[Any, Any]:

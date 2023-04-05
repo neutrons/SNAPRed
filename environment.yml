@@ -5,6 +5,7 @@ channels:
 - mantid
 dependencies:
 - python=3.8
+- pip
 - pydantic
 - mantidworkbench
 - qtpy
@@ -18,3 +19,4 @@ dependencies:
 - setuptools
 - pip:
   - check-wheel-contents
+  - types-pyyaml

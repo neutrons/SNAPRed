@@ -1,13 +1,14 @@
 # SNAPRed
 ## Description
 
-A desktop application that performs calibrations and reductions on data collceted from the SNAP instrument.
+A desktop application for Lifecycle Managment of data collected from the SNAP instrument.
+Planned to include: Reduction, Calibration, Data Exploration, and Diagnosis
 
 ## Build
 ### Conda
 Create your conda envirionment:
 ```
-conda env create --file environment.yml 
+conda env create --file environment.yml
 activate SNAPRed
 ```
 
@@ -27,5 +28,11 @@ python ./src/main.py
 
 ## Test
 
-... todo
+```
+pytest
+```
 
+
+## Documentation
+
+https://snapred.readthedocs.io/en/latest/

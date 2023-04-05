@@ -31,10 +31,10 @@ class ReductionRecipe:
         algo = AlgorithmManager.create(self.reductionAlgorithmName)
         algo.setProperty("ReductionIngredients", reductionIngredients.json())
 
-        data["result"] = algo.execute()
-
-        logger.info(
-            "Finished executing recipe for runId: %s"
-            % reductionIngredients.runConfig.runNumber
-        )
-        return data
+        try:
+            data["result"] = algo.execute()
+        except RuntimeError as e:
+            errorString = str(e)
+            raise Exception(errorString.split("\n")[0])
+        logger.info("Finished executing recipe for runId: %s" % reductionIngredients.runConfig.runNumber)
+        return data 
