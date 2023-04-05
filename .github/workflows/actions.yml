@@ -28,7 +28,7 @@ jobs:
       continue-on-error: true
       run: |
         conda install flake8
-        git fetch next
+        git fetch origin/next
         echo $(git dif --name-only next} )
         flake8 $(git diff --name-only next )
     
