@@ -28,13 +28,13 @@ jobs:
       continue-on-error: true
       run: |
         conda install flake8
-        flake8 $$"(git diff --name-only ${{ github.event.pull_request.base.ref }} )"
+        flake8 $(git diff --name-only ${{ github.event.pull_request.base.ref }} )
     
     - name: Lint with black
       continue-on-error: true
       run: |
         conda install black
-        flake8 $$"(git diff --name-only ${{ github.event.pull_request.base.ref }} )"
+        flake8 $(git diff --name-only ${{ github.event.pull_request.base.ref }} )
     
     - name: Type-check with myy
       continue-on-error: true
