@@ -77,8 +77,7 @@ jobs:
             PLAY="update"
             CONDA_ENV="${{ steps.conda_env_name.outputs.name }}"
             
-      - name: Annotae comit
-        uses: rboston628/commit-comment@v2
+      - name: Annotate commit
         with:
           body: |
             GitLab pipelinefor ${{ steps.conda_env_name.outputs.name }} hasbeen submitted for this commit: ${{ steps.trigger.outputs.web_url}}
