@@ -28,8 +28,6 @@ jobs:
       continue-on-error: true
       run: |
         conda install flake8
-        echo ${{ github.event.pull_request.base.ref }}
-        echo $(git diff --name-only ${{ github.event.pull_request.base.ref }} )
         flake8 $$"(git diff --name-only ${{ github.event.pull_request.base.ref }} )"
     
     - name: Lint with black
