@@ -27,6 +27,7 @@ jobs:
   build-and-cache:
     if: jobs.load-cache.outputs.cache-hit != 'true'
     runs-on: ubuntu-latest
+    needs: [load-cache]
     defaults:
       run:
         shell: bash -l {0}
