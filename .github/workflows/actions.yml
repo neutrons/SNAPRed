@@ -28,9 +28,9 @@ jobs:
       continue-on-error: true
       run: |
         conda install flake8
-        git fetch origin next
-        echo $(git diff --name-only origin/next)
-        flake8 $(git diff --name-only origin/next)
+        git fetch origin ${{ github.event.pull_request.base.ref }}
+        echo $(git diff --name-only origin/${{ github.event.pull_request.base.ref }})
+        flake8 $(git diff --name-only origin/${{ github.event.pull_request.base.ref }})
     
     - name: Lint with black
       continue-on-error: true
