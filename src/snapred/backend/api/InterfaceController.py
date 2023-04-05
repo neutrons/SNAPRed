@@ -1,5 +1,6 @@
 from snapred.backend.service.ServiceFactory import ServiceFactory
 from snapred.backend.dao.ReductionResponse import ReductionResponse
+from snapred.backend.dao.ReductionRequest import ReductionRequest
 from snapred.meta.Singleton import Singleton
 from snapred.backend.log.logger import snapredLogger
 
@@ -13,7 +14,7 @@ class InterfaceController:
         # make a singleton instance if one doesnt exist
         pass
 
-    def executeRequest(self, reductionRequest):
+    def executeRequest(self, reductionRequest: ReductionRequest) -> ReductionResponse:
         result = None
         response = None
         # execute the recipe
