@@ -8,26 +8,8 @@ on:
 
 jobs:
 
-  load-cache:
+  build:
     runs-on: ubuntu-latest
-    outputs:
-      cache-hit: ${{ steps.cache-load.outputs.cache-hit }}
-    defaults:
-      run:
-        shell: bash -l {0}
-    steps:
-      - name: Restore cached conda environent
-        id: cache-load
-        uses: actions/cache/restore@v3
-        with:
-          path: ${{ env.CONDA_PREFIX }}
-          key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml') }}
-          restore-keys: ${{ runner.os }}-conda-
-
-  build-and-cache:
-    if: jobs.load-cache.outputs.cache-hit != 'true'
-    runs-on: ubuntu-latest
-    needs: [load-cache]
     defaults:
       run:
         shell: bash -l {0}
@@ -42,14 +24,6 @@ jobs:
         mamba-version: "*"
         environment-file: environment.yml
         
-    - name: Cache conda environment
-      uses: actions/cache/save@v3
-      id: cache-conda-env
-      with:
-        path: ${{ env.CONDA_PREFIX }}
-        key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml') }}
-        restore-keys: ${{ runner.os }}-conda-
-        
     - name: Install linters
       run: |
         conda install flake8
@@ -59,7 +33,7 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
-    needs: [build-and-cache]
+    needs: [build]
     defaults:
       run:
         shell: bash -l {0}
@@ -81,7 +55,7 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
-    needs: [build-and-cache]
+    needs: [build]
     defaults:
       run:
         shell: bash -l {0}
