@@ -28,14 +28,15 @@ jobs:
       continue-on-error: true
       run: |
         conda install flake8
-        echo $(get dif --name-only next} )
+        git fetch next
+        echo $(git dif --name-only next} )
         flake8 $(git diff --name-only next )
     
     - name: Lint with black
       continue-on-error: true
       run: |
         conda install black
-        echo $(get dif --name-only next)
+        echo $(git dif --name-only next)
         black $(git diff --name-only next )
     
     - name: Type-check with myy
