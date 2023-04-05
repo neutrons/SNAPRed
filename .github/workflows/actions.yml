@@ -81,7 +81,7 @@ jobs:
 
   trigger-deploy:
     runs-on: ubuntu-latest
-    needs: [tests]
+    needs: [lint, tests]
     # only trigger deploys from protected branches and tags
     if: ${{github.ref_protected || github.ref_type == 'tag' }}
     steps:
