@@ -2,8 +2,7 @@ name: Cache Conda Environment
 
 on:
   push:
-    branches: [fix_cache_job]
-    # branches: [next]
+    branches: [next]
 
 jobs:
   load-cache:
