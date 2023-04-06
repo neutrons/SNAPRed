@@ -60,7 +60,7 @@ jobs:
 
   tests:
     needs: [check-lint]
-    if: jobs.check-lint.outputs.output1 != ''
+    if: needs.check-lint.outputs.output1 != ''
     runs-on: ubuntu-latest
     defaults:
       run:
