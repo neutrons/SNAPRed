@@ -1,47 +1,20 @@
 name: CI
 
-on: 
+on:
   workflow_dispatch:
   pull_request:
   push:
     branches: [main, qa, next]
 
 jobs:
-
   lint:
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -l {0}
     steps:
-    
-    - uses: actions/checkout@v3
-    
-    - name: Set up Miniconda
-      uses: conda-incubator/setup-miniconda@v2
-      with:
-        auto-update-conda: true
-        mamba-version: "*"
-        environment-file: environment.yml
-        
-    - name: Lint with flake8
-      run: |
-        conda install flake8
-        git fetch origin ${{ github.event.pull_request.base.ref }}
-        echo $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$")
-        flake8 $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$")
-    
-    - name: Lint with black
-      run: |
-        conda install black
-        git fetch origin ${{ github.event.pull_request.base.ref }}
-        echo $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$")
-        black $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$") --check
-    
-    - name: Type-check with myy
-      run: |
-        conda install mypy
-        mypy src/
+    - uses: pre-commit-ci/lite-action@v1.0.1
+      if: always()
 
   tests:
     runs-on: ubuntu-latest
@@ -50,15 +23,30 @@ jobs:
         shell: bash -l {0}
 
     steps:
-    
+
     - uses: actions/checkout@v3
-    
-    - name: Set up Miniconda
+    - name: Restore cached conda environment
+      id: cache-load
+      uses: actions/cache/restore@v3
+      with:
+        path: /usr/share/miniconda/envs/SNAPRed
+        key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml') }}
+    - name: Set up Miniconda from Scratch
+      if: steps.cache-load.outputs.cache-hit != 'true'
       uses: conda-incubator/setup-miniconda@v2
       with:
         mamba-version: "*"
         environment-file: environment.yml
-    
+
+    - name: Load Miniconda from Cache
+      if: steps.cache-load.outputs.cache-hit == 'true'
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        mamba-version: "*"
+    - name: Activate conda environment
+      if: steps.cache-load.outputs.cache-hit == 'true'
+      run: conda activate SNAPRed
+
     - name: Test with pytest
       run: |
         conda install pytest
@@ -78,13 +66,13 @@ jobs:
         id: conda_env_name
         with:
           prefix: snapred
-          
+
       - name: Trigger deploy
         id: trigger
         uses: eic/trigger-gitlab-ci@v2
         with:
           url: https://code.ornl.gov
-          token: ${{ secrets.GITLAB_TRIGGER_TOKEN }} 
+          token: ${{ secrets.GITLAB_TRIGGER_TOKEN }}
           ref_name: main
           variables: |
             PLAY="update"
