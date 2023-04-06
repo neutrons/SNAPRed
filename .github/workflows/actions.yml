@@ -41,9 +41,7 @@ jobs:
     - name: Lint with flake8
       run: |
         conda install flake8
-        git fetch origin ${{ github.event.pull_request.base.ref }}
-        echo $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$")
-        flake8 $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$")
+        flake8 ${{ needs.check-lint.outputs.output1 }}
     
     - name: Lint with black
       run: |
