@@ -27,6 +27,7 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
+        
     steps:
     
     - uses: actions/checkout@v3
@@ -48,14 +49,12 @@ jobs:
         conda install black
         black ${{ needs.check-lint.outputs.output1 }} --check
     
-    - name: Type-check with myy
+    - name: Type-check with mypy
       run: |
         conda install mypy
         mypy src/
 
   tests:
-    needs: [check-lint]
-    if: needs.check-lint.outputs.output1 != ''
     runs-on: ubuntu-latest
     defaults:
       run:
