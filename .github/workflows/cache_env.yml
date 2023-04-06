@@ -2,7 +2,8 @@ name: Cache Conda Environment
 
 on:
   push:
-    branches: [next]
+    branches: [fix_cache_job]
+    # branches: [next]
 
 jobs:
   load-cache:
@@ -13,15 +14,16 @@ jobs:
       run:
         shell: bash -l {0}
     steps:
+      - uses: actions/checkout@v3
       - name: Restore cached conda environment
         id: cache-load
         uses: actions/cache/restore@v3
         with:
-          path: ${{ env.CONDA_PREFIX }}
+          path: /usr/share/miniconda/envs/SNAPRed
           key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml') }}
-          restore-keys: ${{ runner.os }}-conda-
   build-and-cache:
-    if: jobs.load-cache.outputs.cache-hit != 'true'
+    needs: load-cache
+    if: needs.load-cache.outputs.cache-hit != 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -34,10 +36,13 @@ jobs:
           auto-update-conda: true
           mamba-version: "*"
           environment-file: environment.yml
+          activate-environment: SNAPRed
+      - name: Echo conda path
+        run: |
+          echo $CONDA_PREFIX
       - name: Cache conda environment
         uses: actions/cache/save@v3
         id: cache-conda-env
         with:
-          path: ${{ env.CONDA_PREFIX }}
+          path: /usr/share/miniconda/envs/SNAPRed
           key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml') }}
-          restore-keys: ${{ runner.os }}-conda-
