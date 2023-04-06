@@ -10,17 +10,20 @@ jobs:
 
   check-lint:
     runs-on: ubuntu-latest
+    outputs:
+      output1: ${{ steps.check-diff.outputs.test }}
     steps:
     - uses: actions/checkout@v3
     - name: check diff
+      id: check-diff
       run: |
         git fetch origin ${{ github.event.pull_request.base.ref }}
-        OUTPUT = $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep "\.py$") != ''
-        echo "::set-output name=OUTPUT::$OUTPUT"
+        OUTPUT = $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep "\.py$")
+        echo "test=$OUTPUT" >> $GITHUB_OUTPUT
 
   lint:
     needs: [check-lint]
-    if: jobs.check-lint.outputs.OUTPUT == 1
+    if: needs.check-lint.outputs.output1 != ''
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -57,7 +60,7 @@ jobs:
 
   tests:
     needs: [check-lint]
-    if: jobs.check-lint.outputs.OUTPUT == 1
+    if: jobs.check-lint.outputs.output1 != ''
     runs-on: ubuntu-latest
     defaults:
       run:
