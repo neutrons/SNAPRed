@@ -7,5 +7,5 @@ def test_environment():
 
 
 def test_instrument_home():
-    correctPath = "/snapred/tests/resources/SNAP/"
+    correctPath = "/SNAPRed/tests/resources/SNAP/"
     assert Config["instrument.home"][-len(correctPath) :] == correctPath
