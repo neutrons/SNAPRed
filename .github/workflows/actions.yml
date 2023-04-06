@@ -19,7 +19,7 @@ jobs:
         echo "::set-output name=OUTPUT::$OUTPUT"
 
   lint:
-    needs: [check_lint]
+    needs: [check-lint]
     if: check-lint.outputs.OUTPUT == 1
     runs-on: ubuntu-latest
     defaults:
