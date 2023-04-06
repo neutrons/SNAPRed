@@ -9,7 +9,7 @@ on:
 jobs:
 
   lint:
-    if: git fetch origin ${{ github.event.pull_request.base.ref }} && $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep "\.py$") != ''
+    if: ${{ git fetch origin ${{ github.event.pull_request.base.ref }} && $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep "\.py$") != '' }}
     runs-on: ubuntu-latest
     defaults:
       run:
