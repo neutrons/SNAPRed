@@ -18,8 +18,7 @@ jobs:
       id: check-diff
       run: |
         git fetch origin ${{ github.event.pull_request.base.ref }}
-        OUTPUT = $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep "\.py$") && \
-        echo "test=$OUTPUT" >> $GITHUB_OUTPUT
+        echo "test=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep "\.py$")" >> $GITHUB_OUTPUT
 
   lint:
     needs: [check-lint]
