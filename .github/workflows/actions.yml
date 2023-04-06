@@ -25,7 +25,6 @@ jobs:
         environment-file: environment.yml
         
     - name: Lint with flake8
-      continue-on-error: true
       run: |
         conda install flake8
         git fetch origin ${{ github.event.pull_request.base.ref }}
@@ -33,7 +32,6 @@ jobs:
         flake8 $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$")
     
     - name: Lint with black
-      continue-on-error: true
       run: |
         conda install black
         git fetch origin ${{ github.event.pull_request.base.ref }}
@@ -41,7 +39,6 @@ jobs:
         black $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$") --check
     
     - name: Type-check with myy
-      continue-on-error: true
       run: |
         conda install mypy
         mypy src/
@@ -59,12 +56,10 @@ jobs:
     - name: Set up Miniconda
       uses: conda-incubator/setup-miniconda@v2
       with:
-        auto-update-conda: true
         mamba-version: "*"
         environment-file: environment.yml
     
     - name: Test with pytest
-      continue-on-error: true
       run: |
         conda install pytest
         pytest
