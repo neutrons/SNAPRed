@@ -46,9 +46,7 @@ jobs:
     - name: Lint with black
       run: |
         conda install black
-        git fetch origin ${{ github.event.pull_request.base.ref }}
-        echo $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$")
-        black $(git diff --name-only origin/${{ github.event.pull_request.base.ref }} | grep ".py$") --check
+        black ${{ needs.check-lint.outputs.output1 }} --check
     
     - name: Type-check with myy
       run: |
