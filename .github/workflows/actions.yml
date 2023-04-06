@@ -20,7 +20,7 @@ jobs:
 
   lint:
     needs: [check-lint]
-    if: check-lint.outputs.OUTPUT == 1
+    if: jobs.check-lint.outputs.OUTPUT == 1
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -57,7 +57,7 @@ jobs:
 
   tests:
     needs: [check-lint]
-    if: check-lint.outputs.OUTPUT == 1
+    if: jobs.check-lint.outputs.OUTPUT == 1
     runs-on: ubuntu-latest
     defaults:
       run:
