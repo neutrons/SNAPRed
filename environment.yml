@@ -20,3 +20,4 @@ dependencies:
 - pip:
   - check-wheel-contents
   - types-pyyaml
+  - build
