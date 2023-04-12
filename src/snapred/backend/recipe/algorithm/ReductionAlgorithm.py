@@ -1,7 +1,8 @@
 import json
 from typing import List, Tuple
 
-from mantid.api import AlgorithmFactory, AlgorithmManager, Direction, Progress, PythonAlgorithm
+from mantid.api import AlgorithmFactory, AlgorithmManager, Progress, PythonAlgorithm
+from mantid.kernel import Direction
 from mantid.simpleapi import mtd
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.error.AlgorithmException import AlgorithmException

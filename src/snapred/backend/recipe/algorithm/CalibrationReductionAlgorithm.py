@@ -1,6 +1,7 @@
 import json
 
-from mantid.api import AlgorithmFactory, Direction, PythonAlgorithm
+from mantid.api import AlgorithmFactory, PythonAlgorithm
+from mantid.kernel import Direction
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -8,7 +9,7 @@ name = "CalibrationReductionAlgorithm"
 
 
 class CalibrationReductionAlgorithm(PythonAlgorithm):
-    mantidSnapper = MantidSnapper()
+    mantidSnapper = MantidSnapper(name)
 
     def PyInit(self):
         # declare properties

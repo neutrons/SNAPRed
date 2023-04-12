@@ -1,6 +1,7 @@
 import os
 
-from mantid.api import AlgorithmManager, Direction, Progress
+from mantid.api import AlgorithmManager, Progress
+from mantid.kernel import Direction
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Resource
