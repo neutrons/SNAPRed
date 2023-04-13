@@ -18,6 +18,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Resource
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.ToolBar import ToolBar
+from snapred.ui.widget.TestPanel import TestPanel
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -31,9 +32,9 @@ class SNAPRedGUI(QMainWindow):
         splitter = QSplitter(Qt.Vertical)
         splitter.addWidget(logTable.widget)
         # add button to open new window
-        button = QPushButton("Open Test PAnel")
+        button = QPushButton("Open Test Panel")
         button.clicked.connect(self.openNewWindow)
-
+        splitter.addWidget(button)
         # myiv = get_instrumentview(ws)
         # myiv.show_view()
 
@@ -60,28 +61,28 @@ class SNAPRedGUI(QMainWindow):
         centralLayout.addWidget(self.titleBar.widget)
         centralLayout.addWidget(splitter)
 
-        self.setContentsMargins(0, self.titleBar.height(), 0, 0)
+        self.setContentsMargins(0, self.titleBar.widget.height(), 0, 0)
 
-        self.resize(320, self.titleBar.height() + 480)
-        self.setMinimumSize(320, self.titleBar.height() + 480)
+        self.resize(320, self.titleBar.widget.height() + 480)
+        self.setMinimumSize(320, self.titleBar.widget.height() + 480)
 
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
 
     def openNewWindow(self):
-        self.newWindow = QMainWindow()
-        self.newWindow.setWindowTitle("Test Panel")
-        self.newWindow.show()
+        self.newWindow = TestPanel(self)
+        self.newWindow.widget.setWindowTitle("Test Panel")
+        self.newWindow.widget.show()
 
     def closeEvent(self, event):
         event.accept()
 
     def changeEvent(self, event):
         if event.type() == event.WindowStateChange:
-            self.titleBar.windowStateChanged(self.windowState())
+            self.titleBar.presenter.windowStateChanged(self.windowState())
 
     def resizeEvent(self, event):
-        self.titleBar.resizeEvent(event)
+        self.titleBar.presenter.resizeEvent(event)
 
 
 def qapp():

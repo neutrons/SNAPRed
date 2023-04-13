@@ -1,9 +1,8 @@
-from PyQt5.QtWidgets import QWidget
 from snapred.ui.presenter.ToolBarPresenter import ToolBarPresenter
 from snapred.ui.view.ToolBarView import ToolBarView
 
 
-class ToolBar(QWidget):
+class ToolBar:
     def __init__(self, parent=None):
         self._view = ToolBarView(parent)
         self._presenter = ToolBarPresenter(self._view)
@@ -15,3 +14,4 @@ class ToolBar(QWidget):
     @property
     def widget(self):
         return self._presenter.widget
+    

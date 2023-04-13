@@ -4,4 +4,10 @@ class ToolBarPresenter:
 
     @property
     def widget(self):
-        return self.view
+        return self._view
+    
+    def windowStateChange(self, windowState):
+        self.widget.windowStateChanged(windowState)
+        
+    def resizeEvent(self, event):
+        self.widget.resizeEvent(event)

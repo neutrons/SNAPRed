@@ -1,5 +1,6 @@
 import json
 
+from mantid.kernel import Direction
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.simpleapi import CreateWorkspace, GroupWorkspaces, LoadDetectorsGroupingFile, LoadInstrument
 from snapred.backend.dao.StateConfig import StateConfig
@@ -10,9 +11,9 @@ name = "CustomGroupWorkspace"
 class CustomGroupWorkspace(PythonAlgorithm):
     def PyInit(self):
         # declare properties
-        self.declareProperty("StateConfig", "")
-        self.declareProperty("InstrumentName", "SNAP")
-        self.declareProperty("OutputWorkspace", "CommonRed")
+        self.declareProperty("StateConfig", defaultValue="", direction=Direction.Input)
+        self.declareProperty("InstrumentName", defaultValue="SNAP", direction=Direction.Input)
+        self.declareProperty("OutputWorkspace", defaultValue="CommonRed", direction=Direction.Output)
         pass
 
     # TODO: This was largely copied from Malcolm's prototype and is due for a refactor

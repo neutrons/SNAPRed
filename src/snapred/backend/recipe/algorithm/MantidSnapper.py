@@ -10,7 +10,8 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class MantidSnapper:
-    def __init__(self, name):
+    def __init__(self, parentAlgorithm, name):
+        self.parentAlgorithm = parentAlgorithm
         self._name = name
         self._endrange = 0
         self._progressCounter = 0
@@ -22,22 +23,36 @@ class MantidSnapper:
             self._cleanOldExport()
 
     def __getattr__(self, key):
-        def enqueueAlgorithm(self, message, **kwargs):
+        def enqueueAlgorithm(message, **kwargs):
             self._algorithmQueue.append((key, message, kwargs))
             self._endrange += 1
             # inspect mantid algorithm for output properties
             # if there are any, add them to a list for return
-            outputProperties = []
+            outputProperties = {}
             mantidAlgorithm = AlgorithmManager.create(key)
-            for prop in mantidAlgorithm.getProperties():
-                if prop.direction == Direction.Output:
-                    outputProperties.append(prop.name)
-                if prop.direction == Direction.InOut:
-                    outputProperties.append(prop.name)
+            for propname in set(kwargs.keys()).difference(mantidAlgorithm.getProperties()):
+                prop = mantidAlgorithm.getProperty(propname)
+                if Direction.values[prop.direction] == Direction.Output:
+                    outputProperties[prop.name] = kwargs[prop.name]
+                if Direction.values[prop.direction] == Direction.InOut:
+                    outputProperties[prop.name] = kwargs[prop.name]
+                    
+            # TODO: Special cases are bad
+            if key == "LoadDiffCal":
+                if kwargs.get('MakeGroupingWorkspace', True) == True:
+                    outputProperties['GroupingWorkspace'] = kwargs['WorkspaceName'] + "_group"
+                if kwargs.get('MakeMaskWorkspace', True) == True:
+                    outputProperties['MaskWorkspace'] = kwargs['WorkspaceName'] + '_mask'
+                if kwargs.get('MakeCalWorkspace', True) == True:
+                    outputProperties['CalWorkspace'] = kwargs['WorkspaceName'] + '_cal'
+                    
             # remove mantid algorithm from managed algorithms
-            mantidAlgorithm.removeById(mantidAlgorithm.getAlgorithmID())
+            AlgorithmManager.removeById(mantidAlgorithm.getAlgorithmID())
             # if only one property is returned, return it directly
-            return outputProperties[0] if len(outputProperties) == 1 else outputProperties
+            if len(outputProperties) == 1:
+                outputProperties, = outputProperties.values() 
+                
+            return outputProperties
 
         return enqueueAlgorithm
 
@@ -63,7 +78,7 @@ class MantidSnapper:
             raise AlgorithmException(name, str(e))
 
     def executeQueue(self):
-        self._prog_reporter = Progress(self, start=0.0, end=1.0, nreports=self._endrange)
+        self._prog_reporter = Progress(self.parentAlgorithm, start=0.0, end=1.0, nreports=self._endrange)
         for algorithmTuple in self._algorithmQueue:
             if self._export:
                 self._exportScript += "{}(".format(algorithmTuple[0])
@@ -75,7 +90,7 @@ class MantidSnapper:
                 self._exportScript += ")\n"
 
             self.reportAndIncrement(algorithmTuple[1])
-            logger.notice(algorithmTuple[1])
+            logger.info(algorithmTuple[1])
             # import pdb; pdb.set_trace()
             self.executeAlgorithm(name=algorithmTuple[0], **algorithmTuple[2])
         self.cleanup()

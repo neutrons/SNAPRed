@@ -9,13 +9,13 @@ name = "CalibrationReductionAlgorithm"
 
 
 class CalibrationReductionAlgorithm(PythonAlgorithm):
-    mantidSnapper = MantidSnapper(name)
 
     def PyInit(self):
         # declare properties
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
+        self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
@@ -39,7 +39,6 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         raw_data = self.mantidSnapper.LoadEventNexus(
             "Loading Event Nexus for {} ...".format(rawDataPath), Filename=rawDataPath, OutputWorkspace="raw_data"
         )
-
         # 4 Not Lite? SumNeighbours  -- just apply to data
         # self.sumNeighbours(InputWorkspace=raw_data, SumX=SuperPixEdge, SumY=SuperPixEdge, OutputWorkspace=raw_data)
 
@@ -55,13 +54,19 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         )
 
         # 3 ApplyDiffCal  -- just apply to data
-        diffCalPrefix = self.mantidSnapper.LoadDiffCal(
-            "Loading DiffCal for {} ...".format(diffCalPath), Filename=diffCalPath, WorkspaceName="diffcal"
+        diffCalPrefix = "diffcal"
+        self.mantidSnapper.LoadDiffCal(
+            "Loading DiffCal for {} ...".format(diffCalPath),
+            InstrumentFilename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+            MakeGroupingWorkspace=False,
+            MakeMaskWorkspace=True, 
+            Filename=diffCalPath, 
+            WorkspaceName=diffCalPrefix
         )
-
         # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours --
         # done to both data, can be applied to vanadium per state
-        self.mantidSnapper.ApplyCalibrationPixelMask(
+        # ApplyCalibrationPixelMask
+        self.mantidSnapper.MaskDetectors(
             "Applying Pixel Mask...", Workspace=raw_data, MaskedWorkspace=diffCalPrefix + "_mask"
         )
 
@@ -82,7 +87,7 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
             OutputWorkspace="data",
             ConvertFromPointData=True,
         )
-
+        self.mantidSnapper.DeleteWorkspace("Deleting Raw Data", Workspace=raw_data)
         # TODO: May impact performance of lite mode data
         # TODO: Params is supposed to be smallest dmin, smalled dbin, largest dmax
         # self.enqueueAlgorithm('Rebin',
@@ -103,12 +108,15 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         # OutputWorkspace="rebinned_vanadium_before_focus")
         # vanadium = "rebinned_vanadium_before_focus"
         # 11 For each Group (no for each loop, the algos apply things based on groups of group workspace)
-        data = self.mantidSnapper.DiffractionFocusing(
+        self.mantidSnapper.DiffractionFocussing(
             "Performing Diffraction Focusing ...",
             InputWorkspace=data,
             GroupingWorkspace=groupingworkspace,
             OutputWorkspace="focused_data",
         )
+        self.mantidSnapper.DeleteWorkspace("Deleting Intermediate Data", Workspace=data)
+        self.mantidSnapper.DeleteWorkspace("Deleting Grouping Workspace", Workspace=groupingworkspace)
+        
 
         self.mantidSnapper.executeQueue()
 
