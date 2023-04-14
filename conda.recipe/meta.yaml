@@ -40,8 +40,6 @@ requirements:
   run:
     - pydantic
     - mantidworkbench
-    - qtpy
-    - pytest
 
 about:
   home: {{ url }}
