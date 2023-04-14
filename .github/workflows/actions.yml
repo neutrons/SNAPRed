@@ -70,12 +70,22 @@ jobs:
     - name: Set up Miniconda
       uses: conda-incubator/setup-miniconda@v2
       with:
-        channels: conda-forge,defaults
+        channels: conda-forge,mantid,defaults
         miniconda-version: "latest"
         mamba-version: "*"
         activate-environment: SNAPRed
         python-version: ${{ matrix.python-version }}
         environment-file: environment.yml
+    - name: Restore cached conda environment
+      id: cache-load
+      uses: actions/cache/restore@v3
+      with:
+        path: /usr/share/miniconda/envs/SNAPRed
+        key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml') }}
+    - name: Load Environment
+      if: steps.cache-load.outputs.cache-hit != 'true'
+      run: |
+        mamba env update --file environment.yml  --prune
     - name: Build python wheel
       shell: bash -l {0}
       run: |
