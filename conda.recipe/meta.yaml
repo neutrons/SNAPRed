@@ -1,0 +1,49 @@
+# load information from setup.cfg/setup.py
+{% set data = load_setup_py_data() %}
+{% set license = data.get('license') %}
+{% set description = data.get('description') %}
+{% set url = data.get('url') %}
+# this will get the version set by environment variable
+{% set version = environ.get('VERSION') %}
+{% set version_number = environ.get('GIT_DESCRIBE_NUMBER', '0') | string %}
+
+package:
+  name: snapred
+  version: {{ version_number }}
+
+source:
+  path: ..
+#  git_url: https://github.com/neutrons/SNAPRed.git
+#  git_tag: v0.0.1
+
+build:
+  noarch: python
+  linux-64: python
+  number: {{ version_number }}
+  string: py{{py}}
+  script: {{ PYTHON }} -m pip install . --no-deps --ignore-installed -vvv
+#  script: python setup.py install
+
+requirements:
+  host:
+    - versioningit
+    - python
+
+  build:
+    - setuptools
+    - versioningit
+    - pydantic
+    - mantidworkbench
+    - qtpy
+    - pytest
+
+  run:
+    - pydantic
+    - mantidworkbench
+
+about:
+  home: {{ url }}
+  license: {{ license }}
+  license_family: GPL
+  license_file: ../LICENSE
+  summary: {{ description }}

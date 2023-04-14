@@ -7,6 +7,7 @@ on:
     branches: [main, qa, next]
 
 jobs:
+
   lint:
     runs-on: ubuntu-latest
     defaults:
@@ -20,14 +21,13 @@ jobs:
     - uses: pre-commit-ci/lite-action@v1.0.1
       if: always()
 
+
   tests:
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash -l {0}
-
     steps:
-
     - uses: actions/checkout@v3
     - name: Set up Miniconda
       uses: conda-incubator/setup-miniconda@v2
@@ -52,6 +52,62 @@ jobs:
       # xvfb-run -a python -m pytest --cov=srv --cov-report=xml --cov-report=term
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
+
+
+  conda-build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.8"]
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Miniconda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        channels: conda-forge,mantid,defaults
+        mamba-version: "*"
+        activate-environment: SNAPRed
+    - name: Restore cached conda environment
+      id: cache-load
+      uses: actions/cache/restore@v3
+      with:
+        path: /usr/share/miniconda/envs/SNAPRed
+        key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml') }}
+    - name: Load Environment
+      if: steps.cache-load.outputs.cache-hit != 'true'
+      run: |
+        mamba env update --file environment.yml  --prune
+    - name: Build python wheel
+      shell: bash -l {0}
+      run: |
+        python -m build --wheel --no-isolation
+    - name: Build conda libraray
+      shell: bash -l {0}
+      run: |
+        # set up environment
+        cd conda.recipe
+        echo "versioningit $(versioningit ../)"
+        # build the package
+        VERSION=$(versioningit ../) conda mambabuild --output-folder . .
+        conda verify noarch/snapred*.tar.bz2
+    - name: Deploy to Anaconda
+      shell: bash -l {0}
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_TOKEN }}
+        IS_RC: ${{ contains(github.ref, 'rc') }}
+      run: |
+        # label is main or rc depending on the tag-name
+        CONDA_LABEL="main"
+        if [ "${IS_RC}" = "true" ]; then CONDA_LABEL="rc"; fi
+        echo pushing ${{ github.ref }} with label $CONDA_LABEL
+        anaconda upload --label $CONDA_LABEL conda.recipe/noarch/snapred*.tar.bz2
+
 
   trigger-deploy:
     runs-on: ubuntu-latest

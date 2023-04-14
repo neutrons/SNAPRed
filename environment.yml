@@ -13,9 +13,13 @@ dependencies:
 - pytest-cov
 - flake8
 - versioningit
+- anaconda-client
 - conda-build
 - conda-verify
 - setuptools
+- python-build
+- boa
 - pip:
   - check-wheel-contents
   - types-pyyaml
+  - setuptools==47.0.0
