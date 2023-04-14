@@ -35,7 +35,7 @@ jobs:
         channels: conda-forge,defaults
         mamba-version: "*"
         activate-environment: SNAPRed
-        miniconda-version: latest
+        #miniconda-version: latest
     - name: Restore cached conda environment
       id: cache-load
       uses: actions/cache/restore@v3
