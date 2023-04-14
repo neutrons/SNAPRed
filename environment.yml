@@ -4,7 +4,7 @@ channels:
 - default
 - mantid
 dependencies:
-- python=3.8
+- python
 - pip
 - pydantic
 - mantidworkbench
@@ -16,7 +16,7 @@ dependencies:
 - conda-build
 - conda-verify
 - setuptools
+- python-build
 - pip:
   - check-wheel-contents
   - types-pyyaml
-  - build
