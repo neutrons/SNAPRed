@@ -79,18 +79,15 @@ jobs:
     - name: Build python wheel
       shell: bash -l {0}
       run: |
-        python3 -m pip install setuptools==47.0.0
         python -m build --wheel --no-isolation
     - name: Build conda libraray
       shell: bash -l {0}
       run: |
         # set up environment
-        python3 -m pip install setuptools==47.0.0
-        conda install -y anaconda-client conda-build conda-verify boa
         cd conda.recipe
         echo "versioningit $(versioningit ../)"
         # build the package
-        VERSION=$(versioningit ../) conda mambabuild --output-folder . . -c neutrons -c mantid
+        VERSION=$(versioningit ../) conda mambabuild --output-folder . .
         conda verify noarch/snapred*.tar.bz2
     - name: Deploy to Anaconda
       shell: bash -l {0}
