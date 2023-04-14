@@ -16,6 +16,7 @@ dependencies:
 - conda-build
 - conda-verify
 - setuptools
+- python-build
 - pip:
   - check-wheel-contents
   - types-pyyaml
