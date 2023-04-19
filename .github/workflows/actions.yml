@@ -129,6 +129,7 @@ jobs:
           url: https://code.ornl.gov
           token: ${{ secrets.GITLAB_TRIGGER_TOKEN }}
           ref_name: main
+          project_id: 7835
           variables: |
             PLAY="update"
             CONDA_ENV="${{ steps.conda_env_name.outputs.name }}"
