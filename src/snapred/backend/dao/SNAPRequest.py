@@ -1,11 +1,12 @@
-from dataclasses import dataclass
-from snapred.backend.dao.RunConfig import RunConfig
 from typing import List
 
 from pydantic import BaseModel
+from snapred.backend.dao.RunConfig import RunConfig
 
-class ReductionRequest(BaseModel):
+
+class SNAPRequest(BaseModel):
     """"""
+
     mode: str
     runs: List[RunConfig]
 

@@ -1,17 +1,17 @@
-from PyQt5 import QtGui, QtCore
+from time import sleep
+
 from PyQt5.QtWidgets import QMessageBox
-
-
 from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao.ReductionRequest import ReductionRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.ui.threading.worker_pool import WorkerPool
 
-from time import sleep
 
 class Spinner:
     i = 0
-    symbols = ['|', '/', '-', '\\']
+    symbols = ["|", "/", "-", "\\"]
+
     def getAndIterate(self):
         symbol = self.symbols[self.i % 4]
         self.i += 1
@@ -21,7 +21,6 @@ class Spinner:
 
 
 class LogTablePresenter(object):
-
     interfaceController = InterfaceController()
     worker_pool = WorkerPool()
 
@@ -34,23 +33,23 @@ class LogTablePresenter(object):
     @property
     def widget(self):
         return self.view
-    
-    def show(self):
-      self.view.show()
 
-    def update_reduction_config_element(self, reductionResponse):
+    def show(self):
+        self.view.show()
+
+    def update_reduction_config_element(self, response: SNAPResponse):
         # import pdb; pdb.set_trace()
-        if reductionResponse.responseCode == 200:
-            reductionConfig = reductionResponse.responseData  
+        if response.responseCode == 200:
+            pass
         else:
             messageBox = QMessageBox()
             messageBox.setIcon(QMessageBox.Critical)
-            messageBox.setText(reductionResponse.responseMessage)
-            messageBox.setFixedSize(500,200)
+            messageBox.setText(response.responseMessage)
+            messageBox.setFixedSize(500, 200)
             messageBox.exec()
 
     def buttonSpinner(self, spinner):
-        sleep(.25)
+        sleep(0.25)
         return "Loading " + spinner.getAndIterate()
 
     def updateButton(self, text):
@@ -59,10 +58,10 @@ class LogTablePresenter(object):
     def handle_button_clicked(self):
         self.view.button.setEnabled(False)
 
-        reductionRequest = ReductionRequest(mode="Reduction", runs=[RunConfig(runNumber="48741")])
+        request = SNAPRequest(mode="Reduction", runs=[RunConfig(runNumber="48741")])
 
         # setup workers with work targets and args
-        self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(reductionRequest))
+        self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request))
         self.infworker = self.worker_pool.createInfiniteWorker(target=self.buttonSpinner, args=(Spinner()))
 
         # update according to results
@@ -71,15 +70,9 @@ class LogTablePresenter(object):
 
         # Final resets
         self.worker.finished.connect(self.infworker.stop)
-        self.worker.finished.connect(
-            lambda: self.view.button.setEnabled(True)
-        )
-        self.infworker.finished.connect(
-            lambda: self.infworker.stop()
-        )
-        self.infworker.finished.connect(
-            lambda: self.updateButton("load dummy")
-        )
+        self.worker.finished.connect(lambda: self.view.button.setEnabled(True))
+        self.infworker.finished.connect(lambda: self.infworker.stop())
+        self.infworker.finished.connect(lambda: self.updateButton("load dummy"))
 
         self.worker_pool.submitWorker(self.worker)
         self.worker_pool.submitWorker(self.infworker)

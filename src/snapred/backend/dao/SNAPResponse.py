@@ -2,8 +2,10 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-class ReductionResponse(BaseModel):
+
+class SNAPResponse(BaseModel):
     """"""
+
     responseCode: int
     responseMessage: Optional[str]
     responseData: Optional[dict]
