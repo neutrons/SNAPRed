@@ -33,10 +33,14 @@ Release Candidates
 ``````````````````
 Release candidates are tagged with the ``rc`` suffix. For example, the
 <<<<<<< HEAD
+<<<<<<< HEAD
 first release candidate for version ``v1.0.0`` is tagged as ``v1.0.0rc1``.
 =======
 first release candidate for version ``1.0.0`` is tagged as ``1.0.0rc1``.
 >>>>>>> * add deploy docs
+=======
+first release candidate for version ``v1.0.0`` is tagged as ``v1.0.0rc1``.
+>>>>>>> forgot to prepend v to version
 
 Branch Specific Procedures
 --------------------------
