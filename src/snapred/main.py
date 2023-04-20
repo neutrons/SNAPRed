@@ -178,7 +178,7 @@ def qapp():
     return _app
 
 
-if __name__ == "__main__":
+def main():
     app = qapp()
     with Resource.open("style.qss", "r") as styleSheet:
         app.setStyleSheet(styleSheet.read())
@@ -197,3 +197,6 @@ if __name__ == "__main__":
     except Exception as uncaughtError:
         ex = QtWidgets.QWidget()
         QtWidgets.QMessageBox.critical(ex, "Uncaught Error!", str(uncaughtError))
+
+if __name__ == "__main__":
+    main()
