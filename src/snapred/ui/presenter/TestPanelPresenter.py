@@ -21,7 +21,7 @@ class TestPanelPresenter(object):
         self.view.show()
 
     def handleCalibrationReductinButtonClicked(self):
-        reductionRequest = ReductionRequest(mode="Calibration Reduction", runs=[RunConfig(runNumber="48741")])
+        reductionRequest = ReductionRequest(mode="Calibration Reduction", runs=[RunConfig(runNumber="57514")])
         self.handleButtonClicked(reductionRequest, self.view.calibrationReductinButton)
         
     def handleButtonClicked(self, reductionRequest, button):

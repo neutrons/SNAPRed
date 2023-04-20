@@ -221,7 +221,7 @@ class LocalDataService:
         self.stateId = stateId
 
         calibrationPath: str = (
-            self.instrumentConfig.calibrationDirectory + stateId + "/powder/"
+            self.instrumentConfig.calibrationDirectory + "Powder/" + stateId
         )
         calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"
 

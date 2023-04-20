@@ -16,7 +16,6 @@ class CustomGroupWorkspace(PythonAlgorithm):
         self.declareProperty("OutputWorkspace", defaultValue="CommonRed", direction=Direction.Output)
         pass
 
-    # TODO: This was largely copied from Malcolm's prototype and is due for a refactor
     def PyExec(self):
         stateConfig = StateConfig(**json.loads(self.getProperty("StateConfig").value))
         focusGroups = stateConfig.focusGroups
@@ -26,7 +25,7 @@ class CustomGroupWorkspace(PythonAlgorithm):
         CreateWorkspace(OutputWorkspace="idf", DataX=1, DataY=1)
         LoadInstrument(
             Workspace="idf",
-            Filename="/SNS/SNAP/shared/Calibration/SNAPLite.xml",
+            Filename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
             MonitorList="-2--1",
             RewriteSpectraMap=False,
         )

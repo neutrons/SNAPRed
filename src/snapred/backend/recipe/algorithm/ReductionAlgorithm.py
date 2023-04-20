@@ -279,11 +279,11 @@ class ReductionAlgorithm(PythonAlgorithm):
         calibrationDirectory = reductionIngredients.reductionState.instrumentConfig.calibrationDirectory
         stateId = reductionIngredients.reductionState.stateConfig.stateId
         rawVanadiumCorrectionFileName = reductionIngredients.reductionState.stateConfig.rawVanadiumCorrectionFileName
-        vanadiumFilePath = calibrationDirectory + stateId + "/powder/" + rawVanadiumCorrectionFileName
+        vanadiumFilePath = calibrationDirectory + "/Powder/" + stateId + rawVanadiumCorrectionFileName
         diffCalPath = (
             calibrationDirectory
+            + "/Powder/" 
             + stateId
-            + "/powder/"
             + reductionIngredients.reductionState.stateConfig.diffractionCalibrant.filename
         )
 

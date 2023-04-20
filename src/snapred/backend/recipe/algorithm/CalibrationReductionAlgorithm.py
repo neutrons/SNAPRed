@@ -28,24 +28,21 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         calibrationDirectory = reductionIngredients.reductionState.instrumentConfig.calibrationDirectory
         stateId = reductionIngredients.reductionState.stateConfig.stateId
         rawVanadiumCorrectionFileName = reductionIngredients.reductionState.stateConfig.rawVanadiumCorrectionFileName
-        calibrationDirectory + stateId + "/powder/" + rawVanadiumCorrectionFileName
+        vanadiumFilePath = calibrationDirectory + "Powder/" + stateId + rawVanadiumCorrectionFileName
         diffCalPath = (
             calibrationDirectory
+            + "Powder/" 
             + stateId
-            + "/powder/"
             + reductionIngredients.reductionState.stateConfig.diffractionCalibrant.filename
         )
 
-        raw_data = self.mantidSnapper.LoadEventNexus(
-            "Loading Event Nexus for {} ...".format(rawDataPath), Filename=rawDataPath, OutputWorkspace="raw_data"
-        )
-        # 4 Not Lite? SumNeighbours  -- just apply to data
-        # self.sumNeighbours(InputWorkspace=raw_data, SumX=SuperPixEdge, SumY=SuperPixEdge, OutputWorkspace=raw_data)
 
-        # 7 Does it have a container?
-        # Apply Container Mask to Raw Vanadium and Data output from SumNeighbours -- done to both data and vanadium
-        # self.applyCotainerMask()
-        # 8 CreateGroupWorkspace      TODO: Assess performance, use alternative Andrei came up with that is faster
+        raw_data = self.mantidSnapper.LoadEventNexus(
+            "Loading Event Nexus for {} ...".format(rawDataPath), Filename=rawDataPath, FilterByTofMin=2000, FilterByTofMax=14500, OutputWorkspace="raw_data"
+        )
+        
+        self.mantidSnapper.Rebin("Rebinning to 2000 bins logarithmic...", InputWorkspace=raw_data, OutputWorkspace=raw_data, Params='2000,-0.001,14500')
+
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",
             StateConfig=reductionIngredients.reductionState.stateConfig.json(),
@@ -53,7 +50,6 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
             OutputWorkspace="CommonRed",
         )
 
-        # 3 ApplyDiffCal  -- just apply to data
         diffCalPrefix = "diffcal"
         self.mantidSnapper.LoadDiffCal(
             "Loading DiffCal for {} ...".format(diffCalPath),
@@ -63,9 +59,7 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
             Filename=diffCalPath, 
             WorkspaceName=diffCalPrefix
         )
-        # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours --
-        # done to both data, can be applied to vanadium per state
-        # ApplyCalibrationPixelMask
+
         self.mantidSnapper.MaskDetectors(
             "Applying Pixel Mask...", Workspace=raw_data, MaskedWorkspace=diffCalPrefix + "_mask"
         )
@@ -78,7 +72,6 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Calibration", Workspace=diffCalPrefix + "_cal")
         self.mantidSnapper.DeleteWorkspace("Deleting IDF", Workspace="idf")
 
-        # 9 Does it have a container? Apply Container Attenuation Correction
         data = self.mantidSnapper.ConvertUnits(
             "Converting to Units of dSpacing ...",
             InputWorkspace=raw_data,
@@ -88,32 +81,16 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
             ConvertFromPointData=True,
         )
         self.mantidSnapper.DeleteWorkspace("Deleting Raw Data", Workspace=raw_data)
-        # TODO: May impact performance of lite mode data
-        # TODO: Params is supposed to be smallest dmin, smalled dbin, largest dmax
-        # self.enqueueAlgorithm('Rebin',
-        # "Rebinning",
-        # isChild=False,
-        # InputWorkspace=data,
-        # Params='0.338, -0.00086, 5.0',
-        # PreserveEvents=False,
-        # OutputWorkspace="rebinned_data_before_focus")
 
-        # data = "rebinned_data_before_focus"
-        # vanadium = self.enqueueAlgorithm('Rebin',
-        # "Rebinning",
-        # isChild=False,
-        # InputWorkspace=vanadium,
-        # Params='0.338, -0.00086, 5.0',
-        # PreserveEvents=False,
-        # OutputWorkspace="rebinned_vanadium_before_focus")
-        # vanadium = "rebinned_vanadium_before_focus"
-        # 11 For each Group (no for each loop, the algos apply things based on groups of group workspace)
-        self.mantidSnapper.DiffractionFocussing(
+        focused_data = self.mantidSnapper.DiffractionFocussing(
             "Performing Diffraction Focusing ...",
             InputWorkspace=data,
             GroupingWorkspace=groupingworkspace,
             OutputWorkspace="focused_data",
+            PreserveEvents=False
         )
+        self.mantidSnapper.NormaliseByCurrent("Normalizing Current ...", InputWorkspace=focused_data, OutputWorkspace=focused_data)
+        self.mantidSnapper.RemoveLogs("Removing Logs...", Workspace=focused_data)
         self.mantidSnapper.DeleteWorkspace("Deleting Intermediate Data", Workspace=data)
         self.mantidSnapper.DeleteWorkspace("Deleting Grouping Workspace", Workspace=groupingworkspace)
         

@@ -165,13 +165,18 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
 
         # TODO: Reorg how filepaths are stored
         ipts = reductionIngredients.runConfig.IPTS
-        rawDataPath = ipts + 'shared/lite/SNAP_{}.lite.nxs.h5'.format(reductionIngredients.runConfig.runNumber)
+        rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
         calibrationDirectory = reductionIngredients.reductionState.instrumentConfig.calibrationDirectory
         stateId = reductionIngredients.reductionState.stateConfig.stateId
         rawVanadiumCorrectionFileName = reductionIngredients.reductionState.stateConfig.rawVanadiumCorrectionFileName
-        vanadiumFilePath = calibrationDirectory + stateId + '/powder/' + rawVanadiumCorrectionFileName
-        diffCalPath = calibrationDirectory + stateId + '/powder/' + reductionIngredients.reductionState.stateConfig.diffractionCalibrant.filename
-        
+        vanadiumFilePath = calibrationDirectory + "Powder/" + stateId + rawVanadiumCorrectionFileName
+        diffCalPath = (
+            calibrationDirectory
+            + "Powder/" 
+            + stateId
+            + reductionIngredients.reductionState.stateConfig.diffractionCalibrant.filename
+        )
+
         
         # raw_data = self.loadEventNexus(Filename=rawDataPath, OutputWorkspace="raw_data")    
         vanadium = self.loadNexus(Filename=vanadiumFilePath, OutputWorkspace="vanadium")

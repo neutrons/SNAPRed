@@ -1,7 +1,8 @@
 import sys
 
 from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
-from mantidqt.widgets.workspacewidget.workspacetreewidget import WorkspaceTreeWidget
+from workbench.plugins.workspacewidget import WorkspaceWidget
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication,
@@ -41,13 +42,13 @@ class SNAPRedGUI(QMainWindow):
         # import pdb; pdb.set_trace()
         workspaceTreeWidgetWrapper = QWidget()
         workspaceTreeWidgetWrapperLayout = QHBoxLayout()
-        workspaceTreeWidget = WorkspaceTreeWidget()
+        workspaceTreeWidget = WorkspaceWidget(self)
         workspaceTreeWidgetWrapper.setObjectName("workspaceTreeWidget")
         workspaceTreeWidgetWrapperLayout.addWidget(workspaceTreeWidget, alignment=Qt.AlignCenter)
         workspaceTreeWidgetWrapper.setLayout(workspaceTreeWidgetWrapperLayout)
         splitter.addWidget(workspaceTreeWidgetWrapper)
         splitter.addWidget(AlgorithmProgressWidget())
-
+        
         centralWidget = QWidget()
         centralWidget.setObjectName("centralwidget")
         centralLayout = QVBoxLayout()
