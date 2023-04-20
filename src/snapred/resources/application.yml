@@ -1,4 +1,4 @@
-environment: dev
+# environment: dev
 
 instrument:
   name: SNAP

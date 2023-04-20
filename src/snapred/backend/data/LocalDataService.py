@@ -68,6 +68,7 @@ class LocalDataService:
             focusGroups=self._readFocusGroups(runId),
             isLiteMode=True,  # TODO: Support non lite mode
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
+            vanadiumFilePath=self.instrumentConfig.calibrationDirectory + "Powder/" + self.stateId + "/" + reductionParameters["rawVCorrFileName"],
             calibrationMaskFileName=reductionParameters.get("CalibrationMaskFilename"),
             stateId=self.stateId,
             tofBin=reductionParameters["tofBin"],
@@ -85,6 +86,7 @@ class LocalDataService:
             filename=reductionParameters["calFileName"],
             runNumber=reductionParameters["CRun"][0],
             name=reductionParameters.get("CalibrantName"),
+            diffCalPath=self.instrumentConfig.calibrationDirectory + "Powder/" + self.stateId + "/" + reductionParameters["calFileName"],
             latticeParameters=None,  # TODO: missing, reductionParameters['CalibrantLatticeParameters'],
             reference=None,
         )  # TODO: missing, reductionParameters['CalibrantReference'])
@@ -110,7 +112,9 @@ class LocalDataService:
 
     def _readFocusGroups(self, runId: str) -> List[FocusGroup]:
         reductionParameters = self._readReductionParameters(runId)
-        focusGroupNames = reductionParameters["focGroupLst"]
+        # TODO: fix hardcode reductionParameters["focGroupLst"]
+        # dont have time to figure out why its reading the wrong data
+        focusGroupNames = ['Column', 'Bank', 'All', 'Mid'] 
         focusGroups = []
         for i, name in enumerate(focusGroupNames):
             focusGroups.append(
@@ -122,6 +126,7 @@ class LocalDataService:
                     dMax=reductionParameters["focGroupDMax"][i],
                     dMin=reductionParameters["focGroupDMin"][i],
                     definition=self.instrumentConfig.calibrationDirectory
+                    + "Powder/"
                     + self.instrumentConfig.pixelGroupingDirectory
                     + reductionParameters["focGroupDefinition"][i],
                 )
@@ -221,7 +226,7 @@ class LocalDataService:
         self.stateId = stateId
 
         calibrationPath: str = (
-            self.instrumentConfig.calibrationDirectory + stateId + "/powder/"
+            self.instrumentConfig.calibrationDirectory + "Powder/" + stateId + "/"
         )
         calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"
 
@@ -241,6 +246,8 @@ class LocalDataService:
                 str.find(self.instrumentConfig.calibrationFilePrefix)
                 + len(self.instrumentConfig.calibrationFilePrefix) :
             ].split(".")[0]
+            if not runStr.isnumeric():
+                continue
             calibRunList.append(int(runStr))
 
             relRuns = [x - run != 0 for x in calibRunList]

@@ -28,6 +28,7 @@ class InterfaceController:
         except Exception as e:
             # handle exceptions, inform client if recoverable
             response = ReductionResponse(responseCode=500, responseMessage=str(e))
+            logger.exception(str(e))
         
         logger.debug(response.json())    
         return response
