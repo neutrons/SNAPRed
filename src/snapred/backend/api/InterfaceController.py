@@ -27,7 +27,7 @@ class InterfaceController:
         except Exception as e:  # noqa BLE001
             # handle exceptions, inform client if recoverable
             response = SNAPResponse(responseCode=500, responseMessage=str(e))
-            logger.exception(str(e)
+            logger.exception(str(e))
 
         logger.debug(response.json())
         return response
