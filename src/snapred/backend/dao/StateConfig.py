@@ -15,6 +15,7 @@ class StateConfig(BaseModel):
    focusGroups: List[FocusGroup]
    isLiteMode: bool
    rawVanadiumCorrectionFileName: str
+   vanadiumFilePath: str
    calibrationMaskFileName: Optional[str]
    stateId: str
    tofBin: float

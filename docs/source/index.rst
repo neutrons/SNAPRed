@@ -19,3 +19,4 @@ Contents
    getting_started
    usage
    api
+   deploy
