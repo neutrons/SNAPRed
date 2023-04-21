@@ -1,7 +1,7 @@
 import sys
 
 from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
-from mantidqt.widgets.workspacewidget.workspacetreewidget import WorkspaceTreeWidget
+from workbench.plugins.workspacewidget import WorkspaceWidget
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QPalette
@@ -129,13 +129,13 @@ class SNAPRedGUI(QtWidgets.QMainWindow):
         # myiv.show_view()
 
         # import pdb; pdb.set_trace()
-        workspaceTreeWidgetWrapper = QWidget()
-        workspaceTreeWidgetWrapperLayout = QHBoxLayout()
-        workspaceTreeWidget = WorkspaceTreeWidget()
-        workspaceTreeWidgetWrapper.setObjectName("workspaceTreeWidget")
-        workspaceTreeWidgetWrapperLayout.addWidget(workspaceTreeWidget, alignment=Qt.AlignCenter)
-        workspaceTreeWidgetWrapper.setLayout(workspaceTreeWidgetWrapperLayout)
-        splitter.addWidget(workspaceTreeWidgetWrapper)
+        workspaceWidgetWrapper = QWidget()
+        workspaceWidgetWrapperLayout = QHBoxLayout()
+        workspaceWidget = WorkspaceWidget()
+        workspaceWidgetWrapper.setObjectName("workspaceTreeWidget")
+        workspaceWidgetWrapperLayout.addWidget(workspaceWidget, alignment=Qt.AlignCenter)
+        workspaceWidgetWrapper.setLayout(workspaceWidgetWrapperLayout)
+        splitter.addWidget(workspaceWidgetWrapper)
         splitter.addWidget(AlgorithmProgressWidget())
 
         centralWidget = QWidget()
