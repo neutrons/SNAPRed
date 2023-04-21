@@ -1,10 +1,13 @@
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
+
 
 class RunConfig(BaseModel):
     """Class to hold the instrument configuration."""
+
     runNumber: str
-    IPTS: Optional[str] = None
+    IPTS: str = ""  # Optional[str] = None
     maskFileName: Optional[str] = None
     maskFileDirectory: Optional[str] = None
     gsasFileDirectory: Optional[str] = None

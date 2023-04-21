@@ -8,7 +8,7 @@ name = "ExtractionAlgorithm"
 class ExtractionAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
-        pass
+        self.declareProperty("ExtractionIngredients", defaultValue="", direction=Direction.Input)  # noqa: F821
 
     def PyExec(self):
         # run the algo

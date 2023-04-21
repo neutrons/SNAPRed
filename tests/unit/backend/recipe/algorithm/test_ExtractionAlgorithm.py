@@ -33,3 +33,4 @@ def test_execute():
     print(extractionAlgo.log().notice.call_args)
     assert extractionAlgo is not None
     assert extractionAlgo.log.called
+    assert extractionAlgo.ExtractionIngredients is not None

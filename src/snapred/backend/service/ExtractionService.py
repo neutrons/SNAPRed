@@ -1,8 +1,8 @@
 from typing import Any, Dict
 
 from snapred.backend.dao.SNAPRequest import SNAPRequest
-from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.recipe.ReductionRecipe import ExtractionRecipe
+from snapred.backend.data.DataFactoryService import DataFactoryService  # type: ignore
+from snapred.backend.recipe.ExtractionRecipe import ExtractionRecipe
 from snapred.meta.Singleton import Singleton
 
 

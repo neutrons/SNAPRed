@@ -1,22 +1,21 @@
-from snapred.meta.Singleton import Singleton
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.StateId import StateId
-from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.StateConfig import StateConfig
-from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
-from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.meta.Config import Config
-
-from mantid.api import AlgorithmManager
-
-from typing import Tuple, List, Dict, Any, Optional
-
+import glob
 import hashlib
 import json
-import glob
 import os
+from typing import Any, Dict, List, Tuple
+
 import h5py
+from mantid.api import AlgorithmManager
+
+from snapred.backend.dao.InstrumentConfig import InstrumentConfig
+from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
+from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
+from snapred.backend.dao.StateConfig import StateConfig
+from snapred.backend.dao.StateId import StateId
+from snapred.meta.Config import Config
+from snapred.meta.Singleton import Singleton
 
 """
     Looks up data on disk
@@ -31,8 +30,8 @@ class LocalDataService:
     iptsCache: Dict[str, Any] = {}
     dataPath = Config["instrument.home"]
     instrumentConfigPath: str = dataPath + Config["instrument.config"]
-    instrumentConfig: Optional[InstrumentConfig]
-    stateId: Optional[StateId]
+    instrumentConfig: InstrumentConfig  # Optional[InstrumentConfig]
+    stateId: str  # Optional[StateId]
 
     def __init__(self) -> None:
         self.instrumentConfig = self.readInstrumentConfig()
@@ -43,9 +42,7 @@ class LocalDataService:
 
         instrumentConfig = InstrumentConfig(**instrumentParameterMap)
         if self.dataPath:
-            instrumentConfig.calibrationDirectory = (
-                self.dataPath + "shared/Calibration/"
-            )
+            instrumentConfig.calibrationDirectory = self.dataPath + "shared/Calibration/"
 
         return instrumentConfig
 
@@ -57,7 +54,7 @@ class LocalDataService:
 
     def readStateConfig(self, runId: str) -> StateConfig:
         reductionParameters = self._readReductionParameters(runId)
-        
+
         return StateConfig(
             diffractionCalibrant=self._readDiffractionCalibrant(runId),
             emptyInstrumentRunNumber=reductionParameters["VBRun"][0],
@@ -68,7 +65,11 @@ class LocalDataService:
             focusGroups=self._readFocusGroups(runId),
             isLiteMode=True,  # TODO: Support non lite mode
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=self.instrumentConfig.calibrationDirectory + "Powder/" + self.stateId + "/" + reductionParameters["rawVCorrFileName"],
+            vanadiumFilePath=self.instrumentConfig.calibrationDirectory
+            + "Powder/"
+            + self.stateId
+            + "/"
+            + reductionParameters["rawVCorrFileName"],
             calibrationMaskFileName=reductionParameters.get("CalibrationMaskFilename"),
             stateId=self.stateId,
             tofBin=reductionParameters["tofBin"],
@@ -81,12 +82,16 @@ class LocalDataService:
 
     def _readDiffractionCalibrant(self, runId: str) -> DiffractionCalibrant:
         reductionParameters = self._readReductionParameters(runId)
-        
+
         return DiffractionCalibrant(
             filename=reductionParameters["calFileName"],
             runNumber=reductionParameters["CRun"][0],
             name=reductionParameters.get("CalibrantName"),
-            diffCalPath=self.instrumentConfig.calibrationDirectory + "Powder/" + self.stateId + "/" + reductionParameters["calFileName"],
+            diffCalPath=self.instrumentConfig.calibrationDirectory
+            + "Powder/"
+            + self.stateId
+            + "/"
+            + reductionParameters["calFileName"],
             latticeParameters=None,  # TODO: missing, reductionParameters['CalibrantLatticeParameters'],
             reference=None,
         )  # TODO: missing, reductionParameters['CalibrantReference'])
@@ -114,7 +119,7 @@ class LocalDataService:
         reductionParameters = self._readReductionParameters(runId)
         # TODO: fix hardcode reductionParameters["focGroupLst"]
         # dont have time to figure out why its reading the wrong data
-        focusGroupNames = ['Column', 'Bank', 'All', 'Mid'] 
+        focusGroupNames = ["Column", "Bank", "All", "Mid"]
         focusGroups = []
         for i, name in enumerate(focusGroupNames):
             focusGroups.append(
@@ -158,12 +163,12 @@ class LocalDataService:
         iptsPath = self._findIPTS(runId)
 
         return RunConfig(
-              IPTS=iptsPath,
-              runNumber=runId,
-              maskFileName="",
-              maskFileDirectory=iptsPath + self.instrumentConfig.sharedDirectory,
-              gsasFileDirectory=iptsPath + self.instrumentConfig.reducedDataDirectory,
-              calibrationState=None,
+            IPTS=iptsPath,
+            runNumber=runId,
+            maskFileName="",
+            maskFileDirectory=iptsPath + self.instrumentConfig.sharedDirectory,
+            gsasFileDirectory=iptsPath + self.instrumentConfig.reducedDataDirectory,
+            calibrationState=None,
         )  # TODO: where to find case? "before" "after"
 
     def _generateStateId(self, runConfig: RunConfig) -> Tuple[Any, Any]:
@@ -186,10 +191,8 @@ class LocalDataService:
             wav = f.get("entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value")[0]
             freq = f.get("entry/DASlogs/BL3:Det:TH:BL:Frequency/value")[0]
             GuideIn = f.get("entry/DASlogs/BL3:Mot:OpticsPos:Pos/value")[0]
-        except:
-            raise ValueError(
-                "Could not find all required logs in file {}".format(fName)
-            )
+        except:  # noqa: E722
+            raise ValueError("Could not find all required logs in file {}".format(fName))
 
         stateID = StateId(
             vdet_arc1=det_arc1,
@@ -225,10 +228,8 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runConfig)
         self.stateId = stateId
 
-        calibrationPath: str = (
-            self.instrumentConfig.calibrationDirectory + "Powder/" + stateId + "/"
-        )
-        calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"
+        calibrationPath: str = self.instrumentConfig.calibrationDirectory + "Powder/" + stateId + "/"
+        calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"  # noqa: E501
 
         foundFiles = self._findMatchingFileList(calibSearchPattern)
 
@@ -241,9 +242,9 @@ class LocalDataService:
 
         calibRunList = []
         # TODO: Why are we overwriting dictIn every iteration?
-        for str in calibFileList:
-            runStr = str[
-                str.find(self.instrumentConfig.calibrationFilePrefix)
+        for string in calibFileList:
+            runStr = string[
+                string.find(self.instrumentConfig.calibrationFilePrefix)
                 + len(self.instrumentConfig.calibrationFilePrefix) :
             ].split(".")[0]
             if not runStr.isnumeric():
@@ -253,7 +254,7 @@ class LocalDataService:
             relRuns = [x - run != 0 for x in calibRunList]
 
             pos = [i for i, val in enumerate(relRuns) if val >= 0]
-            neg = [i for i, val in enumerate(relRuns) if val <= 0]
+            [i for i, val in enumerate(relRuns) if val <= 0]
 
             # TODO: Account for errors
             closestAfter = min([calibRunList[i] for i in pos])

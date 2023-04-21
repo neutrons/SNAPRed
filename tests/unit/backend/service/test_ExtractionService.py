@@ -1,9 +1,6 @@
 import pytest
 
-# Mock out of scope modules
-# sys.modules["mantid.api"] = mock.Mock()
-
-# from snapred.backend.service.ExtractionService import ExtractionService  # noqa: E402
+# from snapred.backend.service.ExtractionService import ExtractionService
 
 
 def setup():
@@ -24,15 +21,16 @@ def setup_teardown():  # noqa: PT004
     teardown()
 
 
+def test_useless():
+    pass
+
+
 # def mockedExtractionService():
 #     service = ExtractionService()
 #     service.dataFactoryService = mock.Mock()
 #     return service
 
 
-def test_init():
-    pass
-
-
+# def test_init():
 #    service = mockedExtractionService()
 #    assert service is not None

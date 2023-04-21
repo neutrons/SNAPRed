@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 from mantid.api import AlgorithmManager
+
 from snapred.backend.dao.ExtractionIngredients import ExtractionIngredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.ExtractionAlgorithm import (
@@ -23,7 +24,7 @@ class ExtractionRecipe:
         data: Dict[str, Any] = {}
 
         algo = AlgorithmManager.create(self.extractionAlgorithmName)
-        algo.setProperty("ReductionIngredients", ingredients.json())
+        algo.setProperty("ExtractionIngredients", ingredients.json())
 
         try:
             data["result"] = algo.execute()
