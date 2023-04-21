@@ -31,7 +31,7 @@ class CustomGroupWorkspace(PythonAlgorithm):
         outputWorkspace = self.getProperty("OutputWorkspace").value
 
         CreateWorkspace(OutputWorkspace='idf',DataX=1,DataY=1)
-        LoadInstrument(Workspace='idf',Filename='/SNS/SNAP/shared/Calibration/SNAPLite.xml', MonitorList='-2--1', RewriteSpectraMap=False)
+        LoadInstrument(Workspace='idf',Filename='/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml', MonitorList='-2--1', RewriteSpectraMap=False)
 
 
 

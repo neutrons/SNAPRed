@@ -1,0 +1,4 @@
+include src/snapred/_version.py
+include README.md
+include src/snapred/*
+include src/snapred/resources/*
