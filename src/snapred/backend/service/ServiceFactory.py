@@ -1,16 +1,16 @@
-from snapred.meta.Singleton import Singleton
+# import regex
+import re
+from typing import Any, Dict
+
+from snapred.backend.error.UserException import UserException
 
 # cant think of a good way around requireing the services to be imported
 # here in order to autoregister them
 from snapred.backend.service.ConfigLookupService import ConfigLookupService
+from snapred.backend.service.ExtractionService import ExtractionService
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.backend.service.StateIdLookupService import StateIdLookupService
-
-from snapred.backend.error.UserException import UserException
-
-# import regex
-import re
-from typing import Dict, Any
+from snapred.meta.Singleton import Singleton
 
 
 # singleton ServiceFactory class
@@ -23,6 +23,7 @@ class ServiceFactory:
         self.registerService(ConfigLookupService())
         self.registerService(ReductionService())
         self.registerService(StateIdLookupService())
+        self.registerService(ExtractionService())
 
     def registerService(self, service):
         # register the service

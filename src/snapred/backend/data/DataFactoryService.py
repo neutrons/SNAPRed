@@ -1,25 +1,20 @@
-from snapred.meta.Singleton import Singleton
+from typing import Dict, List
 
-from snapred.backend.dao.ReductionState import ReductionState
-from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.StateConfig import StateConfig
+from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
-from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 from snapred.backend.dao.state.FocusGroup import FocusGroup
-
+from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
+from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.LocalDataService import LocalDataService
-
-from typing import Dict, List, Any, Optional
-
-from mantid.api import AnalysisDataService as ADS
+from snapred.meta.Singleton import Singleton
 
 
 @Singleton
 class DataFactoryService:
-
-    lookupService: Optional[LocalDataService]
+    lookupService: LocalDataService  # Optional[LocalDataService]
     # TODO: rules for busting cache
     cache: Dict[str, ReductionState] = {}
 
@@ -48,13 +43,13 @@ class DataFactoryService:
 
         return reductionState
 
-    def getRunConfig(self, runId: str) -> RunConfig:
+    def getRunConfig(self, runId: str) -> RunConfig:  # noqa: ARG002
         return self.lookupService.readRunConfig(runId)
 
-    def getInstrumentConfig(self, runId: str) -> InstrumentConfig:
+    def getInstrumentConfig(self, runId: str) -> InstrumentConfig:  # noqa: ARG002
         return self.lookupService.readInstrumentConfig()
 
-    def getStateConfig(self, runId: str) -> StateConfig:
+    def getStateConfig(self, runId: str) -> StateConfig:  # noqa: ARG002
         return self.lookupService.readStateConfig(runId)
 
     def loadNexusFile(self, reductionState, deepcopy=True) -> None:
@@ -63,15 +58,15 @@ class DataFactoryService:
         # if deepcopy: clone workspace
         raise NotImplementedError("_loadNexusFile() is not implemented")
 
-    def _getDiffractionCalibrant(self, runId) -> DiffractionCalibrant:
+    def _getDiffractionCalibrant(self, runId) -> DiffractionCalibrant:  # noqa: ARG002
         raise NotImplementedError("_getDiffractionCalibrant() is not implemented")
         return DiffractionCalibrant()
 
-    def _getNormalizationCalibrant(self, runId) -> NormalizationCalibrant:
+    def _getNormalizationCalibrant(self, runId) -> NormalizationCalibrant:  # noqa: ARG002
         raise NotImplementedError("_getNormalizationCalibrant() is not implemented")
         return NormalizationCalibrant()
 
-    def _getFocusGroups(self, runId) -> List[FocusGroup]:
+    def _getFocusGroups(self, runId) -> List[FocusGroup]:  # noqa: ARG002
         raise NotImplementedError("_getFocusGroups() is not implemented")
         return [FocusGroup()]
 

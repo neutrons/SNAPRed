@@ -3,15 +3,12 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class RunConfig(BaseModel):
-    """Class to hold the instrument configuration."""
+class SNAPResponse(BaseModel):
+    """"""
 
-    runNumber: str
-    IPTS: str = ""  # Optional[str] = None
-    maskFileName: Optional[str] = None
-    maskFileDirectory: Optional[str] = None
-    gsasFileDirectory: Optional[str] = None
-    calibrationState: Optional[str] = None
+    responseCode: int
+    responseMessage: Optional[str]
+    responseData: Optional[dict]
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property
