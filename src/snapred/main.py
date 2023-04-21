@@ -131,7 +131,7 @@ class SNAPRedGUI(QtWidgets.QMainWindow):
         # import pdb; pdb.set_trace()
         workspaceWidgetWrapper = QWidget()
         workspaceWidgetWrapperLayout = QHBoxLayout()
-        workspaceWidget = WorkspaceWidget()
+        workspaceWidget = WorkspaceWidget(self)
         workspaceWidgetWrapper.setObjectName("workspaceTreeWidget")
         workspaceWidgetWrapperLayout.addWidget(workspaceWidget, alignment=Qt.AlignCenter)
         workspaceWidgetWrapper.setLayout(workspaceWidgetWrapperLayout)
