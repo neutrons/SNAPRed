@@ -24,7 +24,6 @@ class CalibrationReductionRecipe:
 
         algo = AlgorithmManager.create(self.reductionAlgorithmName)
         algo.setProperty("ReductionIngredients", reductionIngredients.json())
-        logger.info(reductionIngredients.json())
         try:
             data["result"] = algo.execute()
         except RuntimeError as e:

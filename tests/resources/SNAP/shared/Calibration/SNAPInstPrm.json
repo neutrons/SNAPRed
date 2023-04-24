@@ -1,0 +1,17 @@
+{
+    "version": 1.4,
+    "facility": "SNS",
+    "name": "SNAP",
+    "nexusFileExtension": ".nxs.h5",
+    "nexusFilePrefix": "SNAP_",
+    "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+    "calibrationFilePrefix": "SNAPcalibLog",
+    "calibrationFileExtension": "json",
+    "pixelGroupingDirectory":"PixelGroupingDefinitions/",
+    "sharedDirectory": "shared/",
+    "nexusDirectory": "nexus/",
+    "reducedDataDirectory": "shared/manualReduced/",
+    "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+    "GSAS-IIDirectory": "GSAS-II/",
+    "GSAS-IIExtension": ".gsa"
+}
