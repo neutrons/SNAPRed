@@ -25,16 +25,7 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         # TODO: Reorg how filepaths are stored
         ipts = reductionIngredients.runConfig.IPTS
         rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
-        calibrationDirectory = reductionIngredients.reductionState.instrumentConfig.calibrationDirectory
-        stateId = reductionIngredients.reductionState.stateConfig.stateId
-        rawVanadiumCorrectionFileName = reductionIngredients.reductionState.stateConfig.rawVanadiumCorrectionFileName
-        vanadiumFilePath = calibrationDirectory + "Powder/" + stateId + rawVanadiumCorrectionFileName
-        diffCalPath = (
-            calibrationDirectory
-            + "Powder/" 
-            + stateId
-            + reductionIngredients.reductionState.stateConfig.diffractionCalibrant.filename
-        )
+        diffCalPath = reductionIngredients.reductionState.stateConfig.diffractionCalibrant.diffCalPath
 
 
         raw_data = self.mantidSnapper.LoadEventNexus(

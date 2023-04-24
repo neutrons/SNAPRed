@@ -1,8 +1,9 @@
 from snapred.backend.dao.StateConfig import StateConfig
 
-from mantid.kernel import *
-from mantid.api import *
-from mantid.simpleapi import *
+from mantid.kernel import Direction
+from mantid.api import AlgorithmFactory, PythonAlgorithm
+from mantid.simpleapi import CreateWorkspace, GroupWorkspaces, LoadDetectorsGroupingFile, LoadInstrument
+from snapred.backend.dao.StateConfig import StateConfig
 
 import time
 import json
@@ -15,10 +16,9 @@ class CustomGroupWorkspace(PythonAlgorithm):
 
     def PyInit(self):
         # declare properties
-        self.declareProperty('StateConfig', '')
-        self.declareProperty('CalibrantWorkspace','TOF_rawVmB')
-        self.declareProperty('InstrumentName', "SNAP")
-        self.declareProperty('OutputWorkspace', "CommonRed")
+        self.declareProperty("StateConfig", defaultValue="", direction=Direction.Input)
+        self.declareProperty("InstrumentName", defaultValue="SNAP", direction=Direction.Input)
+        self.declareProperty("OutputWorkspace", defaultValue="CommonRed", direction=Direction.Output)
         pass
 
 
@@ -27,7 +27,6 @@ class CustomGroupWorkspace(PythonAlgorithm):
         stateConfig = StateConfig(**json.loads(self.getProperty("StateConfig").value))
         focusGroups = stateConfig.focusGroups
         instrumentName = self.getProperty("InstrumentName").value
-        calibrantWorkspace = self.getProperty("CalibrantWorkspace").value
         outputWorkspace = self.getProperty("OutputWorkspace").value
 
         CreateWorkspace(OutputWorkspace='idf',DataX=1,DataY=1)
