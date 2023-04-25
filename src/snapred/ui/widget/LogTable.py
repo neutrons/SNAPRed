@@ -1,8 +1,8 @@
-from snapred.ui.model.model import LogTableModel
-from snapred.ui.presenter.presenter import LogTablePresenter
-from snapred.ui.view.view import LogTableView
+from snapred.ui.model.LogTableModel import LogTableModel
+from snapred.ui.presenter.LogTablePresenter import LogTablePresenter
+from snapred.ui.view.LogTableView import LogTableView
 
-class DummyWidget(object):
+class LogTable(object):
     """
     """
     def __init__(self, name, parent=None):
@@ -16,4 +16,4 @@ class DummyWidget(object):
 
     @property
     def widget(self):
-        return self.presenter.widget
+        return self._presenter.widget

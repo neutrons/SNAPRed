@@ -1,2 +1,12 @@
 instrument:
   home: SNAP/
+
+test:
+  outputs:
+    calibration:
+      files:
+        - DSP_57514_All.nxs
+        - DSP_57514_Bank.nxs
+        - DSP_57514_Column.nxs
+        - DSP_57514_Mid.nxs
+      root: /outputs/calibration/

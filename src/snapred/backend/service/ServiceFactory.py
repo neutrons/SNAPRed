@@ -10,6 +10,7 @@ from snapred.backend.service.ConfigLookupService import ConfigLookupService
 from snapred.backend.service.ExtractionService import ExtractionService
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.backend.service.StateIdLookupService import StateIdLookupService
+from snapred.backend.service.CalibrationReductionService import CalibrationReductionService
 from snapred.meta.Singleton import Singleton
 
 
@@ -24,6 +25,7 @@ class ServiceFactory:
         self.registerService(ReductionService())
         self.registerService(StateIdLookupService())
         self.registerService(ExtractionService())
+        self.registerService(CalibrationReductionService())
 
     def registerService(self, service):
         # register the service
