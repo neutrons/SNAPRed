@@ -6,9 +6,7 @@ import socket
 from mantid.utils.logging import log_to_python
 
 from snapred.meta.Config import Config
-
-# Configure Mantid to send messages to Python
-log_to_python()
+from snapred.meta.Singleton import Singleton
 
 
 class CustomFormatter(logging.Formatter):
@@ -42,11 +40,14 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 
 
+@Singleton
 class _SnapRedLogger:
     _level = Config["logging.level"]
 
     def __init__(self):
-        pass
+        # Configure Mantid to send messages to Python
+        log_to_python()
+        self.getLogger("Mantid")
 
     def getLogger(self, name):
         logger = logging.getLogger(name)
@@ -62,4 +63,3 @@ class _SnapRedLogger:
 
 
 snapredLogger = _SnapRedLogger()
-snapredLogger.getLogger("Mantid")

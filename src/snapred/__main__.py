@@ -96,7 +96,7 @@ def qapp():
     return _app
 
 
-def main():
+def main(args=None):  # noqa: ARG001
     app = qapp()
     with Resource.open("style.qss", "r") as styleSheet:
         app.setStyleSheet(styleSheet.read())
@@ -117,12 +117,13 @@ def main():
         logger.info("Welcome User! Happy Reducing!")
         ex.show()
         ret = app.exec_()
-        sys.exit(ret)
+        return sys.exit(ret)
 
     except Exception as uncaughtError:  # noqa: BLE001
         ex = QWidget()
+        logger.exception("Uncaught Error bubbled up to main!")
         QMessageBox.critical(ex, "Uncaught Error!", str(uncaughtError))
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(sys.argv))

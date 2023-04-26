@@ -26,7 +26,8 @@ Run
 
 .. code-block::
 
-    python ./src/main.py
+    cd src
+    python -m snapred
 
 
 
