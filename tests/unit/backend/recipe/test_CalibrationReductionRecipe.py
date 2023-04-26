@@ -13,6 +13,8 @@ from snapred.backend.dao.ReductionIngredients import ReductionIngredients  # noq
 from snapred.backend.recipe.CalibrationReductionRecipe import CalibrationReductionRecipe  # noqa: E402
 from snapred.meta.Config import Config, Resource
 
+IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
+
 
 def setup():
     """Setup before all tests"""
@@ -21,6 +23,8 @@ def setup():
 
 def teardown():
     """Teardown after all tests"""
+    if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
+        return
     # collect list of all workspaces
     workspaces = mtd.getObjectNames()
     # remove all workspaces
@@ -61,7 +65,7 @@ def compareWorkspaces(expected, actual):
     assert result
 
 
-@pytest.mark.skipif(not socket.gethostname().split(".")[0].startswith("analysis"), reason="requires analysis datafiles")
+@pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
 def test_happypath_calibration():
     # read input json file
     input_json = get_input_json()
