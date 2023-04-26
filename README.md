@@ -32,7 +32,8 @@ conda env update --file environment.yml  --prune
 ## Run
 
 ```
-python ./src/main.py
+cd src
+python -m snapred
 ```
 
 
