@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import QMessageBox
 from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.ui.threading.worker_pool import WorkerPool
+
 
 class TestPanelPresenter(object):
     interfaceController = InterfaceController()
@@ -21,7 +21,7 @@ class TestPanelPresenter(object):
         self.view.show()
 
     def handleCalibrationReductinButtonClicked(self):
-        reductionRequest = SNAPRequest(mode="Calibration Reduction", runs=[RunConfig(runNumber="57514")])
+        reductionRequest = SNAPRequest(path="calibration", runs=[RunConfig(runNumber="57514")])
         self.handleButtonClicked(reductionRequest, self.view.calibrationReductinButton)
 
     def handleButtonClicked(self, reductionRequest, button):

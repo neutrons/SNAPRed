@@ -7,6 +7,7 @@ from snapred.meta.Singleton import Singleton
 
 @Singleton
 class StateIdLookupService:
+    name = "stateId"
     dataFactoryService = DataFactoryService()
 
     # register the service in ServiceFactory please!

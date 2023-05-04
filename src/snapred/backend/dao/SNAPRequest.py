@@ -1,13 +1,14 @@
 from typing import List
 
 from pydantic import BaseModel
+
 from snapred.backend.dao.RunConfig import RunConfig
 
 
 class SNAPRequest(BaseModel):
     """"""
 
-    mode: str
+    path: str
     runs: List[RunConfig]
 
     # if we need specific getter and setter methods, we can use the @property decorator

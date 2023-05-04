@@ -5,6 +5,7 @@ from snapred.meta.Singleton import Singleton
 
 @Singleton
 class CalibrationReductionService:
+    name = "calibration"
     dataFactoryService = DataFactoryService()
 
     # register the service in ServiceFactory please!

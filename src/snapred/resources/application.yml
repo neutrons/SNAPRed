@@ -1,5 +1,9 @@
 # environment: dev
 
+orchestration:
+  path:
+    delimiter: /
+
 instrument:
   name: SNAP
   home: /SNS/SNAP/

@@ -21,7 +21,7 @@ class InterfaceController:
         # execute the recipe
         # return the result
         try:
-            result = self.serviceFactory.getService(request.mode).orchestrateRecipe(request)
+            result = self.serviceFactory.getService(request.path).orchestrateRecipe(request)
 
             response = SNAPResponse(responseCode=200, responseMessage=None, responseData=result)
         except Exception as e:  # noqa BLE001

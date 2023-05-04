@@ -10,6 +10,7 @@ from snapred.meta.Singleton import Singleton
 
 @Singleton
 class ConfigLookupService:
+    name = "config"
     dataFactoryService = DataFactoryService()
 
     # register the service in ServiceFactory

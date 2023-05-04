@@ -8,6 +8,7 @@ from snapred.meta.Singleton import Singleton
 
 @Singleton
 class ReductionService:
+    name = "reduction"
     dataFactoryService = DataFactoryService()
 
     # register the service in ServiceFactory please!
