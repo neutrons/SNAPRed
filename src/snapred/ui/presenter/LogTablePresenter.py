@@ -1,6 +1,7 @@
 from time import sleep
 
 from PyQt5.QtWidgets import QMessageBox
+
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.SNAPRequest import SNAPRequest
@@ -58,7 +59,7 @@ class LogTablePresenter(object):
     def handle_button_clicked(self):
         self.view.button.setEnabled(False)
 
-        request = SNAPRequest(mode="Reduction", runs=[RunConfig(runNumber="48741")])
+        request = SNAPRequest(path="/reduction", runs=[RunConfig(runNumber="48741")])
 
         # setup workers with work targets and args
         self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request))

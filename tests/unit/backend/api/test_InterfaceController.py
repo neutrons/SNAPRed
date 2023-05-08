@@ -47,7 +47,7 @@ def test_executeRequest_successful():
     """Test executeRequest with a successful service"""
     interfaceController = mockedSuccessfulInterfaceController()
     reductionRequest = mock.Mock()
-    reductionRequest.mode = "Test Service"
+    reductionRequest.path = "Test Service"
     response = interfaceController.executeRequest(reductionRequest)
     assert response.responseCode == 200
     assert response.responseMessage is None
@@ -58,7 +58,7 @@ def test_executeRequest_unsuccessful():
     """Test executeRequest with an unsuccessful service"""
     interfaceController = mockedSuccessfulInterfaceController()
     reductionRequest = mock.Mock()
-    reductionRequest.mode = "Non-existent Test Service"
+    reductionRequest.path = "Non-existent Test Service"
     # mock orchestrateRecipe to raise an exception
     response = interfaceController.executeRequest(reductionRequest)
     assert response.responseCode == 500
