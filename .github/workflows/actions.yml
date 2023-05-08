@@ -49,8 +49,7 @@ jobs:
     - name: Test with pytest
       run: |
         mamba install pytest
-        pytest
-      # xvfb-run -a python -m pytest --cov=srv --cov-report=xml --cov-report=term
+        python -m pytest --cov=srv --cov-report=xml --cov-report=term
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
 
