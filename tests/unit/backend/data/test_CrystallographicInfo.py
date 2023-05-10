@@ -3,6 +3,10 @@ import unittest.mock as mock
 
 import pytest
 
+<<<<<<< HEAD
+=======
+sys.modules["mantid.api"] = mock.Mock()
+>>>>>>> bf5aeeb1f7a719da586aa94d41976c65db224756
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo  # noqa: E402
 
 
