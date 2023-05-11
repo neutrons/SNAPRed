@@ -72,7 +72,7 @@ def test_failed_create():
             multiplicities = multiplicities
         )
     except:
-        assertTrue()
+        assert True
     else:
         pytest.fail("Should have failed to validate CrystallographicInfo")
 
