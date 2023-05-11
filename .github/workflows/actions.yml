@@ -19,8 +19,15 @@ jobs:
     - uses: actions/setup-python@v4
       with:
         python-version: 3.x
-    - uses: pre-commit-ci/lite-action@v1.0.1
-      if: always()
+    - id: file_changes
+      uses: trilom/file-changes-action@v1.2.3
+      with:
+        output: ' '
+    - uses: pre-commit/action@v2.0.0
+      with:
+        extra_args: --files ${{ steps.file_changes.outputs.files}}
+    # - uses: pre-commit-ci/lite-action@v1.0.1
+    #   if: always()
 
 
   tests:
