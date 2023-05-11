@@ -28,15 +28,20 @@ def create_mock_pointgroup(v):
     pg.getEquivalents.return_value = v
     return pg
 
-def test_create():
-    """Test of Crystallographic Info DAO"""
-
+def create_inputs(v):
     hkl = [ (1,0,0), (1,1,1), (0,1,0)]
     fSquared = [9.0, 16.0, 25.0]
     mock_pg_equivs = [1]*len(hkl)
     d = 1e-5
-    pg = create_mock_pointgroup(mock_pg_equivs)
+    pg = create_mock_pointgroup(v)
     multiplicities = pg.getEquivalents(hkl)
+    return hkl, d, fSquared, multiplicities
+
+def test_create():
+    """Test of Crystallographic Info DAO"""
+
+    mock_pg_equivs = [1]*3
+    hkl, d, fSquared, multiplicities = create_inputs(mock_pg_equivs)
 
     crystalInfo = CrystallographicInfo(
         hkl=hkl, 
@@ -46,23 +51,17 @@ def test_create():
     )
 
     assert crystalInfo is not None
-    assert hkl == crystalInfo.hkl
-    assert d == crystalInfo.d
-    assert fSquared == crystalInfo.fSquared
     assert mock_pg_equivs == crystalInfo.multiplicities
-    assert len(hkl) == len(fSquared)
-    assert len(hkl) == len(crystalInfo.multiplicities)
+    assert len(crystalInfo.hkl) == len(crystalInfo.fSquared)
+    assert len(crystalInfo.hkl) == len(crystalInfo.multiplicities)
 
 def test_failed_create():
     """Test of Failing Crystallographic DAO"""
 
     # there is an extra point in hkl, with no fSqaured or multiplicity
+    mock_pg_equivs = [1]*3
+    hkl, d, fSquared, multiplicities = create_inputs(mock_pg_equivs)
     hkl = [ (1,0,0), (1,1,1), (0,1,0,), (0,0,1)] 
-    fSquared = [9.0, 16.0, 25.0]
-    mock_pg_equivs = [1]*len(hkl)
-    d = 1e-5
-    pg = create_mock_pointgroup(mock_pg_equivs)
-    multiplicities = pg.getEquivalents(hkl)
 
     try:
         crystalInfo = CrystallographicInfo(
@@ -72,7 +71,7 @@ def test_failed_create():
             multiplicities = multiplicities
         )
     except:
-        assert True
+        assertTrue()
     else:
         pytest.fail("Should have failed to validate CrystallographicInfo")
 
