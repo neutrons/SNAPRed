@@ -21,7 +21,7 @@ class TestPanelPresenter(object):
         self.view.show()
 
     def handleCalibrationReductinButtonClicked(self):
-        reductionRequest = SNAPRequest(path="calibration", runs=[RunConfig(runNumber="57514")])
+        reductionRequest = SNAPRequest(path="calibration/reduction", payload=RunConfig(runNumber="57514").json())
         self.handleButtonClicked(reductionRequest, self.view.calibrationReductinButton)
 
     def handleButtonClicked(self, reductionRequest, button):

@@ -15,7 +15,7 @@ from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibr
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.dao.StateId import StateId
 from snapred.meta.Config import Config
-from snapred.meta.Singleton import Singleton
+from snapred.meta.decorators.Singleton import Singleton
 
 """
     Looks up data on disk

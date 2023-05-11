@@ -59,7 +59,7 @@ class LogTablePresenter(object):
     def handle_button_clicked(self):
         self.view.button.setEnabled(False)
 
-        request = SNAPRequest(path="/reduction", runs=[RunConfig(runNumber="48741")])
+        request = SNAPRequest(path="/reduction", payload=RunConfig(runNumber="48741").json())
 
         # setup workers with work targets and args
         self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request))

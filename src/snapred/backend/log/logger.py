@@ -6,7 +6,7 @@ import socket
 from mantid.utils.logging import log_to_python
 
 from snapred.meta.Config import Config
-from snapred.meta.Singleton import Singleton
+from snapred.meta.decorators.Singleton import Singleton
 
 
 class CustomFormatter(logging.Formatter):

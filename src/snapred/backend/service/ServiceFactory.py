@@ -2,7 +2,7 @@
 from typing import Any, Dict
 
 from snapred.backend.error.UserException import UserException
-from snapred.backend.service.CalibrationReductionService import CalibrationReductionService
+from snapred.backend.service.CalibrationService import CalibrationService
 
 # cant think of a good way around requireing the services to be imported
 # here in order to autoregister them
@@ -11,7 +11,7 @@ from snapred.backend.service.ExtractionService import ExtractionService
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.backend.service.StateIdLookupService import StateIdLookupService
 from snapred.meta.Config import Config
-from snapred.meta.Singleton import Singleton
+from snapred.meta.decorators.Singleton import Singleton
 
 
 # singleton ServiceFactory class
@@ -26,11 +26,11 @@ class ServiceFactory:
         self.registerService(ReductionService())
         self.registerService(StateIdLookupService())
         self.registerService(ExtractionService())
-        self.registerService(CalibrationReductionService())
+        self.registerService(CalibrationService())
 
     def registerService(self, service):
         # register the service
-        serviceName = service.name
+        serviceName = service.name()
 
         self.services[serviceName] = service
 
