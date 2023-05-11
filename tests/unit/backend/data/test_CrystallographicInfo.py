@@ -33,7 +33,7 @@ def create_inputs(v):
     hkl = [ (1,0,0), (1,1,1), (0,1,0)]
     fSquared = [9.0, 16.0, 25.0]
     mock_pg_equivs = [1]*len(hkl)
-    d = 1e-5
+    d = [1e-5]*len(hkl)
     pg = create_mock_pointgroup(v)
     multiplicities = pg.getEquivalents(hkl)
     return hkl, d, fSquared, multiplicities
@@ -55,6 +55,7 @@ def test_create():
     assert mock_pg_equivs == crystalInfo.multiplicities
     assert len(crystalInfo.hkl) == len(crystalInfo.fSquared)
     assert len(crystalInfo.hkl) == len(crystalInfo.multiplicities)
+    assert len(crystalInfo.hkl) == len(crystalInfo.d)
 
 def test_failed_create():
     """Test of Failing Crystallographic DAO"""

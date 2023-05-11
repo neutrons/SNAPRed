@@ -7,7 +7,7 @@ from pydantic import BaseModel, root_validator
 class CrystallographicInfo(BaseModel):
     """Class to hold crystallographic parameters"""
     hkl: List[Tuple[int, int, int]]
-    d: float
+    d: List[float]
     fSquared: List[float]
     multiplicities: List[int]
     
@@ -16,6 +16,8 @@ class CrystallographicInfo(BaseModel):
         if len(values.get('fSquared')) != len(values.get('hkl')):
             raise ValueError
         if len(values.get('multiplicities')) != len(values.get('hkl')):
+            raise ValueError
+        if len(values.get('d')) != len(values.get('hkl')):
             raise ValueError
         return values
 
