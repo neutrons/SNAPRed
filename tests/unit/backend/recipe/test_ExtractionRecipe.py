@@ -14,7 +14,7 @@ AlgorithmManager.create.return_value = mockAlgo
 from snapred.backend.recipe.ExtractionRecipe import ExtractionRecipe  # noqa: E402
 
 
-def setup():
+def setup():z
     """Setup before all tests"""
     pass
 
