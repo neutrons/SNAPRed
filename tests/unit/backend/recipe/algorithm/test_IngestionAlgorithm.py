@@ -7,6 +7,7 @@ from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import
 from snapred.meta.Config import Resource
 
 
+
 def setup():
     """Setup before all tests"""
     pass
