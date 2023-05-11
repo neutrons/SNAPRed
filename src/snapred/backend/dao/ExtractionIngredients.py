@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
 

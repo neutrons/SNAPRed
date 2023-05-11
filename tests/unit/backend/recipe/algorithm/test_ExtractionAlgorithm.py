@@ -1,10 +1,5 @@
-import sys
-import unittest.mock as mock
-
 import pytest
-
 from snapred.backend.recipe.algorithm.ExtractionAlgorithm import ExtractionAlgorithm  # noqa: E402
-from snapred.backend.recipe.algorithm.DummyAlgo import DummyAlgo  # noqa: E402
 
 
 def setup():
