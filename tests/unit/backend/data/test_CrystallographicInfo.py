@@ -15,6 +15,7 @@ def teardown():
     pass
 
 
+
 @pytest.fixture(autouse=True)
 def setup_teardown():  # noqa: PT004
     """Setup before each test, teardown after each test"""
