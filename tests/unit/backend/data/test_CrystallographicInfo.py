@@ -62,7 +62,7 @@ def test_failed_create():
     # there is an extra point in hkl, with no fSqaured or multiplicity
     mock_pg_equivs = [1]*3
     hkl, d, fSquared, multiplicities = create_inputs(mock_pg_equivs)
-    hkl = [ (1,0,0), (1,1,1), (0,1,0,), (0,0,1)] 
+    hkl.append( (0,0,1) )
 
     try:
         crystalInfo = CrystallographicInfo(
