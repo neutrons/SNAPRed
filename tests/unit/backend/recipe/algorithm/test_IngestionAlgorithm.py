@@ -45,8 +45,9 @@ def test_weak_f_squared_median():
 
     assert len(mock_xtal.fSquared) == len(mock_xtal.multiplicities)
 
-    assert ingestAlgo.findWeakFSquared(mock_xtal) != 36
-    assert ingestAlgo.findWeakFSquared(mock_xtal) == 41
+    lowFsq = ingestAlgo.findWeakFSquared(mock_xtal)
+    assert lowFsq != 36
+    assert lowFsq == 41
 
 def test_weak_f_squared_small():
     """Test weak fSquared method finds an answer with small number of options"""
@@ -59,7 +60,7 @@ def test_weak_f_squared_small():
     assert ingestAlgo.findWeakFSquared(mock_xtal) == 2
 
 
-def test_weak_f_squared_small():
+def test_weak_f_squared_one():
     """Test weak fSquared method finds an answer with only one option"""
     ingestAlgo = IngestCrystallographicInfo()
     assert not isinstance(ingestAlgo, mock.Mock)
