@@ -26,14 +26,8 @@ def setup_teardown():  # noqa: PT004
 
 
 def test_execute():
-    # """Test exection of ExtractionAlgorithm"""
-    # extractIngredients = mock.Mock()
-    # extractionAlgo = ExtractionAlgorithm(ExtractionIngredients = extractIngredients)
-    # # extractionAlgo.execute()
-
-    # print(extractionAlgo.log().notice.call_args)
-    # assert extractionAlgo is not None
-    # assert extractionAlgo.log.called
-    # assert extractionAlgo.ExtractionIngredients is not None
-    pass
-
+    """Test exection of ExtractionAlgorithm"""
+    extractionAlgo = ExtractionAlgorithm()
+    extractionAlgo.initialize()
+    extractionAlgo.execute()
+    assert True
