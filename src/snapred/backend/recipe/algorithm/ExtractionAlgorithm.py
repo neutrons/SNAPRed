@@ -1,9 +1,9 @@
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
+
 # from mantid.kernel import *
 
 name = "ExtractionAlgorithm"
-
 
 
 class ExtractionAlgorithm(PythonAlgorithm):
