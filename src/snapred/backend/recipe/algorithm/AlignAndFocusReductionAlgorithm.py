@@ -72,7 +72,7 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         )
         return OutputWorkspace
 
-    def loadDiffCal(self, Filename, InputWorkspace, WorkspaceName):
+    def loadDiffCal(self, Filename, InputWorkspace, WorkspaceName):  # noqa: ARG002
         self.enqueueAlgorithm(
             "LoadDiffCal",
             "Loading DiffCal for {} ...".format(Filename),
@@ -288,7 +288,8 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         # 4 Not Lite? SumNeighbours  -- just apply to data
         # self.sumNeighbours(InputWorkspace=raw_data, SumX=SuperPixEdge, SumY=SuperPixEdge, OutputWorkspace=raw_data)
 
-        # 7 Does it have a container? Apply Container Mask to Raw Vanadium and Data output from SumNeighbours -- done to both data and vanadium
+        # 7 Does it have a container? Apply Container Mask to Raw Vanadium and Data output from SumNeighbours
+        #        -- done to both data and vanadium
         # self.applyCotainerMask()
         # 8 CreateGroupWorkspace      TODO: Assess performance, use alternative Andrei came up with that is faster
         self.createGroupWorkspace(
