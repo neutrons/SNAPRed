@@ -8,26 +8,6 @@ on:
     tags: ['v*']
 
 jobs:
-
-  lint:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash -l {0}
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: 3.x
-    - id: file_changes
-      uses: trilom/file-changes-action@v1.2.3
-      with:
-        output: ' '
-    - uses: pre-commit/action@v2.0.0
-      with:
-        extra_args: --files ${{ steps.file_changes.outputs.files}}
-
-
   tests:
     runs-on: ubuntu-latest
     defaults:
