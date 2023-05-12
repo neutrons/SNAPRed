@@ -1,5 +1,6 @@
 from functools import wraps
 
+
 def Singleton(orig_cls):
     orig_new = orig_cls.__new__
     instance = None
@@ -10,5 +11,6 @@ def Singleton(orig_cls):
         if instance is None:
             instance = orig_new(cls, *args, **kwargs)
         return instance
+
     orig_cls.__new__ = __new__
     return orig_cls

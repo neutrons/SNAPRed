@@ -5,6 +5,7 @@ from typing import Any, Dict
 
 import yaml
 from pydantic.utils import deep_update
+
 from snapred.meta.Singleton import Singleton
 
 ROOT_MODULE = None

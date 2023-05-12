@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 from mantid.api import AlgorithmManager
+
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import (

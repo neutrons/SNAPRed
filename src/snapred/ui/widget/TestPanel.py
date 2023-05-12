@@ -14,4 +14,3 @@ class TestPanel:
     @property
     def widget(self):
         return self._presenter.widget
-    

@@ -1,6 +1,7 @@
-import pytest
-import unittest.mock as mock
 import sys
+import unittest.mock as mock
+
+import pytest
 
 # Mock out of scope modules before importing InterfaceController
 sys.modules["snapred.backend.service"] = mock.Mock()
@@ -37,9 +38,7 @@ def mockedSuccessfulInterfaceController():
     mockService = mock.Mock()
     mockService.orchestrateRecipe.return_value = {"result": "Success!"}
 
-    interfaceController.serviceFactory.getService.side_effect = (
-        lambda x: mockService if x == "Test Service" else None
-    )
+    interfaceController.serviceFactory.getService.side_effect = lambda x: mockService if x == "Test Service" else None
     return interfaceController
 
 
