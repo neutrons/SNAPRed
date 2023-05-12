@@ -60,9 +60,5 @@ def test_failed_create():
     hkl, d, fSquared, multiplicities = create_inputs(mock_pg_equivs)
     hkl.append((0, 0, 1))
 
-    try:
+    with pytest.raises(ValueError):  # noqa: PT011
         CrystallographicInfo(hkl=hkl, d=d, fSquared=fSquared, multiplicities=multiplicities)
-    except:
-        assert True
-    else:
-        pytest.fail("Should have failed to validate CrystallographicInfo")
