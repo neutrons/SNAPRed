@@ -43,8 +43,8 @@ class ReductionAlgorithm(PythonAlgorithm):
                 algorithm.setProperty(prop, val)
             if not algorithm.execute():
                 raise Exception("")
-        except Exception as e:
-            raise AlgorithmException(name, str(e))
+        except Exception as e:  # noqa: BLE001
+            raise AlgorithmException(name) from e
 
     def enqueueAlgorithm(self, name, message, isChild=True, **kwargs):
         self._algorithmQueue.append((name, message, isChild, kwargs))
@@ -284,7 +284,8 @@ class ReductionAlgorithm(PythonAlgorithm):
         # 4 Not Lite? SumNeighbours  -- just apply to data
         # self.sumNeighbours(InputWorkspace=raw_data, SumX=SuperPixEdge, SumY=SuperPixEdge, OutputWorkspace=raw_data)
 
-        # 7 Does it have a container? Apply Container Mask to Raw Vanadium and Data output from SumNeighbours -- done to both data and vanadium
+        # 7 Does it have a container? Apply Container Mask to Raw Vanadium and Data output from SumNeighbours
+        #                           -- done to both data and vanadium
         # self.applyCotainerMask()
         # 8 CreateGroupWorkspace      TODO: Assess performance, use alternative Andrei came up with that is faster
         groupingworkspace = self.createGroupWorkspace(
@@ -294,7 +295,8 @@ class ReductionAlgorithm(PythonAlgorithm):
         # 3 ApplyDiffCal  -- just apply to data
         diffCalPrefix = self.loadDiffCal(Filename=diffCalPath, WorkspaceName="diffcal")
 
-        # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours -- done to both data, can be applied to vanadium per state
+        # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours
+        #              -- done to both data, can be applied to vanadium per state
         self.applyCalibrationPixelMask(Workspace=raw_data, MaskedWorkspace=diffCalPrefix + "_mask")
         self.applyCalibrationPixelMask(Workspace=vanadium, MaskedWorkspace=diffCalPrefix + "_mask")
 
@@ -322,9 +324,13 @@ class ReductionAlgorithm(PythonAlgorithm):
 
         # TODO: May impact performance of lite mode data
         # TODO: Params is supposed to be smallest dmin, smalled dbin, largest dmax
-        # self.enqueueAlgorithm('Rebin', "Rebinning", isChild=False,  InputWorkspace=data, Params='0.338, -0.00086, 5.0', PreserveEvents=False, OutputWorkspace="rebinned_data_before_focus")
+        # self.enqueueAlgorithm('Rebin', "Rebinning", isChild=False,  InputWorkspace=data,
+        #                       Params='0.338, -0.00086, 5.0', PreserveEvents=False,
+        #                       OutputWorkspace="rebinned_data_before_focus")
         # data = "rebinned_data_before_focus"
-        # vanadium = self.enqueueAlgorithm('Rebin', "Rebinning", isChild=False, InputWorkspace=vanadium, Params='0.338, -0.00086, 5.0', PreserveEvents=False, OutputWorkspace="rebinned_vanadium_before_focus")
+        # vanadium = self.enqueueAlgorithm('Rebin', "Rebinning", isChild=False, InputWorkspace=vanadium,
+        #                                  Params='0.338, -0.00086, 5.0', PreserveEvents=False,
+        #                                  OutputWorkspace="rebinned_vanadium_before_focus")
         # vanadium = "rebinned_vanadium_before_focus"
         # 11 For each Group (no for each loop, the algos apply things based on groups of group workspace)
         data = self.diffractionFocusing(
@@ -344,7 +350,8 @@ class ReductionAlgorithm(PythonAlgorithm):
         # data = self.compressEvents(InputWorkspace=data, OutputWorkspace='event_compressed_data')
 
         # sum chunks if files are large
-        # TODO: Implement New Strip Peaks that allows for multiple FWHM, one per group, for now just grab the first one to get it to run
+        # TODO: Implement New Strip Peaks that allows for multiple FWHM, one per group,
+        # for now just grab the first one to get it to run
         peakPositions = ",".join(
             str(s) for s in reductionIngredients.reductionState.stateConfig.normalizationCalibrant.peaks
         )
