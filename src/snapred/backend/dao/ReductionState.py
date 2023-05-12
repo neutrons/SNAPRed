@@ -1,10 +1,14 @@
+from typing import Optional
+
+from pydantic import BaseModel
+
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.StateConfig import StateConfig
-from typing import Optional
-from pydantic import BaseModel
+
 
 class ReductionState(BaseModel):
     """Class to hold the instrument configuration."""
+
     instrumentConfig: InstrumentConfig
     stateConfig: StateConfig
     overrides: Optional[InstrumentConfig] = None

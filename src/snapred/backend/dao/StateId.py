@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 # https://docs.python.org/3/library/dataclasses.html
 @dataclass
 class StateId:

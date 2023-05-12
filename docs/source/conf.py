@@ -3,7 +3,7 @@
 # -- Project information
 
 project = "SNAPRed"
-copyright = "2021, ORNL"
+project_copyright = "2021, ORNL"
 author = "ORNL"
 
 release = "0.1"

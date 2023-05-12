@@ -1,16 +1,13 @@
-from snapred.meta.Singleton import Singleton
+from typing import Any, Dict
+
+from mantid.api import AlgorithmManager
+
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import (
     name as ReductionAlgorithm,
 )
-from snapred.backend.recipe.algorithm.AlignAndFocusReductionAlgorithm import (
-    name as AlignAndFocusReductionAlgorithm,
-)
-from snapred.backend.log.logger import snapredLogger
-
-from typing import Dict, Any
-
-from mantid.api import AlgorithmManager
+from snapred.meta.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -23,9 +20,7 @@ class ReductionRecipe:
         pass
 
     def executeRecipe(self, reductionIngredients: ReductionIngredients):
-        logger.info(
-            "Executing recipe for runId: %s" % reductionIngredients.runConfig.runNumber
-        )
+        logger.info("Executing recipe for runId: %s" % reductionIngredients.runConfig.runNumber)
         data: Dict[str, Any] = {}
 
         algo = AlgorithmManager.create(self.reductionAlgorithmName)
@@ -37,4 +32,4 @@ class ReductionRecipe:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
         logger.info("Finished executing recipe for runId: %s" % reductionIngredients.runConfig.runNumber)
-        return data 
+        return data

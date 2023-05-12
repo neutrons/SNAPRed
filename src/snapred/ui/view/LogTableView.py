@@ -1,9 +1,7 @@
-
 from PyQt5 import QtWidgets
 
 
 class LogTableView(QtWidgets.QWidget):
-
     position = 1
 
     def __init__(self, name, parent=None):
@@ -27,4 +25,3 @@ class LogTableView(QtWidgets.QWidget):
 
     def on_button_clicked(self, slot):
         self.buttonAction = slot
-        
