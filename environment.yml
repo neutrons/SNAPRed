@@ -9,6 +9,7 @@ dependencies:
 - pydantic
 - mantidworkbench
 - qtpy
+- pre-commit
 - pytest
 - pytest-cov
 - flake8
