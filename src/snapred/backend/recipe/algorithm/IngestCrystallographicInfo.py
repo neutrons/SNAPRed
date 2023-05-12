@@ -25,9 +25,14 @@ class IngestCrystallographicInfo(PythonAlgorithm):
         prog_reporter.report(endrange, "Done")
 
     def findWeakFSquared(self, xtal: CrystallographicInfo):
+        # set a threshold for weak peaks in the spectrum
+        # this uses the median of lowest 1% of intensities
+
+        # intensity is fsq times multiplicities
         I0 = [ff * mm for ff, mm in zip(xtal.fSquared, xtal.multiplicities)]
         I0.sort()
 
+        # take lowest one percent
         numPeaks = len(xtal.fSquared)
         lowest = max(1, round(numPeaks / 100)) - 1
         return I0[int(lowest / 2)]
