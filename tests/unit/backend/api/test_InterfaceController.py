@@ -23,7 +23,7 @@ def teardown():
 
 
 @pytest.fixture(autouse=True)
-def setup_teardown():
+def setup_teardown():  # noqa: PT004
     """Setup before each test, teardown after each test"""
     setup()
     yield
