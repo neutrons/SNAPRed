@@ -16,9 +16,9 @@ class CrystallographicInfo(BaseModel):
     @root_validator
     def validate_scalar_fields(cls, values):
         if len(values.get("fSquared")) != len(values.get("hkl")):
-            raise ValueError
+            raise ValueError("Structure factors and hkl required to have same length")
         if len(values.get("multiplicities")) != len(values.get("hkl")):
-            raise ValueError
+            raise ValueError("Multiplicities and hkl required to have same length")
         if len(values.get("d")) != len(values.get("hkl")):
-            raise ValueError
+            raise ValueError("Spacings and hkl required to have same length")
         return values

@@ -28,12 +28,13 @@ def create_mock_pointgroup(v):
     return pg
 
 
-def create_inputs(v):
+def create_inputs(mock_pg_equivs=[]):
     hkl = [(1, 0, 0), (1, 1, 1), (0, 1, 0)]
     fSquared = [9.0, 16.0, 25.0]
-    [1] * len(hkl)
+    if mock_pg_equivs == []:
+        mock_pg_equivs = [1] * len(hkl)
     d = [1e-5] * len(hkl)
-    pg = create_mock_pointgroup(v)
+    pg = create_mock_pointgroup(mock_pg_equivs)
     multiplicities = pg.getEquivalents(hkl)
     return hkl, d, fSquared, multiplicities
 
@@ -57,9 +58,8 @@ def test_failed_create():
     """Test of Failing Crystallographic DAO"""
 
     # there is an extra point in hkl, with no fSqaured or multiplicity
-    mock_pg_equivs = [1] * 3
-    hkl, d, fSquared, multiplicities = create_inputs(mock_pg_equivs)
+    hkl, d, fSquared, multiplicities = create_inputs()
     hkl.append((0, 0, 1))
 
-    with pytest.raises(ValueError):  # noqa: PT011
+    with pytest.raises(ValueError, match=r".* hkl .*"):
         CrystallographicInfo(hkl=hkl, d=d, fSquared=fSquared, multiplicities=multiplicities)
