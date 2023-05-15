@@ -53,7 +53,6 @@ def test_create():
     assert len(crystalInfo.hkl) == len(crystalInfo.d)
 
 
-
 def test_failed_create():
     """Test of Failing Crystallographic DAO"""
 
