@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QGridLayout, QPushButton, QWidget
+from PyQt5.QtWidgets import QGridLayout, QMainWindow, QPushButton, QWidget
 
 
 class TestPanelView(QMainWindow):
@@ -15,7 +15,7 @@ class TestPanelView(QMainWindow):
         self.centralWidget.setLayout(self.grid)
 
         # Setup test Buttons
-        self.calibrationReductinButton = QPushButton('Test Calibration Reduction', self)
+        self.calibrationReductinButton = QPushButton("Test Calibration Reduction", self)
         self.grid.addWidget(self.calibrationReductinButton)
         self.calibrationReductinButton.adjustSize()
 

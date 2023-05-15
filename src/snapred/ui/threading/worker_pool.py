@@ -1,4 +1,5 @@
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
+
 from snapred.meta.Singleton import Singleton
 
 
@@ -19,6 +20,7 @@ class Worker(QObject):
         """Long-running task."""
         self.result.emit(self.target(self.args))
         self.finished.emit()
+
 
 class InfiniteWorker(QObject):
     result = pyqtSignal(object)
@@ -42,6 +44,7 @@ class InfiniteWorker(QObject):
             self.result.emit(self.target(self.args))
         self.finished.emit()
 
+
 @Singleton
 class WorkerPool:
     max_threads = 8
@@ -53,7 +56,7 @@ class WorkerPool:
 
     def createInfiniteWorker(self, target, args):
         return InfiniteWorker(target=target, args=args)
-    
+
     def _dequeueWorker(self, worker):
         self.threads.pop(worker)
         if len(self.worker_queue) > 0:

@@ -53,6 +53,7 @@ def test_create():
     assert len(crystalInfo.hkl) == len(crystalInfo.d)
 
 
+
 def test_failed_create():
     """Test of Failing Crystallographic DAO"""
 
@@ -61,9 +62,5 @@ def test_failed_create():
     hkl, d, fSquared, multiplicities = create_inputs(mock_pg_equivs)
     hkl.append((0, 0, 1))
 
-    try:
+    with pytest.raises(ValueError):  # noqa: PT011
         CrystallographicInfo(hkl=hkl, d=d, fSquared=fSquared, multiplicities=multiplicities)
-    except:  # noqa: E722
-        assert True
-    else:
-        pytest.fail("Should have failed to validate CrystallographicInfo")

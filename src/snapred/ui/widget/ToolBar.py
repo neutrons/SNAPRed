@@ -14,4 +14,3 @@ class ToolBar:
     @property
     def widget(self):
         return self._presenter.widget
-    

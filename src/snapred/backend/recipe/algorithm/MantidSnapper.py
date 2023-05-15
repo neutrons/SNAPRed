@@ -2,11 +2,12 @@ import os
 
 from mantid.api import AlgorithmManager, Progress
 from mantid.kernel import Direction
+
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Config import Resource
+
 # must import to register with AlgorithmManager
-from snapred.backend.recipe.algorithm.CustomGroupWorkspace import CustomGroupWorkspace
+from snapred.meta.Config import Resource
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -41,18 +42,18 @@ class MantidSnapper:
 
             # TODO: Special cases are bad
             if key == "LoadDiffCal":
-                if kwargs.get('MakeGroupingWorkspace', True):
-                    outputProperties['GroupingWorkspace'] = kwargs['WorkspaceName'] + "_group"
-                if kwargs.get('MakeMaskWorkspace', True):
-                    outputProperties['MaskWorkspace'] = kwargs['WorkspaceName'] + '_mask'
-                if kwargs.get('MakeCalWorkspace', True):
-                    outputProperties['CalWorkspace'] = kwargs['WorkspaceName'] + '_cal'
+                if kwargs.get("MakeGroupingWorkspace", True):
+                    outputProperties["GroupingWorkspace"] = kwargs["WorkspaceName"] + "_group"
+                if kwargs.get("MakeMaskWorkspace", True):
+                    outputProperties["MaskWorkspace"] = kwargs["WorkspaceName"] + "_mask"
+                if kwargs.get("MakeCalWorkspace", True):
+                    outputProperties["CalWorkspace"] = kwargs["WorkspaceName"] + "_cal"
 
             # remove mantid algorithm from managed algorithms
             AlgorithmManager.removeById(mantidAlgorithm.getAlgorithmID())
             # if only one property is returned, return it directly
             if len(outputProperties) == 1:
-                outputProperties, = outputProperties.values() 
+                (outputProperties,) = outputProperties.values()
 
             return outputProperties
 

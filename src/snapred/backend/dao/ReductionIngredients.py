@@ -1,10 +1,12 @@
+from pydantic import BaseModel
+
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
 
-from pydantic import BaseModel
 
 class ReductionIngredients(BaseModel):
     """Class to hold the instrument configuration."""
+
     runConfig: RunConfig
     reductionState: ReductionState
 

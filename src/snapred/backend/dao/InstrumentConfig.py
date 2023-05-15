@@ -1,7 +1,9 @@
 from pydantic import BaseModel
 
+
 class InstrumentConfig(BaseModel):
     """Class to hold the instrument parameters."""
+
     version: str
     facility: str
     name: str

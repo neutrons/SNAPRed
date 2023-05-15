@@ -5,6 +5,7 @@ from typing import Any, Dict
 
 import yaml
 from pydantic.utils import deep_update
+
 from snapred.meta.Singleton import Singleton
 
 ROOT_MODULE = None
@@ -35,7 +36,7 @@ class _Resource:
     def getPath(self, subPath):
         return self._resourcesPath + subPath
 
-    def open(self, subPath, mode):
+    def open(self, subPath, mode):  # noqa: A003
         if self._packageMode:
             with resources.path("snapred.resources", subPath) as path:
                 return open(path, mode)
