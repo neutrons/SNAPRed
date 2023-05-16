@@ -6,7 +6,9 @@ from typing import Any, Dict, List, Tuple
 
 import h5py
 from mantid.api import AlgorithmManager
+from pydantic import parse_file_as
 
+from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
@@ -15,7 +17,7 @@ from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibr
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.dao.StateId import StateId
 from snapred.meta.Config import Config
-from snapred.meta.Singleton import Singleton
+from snapred.meta.decorators.Singleton import Singleton
 
 """
     Looks up data on disk
@@ -221,14 +223,18 @@ class LocalDataService:
 
         return fileList
 
+    def _constructCalibrationPath(self, calibrationRoot, stateId):
+        return calibrationRoot + "Powder/" + stateId + "/"
+
     def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
         # lookup IPST number
         runConfig: RunConfig = self._readRunConfig(runId)
         run: int = int(runId)
         stateId, _ = self._generateStateId(runConfig)
+        # TODO: Statefulness of this service needs to be removed, back practice
         self.stateId = stateId
 
-        calibrationPath: str = self.instrumentConfig.calibrationDirectory + "Powder/" + stateId + "/"
+        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, stateId)
         calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"  # noqa: E501
 
         foundFiles = self._findMatchingFileList(calibSearchPattern)
@@ -271,3 +277,23 @@ class LocalDataService:
         # Now push data into DAO object
         self.reductionParameterCache[runId] = dictIn
         return dictIn
+
+    def readCalibrationIndex(self, runId: str):
+        # Need to run this because of its side effect, TODO: Remove side effect
+        self._readReductionParameters(runId)
+        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        indexPath: str = calibrationPath + "CalibrationIndex.json"
+        calibrationIndex: List[CalibrationIndexEntry] = []
+        if os.path.exists(indexPath):
+            calibrationIndex = parse_file_as(List[CalibrationIndexEntry], indexPath)
+        return calibrationIndex
+
+    def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
+        self._readReductionParameters(entry.runNumber)
+        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        indexPath: str = calibrationPath + "CalibrationIndex.json"
+        # append to index and write to file
+        calibrationIndex = self.readCalibrationIndex(entry.runNumber)
+        calibrationIndex.append(entry)
+        with open(indexPath, "w") as indexFile:
+            indexFile.write(json.dumps([entry.dict() for entry in calibrationIndex]))

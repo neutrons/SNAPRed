@@ -18,8 +18,14 @@ class TestPanelView(QMainWindow):
         self.calibrationReductinButton = QPushButton("Test Calibration Reduction", self)
         self.grid.addWidget(self.calibrationReductinButton)
         self.calibrationReductinButton.adjustSize()
+        self.calibrationIndexButton = QPushButton("Test Append Calibration Index", self)
+        self.grid.addWidget(self.calibrationIndexButton)
+        self.calibrationIndexButton.adjustSize()
 
         self.adjustSize()
 
     def calibrationReductinButtonOnClick(self, slot):
         self.calibrationReductinButton.clicked.connect(slot)
+
+    def calibrationIndexButtonOnClick(self, slot):
+        self.calibrationIndexButton.clicked.connect(slot)
