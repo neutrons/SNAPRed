@@ -9,7 +9,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.meta.Singleton import Singleton
+from snapred.meta.decorators.Singleton import Singleton
 
 
 @Singleton

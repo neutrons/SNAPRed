@@ -1,10 +1,4 @@
 import json
-
-# Mock out of scope modules before importing InterfaceController
-# sys.modules["snapred.backend.service"] = mock.Mock()
-# sys.modules["snapred.backend.service.ServiceFactory"] = mock.Mock()
-# sys.modules["snapred.backend.log"] = mock.Mock()
-# sys.modules["snapred.backend.log.logger"] = mock.Mock()
 import socket
 
 import pytest

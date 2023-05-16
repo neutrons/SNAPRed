@@ -2,7 +2,7 @@ from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.service.ServiceFactory import ServiceFactory
-from snapred.meta.Singleton import Singleton
+from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 

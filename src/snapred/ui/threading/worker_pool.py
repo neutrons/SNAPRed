@@ -1,6 +1,8 @@
+from typing import Dict, List
+
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 
-from snapred.meta.Singleton import Singleton
+from snapred.meta.decorators.Singleton import Singleton
 
 
 class Worker(QObject):
@@ -48,8 +50,8 @@ class InfiniteWorker(QObject):
 @Singleton
 class WorkerPool:
     max_threads = 8
-    threads = {}
-    worker_queue = []
+    threads: Dict[Worker, QThread] = {}
+    worker_queue: List[Worker] = []
 
     def createWorker(self, target, args):
         return Worker(target=target, args=args)

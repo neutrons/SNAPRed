@@ -6,7 +6,7 @@ from typing import Any, Dict
 import yaml
 from pydantic.utils import deep_update
 
-from snapred.meta.Singleton import Singleton
+from snapred.meta.decorators.Singleton import Singleton
 
 ROOT_MODULE = None
 if os.environ.get("env") != "test":

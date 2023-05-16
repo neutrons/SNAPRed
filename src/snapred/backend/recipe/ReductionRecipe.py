@@ -7,7 +7,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import (
     name as ReductionAlgorithm,
 )
-from snapred.meta.Singleton import Singleton
+from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
