@@ -1,10 +1,9 @@
-import sys
 import unittest.mock as mock
 
 import pytest
 
 # Mock out of scope modules before importing ExtractionRecipe
-sys.modules["mantid.api"] = mock.Mock()
+mock.patch("mantid.api")
 
 # mock an AlgorithmManager to return a mocked algorithm
 mockAlgo = mock.Mock()
@@ -14,20 +13,14 @@ AlgorithmManager.create.return_value = mockAlgo
 from snapred.backend.recipe.ExtractionRecipe import ExtractionRecipe  # noqa: E402
 
 
-def setup():
-    """Setup before all tests"""
-    pass
-
-
 def teardown():
     """Teardown after all tests"""
-    pass
+    mock.patch.stopall()
 
 
 @pytest.fixture(autouse=True)
 def setup_teardown():  # noqa: PT004
     """Setup before each test, teardown after each test"""
-    setup()
     yield
     teardown()
 

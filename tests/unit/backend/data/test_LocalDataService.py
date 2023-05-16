@@ -1,16 +1,28 @@
 import os
-import sys
 import unittest.mock as mock
 from typing import List
 
+import pytest
 from pydantic import parse_raw_as
 
 # Mock out of scope modules before importing DataExportService
-sys.modules["mantid.api"] = mock.Mock()
+mock.patch("mantid.api")
 
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
 from snapred.backend.data.LocalDataService import LocalDataService  # noqa: E402
 from snapred.meta.Config import Resource  # noqa: E402
+
+
+def teardown():
+    """Teardown after all tests"""
+    mock.patch.stopall()
+
+
+@pytest.fixture(autouse=True)
+def setup_teardown():  # noqa: PT004
+    """Setup before each test, teardown after each test"""
+    yield
+    teardown()
 
 
 @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005

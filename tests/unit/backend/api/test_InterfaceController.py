@@ -1,31 +1,24 @@
-import sys
 import unittest.mock as mock
 
 import pytest
 
 # Mock out of scope modules before importing InterfaceController
-sys.modules["snapred.backend.service"] = mock.Mock()
-sys.modules["snapred.backend.service.ServiceFactory"] = mock.Mock()
-sys.modules["snapred.backend.log"] = mock.Mock()
-sys.modules["snapred.backend.log.logger"] = mock.Mock()
+mock.patch("snapred.backend.service")
+mock.patch("snapred.backend.service.ServiceFactory")
+mock.patch("snapred.backend.log")
+mock.patch("snapred.backend.log.logger")
 
 from snapred.backend.api.InterfaceController import InterfaceController  # noqa: E402
 
 
-def setup():
-    """Setup before all tests"""
-    pass
-
-
 def teardown():
     """Teardown after all tests"""
-    pass
+    mock.patch.stopall()
 
 
 @pytest.fixture(autouse=True)
 def setup_teardown():  # noqa: PT004
     """Setup before each test, teardown after each test"""
-    setup()
     yield
     teardown()
 
