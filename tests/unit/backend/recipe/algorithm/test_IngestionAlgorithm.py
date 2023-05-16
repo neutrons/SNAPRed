@@ -4,6 +4,7 @@ import pytest
 from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import (
     IngestCrystallographicInfoAlgorithm,  # noqa: E402
 )
+from snapred.meta.Config import Resource
 
 
 def setup():
@@ -26,7 +27,7 @@ def setup_teardown():  # noqa: PT004
 
 def test_init_path():
     """Test ability to initialize crystal ingestion algo from path name"""
-    fakeCIF = "fake_file.cif"
+    fakeCIF = Resource.getPath("/inputs/crystalInfo/fake_file.cif")
     ingestAlgo = IngestCrystallographicInfoAlgorithm()
     ingestAlgo.initialize()
     ingestAlgo.setProperty("cifPath", fakeCIF)
@@ -35,7 +36,7 @@ def test_init_path():
 
 def test_failed_path():
     """Test failure of crystal ingestion algo with a bad path name"""
-    fakeCIF = "fake_file.cif"
+    fakeCIF = Resource.getPath("/inputs/crystalInfo/fake_file.cif")
     ingestAlgo = IngestCrystallographicInfoAlgorithm()
     ingestAlgo.initialize()
     ingestAlgo.setProperty("cifPath", fakeCIF)
@@ -45,7 +46,7 @@ def test_failed_path():
 
 def test_good_path():
     """Test success of crystal ingestion algo with a good path name"""
-    goodCIF = "~/SNAPRed/tests/unit/backend/recipe/example.cif"
+    goodCIF = Resource.getPath("/inputs/crystalInfo/example.cif")
     try:
         ingestAlgo = IngestCrystallographicInfoAlgorithm()
         ingestAlgo.initialize()

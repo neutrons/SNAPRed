@@ -3,6 +3,7 @@ import unittest.mock as mock
 import pytest
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo  # noqa : E402
 from snapred.backend.recipe.CrystallographicInfoRecipe import CrystallographicInfoRecipe  # noqa: E402
+from snapred.meta.Config import Resource
 
 
 def setup():
@@ -25,7 +26,7 @@ def setup_teardown():  # noqa: PT004
 
 def test_good_path():
     """Test success of crystal ingestion recipe with a good path name"""
-    goodCIF = "~/SNAPRed/tests/unit/backend/recipe/example.cif"
+    goodCIF = Resource.getPath("/inputs/crystalInfo/example.cif")
     try:
         ingestRecipe = CrystallographicInfoRecipe()
         data = ingestRecipe.executeRecipe(goodCIF)
