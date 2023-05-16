@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -5,7 +7,7 @@ class CalibrationIndexEntry(BaseModel):
     """Class to hold Calibration Index Entry data."""
 
     runNumber: str
-    appliesTo: str
+    appliesTo: Optional[str]
     comments: str
     author: str
-    timestamp: int
+    timestamp: Optional[int]
