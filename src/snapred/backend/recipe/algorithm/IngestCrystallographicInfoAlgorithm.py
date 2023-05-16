@@ -1,7 +1,5 @@
 from mantid.api import (
     AlgorithmFactory,
-    CreateSampleWorkspace,
-    LoadCIF,
     PythonAlgorithm,
     mtd,
 )
@@ -10,19 +8,22 @@ from mantid.geometry import (
     ReflectionGenerator,
 )
 from mantid.kernel import Direction
+from mantid.simpleapi import (
+    CreateSampleWorkspace,
+    LoadCIF,
+)
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "IngestCrystallographicInfo"
+name = "IngestCrystallographicInfoAlgorithm"
 
 
-class IngestCrystallographicInfo(PythonAlgorithm):
+class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("cifPath", defaultValue="", direction=Direction.Input)
-        self.declareProperty("CrystallographicInfo", defaultValue="", direction=Direction.Output)
-        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
+        self.declareProperty("crystalInfo", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
@@ -52,23 +53,15 @@ class IngestCrystallographicInfo(PythonAlgorithm):
         pg = xtal.getSpaceGroup().getPointGroup()
         multiplicities = [len(pg.getEquivalents(hkl)) for hkl in hkls]
 
-        xtalInfo = CrystallographicInfo(hkl=hkls, d=dValues, fSquared=fSquared, multiplicities=multiplicities)
+        # ensure correct types for validation
+        # TODO: figure out why this is necessary
+        hkls = [tuple(list(hkl)) for hkl in hkls]
+        dValues = [float(d) for d in dValues]
+        fSquared = [float(fsq) for fsq in fSquared]
 
-        self.findFSquaredThreshold(xtalInfo)
-
-    def findFSquaredThreshold(self, xtal: CrystallographicInfo):
-        # set a threshold for weak peaks in the spectrum
-        # this uses the median of lowest 1% of intensities
-
-        # intensity is fsq times multiplicities
-        I0 = [ff * mm for ff, mm in zip(xtal.fSquared, xtal.multiplicities)]
-        I0.sort()
-
-        # take lowest one percent
-        numPeaks = len(xtal.fSquared)
-        lowest = max(1, round(numPeaks / 100)) - 1
-        return I0[int(lowest / 2)]
+        xtal = CrystallographicInfo(hkl=hkls, d=dValues, fSquared=fSquared, multiplicities=multiplicities)
+        self.setProperty("crystalInfo", xtal.json())
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(IngestCrystallographicInfo)
+AlgorithmFactory.subscribe(IngestCrystallographicInfoAlgorithm)

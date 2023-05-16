@@ -8,10 +8,10 @@ from pydantic import BaseModel, root_validator
 class CrystallographicInfo(BaseModel):
     """Class to hold crystallographic parameters"""
 
-    hkl: List[Tuple[int, int, int]]
-    d: List[float]
-    fSquared: List[float]
-    multiplicities: List[int]
+    hkl: List[Tuple[int, int, int]] = []
+    d: List[float] = []
+    fSquared: List[float] = []
+    multiplicities: List[int] = []
 
     @root_validator
     def validate_scalar_fields(cls, values):
