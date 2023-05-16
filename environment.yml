@@ -20,6 +20,7 @@ dependencies:
 - setuptools
 - python-build
 - boa
+- pycifrw
 - pip:
   - check-wheel-contents
   - types-pyyaml
