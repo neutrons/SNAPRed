@@ -8,10 +8,6 @@ from mantid.geometry import (
     ReflectionGenerator,
 )
 from mantid.kernel import Direction
-from mantid.simpleapi import (
-    CreateSampleWorkspace,
-    LoadCIF,
-)
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -33,9 +29,12 @@ class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
         self.log().notice("ingest crystallogtaphic info")
 
         # Load the CIF file
-        CreateSampleWorkspace(OutputWorkspace="xtal_data")
-        LoadCIF(Workspace="xtal_data", InputFile=cifPath)
-        ws = mtd["xtal_data"]
+
+        ws = self.mantidSnapper.CreateSampleWorkspace("Creating sample workspace...", OutputWorkspace="xtal_data")
+        self.mantidSnapper.LoadCIF("Loading crystal data...", Workspace=ws, InputFile=cifPath)
+        self.mantidSnapper.executeQueue()
+
+        ws = mtd[ws]
         xtal = ws.sample().getCrystalStructure()
 
         # Generate reflections
