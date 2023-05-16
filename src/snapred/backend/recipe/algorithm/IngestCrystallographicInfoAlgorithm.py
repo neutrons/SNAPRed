@@ -1,7 +1,5 @@
 from mantid.api import (
     AlgorithmFactory,
-    CreateSampleWorkspace,
-    LoadCIF,
     PythonAlgorithm,
     mtd,
 )
