@@ -2,8 +2,6 @@ from typing import List, Tuple
 
 from pydantic import BaseModel, root_validator
 
-# from mantid.geometry import PointGroup
-
 
 class CrystallographicInfo(BaseModel):
     """Class to hold crystallographic parameters"""
@@ -13,7 +11,7 @@ class CrystallographicInfo(BaseModel):
     fSquared: List[float] = []
     multiplicities: List[int] = []
 
-    @root_validator
+    @root_validator(allow_reuse=True)
     def validate_scalar_fields(cls, values):
         if len(values.get("fSquared")) != len(values.get("hkl")):
             raise ValueError("Structure factors and hkl required to have same length")
