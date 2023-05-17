@@ -1,7 +1,6 @@
 import unittest.mock as mock
 
 import pytest
-from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo  # noqa: E402
 
 with mock.patch.dict(
     "sys.modules",
@@ -10,6 +9,7 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
+    from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo  # noqa: E402
 
     def create_mock_pointgroup(mock_pg_equivs):
         pg = mock.Mock()

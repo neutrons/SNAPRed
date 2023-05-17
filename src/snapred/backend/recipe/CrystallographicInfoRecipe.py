@@ -29,10 +29,10 @@ class CrystallographicInfoRecipe:
         try:
             data["result"] = algo.execute()
             data["crystalInfo"] = CrystallographicInfo.parse_raw(algo.getProperty("crystalInfo").value)
+            data["fSquaredThreshold"] = self.findFSquaredThreshold(data["crystalInfo"])
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
-        data["fSquaredThreshold"] = self.findFSquaredThreshold(data["crystalInfo"])
         logger.info("Finished ingesting crystal info: %s" % cifPath)
         return data
 
