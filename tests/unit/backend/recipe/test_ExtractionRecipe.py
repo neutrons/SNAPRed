@@ -8,6 +8,7 @@ mockAlgo = mock.Mock()
 MockAlgorithmManager = mock.Mock()
 MockAlgorithmManager.create.return_value = mockAlgo
 
+
 @mock.patch("snapred.backend.recipe.ExtractionRecipe.AlgorithmManager", MockAlgorithmManager)
 def test_execute_successful():
     mockAlgo.execute.return_value = "passed"
