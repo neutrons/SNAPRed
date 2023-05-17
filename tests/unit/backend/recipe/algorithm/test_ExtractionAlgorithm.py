@@ -1,5 +1,3 @@
-# import unittest.mock as mock
-
 from snapred.backend.recipe.algorithm.ExtractionAlgorithm import ExtractionAlgorithm  # noqa: E402
 
 

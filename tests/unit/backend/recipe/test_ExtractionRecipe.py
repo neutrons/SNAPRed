@@ -8,25 +8,6 @@ mockAlgo = mock.Mock()
 MockAlgorithmManager = mock.Mock()
 MockAlgorithmManager.create.return_value = mockAlgo
 
-
-def setup():
-    """Setup before all tests"""
-    pass
-
-
-def teardown():
-    """Teardown after all tests"""
-    pass
-
-
-@pytest.fixture(autouse=True)
-def setup_teardown():  # noqa: PT004
-    """Setup before each test, teardown after each test"""
-    setup()
-    yield
-    teardown()
-
-
 @mock.patch("snapred.backend.recipe.ExtractionRecipe.AlgorithmManager", MockAlgorithmManager)
 def test_execute_successful():
     mockAlgo.execute.return_value = "passed"
