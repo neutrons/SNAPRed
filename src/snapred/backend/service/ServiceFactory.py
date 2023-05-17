@@ -7,6 +7,7 @@ from snapred.backend.service.CalibrationService import CalibrationService
 # cant think of a good way around requireing the services to be imported
 # here in order to autoregister them
 from snapred.backend.service.ConfigLookupService import ConfigLookupService
+from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.ExtractionService import ExtractionService
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.backend.service.StateIdLookupService import StateIdLookupService
@@ -27,6 +28,7 @@ class ServiceFactory:
         self.registerService(StateIdLookupService())
         self.registerService(ExtractionService())
         self.registerService(CalibrationService())
+        self.registerService(CrystallographicInfoService())
 
     def registerService(self, service):
         # register the service
