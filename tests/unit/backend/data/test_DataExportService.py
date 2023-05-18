@@ -20,3 +20,10 @@ with mock.patch.dict(
         dataExportService.dataService.writeCalibrationIndexEntry.return_value = "expected"
         dataExportService.exportCalibrationIndexEntry(CalibrationIndexEntry(runNumber="1", comments="", author=""))
         assert dataExportService.dataService.writeCalibrationIndexEntry.called
+
+    def test_exportCalibrationRecord():
+        dataExportService = DataExportService()
+        dataExportService.dataService.writeCalibrationRecord = mock.Mock()
+        dataExportService.dataService.writeCalibrationRecord.return_value = "expected"
+        dataExportService.exportCalibrationRecord(mock.Mock())
+        assert dataExportService.dataService.writeCalibrationRecord.called

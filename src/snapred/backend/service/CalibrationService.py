@@ -2,12 +2,14 @@ import time
 from typing import List
 
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationReductionRecipe import CalibrationReductionRecipe
 from snapred.backend.service.Service import Service
+from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 
@@ -23,7 +25,7 @@ class CalibrationService(Service):
     # register the service in ServiceFactory please!
     def __init__(self):
         self.registerPath("reduction", self.reduction)
-        self.registerPath("save", self.saveCalibrationToIndex)
+        self.registerPath("save", self.save)
         return
 
     def name(self):
@@ -39,6 +41,18 @@ class CalibrationService(Service):
             except:
                 raise
         return {}
+
+    @FromString
+    def save(self, entry: CalibrationIndexEntry):
+        reductionIngredients = self.dataFactoryService.getReductionIngredients(entry.runNumber)
+        # TODO: get peak fitting filepath
+        # save calibration reduction result to disk
+        calibrationWorkspaceName = Config["calibration.reduction.output.format"].format(entry.runNumber)
+        self.dataExportService.exportCalibrationReductionResult(entry.runNumber, calibrationWorkspaceName)
+        calibrationRecord = CalibrationRecord(parameters=reductionIngredients)
+        calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
+        entry.version = calibrationRecord.version
+        self.saveCalibrationToIndex(entry)
 
     @FromString
     def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):

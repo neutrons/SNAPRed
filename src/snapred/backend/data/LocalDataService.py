@@ -9,6 +9,7 @@ from mantid.api import AlgorithmManager
 from pydantic import parse_file_as
 
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
@@ -213,12 +214,12 @@ class LocalDataService:
 
         return hashedKey, decodedKey
 
-    def _findMatchingFileList(self, pattern) -> List[str]:
+    def _findMatchingFileList(self, pattern, throws=True) -> List[str]:
         fileList: List[str] = []
         for fname in glob.glob(pattern, recursive=True):
             if os.path.isfile(fname):
                 fileList.append(fname)
-        if len(fileList) == 0:
+        if len(fileList) == 0 and throws:
             raise ValueError("No files could be found with pattern: {}".format(pattern))
 
         return fileList
@@ -297,3 +298,59 @@ class LocalDataService:
         calibrationIndex.append(entry)
         with open(indexPath, "w") as indexFile:
             indexFile.write(json.dumps([entry.dict() for entry in calibrationIndex]))
+
+    def getCalibrationRecordPath(self, runId: str, version: str):
+        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        recordPath: str = calibrationPath + "{}/CalibrationRecord_v{}.json".format(runId, version)
+        return recordPath
+
+    def readCalibrationRecord(self, runId: str):
+        # Need to run this because of its side effect, TODO: Remove side effect
+        self._readReductionParameters(runId)
+        recordPath: str = self.getCalibrationRecordPath(runId, "*")
+        # lookup record by regex
+        foundFiles = self._findMatchingFileList(recordPath, throws=False)
+        # find the latest version
+        latestVersion = 0
+        latestFile = ""
+        for file in foundFiles:
+            version = int(file.split("_v")[-1].split(".json")[0])
+            if version > latestVersion:
+                latestVersion = version
+                latestFile = file
+        # read the file
+        record: CalibrationRecord = None
+        if latestFile:
+            record = parse_file_as(CalibrationRecord, latestFile)
+        return record
+
+    def writeCalibrationRecord(self, record: CalibrationRecord):
+        self._readReductionParameters(record.parameters.runConfig.runNumber)
+        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        version = 1
+        previousCalibration = self.readCalibrationRecord(record.parameters.runConfig.runNumber)
+        if previousCalibration:
+            version = previousCalibration.version + 1
+        recordPath: str = self.getCalibrationRecordPath(record.parameters.runConfig.runNumber, version)
+        record.version = version
+        # check if directory exists for runId
+        if not os.path.exists(calibrationPath + record.parameters.runConfig.runNumber):
+            os.makedirs(calibrationPath + record.parameters.runConfig.runNumber)
+        # append to record and write to file
+        with open(recordPath, "w") as recordFile:
+            recordFile.write(json.dumps(record.dict()))
+        return record
+
+    def writeCalibrationReductionResult(self, runId: str, workspaceName: str):
+        # use mantid to write workspace to file
+        self._readReductionParameters(runId)
+        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        filenameFormat = calibrationPath + "{}/".format(runId) + workspaceName + "_v{}.nxs"
+        # find total number of files
+        foundFiles = self._findMatchingFileList(filenameFormat.format("*"), throws=False)
+        version = len(foundFiles) + 1
+
+        saveAlgo = AlgorithmManager.create("SaveNexus")
+        saveAlgo.setProperty("InputWorkspace", workspaceName)
+        saveAlgo.setProperty("Filename", filenameFormat.format(version))
+        saveAlgo.execute()

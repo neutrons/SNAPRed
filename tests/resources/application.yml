@@ -19,6 +19,10 @@ calibration:
   file:
     extension: .json
     prefix: SNAPcalibLog
+  reduction:
+    output:
+      extension: .nxs
+      format: "{}_calibration_reduction_result"
 
 logging:
   level: 10
