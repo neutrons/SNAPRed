@@ -27,8 +27,6 @@ with mock.patch.dict(
         dataExportService = CalibrationService()
         dataExportService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         dataExportService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
-        dataExportService.dataFactoryService.getReductionIngredients = mock.Mock()
-        dataExportService.dataFactoryService.getReductionIngredients.return_value = readReductionIngredientsFromFile()
         dataExportService.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""))
         assert dataExportService.dataExportService.exportCalibrationIndexEntry.called
         savedEntry = dataExportService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
