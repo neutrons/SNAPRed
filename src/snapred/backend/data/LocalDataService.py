@@ -299,11 +299,15 @@ class LocalDataService:
         with open(indexPath, "w") as indexFile:
             indexFile.write(json.dumps([entry.dict() for entry in calibrationIndex]))
 
+    def getCalibrationRecordPath(self, runId: str, version: str):
+        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        recordPath: str = calibrationPath + "{}/CalibrationRecord_v{}.json".format(runId, version)
+        return recordPath
+
     def readCalibrationRecord(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
         self._readReductionParameters(runId)
-        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
-        recordPath: str = calibrationPath + "CalibrationRecord_{}_v*.json".format(runId)
+        recordPath: str = self.getCalibrationRecordPath(runId, "*")
         # lookup record by regex
         foundFiles = self._findMatchingFileList(recordPath, throws=False)
         # find the latest version
@@ -327,11 +331,12 @@ class LocalDataService:
         previousCalibration = self.readCalibrationRecord(record.parameters.runConfig.runNumber)
         if previousCalibration:
             version = previousCalibration.version + 1
-        recordPath: str = calibrationPath + "CalibrationRecord_{}_v{}.json".format(
-            record.parameters.runConfig.runNumber, version
-        )
+        recordPath: str = self.getCalibrationRecordPath(record.parameters.runConfig.runNumber, version)
         record.version = version
-        # append to index and write to file
+        # check if directory exists for runId
+        if not os.path.exists(calibrationPath + record.parameters.runConfig.runNumber):
+            os.makedirs(calibrationPath + record.parameters.runConfig.runNumber)
+        # append to record and write to file
         with open(recordPath, "w") as recordFile:
             recordFile.write(json.dumps(record.dict()))
         return record

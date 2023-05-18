@@ -1,4 +1,5 @@
 import os
+import shutil
 import unittest.mock as mock
 from typing import List
 
@@ -76,10 +77,10 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         localDataService._readReductionParameters = mock.Mock()
         localDataService._constructCalibrationPath = mock.Mock()
         localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
-        expectedFilePath = Resource.getPath("outputs") + "/CalibrationRecord_{}_v1.json".format("57514")
         localDataService.writeCalibrationRecord(CalibrationRecord(parameters=readReductionIngredientsFromFile()))
         actualRecord = localDataService.readCalibrationRecord("57514")
-        os.remove(expectedFilePath)
+        # remove directory
+        shutil.rmtree(Resource.getPath("outputs/57514"))
 
         assert actualRecord.parameters.runConfig.runNumber == "57514"
 
@@ -91,11 +92,9 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         localDataService._readReductionParameters = mock.Mock()
         localDataService._constructCalibrationPath = mock.Mock()
         localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
-        expectedFilePath = Resource.getPath("outputs") + "/CalibrationRecord_{}_v{}.json"
         localDataService.writeCalibrationRecord(CalibrationRecord(parameters=readReductionIngredientsFromFile()))
         localDataService.writeCalibrationRecord(CalibrationRecord(parameters=readReductionIngredientsFromFile()))
         actualRecord = localDataService.readCalibrationRecord("57514")
-        os.remove(expectedFilePath.format("57514", "1"))
-        os.remove(expectedFilePath.format("57514", "2"))
+        shutil.rmtree(Resource.getPath("outputs/57514"))
 
         assert actualRecord.parameters.runConfig.runNumber == "57514"
