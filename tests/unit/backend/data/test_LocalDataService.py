@@ -3,12 +3,14 @@ import unittest.mock as mock
 from typing import List
 
 from pydantic import parse_raw_as
+from snapred.meta.Config import Resource
 
 # Mock out of scope modules before importing DataExportService
 with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
+    from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
+    from snapred.backend.dao.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.data.LocalDataService import LocalDataService  # noqa: E402
-    from snapred.meta.Config import Resource  # noqa: E402
 
     @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
     def test_readCalibrationIndexMissing():
@@ -61,3 +63,39 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
 
         assert len(actualEntries) > 0
         assert actualEntries[0].runNumber == "57514"
+
+    def readReductionIngredientsFromFile():
+        with Resource.open("/inputs/calibration/input.json", "r") as f:
+            return ReductionIngredients.parse_raw(f.read())
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readWriteCalibrationRecord():
+        localDataService = LocalDataService()
+        localDataService.instrumentConfig = mock.Mock()
+        localDataService.stateId = mock.Mock()
+        localDataService._readReductionParameters = mock.Mock()
+        localDataService._constructCalibrationPath = mock.Mock()
+        localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
+        expectedFilePath = Resource.getPath("outputs") + "/CalibrationRecord_{}_v1.json".format("57514")
+        localDataService.writeCalibrationRecord(CalibrationRecord(parameters=readReductionIngredientsFromFile()))
+        actualRecord = localDataService.readCalibrationRecord("57514")
+        os.remove(expectedFilePath)
+
+        assert actualRecord.parameters.runConfig.runNumber == "57514"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readWriteCalibrationRecordV2():
+        localDataService = LocalDataService()
+        localDataService.instrumentConfig = mock.Mock()
+        localDataService.stateId = mock.Mock()
+        localDataService._readReductionParameters = mock.Mock()
+        localDataService._constructCalibrationPath = mock.Mock()
+        localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
+        expectedFilePath = Resource.getPath("outputs") + "/CalibrationRecord_{}_v{}.json"
+        localDataService.writeCalibrationRecord(CalibrationRecord(parameters=readReductionIngredientsFromFile()))
+        localDataService.writeCalibrationRecord(CalibrationRecord(parameters=readReductionIngredientsFromFile()))
+        actualRecord = localDataService.readCalibrationRecord("57514")
+        os.remove(expectedFilePath.format("57514", "1"))
+        os.remove(expectedFilePath.format("57514", "2"))
+
+        assert actualRecord.parameters.runConfig.runNumber == "57514"

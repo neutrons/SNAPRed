@@ -2,6 +2,7 @@ import time
 from typing import List
 
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
@@ -23,7 +24,7 @@ class CalibrationService(Service):
     # register the service in ServiceFactory please!
     def __init__(self):
         self.registerPath("reduction", self.reduction)
-        self.registerPath("save", self.saveCalibrationToIndex)
+        self.registerPath("save", self.save)
         return
 
     def name(self):
@@ -39,6 +40,15 @@ class CalibrationService(Service):
             except:
                 raise
         return {}
+
+    @FromString
+    def save(self, entry: CalibrationIndexEntry):
+        reductionIngredients = self.dataFactoryService.getReductionIngredients(entry.runNumber)
+        # TODO: get peak fitting filepath
+        calibrationRecord = CalibrationRecord(parameters=reductionIngredients)
+        calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
+        entry.version = calibrationRecord.version
+        self.saveCalibrationToIndex(entry)
 
     @FromString
     def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
