@@ -9,6 +9,7 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationReductionRecipe import CalibrationReductionRecipe
 from snapred.backend.service.Service import Service
+from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 
@@ -45,6 +46,9 @@ class CalibrationService(Service):
     def save(self, entry: CalibrationIndexEntry):
         reductionIngredients = self.dataFactoryService.getReductionIngredients(entry.runNumber)
         # TODO: get peak fitting filepath
+        # save calibration reduction result to disk
+        calibrationWorkspaceName = Config["calibration.reduction.output.format"].format(entry.runNumber)
+        self.dataExportService.exportCalibrationReductionResult(entry.runNumber, calibrationWorkspaceName)
         calibrationRecord = CalibrationRecord(parameters=reductionIngredients)
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         entry.version = calibrationRecord.version

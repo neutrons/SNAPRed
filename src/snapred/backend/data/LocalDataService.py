@@ -340,3 +340,17 @@ class LocalDataService:
         with open(recordPath, "w") as recordFile:
             recordFile.write(json.dumps(record.dict()))
         return record
+
+    def writeCalibrationReductionResult(self, runId: str, workspaceName: str):
+        # use mantid to write workspace to file
+        self._readReductionParameters(runId)
+        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        filenameFormat = calibrationPath + "{}/".format(runId) + workspaceName + "_v{}.nxs"
+        # find total number of files
+        foundFiles = self._findMatchingFileList(filenameFormat.format("*"), throws=False)
+        version = len(foundFiles) + 1
+
+        saveAlgo = AlgorithmManager.create("SaveNexus")
+        saveAlgo.setProperty("InputWorkspace", workspaceName)
+        saveAlgo.setProperty("Filename", filenameFormat.format(version))
+        saveAlgo.execute()

@@ -16,3 +16,6 @@ class DataExportService:
 
     def exportCalibrationRecord(self, record: CalibrationRecord):
         return self.dataService.writeCalibrationRecord(record)
+
+    def exportCalibrationReductionResult(self, runId: str, workspaceName: str):
+        return self.dataService.writeCalibrationReductionResult(runId, workspaceName)

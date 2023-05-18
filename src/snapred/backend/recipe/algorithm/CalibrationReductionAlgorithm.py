@@ -5,6 +5,7 @@ from mantid.kernel import Direction
 
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 
 name = "CalibrationReductionAlgorithm"
 
@@ -95,6 +96,13 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         self.mantidSnapper.DeleteWorkspace("Deleting Intermediate Data", Workspace=data)
         self.mantidSnapper.DeleteWorkspace("Deleting Grouping Workspace", Workspace=groupingworkspace)
 
+        # Rename focused_data to runid_calibration_reduction_result
+        outputNameFormat = Config["calibration.reduction.output.format"]
+        self.mantidSnapper.RenameWorkspace(
+            "Renaming calibration result...",
+            InputWorkspace=focused_data,
+            OutputWorkspace=outputNameFormat.format(reductionIngredients.runConfig.runNumber),
+        )
         self.mantidSnapper.executeQueue()
 
         self.log().notice("Execution of CalibrationReductionAlgorithm COMPLETE!")
