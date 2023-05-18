@@ -10,8 +10,9 @@ class ExtractionAlgorithm(PythonAlgorithm):
         self.declareProperty("ExtractionIngredients", defaultValue="", direction=Direction.Input)  # noqa: F821
 
     def PyExec(self):
+        pass
         # run the algo
-        self.log().notice("exec extract diffractometer constants, empty Algo")
+        # self.log().notice("exec extract diffractometer constants, empty Algo")
 
 
 # Register algorithm with Mantid
