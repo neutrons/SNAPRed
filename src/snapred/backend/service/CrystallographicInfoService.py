@@ -8,8 +8,8 @@ from snapred.meta.decorators.Singleton import Singleton
 
 
 @Singleton
-class IngestionService(Service):
-    name = "ingestion"
+class CrystallographicInfoService(Service):
+    _name = "ingestion"
     dataFactoryService = DataFactoryService()
 
     # register the service in ServiceFactory please!
