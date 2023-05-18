@@ -11,7 +11,8 @@ class ExtractionAlgorithm(PythonAlgorithm):
 
     def PyExec(self):
         # run the algo
-        self.log().notice("exec extract diffractometer constants, empty Algo")
+        # self.log().notice("exec extract diffractometer constants, empty Algo")
+        pass
 
 
 # Register algorithm with Mantid
