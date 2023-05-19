@@ -360,7 +360,7 @@ class LocalDataService:
         samplePath: str = Config["samples.home"]
         fileName: str = sample.name + "_" + sample.unique_id
         if fileName == "test_id123":
-            filePath = os.path.join(Resource.getPath() + fileName) + ".json"
+            filePath = os.path.join(Resource._resourcesPath + fileName) + ".json"
         else:
             filePath = os.path.join(samplePath, fileName) + ".json"
         if os.path.exists(filePath):
