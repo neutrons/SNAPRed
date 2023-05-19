@@ -1,3 +1,5 @@
+import os
+
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.RunConfig import RunConfig
@@ -52,6 +54,8 @@ class TestPanelPresenter(object):
         self.worker_pool.submitWorker(self.worker)
 
     def handleCalibrantSampleButtonClicked(self):
+        if os.path.exists("/SNS/users/gcs/Desktop/test_id123.json"):
+            os.remove("/SNS/users/gcs/Desktop/test_id123.json")
         mat = Material(
             chemical_composition="chemicalComp", mass_density=4.4, packing_fraction=0.9, microstructure="poly-crystal"
         )
@@ -65,10 +69,6 @@ class TestPanelPresenter(object):
             site_occupation_factor=0.4,
             adp=0.25,
         )
-        print(crystal.dict())
-        sample = CalibrantSamples(
-            name="diamond", unique_id="id123", geometry=geo, material=mat, crystallography=crystal
-        )
-        print(sample.dict())
+        sample = CalibrantSamples(name="test", unique_id="id123", geometry=geo, material=mat, crystallography=crystal)
         saveRequest = SNAPRequest(path="calibrant_sample/save_sample", payload=sample.json())
         self.handleButtonClicked(saveRequest, self.view.saveCalibrantButton)
