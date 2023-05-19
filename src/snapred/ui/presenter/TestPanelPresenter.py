@@ -56,7 +56,6 @@ class TestPanelPresenter(object):
 
     def handleCalibrantSampleButtonClicked(self):
         test_file_path = os.path.join(Resource._resourcesPath, "test_id123.json")
-        print(test_file_path)
         if os.path.exists(test_file_path):
             os.remove(test_file_path)
         mat = Material(
