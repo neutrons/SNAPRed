@@ -20,6 +20,6 @@ class DataExportService:
 
     def exportCalibrationReductionResult(self, runId: str, workspaceName: str):
         return self.dataService.writeCalibrationReductionResult(runId, workspaceName)
-    
+
     def writeCalibrantSampleFile(self, entry: CalibrantSamples):
         self.dataService.writeCalibrantSample(entry)
