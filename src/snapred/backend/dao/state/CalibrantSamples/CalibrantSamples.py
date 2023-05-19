@@ -2,7 +2,9 @@ import datetime
 from typing import Optional
 
 from pydantic import BaseModel, validator
-from snapred.backend.dao.state.CalibrantSamples import Crystallography, Geometry, Material
+from snapred.backend.dao.state.CalibrantSamples.Crystallography import Crystallography
+from snapred.backend.dao.state.CalibrantSamples.Geometry import Geometry
+from snapred.backend.dao.state.CalibrantSamples.Material import Material
 
 
 class CalibrantSamples(BaseModel):

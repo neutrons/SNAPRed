@@ -30,6 +30,8 @@ class Crystallography(BaseModel):
     def validate_cif_file(cls, v):
         if not os.path.exists(v):
             raise ValueError("cif file must be full path to a valid cif file")
+        if not v.endswith(".cif"):
+            raise ValueError("cif_file must be a file with .cif extension")
         return v
 
     @validator("lattice_parameters")
