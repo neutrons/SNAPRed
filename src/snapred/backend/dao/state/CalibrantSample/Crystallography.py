@@ -26,7 +26,7 @@ class Crystallography(BaseModel):
     site_occupation_factor: float
     adp: Optional[float]
 
-    @validator("cif_file")
+    @validator("cif_file", allow_reuse=True)
     def validate_cif_file(cls, v):
         if not os.path.exists(v):
             raise ValueError("cif file must be full path to a valid cif file")
