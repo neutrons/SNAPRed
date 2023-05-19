@@ -67,7 +67,6 @@ class TestPanelPresenter(object):
             atom_type="Na Cl",
             atom_coordinates=[0.1, 0.2, 0.3],
             site_occupation_factor=0.4,
-            adp=0.25,
         )
         sample = CalibrantSamples(name="test", unique_id="id123", geometry=geo, material=mat, crystallography=crystal)
         saveRequest = SNAPRequest(path="calibrant_sample/save_sample", payload=sample.json())

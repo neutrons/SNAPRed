@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, validator
 
@@ -24,7 +24,7 @@ class Crystallography(BaseModel):
     atom_type: str
     atom_coordinates: List[float]
     site_occupation_factor: float
-    adp: float
+    adp: Optional[float]
 
     @validator("cif_file")
     def validate_cif_file(cls, v):
@@ -54,6 +54,7 @@ class Crystallography(BaseModel):
 
     @validator("adp")
     def validate_adp(cls, v):
-        if v < 0:
-            raise ValueError("adp must be a positive value")
+        if v is not None:
+            if v < 0:
+                raise ValueError("adp must be a positive value")
         return v or 0.1
