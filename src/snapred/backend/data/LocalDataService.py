@@ -12,6 +12,7 @@ from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationInd
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
@@ -354,3 +355,12 @@ class LocalDataService:
         saveAlgo.setProperty("InputWorkspace", workspaceName)
         saveAlgo.setProperty("Filename", filenameFormat.format(version))
         saveAlgo.execute()
+        
+    def writeCalibrantSample(self, entry: CalibrantSamples):
+        samplePath: str = Config["samples.home"]
+        fileName = entry.CalibrantSamples.name + entry.CalibrantSamples.unique_id
+        filePath = os.path.join(samplePath, fileName, ".json")
+        if os.path.exists(filePath):
+            raise ValueError(f"the file {filePath} already exists")
+        with open(filePath, "w") as sampleFile:
+            sampleFile.write(json.dumps(entry.CalibrantSamples))

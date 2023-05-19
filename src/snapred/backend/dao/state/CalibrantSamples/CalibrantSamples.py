@@ -17,4 +17,4 @@ class CalibrantSamples(BaseModel):
 
     @validator("date", pre=True, always=True)
     def set_datetime(cls, v):
-        return v or datetime.now()
+        return v or datetime.datetime.now()
