@@ -8,6 +8,7 @@ from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import Calibrant
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
+from snapred.meta.Config import Config
 from snapred.ui.threading.worker_pool import WorkerPool
 
 
@@ -54,14 +55,16 @@ class TestPanelPresenter(object):
         self.worker_pool.submitWorker(self.worker)
 
     def handleCalibrantSampleButtonClicked(self):
-        if os.path.exists("/SNS/users/gcs/Desktop/test_id123.json"):
-            os.remove("/SNS/users/gcs/Desktop/test_id123.json")
+        test_file_path = os.path.join(Config["samples.home"], "test_id123.json")
+        print(test_file_path)
+        if os.path.exists(test_file_path):
+            os.remove(test_file_path)
         mat = Material(
             chemical_composition="chemicalComp", mass_density=4.4, packing_fraction=0.9, microstructure="poly-crystal"
         )
         geo = Geometry(form="cylinder", radius=3.4, illuminated_height=3.5, total_height=3.6)
         crystal = Crystallography(
-            cif_file="/SNS/users/gcs/Desktop/not_real.cif",
+            cif_file=str(os.path.join(Config["samples.home"], "not_real.cif")),
             space_group="outter space",
             lattice_parameters=[0, 1, 2, 3, 4, 5],
             atom_type="Na Cl",
