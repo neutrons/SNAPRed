@@ -358,9 +358,9 @@ class LocalDataService:
         
     def writeCalibrantSample(self, entry: CalibrantSamples):
         samplePath: str = Config["samples.home"]
-        fileName = entry.CalibrantSamples.name + entry.CalibrantSamples.unique_id
+        fileName: str = entry.CalibrantSamples.name + entry.CalibrantSamples.unique_id
         filePath = os.path.join(samplePath, fileName, ".json")
         if os.path.exists(filePath):
-            raise ValueError(f"the file {filePath} already exists")
+            raise ValueError(f"the file '{filePath}' already exists")
         with open(filePath, "w") as sampleFile:
             sampleFile.write(json.dumps(entry.CalibrantSamples))
