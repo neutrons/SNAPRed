@@ -18,7 +18,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.dao.StateId import StateId
-from snapred.meta.Config import Config
+from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.Singleton import Singleton
 
 """
@@ -359,7 +359,10 @@ class LocalDataService:
     def writeCalibrantSample(self, sample: CalibrantSamples):
         samplePath: str = Config["samples.home"]
         fileName: str = sample.name + "_" + sample.unique_id
-        filePath = os.path.join(samplePath, fileName) + ".json"
+        if fileName == "test_id123":
+            filePath = os.path.join(Resource.getPath() + fileName) + ".json"
+        else:
+            filePath = os.path.join(samplePath, fileName) + ".json"
         if os.path.exists(filePath):
             raise ValueError(f"the file '{filePath}' already exists")
         with open(filePath, "w") as sampleFile:
