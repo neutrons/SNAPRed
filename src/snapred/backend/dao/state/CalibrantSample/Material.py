@@ -17,7 +17,7 @@ class Material(BaseModel):
     @validator("microstructure")
     def validate_microstructure(cls, v):
         v = v.strip()
-        if v != "poly-crystal" or v != "single-crystal":
+        if v != "poly-crystal" and v != "single-crystal":
             raise ValueError("microstructure must be 'poly-crystal' or 'single-crystal'")
         return v
 

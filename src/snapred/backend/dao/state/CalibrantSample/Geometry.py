@@ -18,7 +18,7 @@ class Geometry(BaseModel):
     @root_validator(pre=True)
     def validate_form(cls, v):
         form, total_height = v.get("form").strip(), v.get("total_height")
-        if form != "cylinder" or form != "sphere":
+        if form != "cylinder" and form != "sphere":
             raise ValueError('form must be "cylinder" or "sphere"')
         if form == "sphere" and total_height is not None:
             v.set("total_height", None)
