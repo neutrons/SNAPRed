@@ -355,12 +355,12 @@ class LocalDataService:
         saveAlgo.setProperty("InputWorkspace", workspaceName)
         saveAlgo.setProperty("Filename", filenameFormat.format(version))
         saveAlgo.execute()
-        
+
     def writeCalibrantSample(self, sample: CalibrantSamples):
         samplePath: str = Config["samples.home"]
-        fileName: str = sample.name + sample.unique_id
-        filePath = os.path.join(samplePath, fileName, ".json")
+        fileName: str = sample.name + "_" + sample.unique_id
+        filePath = os.path.join(samplePath, fileName) + ".json"
         if os.path.exists(filePath):
             raise ValueError(f"the file '{filePath}' already exists")
         with open(filePath, "w") as sampleFile:
-            sampleFile.write(json.dumps(sample))
+            sampleFile.write(json.dumps(sample.dict()))

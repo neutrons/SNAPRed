@@ -10,12 +10,16 @@ class CalibrantSampleService(Service):
     _name = "calibrant_sample"
     dataExportService = DataExportService()
 
+    def __init__(self):
+        self.registerPath("save_sample", self.save_sample)
+        return
+
     def name(self):
         return self._name
 
     @FromString
     def save_sample(self, calibrantSample: CalibrantSamples):
         try:
-            self.dataExportService(calibrantSample)
+            self.dataExportService.writeCalibrantSampleFile(calibrantSample)
         except:
             raise

@@ -57,7 +57,7 @@ class TestPanelPresenter(object):
         )
         geo = Geometry(form="cylinder", radius=3.4, illuminated_height=3.5, total_height=3.6)
         crystal = Crystallography(
-            cif_file="/SNS/SNAP/shared/Calibration/CalibrantSamples/not_real.cif",
+            cif_file="/SNS/users/gcs/Desktop/not_real.cif",
             space_group="outter space",
             lattice_parameters=[0, 1, 2, 3, 4, 5],
             atom_type="Na Cl",
@@ -65,8 +65,10 @@ class TestPanelPresenter(object):
             site_occupation_factor=0.4,
             adp=0.25,
         )
+        print(crystal.dict())
         sample = CalibrantSamples(
             name="diamond", unique_id="id123", geometry=geo, material=mat, crystallography=crystal
         )
-        saveRequest = SNAPRequest(path="calibrant_sample/save_sample", payload=sample)
+        print(sample.dict())
+        saveRequest = SNAPRequest(path="calibrant_sample/save_sample", payload=sample.json())
         self.handleButtonClicked(saveRequest, self.view.saveCalibrantButton)

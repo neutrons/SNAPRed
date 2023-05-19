@@ -56,3 +56,4 @@ class Crystallography(BaseModel):
     def validate_adp(cls, v):
         if v < 0:
             raise ValueError("adp must be a positive value")
+        return v or 0.1
