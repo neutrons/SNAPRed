@@ -22,7 +22,7 @@ class Crystallography(BaseModel):
     space_group: str
     lattice_parameters: List[float]
     atom_type: str
-    atom_coordinates = List[float]
+    atom_coordinates: List[float]
     site_occupation_factor: float
     adp: float
 
