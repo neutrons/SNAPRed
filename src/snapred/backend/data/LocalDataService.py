@@ -12,12 +12,13 @@ from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationInd
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.dao.StateId import StateId
-from snapred.meta.Config import Config
+from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.Singleton import Singleton
 
 """
@@ -354,3 +355,15 @@ class LocalDataService:
         saveAlgo.setProperty("InputWorkspace", workspaceName)
         saveAlgo.setProperty("Filename", filenameFormat.format(version))
         saveAlgo.execute()
+
+    def writeCalibrantSample(self, sample: CalibrantSamples):
+        samplePath: str = Config["samples.home"]
+        fileName: str = sample.name + "_" + sample.unique_id
+        if fileName == "test_id123":
+            filePath = os.path.join(Resource._resourcesPath + fileName) + ".json"
+        else:
+            filePath = os.path.join(samplePath, fileName) + ".json"
+        if os.path.exists(filePath):
+            raise ValueError(f"the file '{filePath}' already exists")
+        with open(filePath, "w") as sampleFile:
+            sampleFile.write(json.dumps(sample.dict()))

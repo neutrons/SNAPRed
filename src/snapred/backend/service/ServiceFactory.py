@@ -2,6 +2,7 @@
 from typing import Any, Dict
 
 from snapred.backend.error.UserException import UserException
+from snapred.backend.service.CalibrantSampleService import CalibrantSampleService
 from snapred.backend.service.CalibrationService import CalibrationService
 
 # cant think of a good way around requireing the services to be imported
@@ -29,6 +30,7 @@ class ServiceFactory:
         self.registerService(ExtractionService())
         self.registerService(CalibrationService())
         self.registerService(CrystallographicInfoService())
+        self.registerService(CalibrantSampleService())
 
     def registerService(self, service):
         # register the service
