@@ -17,6 +17,6 @@ class CalibrantSamples(BaseModel):
     material: Material
     crystallography: Crystallography
 
-    @validator("date", pre=True, always=True)
+    @validator("date", pre=True, always=True, allow_reuse=True)
     def set_datetime(cls, v):
         return v or str(datetime.datetime.now())
