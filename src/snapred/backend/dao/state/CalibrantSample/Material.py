@@ -14,14 +14,14 @@ class Material(BaseModel):
     mass_density: float
     chemical_composition: str
 
-    @validator("microstructure")
+    @validator("microstructure", allow_reuse=True)
     def validate_microstructure(cls, v):
         v = v.strip()
         if v != "poly-crystal" and v != "single-crystal":
             raise ValueError("microstructure must be 'poly-crystal' or 'single-crystal'")
         return v
 
-    @validator("packing_fraction")
+    @validator("packing_fraction", allow_reuse=True)
     def validate_packing_fraction(cls, v):
         if v < 0 or v > 1:
             raise ValueError("packing fraction must be a value in the range [0, 1]")

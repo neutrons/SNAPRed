@@ -15,7 +15,7 @@ class Geometry(BaseModel):
     illuminated_height: float
     total_height: Optional[float] = None
 
-    @root_validator(pre=True)
+    @root_validator(pre=True, allow_reuse=True)
     def validate_form(cls, v):
         form, total_height = v.get("form").strip(), v.get("total_height")
         if form != "cylinder" and form != "sphere":

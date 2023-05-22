@@ -34,25 +34,25 @@ class Crystallography(BaseModel):
             raise ValueError("cif_file must be a file with .cif extension")
         return v
 
-    @validator("lattice_parameters")
+    @validator("lattice_parameters", allow_reuse=True)
     def validate_lattice_parameters(cls, v):
         if len(v) != 6:
             raise ValueError("lattice parameters must be a list of 6 floats: a, b, c, alpha, beta, gamma")
         return v
 
-    @validator("atom_coordinates")
+    @validator("atom_coordinates", allow_reuse=True)
     def validate_atom_coordinates(cls, v):
         if not all(-1 <= val <= 1 for val in v) and not len(v) == 3:
             raise ValueError("atom coordinates must be 3 values (x, y, z) all in range [-1, 1]")
         return v
 
-    @validator("site_occupation_factor")
+    @validator("site_occupation_factor", allow_reuse=True)
     def validate_site_occupation_factor(cls, v):
         if v < 0 or v > 1:
             raise ValueError("Site occupation factor must be a value in range [0, 1]")
         return v
 
-    @validator("adp")
+    @validator("adp", allow_reuse=True)
     def validate_adp(cls, v):
         if v is not None:
             if v < 0:
