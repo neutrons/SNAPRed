@@ -18,9 +18,10 @@ class InstrumentConfig(BaseModel):
     reducedDataDirectory: str
     reductionRecordDirectory: str
     bandwidth: float
-    maxBandWidth: float
+    maxBandwidth: float
     L1: float
     L2: float
     delTOverT: float
     delLOverL: float
-    delTh: float
+    delThNoGuide: float
+    delThWithGuide: float

@@ -49,7 +49,10 @@ class LocalDataService:
 
     def readInstrumentConfig(self) -> InstrumentConfig:
         instrumentParameterMap = self._readInstrumentParameters()
-
+        instrumentParameterMap["bandwidth"] = instrumentParameterMap.pop("neutronBandwidth")
+        instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
+        instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
+        instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
         instrumentConfig = InstrumentConfig(**instrumentParameterMap)
         if self.dataPath:
             instrumentConfig.calibrationDirectory = self.dataPath + "shared/Calibration/"
@@ -248,7 +251,7 @@ class LocalDataService:
     def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
         # lookup IPST number
         run: int = int(runId)
-        stateId = self._generateStateId(runId)
+        stateId, _ = self._generateStateId(runId)
 
         calibrationPath: str = self._constructCalibrationPath(stateId)
         calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"  # noqa: E501
@@ -297,7 +300,7 @@ class LocalDataService:
 
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
-        stateId = self._generateStateId(runId)
+        stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationPath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         calibrationIndex: List[CalibrationIndexEntry] = []
@@ -306,7 +309,7 @@ class LocalDataService:
         return calibrationIndex
 
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
-        stateId = self._generateStateId(entry.runNumber)
+        stateId, _ = self._generateStateId(entry.runNumber)
         calibrationPath: str = self._constructCalibrationPath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         # append to index and write to file
@@ -316,7 +319,7 @@ class LocalDataService:
             indexFile.write(json.dumps([entry.dict() for entry in calibrationIndex]))
 
     def getCalibrationRecordPath(self, runId: str, version: str):
-        stateId = self._generateStateId(runId)
+        stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationPath(stateId)
         recordPath: str = calibrationPath + "{}/CalibrationRecord_v{}.json".format(runId, version)
         return recordPath
@@ -364,7 +367,7 @@ class LocalDataService:
         return record
 
     def writeCalibrationRecord(self, record: CalibrationRecord):
-        stateId = self._generateStateId(record.parameters.runConfig.runNumber)
+        stateId, _ = self._generateStateId(record.parameters.runConfig.runNumber)
         calibrationPath: str = self._constructCalibrationPath(stateId)
         version = 1
         previousCalibration = self.readCalibrationRecord(record.parameters.runConfig.runNumber)
@@ -382,7 +385,7 @@ class LocalDataService:
 
     def writeCalibrationReductionResult(self, runId: str, workspaceName: str):
         # use mantid to write workspace to file
-        stateId = self._generateStateId(runId)
+        stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationPath(stateId)
         filenameFormat = calibrationPath + "{}/".format(runId) + workspaceName + "_v{}.nxs"
         # find total number of files
@@ -441,7 +444,7 @@ class LocalDataService:
 
     def readCalibrationState(self, runId: str):
         # get stateId and check to see if such a folder exists, if not create an initialize it
-        stateId = self._generateStateId(runId)
+        stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationPath(stateId)
         calibrationState = None
         if os.path.exists(calibrationPath):
@@ -457,7 +460,7 @@ class LocalDataService:
 
     def writeCalibrationState(self, runId: str, calibration: Calibration):
         # get stateId and check to see if such a folder exists, if not create an initialize it
-        stateId = self._generateStateId(runId)
+        stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationPath(stateId)
         # check for the existenece of a calibration parameters file
         calibrationParametersPath = calibrationPath + "CalibrationParameters.json"
