@@ -14,7 +14,7 @@ with mock.patch.dict(
     from snapred.backend.data.DataExportService import DataExportService  # noqa: E402
 
     # test export calibration
-    def test_exportCalibration():
+    def test_exportCalibrationIndexEntry():
         dataExportService = DataExportService()
         dataExportService.dataService.writeCalibrationIndexEntry = mock.Mock()
         dataExportService.dataService.writeCalibrationIndexEntry.return_value = "expected"
@@ -27,3 +27,24 @@ with mock.patch.dict(
         dataExportService.dataService.writeCalibrationRecord.return_value = "expected"
         dataExportService.exportCalibrationRecord(mock.Mock())
         assert dataExportService.dataService.writeCalibrationRecord.called
+
+    def test_exportCalibrationReductionResult():
+        dataExportService = DataExportService()
+        dataExportService.dataService.writeCalibrationReductionResult = mock.Mock()
+        dataExportService.dataService.writeCalibrationReductionResult.return_value = "expected"
+        dataExportService.exportCalibrationReductionResult(mock.Mock(), mock.Mock())
+        assert dataExportService.dataService.writeCalibrationReductionResult.called
+
+    def test_exportCalibrationState():
+        dataExportService = DataExportService()
+        dataExportService.dataService.writeCalibrationState = mock.Mock()
+        dataExportService.dataService.writeCalibrationState.return_value = "expected"
+        dataExportService.exportCalibrationState(mock.Mock(), mock.Mock())
+        assert dataExportService.dataService.writeCalibrationState.called
+
+    def test_initializeState():
+        dataExportService = DataExportService()
+        dataExportService.dataService.initializeState = mock.Mock()
+        dataExportService.dataService.initializeState.return_value = "expected"
+        dataExportService.initializeState(mock.Mock(), mock.Mock())
+        assert dataExportService.dataService.initializeState.called

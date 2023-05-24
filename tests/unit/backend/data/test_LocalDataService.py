@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import unittest.mock as mock
@@ -13,11 +14,140 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
     from snapred.backend.dao.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.data.LocalDataService import LocalDataService  # noqa: E402
 
+    reductionIngredients = None
+    with Resource.open("inputs/calibration/input.json", "r") as file:
+        reductionIngredients = parse_raw_as(ReductionIngredients, file.read())
+
+    def _readInstrumentParameters():
+        instrumentParmaeters = None
+        with Resource.open("inputs/SNAPInstPrm.json", "r") as file:
+            instrumentParmaeters = json.loads(file.read())
+        return instrumentParmaeters
+
+    def _readReductionParameters(runId: str):  # noqa: ARG001
+        reductionParameters = None
+        with Resource.open("inputs/ReductionParameters.json", "r") as file:
+            reductionParameters = json.loads(file.read())
+        reductionParameters["stateId"] = "123"
+        return reductionParameters
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readInstrumentConfig():
+        localDataService = LocalDataService()
+        localDataService._readInstrumentParameters = _readInstrumentParameters
+        actual = localDataService.readInstrumentConfig()
+        assert actual is not None
+        assert actual.version == "1.4"
+        assert actual.name == "SNAP"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readInstrumentParameters():
+        localDataService = LocalDataService()
+        localDataService.instrumentConfigPath = Resource.getPath("inputs/SNAPInstPrm.json")
+        actual = localDataService._readInstrumentParameters()
+        assert actual is not None
+        assert actual["version"] == 1.4
+        assert actual["name"] == "SNAP"
+
+    def getMockInstrumentConfig():
+        instrumentConfig = mock.Mock()
+        instrumentConfig.calibrationDirectory = "test"
+        instrumentConfig.sharedDirectory = "test"
+        instrumentConfig.reducedDataDirectory = "test"
+        instrumentConfig.pixelGroupingDirectory = "test"
+        return instrumentConfig
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readStateConfig():
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        localDataService._readDiffractionCalibrant = mock.Mock()
+        localDataService._readDiffractionCalibrant.return_value = (
+            reductionIngredients.reductionState.stateConfig.diffractionCalibrant
+        )
+        localDataService._readNormalizationCalibrant = mock.Mock()
+        localDataService._readNormalizationCalibrant.return_value = (
+            reductionIngredients.reductionState.stateConfig.normalizationCalibrant
+        )
+        localDataService._readFocusGroups = mock.Mock()
+        localDataService._readFocusGroups.return_value = []
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+
+        actual = localDataService.readStateConfig(mock.Mock())
+        assert actual is not None
+        assert actual.stateId == "123"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readDiffractionCalibrant():
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        reductionParameters = _readReductionParameters("test")
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+        actual = localDataService._readDiffractionCalibrant(mock.Mock())
+        assert actual is not None
+        assert actual.filename == reductionParameters["calFileName"]
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readNormalizationCalibrant():
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        reductionParameters = _readReductionParameters("test")
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+        actual = localDataService._readNormalizationCalibrant(mock.Mock())
+        assert actual is not None
+        assert actual.mask == reductionParameters["VMsk"]
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readFocusGroups():
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        _readReductionParameters("test")
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+        actual = localDataService._readFocusGroups(mock.Mock())
+        assert actual is not None
+        assert len(actual) == 4
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readRunConfig():
+        localDataService = LocalDataService()
+        localDataService._readRunConfig = mock.Mock()
+        localDataService._readRunConfig.return_value = reductionIngredients.runConfig
+        actual = localDataService.readRunConfig(mock.Mock())
+        assert actual is not None
+        assert actual.runNumber == "57514"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__readRunConfig():
+        localDataService = LocalDataService()
+        localDataService._findIPTS = mock.Mock()
+        localDataService._findIPTS.return_value = "IPTS-123"
+        localDataService._readReductionParameters = _readReductionParameters
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+        actual = localDataService._readRunConfig("57514")
+        assert actual is not None
+        assert actual.runNumber == "57514"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__findIPTS():
+        localDataService = LocalDataService()
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+        assert localDataService._findIPTS("57514") is not None
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readPVFile():
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+        actual = localDataService._readPVFile(mock.Mock())
+        assert actual is not None
+        assert actual.filename == "PV_123.dat"
+
     @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
     def test_readCalibrationIndexMissing():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
-        localDataService.stateId = mock.Mock()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
         localDataService._constructCalibrationPath = mock.Mock()
         localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs")
@@ -27,7 +157,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
     def test_writeCalibrationIndexEntry():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
-        localDataService.stateId = mock.Mock()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
         localDataService._constructCalibrationPath = mock.Mock()
         localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs")
@@ -51,7 +182,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
     def test_readCalibrationIndexExisting():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
-        localDataService.stateId = mock.Mock()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
         localDataService._constructCalibrationPath = mock.Mock()
         localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs")
@@ -73,7 +205,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
     def test_readWriteCalibrationRecord():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
-        localDataService.stateId = mock.Mock()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
         localDataService._constructCalibrationPath = mock.Mock()
         localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
@@ -88,7 +221,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
     def test_readWriteCalibrationRecordV2():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
-        localDataService.stateId = mock.Mock()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
         localDataService._constructCalibrationPath = mock.Mock()
         localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")

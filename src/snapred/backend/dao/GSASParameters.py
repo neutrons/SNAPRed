@@ -7,7 +7,7 @@ class GSASParameters(BaseModel):
     alpha: float
     beta: List[float]
 
-    @validator("beta")
+    @validator("beta", allow_reuse=True)
     def validate_beta(cls, v):
         if len(v) != 2:
             raise ValueError("beta must be a list of length 2")

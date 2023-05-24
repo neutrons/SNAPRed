@@ -1,12 +1,9 @@
-from typing import Dict, List
+from typing import Dict
 
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.decorators.Singleton import Singleton
@@ -52,30 +49,8 @@ class DataFactoryService:
     def getStateConfig(self, runId: str) -> StateConfig:  # noqa: ARG002
         return self.lookupService.readStateConfig(runId)
 
-    def loadNexusFile(self, reductionState, deepcopy=True) -> None:
-        # cacheService.get(filepath)
-        # else lookupService.loadFile(filepath);cacheService.put(filepath, data)
-        # if deepcopy: clone workspace
-        raise NotImplementedError("_loadNexusFile() is not implemented")
-
-    def _getDiffractionCalibrant(self, runId) -> DiffractionCalibrant:  # noqa: ARG002
-        raise NotImplementedError("_getDiffractionCalibrant() is not implemented")
-        return DiffractionCalibrant()
-
-    def _getNormalizationCalibrant(self, runId) -> NormalizationCalibrant:  # noqa: ARG002
-        raise NotImplementedError("_getNormalizationCalibrant() is not implemented")
-        return NormalizationCalibrant()
-
-    def _getFocusGroups(self, runId) -> List[FocusGroup]:  # noqa: ARG002
-        raise NotImplementedError("_getFocusGroups() is not implemented")
-        return [FocusGroup()]
-
     def constructStateId(self, runId):
         return self.lookupService._generateStateId(self.getRunConfig(runId))
-
-    def _getGetometricConfig(self, runId) -> None:
-        raise NotImplementedError("_getGetometricConfig() is not implemented")
-        # call additional data service, specify shallow copy
 
     def getCalibrationState(self, runId) -> None:
         return self.lookupService.getCalibrationState(runId)

@@ -21,7 +21,15 @@
       "sharedDirectory": "shared/",
       "nexusDirectory": "nexus/",
       "reducedDataDirectory": "shared/manualReduced/",
-      "reductionRecordDirectory": "shared/manualReduced/reductionRecord/"
+      "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+      "bandwidth": 0.1,
+      "maxBandwidth": 0.2,
+      "L1": 20,
+      "L2": 20,
+      "delTOverT": 0.05,
+      "delLOverL": 0.05,
+      "delThNoGuide": 0.05,
+      "delThWithGuide": 0.05
     },
     "stateConfig": {
       "diffractionCalibrant": {
