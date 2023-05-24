@@ -8,4 +8,4 @@ class Calibration(BaseModel):
     instrumentState: InstrumentState
     seedRun: int
     creationDate: datetime
-    humanReadableName: str
+    name: str

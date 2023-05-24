@@ -76,3 +76,6 @@ class DataFactoryService:
     def _getGetometricConfig(self, runId) -> None:
         raise NotImplementedError("_getGetometricConfig() is not implemented")
         # call additional data service, specify shallow copy
+
+    def getCalibrationState(self, runId) -> None:
+        return self.lookupService.getCalibrationState(runId)

@@ -23,6 +23,16 @@ calibration:
     output:
       extension: .nxs
       format: "{}_calibration_reduction_result"
+  parameters:
+    default:
+      # degrees
+      groupSliceValue: 5
+      alpha: 0.1
+      beta:
+        - 0.02
+        - 0.05
+
+
 
 logging:
   level: 10
