@@ -508,7 +508,7 @@ class LocalDataService:
             instrumentState=instrumentState,
             name=name,
             seedRun=runId,
-            creationDate=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            creationDate=datetime.datetime.now(),
         )
 
         self.writeCalibrationState(runId, calibration)
