@@ -24,6 +24,7 @@ class DataExportService:
 
     def writeCalibrantSampleFile(self, entry: CalibrantSamples):
         self.dataService.writeCalibrantSample(entry)
+
     def exportCalibrationState(self, runId: str, calibration: Calibration):
         return self.dataService.writeCalibrationState(runId, calibration)
 

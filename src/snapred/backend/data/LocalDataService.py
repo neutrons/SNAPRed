@@ -408,7 +408,7 @@ class LocalDataService:
             raise ValueError(f"the file '{filePath}' already exists")
         with open(filePath, "w") as sampleFile:
             sampleFile.write(json.dumps(sample.dict()))
-            
+
     def _isApplicableEntry(self, calibrationIndexEntry, runId):
         if calibrationIndexEntry.appliesTo == runId:
             return True
