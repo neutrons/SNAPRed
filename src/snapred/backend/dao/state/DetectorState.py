@@ -1,18 +1,12 @@
-from typing import List
+from typing import Tuple
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 
 class DetectorState(BaseModel):
-    arc: List[float]
+    arc: Tuple[float, float]
     wav: float
     freq: float
     guideStat: int
     # two additional values that don't define state, but are useful
-    lin: List[float]
-
-    @validator("arc", "lin", allow_reuse=True)
-    def validate_arc(cls, v):
-        if len(v) != 2:
-            raise ValueError("arc and lin require 2 values each")
-        return v
+    lin: Tuple[float, float]
