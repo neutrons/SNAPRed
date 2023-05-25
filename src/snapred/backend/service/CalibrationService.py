@@ -3,6 +3,7 @@ from typing import List
 
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
@@ -26,6 +27,7 @@ class CalibrationService(Service):
     def __init__(self):
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
+        self.registerPath("initializeState", self.initializeState)
         return
 
     def name(self):
@@ -62,3 +64,15 @@ class CalibrationService(Service):
             entry.timestamp = int(round(time.time() * 1000))
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
         self.dataExportService.exportCalibrationIndexEntry(entry)
+
+    @FromString
+    def initializeState(self, request: InitializeStateRequest):
+        return self.dataExportService.initializeState(request.runId, request.humanReadableName)
+
+    @FromString
+    def getState(self, runs: List[RunConfig]):
+        states = []
+        for run in runs:
+            state = self.dataFactoryService.getStateConfig(run.runNumber)
+            states.append(state)
+        return states

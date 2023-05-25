@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 def isListOfBaseModel(annotation):
     # check if list and is a subclass of BaseModel
-    return annotation._name == "List" and issubclass(annotation.__args__[0], BaseModel)
+    return getattr(annotation, "__origin__", None) is list and issubclass(annotation.__args__[0], BaseModel)
 
 
 def isBaseModel(clazz):

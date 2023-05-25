@@ -1,3 +1,4 @@
+import datetime
 import glob
 import hashlib
 import json
@@ -8,13 +9,19 @@ import h5py
 from mantid.api import AlgorithmManager
 from pydantic import parse_file_as
 
+from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.GSASParameters import GSASParameters
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
+from snapred.backend.dao.Limit import Limit
+from snapred.backend.dao.ParticleBounds import ParticleBounds
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
 from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.dao.StateId import StateId
@@ -32,18 +39,20 @@ from snapred.meta.decorators.Singleton import Singleton
 class LocalDataService:
     reductionParameterCache: Dict[str, Any] = {}
     iptsCache: Dict[str, Any] = {}
+    stateIdCache: Dict[str, str] = {}
     dataPath = Config["instrument.home"]
     instrumentConfigPath: str = dataPath + Config["instrument.config"]
     instrumentConfig: InstrumentConfig  # Optional[InstrumentConfig]
-    stateId: str  # Optional[StateId]
 
     def __init__(self) -> None:
         self.instrumentConfig = self.readInstrumentConfig()
 
     def readInstrumentConfig(self) -> InstrumentConfig:
-        # TODO: Read from /SNS/SNAP/shared/Calibration/SNAPInstPrm.json
         instrumentParameterMap = self._readInstrumentParameters()
-
+        instrumentParameterMap["bandwidth"] = instrumentParameterMap.pop("neutronBandwidth")
+        instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
+        instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
+        instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
         instrumentConfig = InstrumentConfig(**instrumentParameterMap)
         if self.dataPath:
             instrumentConfig.calibrationDirectory = self.dataPath + "shared/Calibration/"
@@ -71,11 +80,11 @@ class LocalDataService:
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
             vanadiumFilePath=self.instrumentConfig.calibrationDirectory
             + "Powder/"
-            + self.stateId
+            + reductionParameters["stateId"]
             + "/"
             + reductionParameters["rawVCorrFileName"],
             calibrationMaskFileName=reductionParameters.get("CalibrationMaskFilename"),
-            stateId=self.stateId,
+            stateId=reductionParameters["stateId"],
             tofBin=reductionParameters["tofBin"],
             tofMax=reductionParameters["tofMax"],
             tofMin=reductionParameters["tofMin"],
@@ -93,7 +102,7 @@ class LocalDataService:
             name=reductionParameters.get("CalibrantName"),
             diffCalPath=self.instrumentConfig.calibrationDirectory
             + "Powder/"
-            + self.stateId
+            + reductionParameters["stateId"]
             + "/"
             + reductionParameters["calFileName"],
             latticeParameters=None,  # TODO: missing, reductionParameters['CalibrantLatticeParameters'],
@@ -150,7 +159,6 @@ class LocalDataService:
         # lookup IPST number
         if runId in self.iptsCache:
             path = self.iptsCache[runId]
-
         else:
             algorithm = AlgorithmManager.create("GetIPTS")
             algorithm.setProperty("RunNumber", runId)
@@ -175,8 +183,9 @@ class LocalDataService:
             calibrationState=None,
         )  # TODO: where to find case? "before" "after"
 
-    def _generateStateId(self, runConfig: RunConfig) -> Tuple[Any, Any]:
-        fName: str = (
+    def _constructPVFilePath(self, runId: str):
+        runConfig = self._readRunConfig(runId)
+        return (
             runConfig.IPTS
             + self.instrumentConfig.nexusDirectory
             + "/SNAP_"
@@ -184,10 +193,20 @@ class LocalDataService:
             + self.instrumentConfig.nexusFileExtension
         )
 
+    def _readPVFile(self, runId: str):
+        fName: str = self._constructPVFilePath(runId)
+
         if os.path.exists(fName):
             f = h5py.File(fName, "r")
         else:
             raise FileNotFoundError("File {} does not exist".format(fName))
+        return f
+
+    def _generateStateId(self, runId: str) -> Tuple[Any, Any]:
+        if runId in self.stateIdCache:
+            return self.stateIdCache[runId]
+
+        f = self._readPVFile(runId)
 
         try:
             det_arc1 = f.get("entry/DASlogs/det_arc1/value")[0]
@@ -196,7 +215,7 @@ class LocalDataService:
             freq = f.get("entry/DASlogs/BL3:Det:TH:BL:Frequency/value")[0]
             GuideIn = f.get("entry/DASlogs/BL3:Mot:OpticsPos:Pos/value")[0]
         except:  # noqa: E722
-            raise ValueError("Could not find all required logs in file {}".format(fName))
+            raise ValueError("Could not find all required logs in file {}".format(self._constructPVFilePath(runId)))
 
         stateID = StateId(
             vdet_arc1=det_arc1,
@@ -212,6 +231,7 @@ class LocalDataService:
         hasher.update(decodedKey)
 
         hashedKey = hasher.digest(8).hex()
+        self.stateIdCache[runId] = hashedKey, decodedKey
 
         return hashedKey, decodedKey
 
@@ -225,18 +245,15 @@ class LocalDataService:
 
         return fileList
 
-    def _constructCalibrationPath(self, calibrationRoot, stateId):
-        return calibrationRoot + "Powder/" + stateId + "/"
+    def _constructCalibrationPath(self, stateId):
+        return self.instrumentConfig.calibrationDirectory + "Powder/" + stateId + "/"
 
     def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
         # lookup IPST number
-        runConfig: RunConfig = self._readRunConfig(runId)
         run: int = int(runId)
-        stateId, _ = self._generateStateId(runConfig)
-        # TODO: Statefulness of this service needs to be removed, back practice
-        self.stateId = stateId
+        stateId, _ = self._generateStateId(runId)
 
-        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, stateId)
+        calibrationPath: str = self._constructCalibrationPath(stateId)
         calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"  # noqa: E501
 
         foundFiles = self._findMatchingFileList(calibSearchPattern)
@@ -278,12 +295,13 @@ class LocalDataService:
 
         # Now push data into DAO object
         self.reductionParameterCache[runId] = dictIn
+        dictIn["stateId"] = stateId
         return dictIn
 
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
-        self._readReductionParameters(runId)
-        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        stateId, _ = self._generateStateId(runId)
+        calibrationPath: str = self._constructCalibrationPath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         calibrationIndex: List[CalibrationIndexEntry] = []
         if os.path.exists(indexPath):
@@ -291,8 +309,8 @@ class LocalDataService:
         return calibrationIndex
 
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
-        self._readReductionParameters(entry.runNumber)
-        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        stateId, _ = self._generateStateId(entry.runNumber)
+        calibrationPath: str = self._constructCalibrationPath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         # append to index and write to file
         calibrationIndex = self.readCalibrationIndex(entry.runNumber)
@@ -301,24 +319,47 @@ class LocalDataService:
             indexFile.write(json.dumps([entry.dict() for entry in calibrationIndex]))
 
     def getCalibrationRecordPath(self, runId: str, version: str):
-        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        stateId, _ = self._generateStateId(runId)
+        calibrationPath: str = self._constructCalibrationPath(stateId)
         recordPath: str = calibrationPath + "{}/CalibrationRecord_v{}.json".format(runId, version)
         return recordPath
 
-    def readCalibrationRecord(self, runId: str):
+    def _extractFileVersion(self, file: str):
+        return int(file.split("_v")[-1].split(".json")[0])
+
+    def _getFileOfVersion(self, fileRegex: str, version):
+        foundFiles = self._findMatchingFileList(fileRegex, throws=False)
+        returnFile = None
+        for file in foundFiles:
+            fileVersion = self._extractFileVersion(file)
+            if fileVersion == version:
+                returnFile = file
+                break
+        return returnFile
+
+    def _getLatestFile(self, fileRegex: str):
+        foundFiles = self._findMatchingFileList(fileRegex, throws=False)
+        latestVersion = 0
+        latestFile = None
+        for file in foundFiles:
+            version = self._extractFileVersion(file)
+            if version > latestVersion:
+                latestVersion = version
+                latestFile = file
+        return latestFile
+
+    def readCalibrationRecord(self, runId: str, version: str = None):
         # Need to run this because of its side effect, TODO: Remove side effect
         self._readReductionParameters(runId)
         recordPath: str = self.getCalibrationRecordPath(runId, "*")
         # lookup record by regex
-        foundFiles = self._findMatchingFileList(recordPath, throws=False)
+        self._findMatchingFileList(recordPath, throws=False)
         # find the latest version
-        latestVersion = 0
         latestFile = ""
-        for file in foundFiles:
-            version = int(file.split("_v")[-1].split(".json")[0])
-            if version > latestVersion:
-                latestVersion = version
-                latestFile = file
+        if version:
+            latestFile = self._getFileOfVersion(recordPath, version)
+        else:
+            latestFile = self._getLatestFile(recordPath)
         # read the file
         record: CalibrationRecord = None
         if latestFile:
@@ -326,8 +367,8 @@ class LocalDataService:
         return record
 
     def writeCalibrationRecord(self, record: CalibrationRecord):
-        self._readReductionParameters(record.parameters.runConfig.runNumber)
-        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        stateId, _ = self._generateStateId(record.parameters.runConfig.runNumber)
+        calibrationPath: str = self._constructCalibrationPath(stateId)
         version = 1
         previousCalibration = self.readCalibrationRecord(record.parameters.runConfig.runNumber)
         if previousCalibration:
@@ -344,8 +385,8 @@ class LocalDataService:
 
     def writeCalibrationReductionResult(self, runId: str, workspaceName: str):
         # use mantid to write workspace to file
-        self._readReductionParameters(runId)
-        calibrationPath: str = self._constructCalibrationPath(self.instrumentConfig.calibrationDirectory, self.stateId)
+        stateId, _ = self._generateStateId(runId)
+        calibrationPath: str = self._constructCalibrationPath(stateId)
         filenameFormat = calibrationPath + "{}/".format(runId) + workspaceName + "_v{}.nxs"
         # find total number of files
         foundFiles = self._findMatchingFileList(filenameFormat.format("*"), throws=False)
@@ -367,3 +408,109 @@ class LocalDataService:
             raise ValueError(f"the file '{filePath}' already exists")
         with open(filePath, "w") as sampleFile:
             sampleFile.write(json.dumps(sample.dict()))
+
+    def _isApplicableEntry(self, calibrationIndexEntry, runId):
+        if calibrationIndexEntry.appliesTo == runId:
+            return True
+        if calibrationIndexEntry.appliesTo.startswith(">"):
+            # get latest entry that applies to a runId greater than this runId
+            if int(runId) > int(calibrationIndexEntry.appliesTo[1:]):
+                return True
+        if calibrationIndexEntry.appliesTo.startswith("<"):
+            # get latest entry that applies to a runId less than this runId
+            if int(runId) < int(calibrationIndexEntry.appliesTo[1:]):
+                return True
+        return False
+
+    def _getVersionFromCalibrationIndex(self, runId: str):
+        # lookup calibration index
+        calibrationIndex = self.readCalibrationIndex(runId)
+        # From the index find the latest calibration
+        latestCalibration = None
+        version = None
+        if calibrationIndex:
+            # sort by timestamp
+            calibrationIndex.sort(key=lambda x: x.timestamp)
+            # filter for latest applicable
+            relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runId), calibrationIndex))
+            if len(relevantEntries) < 1:
+                raise ValueError("No applicable calibration index entries found for runId {}".format(runId))
+            latestCalibration = relevantEntries[-1]
+            version = latestCalibration.version
+        return version
+
+    def _getCurrentCalibrationRecord(self, runId: str):
+        version = self._getVersionFromCalibrationIndex(runId)
+        return self.readCalibrationRecord(runId, version)
+
+    def readCalibrationState(self, runId: str):
+        # get stateId and check to see if such a folder exists, if not create an initialize it
+        stateId, _ = self._generateStateId(runId)
+        calibrationPath: str = self._constructCalibrationPath(stateId)
+        calibrationState = None
+        if os.path.exists(calibrationPath):
+            # check for the existenece of a calibration parameters file
+            calibrationParametersPath = calibrationPath + "CalibrationParameters.json"
+            if os.path.exists(calibrationParametersPath):
+                # read the file and return the calibration state
+                calibrationState = parse_file_as(Calibration, calibrationParametersPath)
+        else:
+            os.makedirs(calibrationPath)
+
+        return calibrationState
+
+    def writeCalibrationState(self, runId: str, calibration: Calibration):
+        # get stateId and check to see if such a folder exists, if not create an initialize it
+        stateId, _ = self._generateStateId(runId)
+        calibrationPath: str = self._constructCalibrationPath(stateId)
+        # check for the existenece of a calibration parameters file
+        calibrationParametersPath = calibrationPath + "CalibrationParameters.json"
+        if not os.path.exists(calibrationPath):
+            os.makedirs(calibrationPath)
+        # write the file and return the calibration state
+        with open(calibrationParametersPath, "w") as calibrationParametersFile:
+            calibrationParametersFile.write(calibration.json())
+
+    def initializeState(self, runId: str, name: str = None):
+        # pull pv data similar to how we generate stateId
+        pvFile = self._readPVFile(runId)
+        detectorState = DetectorState(
+            arc=[pvFile.get("entry/DASlogs/det_arc1/value")[0], pvFile.get("entry/DASlogs/det_arc2/value")[0]],
+            wav=pvFile.get("entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value")[0],
+            freq=pvFile.get("entry/DASlogs/BL3:Det:TH:BL:Frequency/value")[0],
+            guideStat=pvFile.get("entry/DASlogs/BL3:Mot:OpticsPos:Pos/value")[0],
+            lin=[pvFile.get("entry/DASlogs/det_lin1/value")[0], pvFile.get("entry/DASlogs/det_lin2/value")[0]],
+        )
+        # then read data from the common calibration state parameters stored at root of calibration directory
+        instrumentConfig = self.readInstrumentConfig()
+        # then pull static values specified by malcolm from resources
+        defaultGroupSliceValue = Config["calibration.parameters.default.groupSliceValue"]
+        gsasParameters = GSASParameters(
+            alpha=Config["calibration.parameters.default.alpha"], beta=Config["calibration.parameters.default.beta"]
+        )
+        # then calculate the derived values
+        lambdaLimit = Limit(
+            minimum=detectorState.wav - (instrumentConfig.bandwidth / 2),
+            maximum=detectorState.wav + (instrumentConfig.bandwidth / 2),
+        )
+        L = instrumentConfig.L1 + instrumentConfig.L2
+        tofLimit = Limit(minimum=lambdaLimit.minimum * L / 3.9561e-3, maximum=lambdaLimit.maximum * L / 3.9561e-3)
+        particleBounds = ParticleBounds(wavelength=lambdaLimit, tof=tofLimit)
+        # finally add seedRun, creation date, and a human readable name
+        instrumentState = InstrumentState(
+            instrumentConfig=instrumentConfig,
+            detectorState=detectorState,
+            gsasParameters=gsasParameters,
+            particleBounds=particleBounds,
+            defaultGroupingSliceValue=defaultGroupSliceValue,
+        )
+
+        calibration = Calibration(
+            instrumentState=instrumentState,
+            name=name,
+            seedRun=runId,
+            creationDate=datetime.datetime.now(),
+        )
+
+        self.writeCalibrationState(runId, calibration)
+        return calibration

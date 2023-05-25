@@ -1,3 +1,4 @@
+from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -23,3 +24,9 @@ class DataExportService:
 
     def writeCalibrantSampleFile(self, entry: CalibrantSamples):
         self.dataService.writeCalibrantSample(entry)
+
+    def exportCalibrationState(self, runId: str, calibration: Calibration):
+        return self.dataService.writeCalibrationState(runId, calibration)
+
+    def initializeState(self, runId: str, name: str):
+        return self.dataService.initializeState(runId, name)
