@@ -15,3 +15,4 @@ class DetectorState(BaseModel):
     def validate_arc(cls, v):
         if len(v) != 2:
             raise ValueError("arc and lin require 2 values each")
+        return v

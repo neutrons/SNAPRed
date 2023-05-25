@@ -414,12 +414,13 @@ class LocalDataService:
             return True
         if calibrationIndexEntry.appliesTo.startswith(">"):
             # get latest entry that applies to a runId greater than this runId
-            if int(calibrationIndexEntry.appliesTo[1:]) > int(runId):
+            if int(runId) > int(calibrationIndexEntry.appliesTo[1:]):
                 return True
         if calibrationIndexEntry.appliesTo.startswith("<"):
             # get latest entry that applies to a runId less than this runId
-            if int(calibrationIndexEntry.appliesTo[1:]) < int(runId):
+            if int(runId) < int(calibrationIndexEntry.appliesTo[1:]):
                 return True
+        return False
 
     def _getVersionFromCalibrationIndex(self, runId: str):
         # lookup calibration index
@@ -489,8 +490,8 @@ class LocalDataService:
         )
         # then calculate the derived values
         lambdaLimit = Limit(
-            minimum=detectorState.wavelength - (instrumentConfig.bandwidth / 2),
-            maximum=detectorState.wavelength + (instrumentConfig.bandwidth / 2),
+            minimum=detectorState.wav - (instrumentConfig.bandwidth / 2),
+            maximum=detectorState.wav + (instrumentConfig.bandwidth / 2),
         )
         L = instrumentConfig.L1 + instrumentConfig.L2
         tofLimit = Limit(minimum=lambdaLimit.minimum * L / 3.9561e-3, maximum=lambdaLimit.maximum * L / 3.9561e-3)

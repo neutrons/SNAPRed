@@ -8,7 +8,8 @@ from pydantic import parse_raw_as
 from snapred.meta.Config import Resource
 
 # Mock out of scope modules before importing DataExportService
-with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
+with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Mock()}):
+    from snapred.backend.dao.calibration.Calibration import Calibration  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
     from snapred.backend.dao.ReductionIngredients import ReductionIngredients  # noqa: E402
@@ -138,9 +139,30 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         localDataService = LocalDataService()
         localDataService._readReductionParameters = _readReductionParameters
         localDataService.instrumentConfig = getMockInstrumentConfig()
+        localDataService._constructPVFilePath = mock.Mock()
+        localDataService._constructPVFilePath.return_value = Resource.getPath("./")
         actual = localDataService._readPVFile(mock.Mock())
         assert actual is not None
-        assert actual.filename == "PV_123.dat"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__generateStateId():
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        localDataService._readPVFile = mock.Mock()
+        fileMock = mock.Mock()
+        localDataService._readPVFile.return_value = fileMock
+        fileMock.get.side_effect = [[0.1], [0.1], [0.1], [0.1], [1]]
+        actual, _ = localDataService._generateStateId(mock.Mock())
+        assert actual == "9618b936a4419a6e"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__findMatchingFileList():
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+        actual = localDataService._findMatchingFileList(Resource.getPath("inputs/SNAPInstPrm.json"), False)
+        assert actual is not None
+        assert len(actual) == 1
 
     @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
     def test_readCalibrationIndexMissing():
@@ -232,3 +254,142 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         shutil.rmtree(Resource.getPath("outputs/57514"))
 
         assert actualRecord.parameters.runConfig.runNumber == "57514"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_getCalibrationRecordPath():
+        localDataService = LocalDataService()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
+        localDataService._constructCalibrationPath = mock.Mock()
+        localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
+        actualPath = localDataService.getCalibrationRecordPath("57514", 1)
+
+        assert actualPath == Resource.getPath("outputs/57514") + "/CalibrationRecord_v1.json"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_extractFileVersion():
+        localDataService = LocalDataService()
+        actualVersion = localDataService._extractFileVersion("CalibrationRecord_v1.json")
+        assert actualVersion == 1
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__getFileOfVersion():
+        localDataService = LocalDataService()
+        localDataService._findMatchingFileList = mock.Mock()
+        localDataService._findMatchingFileList.return_value = ["CalibrationRecord_v1.json"]
+        actualFile = localDataService._getFileOfVersion("CalibrationRecord", 1)
+        assert actualFile == "CalibrationRecord_v1.json"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__getLatestFile():
+        localDataService = LocalDataService()
+        localDataService._findMatchingFileList = mock.Mock()
+        localDataService._findMatchingFileList.return_value = ["CalibrationRecord_v1.json"]
+        actualFile = localDataService._getLatestFile("CalibrationRecord")
+        assert actualFile == "CalibrationRecord_v1.json"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_writeCalibrationReductionResult():
+        import mantid.api
+
+        mantid.api = mock.Mock()
+        mantid.api.AlgorithmManager = mock.Mock()
+        mantid.api.AlgorithmManager.create = mock.Mock()
+        with mock.patch.dict("sys.modules", {"mantid.api": mantid.api}):
+            from snapred.backend.data.LocalDataService import LocalDataService as LocalDataService2
+
+            with mock.patch.object(LocalDataService2, "__init__", lambda x: None):  # noqa: PT008, ARG005
+                localDataService = LocalDataService2()
+                localDataService._generateStateId = mock.Mock()
+                localDataService._generateStateId.return_value = ("123", "456")
+                localDataService._constructCalibrationPath = mock.Mock()
+                localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
+
+                localDataService.writeCalibrationReductionResult("123", "ws")
+
+                assert mantid.api.AlgorithmManager.create.called
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__isApplicableEntry_equals():
+        localDataService = LocalDataService()
+        entry = mock.Mock()
+        entry.appliesTo = "123"
+        assert localDataService._isApplicableEntry(entry, "123")
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__isApplicableEntry_greaterThan():
+        localDataService = LocalDataService()
+        entry = mock.Mock()
+        entry.appliesTo = ">123"
+        assert localDataService._isApplicableEntry(entry, "456")
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__isApplicableEntry_lessThan():
+        localDataService = LocalDataService()
+        entry = mock.Mock()
+        entry.appliesTo = "<123"
+        assert localDataService._isApplicableEntry(entry, "99")
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__getVersionFromCalibrationIndex():
+        localDataService = LocalDataService()
+        localDataService.readCalibrationIndex = mock.Mock()
+        localDataService.readCalibrationIndex.return_value = [mock.Mock()]
+        localDataService.readCalibrationIndex.return_value[0] = CalibrationIndexEntry(
+            timestamp=123, version=1, appliesTo="123", runNumber="123", comments="", author=""
+        )
+        actualVersion = localDataService._getVersionFromCalibrationIndex("123")
+        assert actualVersion == "1"
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test__getCurrentCalibrationRecord():
+        localDataService = LocalDataService()
+        localDataService._getVersionFromCalibrationIndex = mock.Mock()
+        localDataService._getVersionFromCalibrationIndex.return_value = "1"
+        localDataService.readCalibrationRecord = mock.Mock()
+        mockRecord = mock.Mock()
+        localDataService.readCalibrationRecord.return_value = mockRecord
+        actualRecord = localDataService._getCurrentCalibrationRecord("123")
+        assert actualRecord == mockRecord
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_readCalibrationState():
+        localDataService = LocalDataService()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
+        localDataService._constructCalibrationPath = mock.Mock()
+        localDataService._constructCalibrationPath.return_value = Resource.getPath("inputs/calibration/")
+        localDataService._getCurrentCalibrationRecord = mock.Mock()
+        localDataService._getCurrentCalibrationRecord.return_value = CalibrationRecord(
+            parameters=readReductionIngredientsFromFile()
+        )
+        actualState = localDataService.readCalibrationState("123")
+        assert actualState == Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_writeCalibrationState():
+        localDataService = LocalDataService()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
+        localDataService._constructCalibrationPath = mock.Mock()
+        localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/123/")
+        localDataService._getCurrentCalibrationRecord = mock.Mock()
+        localDataService._getCurrentCalibrationRecord.return_value = Calibration.construct({"name": "test"})
+        localDataService.writeCalibrationState("123", readReductionIngredientsFromFile())
+        assert os.path.exists(Resource.getPath("outputs/123/CalibrationParameters.json"))
+        shutil.rmtree(Resource.getPath("outputs/123"))
+
+    @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
+    def test_initializeState():
+        localDataService = LocalDataService()
+        localDataService._readPVFile = mock.Mock()
+        pvFileMock = mock.Mock()
+        pvFileMock.get.side_effect = [[1], [2], [1.1], [1.2], [1], [1], [2]]
+        localDataService._readPVFile.return_value = pvFileMock
+        testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        localDataService.readInstrumentConfig = mock.Mock()
+        localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
+        localDataService.writeCalibrationState = mock.Mock()
+        actual = localDataService.initializeState("123", "test")
+        actual.creationDate = testCalibrationData.creationDate
+        assert actual == testCalibrationData
