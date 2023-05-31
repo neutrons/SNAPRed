@@ -7,11 +7,16 @@ from snapred.meta.Config import Config
 
 class Service(ABC):
     _pathDelimiter = Config["orchestration.path.delimiter"]
-    _paths: Dict[str, Any] = {}
+
+    def __init__(self):
+        self._paths: Dict[str, Any] = {}
 
     @abstractmethod
     def name(self):
         pass
+
+    def getPaths(self):
+        return self._paths
 
     def registerPath(self, path, route):
         self._paths[path] = route
@@ -27,4 +32,5 @@ class Service(ABC):
         if route is None:
             raise ValueError("Path not found: " + path)
 
-        return route(request.payload)
+        retValue = route(request.payload) if request.payload is not None else route()
+        return retValue

@@ -1,3 +1,4 @@
+import functools
 import inspect
 import json
 from typing import List
@@ -16,6 +17,7 @@ def isBaseModel(clazz):
 
 # only works on postional args for now
 def FromString(func):
+    @functools.wraps(func)
     def inner(*args, **kwargs):
         """
         do operations with func
