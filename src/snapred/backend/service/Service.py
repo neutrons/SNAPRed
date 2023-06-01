@@ -22,6 +22,8 @@ class Service(ABC):
         self._paths[path] = route
 
     def parsePath(self, path):
+        if path.startswith(self._pathDelimiter):
+            path = path[1:]
         values = path.split(self._pathDelimiter)
         return values[1] if len(values) > 1 else ""
 
