@@ -51,3 +51,4 @@ with mock.patch.dict(
         purgeAlgo.setProperty("FocusGroups", json.dumps([focusGroup.dict() for focusGroup in focusGroups]))
         purgeAlgo.setProperty("PeakList", json.dumps(peakList.d))
         purgeAlgo.execute()
+        purgeAlgo.getProperty("OutputPeakMap").value

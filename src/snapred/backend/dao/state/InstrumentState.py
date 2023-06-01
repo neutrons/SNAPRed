@@ -17,4 +17,4 @@ class InstrumentState(BaseModel):
     particleBounds: ParticleBounds
     pixelGroupingInstrumentState: List[PixelGroupingInstrumentState]
     defaultGroupingSliceValue: float
-    FWHMMultiplierLimit: Limit[float]
+    fwhmMultiplierLimit: Limit[float]

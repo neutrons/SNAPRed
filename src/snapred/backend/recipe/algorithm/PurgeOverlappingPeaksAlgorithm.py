@@ -1,3 +1,4 @@
+import json
 from typing import List
 
 import numpy as np
@@ -23,11 +24,11 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
     def PyExec(self):
         instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
         focusGroups = parse_raw_as(List[FocusGroup], self.getProperty("FocusGroups").value)
-        inputPeakList = self.getProperty("PeakList").value
+        inputPeakList = json.loads(self.getProperty("PeakList").value)
         beta_0 = instrumentState.gsasParameters.beta[0]
         beta_1 = instrumentState.gsasParameters.beta[1]
-        FWHMMultiplierLeft = instrumentState.FWHMMultiplierLimit.minimum
-        FWHMMultiplierRight = instrumentState.FWHMMultiplierLimit.maximum
+        FWHMMultiplierLeft = instrumentState.fwhmMultiplierLimit.minimum
+        FWHMMultiplierRight = instrumentState.fwhmMultiplierLimit.maximum
         L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
 
         outputPeaks = {}
@@ -64,7 +65,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             self.log().notice(f" {nPks} peaks in and {len(outputPeakList)} peaks out")
             outputPeaks[focGroup.name] = outputPeakList
 
-        self.setProperty("OutputPeakMap", outputPeaks)
+        self.setProperty("OutputPeakMap", json.dumps(outputPeaks))
 
         return outputPeaks
 

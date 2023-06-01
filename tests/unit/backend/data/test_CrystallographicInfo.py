@@ -39,7 +39,7 @@ with mock.patch.dict(
         assert hkl == crystalInfo.hkl
         assert len(crystalInfo.hkl) == len(crystalInfo.fSquared)
         assert len(crystalInfo.hkl) == len(crystalInfo.multiplicities)
-        assert len(crystalInfo.hkl) == len(crystalInfo.d)
+        assert len(crystalInfo.hkl) == len(crystalInfo.dSpacing)
 
     def test_failed_create():
         """Test of Failing Crystallographic DAO"""

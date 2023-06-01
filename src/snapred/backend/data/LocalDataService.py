@@ -507,7 +507,7 @@ class LocalDataService:
             gsasParameters=gsasParameters,
             particleBounds=particleBounds,
             defaultGroupingSliceValue=defaultGroupSliceValue,
-            FWHMMultiplierLimit=fwhmMultiplier,
+            fwhmMultiplierLimit=fwhmMultiplier,
         )
 
         calibration = Calibration(
