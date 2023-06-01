@@ -1,9 +1,9 @@
 from typing import List
 
 import numpy as np
-from mantid.api import PythonAlgorithm
+from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
-from pydantic import parse_raw
+from pydantic import parse_raw_as
 
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
@@ -15,14 +15,14 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
-        self.declareProperty("FocusGroups", defaultValue=[], direction=Direction.Input)
-        self.declareProperty("PeakList", defaultValue=[], direction=Direction.Input)
-        self.declareProperty("OutputPeakMap", defaultValue=[], direction=Direction.Output)
+        self.declareProperty("FocusGroups", defaultValue="", direction=Direction.Input)
+        self.declareProperty("PeakList", defaultValue="", direction=Direction.Input)
+        self.declareProperty("OutputPeakMap", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
 
     def PyExec(self):
         instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
-        focusGroups = parse_raw(List[FocusGroup], self.getProperty("FocusGroups").value)
+        focusGroups = parse_raw_as(List[FocusGroup], self.getProperty("FocusGroups").value)
         inputPeakList = self.getProperty("PeakList").value
         beta_0 = instrumentState.gsasParameters.beta[0]
         beta_1 = instrumentState.gsasParameters.beta[1]
@@ -67,3 +67,6 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         self.setProperty("OutputPeakMap", outputPeaks)
 
         return outputPeaks
+
+
+AlgorithmFactory.subscribe(PurgeOverlappingPeaksAlgorithm)
