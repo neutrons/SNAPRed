@@ -1,13 +1,9 @@
-from typing import List
-
 from pydantic import BaseModel
 
 from snapred.backend.dao.GSASParameters import GSASParameters
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.ParticleBounds import ParticleBounds
 from snapred.backend.dao.state.DetectorState import DetectorState
-from snapred.backend.dao.state.PixelGroupingInstrumentState import PixelGroupingInstrumentState
 
 
 class InstrumentState(BaseModel):
@@ -15,6 +11,4 @@ class InstrumentState(BaseModel):
     detectorState: DetectorState
     gsasParameters: GSASParameters
     particleBounds: ParticleBounds
-    pixelGroupingInstrumentState: List[PixelGroupingInstrumentState]
     defaultGroupingSliceValue: float
-    FWHMMultiplierLimit: Limit[float]
