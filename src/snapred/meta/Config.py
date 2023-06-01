@@ -36,6 +36,10 @@ class _Resource:
     def getPath(self, subPath):
         return self._resourcesPath + subPath
 
+    def read(self, subPath):
+        with self.open(subPath, "r") as file:
+            return file.read()
+
     def open(self, subPath, mode):  # noqa: A003
         if self._packageMode:
             with resources.path("snapred.resources", subPath) as path:

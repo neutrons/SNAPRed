@@ -26,14 +26,14 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         inputPeakList = self.getProperty("PeakList").value
         beta_0 = instrumentState.gsasParameters.beta[0]
         beta_1 = instrumentState.gsasParameters.beta[1]
-        delDoD = instrumentState.pixelGroupingInstrumentState.delta_dhkl_over_dhkl
-        tTheta = instrumentState.pixelGroupingInstrumentState.twoThetaAverage
         FWHMMultiplierLeft = instrumentState.FWHMMultiplierLimit.minimum
         FWHMMultiplierRight = instrumentState.FWHMMultiplierLimit.maximum
         L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
 
         outputPeaks = {}
-        for focGroup in focusGroups:
+        for focIndex, focGroup in enumerate(focusGroups):
+            delDoD = instrumentState.pixelGroupingInstrumentState[focIndex].delta_dhkl_over_dhkl
+            tTheta = instrumentState.pixelGroupingInstrumentState[focIndex].twoThetaAverage
             nPks = len(inputPeakList)
 
             keep = [True for i in range(nPks)]
