@@ -17,3 +17,4 @@ with mock.patch.dict(
         assert serviceDirectory.get("mockService", None) == mockService
         assert serviceDirectory.asDict()["mockService"] == mockService
         assert serviceDirectory.keys() == serviceDirectory.asDict().keys()
+        assert mockService.name() == "mockService"
