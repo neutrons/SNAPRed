@@ -16,6 +16,7 @@ class ConfigLookupService(Service):
 
     # register the service in ServiceFactory
     def __init__(self):
+        super().__init__()
         self.registerPath("", self.getConfigs)
         return
 

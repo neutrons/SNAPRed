@@ -25,6 +25,7 @@ class CalibrationService(Service):
 
     # register the service in ServiceFactory please!
     def __init__(self):
+        super().__init__()
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
         self.registerPath("initializeState", self.initializeState)

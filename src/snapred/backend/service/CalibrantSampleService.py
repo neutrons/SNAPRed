@@ -11,6 +11,7 @@ class CalibrantSampleService(Service):
     dataExportService = DataExportService()
 
     def __init__(self):
+        super().__init__()
         self.registerPath("save_sample", self.save_sample)
         return
 
