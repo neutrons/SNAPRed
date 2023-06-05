@@ -41,7 +41,7 @@ class CrystallographicInfoRecipe:
         # this uses the median of lowest 1% of intensities
 
         # intensity is fsq times multiplicities
-        I0 = [ff * mm for ff, mm in zip(xtal.fSquared, xtal.multiplicities)]
+        I0 = [ff * mm * (dd**4) for ff, mm, dd in zip(xtal.fSquared, xtal.multiplicities, xtal.d)]
         I0.sort()
 
         # take lowest one percent
