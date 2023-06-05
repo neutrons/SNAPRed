@@ -14,6 +14,7 @@ class CrystallographicInfoService(Service):
 
     # register the service in ServiceFactory please!
     def __init__(self):
+        super().__init__()
         self.registerPath("", self.ingest)
         return
 
