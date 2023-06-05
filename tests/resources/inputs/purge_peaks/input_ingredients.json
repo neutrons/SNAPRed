@@ -1,0 +1,199 @@
+{
+  "runConfig": {
+    "runNumber": "57514",
+    "IPTS": "/SNS/SNAP/IPTS-28913/",
+    "maskFileName": "",
+    "maskFileDirectory": "/SNS/SNAP/IPTS-28913/shared/",
+    "gsasFileDirectory": "/SNS/SNAP/IPTS-28913/shared/manualReduced/",
+    "calibrationState": null
+  },
+  "reductionState": {
+    "instrumentConfig": {
+      "version": "1.4",
+      "facility": "SNS",
+      "name": "SNAP",
+      "nexusFileExtension": ".nxs.h5",
+      "nexusFilePrefix": "SNAP_",
+      "calibrationFileExtension": "json",
+      "calibrationFilePrefix": "SNAPcalibLog",
+      "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+      "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+      "sharedDirectory": "shared/",
+      "nexusDirectory": "nexus/",
+      "reducedDataDirectory": "shared/manualReduced/",
+      "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+      "bandwidth": 0.1,
+      "maxBandwidth": 0.2,
+      "L1": 20,
+      "L2": 20,
+      "delTOverT": 0.05,
+      "delLOverL": 0.05,
+      "delThNoGuide": 0.05,
+      "delThWithGuide": 0.05
+    },
+    "stateConfig": {
+      "diffractionCalibrant": {
+        "runNumber": "57514",
+        "filename": "SNAP057514_calib_geom_20230324.lite.h5",
+        "diffCalPath": "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/SNAP057514_calib_geom_20230324.lite.h5",
+        "name": null,
+        "latticeParameters": null,
+        "reference": null
+      },
+      "emptyInstrumentRunNumber": 57472,
+      "normalizationCalibrant": {
+        "numAnnuli": 10,
+        "numSlices": null,
+        "attenuationCrossSection": 5.08,
+        "attenuationHeight": 0.3,
+        "geometry": null,
+        "FWHM": [
+          [
+            5,
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            5
+          ],
+          [
+            5,
+            5
+          ]
+        ],
+        "mask": "",
+        "material": null,
+        "peaks": [
+          1.2356,
+          1.5133,
+          2.1401
+        ],
+        "radius": 0.15,
+        "sampleNumberDensity": 0.07188,
+        "scatteringCrossSection": 5.1,
+        "smoothPoints": 40,
+        "calibrationState": null
+      },
+      "geometryCalibrationFileName": null,
+      "calibrationAuthor": "Malcolm",
+      "calibrationDate": "20230324",
+      "focusGroups": [
+        {
+          "name": "Column",
+          "FWHM": [
+            5,
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          "nHst": 6,
+          "dBin": [
+            -0.00086,
+            -0.00096,
+            -0.0013,
+            -0.00117,
+            -0.00147,
+            -0.00186
+          ],
+          "dMax": [
+            2.1261415013281812,
+            2.340420726130363,
+            2.6640996245053588,
+            2.8052040400631646,
+            3.3902702046709625,
+            4.39474422286145
+          ],
+          "dMin": [
+            0.2873164190984029,
+            0.31627307109869773,
+            0.36001346277099444,
+            0.3790816270355628,
+            0.4581446222528327,
+            0.5938843544407365
+          ],
+          "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
+        },
+        {
+          "name": "Bank",
+          "FWHM": [
+            5,
+            5
+          ],
+          "nHst": 2,
+          "dBin": [
+            -0.001,
+            -0.001
+          ],
+          "dMax": [
+            2.74,
+            4.9
+          ],
+          "dMin": [
+            0.65,
+            0.65
+          ],
+          "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Bank.lite.xml"
+        },
+        {
+          "name": "All",
+          "FWHM": [
+            5
+          ],
+          "nHst": 1,
+          "dBin": [
+            -0.0008
+          ],
+          "dMax": [
+            4.9
+          ],
+          "dMin": [
+            0.65
+          ],
+          "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_All.lite.xml"
+        },
+        {
+          "name": "Mid",
+          "FWHM": [
+            5,
+            5
+          ],
+          "nHst": 2,
+          "dBin": [
+            -0.001,
+            -0.001
+          ],
+          "dMax": [
+            2.75,
+            3.73
+          ],
+          "dMin": [
+            0.65,
+            0.65
+          ],
+          "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Mid.lite.xml"
+        }
+      ],
+      "isLiteMode": true,
+      "rawVanadiumCorrectionFileName": "RVMB57473.lite.nxs",
+      "vanadiumFilePath": "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/RVMB57473.lite.nxs",
+      "calibrationMaskFileName": null,
+      "stateId": "04bd2c53f6bf6754",
+      "tofBin": 10,
+      "tofMax": 14600,
+      "tofMin": 2300,
+      "version": "1.4",
+      "wallclockTof": 60,
+      "temporalProximity": null
+    },
+    "overrides": null
+  }
+}

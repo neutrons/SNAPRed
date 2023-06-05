@@ -20,35 +20,37 @@ with mock.patch.dict(
     def test_init():
         """Test ability to initialize purge overlapping peaks algo"""
         instrumentState = Calibration.parse_raw(
-            Resource.read("/inputs/calibration/CalibrationParameters.json")
+            Resource.read("/inputs/purge_peaks/input_parameters.json")
         ).instrumentState
         focusGroups = ReductionIngredients.parse_raw(
-            Resource.read("/inputs/calibration/input.json")
+            Resource.read("/inputs/purge_peaks/input_ingredients.json")
         ).reductionState.stateConfig.focusGroups
-        peakList = CrystallographicInfo.parse_raw(Resource.read("/outputs/crystalinfo/output.json"))
+        crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
         purgeAlgo = PurgeOverlappingPeaksAlgorithm()
         purgeAlgo.initialize()
         purgeAlgo.setProperty("InstrumentState", instrumentState.json())
         purgeAlgo.setProperty("FocusGroups", json.dumps([focusGroup.json() for focusGroup in focusGroups]))
-        purgeAlgo.setProperty("PeakList", json.dumps(peakList.d))
+        purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
         assert purgeAlgo.getProperty("InstrumentState").value == instrumentState.json()
         assert purgeAlgo.getProperty("FocusGroups").value == json.dumps(
             [focusGroup.json() for focusGroup in focusGroups]
         )
-        assert purgeAlgo.getProperty("PeakList").value == json.dumps(peakList.d)
+        assert CrystallographicInfo.parse_raw(purgeAlgo.getProperty("CrystalInfo").value) == crystalInfo
 
     def test_execute():
         instrumentState = Calibration.parse_raw(
-            Resource.read("/inputs/calibration/CalibrationParameters.json")
+            Resource.read("/inputs/purge_peaks/input_parameters.json")
         ).instrumentState
         focusGroups = ReductionIngredients.parse_raw(
-            Resource.read("/inputs/calibration/input.json")
+            Resource.read("/inputs/purge_peaks/input_ingredients.json")
         ).reductionState.stateConfig.focusGroups
-        peakList = CrystallographicInfo.parse_raw(Resource.read("/outputs/crystalinfo/output.json"))
+        crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
         purgeAlgo = PurgeOverlappingPeaksAlgorithm()
         purgeAlgo.initialize()
         purgeAlgo.setProperty("InstrumentState", instrumentState.json())
         purgeAlgo.setProperty("FocusGroups", json.dumps([focusGroup.dict() for focusGroup in focusGroups]))
-        purgeAlgo.setProperty("PeakList", json.dumps(peakList.d))
+        purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
         purgeAlgo.execute()
-        purgeAlgo.getProperty("OutputPeakMap").value
+        expected = json.loads(Resource.read("/outputs/purge_peaks/output.json"))
+        actual = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
+        assert expected["Column"] == actual["Column"]
