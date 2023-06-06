@@ -44,7 +44,7 @@ with mock.patch.dict(
         except Exception:  # noqa: BLE001
             pytest.fail("valid file failed to open")
         else:
-            assert xtalInfo["hkl"][0] == [1, 1, 1]
-            assert xtalInfo["hkl"][5] == [4, 0, 0]
-            assert xtalInfo["d"][0] == 3.13592994862768
-            assert xtalInfo["d"][4] == 1.0453099828758932
+            assert xtalInfo["peaks"][0]["hkl"] == [1, 1, 1]
+            assert xtalInfo["peaks"][5]["hkl"] == [4, 0, 0]
+            assert xtalInfo["peaks"][0]["d"] == 3.13592994862768
+            assert xtalInfo["peaks"][4]["d"] == 1.0453099828758932

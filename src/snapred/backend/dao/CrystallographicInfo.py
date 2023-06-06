@@ -27,12 +27,21 @@ class CrystallographicInfo(BaseModel):
         return [p.multiplicity for p in self.peaks]
 
     def __init__(
-        self, hkl: List[Tuple[int, int, int]], d: List[float], fSquared: List[float], multiplicities: List[int]
+        self,
+        hkl: List[Tuple[int, int, int]] = None,
+        d: List[float] = None,
+        fSquared: List[float] = None,
+        multiplicities: List[int] = None,
+        peaks=[],
     ):
+        if peaks != []:
+            super().__init__(peaks=peaks)
+            return
         if len(fSquared) != len(hkl):
             raise ValueError("Structure factors and hkl required to have same length")
         if len(multiplicities) != len(hkl):
             raise ValueError("Multiplicities and hkl required to have same length")
+
         if len(d) != len(hkl):
             raise ValueError("Spacings and hkl required to have same length")
         peaks = [
