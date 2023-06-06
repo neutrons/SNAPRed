@@ -36,6 +36,7 @@ with mock.patch.dict(
 
         assert crystalInfo is not None
         assert mock_pg_equivs == crystalInfo.multiplicities
+        assert hkl == crystalInfo.hkl
         assert len(crystalInfo.hkl) == len(crystalInfo.fSquared)
         assert len(crystalInfo.hkl) == len(crystalInfo.multiplicities)
         assert len(crystalInfo.hkl) == len(crystalInfo.d)

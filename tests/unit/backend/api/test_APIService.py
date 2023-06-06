@@ -6,11 +6,19 @@ with mock.patch.dict(
     "sys.modules",
     {"snapred.backend.data.DataExportService": mock.Mock(), "snapred.backend.data.DataFactoryService": mock.Mock()},
 ):
-    from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+    from typing import List
+
+    from pydantic import BaseModel
     from snapred.backend.service.ApiService import ApiService
     from snapred.backend.service.Service import Service
     from snapred.backend.service.ServiceDirectory import ServiceDirectory
     from snapred.meta.Config import Resource
+
+    class MockObject(BaseModel):
+        m_list: List[float]
+        m_float: float
+        m_int: int
+        m_string: str
 
     class MockService(Service):
         _name = "mockService"
@@ -23,8 +31,8 @@ with mock.patch.dict(
         def name(self):
             return self._name
 
-        def testMethod(self, reductionIngredients: ReductionIngredients):
-            return reductionIngredients
+        def testMethod(self, mockObject: MockObject):
+            return mockObject
 
     def test_getValidPaths():
         apiService = ApiService()
@@ -32,8 +40,10 @@ with mock.patch.dict(
         mockService = MockService()
         serviceDirectory.registerService(mockService)
         validPaths = apiService.getValidPaths()
+        print(validPaths)
         with Resource.open("/outputs/APIServicePaths.json", "r") as f:
             import json
 
             actualValidPaths = json.load(f)
-        assert validPaths == actualValidPaths
+            print(actualValidPaths)
+            assert validPaths == actualValidPaths
