@@ -27,8 +27,6 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         focusGroups = parse_raw_as(List[FocusGroup], self.getProperty("FocusGroups").value)
         crystalInfo = CrystallographicInfo.parse_raw(self.getProperty("CrystalInfo").value)
         crystalInfo.peaks.sort(key=lambda x: x.dSpacing)
-        inputPeakList = crystalInfo.dSpacing
-        # inputPeakList.sort()
         beta_0 = instrumentState.gsasParameters.beta[0]
         beta_1 = instrumentState.gsasParameters.beta[1]
         FWHMMultiplierLeft = instrumentState.fwhmMultiplierLimit.minimum
@@ -69,7 +67,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
                     fwhm2 = 2.35 * delDoD * peakList[i + 1]
                     limLeft = fwhm2 * FWHMMultiplierLeft
 
-                    if ((limRight + limLeft) >= peakSeparation) and (peakList[i + 1] != inputPeakList[i]):
+                    if ((limRight + limLeft) >= peakSeparation) and (peakList[i + 1] != peakList[i]):
                         keep[i] = False
                         keep[i + 1] = False
                     else:
