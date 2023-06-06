@@ -1,99 +1,66 @@
 {
-    "instrumentState": {
-      "instrumentConfig": {
-        "version": "1.4",
-        "facility": "SNS",
-        "name": "SNAP",
-        "nexusFileExtension": ".nxs.h5",
-        "nexusFilePrefix": "SNAP_",
-        "calibrationFileExtension": "json",
-        "calibrationFilePrefix": "SNAPcalibLog",
-        "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
-        "pixelGroupingDirectory": "PixelGroupingDefinitions/",
-        "sharedDirectory": "shared/",
-        "nexusDirectory": "nexus/",
-        "reducedDataDirectory": "shared/manualReduced/",
-        "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
-        "bandwidth": 3.0,
-        "maxBandwidth": 3.0,
-        "L1": 15,
-        "L2": 0.5,
-        "delTOverT": 0.002,
-        "delLOverL": 6.453e-5,
-        "delThNoGuide": 3.20e-3,
-        "delThWithGuide": 3.20e-3
-      },
-      "detectorState": {
-        "arc": [
-          -65.3,
-          104.95
-        ],
-        "wav": 2.1,
-        "freq": 60.0,
-        "guideStat": 1,
-        "lin": [
-          0.045,
-          0.043
-        ]
-      },
-      "gsasParameters": {
-        "alpha": 0.1,
-        "beta": [
-          0.02,
-          0.05
-        ]
-      },
-      "particleBounds": {
-        "wavelength": {
-          "minimum": 0.60,
-          "maximum": 3.60
-        },
-        "tof": {
-          "minimum": 1959.0,
-          "maximum": 14496.6
-        }
-      },
-      "defaultGroupingSliceValue": 5,
-      "fwhmMultiplierLimit": {
-        "minimum": 1.5,
-        "maximum": 1.5
-        },
-        "pixelGroupingInstrumentState": [
-            {
-                "twoThetaAverage": 1.1,
-                "dhkl": {
-                    "minimum": 1.05,
-                    "maximum": 1.1500000000000001
-                },
-                "delta_dhkl_over_dhkl": 1.2
-            },
-            {
-                "twoThetaAverage": 1.1,
-                "dhkl": {
-                    "minimum": 1.05,
-                    "maximum": 1.1500000000000001
-                },
-                "delta_dhkl_over_dhkl": 1.2
-            },
-            {
-                "twoThetaAverage": 1.1,
-                "dhkl": {
-                    "minimum": 1.05,
-                    "maximum": 1.1500000000000001
-                },
-                "delta_dhkl_over_dhkl": 1.2
-            },
-            {
-                "twoThetaAverage": 1.1,
-                "dhkl": {
-                    "minimum": 1.05,
-                    "maximum": 1.1500000000000001
-                },
-                "delta_dhkl_over_dhkl": 1.2
-            }
-        ]
+  "instrumentState": {
+    "instrumentConfig": {
+      "version": "1.4",
+      "facility": "SNS",
+      "name": "SNAP",
+      "nexusFileExtension": ".nxs.h5",
+      "nexusFilePrefix": "SNAP_",
+      "calibrationFileExtension": "json",
+      "calibrationFilePrefix": "SNAPcalibLog",
+      "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+      "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+      "sharedDirectory": "shared/",
+      "nexusDirectory": "nexus/",
+      "reducedDataDirectory": "shared/manualReduced/",
+      "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+      "bandwidth": 3,
+      "maxBandwidth": 3,
+      "L1": 15,
+      "L2": 0.5,
+      "delTOverT": 0.002,
+      "delLOverL": 0.00006453,
+      "delThNoGuide": 0.0032,
+      "delThWithGuide": 0.0032
     },
-    "seedRun": 123,
-    "creationDate": "2023-05-25T11:50:23.438776",
-    "name": "test"
-  }
+    "detectorState": {
+      "arc": [
+        1,
+        2
+      ],
+      "wav": 1.1,
+      "freq": 1.2,
+      "guideStat": 1,
+      "lin": [
+        1,
+        2
+      ]
+    },
+    "gsasParameters": {
+      "alpha": 1.1,
+      "beta": [
+        1,
+        2
+      ]
+    },
+    "particleBounds": {
+      "wavelength": {
+        "minimum": -0.3999999999999999,
+        "maximum": 2.6
+      },
+      "tof": {
+        "minimum": -1567.2000202219353,
+        "maximum": 10186.800131442584
+      }
+    },
+    "pixelGroupingInstrumentState": null,
+    "defaultGroupingSliceValue": 5,
+    "fwhmMultiplierLimit": {
+      "minimum": -2,
+      "maximum": 2
+    }
+  },
+  "seedRun": 123,
+  "creationDate": "2023-05-25T11:50:23.438776",
+  "name": "test"
+}

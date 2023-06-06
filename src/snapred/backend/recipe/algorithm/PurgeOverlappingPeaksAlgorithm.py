@@ -26,26 +26,18 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
         focusGroups = parse_raw_as(List[FocusGroup], self.getProperty("FocusGroups").value)
         crystalInfo = CrystallographicInfo.parse_raw(self.getProperty("CrystalInfo").value)
+        crystalInfo.peaks.sort(key=lambda x: x.dSpacing)
         inputPeakList = crystalInfo.dSpacing
         # inputPeakList.sort()
-        peakTuples = [
-            (hkl_, dSpacing_, fSquared_, multiplicity_)
-            for hkl_, dSpacing_, fSquared_, multiplicity_ in zip(
-                crystalInfo.hkl, crystalInfo.dSpacing, crystalInfo.fSquared, crystalInfo.multiplicities
-            )
-        ]
-        # sort by dSpacing
-        peakTuples.sort(key=lambda x: x[1])
-        inputPeakList = [dSpacing_ for hkl_, dSpacing_, fSquared_, multiplicity_ in peakTuples]
         beta_0 = instrumentState.gsasParameters.beta[0]
         beta_1 = instrumentState.gsasParameters.beta[1]
         FWHMMultiplierLeft = instrumentState.fwhmMultiplierLimit.minimum
         FWHMMultiplierRight = instrumentState.fwhmMultiplierLimit.maximum
         L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
 
-        fSquared = np.array([peakTuple[2] for peakTuple in peakTuples])
-        multiplicity = np.array([peakTuple[3] for peakTuple in peakTuples])
-        dSpacing = np.array([peakTuple[1] for peakTuple in peakTuples])
+        fSquared = np.array(crystalInfo.fSquared)
+        multiplicity = np.array(crystalInfo.multiplicities)
+        dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
         minimumA = np.max(A) * 0.05
 
@@ -57,14 +49,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             dMin = instrumentState.pixelGroupingInstrumentState[focIndex].dhkl.minimum
             dMax = instrumentState.pixelGroupingInstrumentState[focIndex].dhkl.maximum
 
-            # find index of 1.2460922059340045
-            testIndex = inputPeakList.index(1.2460922059340045)
-            crystalInfo.fSquared[testIndex] * crystalInfo.multiplicities[testIndex] * inputPeakList[testIndex] ** 4
-            peakList = [
-                peak
-                for i, peak in enumerate(inputPeakList)
-                if peakTuples[i][2] * peakTuples[i][3] * peakTuples[i][1] ** 4 >= minimumA
-            ]
+            peakList = [peak.dSpacing for i, peak in enumerate(crystalInfo.peaks) if A[i] >= minimumA]
             peakList = [peak for peak in peakList if dMin <= peak <= dMax]
             nPks = len(peakList)
             keep = [True for i in range(nPks)]
@@ -83,8 +68,6 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
                     limRight = fwhm1 * FWHMMultiplierRight + 1 / beta_d
                     fwhm2 = 2.35 * delDoD * peakList[i + 1]
                     limLeft = fwhm2 * FWHMMultiplierLeft
-                    # if round(peakList[i+1]) == round(3.13592995):
-                    #     import pdb; pdb.set_trace()
 
                     if ((limRight + limLeft) >= peakSeparation) and (peakList[i + 1] != inputPeakList[i]):
                         keep[i] = False

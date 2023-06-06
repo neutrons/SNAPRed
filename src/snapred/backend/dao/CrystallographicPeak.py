@@ -7,6 +7,6 @@ class CrystallographicPeak(BaseModel):
     """Class to hold crystallographic parameters"""
 
     hkl: Tuple[int, int, int]
-    d: float
+    dSpacing: float
     fSquared: float
     multiplicity: int
