@@ -58,7 +58,7 @@ class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
         dValues = [float(d) for d in dValues]
         fSquared = [float(fsq) for fsq in fSquared]
 
-        xtal = CrystallographicInfo(hkl=hkls, d=dValues, fSquared=fSquared, multiplicities=multiplicities)
+        xtal = CrystallographicInfo(hkl=hkls, dSpacing=dValues, fSquared=fSquared, multiplicities=multiplicities)
         self.setProperty("crystalInfo", xtal.json())
 
 

@@ -32,14 +32,14 @@ with mock.patch.dict(
         mock_pg_equivs = [1] * 3
         hkl, d, fSquared, multiplicities = create_inputs(mock_pg_equivs)
 
-        crystalInfo = CrystallographicInfo(hkl=hkl, d=d, fSquared=fSquared, multiplicities=multiplicities)
+        crystalInfo = CrystallographicInfo(hkl=hkl, dSpacing=d, fSquared=fSquared, multiplicities=multiplicities)
 
         assert crystalInfo is not None
         assert mock_pg_equivs == crystalInfo.multiplicities
         assert hkl == crystalInfo.hkl
         assert len(crystalInfo.hkl) == len(crystalInfo.fSquared)
         assert len(crystalInfo.hkl) == len(crystalInfo.multiplicities)
-        assert len(crystalInfo.hkl) == len(crystalInfo.d)
+        assert len(crystalInfo.hkl) == len(crystalInfo.dSpacing)
 
     def test_failed_create():
         """Test of Failing Crystallographic DAO"""
@@ -49,4 +49,4 @@ with mock.patch.dict(
         hkl.append((0, 0, 1))
 
         with pytest.raises(ValueError, match=r".* hkl .*"):
-            CrystallographicInfo(hkl=hkl, d=d, fSquared=fSquared, multiplicities=multiplicities)
+            CrystallographicInfo(hkl=hkl, dSpacing=d, fSquared=fSquared, multiplicities=multiplicities)

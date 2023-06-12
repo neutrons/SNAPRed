@@ -485,6 +485,10 @@ class LocalDataService:
         instrumentConfig = self.readInstrumentConfig()
         # then pull static values specified by malcolm from resources
         defaultGroupSliceValue = Config["calibration.parameters.default.groupSliceValue"]
+        fwhmMultiplier = Limit(
+            minimum=Config["calibration.parameters.default.FWHMMultiplier"][0],
+            maximum=Config["calibration.parameters.default.FWHMMultiplier"][1],
+        )
         gsasParameters = GSASParameters(
             alpha=Config["calibration.parameters.default.alpha"], beta=Config["calibration.parameters.default.beta"]
         )
@@ -503,6 +507,7 @@ class LocalDataService:
             gsasParameters=gsasParameters,
             particleBounds=particleBounds,
             defaultGroupingSliceValue=defaultGroupSliceValue,
+            fwhmMultiplierLimit=fwhmMultiplier,
         )
 
         calibration = Calibration(

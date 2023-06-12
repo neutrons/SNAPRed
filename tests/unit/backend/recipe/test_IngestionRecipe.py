@@ -26,8 +26,8 @@ with mock.patch.dict(
             assert isinstance(xtal, CrystallographicInfo)
             assert xtal.hkl[0] == (1, 1, 1)
             assert xtal.hkl[5] == (4, 0, 0)
-            assert xtal.d[0] == 3.13592994862768
-            assert xtal.d[4] == 1.0453099828758932
+            assert xtal.dSpacing[0] == 3.13592994862768
+            assert xtal.dSpacing[4] == 1.0453099828758932
             assert data["fSquaredThreshold"] == 541.8942599465485
 
     def test_failed_path():
@@ -43,7 +43,7 @@ with mock.patch.dict(
         mock_xtal = mock.Mock()
         mock_xtal.fSquared = list(range(36, 136))
         mock_xtal.multiplicities = [1, 2, 3, 4, 5] * 20
-        mock_xtal.d = [1] * 100
+        mock_xtal.dSpacing = [1] * 100
 
         assert ingestRecipe.findFSquaredThreshold(mock_xtal) == 36
 
@@ -53,7 +53,7 @@ with mock.patch.dict(
         mock_xtal = mock.Mock()
         mock_xtal.fSquared = list(range(36, 336))
         mock_xtal.multiplicities = [1, 2, 3, 4, 5] * 60
-        mock_xtal.d = [1] * 300
+        mock_xtal.dSpacing = [1] * 300
 
         lowFsq = ingestRecipe.findFSquaredThreshold(mock_xtal)
         assert lowFsq != 36
@@ -65,7 +65,7 @@ with mock.patch.dict(
         mock_xtal = mock.Mock()
         mock_xtal.fSquared = [2, 3, 4, 5]
         mock_xtal.multiplicities = [1, 1, 1, 1]
-        mock_xtal.d = [1, 1, 1, 1]
+        mock_xtal.dSpacing = [1, 1, 1, 1]
         assert ingestRecipe.findFSquaredThreshold(mock_xtal) == 2
 
     def test_weak_f_squared_one():
@@ -74,7 +74,7 @@ with mock.patch.dict(
         mock_xtal = mock.Mock()
         mock_xtal.fSquared = [2]
         mock_xtal.multiplicities = [1]
-        mock_xtal.d = [1]
+        mock_xtal.dSpacing = [1]
 
         assert ingestRecipe.findFSquaredThreshold(mock_xtal) == 2
 
@@ -128,7 +128,7 @@ with mock.patch.dict(
         fsq = [col[2] for col in example_xtal_info]
         mul = [col[3] for col in example_xtal_info]
 
-        xtalInfo = CrystallographicInfo(hkl=hkl, d=d, fSquared=fsq, multiplicities=mul)
+        xtalInfo = CrystallographicInfo(hkl=hkl, dSpacing=d, fSquared=fsq, multiplicities=mul)
 
         ingestRecipe = CrystallographicInfoRecipe()
 
