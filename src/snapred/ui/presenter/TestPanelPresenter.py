@@ -1,5 +1,7 @@
 import os
 
+from PyQt5.QtCore import Qt
+
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.RunConfig import RunConfig
@@ -10,6 +12,7 @@ from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.meta.Config import Resource
 from snapred.ui.threading.worker_pool import WorkerPool
+from snapred.ui.widget.JsonForm import JsonForm
 
 
 class TestPanelPresenter(object):
@@ -17,11 +20,19 @@ class TestPanelPresenter(object):
     worker_pool = WorkerPool()
 
     def __init__(self, view):
-        self.view = view
+        reductionRequest = SNAPRequest(path="api", payload=None)
+        apiDict = self.interfaceController.executeRequest(reductionRequest).responseData
+        import json
 
-        self.view.calibrationReductinButtonOnClick(self.handleCalibrationReductinButtonClicked)
-        self.view.calibrationIndexButtonOnClick(self.handleCalibrationIndexButtonClicked)
-        self.view.calibrantSampleButtonOnClick(self.handleCalibrantSampleButtonClicked)
+        jsonSchema = json.loads(apiDict["reduction"][""]["runs"])
+        self.view = view
+        jsonForm = JsonForm("Advanced Parameters", jsonSchema=jsonSchema, parent=view)
+        self.view.centralWidget.layout().addWidget(jsonForm.widget)
+        self.view.centralWidget.layout().setAlignment(jsonForm.widget, Qt.AlignTop | Qt.AlignHCenter)
+        self.view.adjustSize()
+        # self.view.calibrationReductinButtonOnClick(self.handleCalibrationReductinButtonClicked)
+        # self.view.calibrationIndexButtonOnClick(self.handleCalibrationIndexButtonClicked)
+        # self.view.calibrantSampleButtonOnClick(self.handleCalibrantSampleButtonClicked)
 
     @property
     def widget(self):
