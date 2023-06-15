@@ -1,6 +1,8 @@
+import json
 import os
 
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QComboBox
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
@@ -21,18 +23,58 @@ class TestPanelPresenter(object):
 
     def __init__(self, view):
         reductionRequest = SNAPRequest(path="api", payload=None)
-        apiDict = self.interfaceController.executeRequest(reductionRequest).responseData
-        import json
+        self.apiDict = self.interfaceController.executeRequest(reductionRequest).responseData
 
-        jsonSchema = json.loads(apiDict["reduction"][""]["runs"])
+        self.apiComboBox = self.setupApiComboBox(self.apiDict, view)
+
+        jsonSchema = json.loads(self.apiDict["reduction"][""]["runs"])
         self.view = view
-        jsonForm = JsonForm("Advanced Parameters", jsonSchema=jsonSchema, parent=view)
-        self.view.centralWidget.layout().addWidget(jsonForm.widget)
-        self.view.centralWidget.layout().setAlignment(jsonForm.widget, Qt.AlignTop | Qt.AlignHCenter)
+        self.jsonForm = JsonForm("Advanced Parameters", jsonSchema=jsonSchema, parent=view)
+        self.view.centralWidget.layout().addWidget(self.apiComboBox)
+        self.view.centralWidget.layout().addWidget(self.jsonForm.widget)
+        self.view.centralWidget.layout().setAlignment(self.jsonForm.widget, Qt.AlignTop | Qt.AlignHCenter)
         self.view.adjustSize()
-        # self.view.calibrationReductinButtonOnClick(self.handleCalibrationReductinButtonClicked)
+        self.view.calibrationReductinButtonOnClick(self.printJsonData)
         # self.view.calibrationIndexButtonOnClick(self.handleCalibrationIndexButtonClicked)
         # self.view.calibrantSampleButtonOnClick(self.handleCalibrantSampleButtonClicked)
+
+    def _getPaths(self, apiDict):
+        paths = []
+        for key, value in apiDict.items():
+            if type(value) is dict:
+                subpaths = self._getPaths(value)
+                paths.extend(["{}/{}".format(key, path) for path in subpaths])
+            else:
+                paths.append(key)
+        return paths
+
+    def setupApiComboBox(self, apiDict, parent=None):
+        comboBox = QComboBox(parent)
+        for path in self._getPaths(apiDict):
+            comboBox.addItem(path)
+
+        comboBox.currentIndexChanged.connect(self.handleApiComboSelected)
+        return comboBox
+
+    def _findSchemaForPath(self, path):
+        currentVal = self.apiDict
+        # TODO: Replace with Config
+        subPaths = path.split("/")
+        for subpath in subPaths:
+            currentVal = currentVal[subpath]
+        return currentVal
+
+    def _getSchemaForSelection(self, selection):
+        schemaString = self._findSchemaForPath(selection)
+        return json.loads(schemaString) if schemaString else {}
+
+    def handleApiComboSelected(self, index):  # noqa: ARG002
+        selection = self.apiComboBox.currentText()
+        jsonSchema = self._getSchemaForSelection(selection)
+        # import pdb;pdb.set_trace()
+        newForm = JsonForm(selection.split("/")[-1], jsonSchema=jsonSchema, parent=self.view)
+        self.view.centralWidget.layout().replaceWidget(self.jsonForm.widget, newForm.widget)
+        self.jsonForm = newForm
 
     @property
     def widget(self):
@@ -40,6 +82,9 @@ class TestPanelPresenter(object):
 
     def show(self):
         self.view.show()
+
+    def printJsonData(self):
+        print(self.jsonForm.collectData())
 
     def handleCalibrationReductinButtonClicked(self):
         reductionRequest = SNAPRequest(path="calibration/reduction", payload=RunConfig(runNumber="57514").json())

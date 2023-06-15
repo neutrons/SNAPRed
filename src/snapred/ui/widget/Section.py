@@ -91,8 +91,8 @@ class Section(wd.QWidget):
     def adjustAnimations(self):
         contentLayout = self.contentArea.layout()
         self.collapsedHeight = self.sizeHint().height() - self.contentArea.maximumHeight()
-        contentHeight = contentLayout.sizeHint().height()
-        self.updateAnimationHeight(contentHeight)
+        self.contentHeight = contentLayout.sizeHint().height()
+        self.updateAnimationHeight(self.contentHeight)
 
     def updateAnimationHeight(self, contentHeight):
         for SectionAnimation in [self.minHeightAnimation, self.maxHeightAnimation]:
@@ -107,11 +107,11 @@ class Section(wd.QWidget):
     def adjustParentAnimationHeight(self, height):
         for parent in self.parentSections:
             parent.addHeight(height)
-            parent.addParentAnimationHeight(height)
+            parent.adjustParentAnimationHeight(height)
 
     def addHeight(self, height):
-        contentHeight = self.contentArea.layout().sizeHint().height() + height
-        self.updateAnimationHeight(contentHeight)
+        self.contentHeight = self.contentHeight + height
+        self.updateAnimationHeight(self.contentHeight)
         self.toggleAnimation.start()
 
     def toggle(self, collapsed):

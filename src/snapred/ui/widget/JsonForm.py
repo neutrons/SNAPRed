@@ -14,3 +14,6 @@ class JsonForm:
     @property
     def widget(self):
         return self._presenter.widget
+
+    def collectData(self):
+        return self._presenter.collectData()

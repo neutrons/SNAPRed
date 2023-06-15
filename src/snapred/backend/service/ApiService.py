@@ -24,7 +24,7 @@ def _convertToJsonSchema(parameterDic):
     for k, v in parameterDic.items():
         innerType = get_origin(v)
         if not _isBaseModel(v) and innerType is None:
-            jsonSchemaDict[k] = str(v)
+            jsonSchemaDict[k] = schema_json_of(v, title=str(v), indent=2)
         elif _isBaseModel(v) or _isBaseModel(v.__args__[0]):
             jsonSchemaDict[k] = schema_json_of(v, title=str(v), indent=2)
     return jsonSchemaDict
