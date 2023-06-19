@@ -26,6 +26,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
+    
     def PyExec(self):
         reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
         focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
@@ -112,7 +113,7 @@ class ReductionAlgorithm(PythonAlgorithm):
             OutputWorkspace="vanadium_dspacing",
             ConvertFromPointData=True,
         )
-
+        
         # TODO: May impact performance of lite mode data
         # TODO: Params is supposed to be smallest dmin, smalled dbin, largest dmax
         # self.enqueueAlgorithm('Rebin', "Rebinning", isChild=False,  InputWorkspace=data,
