@@ -1,14 +1,14 @@
 import json
 
 from mantid.api import *
-from mantid.api import PythonAlgorithm, AlgorithmFactory
-from mantid.kernel import Direction
+from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import *
+from mantid.kernel import Direction
 
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
-from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-#from snapred.backend.recipe.algorithm.CustomGroupWorkspace import name as CustomGroupWorkspace
+
+# from snapred.backend.recipe.algorithm.CustomGroupWorkspace import name as CustomGroupWorkspace
 
 name = "ReductionAlgorithm"
 
@@ -22,7 +22,7 @@ class ReductionAlgorithm(PythonAlgorithm):
     _endrange = 0
     _progressCounter = 0
     _prog_reporter = None
-    #_algorithmQueue = []
+    # _algorithmQueue = []
     _exportScript = ""
     _export = False
 
@@ -33,7 +33,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
-    '''
+    """
     def createAlgorithm(self, name, isChild=True):
         alg = AlgorithmManager.create(name)
         alg.setChild(isChild)
@@ -131,7 +131,8 @@ class ReductionAlgorithm(PythonAlgorithm):
             OutputWorkspace=OutputWorkspace,
         )
         return OutputWorkspace
-    '''
+    """
+
     def applyCalibrationPixelMask(self, Workspace, MaskedWorkspace):
         # always a pixel mask
         # loadmask
@@ -141,7 +142,8 @@ class ReductionAlgorithm(PythonAlgorithm):
             "MaskDetectors", "Applying Pixel Mask...", Workspace=Workspace, MaskedWorkspace=MaskedWorkspace
         )
         return Workspace
-    '''
+
+    """
     # def applyContainerMask(self):
     #     # can be a pixel mask or bin mask(swiss cheese)  -- switch based on input param
     #     # loadmask
@@ -265,14 +267,13 @@ class ReductionAlgorithm(PythonAlgorithm):
 
     def deleteWorkspace(self, Workspace):
         self.enqueueAlgorithm("DeleteWorkspace", "Freeing workspace...", Workspace=Workspace)
-    '''
+    """
 
     def cleanup(self):
         self._prog_reporter.report(self._endrange, "Done")
         self._progressCounter = 0
         self.algorithmQueue = []
 
-    
     def PyExec(self):
         reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
         focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
@@ -287,13 +288,13 @@ class ReductionAlgorithm(PythonAlgorithm):
 
         raw_data = self.mantidSnapper.loadEventNexus(
             "Loading Event for Nexus for {}...".format(rawDataPath),
-            Filename=rawDataPath, 
+            Filename=rawDataPath,
             OutputWorkspace="raw_data",
         )
-        
+
         vanadium = self.mantidSnapper.LoadNexus(
             "Loading Nexus for {}...".format(vanadiumFilePath),
-            Filename=vanadiumFilePath, 
+            Filename=vanadiumFilePath,
             OutputWorkspace="vanadium",
         )
 
@@ -329,7 +330,7 @@ class ReductionAlgorithm(PythonAlgorithm):
 
         self.mantidSnapper.ApplyDiffCal(
             "Applying Diffcal...", InstrumentWorkspace=raw_data, CalibrationWorkspace=diffCalPrefix + "_cal"
-            )
+        )
 
         self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Mask", Workspace=diffCalPrefix + "_mask")
         self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Calibration", Workspace=diffCalPrefix + "_cal")
@@ -365,15 +366,20 @@ class ReductionAlgorithm(PythonAlgorithm):
         # vanadium = "rebinned_vanadium_before_focus"
         # 11 For each Group (no for each loop, the algos apply things based on groups of group workspace)
         data = self.mantidSnapper.DiffractionFocussing(
-            "Applying Diffraction Focussing...", InputWorkspace=data, GroupingWorkspace=groupingworkspace, OutputWorkspace="focused_data"
+            "Applying Diffraction Focussing...",
+            InputWorkspace=data,
+            GroupingWorkspace=groupingworkspace,
+            OutputWorkspace="focused_data",
         )
         vanadium = self.mantidSnapper.DiffractionFocussing(
-            "Applying Diffraction Focussing...", InputWorkspace=vanadium, GroupingWorkspace=groupingworkspace, OutputWorkspace="diffraction_focused_vanadium"
+            "Applying Diffraction Focussing...",
+            InputWorkspace=vanadium,
+            GroupingWorkspace=groupingworkspace,
+            OutputWorkspace="diffraction_focused_vanadium",
         )
 
         # 2 NormalizeByCurrent -- just apply to data
-        self.mantidSnapper.NormaliseByCurrent(
-            "Normalizing Current ...", InputWorkspace=data, OutputWorkspace=data)
+        self.mantidSnapper.NormaliseByCurrent("Normalizing Current ...", InputWorkspace=data, OutputWorkspace=data)
 
         # self.deleteWorkspace(Workspace=rebinned_data_before_focus)
         self.mantidSnapper.DeleteWorkspace("Deleting Rebinned Data Before Focus...", Workspace="CommonRed")
@@ -403,21 +409,19 @@ class ReductionAlgorithm(PythonAlgorithm):
         )
 
         data = self.mantidSnapper.RebinToWorkspace(
-            "Rebinning to Workspace...", 
-            WorkspaceToRebin=data, 
-            WorkspaceToMatch=vanadium, 
-            OutputWorkspace="rebinned_data", 
-            PreserveEvents=False
+            "Rebinning to Workspace...",
+            WorkspaceToRebin=data,
+            WorkspaceToMatch=vanadium,
+            OutputWorkspace="rebinned_data",
+            PreserveEvents=False,
         )
         data = self.mantidSnapper.Divide(
-            "Rebinning ragged bins...",
-            LHSWorkspace=data, 
-            RHSWorkspace=vanadium, 
-            OutputWorkspace="data_minus_vanadium")
+            "Rebinning ragged bins...", LHSWorkspace=data, RHSWorkspace=vanadium, OutputWorkspace="data_minus_vanadium"
+        )
 
         # TODO: Refactor so excute only needs to be called once
         self.mantidSnapper.executeQueue()
-        #self._algorithmQueue = []
+        # self._algorithmQueue = []
 
         groupedData = data
         for workspaceIndex in range(len(focusGroups)):
@@ -432,7 +436,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.DeleteWorkspace(
             "Freeing workspace...",
             Workspace="data_minus_vanadium",
-            )
+        )
         # self.renameWorkspace(InputWorkspace=data, OutputWorkspace="SomethingSensible")
 
         self.executeQueue()
