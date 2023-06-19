@@ -74,6 +74,8 @@ class TestPanelPresenter(object):
         # import pdb;pdb.set_trace()
         newForm = JsonForm(selection.split("/")[-1], jsonSchema=jsonSchema, parent=self.view)
         self.view.centralWidget.layout().replaceWidget(self.jsonForm.widget, newForm.widget)
+        self.jsonForm.widget.setParent(None)
+        del self.jsonForm
         self.jsonForm = newForm
 
     @property

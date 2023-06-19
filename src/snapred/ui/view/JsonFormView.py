@@ -92,7 +92,7 @@ class FormBuilder:
         elif definitions:
             widget, data = self.buildForm(self.lookupRef(self.jsonSchema["$ref"]), parent=form)
             form.appendWidget(widget)
-        else:
+        elif len(self.jsonSchema) > 0:
             widget, data = self._generateElement(self.jsonSchema, title, form)
             form.appendWidget(widget)
 

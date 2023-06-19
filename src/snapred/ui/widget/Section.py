@@ -31,6 +31,8 @@ class Section(wd.QWidget):
         super().__init__(parent)
         self.parentSections = []
         self.childSections = []
+        self.collapsedHeight = 0
+        self.contentHeight = 0
         self.animationDuration = animationDuration
         self.toggleButton = wd.QToolButton(self)
         self.headerLine = wd.QFrame(self)
@@ -57,6 +59,7 @@ class Section(wd.QWidget):
         # start out collapsed
         self.contentArea.setMaximumHeight(0)
         self.contentArea.setMinimumHeight(0)
+        self.contentArea.setLayout(wd.QVBoxLayout())
 
         self.minHeightAnimation = cr.QPropertyAnimation(self, b"minimumHeight")
         self.maxHeightAnimation = cr.QPropertyAnimation(self, b"maximumHeight")
