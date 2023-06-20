@@ -31,6 +31,9 @@ calibration:
       beta:
         - 1
         - 2
+      FWHMMultiplier:
+        - -2
+        - 2
 
 
 logging:

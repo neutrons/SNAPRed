@@ -1,1 +1,66 @@
-{"instrumentState": {"instrumentConfig": {"version": "1.4", "facility": "SNS", "name": "SNAP", "nexusFileExtension": ".nxs.h5", "nexusFilePrefix": "SNAP_", "calibrationFileExtension": "json", "calibrationFilePrefix": "SNAPcalibLog", "calibrationDirectory": "/SNS/SNAP/shared/Calibration/", "pixelGroupingDirectory": "PixelGroupingDefinitions/", "sharedDirectory": "shared/", "nexusDirectory": "nexus/", "reducedDataDirectory": "shared/manualReduced/", "reductionRecordDirectory": "shared/manualReduced/reductionRecord/", "bandwidth": 0.1, "maxBandwidth": 0.2, "L1": 20.0, "L2": 20.0, "delTOverT": 0.05, "delLOverL": 0.05, "delThNoGuide": 0.05, "delThWithGuide": 0.05}, "detectorState": {"arc": [1.0, 2.0], "wav": 1.1, "freq": 1.2, "guideStat": 1, "lin": [1.0, 2.0]}, "gsasParameters": {"alpha": 1.1, "beta": [1.0, 2.0]}, "particleBounds": {"wavelength": {"minimum": 1.05, "maximum": 1.1500000000000001}, "tof": {"minimum": 10616.516266019566, "maximum": 11627.613053259525}}, "defaultGroupingSliceValue": 5.0}, "seedRun": 123, "creationDate": "2023-05-25T11:50:23.438776", "name": "test"}
+{
+  "instrumentState": {
+    "instrumentConfig": {
+      "version": "1.4",
+      "facility": "SNS",
+      "name": "SNAP",
+      "nexusFileExtension": ".nxs.h5",
+      "nexusFilePrefix": "SNAP_",
+      "calibrationFileExtension": "json",
+      "calibrationFilePrefix": "SNAPcalibLog",
+      "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+      "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+      "sharedDirectory": "shared/",
+      "nexusDirectory": "nexus/",
+      "reducedDataDirectory": "shared/manualReduced/",
+      "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+      "bandwidth": 3,
+      "maxBandwidth": 3,
+      "L1": 15,
+      "L2": 0.5,
+      "delTOverT": 0.002,
+      "delLOverL": 0.00006453,
+      "delThNoGuide": 0.0032,
+      "delThWithGuide": 0.0032
+    },
+    "detectorState": {
+      "arc": [
+        1,
+        2
+      ],
+      "wav": 1.1,
+      "freq": 1.2,
+      "guideStat": 1,
+      "lin": [
+        1,
+        2
+      ]
+    },
+    "gsasParameters": {
+      "alpha": 1.1,
+      "beta": [
+        1,
+        2
+      ]
+    },
+    "particleBounds": {
+      "wavelength": {
+        "minimum": -0.3999999999999999,
+        "maximum": 2.6
+      },
+      "tof": {
+        "minimum": -1567.2000202219353,
+        "maximum": 10186.800131442584
+      }
+    },
+    "pixelGroupingInstrumentState": null,
+    "defaultGroupingSliceValue": 5,
+    "fwhmMultiplierLimit": {
+      "minimum": -2,
+      "maximum": 2
+    }
+  },
+  "seedRun": 123,
+  "creationDate": "2023-05-25T11:50:23.438776",
+  "name": "test"
+}

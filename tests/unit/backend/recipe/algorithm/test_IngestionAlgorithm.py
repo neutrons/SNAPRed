@@ -46,5 +46,5 @@ with mock.patch.dict(
         else:
             assert xtalInfo["peaks"][0]["hkl"] == [1, 1, 1]
             assert xtalInfo["peaks"][5]["hkl"] == [4, 0, 0]
-            assert xtalInfo["peaks"][0]["d"] == 3.13592994862768
-            assert xtalInfo["peaks"][4]["d"] == 1.0453099828758932
+            assert xtalInfo["peaks"][0]["dSpacing"] == 3.13592994862768
+            assert xtalInfo["peaks"][4]["dSpacing"] == 1.0453099828758932
