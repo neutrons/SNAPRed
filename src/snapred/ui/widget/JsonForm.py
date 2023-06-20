@@ -15,5 +15,11 @@ class JsonForm:
     def widget(self):
         return self._presenter.widget
 
+    def getField(self, fieldPath):
+        return self._presenter.getField(fieldPath)
+
     def collectData(self):
         return self._presenter.collectData()
+
+    def updateData(self, newData):
+        return self._presenter.updateData(newData)

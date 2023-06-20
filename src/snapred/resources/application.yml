@@ -32,8 +32,6 @@ calibration:
         - 0.02
         - 0.05
 
-
-
 logging:
   level: 10
   SNAP:

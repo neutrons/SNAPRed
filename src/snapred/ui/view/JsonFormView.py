@@ -50,14 +50,18 @@ class FormBuilder:
             subform, subdata = self.buildForm(self.lookupRef(prop["$ref"]), parent=parent)
             data = subdata
             widget = subform
-        else:
+        else:  # list
             widget = Section(name, parent=parent)
             data = {}
             for key, item in prop["items"].items():
                 if type(item) is str:
                     item = {key: item}
                 subform, subdata = self._generateElement(item, name, parent=parent)
-                data[key] = subdata
+                # tuples
+                if len(prop["items"]) > 1:
+                    data[key] = subdata
+                else:  # lists
+                    data[name] = subdata
                 widget.appendWidget(subform)
         return widget, data
 

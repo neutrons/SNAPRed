@@ -33,6 +33,7 @@ class Section(wd.QWidget):
         self.childSections = []
         self.collapsedHeight = 0
         self.contentHeight = 0
+        self.setStyleSheet("background-color: #F5E9E2;")
         self.animationDuration = animationDuration
         self.toggleButton = wd.QToolButton(self)
         self.headerLine = wd.QFrame(self)
@@ -118,7 +119,7 @@ class Section(wd.QWidget):
         self.toggleAnimation.start()
 
     def toggle(self, collapsed):
-        height = self.contentArea.layout().sizeHint().height() + self.collapsedHeight
+        height = self.contentArea.layout().sizeHint().height() + self.collapsedHeight * 2
         if collapsed:
             self.adjustParentAnimationHeight(height)
             self.toggleButton.setArrowType(cr.Qt.DownArrow)

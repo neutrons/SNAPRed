@@ -7,7 +7,7 @@ class RunConfig(BaseModel):
     """Class to hold the instrument configuration."""
 
     runNumber: str = Field(description="The ID associated with the run data you wish to use")
-    IPTS: str = ""  # Optional[str] = None
+    IPTS: Optional[str] = ""
     maskFileName: Optional[str] = None
     maskFileDirectory: Optional[str] = None
     gsasFileDirectory: Optional[str] = None
