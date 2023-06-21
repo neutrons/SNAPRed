@@ -1,15 +1,15 @@
-import numpy as np
 import json
 
-from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd, WorkspaceGroup
+import numpy as np
+from mantid.api import AlgorithmFactory, PythonAlgorithm, WorkspaceGroup, mtd
 from mantid.kernel import Direction
 from mantid.simpleapi import DeleteWorkspace
 
+from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
-from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
 
-name = 'FitMultiplePeaksAlgorithm'
+name = "FitMultiplePeaksAlgorithm"
 
 
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
@@ -20,9 +20,10 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
-
     def PyExec(self):
-        fitPeakIngredients = FitMultiplePeaksIngredients(**json.loads(self.getProperty("FitMultiplePeaksIngredients").value))
+        fitPeakIngredients = FitMultiplePeaksIngredients(
+            **json.loads(self.getProperty("FitMultiplePeaksIngredients").value)
+        )
         wsName = fitPeakIngredients.InputWorkspace
         instrumentState = fitPeakIngredients.InstrumentState
         crystalInfo = fitPeakIngredients.CrystalInfo
@@ -46,47 +47,46 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         reducedList = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
 
         ws_group = WorkspaceGroup()
-        mtd.add('fitPeaksWSGroup', ws_group)
+        mtd.add("fitPeaksWSGroup", ws_group)
 
         for index in range(numSpec):
             delDoD = instrumentState.pixelGroupingInstrumentState[index].delta_dhkl_over_dhkl
             tTheta = instrumentState.pixelGroupingInstrumentState[index].twoThetaAverage
             peakLimits = []
             for peak, dspc in enumerate(reducedList[index]):
-                halfWindLeft = 2.35*delDoD*dspc*FWHMMultiplierLeft
-                halfWindRight = 2.35*delDoD*dspc*FWHMMultiplierRight
+                halfWindLeft = 2.35 * delDoD * dspc * FWHMMultiplierLeft
+                halfWindRight = 2.35 * delDoD * dspc * FWHMMultiplierRight
                 lowerLimit = dspc - halfWindLeft
 
-                beta_t = beta_0 + beta_1/dspc**4
-                beta_d = 505.548*L*np.sin(tTheta/2)*beta_t
-                upperLimit = dspc + halfWindRight + (1/beta_d)
+                beta_t = beta_0 + beta_1 / dspc**4
+                beta_d = 505.548 * L * np.sin(tTheta / 2) * beta_t
+                upperLimit = dspc + halfWindRight + (1 / beta_d)
                 peakLimits.extend([lowerLimit, upperLimit])
 
             self.mantidSnapper.ExtractSingleSpectrum(
-                "Extract Single Spectrm...",
-                InputWorkspace=wsName,
-                OutputWorkspace='ws2fit',
-                WorkspaceIndex=index)
+                "Extract Single Spectrm...", InputWorkspace=wsName, OutputWorkspace="ws2fit", WorkspaceIndex=index
+            )
 
             self.mantidSnapper.FitPeaks(
                 "Fit Peaks...",
-                InputWorkspace='ws2fit',
-                PeakCenters=",".join(np.array(reducedList[index]).astype('str')),
+                InputWorkspace="ws2fit",
+                PeakCenters=",".join(np.array(reducedList[index]).astype("str")),
                 PeakFunction=peakType,
-                FitWindowBoundaryList=",".join(np.array(peakLimits).astype('str')),
-                OutputWorkspace=f'{wsName}_fitted_peakpositions_{index}',
-                OutputPeakParametersWorkspace=f'{wsName}_fitted_params_{index}',
-                BackgroundType='Quadratic',
-                FittedPeaksWorkspace=f'{wsName}_fitted_{index}',
+                FitWindowBoundaryList=",".join(np.array(peakLimits).astype("str")),
+                OutputWorkspace=f"{wsName}_fitted_peakpositions_{index}",
+                OutputPeakParametersWorkspace=f"{wsName}_fitted_params_{index}",
+                BackgroundType="Quadratic",
+                FittedPeaksWorkspace=f"{wsName}_fitted_{index}",
                 ConstrainPeakPositions=True,
-                OutputParameterFitErrorsWorkspace=f'{wsName}_fitted_params_err_{index}')
+                OutputParameterFitErrorsWorkspace=f"{wsName}_fitted_params_err_{index}",
+            )
             self.mantidSnapper.executeQueue()
             ws_group.add(f"{wsName}_fitted_peakpositions_{index}")
             ws_group.add(f"{wsName}_fitted_params_{index}")
             ws_group.add(f"{wsName}_fitted_{index}")
             ws_group.add(f"{wsName}_fitted_params_err_{index}")
 
-        DeleteWorkspace('ws2fit')
+        DeleteWorkspace("ws2fit")
         self.setProperty("OutputWorkspaceGroup", ws_group.name())
         return ws_group
 

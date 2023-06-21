@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 from mantid.api import AlgorithmManager
+
 from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import (
@@ -31,5 +32,3 @@ class FitMultiplePeaksRecipe:
             raise Exception(errorString.split("\n")[0])
         logger.info("FitMultiplePeaks complete")
         return data
-
-

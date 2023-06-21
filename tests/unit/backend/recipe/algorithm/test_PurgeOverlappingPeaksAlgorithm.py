@@ -12,7 +12,6 @@ with mock.patch.dict(
 
     from snapred.backend.dao.calibration.Calibration import Calibration
     from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-    from snapred.backend.dao.ReductionIngredients import ReductionIngredients
     from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import (
         PurgeOverlappingPeaksAlgorithm,  # noqa: E402
     )
@@ -39,7 +38,7 @@ with mock.patch.dict(
         purgeAlgo = PurgeOverlappingPeaksAlgorithm()
         purgeAlgo.initialize()
         purgeAlgo.setProperty("InstrumentState", instrumentState.json())
-        purgeAlgo.setProperty("NumFocusGroups", '6')
+        purgeAlgo.setProperty("NumFocusGroups", "6")
         purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
         purgeAlgo.execute()
         expected = json.loads(Resource.read("/outputs/purge_peaks/output.json"))

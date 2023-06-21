@@ -1,5 +1,4 @@
 import json
-from typing import List
 
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm

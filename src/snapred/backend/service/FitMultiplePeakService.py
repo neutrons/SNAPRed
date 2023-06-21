@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
-from snapred.backend.recipe.FitMultiplePeaksRecipe import FitMultiplePeaksRecipe
 from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
+from snapred.backend.recipe.FitMultiplePeaksRecipe import FitMultiplePeaksRecipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
@@ -27,5 +27,3 @@ class FitMultiplePeaksService(Service):
         except:
             raise
         return data
-
-
