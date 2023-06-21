@@ -1,4 +1,5 @@
 import unittest.mock as mock
+
 import pytest
 
 with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
