@@ -4,10 +4,8 @@ from typing import List
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
-from pydantic import parse_raw_as
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 name = "PurgeOverlappingPeaksAlgorithm"
@@ -17,14 +15,14 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
-        self.declareProperty("FocusGroups", defaultValue="", direction=Direction.Input)
         self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
+        self.declareProperty("NumFocusGroups", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputPeakMap", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
 
     def PyExec(self):
         instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
-        focusGroups = parse_raw_as(List[FocusGroup], self.getProperty("FocusGroups").value)
+        numFocusGroups = int(self.getProperty("NumFocusGroups").value)
         crystalInfo = CrystallographicInfo.parse_raw(self.getProperty("CrystalInfo").value)
         crystalInfo.peaks.sort(key=lambda x: x.dSpacing)
         beta_0 = instrumentState.gsasParameters.beta[0]
@@ -37,17 +35,18 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         multiplicity = np.array(crystalInfo.multiplicities)
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
-        minimumA = np.max(A) * 0.05
+        maxA = np.max(A) * 0.05
 
-        outputPeaks = {}
-        for focIndex, focGroup in enumerate(focusGroups):
-            delDoD = instrumentState.pixelGroupingInstrumentParameters[focIndex].dRelativeResolution
-            tTheta = instrumentState.pixelGroupingInstrumentParameters[focIndex].twoTheta
+        outputPeaks = []
 
-            dMin = instrumentState.pixelGroupingInstrumentParameters[focIndex].dResolution.minimum
-            dMax = instrumentState.pixelGroupingInstrumentParameters[focIndex].dResolution.maximum
+        for index in range(numFocusGroups):
+            delDoD = instrumentState.pixelGroupingInstrumentState[index].delta_dhkl_over_dhkl
+            tTheta = instrumentState.pixelGroupingInstrumentState[index].twoThetaAverage
 
-            peakList = [peak.dSpacing for i, peak in enumerate(crystalInfo.peaks) if A[i] >= minimumA]
+            dMin = instrumentState.pixelGroupingInstrumentState[index].dhkl.minimum
+            dMax = instrumentState.pixelGroupingInstrumentState[index].dhkl.maximum
+
+            peakList = [peak.dSpacing for i, peak in enumerate(crystalInfo.peaks) if A[i] >= maxA]
             peakList = [peak for peak in peakList if dMin <= peak <= dMax]
             nPks = len(peakList)
             keep = [True for i in range(nPks)]
@@ -77,10 +76,9 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
                 outputPeakList.append(peakList[-1])  # TODO: add check that DMAx is sufficient
 
             self.log().notice(f" {nPks} peaks in and {len(outputPeakList)} peaks out")
-            outputPeaks[focGroup.name] = outputPeakList
+            outputPeaks.append(outputPeakList)
 
         self.setProperty("OutputPeakMap", json.dumps(outputPeaks))
-
         return outputPeaks
 
 
