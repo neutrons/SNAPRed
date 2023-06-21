@@ -1,5 +1,4 @@
 import unittest.mock as mock
-from unittest import TestCase
 
 with mock.patch.dict(
     "sys.modules",
@@ -44,4 +43,4 @@ with mock.patch.dict(
         expected = json.loads(Resource.read("/outputs/purge_peaks/output.json"))
         actual = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
         print(actual)
-        TestCase().assertListEqual(expected, actual)
+        assert expected == actual
