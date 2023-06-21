@@ -8,11 +8,11 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 class FitMultiplePeaksIngredients(BaseModel):
     """Class to hold fit multiple peaks parameters"""
 
-    instrumentState: InstrumentState
-    crystalInfo: CrystallographicInfo
-    peakType: Optional[str] = "Gaussian"
-    inputWS: str
-    showResult: Optional[bool] = False
+    InstrumentState: InstrumentState
+    CrystalInfo: CrystallographicInfo
+    PeakType: Optional[str] = "Gaussian"
+    InputWorkspace: str
+    ShowResult: Optional[bool] = False
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_peak_type(cls, v):

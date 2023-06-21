@@ -23,10 +23,10 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
 
     def PyExec(self):
         fitPeakIngredients = FitMultiplePeaksIngredients(**json.loads(self.getProperty("FitMultiplePeaksIngredients").value))
-        wsName = fitPeakIngredients.inputWS
-        instrumentState = fitPeakIngredients.instrumentState
-        crystalInfo = fitPeakIngredients.crystalInfo
-        peakType = fitPeakIngredients.peakType
+        wsName = fitPeakIngredients.InputWorkspace
+        instrumentState = fitPeakIngredients.InstrumentState
+        crystalInfo = fitPeakIngredients.CrystalInfo
+        peakType = fitPeakIngredients.PeakType
 
         beta_0 = instrumentState.gsasParameters.beta[0]
         beta_1 = instrumentState.gsasParameters.beta[1]
