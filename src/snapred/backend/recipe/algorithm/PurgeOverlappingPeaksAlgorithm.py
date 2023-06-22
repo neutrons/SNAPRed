@@ -34,7 +34,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         multiplicity = np.array(crystalInfo.multiplicities)
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
-        maxA = np.max(A) * 0.05
+        thresholdA = np.max(A) * 0.05
 
         outputPeaks = []
 
@@ -45,7 +45,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             dMin = instrumentState.pixelGroupingInstrumentState[index].dhkl.minimum
             dMax = instrumentState.pixelGroupingInstrumentState[index].dhkl.maximum
 
-            peakList = [peak.dSpacing for i, peak in enumerate(crystalInfo.peaks) if A[i] >= maxA]
+            peakList = [peak.dSpacing for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
             peakList = [peak for peak in peakList if dMin <= peak <= dMax]
             nPks = len(peakList)
             keep = [True for i in range(nPks)]
