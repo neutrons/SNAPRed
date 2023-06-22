@@ -1,3 +1,4 @@
+import json
 import unittest.mock as mock
 
 import pytest
@@ -10,11 +11,10 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
 
     def test_execute_successful():
         mockAlgo.execute.return_value = "passed"
-        mockAlgo.ingredients = "bad ingredients"
-        mockAlgo.setProperty.side_effect = lambda x, y: setattr(mockAlgo, "ingredients", y)  # noqa: ARG005
-
         recipe = PixelGroupingParametersCalculationRecipe()
         ingredients = mock.Mock(return_value="good ingredients")
+        json.loads = mock.MagicMock()
+
         data = recipe.executeRecipe(ingredients)
 
         assert mockAlgo.execute.called

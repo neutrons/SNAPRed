@@ -2,14 +2,15 @@ import unittest.mock as mock
 
 # Mock out of scope modules before importing DataExportService
 
+localMock = mock.Mock()
+
 with mock.patch.dict(
     "sys.modules",
     {
         "snapred.backend.data.DataExportService": mock.Mock(),
         "snapred.backend.data.DataFactoryService": mock.Mock(),
         "snapred.backend.recipe.CalibrationReductionRecipe": mock.Mock(),
-        # "snapred.backend.recipe.PixelGroupingParametersCalculationRecipe: mock.Mock(),
-        # "snapred.backend.service.CalibrationService" : mock.Mock(),
+        "snapred.backend.dao.PixelGroupingIngredients": mock.MagicMock(),
         "snapred.backend.log": mock.Mock(),
         "snapred.backend.log.logger": mock.Mock(),
     },
@@ -17,6 +18,10 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
     from snapred.backend.dao.ReductionIngredients import ReductionIngredients  # noqa: E402
+    from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
+    from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
+        PixelGroupingParametersCalculationRecipe,  # noqa: E402
+    )
     from snapred.backend.service.CalibrationService import CalibrationService  # noqa: E402
     from snapred.meta.Config import Resource  # noqa: E402
 
@@ -48,9 +53,12 @@ with mock.patch.dict(
         savedEntry = dataExportService.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
 
+    # test calculate pixel grouping parameters
     def test_calculatePixelGroupingParameters():
         calibrationService = CalibrationService()
-        runs = mock.MagicMock()
+        runs = [RunConfig(runNumber="1")]
         groupingFile = mock.Mock()
-        calibrationService.calculatePixelGroupingParameters(runs=runs, groupingFile=groupingFile)
-        # assert calibrationService.calculatePixelGroupingParameters.called
+        setattr(PixelGroupingParametersCalculationRecipe, "executeRecipe", localMock)
+        localMock.return_value = mock.MagicMock()
+        calibrationService.calculatePixelGroupingParameters(runs, groupingFile)
+        assert localMock.called

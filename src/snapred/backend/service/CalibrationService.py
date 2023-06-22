@@ -81,7 +81,7 @@ class CalibrationService(Service):
             states.append(state)
         return states
 
-    # @FromString
+    @FromString
     def calculatePixelGroupingParameters(self, runs: List[RunConfig], groupingFile: str):
         for run in runs:
             calibrationState = self.dataFactoryService.getCalibrationState(run.runNumber)
