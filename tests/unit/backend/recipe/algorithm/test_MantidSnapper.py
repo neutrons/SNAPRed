@@ -1,6 +1,6 @@
 import unittest.mock as mock
 
-with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
+with mock.patch("mantid.api.AlgorithmManager") as FakeAlgorithmManager:
     from mantid.kernel import Direction
     from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -11,7 +11,8 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
     fakeFunction = mock.Mock()
     fakeFunction.getProperties.return_value = {}
     fakeFunction.getProperty.return_value = fakeOutput
-    MockAlgorithmManager.create.return_value = fakeFunction
+
+    FakeAlgorithmManager.create.return_value = fakeFunction
 
     def test_snapper_fake_algo():
         return_of_algo = "return of algo"
@@ -25,6 +26,3 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         mantidSnapper.fakeFunction("test", fakeOutput=return_of_algo)
         mantidSnapper.executeQueue()
         assert fakeFunction.execute.called
-
-
-mock.patch.stopall()
