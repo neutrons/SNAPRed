@@ -50,10 +50,30 @@ with mock.patch.dict(
         wsGroupName = fmpAlgo.getProperty("OutputWorkspaceGroup").value
         assert wsGroupName == "fitPeaksWSGroup"
         wsGroup = mtd[wsGroupName].getNames()
-        expected = ['ws_fitted_peakpositions_0','ws_fitted_params_0','ws_fitted_0','ws_fitted_params_err_0',
-                    'ws_fitted_peakpositions_1','ws_fitted_params_1','ws_fitted_1','ws_fitted_params_err_1',
-                    'ws_fitted_peakpositions_2','ws_fitted_params_2','ws_fitted_2','ws_fitted_params_err_2',
-                    'ws_fitted_peakpositions_3','ws_fitted_params_3','ws_fitted_3','ws_fitted_params_err_3',
-                    'ws_fitted_peakpositions_4','ws_fitted_params_4','ws_fitted_4','ws_fitted_params_err_4',
-                    'ws_fitted_peakpositions_5','ws_fitted_params_5','ws_fitted_5','ws_fitted_params_err_5']
+        expected = [
+            "ws_fitted_peakpositions_0",
+            "ws_fitted_params_0",
+            "ws_fitted_0",
+            "ws_fitted_params_err_0",
+            "ws_fitted_peakpositions_1",
+            "ws_fitted_params_1",
+            "ws_fitted_1",
+            "ws_fitted_params_err_1",
+            "ws_fitted_peakpositions_2",
+            "ws_fitted_params_2",
+            "ws_fitted_2",
+            "ws_fitted_params_err_2",
+            "ws_fitted_peakpositions_3",
+            "ws_fitted_params_3",
+            "ws_fitted_3",
+            "ws_fitted_params_err_3",
+            "ws_fitted_peakpositions_4",
+            "ws_fitted_params_4",
+            "ws_fitted_4",
+            "ws_fitted_params_err_4",
+            "ws_fitted_peakpositions_5",
+            "ws_fitted_params_5",
+            "ws_fitted_5",
+            "ws_fitted_params_err_5",
+        ]
         assert wsGroup == expected
