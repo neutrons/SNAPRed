@@ -16,7 +16,7 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
-        reductionIngredients = ReductionIngredients.parse_raw(self.getProperty("ReductionIngredients"))
+        reductionIngredients = ReductionIngredients.parse_raw(self.getProperty("ReductionIngredients").value)
         # run the algo
         self.log().notice("Execution of AlignAndFocusReductionAlgorithm START!")
 
@@ -29,15 +29,21 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         # raw_data = self.loadEventNexus(Filename=rawDataPath, OutputWorkspace="raw_data")
         self.mantidSnapper.LoadNexus("loading vanadium file...", Filename=vanadiumFilePath, OutputWorkspace="vanadium")
 
-        self.mantidSnapper.CreateGroupWorkspace(
+        self.mantidSnapper.CustomGroupWorkspace(
             "Creating group workspace...",
-            StateConfig=reductionIngredients.reductionState.stateConfig,
+            StateConfig=reductionIngredients.reductionState.stateConfig.json(),
             InstrumentName=reductionIngredients.reductionState.instrumentConfig.name,
         )
 
         # 3 ApplyDiffCal  -- just apply to data
-        diffCalPrefix = self.mantidSnapper.LoadDiffCal(
-            "Loading Diffcal...", Filename=diffCalPath, InputWorkspace="idf", WorkspaceName="diffcal"
+        diffCalPrefix = "diffcal"
+        self.mantidSnapper.LoadDiffCal(
+            "Loading DiffCal for {} ...".format(diffCalPath),
+            InstrumentFilename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+            MakeGroupingWorkspace=False,
+            MakeMaskWorkspace=True,
+            Filename=diffCalPath,
+            WorkspaceName=diffCalPrefix,
         )
 
         self.mantidSnapper.executeQueue()
@@ -75,19 +81,7 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         #                     #   ReductionProperties="?",
         #                       OutputWorkspace="vanadium")
 
-        import yappi
-
-        # Dont use wall time as Qt event loop runs for entire duration
-        output_path = "./profile.out"
-        yappi.set_clock_type("cpu")
-        yappi.start(builtins=False, profile_threads=True, profile_greenlets=True)
-        try:
-            self.mantidSnapper.executeQueue()
-        finally:
-            # Qt will try to sys.exit so wrap in finally block before we go down
-            yappi.stop()
-            prof_data = yappi.get_func_stats()
-            prof_data.save(output_path, type="callgrind")
+        self.mantidSnapper.executeQueue()
 
         self.log().notice("Execution of AlignAndFocusReductionAlgorithm COMPLETE!")
         # return data

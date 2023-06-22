@@ -132,7 +132,7 @@ class LocalDataService:
         reductionParameters = self._readReductionParameters(runId)
         # TODO: fix hardcode reductionParameters["focGroupLst"]
         # dont have time to figure out why its reading the wrong data
-        focusGroupNames = ["Column", "Bank", "All", "Mid"]
+        focusGroupNames = ["Column", "Bank", "All"]
         focusGroups = []
         for i, name in enumerate(focusGroupNames):
             focusGroups.append(
