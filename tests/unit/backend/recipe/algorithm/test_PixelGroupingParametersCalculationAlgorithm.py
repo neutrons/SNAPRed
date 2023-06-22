@@ -201,7 +201,7 @@ with mock.patch.dict(
             for item in pixelGroupingParams_str:
                 pixelGroupingParams_calc.append(PixelGroupingParameters.parse_raw(item))
 
-            # parse the reference file. Note that in the reference file each kind of parameter is grouped into its own list
+            # parse the reference file. Note, in the reference file each kind of parameter is grouped into its own list
             f = open(referenceParametersFile)
             pixelGroupingParams_ref = json.load(f)
 
@@ -212,6 +212,9 @@ with mock.patch.dict(
             assert len(pixelGroupingParams_ref["dMax"]) == number_of_groupings_calc
             assert len(pixelGroupingParams_ref["delDOverD"]) == number_of_groupings_calc
 
+            # reverseGroupingIndex takes care of the different order of pixel groupings between "full" anf "lite"
+            # instruments. This has to do with how Mantid treats different kinds of grouping files used by
+            # PixelGroupingParametersCalculationAlgorithm
             index = 0 if reverseGroupingIndex else number_of_groupings_calc - 1
             for param in pixelGroupingParams_ref["twoTheta"]:
                 assert abs(float(param) - pixelGroupingParams_calc[index].twoTheta) < 1.0e-5
