@@ -8,6 +8,8 @@ with mock.patch.dict(
         "snapred.backend.data.DataExportService": mock.Mock(),
         "snapred.backend.data.DataFactoryService": mock.Mock(),
         "snapred.backend.recipe.CalibrationReductionRecipe": mock.Mock(),
+        #"snapred.backend.recipe.PixelGroupingParametersCalculationRecipe: mock.Mock(),
+        #"snapred.backend.service.CalibrationService" : mock.Mock(),
         "snapred.backend.log": mock.Mock(),
         "snapred.backend.log.logger": mock.Mock(),
     },
@@ -17,6 +19,7 @@ with mock.patch.dict(
     from snapred.backend.dao.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.service.CalibrationService import CalibrationService  # noqa: E402
     from snapred.meta.Config import Resource  # noqa: E402
+    from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 
     def readReductionIngredientsFromFile():
         with Resource.open("/inputs/calibration/input.json", "r") as f:
@@ -45,3 +48,10 @@ with mock.patch.dict(
         assert dataExportService.dataExportService.exportCalibrationRecord.called
         savedEntry = dataExportService.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
+
+    def test_calculatePixelGroupingParameters():
+            calibrationService = CalibrationService()       
+            runs = mock.MagicMock()
+            groupingFile = mock.Mock()
+            calibrationService.calculatePixelGroupingParameters(runs=runs, groupingFile=groupingFile)
+            #assert calibrationService.calculatePixelGroupingParameters.called

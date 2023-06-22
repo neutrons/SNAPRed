@@ -9,6 +9,9 @@ from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationReductionRecipe import CalibrationReductionRecipe
+from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
+from snapred.backend.dao.PixelGroupingIngredients import PixelGroupingIngredients
+from snapred.meta.Config import Resource
 from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
@@ -29,6 +32,7 @@ class CalibrationService(Service):
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
         self.registerPath("initializeState", self.initializeState)
+        self.registerPath("calculatePixelGroupingParameters", self.calculatePixelGroupingParameters)
         return
 
     def name(self):
@@ -77,3 +81,17 @@ class CalibrationService(Service):
             state = self.dataFactoryService.getStateConfig(run.runNumber)
             states.append(state)
         return states
+    
+    #@FromString
+    def calculatePixelGroupingParameters(self, runs: List[RunConfig], groupingFile: str):
+        for run in runs:
+            calibrationState = self.dataFactoryService.getCalibrationState(run.runNumber)
+            groupingIngredients = PixelGroupingIngredients(calibrationState=calibrationState,
+                                                           instrumentDefinitionFile="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+                                                           groupingFile=groupingFile)
+            try:
+                data = PixelGroupingParametersCalculationRecipe().executeRecipe(groupingIngredients)
+                calibrationState.instrumentState.pixelGroupingInstrumentParameters = data["parameters"]
+                self.dataExportService.exportCalibrationState(runId=run.runNumber, calibration=calibrationState)
+            except:
+                raise
