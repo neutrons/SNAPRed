@@ -1,3 +1,7 @@
+import json
+import math
+import pathlib
+
 from mantid.api import (
     AlgorithmFactory,
     PythonAlgorithm,
@@ -5,54 +9,46 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
-from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.dao.Limit import Limit
-
-import math
-import json
-import pathlib
+from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "PixelGroupingParametersCalculationAlgorithm"
+
 
 class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
-        self.declareProperty(
-            "InputState", defaultValue="", direction=Direction.Input
-        )
+        self.declareProperty("InputState", defaultValue="", direction=Direction.Input)
 
-        self.declareProperty(
-            "InstrumentDefinitionFile", defaultValue="", direction=Direction.Input
-        )
+        self.declareProperty("InstrumentDefinitionFile", defaultValue="", direction=Direction.Input)
 
-        self.declareProperty(
-            "GroupingFile", defaultValue="", direction=Direction.Input
-        )
+        self.declareProperty("GroupingFile", defaultValue="", direction=Direction.Input)
 
-        self.declareProperty(
-            "OutputParameters", defaultValue="", direction=Direction.Output
-        )
+        self.declareProperty("OutputParameters", defaultValue="", direction=Direction.Output)
 
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
         self.log().notice("Calculate pixel grouping state-derived parameters")
-        
+
         # create a grouping workspace
         grouping_ws_name = "pgpca_grouping_ws"
         self.CreateGroupingWorkspace(grouping_ws_name)
-        
+
         # load an instrument into the workspace
         self.LoadSNAPInstrument(grouping_ws_name)
 
         # create a dummy grouped-by-detector workspace from the grouping workspace
         grouped_ws_name = "pgpca_grouped_ws"
-        self.mantidSnapper.GroupDetectors("Grouping detectors...", InputWorkspace=grouping_ws_name,
-                        CopyGroupingFromWorkspace=grouping_ws_name,
-                        OutputWorkspace=grouped_ws_name)
+        self.mantidSnapper.GroupDetectors(
+            "Grouping detectors...",
+            InputWorkspace=grouping_ws_name,
+            CopyGroupingFromWorkspace=grouping_ws_name,
+            OutputWorkspace=grouped_ws_name,
+        )
         self.mantidSnapper.executeQueue()
 
         # define/calculate some auxiliary state-derived parameters
@@ -67,13 +63,15 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         delTheta = instrumentState.instrumentConfig.delThWithGuide
 
         # estimate the relative resolution for all pixel groupings
-        self.mantidSnapper.EstimateResolutionDiffraction("Estimating diffraction resolution...", 
-                                                         InputWorkspace=grouped_ws_name,
-                                                        OutputWorkspace="pgpca_resolution_ws",
-                                                        PartialResolutionWorkspaces="pgpca_resolution_partials",
-                                                        DeltaTOFOverTOF=deltaTOverT,
-                                                        SourceDeltaL=delL,
-                                                        SourceDeltaTheta=delTheta)
+        self.mantidSnapper.EstimateResolutionDiffraction(
+            "Estimating diffraction resolution...",
+            InputWorkspace=grouped_ws_name,
+            OutputWorkspace="pgpca_resolution_ws",
+            PartialResolutionWorkspaces="pgpca_resolution_partials",
+            DeltaTOFOverTOF=deltaTOverT,
+            SourceDeltaL=delL,
+            SourceDeltaTheta=delTheta,
+        )
         self.mantidSnapper.executeQueue()
 
         # calculate and store all pixel grouping parameters as strings
@@ -83,35 +81,36 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         specInfo = grouped_ws.spectrumInfo()
         for groupIndex in range(grouped_ws.getNumberHistograms()):
             twoTheta = specInfo.twoTheta(groupIndex)
-            dMin = 3.9561e-3*(1/(2*math.sin(twoTheta/2)))*tofMin/L
-            dMax = 3.9561e-3*(1/(2*math.sin(twoTheta/2)))*tofMax/L
+            dMin = 3.9561e-3 * (1 / (2 * math.sin(twoTheta / 2))) * tofMin / L
+            dMax = 3.9561e-3 * (1 / (2 * math.sin(twoTheta / 2))) * tofMax / L
             delta_d_over_d = resws.readY(groupIndex)[0]
 
-            groupingParams_str = PixelGroupingParameters(twoTheta=twoTheta, 
-                                                           dResolution=Limit(minimum=dMin,maximum=dMax), 
-                                                           dRelativeResolution=delta_d_over_d).json()
+            groupingParams_str = PixelGroupingParameters(
+                twoTheta=twoTheta, dResolution=Limit(minimum=dMin, maximum=dMax), dRelativeResolution=delta_d_over_d
+            ).json()
             allGroupingParams_str.append(groupingParams_str)
 
         outputParams = json.dumps(allGroupingParams_str)
         self.setProperty("OutputParameters", outputParams)
-    
+
     # create a grouping workspace from a grouping file
     def CreateGroupingWorkspace(self, grouping_ws_name):
         groupingFilePath = self.getProperty("GroupingFile").value
         file_extension = pathlib.Path(groupingFilePath).suffix
         if file_extension.upper()[1:] == "XML":
-            self.mantidSnapper.LoadDetectorsGroupingFile("Loading detectors grouping file...", 
-                                                          InputFile=groupingFilePath, 
-                                                          OutputWorkspace=grouping_ws_name)
-        else: # from a workspace
-            self.mantidSnapper.LoadNexusProcessed("Loading grouping workspace...", Filename=groupingFilePath,
-                                                                  OutputWorkspace=grouping_ws_name)
+            self.mantidSnapper.LoadDetectorsGroupingFile(
+                "Loading detectors grouping file...", InputFile=groupingFilePath, OutputWorkspace=grouping_ws_name
+            )
+        else:  # from a workspace
+            self.mantidSnapper.LoadNexusProcessed(
+                "Loading grouping workspace...", Filename=groupingFilePath, OutputWorkspace=grouping_ws_name
+            )
         self.mantidSnapper.executeQueue()
 
     # load a snap instrument into a workspace
     def LoadSNAPInstrument(self, ws_name):
         self.log().notice("Load SNAP instrument based on the Instrument Definition File")
-        
+
         # load the idf into workspace
         idf = self.getProperty("InstrumentDefinitionFile").value
 
@@ -119,18 +118,42 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         calibrationState = Calibration.parse_raw(self.getProperty("InputState").value)
         detectorState = calibrationState.instrumentState.detectorState
 
-        # add sample logs         
-        self.mantidSnapper.AddSampleLog("Adding sample log...",Workspace=ws_name,LogName='det_arc1',LogText=str(detectorState.arc[0]),LogType='Number Series')
-        self.mantidSnapper.AddSampleLog("Adding sample log...",Workspace=ws_name,LogName='det_arc2',LogText=str(detectorState.arc[1]),LogType='Number Series')
-        self.mantidSnapper.AddSampleLog("Adding sample log...",Workspace=ws_name,LogName='det_lin1',LogText=str(detectorState.lin[0]),LogType='Number Series')
-        self.mantidSnapper.AddSampleLog("Adding sample log...",Workspace=ws_name,LogName='det_lin2',LogText=str(detectorState.lin[1]),LogType='Number Series')
+        # add sample logs
+        self.mantidSnapper.AddSampleLog(
+            "Adding sample log...",
+            Workspace=ws_name,
+            LogName="det_arc1",
+            LogText=str(detectorState.arc[0]),
+            LogType="Number Series",
+        )
+        self.mantidSnapper.AddSampleLog(
+            "Adding sample log...",
+            Workspace=ws_name,
+            LogName="det_arc2",
+            LogText=str(detectorState.arc[1]),
+            LogType="Number Series",
+        )
+        self.mantidSnapper.AddSampleLog(
+            "Adding sample log...",
+            Workspace=ws_name,
+            LogName="det_lin1",
+            LogText=str(detectorState.lin[0]),
+            LogType="Number Series",
+        )
+        self.mantidSnapper.AddSampleLog(
+            "Adding sample log...",
+            Workspace=ws_name,
+            LogName="det_lin2",
+            LogText=str(detectorState.lin[1]),
+            LogType="Number Series",
+        )
         self.mantidSnapper.executeQueue()
 
-        self.mantidSnapper.LoadInstrument("Loading instrument...",
-                                                    Workspace=ws_name,
-                                                    FileName=idf,
-                                                    RewriteSpectraMap="False")
+        self.mantidSnapper.LoadInstrument(
+            "Loading instrument...", Workspace=ws_name, FileName=idf, RewriteSpectraMap="False"
+        )
         self.mantidSnapper.executeQueue()
+
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(PixelGroupingParametersCalculationAlgorithm)

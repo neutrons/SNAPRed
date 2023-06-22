@@ -1,14 +1,11 @@
-from typing import Any, Dict
 import json
+from typing import Any, Dict
 
 from mantid.api import AlgorithmManager
 
-from snapred.backend.log.logger import snapredLogger
 from snapred.backend.dao.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
-from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
-    name as pgpcName,
-)
+from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -35,7 +32,7 @@ class PixelGroupingParametersCalculationRecipe:
         try:
             data["result"] = algo.execute()
             # parse the algorithm output and create a list of calculated PixelGroupingParameters
-            temp = algo.getProperty("OutputParameters").value
+            algo.getProperty("OutputParameters").value
             pixelGroupingParams_strs = json.loads(algo.getProperty("OutputParameters").value)
             pixelGroupingParams = []
             for item in pixelGroupingParams_strs:

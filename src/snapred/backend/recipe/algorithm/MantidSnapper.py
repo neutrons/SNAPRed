@@ -3,7 +3,6 @@ import os
 from mantid.api import AlgorithmManager, Progress
 from mantid.kernel import Direction
 
-from snapred.backend.recipe.algorithm.CustomGroupWorkspace import CustomGroupWorkspace
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 

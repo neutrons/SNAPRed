@@ -1,8 +1,6 @@
 import unittest.mock as mock
 
 import pytest
-from snapred.meta.Config import Resource
-
 
 with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe

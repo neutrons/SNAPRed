@@ -1,5 +1,7 @@
 from pydantic import BaseModel
+
 from snapred.backend.dao.Limit import Limit
+
 
 class PixelGroupingParameters(BaseModel):
     twoTheta: float  # the average two-theta (radians) for pixel grouping

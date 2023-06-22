@@ -1,7 +1,6 @@
 from typing import List, Optional
 
 from pydantic import BaseModel
-from typing import List
 
 from snapred.backend.dao.GSASParameters import GSASParameters
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
