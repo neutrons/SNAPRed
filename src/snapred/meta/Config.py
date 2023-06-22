@@ -33,6 +33,13 @@ class _Resource:
             self._resourcesPath = "/resources/"
         # filename = resource_filename(Requirement.parse("MyProject"),"sample.conf")
 
+    def exists(self, subPath):
+        if self._packageMode:
+            with resources.path("snapred.resources", subPath) as path:
+                return os.path.exists(path)
+        else:
+            return os.path.exists(self.getPath(subPath))
+
     def getPath(self, subPath):
         return self._resourcesPath + subPath
 
