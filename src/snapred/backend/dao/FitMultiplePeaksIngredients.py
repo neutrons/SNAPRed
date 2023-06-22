@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, root_validator
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
@@ -11,9 +9,9 @@ class FitMultiplePeaksIngredients(BaseModel):
 
     InstrumentState: InstrumentState
     CrystalInfo: CrystallographicInfo
-    PeakType: Optional[str] = "Gaussian"
+    PeakType: str = "Gaussian"
     InputWorkspace: str
-    ShowResult: Optional[bool] = False
+    ShowResult: bool = False
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_peak_type(cls, v):
