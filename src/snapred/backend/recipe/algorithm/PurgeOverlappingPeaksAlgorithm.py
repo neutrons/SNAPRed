@@ -42,7 +42,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         outputPeaks = {}
         for focIndex, focGroup in enumerate(focusGroups):
             delDoD = instrumentState.pixelGroupingInstrumentParameters[focIndex].dRelativeResolution
-            tTheta = instrumentState.pixelGroupingInstrumentParameters[focIndex].twoThetaAverage
+            tTheta = instrumentState.pixelGroupingInstrumentParameters[focIndex].twoTheta
 
             dMin = instrumentState.pixelGroupingInstrumentParameters[focIndex].dResolution.minimum
             dMax = instrumentState.pixelGroupingInstrumentParameters[focIndex].dResolution.maximum
