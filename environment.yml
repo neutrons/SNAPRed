@@ -1,4 +1,4 @@
-name: SNAPRed_nightly
+name: SNAPRed
 channels:
 - conda-forge
 - default
