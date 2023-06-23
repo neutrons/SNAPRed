@@ -47,11 +47,14 @@ with mock.patch.dict(
         yield
         teardown()
 
-    class TestPixelGrouping:
+    class TestPixelGroupingParametersCalculation:
         def getCalibrationState(self):
-            return parse_file_as(
-                Calibration, "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/CalibrationParameters.json"
-            ).json()
+            if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
+                return ""
+            else:
+                return parse_file_as(
+                    Calibration, "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/CalibrationParameters.json"
+                ).json()
 
         def test_column(self):
             instrumentDefinitionFile = "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition_2011-09-07.xml"
