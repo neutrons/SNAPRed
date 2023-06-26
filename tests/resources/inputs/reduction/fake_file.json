@@ -1,0 +1,88 @@
+{
+    "runConfig": {
+      "runNumber": "nope",
+      "IPTS": "nope",
+      "maskFileName": "",
+      "maskFileDirectory": "nope",
+      "gsasFileDirectory": "nope",
+      "calibrationState": null
+    },
+    "reductionState": {
+      "instrumentConfig": {
+        "version": "1.4",
+        "facility": "SNS",
+        "name": "SNAP",
+        "nexusFileExtension": ".nxs.h5",
+        "nexusFilePrefix": "SNAP_",
+        "calibrationFileExtension": "json",
+        "calibrationFilePrefix": "nope",
+        "calibrationDirectory": "nope",
+        "pixelGroupingDirectory": "nope",
+        "sharedDirectory": "nope",
+        "nexusDirectory": "nope",
+        "reducedDataDirectory": "nope",
+        "reductionRecordDirectory": "nope",
+        "bandwidth": 0,
+        "maxBandwidth": 0,
+        "L1": 0,
+        "L2": 2,
+        "delTOverT": 0,
+        "delLOverL": 0,
+        "delThNoGuide": 0,
+        "delThWithGuide": 0
+      },
+      "stateConfig": {
+        "diffractionCalibrant": {
+          "runNumber": "nope",
+          "filename": "nope",
+          "diffCalPath": "nope",
+          "name": null,
+          "latticeParameters": null,
+          "reference": null
+        },
+        "emptyInstrumentRunNumber": 0,
+        "normalizationCalibrant": {
+          "numAnnuli": 0,
+          "numSlices": null,
+          "attenuationCrossSection": 0,
+          "attenuationHeight": 0,
+          "geometry": null,
+          "FWHM": [[0]],
+          "mask": "",
+          "material": null,
+          "peaks": [0.0],
+          "radius": 0,
+          "sampleNumberDensity": 0,
+          "scatteringCrossSection": 0,
+          "smoothPoints": 0,
+          "calibrationState": null
+        },
+        "geometryCalibrationFileName": null,
+        "calibrationAuthor": "Malcolm",
+        "calibrationDate": "nope",
+        "focusGroups": [
+          {
+            "name": "Column",
+            "FWHM": [0],
+            "nHst": 6,
+            "dBin": [0],
+            "dMax": [0],
+            "dMin": [0],
+            "definition": "nope"
+          }
+        ],
+        "isLiteMode": true,
+        "rawVanadiumCorrectionFileName": "nope",
+        "vanadiumFilePath": "nope",
+        "calibrationMaskFileName": null,
+        "stateId": "nope",
+        "tofBin": 0,
+        "tofMax": 0,
+        "tofMin": 0,
+        "version": "1.4",
+        "wallclockTof": 0,
+        "temporalProximity": null
+      },
+      "overrides": null
+    }
+  }
