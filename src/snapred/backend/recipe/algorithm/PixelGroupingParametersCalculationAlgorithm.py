@@ -107,7 +107,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             )
         self.mantidSnapper.executeQueue()
 
-    # load a snap instrument into a workspace
+    # load SNAP instrument into a workspace
     def LoadSNAPInstrument(self, ws_name):
         self.log().notice("Load SNAP instrument based on the Instrument Definition File")
 
@@ -118,35 +118,16 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         calibrationState = Calibration.parse_raw(self.getProperty("InputState").value)
         detectorState = calibrationState.instrumentState.detectorState
 
-        # add sample logs
-        self.mantidSnapper.AddSampleLog(
-            "Adding sample log...",
-            Workspace=ws_name,
-            LogName="det_arc1",
-            LogText=str(detectorState.arc[0]),
-            LogType="Number Series",
-        )
-        self.mantidSnapper.AddSampleLog(
-            "Adding sample log...",
-            Workspace=ws_name,
-            LogName="det_arc2",
-            LogText=str(detectorState.arc[1]),
-            LogType="Number Series",
-        )
-        self.mantidSnapper.AddSampleLog(
-            "Adding sample log...",
-            Workspace=ws_name,
-            LogName="det_lin1",
-            LogText=str(detectorState.lin[0]),
-            LogType="Number Series",
-        )
-        self.mantidSnapper.AddSampleLog(
-            "Adding sample log...",
-            Workspace=ws_name,
-            LogName="det_lin2",
-            LogText=str(detectorState.lin[1]),
-            LogType="Number Series",
-        )
+        # add sample logs with detector "arc" and "lin" parameters to the workspace
+        for param_name in ["arc", "lin"]:
+            for index in range(2):
+                self.mantidSnapper.AddSampleLog(
+                    "Adding sample log...",
+                    Workspace=ws_name,
+                    LogName="det_" + param_name + str(index + 1),
+                    LogText=str(getattr(detectorState, param_name)[index]),
+                    LogType="Number Series",
+                )
         self.mantidSnapper.executeQueue()
 
         self.mantidSnapper.LoadInstrument(

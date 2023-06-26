@@ -7,8 +7,6 @@ import pytest
 with mock.patch.dict(
     "sys.modules",
     {
-        # "mantid.api": mock.Mock(),
-        # "mantid.kernel": mock.Mock(),
         "snapred.backend.log": mock.Mock(),
         "snapred.backend.log.logger": mock.Mock(),
     },
