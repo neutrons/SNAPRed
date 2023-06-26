@@ -52,10 +52,8 @@ with mock.patch.dict(
             Calibration, "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/CalibrationParameters.json"
         ).json()
 
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_column():
-        if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
-            return
-
         instrumentDefinitionFile = "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition_2011-09-07.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.xml"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters.json"
@@ -68,10 +66,8 @@ with mock.patch.dict(
             reverseGroupingIndex=False,
         )
 
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_column_lite():
-        if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
-            return
-
         instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_lite_parameters.json"
@@ -84,10 +80,8 @@ with mock.patch.dict(
             reverseGroupingIndex=True,
         )
 
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_bank():
-        if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
-            return
-
         instrumentDefinitionFile = "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition_2011-09-07.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Bank.xml"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Bank_parameters.json"
@@ -100,10 +94,8 @@ with mock.patch.dict(
             reverseGroupingIndex=False,
         )
 
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_bank_lite():
-        if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
-            return
-
         instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Bank.lite.nxs"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Bank_lite_parameters.json"
@@ -116,10 +108,8 @@ with mock.patch.dict(
             reverseGroupingIndex=True,
         )
 
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_all():
-        if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
-            return
-
         instrumentDefinitionFile = "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition_2011-09-07.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.xml"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/All_parameters.json"
@@ -132,10 +122,8 @@ with mock.patch.dict(
             reverseGroupingIndex=False,
         )
 
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_all_lite():
-        if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
-            return
-
         instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.nxs"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/All_lite_parameters.json"
@@ -148,10 +136,8 @@ with mock.patch.dict(
             reverseGroupingIndex=True,
         )
 
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_wrong_idf():
-        if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
-            return
-
         instrumentDefinitionFile = "junk"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_lite_parameters.json"
@@ -165,10 +151,8 @@ with mock.patch.dict(
             )
         assert "FileDescriptor" in str(excinfo.value)
 
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_wrong_grouping_file():
-        if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
-            return
-
         instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "junk"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_lite_parameters.json"
@@ -183,10 +167,8 @@ with mock.patch.dict(
             )
         assert "Filename" in str(excinfo.value)
 
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_wrong_calibration_state():
-        if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
-            return
-
         instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_lite_parameters.json"
@@ -209,10 +191,6 @@ with mock.patch.dict(
         reverseGroupingIndex,
     ):
         """Test execution of PixelGroupingParametersCalculationAlgorithm"""
-
-        if not IS_ON_ANALYSIS_MACHINE:  # noqa: F821
-            return
-
         pixelGroupingAlgo = PixelGroupingParametersCalculationAlgorithm()
         pixelGroupingAlgo.initialize()
 

@@ -4,17 +4,25 @@ import unittest.mock as mock
 import pytest
 
 with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
+    from snapred.backend.dao.Limit import Limit
+    from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 
     mockAlgo = mock.Mock()
     MockAlgorithmManager.create.return_value = mockAlgo
 
     def test_execute_successful():
+        # mock algorithm execution result and output
         mockAlgo.execute.return_value = "passed"
+        params = PixelGroupingParameters(
+            twoTheta=3.14, dResolution=Limit(minimum=0.1, maximum=1.0), dRelativeResolution=0.01
+        )
+        mock_output_val = [params.json()]
+        mockAlgo.getProperty("OutputParameters").value = json.dumps(mock_output_val)
+
+        # execute recipe with mocked input
         recipe = PixelGroupingParametersCalculationRecipe()
         ingredients = mock.Mock(return_value="good ingredients")
-        json.loads = mock.MagicMock()
-
         data = recipe.executeRecipe(ingredients)
 
         assert mockAlgo.execute.called

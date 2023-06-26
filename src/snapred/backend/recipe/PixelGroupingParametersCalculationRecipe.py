@@ -20,7 +20,6 @@ class PixelGroupingParametersCalculationRecipe:
 
     def executeRecipe(self, ingredients: PixelGroupingIngredients) -> Dict[str, Any]:
         logger.info("Executing recipe for: %s" % ingredients.groupingFile)
-
         data: Dict[str, Any] = {}
 
         algo = AlgorithmManager.create(self.PixelGroupingParametersCalculationAlgorithmName)
@@ -32,7 +31,6 @@ class PixelGroupingParametersCalculationRecipe:
         try:
             data["result"] = algo.execute()
             # parse the algorithm output and create a list of calculated PixelGroupingParameters
-            algo.getProperty("OutputParameters").value
             pixelGroupingParams_strs = json.loads(algo.getProperty("OutputParameters").value)
             pixelGroupingParams = []
             for item in pixelGroupingParams_strs:
