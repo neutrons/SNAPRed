@@ -1,5 +1,7 @@
 import unittest.mock as mock
 
+from snapred.meta.Callback import callback
+
 with mock.patch("mantid.api.AlgorithmManager") as FakeAlgorithmManager:
     from mantid.kernel import Direction
     from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -18,7 +20,7 @@ with mock.patch("mantid.api.AlgorithmManager") as FakeAlgorithmManager:
         return_of_algo = "return of algo"
         mantidSnapper = MantidSnapper(parentAlgorithm=None, name="")
         test = mantidSnapper.fakeFunction("test", fakeOutput=return_of_algo)
-        assert test == return_of_algo
+        assert str(test.__class__) == str(callback(return_of_algo.__class__).__class__)
 
     def test_snapper_fake_queue():
         return_of_algo = "return of algo"

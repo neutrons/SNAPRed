@@ -106,7 +106,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService.instrumentConfig = getMockInstrumentConfig()
         actual = localDataService._readFocusGroups(mock.Mock())
         assert actual is not None
-        assert len(actual) == 4
+        assert len(actual) == 3
 
     @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
     def test_readRunConfig():

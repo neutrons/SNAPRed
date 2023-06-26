@@ -1,7 +1,7 @@
 import os
 from collections import namedtuple
 
-from mantid.api import AlgorithmManager, Progress
+from mantid.api import AlgorithmManager, Progress, mtd
 from mantid.kernel import Direction
 
 from snapred.backend.error.AlgorithmException import AlgorithmException
@@ -14,8 +14,16 @@ from snapred.meta.Config import Resource
 logger = snapredLogger.getLogger(__name__)
 
 
+class _CustomMtd:
+    def __getitem__(self, key):
+        if str(key.__class__) == str(callback(int).__class__):
+            key = key.get()
+        return mtd[key]
+
+
 class MantidSnapper:
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
+    _mtd = _CustomMtd()
 
     def __init__(self, parentAlgorithm, name):
         """
@@ -153,6 +161,10 @@ class MantidSnapper:
             # import pdb; pdb.set_trace()
             self.executeAlgorithm(name=algorithmTuple[0], outputs=algorithmTuple[3], **algorithmTuple[2])
         self.cleanup()
+
+    @property
+    def mtd(self):
+        return self._mtd
 
     def _cleanOldExport(self):
         exportPath = self._generateExportPath()
