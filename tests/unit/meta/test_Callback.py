@@ -31,7 +31,7 @@ class TestCallback(unittest.TestCase):
         testCallback.update(True)
         assert testCallback.get() is True
         assert testCallback.__bool__() is True
-        assert testCallback is True
+        assert testCallback
 
     def test_intCallback(self):
         testCallback = callback(int)
