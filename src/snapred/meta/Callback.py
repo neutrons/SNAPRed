@@ -25,9 +25,10 @@ def callback(clazz):
         "getattr",
         "__getattribute__",
         "__setattr__",
+        "__subclasscheck__",
     ]
 
-    class Callback(clazz):
+    class Callback(object):
         _ignore = ignore
         _set = False
         _value: clazz = None
@@ -55,6 +56,9 @@ def callback(clazz):
             if not self._set:
                 return self
             return self._value.__getitem__(items)
+
+        def __subclasscheck__(cls, subclass):
+            return clazz.__subclasscheck__(subclass)
 
     # Forwared all methods to the _value, throw if not populated
     for name in dir(clazz):

@@ -1,4 +1,5 @@
 import os
+from collections import namedtuple
 
 from mantid.api import AlgorithmManager, Progress
 from mantid.kernel import Direction
@@ -93,6 +94,10 @@ class MantidSnapper:
 
             if len(outputProperties) == 1:
                 (outputProperties,) = outputProperties.values()
+            else:
+                # Convert to tuple for a more pythonic return
+                NamedOutputsTuple = namedtuple("{}Outputs".format(key), outputProperties.keys())
+                outputProperties = NamedOutputsTuple(**outputProperties)
 
             return outputProperties
 
