@@ -10,6 +10,7 @@ from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.service.ConfigLookupService import ConfigLookupService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.ExtractionService import ExtractionService
+from snapred.backend.service.FitMultiplePeakService import FitMultiplePeaksService
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.backend.service.ServiceDirectory import ServiceDirectory
 from snapred.backend.service.StateIdLookupService import StateIdLookupService
@@ -33,6 +34,7 @@ class ServiceFactory:
         self.serviceDirectory.registerService(CrystallographicInfoService())
         self.serviceDirectory.registerService(CalibrantSampleService())
         self.serviceDirectory.registerService(ApiService())
+        self.serviceDirectory.registerService(FitMultiplePeaksService())
 
     def getServiceNames(self):
         return self.serviceDirectory.keys()

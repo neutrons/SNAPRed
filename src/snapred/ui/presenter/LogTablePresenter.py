@@ -1,6 +1,6 @@
 from time import sleep
 
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.RunConfig import RunConfig
@@ -38,10 +38,26 @@ class LogTablePresenter(object):
     def show(self):
         self.view.show()
 
+    def _labelView(self, text):
+        win = QWidget()
+        label = QLabel(text)
+        vbox = QVBoxLayout()
+        vbox.addWidget(label)
+        vbox.addStretch()
+        win.setLayout(vbox)
+        return win
+
     def update_reduction_config_element(self, response: SNAPResponse):
         # import pdb; pdb.set_trace()
         if response.responseCode == 200:
-            pass
+            from snapred.ui.widget.WorkflowNode import continueWorkflow, finalizeWorkflow, startWorkflow
+
+            workflow = startWorkflow(lambda workflow: None, self._labelView("Did it work?"))  # noqa: ARG005
+            workflow = continueWorkflow(
+                workflow, lambda workflow: None, self._labelView("Did it really?")  # noqa: ARG005
+            )
+            workflow = finalizeWorkflow(workflow, self.view)
+            workflow.widget.show()
         else:
             messageBox = QMessageBox()
             messageBox.setIcon(QMessageBox.Critical)
