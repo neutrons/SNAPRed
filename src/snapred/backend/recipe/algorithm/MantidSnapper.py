@@ -1,18 +1,30 @@
 import os
+from collections import namedtuple
 
-from mantid.api import AlgorithmManager, Progress
+from mantid.api import AlgorithmManager, Progress, mtd
 from mantid.kernel import Direction
 
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 
 # must import to register with AlgorithmManager
+from snapred.meta.Callback import callback
 from snapred.meta.Config import Resource
 
 logger = snapredLogger.getLogger(__name__)
 
 
+class _CustomMtd:
+    def __getitem__(self, key):
+        if str(key.__class__) == str(callback(int).__class__):
+            key = key.get()
+        return mtd[key]
+
+
 class MantidSnapper:
+    typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
+    _mtd = _CustomMtd()
+
     def __init__(self, parentAlgorithm, name):
         """
         MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
@@ -57,9 +69,12 @@ class MantidSnapper:
         if self._export:
             self._cleanOldExport()
 
+    def createOutputCallback(self, prop):
+        callbackType = self.typeTranslationTable.get(prop.type, str)
+        return callback(callbackType)
+
     def __getattr__(self, key):
         def enqueueAlgorithm(message, **kwargs):
-            self._algorithmQueue.append((key, message, kwargs))
             self._endrange += 1
             # inspect mantid algorithm for output properties
             # if there are any, add them to a list for return
@@ -67,10 +82,8 @@ class MantidSnapper:
             mantidAlgorithm = AlgorithmManager.create(key)
             for propname in set(kwargs.keys()).difference(mantidAlgorithm.getProperties()):
                 prop = mantidAlgorithm.getProperty(propname)
-                if Direction.values[prop.direction] == Direction.Output:
-                    outputProperties[prop.name] = kwargs[prop.name]
-                if Direction.values[prop.direction] == Direction.InOut:
-                    outputProperties[prop.name] = kwargs[prop.name]
+                if Direction.values[prop.direction] in [Direction.Output, Direction.InOut]:
+                    outputProperties[prop.name] = self.createOutputCallback(prop)
 
             # TODO: Special cases are bad
             if key == "LoadDiffCal":
@@ -84,8 +97,15 @@ class MantidSnapper:
             # remove mantid algorithm from managed algorithms
             AlgorithmManager.removeById(mantidAlgorithm.getAlgorithmID())
             # if only one property is returned, return it directly
+
+            self._algorithmQueue.append((key, message, kwargs, outputProperties))
+
             if len(outputProperties) == 1:
                 (outputProperties,) = outputProperties.values()
+            else:
+                # Convert to tuple for a more pythonic return
+                NamedOutputsTuple = namedtuple("{}Outputs".format(key), outputProperties.keys())
+                outputProperties = NamedOutputsTuple(**outputProperties)
 
             return outputProperties
 
@@ -102,13 +122,25 @@ class MantidSnapper:
         alg.setRethrows(True)
         return alg
 
-    def executeAlgorithm(self, name, **kwargs):
+    def executeAlgorithm(self, name, outputs, **kwargs):
         algorithm = self.createAlgorithm(name)
         try:
             for prop, val in kwargs.items():
+                # this line is to appease mantid properties, idk where its pulling empty string from
+                if str(val.__class__) == str(callback(int).__class__):
+                    val = val.get()
                 algorithm.setProperty(prop, val)
             if not algorithm.execute():
                 raise RuntimeError("")
+            for prop, val in outputs.items():
+                # TODO: Special cases are bad
+                if name == "LoadDiffCal":
+                    if prop in ["GroupingWorkspace", "MaskWorkspace", "CalWorkspace"]:
+                        continue
+                returnVal = algorithm.getProperty(prop).value
+                if not returnVal:
+                    returnVal = algorithm.getProperty(prop).valueAsStr
+                val.update(returnVal)
         except RuntimeError as e:
             raise AlgorithmException(name, str(e))
 
@@ -127,8 +159,12 @@ class MantidSnapper:
             self.reportAndIncrement(algorithmTuple[1])
             logger.info(algorithmTuple[1])
             # import pdb; pdb.set_trace()
-            self.executeAlgorithm(name=algorithmTuple[0], **algorithmTuple[2])
+            self.executeAlgorithm(name=algorithmTuple[0], outputs=algorithmTuple[3], **algorithmTuple[2])
         self.cleanup()
+
+    @property
+    def mtd(self):
+        return self._mtd
 
     def _cleanOldExport(self):
         exportPath = self._generateExportPath()
