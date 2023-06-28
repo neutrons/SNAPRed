@@ -1,35 +1,42 @@
-from typing import Any, Dict
-
-from mantid.simpleapi import *
-from mantid.api import AlgorithmManager
+from mantid.api import (
+    AlgorithmFactory, 
+    PythonAlgorithm,
+)
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.recipe.CrystallographicInfoRecipe import CrystallographicInfoRecipe
+from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import PixelGroupingParametersCalculationAlgorithm
 from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import PixelGroupingParameters
 from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import (
     name as IngestCrystallographicInfoAlgorithm,
 )
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
+
+name = "SmoothDataExcludingPeaks"
 
 @Singleton
-class SmoothDataExcludingPeaks:
-    ingestionAlgorithmName: str = IngestCrystallographicInfoAlgorithm
+class SmoothDataExcludingPeaks(PythonAlgorithm):
+    def PyInit(self):
+        # declare properties
+        # TODO: add params
+        # self.declareProperty("InputState", defaultValue="", direction=Direction.Input)
 
-    def __init__(self):
-        pass
+
+        # self.declareProperty("OutputParameters", defaultValue="", direction=Direction.Output)
+
+        self.setRethrows(True)
+        self.mantidSnapper = MantidSnapper(self, name)
     
     def executeAlgo(self):
-        algo = AlgorithmManager.create(self.ingestionAlgorithmName)
-
-        xtalRx = CrystallographicInfoRecipe()
+        xtalRx = self.mantidSnapper.IngestCrystallographicInfoAlgorithm(cifPath="/home/dzj/Documents/Work/Silicon_NIST_640d.cif")
+        self.mantidSnapper.executeQueue()
         xtalData = xtalRx.executeRecipe("/home/dzj/Documents/Work/Silicon_NIST_640d.cif")
         xtalInfo = xtalData["crystalInfo"]
 
         return xtalInfo
-        #CrystallographicPeaks = xtalData["CrystallographicPeak"]
 
-    # NEEDS TO BE FIXED FOR PROPER INPUTS
     def PrintPeaks(self, xtal: CrystallographicInfo, pixel_params: PixelGroupingParameters, factor):
 
         DelOverD = pixel_params.dRelativeResolution
@@ -53,6 +60,9 @@ if __name__ == "__main__":
     factor = 2.0
 
     data = SmoothDataExcludingPeaks()
-    pixel_params = PixelGroupingParameters
+    output_params = PixelGroupingParametersCalculationAlgorithm()
     xtal = data.executeAlgo()
-    data.PrintPeaks(xtal, pixel_params, factor)
+    # data.PrintPeaks(xtal, pixel_params, factor)
+
+
+AlgorithmFactory.subscribe(SmoothDataExcludingPeaks)
