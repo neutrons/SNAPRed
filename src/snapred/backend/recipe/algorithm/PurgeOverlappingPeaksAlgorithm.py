@@ -39,11 +39,11 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         outputPeaks = []
 
         for index in range(numFocusGroups):
-            delDoD = instrumentState.pixelGroupingInstrumentParameters[index].delta_dhkl_over_dhkl
-            tTheta = instrumentState.pixelGroupingInstrumentParameters[index].twoThetaAverage
+            delDoD = instrumentState.pixelGroupingInstrumentParameters[index].dRelativeResolution
+            tTheta = instrumentState.pixelGroupingInstrumentParameters[index].twoTheta
 
-            dMin = instrumentState.pixelGroupingInstrumentParameters[index].dhkl.minimum
-            dMax = instrumentState.pixelGroupingInstrumentParameters[index].dhkl.maximum
+            dMin = instrumentState.pixelGroupingInstrumentParameters[index].dResolution.minimum
+            dMax = instrumentState.pixelGroupingInstrumentParameters[index].dResolution.maximum
 
             peakList = [peak.dSpacing for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
             peakList = [peak for peak in peakList if dMin <= peak <= dMax]

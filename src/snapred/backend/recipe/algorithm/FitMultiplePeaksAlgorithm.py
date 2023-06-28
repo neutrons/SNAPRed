@@ -54,8 +54,8 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             fittedParams = f"{wsName}_fitted_params_{index}"
             fittedWS = f"{wsName}_fitted_{index}"
             fittedParamsErr = f"{wsName}_fitted_params_err_{index}"
-            delDoD = instrumentState.pixelGroupingInstrumentParameters[index].delta_dhkl_over_dhkl
-            tTheta = instrumentState.pixelGroupingInstrumentParameters[index].twoThetaAverage
+            delDoD = instrumentState.pixelGroupingInstrumentParameters[index].dRelativeResolution
+            tTheta = instrumentState.pixelGroupingInstrumentParameters[index].twoTheta
             peakLimits = []
             for peak, dspc in enumerate(reducedList[index]):
                 halfWindLeft = 2.35 * delDoD * dspc * FWHMMultiplierLeft
