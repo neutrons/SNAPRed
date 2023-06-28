@@ -29,15 +29,19 @@ class SmoothDataExcludingPeaks:
         #CrystallographicPeaks = xtalData["CrystallographicPeak"]
 
     # NEEDS TO BE FIXED FOR PROPER INPUTS
-    # def PrintPeaks(self, xtal: CrystallographicInfo):
-    #     peak = xtal
+    def PrintPeaks(self, xtal: CrystallographicInfo):
 
-    #     peak_values = [(peak.peaks, peak.fSquared * peak.multiplicities) for peak.peaks in peak]
+        peaks = xtal.peaks
+        
+        peak_values = [(xtal, xtal.fSquared * xtal.multiplicity) for xtal in peaks]
 
-    #     peak_values.sort(key=lambda x: x[1], reverse=True)
+        peak_values.sort(key=lambda x: x[1], reverse=True)
 
-    #     for peak.peaks, value in peak_values:
-    #         print(peak, value)
+        for xtal, value in peak_values:
+            print("\n\n")
+            print(xtal, "\n", value)
+            print("\n\n")
+
 
 if __name__ == "__main__":
     data = SmoothDataExcludingPeaks()
