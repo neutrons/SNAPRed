@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
 
 from snapred.ui.widget.Section import Section
 
-PRIME_TYPES = ["integer", "string", "number"]
+PRIME_TYPES = ["integer", "string", "number", "boolean"]
 COMPOSITE_TYPES = ["array", "object"]
 
 
@@ -52,8 +52,12 @@ class FormBuilder:
             widget = subform
         else:  # list
             widget = Section(name, parent=parent)
-            data = {}
-            for key, item in prop["items"].items():
+            iterable = None
+            if type(prop["items"]) is list:
+                iterable = [("type", p["type"]) for p in prop["items"]]
+            if type(prop["items"]) is dict:
+                iterable = prop["items"].items()
+            for key, item in iterable:
                 if type(item) is str:
                     item = {key: item}
                 subform, subdata = self._generateElement(item, name, parent=parent)
@@ -67,7 +71,7 @@ class FormBuilder:
 
     def buildForm(self, definition, parent=None):
         if definition["title"] in self.definitions:
-            return self.definitions["title"]
+            return self.definitions[definition["title"]]
 
         form = Section(definition["title"], parent=parent)
         # Prevent Inf Loops

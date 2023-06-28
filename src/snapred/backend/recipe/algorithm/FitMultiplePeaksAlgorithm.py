@@ -50,6 +50,10 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         mtd.add("fitPeaksWSGroup", ws_group)
 
         for index in range(numSpec):
+            fittedPeakPos = f"{wsName}_fitted_peakpositions_{index}"
+            fittedParams = f"{wsName}_fitted_params_{index}"
+            fittedWS = f"{wsName}_fitted_{index}"
+            fittedParamsErr = f"{wsName}_fitted_params_err_{index}"
             delDoD = instrumentState.pixelGroupingInstrumentState[index].delta_dhkl_over_dhkl
             tTheta = instrumentState.pixelGroupingInstrumentState[index].twoThetaAverage
             peakLimits = []
@@ -73,18 +77,18 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 PeakCenters=",".join(np.array(reducedList[index]).astype("str")),
                 PeakFunction=peakType,
                 FitWindowBoundaryList=",".join(np.array(peakLimits).astype("str")),
-                OutputWorkspace=f"{wsName}_fitted_peakpositions_{index}",
-                OutputPeakParametersWorkspace=f"{wsName}_fitted_params_{index}",
+                OutputWorkspace=fittedPeakPos,
+                OutputPeakParametersWorkspace=fittedParams,
                 BackgroundType="Quadratic",
-                FittedPeaksWorkspace=f"{wsName}_fitted_{index}",
+                FittedPeaksWorkspace=fittedWS,
                 ConstrainPeakPositions=True,
-                OutputParameterFitErrorsWorkspace=f"{wsName}_fitted_params_err_{index}",
+                OutputParameterFitErrorsWorkspace=fittedParamsErr,
             )
             self.mantidSnapper.executeQueue()
-            ws_group.add(f"{wsName}_fitted_peakpositions_{index}")
-            ws_group.add(f"{wsName}_fitted_params_{index}")
-            ws_group.add(f"{wsName}_fitted_{index}")
-            ws_group.add(f"{wsName}_fitted_params_err_{index}")
+            ws_group.add(fittedPeakPos)
+            ws_group.add(fittedParams)
+            ws_group.add(fittedWS)
+            ws_group.add(fittedParamsErr)
 
         DeleteWorkspace("ws2fit")
         self.setProperty("OutputWorkspaceGroup", ws_group.name())

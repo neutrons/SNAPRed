@@ -22,6 +22,8 @@ class BackendRequestView(QWidget):
         self.layout.addWidget(self.beginFlowButton, 3, 0, 1, 2)
 
         def commenceFlow():
+            if selection.startswith("fitMultiplePeaks"):
+                return
             request = SNAPRequest(path=selection, payload=json.dumps(jsonForm.collectData()))
             self.handleButtonClicked(request, self.beginFlowButton)
 
