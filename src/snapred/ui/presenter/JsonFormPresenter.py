@@ -42,16 +42,20 @@ class JsonFormPresenter:
         if value:
             field.setText(str(value))
 
+    # TODO: Fix this to handle lists of type(dict)
     def _updateData(self, data, newData):
         if not newData:
             return
         if type(data) is dict:
             for key, value in data.items():
+                if type(newData) is list:
+                    if type(newData[0]) is dict:
+                        newData = newData[0]
+                    else:
+                        newData = {key: ",".join(map(str, newData))}
                 if type(value) is dict:
                     self._updateData(value, newData.get(key, None))
                 else:
-                    if type(newData) is list:
-                        newData = {key: ",".join(map(str, newData))}
                     self._updateField(value, newData.get(key, None))
         else:
             self._updateField(data, newData)

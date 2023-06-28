@@ -1,154 +1,499 @@
 {
-    "InstrumentState": {
-      "instrumentConfig": {
-        "version": "1.4",
-        "facility": "SNS",
-        "name": "SNAP",
-        "nexusFileExtension": ".nxs.h5",
-        "nexusFilePrefix": "SNAP_",
-        "calibrationFileExtension": "json",
-        "calibrationFilePrefix": "SNAPcalibLog",
-        "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
-        "pixelGroupingDirectory": "PixelGroupingDefinitions/",
-        "sharedDirectory": "shared/",
-        "nexusDirectory": "nexus/",
-        "reducedDataDirectory": "shared/manualReduced/",
-        "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
-        "bandwidth": 3.0,
-        "maxBandwidth": 3.0,
-        "L1": 15,
-        "L2": 0.5,
-        "delTOverT": 0.002,
-        "delLOverL": 6.453e-5,
-        "delThNoGuide": 3.20e-3,
-        "delThWithGuide": 3.20e-3
-      },
-      "detectorState": {
-        "arc": [
-          -65.3,
-          104.95
-        ],
-        "wav": 2.1,
-        "freq": 60.0,
-        "guideStat": 1,
-        "lin": [
-          0.045,
-          0.043
-        ]
-      },
-      "gsasParameters": {
-        "alpha": 0.1,
-        "beta": [
-          0.02,
-          0.05
-        ]
-      },
-      "particleBounds": {
-        "wavelength": {
-          "minimum": 0.60,
-          "maximum": 3.60
-        },
-        "tof": {
-          "minimum": 1959.0,
-          "maximum": 14496.6
-        }
-      },
-      "defaultGroupingSliceValue": 5,
-      "fwhmMultiplierLimit": {
-        "minimum": 1.5,
-        "maximum": 1.5
-        },
-        "pixelGroupingInstrumentState": [
-            {
-                "twoThetaAverage": 2.1108948177427838,
-                "dhkl": {
-                    "minimum": 0.2873164190984029,
-                    "maximum": 2.1261415013281812
-                },
-                "delta_dhkl_over_dhkl": 0.002699865774827431
-            },
-            {
-                "twoThetaAverage": 1.82310673131693,
-                "dhkl": {
-                    "minimum": 0.31627307109869773,
-                    "maximum": 2.340420726130363
-                },
-                "delta_dhkl_over_dhkl": 0.0031863552001173434
-            },
-            {
-                "twoThetaAverage": 1.5352228379083572,
-                "dhkl": {
-                    "minimum": 0.36001346277099444,
-                    "maximum": 2.6640996245053588
-                },
-                "delta_dhkl_over_dhkl": 0.003872908058770528
-            },
-            {
-                "twoThetaAverage": 1.440276389170165,
-                "dhkl": {
-                    "minimum": 0.3790816270355628,
-                    "maximum": 2.8052040400631646
-                },
-                "delta_dhkl_over_dhkl": 0.004160341882643039
-            },
-            {
-              "twoThetaAverage": 1.1543988461042238,
-              "dhkl": {
-                  "minimum": 0.4581446222528327,
-                  "maximum": 3.3902702046709625
-              },
-              "delta_dhkl_over_dhkl": 0.0053059972420510075
-            },
-            {
-              "twoThetaAverage": 0.8690010092470938,
-              "dhkl": {
-                  "minimum": 0.5938843544407365,
-                  "maximum": 4.39474422286145
-              },
-              "delta_dhkl_over_dhkl": 0.007179854355740084
-            }
-        ]
+  "InstrumentState": {
+    "instrumentConfig": {
+      "version": "1.4",
+      "facility": "SNS",
+      "name": "SNAP",
+      "nexusFileExtension": ".nxs.h5",
+      "nexusFilePrefix": "SNAP_",
+      "calibrationFileExtension": "json",
+      "calibrationFilePrefix": "SNAPcalibLog",
+      "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+      "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+      "sharedDirectory": "shared/",
+      "nexusDirectory": "nexus/",
+      "reducedDataDirectory": "shared/manualReduced/",
+      "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+      "bandwidth": 3.0,
+      "maxBandwidth": 3.0,
+      "L1": 15.0,
+      "L2": 0.5,
+      "delTOverT": 0.002,
+      "delLOverL": 6.453e-05,
+      "delThNoGuide": 0.0032,
+      "delThWithGuide": 0.0032
     },
-    "CrystalInfo": {"peaks": [
-        {"hkl": [1, 1, 1], "dSpacing": 3.13592994862768, "fSquared": 535.9619564273586, "multiplicity": 8},
-        {"hkl": [2, 2, 0], "dSpacing": 1.9203570608125202, "fSquared": 1023.9787120274582, "multiplicity": 12},
-        {"hkl": [3, 1, 1], "dSpacing": 1.6376860040951353, "fSquared": 498.1235946287523, "multiplicity": 24},
-        {"hkl": [3, 3, 1], "dSpacing": 1.2460922059340045, "fSquared": 462.95658217953996, "multiplicity": 24},
-        {"hkl": [3, 3, 3], "dSpacing": 1.0453099828758932, "fSquared": 430.2723245685628, "multiplicity": 8},
-        {"hkl": [4, 0, 0], "dSpacing": 1.3578975000000002, "fSquared": 951.6868701996577, "multiplicity": 6},
-        {"hkl": [4, 2, 2], "dSpacing": 1.108718666000307, "fSquared": 884.4987579059488, "multiplicity": 24},
-        {"hkl": [4, 4, 0], "dSpacing": 0.9601785304062601, "fSquared": 822.0540571007734, "multiplicity": 12},
-        {"hkl": [4, 4, 4], "dSpacing": 0.78398248715692, "fSquared": 710.0790122848589, "multiplicity": 8},
-        {"hkl": [5, 1, 1], "dSpacing": 1.0453099828758932, "fSquared": 430.27232456856234, "multiplicity": 24},
-        {"hkl": [5, 3, 1], "dSpacing": 0.9181062796881728, "fSquared": 399.8955418627943, "multiplicity": 48},
-        {"hkl": [5, 3, 3], "dSpacing": 0.8283097096328722, "fSquared": 371.6633287118501, "multiplicity": 24},
-        {"hkl": [5, 5, 1], "dSpacing": 0.7605747301605699, "fSquared": 345.42428071520527, "multiplicity": 24},
-        {"hkl": [5, 5, 3], "dSpacing": 0.7071327869943331, "fSquared": 321.0376824669837, "multiplicity": 24},
-        {"hkl": [5, 5, 5], "dSpacing": 0.627185989725536, "fSquared": 277.3079440497553, "multiplicity": 8},
-        {"hkl": [6, 2, 0], "dSpacing": 0.8588097858096985, "fSquared": 764.0178878212722, "multiplicity": 24},
-        {"hkl": [6, 4, 2], "dSpacing": 0.7258267444795525, "fSquared": 659.9481657756581, "multiplicity": 48},
-        {"hkl": [6, 6, 0], "dSpacing": 0.64011902027084, "fSquared": 570.054168172224, "multiplicity": 12},
-        {"hkl": [6, 6, 4], "dSpacing": 0.5790094394749851, "fSquared": 492.4049667879426, "multiplicity": 24},
-        {"hkl": [7, 1, 1], "dSpacing": 0.7605747301605699, "fSquared": 345.4242807152059, "multiplicity": 24},
-        {"hkl": [7, 3, 1], "dSpacing": 0.7071327869943332, "fSquared": 321.03768246698314, "multiplicity": 48},
-        {"hkl": [7, 3, 3], "dSpacing": 0.663574332271264, "fSquared": 298.37275292395174, "multiplicity": 24},
-        {"hkl": [7, 5, 1], "dSpacing": 0.627185989725536, "fSquared": 277.30794404975575, "multiplicity": 48},
-        {"hkl": [7, 5, 3], "dSpacing": 0.5961944569174021, "fSquared": 257.73028897414855, "multiplicity": 48},
-        {"hkl": [7, 5, 5], "dSpacing": 0.5458953346983784, "fSquared": 222.6238864097245, "multiplicity": 24},
-        {"hkl": [7, 7, 1], "dSpacing": 0.5458953346983784, "fSquared": 222.62388640972324, "multiplicity": 24},
-        {"hkl": [7, 7, 3], "dSpacing": 0.5250916246535536, "fSquared": 206.90686944991165, "multiplicity": 24},
-        {"hkl": [8, 0, 0], "dSpacing": 0.6789487500000001, "fSquared": 613.3565053686378, "multiplicity": 6},
-        {"hkl": [8, 2, 2], "dSpacing": 0.64011902027084, "fSquared": 570.054168172224, "multiplicity": 24},
-        {"hkl": [8, 4, 0], "dSpacing": 0.6072702232954043, "fSquared": 529.8089313574962, "multiplicity": 24},
-        {"hkl": [8, 4, 4], "dSpacing": 0.5543593330001535, "fSquared": 457.64168357107144, "multiplicity": 24},
-        {"hkl": [8, 6, 2], "dSpacing": 0.5326112192276046, "fSquared": 425.33265232468636, "multiplicity": 48},
-        {"hkl": [9, 1, 1], "dSpacing": 0.5961944569174022, "fSquared": 257.7302889741486, "multiplicity": 24},
-        {"hkl": [9, 3, 1], "dSpacing": 0.5693853436290405, "fSquared": 239.53479617150862, "multiplicity": 48},
-        {"hkl": [9, 3, 3], "dSpacing": 0.5458953346983784, "fSquared": 222.62388640972318, "multiplicity": 24},
-        {"hkl": [9, 5, 1], "dSpacing": 0.5250916246535536, "fSquared": 206.90686944991126, "multiplicity": 48},
-        {"hkl": [9, 5, 3], "dSpacing": 0.5064983791390006, "fSquared": 192.29945769059668, "multiplicity": 48},
-        {"hkl": [10, 2, 0], "dSpacing": 0.5326112192276046, "fSquared": 425.33265232468636, "multiplicity": 24}]},
-        "InputWorkspace": "testWS",
-        "PeakType": "Gaussian",
-        "ShowResult": false
+    "detectorState": {
+      "arc": [
+        -65.3,
+        104.95
+      ],
+      "wav": 2.1,
+      "freq": 60.0,
+      "guideStat": 1,
+      "lin": [
+        0.045,
+        0.043
+      ]
+    },
+    "gsasParameters": {
+      "alpha": 0.1,
+      "beta": [
+        0.02,
+        0.05
+      ]
+    },
+    "particleBounds": {
+      "wavelength": {
+        "minimum": 0.6,
+        "maximum": 3.6
+      },
+      "tof": {
+        "minimum": 1959.0,
+        "maximum": 14496.6
+      }
+    },
+    "pixelGroupingInstrumentParameters": [
+      {
+        "twoTheta": 2.1108948177427838,
+        "dResolution": {
+          "minimum": 0.2873164190984029,
+          "maximum": 2.1261415013281812
+        },
+        "dRelativeResolution": 0.002699865774827431
+      },
+      {
+        "twoTheta": 1.82310673131693,
+        "dResolution": {
+          "minimum": 0.31627307109869773,
+          "maximum": 2.340420726130363
+        },
+        "dRelativeResolution": 0.0031863552001173434
+      },
+      {
+        "twoTheta": 1.5352228379083572,
+        "dResolution": {
+          "minimum": 0.36001346277099444,
+          "maximum": 2.6640996245053588
+        },
+        "dRelativeResolution": 0.003872908058770528
+      },
+      {
+        "twoTheta": 1.440276389170165,
+        "dResolution": {
+          "minimum": 0.3790816270355628,
+          "maximum": 2.8052040400631646
+        },
+        "dRelativeResolution": 0.004160341882643039
+      },
+      {
+        "twoTheta": 1.1543988461042238,
+        "dResolution": {
+          "minimum": 0.4581446222528327,
+          "maximum": 3.3902702046709625
+        },
+        "dRelativeResolution": 0.0053059972420510075
+      },
+      {
+        "twoTheta": 0.8690010092470938,
+        "dResolution": {
+          "minimum": 0.5938843544407365,
+          "maximum": 4.39474422286145
+        },
+        "dRelativeResolution": 0.007179854355740084
+      }
+    ],
+    "defaultGroupingSliceValue": 5.0,
+    "fwhmMultiplierLimit": {
+      "minimum": 1.5,
+      "maximum": 1.5
+    }
+  },
+  "CrystalInfo": {
+    "peaks": [
+      {
+        "hkl": [
+          1,
+          1,
+          1
+        ],
+        "dSpacing": 3.13592994862768,
+        "fSquared": 535.9619564273586,
+        "multiplicity": 8
+      },
+      {
+        "hkl": [
+          2,
+          2,
+          0
+        ],
+        "dSpacing": 1.9203570608125202,
+        "fSquared": 1023.9787120274582,
+        "multiplicity": 12
+      },
+      {
+        "hkl": [
+          3,
+          1,
+          1
+        ],
+        "dSpacing": 1.6376860040951353,
+        "fSquared": 498.1235946287523,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          3,
+          3,
+          1
+        ],
+        "dSpacing": 1.2460922059340045,
+        "fSquared": 462.95658217953996,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          3,
+          3,
+          3
+        ],
+        "dSpacing": 1.0453099828758932,
+        "fSquared": 430.2723245685628,
+        "multiplicity": 8
+      },
+      {
+        "hkl": [
+          4,
+          0,
+          0
+        ],
+        "dSpacing": 1.3578975000000002,
+        "fSquared": 951.6868701996577,
+        "multiplicity": 6
+      },
+      {
+        "hkl": [
+          4,
+          2,
+          2
+        ],
+        "dSpacing": 1.108718666000307,
+        "fSquared": 884.4987579059488,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          4,
+          4,
+          0
+        ],
+        "dSpacing": 0.9601785304062601,
+        "fSquared": 822.0540571007734,
+        "multiplicity": 12
+      },
+      {
+        "hkl": [
+          4,
+          4,
+          4
+        ],
+        "dSpacing": 0.78398248715692,
+        "fSquared": 710.0790122848589,
+        "multiplicity": 8
+      },
+      {
+        "hkl": [
+          5,
+          1,
+          1
+        ],
+        "dSpacing": 1.0453099828758932,
+        "fSquared": 430.27232456856234,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          5,
+          3,
+          1
+        ],
+        "dSpacing": 0.9181062796881728,
+        "fSquared": 399.8955418627943,
+        "multiplicity": 48
+      },
+      {
+        "hkl": [
+          5,
+          3,
+          3
+        ],
+        "dSpacing": 0.8283097096328722,
+        "fSquared": 371.6633287118501,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          5,
+          5,
+          1
+        ],
+        "dSpacing": 0.7605747301605699,
+        "fSquared": 345.42428071520527,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          5,
+          5,
+          3
+        ],
+        "dSpacing": 0.7071327869943331,
+        "fSquared": 321.0376824669837,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          5,
+          5,
+          5
+        ],
+        "dSpacing": 0.627185989725536,
+        "fSquared": 277.3079440497553,
+        "multiplicity": 8
+      },
+      {
+        "hkl": [
+          6,
+          2,
+          0
+        ],
+        "dSpacing": 0.8588097858096985,
+        "fSquared": 764.0178878212722,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          6,
+          4,
+          2
+        ],
+        "dSpacing": 0.7258267444795525,
+        "fSquared": 659.9481657756581,
+        "multiplicity": 48
+      },
+      {
+        "hkl": [
+          6,
+          6,
+          0
+        ],
+        "dSpacing": 0.64011902027084,
+        "fSquared": 570.054168172224,
+        "multiplicity": 12
+      },
+      {
+        "hkl": [
+          6,
+          6,
+          4
+        ],
+        "dSpacing": 0.5790094394749851,
+        "fSquared": 492.4049667879426,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          7,
+          1,
+          1
+        ],
+        "dSpacing": 0.7605747301605699,
+        "fSquared": 345.4242807152059,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          7,
+          3,
+          1
+        ],
+        "dSpacing": 0.7071327869943332,
+        "fSquared": 321.03768246698314,
+        "multiplicity": 48
+      },
+      {
+        "hkl": [
+          7,
+          3,
+          3
+        ],
+        "dSpacing": 0.663574332271264,
+        "fSquared": 298.37275292395174,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          7,
+          5,
+          1
+        ],
+        "dSpacing": 0.627185989725536,
+        "fSquared": 277.30794404975575,
+        "multiplicity": 48
+      },
+      {
+        "hkl": [
+          7,
+          5,
+          3
+        ],
+        "dSpacing": 0.5961944569174021,
+        "fSquared": 257.73028897414855,
+        "multiplicity": 48
+      },
+      {
+        "hkl": [
+          7,
+          5,
+          5
+        ],
+        "dSpacing": 0.5458953346983784,
+        "fSquared": 222.6238864097245,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          7,
+          7,
+          1
+        ],
+        "dSpacing": 0.5458953346983784,
+        "fSquared": 222.62388640972324,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          7,
+          7,
+          3
+        ],
+        "dSpacing": 0.5250916246535536,
+        "fSquared": 206.90686944991165,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          8,
+          0,
+          0
+        ],
+        "dSpacing": 0.6789487500000001,
+        "fSquared": 613.3565053686378,
+        "multiplicity": 6
+      },
+      {
+        "hkl": [
+          8,
+          2,
+          2
+        ],
+        "dSpacing": 0.64011902027084,
+        "fSquared": 570.054168172224,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          8,
+          4,
+          0
+        ],
+        "dSpacing": 0.6072702232954043,
+        "fSquared": 529.8089313574962,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          8,
+          4,
+          4
+        ],
+        "dSpacing": 0.5543593330001535,
+        "fSquared": 457.64168357107144,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          8,
+          6,
+          2
+        ],
+        "dSpacing": 0.5326112192276046,
+        "fSquared": 425.33265232468636,
+        "multiplicity": 48
+      },
+      {
+        "hkl": [
+          9,
+          1,
+          1
+        ],
+        "dSpacing": 0.5961944569174022,
+        "fSquared": 257.7302889741486,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          9,
+          3,
+          1
+        ],
+        "dSpacing": 0.5693853436290405,
+        "fSquared": 239.53479617150862,
+        "multiplicity": 48
+      },
+      {
+        "hkl": [
+          9,
+          3,
+          3
+        ],
+        "dSpacing": 0.5458953346983784,
+        "fSquared": 222.62388640972318,
+        "multiplicity": 24
+      },
+      {
+        "hkl": [
+          9,
+          5,
+          1
+        ],
+        "dSpacing": 0.5250916246535536,
+        "fSquared": 206.90686944991126,
+        "multiplicity": 48
+      },
+      {
+        "hkl": [
+          9,
+          5,
+          3
+        ],
+        "dSpacing": 0.5064983791390006,
+        "fSquared": 192.29945769059668,
+        "multiplicity": 48
+      },
+      {
+        "hkl": [
+          10,
+          2,
+          0
+        ],
+        "dSpacing": 0.5326112192276046,
+        "fSquared": 425.33265232468636,
+        "multiplicity": 24
+      }
+    ]
+  },
+  "PeakType": "Gaussian",
+  "InputWorkspace": "testWS",
+  "ShowResult": false
 }
