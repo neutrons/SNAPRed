@@ -52,6 +52,7 @@ class FormBuilder:
             widget = subform
         else:  # list
             widget = Section(name, parent=parent)
+            data = {}
             iterable = None
             if type(prop["items"]) is list:
                 iterable = [("type", p["type"]) for p in prop["items"]]
