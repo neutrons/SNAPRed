@@ -1,3 +1,5 @@
+import json
+
 from mantid.api import (
     AlgorithmFactory, 
     PythonAlgorithm,
@@ -59,10 +61,9 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 if __name__ == "__main__":
     factor = 2.0
 
-    data = SmoothDataExcludingPeaks()
-    output_params = PixelGroupingParametersCalculationAlgorithm()
+    data, deldoverd = SmoothDataExcludingPeaks()
     xtal = data.executeAlgo()
-    # data.PrintPeaks(xtal, pixel_params, factor)
+    # data.PrintPeaks(xtal, deldoverd, factor)
 
 
 AlgorithmFactory.subscribe(SmoothDataExcludingPeaks)
