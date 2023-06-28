@@ -1,8 +1,4 @@
-from mantid.api import (
-    AlgorithmFactory,
-    PythonAlgorithm,
-    mtd,
-)
+from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.geometry import (
     ReflectionConditionFilter,
     ReflectionGenerator,
@@ -34,7 +30,7 @@ class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
         self.mantidSnapper.LoadCIF("Loading crystal data...", Workspace=ws, InputFile=cifPath)
         self.mantidSnapper.executeQueue()
 
-        ws = mtd[ws]
+        ws = self.mantidSnapper.mtd[ws]
         xtal = ws.sample().getCrystalStructure()
 
         # Generate reflections

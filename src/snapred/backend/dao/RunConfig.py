@@ -1,13 +1,13 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RunConfig(BaseModel):
     """Class to hold the instrument configuration."""
 
-    runNumber: str
-    IPTS: str = ""  # Optional[str] = None
+    runNumber: str = Field(description="The ID associated with the run data you wish to use")
+    IPTS: Optional[str] = ""
     maskFileName: Optional[str] = None
     maskFileDirectory: Optional[str] = None
     gsasFileDirectory: Optional[str] = None

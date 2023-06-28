@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QGridLayout, QMainWindow, QPushButton, QWidget
+from PyQt5.QtWidgets import QGridLayout, QMainWindow, QWidget
 
 
 class TestPanelView(QMainWindow):
@@ -13,24 +13,4 @@ class TestPanelView(QMainWindow):
         self.grid.columnStretch(1)
         self.grid.rowStretch(1)
         self.centralWidget.setLayout(self.grid)
-
-        # Setup test Buttons
-        self.calibrationReductinButton = QPushButton("Test Calibration Reduction", self)
-        self.grid.addWidget(self.calibrationReductinButton)
-        self.calibrationReductinButton.adjustSize()
-        self.calibrationIndexButton = QPushButton("Test Append Calibration Index", self)
-        self.grid.addWidget(self.calibrationIndexButton)
-        self.calibrationIndexButton.adjustSize()
-        self.saveCalibrantButton = QPushButton("Test Save Calibrant Sample", self)
-        self.grid.addWidget(self.saveCalibrantButton)
-        self.saveCalibrantButton.adjustSize()
         self.adjustSize()
-
-    def calibrationReductinButtonOnClick(self, slot):
-        self.calibrationReductinButton.clicked.connect(slot)
-
-    def calibrationIndexButtonOnClick(self, slot):
-        self.calibrationIndexButton.clicked.connect(slot)
-
-    def calibrantSampleButtonOnClick(self, slot):
-        self.saveCalibrantButton.clicked.connect(slot)
