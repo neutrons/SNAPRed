@@ -53,7 +53,7 @@
         "maximum": 14496.6
       }
     },
-    "pixelGroupingInstrumentState": [
+    "pixelGroupingInstrumentParameters": [
       {
         "twoThetaAverage": 2.1108948177427838,
         "dhkl": {
