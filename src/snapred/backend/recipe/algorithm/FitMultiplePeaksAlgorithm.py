@@ -3,7 +3,6 @@ import json
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm, WorkspaceGroup, mtd
 from mantid.kernel import Direction
-from mantid.simpleapi import DeleteWorkspace
 
 from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -34,7 +33,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         FWHMMultiplierLeft = instrumentState.fwhmMultiplierLimit.minimum
         FWHMMultiplierRight = instrumentState.fwhmMultiplierLimit.maximum
         L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
-        ws = mtd[wsName]
+        ws = self.mantidSnapper.mtd[wsName]
         # TODO: Fix this to use MantidSnapper when possible
         # Currently MantidSnapper is unable to return the List
         numSpec = ws.getNumberHistograms()
@@ -90,7 +89,11 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             ws_group.add(fittedWS)
             ws_group.add(fittedParamsErr)
 
-        DeleteWorkspace("ws2fit")
+        self.mantidSnapper.DeleteWorkspace(
+            "Deleting fitting workspace...",
+            Workspace="ws2fit",
+        )
+        self.mantidSnapper.executeQueue()
         self.setProperty("OutputWorkspaceGroup", ws_group.name())
         return ws_group
 
