@@ -17,29 +17,66 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         # TODO: add params
-        self.declareProperty("Input", defaultValue="", direction=Direction.Input)
-        self.declareProperty("Output", defaultValue="", direction=Direction.Output)
+        self.declareProperty("SmoothDataExcludingPeaksIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
     
     def PyExec(self):
         self.log().notice("Removing peaks")
 
-        # create a workspace
-        group_ws_name = "smoothpeaks_grouping"
-        self.CreateGroupingWorkspace(group_ws_name)
+        smoothpeaksIngredients = SmoothDataPeaksIngredients(
+            **json.loads(self.getProperty("SmoothDataExcludingPeaksIngredients").value)
+        )
 
-        # load crystal data
-        ingestrx = self.mantidSnapper.IngestCrystallographicInfoAlgorithm(cifPath=cifpath)
-
-        # load data into script for manipulation
-        pixel_grouping = self.mantidSnapper.PixelGroupingParametersCalculationAlgorithm()
+        # load a workspace
+        group_ws_name = smoothpeaksIngredients.inputWorkspace
         
-        self.mantidSnapper.executeQueue()
 
-        xtal = crystal_info["crystalInfo"]
-        peaks = xtal.peaks
-        Del_D_Over_D = pixel_grouping.groupingParams_str
+
+# Register algorithm with Mantid
+AlgorithmFactory.subscribe(SmoothDataExcludingPeaks)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         # xtalRx=self.mantidSnapper.IngestCrystallographicInfoAlgorithm()
@@ -68,5 +105,3 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
     #     print("FWHM:", FWHM)
     #     print("Adjusted FWHM:", adjusted_FWHM)
     #     print("\n\n")
-
-AlgorithmFactory.subscribe(SmoothDataExcludingPeaks)
