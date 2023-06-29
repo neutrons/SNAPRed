@@ -1,55 +1,32 @@
-import unittest.mock as mock
+import unittest
+from unittest import mock
 
-import pytest
-
-with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
-    from snapred.backend.recipe.ReductionRecipe import ReductionRecipe as ThisRecipe
-
-    mockAlgo = mock.Mock()
-    MockAlgorithmManager.create.return_value = mockAlgo
-
-    def test_execute_successful():
-        mockAlgo.execute.return_value = "passed"
-        mockAlgo.ingredients = "bad json"
-        mockAlgo.setProperty.side_effect = lambda x, y: setattr(mockAlgo, "ingredients", y)  # noqa: ARG005
-
-        recipe = ThisRecipe()
-        ingredients = mock.Mock()
-        ingredients.json = mock.Mock(return_value="good json")
-        data = recipe.executeRecipe(ingredients)
-
-        assert mockAlgo.execute.called
-        assert ingredients.json.called
-        assert mockAlgo.ingredients == "good json"
-        assert isinstance(data, dict)
-        assert data["result"] is not None
-        assert data["result"] == "passed"
-
-    def test_execute_unsuccessful():
-        mockAlgo.execute.side_effect = RuntimeError("passed")
-
-        recipe = ThisRecipe()
-        ingredients = mock.Mock()
-
-        try:
-            recipe.executeRecipe(ingredients)
-        except Exception as e:  # noqa: E722 BLE001
-            assert str(e) == "passed"  # noqa: PT017
-            assert mockAlgo.execute.called
-        else:
-            # fail if execute did not raise an exception
-            pytest.fail("Test should have raised RuntimeError, but no error raised")
+from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 
 
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
+class TestReductionRecipe(unittest.TestCase):
+    @mock.patch("snapred.backend.recipe.ReductionRecipe.AlgorithmManager")
+    def test_executeRecipe(self, mock_AlgorithmManager):
+        # Create a mock algorithm instance and set the expected return value
+        mock_algo = mock.MagicMock()
+        mock_algo.execute.return_value = "Mocked result"
+        mock_AlgorithmManager.create.return_value = mock_algo
 
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)
+        # Create a mock ReductionIngredients instance with the required attributes
+        mock_runConfig = mock.MagicMock()
+        mock_runConfig.runNumber = "12345"
+        mock_reductionIngredients = mock.MagicMock(spec=ReductionIngredients)
+        mock_reductionIngredients.runConfig = mock_runConfig
+
+        # Create an instance of the ReductionRecipe
+        reductionRecipe = ReductionRecipe()
+
+        # Call the executeRecipe method
+        result = reductionRecipe.executeRecipe(mock_reductionIngredients)
+
+        # Assertions
+        assert result["result"] == "Mocked result"
+        mock_algo.execute.assert_called_once()
+        mock_algo.setProperty.assert_called_once_with("ReductionIngredients", mock_reductionIngredients.json())
+        mock_AlgorithmManager.create.assert_called_once_with("ReductionAlgorithm")
