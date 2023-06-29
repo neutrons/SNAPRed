@@ -6,7 +6,7 @@ import os
 from typing import Any, Dict, List, Tuple
 
 import h5py
-from mantid.api import AlgorithmManager
+from mantid.api import AlgorithmManager, mtd
 from pydantic import parse_file_as
 
 from snapred.backend.dao.calibration.Calibration import Calibration
@@ -519,3 +519,10 @@ class LocalDataService:
 
         self.writeCalibrationState(runId, calibration)
         return calibration
+
+    def getWorkspaceForName(self, name):
+        try:
+            return mtd[name]
+        except RuntimeError:
+            return None
+

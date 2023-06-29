@@ -5,13 +5,18 @@ from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationInd
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
+from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationReductionRecipe import CalibrationReductionRecipe
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
+from snapred.backend.recipe.FitMultiplePeaksRecipe import FitMultiplePeaksRecipe
+from snapred.backend.recipe.PurgeOverlappingPeaksRecipe import PurgeOverlappingPeaksRecipe
+from snapred.backend.recipe.CustomStripPeaksRecipe import CustomStripPeaksRecipe
 from snapred.backend.service.Service import Service
+from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
@@ -32,6 +37,7 @@ class CalibrationService(Service):
         self.registerPath("save", self.save)
         self.registerPath("initializeState", self.initializeState)
         self.registerPath("calculatePixelGroupingParameters", self.calculatePixelGroupingParameters)
+        self.registerPath("assessment", self.assessQuality)
         return
 
     def name(self):
@@ -96,3 +102,30 @@ class CalibrationService(Service):
                 self.dataExportService.exportCalibrationState(runId=run.runNumber, calibration=calibrationState)
             except:
                 raise
+    
+    @FromString
+    def assessQuality(self, request: CalibrationAssessmentRequest):
+        run = request.run
+        cifPath = request.cifPath
+        outputNameFormat = Config["calibration.reduction.output.format"]
+        reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
+        calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
+        focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
+        instrumentState = self.dataFactoryService.getCalibrationState(run.runNumber).instrumentState
+        crystalInfo = CrystallographicInfoService().ingest(cifPath)
+
+        # check if there is focussed data for this run
+        focussedData = self.dataFactoryService.getWorkspaceForName(outputNameFormat.format(run.runNumber))
+        if focussedData is None:
+            raise Exception("No focussed data found for run {}, Please run Calibration Reduction on this Data.".format(run.runNumber))
+        else:
+            focussedData = outputNameFormat.format(run.runNumber)  # change back to workspace name, its easier this way
+        
+        purgePeakMap = PurgeOverlappingPeaksRecipe().executeRecipe(calibration.instrumentState, crystalInfo, len(focusGroups))
+        strippedFocussedData = CustomStripPeaksRecipe().executeRecipe(InputGroupWorkspace=focussedData, PeakPositions=purgePeakMap, FocusGroups=focusGroups, OutputWorkspace="strippedFocussedData")
+        outputWorkspaceGroup = FitMultiplePeaksRecipe().executeRecipe(reductionIngredients, instrumentState, crystalInfo, strippedFocussedData)
+        # TODO: loaasd previous focussed data for comparison if it exists
+        # TODO: generate graphs comparing results to default or previous calibration
+        # the following should go in a gather metrics recipe/algorithm
+        # TODO: save outputWorkspaceGroup to disk
+        # TODO: save peakMetrics to disk
