@@ -137,9 +137,9 @@ class MantidSnapper:
                 if name == "LoadDiffCal":
                     if prop in ["GroupingWorkspace", "MaskWorkspace", "CalWorkspace"]:
                         continue
-                returnVal = algorithm.getProperty(prop).value
+                returnVal = getattr(algorithm.getProperty(prop), "value", None)
                 if not returnVal:
-                    returnVal = algorithm.getProperty(prop).valueAsStr
+                    returnVal = getattr(algorithm.getProperty(prop), "valueAsStr", None)
                 val.update(returnVal)
         except RuntimeError as e:
             raise AlgorithmException(name, str(e))
