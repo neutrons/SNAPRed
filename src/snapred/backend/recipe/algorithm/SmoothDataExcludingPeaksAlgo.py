@@ -52,7 +52,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         process_crystalinfo = IngestCrystallographicInfoAlgorithm()
         process_crystalinfo.intialize()
         process_crystalinfo.setProperty("cifPath", cifPath)
-        process_crystalinfo.setProperty("CrystalInfo", crystalInfo.json())
+        process_crystalinfo.setProperty("crystalInfo", crystalInfo.json())
         process_crystalinfo.execute()
         xtalData = json.loads(process_crystalinfo.getProperty("crystalInfo"))
         peaks = xtalData.peaks
