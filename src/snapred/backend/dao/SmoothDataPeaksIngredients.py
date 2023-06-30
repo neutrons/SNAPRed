@@ -9,5 +9,4 @@ class SmoothDataPeaksIngredients(BaseModel):
     crystalInfo: CrystallographicInfo
     calibrationState: Calibration
     instrumentDefinitonFile: str
-    groupingFile: str
     inputWorkspace = str
