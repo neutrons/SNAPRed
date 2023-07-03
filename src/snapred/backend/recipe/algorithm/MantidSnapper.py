@@ -112,6 +112,8 @@ class MantidSnapper:
         return enqueueAlgorithm
 
     def reportAndIncrement(self, message):
+        if not self._prog_reporter:
+            return
         self._prog_reporter.reportIncrement(self._progressCounter, message)
         self._progressCounter += 1
 
@@ -145,7 +147,8 @@ class MantidSnapper:
             raise AlgorithmException(name, str(e))
 
     def executeQueue(self):
-        self._prog_reporter = Progress(self.parentAlgorithm, start=0.0, end=1.0, nreports=self._endrange)
+        if self.parentAlgorithm:
+            self._prog_reporter = Progress(self.parentAlgorithm, start=0.0, end=1.0, nreports=self._endrange)
         for algorithmTuple in self._algorithmQueue:
             if self._export:
                 self._exportScript += "{}(".format(algorithmTuple[0])

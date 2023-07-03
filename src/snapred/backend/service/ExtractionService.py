@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService  # type: ignore
-from snapred.backend.recipe.ExtractionRecipe import ExtractionRecipe
+from snapred.backend.recipe.GenericRecipe import ExtractionRecipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
