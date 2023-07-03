@@ -3,14 +3,15 @@ import json
 from mantid.api import (
     AlgorithmFactory, 
     PythonAlgorithm,
+    WorkspaceGroup,
     mtd,
 )
 from mantid.kernel import Direction
 
+from csaps import csaps
+
 from snapred.backend.dao.SmoothDataPeaksIngredients import SmoothDataPeaksIngredients
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import IngestCrystallographicInfoAlgorithm
-from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import PixelGroupingParametersCalculationAlgorithm
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
@@ -36,14 +37,14 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         # load a workspace
         ws_name = smoothpeaksIngredients.inputWorkspace
         ws = self.mantidSnapper.mtd[ws_name]
+        numSpec = ws.getNumberHistograms()
 
         # load crystal info
         crystalInfo = smoothpeaksIngredients.crystalInfo
 
         # load calibration
-        calState = smoothpeaksIngredients.instrumentState
+        instrumentState = smoothpeaksIngredients.instrumentState
         
-
         # load CIF file
         cifPath = self.getProperty("cifPath").value
         self.mantidSnapper.LoadCIF("Loading crystal data...", Workspace=ws, InputFile=cifPath)
@@ -55,12 +56,14 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         process_crystalinfo.setProperty("crystalInfo", crystalInfo.json())
         process_crystalinfo.execute()
         xtalData = json.loads(process_crystalinfo.getProperty("crystalInfo"))
-        peaks = xtalData.peaks
+        # peaks = xtalData.peaks
 
-        # retrieve Del_D_over_D from pixel grouping
-        pixel_grouping_info = PixelGroupingParametersCalculationAlgorithm()
-        pixel_grouping_info.initialize()
-        pixel_grouping_info.setProperty()
+        # create group workspace
+        ws_group = WorkspaceGroup()
+        mtd.add("SmoothPeaksWSGroup", ws_group)
+
+        for index in range(numSpec):
+            delDoD = instrumentState.pixelGroupingInstrumentParameters[index].deRelativeResolution
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(SmoothDataExcludingPeaks)
