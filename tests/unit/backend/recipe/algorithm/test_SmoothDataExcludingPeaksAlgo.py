@@ -15,49 +15,39 @@ with mock.patch.dict(
         PixelGroupingParametersCalculationAlgorithm,
     )
     from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import (
-        IngestCrystallographicInfoAlgorithm,
         CrystallographicInfo,
+    )
+    from snapred.backend.dao.SmoothDataPeaksIngredients import(
+        SmoothDataPeaksIngredients,
     )
     from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import (
         SmoothDataExcludingPeaks,
     )
     from snapred.meta.Config import Resource
 
-    def setup():
-        pass
-
-    def teardown():
-        workspaces = mtd.getObjectNames()
-
-        for workspace in workspaces:
-            try:
-                DeleteWorkspace(workspace)
-            except ValueError:
-                print(f"Workspace {workspace} doesn't exist!")
-    
-    @pytest.fixture(autouse=True)
-    def _setup_teardown():
-        setup()
-        yield
-        teardown()
-
-    def test_smooth_data_excluding_peaks():
-        # Initialize and set up test
-        smooth_data_alg = SmoothDataExcludingPeaks()
-
+    def test_init_path():
+        # Test functionality to initialize crystal ingestion algo from path name
         fakeCIF = Resource.getPath("/inputs/crystalInfo/fake_file.cif")
+        try:
+            smoothAlgo = SmoothDataExcludingPeaks()
+            smoothAlgo.initialize()
+            smoothAlgo.setProperty("cifPath", fakeCIF)
+            assert fakeCIF == smoothAlgo.getProperty("cifPath").value
+        except Exception:
+            pytest.fail("Failed to open.")
 
-        # Set input
-        smooth_data_alg.setProperty("Input", fakeCIF)  # replace with your actual input
-
-        # Execute algorithm
-        smooth_data_alg.execute()
-
-        # Perform assertion
-        assert smooth_data_alg.isExecuted()
-
-        # Retrieve the output and perform assertions on it
-        # The exact assertions will depend on specific algorithm and expected outputs
-        # Replace actual assertions
-        output = smooth_data_alg.getProperty("Output").value
-        assert output is not None  # replace with your actual assertions
+    def test_load_crystalInfo():
+        CIFpath = Resource.getPath("/inputs/crystalInfo/example.cif")
+        try:
+            smoothAlgo = SmoothDataExcludingPeaks()
+            smoothAlgo.initialize()
+            smoothAlgo.setProperty("cifPath", CIFpath)
+            smoothAlgo.execute()
+            xtalinfo = json.loads(smoothAlgo.getProperty("crystalInfo").value)
+        except Exception:
+            pytest.fail("Failed to open.")
+        else:
+            assert xtalinfo["peaks"][0]["hkl"] == [1, 1, 1]
+            assert xtalinfo["peaks"][5]["hkl"] == [4, 0, 0]
+            assert xtalinfo["peaks"][0]["dSpacing"] == 3.13592994862768
+            assert xtalinfo["peaks"][4]["dSpacing"] == 1.0453099828758932
