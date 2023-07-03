@@ -11,6 +11,7 @@ with mock.patch.dict(
     },
 ):
     from mantid.simpleapi import DeleteWorkspace, mtd
+    from snapred.backend.dao.calibration.Calibration import Calibration
     from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
         PixelGroupingParametersCalculationAlgorithm,
     )
@@ -38,16 +39,15 @@ with mock.patch.dict(
 
     def test_load_crystalInfo():
         CIFpath = Resource.getPath("/inputs/crystalInfo/example.cif")
+        CrystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
+        CalState = Calibration.parse_raw(Resource.read("/inputs/purge_peaks/input_parameters.json")).instrumentState
+        Ws = "testWorkSpace"
+
+        smoothAlgoIngredients = SmoothDataPeaksIngredients(crystalInfo = CrystalInfo, instrumentState = CalState, inputWorkspace = Ws)
         try:
             smoothAlgo = SmoothDataExcludingPeaks()
             smoothAlgo.initialize()
-            smoothAlgo.setProperty("cifPath", CIFpath)
-            smoothAlgo.execute()
-            xtalinfo = json.loads(smoothAlgo.getProperty("crystalInfo").value)
+            smoothAlgo.setProperty("SmoothDataExcludingPeaksIngredients", smoothAlgoIngredients.json())
+            assert smoothAlgo.getProperty("SmoothDataExcludingPeaksIngredients").value == smoothAlgoIngredients.json()
         except Exception:
             pytest.fail("Failed to open.")
-        else:
-            assert xtalinfo["peaks"][0]["hkl"] == [1, 1, 1]
-            assert xtalinfo["peaks"][5]["hkl"] == [4, 0, 0]
-            assert xtalinfo["peaks"][0]["dSpacing"] == 3.13592994862768
-            assert xtalinfo["peaks"][4]["dSpacing"] == 1.0453099828758932

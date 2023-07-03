@@ -8,7 +8,7 @@ from mantid.api import (
 from mantid.kernel import Direction
 
 from snapred.backend.dao.SmoothDataPeaksIngredients import SmoothDataPeaksIngredients
-# from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import IngestCrystallographicInfoAlgorithm
 from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import PixelGroupingParametersCalculationAlgorithm
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -41,7 +41,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         crystalInfo = smoothpeaksIngredients.crystalInfo
 
         # load calibration
-        calibration = smoothpeaksIngredients.calibrationState
+        calState = smoothpeaksIngredients.instrumentState
         
 
         # load CIF file
