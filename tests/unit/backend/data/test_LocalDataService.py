@@ -264,29 +264,35 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
         actualPath = localDataService.getCalibrationRecordPath("57514", 1)
 
-        assert actualPath == Resource.getPath("outputs/57514") + "/CalibrationRecord_v1.json"
+        assert actualPath == Resource.getPath("outputs/57514") + "/v_1/CalibrationRecord.json"
 
     @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
     def test_extractFileVersion():
         localDataService = LocalDataService()
-        actualVersion = localDataService._extractFileVersion("CalibrationRecord_v1.json")
-        assert actualVersion == 1
+        actualVersion = localDataService._extractFileVersion("Powder/1234/v_4/CalibrationRecord.json")
+        assert actualVersion == 4
 
     @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
     def test__getFileOfVersion():
         localDataService = LocalDataService()
         localDataService._findMatchingFileList = mock.Mock()
-        localDataService._findMatchingFileList.return_value = ["CalibrationRecord_v1.json"]
-        actualFile = localDataService._getFileOfVersion("CalibrationRecord", 1)
-        assert actualFile == "CalibrationRecord_v1.json"
+        localDataService._findMatchingFileList.return_value = [
+            "/v_1/CalibrationRecord.json",
+            "/v_3/CalibrationRecord.json",
+        ]
+        actualFile = localDataService._getFileOfVersion("/v_*/CalibrationRecord", 3)
+        assert actualFile == "/v_3/CalibrationRecord.json"
 
     @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
     def test__getLatestFile():
         localDataService = LocalDataService()
         localDataService._findMatchingFileList = mock.Mock()
-        localDataService._findMatchingFileList.return_value = ["CalibrationRecord_v1.json"]
-        actualFile = localDataService._getLatestFile("CalibrationRecord")
-        assert actualFile == "CalibrationRecord_v1.json"
+        localDataService._findMatchingFileList.return_value = [
+            "Powder/1234/v_1/CalibrationRecord.json",
+            "Powder/1234/v_2/CalibrationRecord.json",
+        ]
+        actualFile = localDataService._getLatestFile("Powder/1234/v_*/CalibrationRecord.json")
+        assert actualFile == "Powder/1234/v_2/CalibrationRecord.json"
 
     @mock.patch.object(LocalDataService, "__init__", lambda x: None)  # noqa: PT008, ARG005
     def test_writeCalibrationReductionResult():

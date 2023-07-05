@@ -321,11 +321,11 @@ class LocalDataService:
     def getCalibrationRecordPath(self, runId: str, version: str):
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationPath(stateId)
-        recordPath: str = calibrationPath + "{}/CalibrationRecord_v{}.json".format(runId, version)
+        recordPath: str = calibrationPath + "{}/v_{}/CalibrationRecord.json".format(runId, version)
         return recordPath
 
     def _extractFileVersion(self, file: str):
-        return int(file.split("_v")[-1].split(".json")[0])
+        return int(file.split("/v_")[-1].split("/")[0])
 
     def _getFileOfVersion(self, fileRegex: str, version):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
@@ -375,9 +375,10 @@ class LocalDataService:
             version = previousCalibration.version + 1
         recordPath: str = self.getCalibrationRecordPath(record.parameters.runConfig.runNumber, version)
         record.version = version
+        calibrationPath += f"{record.parameters.runConfig.runNumber}/v_{version}"
         # check if directory exists for runId
-        if not os.path.exists(calibrationPath + record.parameters.runConfig.runNumber):
-            os.makedirs(calibrationPath + record.parameters.runConfig.runNumber)
+        if not os.path.exists(calibrationPath):
+            os.makedirs(calibrationPath)
         # append to record and write to file
         with open(recordPath, "w") as recordFile:
             recordFile.write(json.dumps(record.dict()))
