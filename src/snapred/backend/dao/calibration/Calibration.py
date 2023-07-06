@@ -9,4 +9,4 @@ class Calibration(BaseModel):
     seedRun: int
     creationDate: datetime
     name: str
-    version: int
+    version: int = 0
