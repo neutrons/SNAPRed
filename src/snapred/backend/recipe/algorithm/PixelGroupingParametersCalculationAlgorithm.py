@@ -96,15 +96,37 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
     # create a grouping workspace from a grouping file
     def CreateGroupingWorkspace(self, grouping_ws_name):
         groupingFilePath = self.getProperty("GroupingFile").value
-        file_extension = pathlib.Path(groupingFilePath).suffix
-        if file_extension.upper()[1:] == "XML":
+        if "lite" in groupingFilePath:
+            self.mantidSnapper.CreateWorkspace(
+                "Creating Instrument Definition Workspace ...", OutputWorkspace="idf", DataX=1, DataY=1
+            )
+            self.mantidSnapper.LoadInstrument(
+                "Loading instrument definition file ...",
+                Workspace="idf",
+                Filename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+                MonitorList="-2--1",
+                RewriteSpectraMap=False,
+            )
             self.mantidSnapper.LoadDetectorsGroupingFile(
-                "Loading detectors grouping file...", InputFile=groupingFilePath, OutputWorkspace=grouping_ws_name
+                "Loading detectors grouping file...",
+                InputFile=groupingFilePath,
+                InputWorkspace="idf",
+                OutputWorkspace=grouping_ws_name,
             )
-        else:  # from a workspace
-            self.mantidSnapper.LoadNexusProcessed(
-                "Loading grouping workspace...", Filename=groupingFilePath, OutputWorkspace=grouping_ws_name
-            )
+            self.mantidSnapper.DeleteWorkspace("Deleting idf...", Workspace="idf")
+        else:
+            file_extension = pathlib.Path(groupingFilePath).suffix
+            if file_extension.upper()[1:] == "XML":
+                self.mantidSnapper.LoadDetectorsGroupingFile(
+                    "Loading detectors grouping file...",
+                    InputFile=groupingFilePath,
+                    InputWorkspace="idf",
+                    OutputWorkspace=grouping_ws_name,
+                )
+            else:  # from a workspace
+                self.mantidSnapper.LoadNexusProcessed(
+                    "Loading grouping workspace...", Filename=groupingFilePath, OutputWorkspace=grouping_ws_name
+                )
         self.mantidSnapper.executeQueue()
 
     # load SNAP instrument into a workspace

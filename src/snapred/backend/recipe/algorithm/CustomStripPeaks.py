@@ -1,3 +1,4 @@
+import json
 from typing import List
 
 from mantid.api import AlgorithmFactory, PythonAlgorithm
@@ -21,11 +22,11 @@ class CustomStripPeaks(PythonAlgorithm):
 
     def PyExec(self):
         inputGroupWorkspace = self.getProperty("InputGroupWorkspace").value
-        peakPositions = self.getProperty("PeakPositions").value
+        peakPositions = json.loads(self.getProperty("PeakPositions").value)
         outputWorkspace = self.getProperty("OutputWorkspace").value
         focusGroups = parse_raw_as(List[FocusGroup], self.getProperty("FocusGroups").value)
         # for each group in the workspace, strip peaks with associated peak positions
-        self.mantidSnapper.mtd[inputGroupWorkspace]
+        inputGroupWorkspace = self.mantidSnapper.mtd[inputGroupWorkspace]
         strippedWorkspaces = []
         for workspaceIndex in range(len(focusGroups)):
             strippedWorkspaces.append(
@@ -37,11 +38,12 @@ class CustomStripPeaks(PythonAlgorithm):
                 )
             )
         output = self.mantidSnapper.GroupWorkspaces(
+            "Grouping stripped results...",
             InputWorkspaces=[strippedWorkspace for strippedWorkspace in strippedWorkspaces],
             OutputWorkspace=outputWorkspace,
         )
         self.mantidSnapper.executeQueue()
-        self.setProperty("OutputWorkspace", output)
+        self.setProperty("OutputWorkspace", output.get())
 
 
 # Register algorithm with Mantid

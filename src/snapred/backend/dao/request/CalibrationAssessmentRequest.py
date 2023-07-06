@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from snapred.backend.model.RunConfig import RunConfig
+from snapred.backend.dao.RunConfig import RunConfig
 
 
 class CalibrationAssessmentRequest(BaseModel):

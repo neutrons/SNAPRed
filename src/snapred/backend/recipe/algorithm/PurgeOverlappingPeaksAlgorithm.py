@@ -76,7 +76,6 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
 
             self.log().notice(f" {nPks} peaks in and {len(outputPeakList)} peaks out")
             outputPeaks.append(outputPeakList)
-
         self.setProperty("OutputPeakMap", json.dumps(outputPeaks))
         return outputPeaks
 

@@ -139,9 +139,9 @@ class MantidSnapper:
                 if name == "LoadDiffCal":
                     if prop in ["GroupingWorkspace", "MaskWorkspace", "CalWorkspace"]:
                         continue
-                returnVal = algorithm.getProperty(prop).value
-                if not returnVal:
-                    returnVal = algorithm.getProperty(prop).valueAsStr
+                returnVal = getattr(algorithm.getProperty(prop), "value", None)
+                if returnVal is None:
+                    returnVal = getattr(algorithm.getProperty(prop), "valueAsStr", None)
                 val.update(returnVal)
         except RuntimeError as e:
             raise AlgorithmException(name, str(e))
@@ -182,6 +182,7 @@ class MantidSnapper:
             exportPath = self._generateExportPath()
             with open(exportPath, "a") as file:
                 file.write(self._exportScript)
-        self._prog_reporter.report(self._endrange, "Done")
+        if self.parentAlgorithm:
+            self._prog_reporter.report(self._endrange, "Done")
         self._progressCounter = 0
         self.algorithmQueue = []
