@@ -8,4 +8,5 @@ class SmoothDataPeaksIngredients(BaseModel):
 
     crystalInfo: CrystallographicInfo
     instrumentState: InstrumentState
-    inputWorkspace = str
+    peaksWorkspace = str
+    weightsWorkspace = str

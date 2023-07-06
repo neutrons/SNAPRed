@@ -3,11 +3,10 @@ import json
 from mantid.api import (
     AlgorithmFactory, 
     PythonAlgorithm,
-    WorkspaceGroup,
     mtd,
 )
 from mantid.kernel import Direction
-
+from mantid.api import *
 from csaps import csaps
 
 from snapred.backend.dao.SmoothDataPeaksIngredients import SmoothDataPeaksIngredients
@@ -35,9 +34,10 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         )
 
         # load a workspace
-        ws_name = smoothpeaksIngredients.inputWorkspace
-        ws = self.mantidSnapper.mtd[ws_name]
-        numSpec = ws.getNumberHistograms()
+        p_ws_name = smoothpeaksIngredients.peaksWorkspace
+        w_ws_name = smoothpeaksIngredients.weightsWorkspace
+        p_ws = self.mantidSnapper.mtd[p_ws_name]
+        numSpec = p_ws.getNumberHistograms()
 
         # load crystal info
         crystalInfo = smoothpeaksIngredients.crystalInfo
@@ -47,7 +47,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         
         # load CIF file
         cifPath = self.getProperty("cifPath").value
-        self.mantidSnapper.LoadCIF("Loading crystal data...", Workspace=ws, InputFile=cifPath)
+        self.mantidSnapper.LoadCIF("Loading crystal data...", Workspace=p_ws, InputFile=cifPath)
 
         # process crystal information
         process_crystalinfo = IngestCrystallographicInfoAlgorithm()
@@ -56,14 +56,10 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         process_crystalinfo.setProperty("crystalInfo", crystalInfo.json())
         process_crystalinfo.execute()
         xtalData = json.loads(process_crystalinfo.getProperty("crystalInfo"))
-        # peaks = xtalData.peaks
-
-        # create group workspace
-        ws_group = WorkspaceGroup()
-        mtd.add("SmoothPeaksWSGroup", ws_group)
 
         for index in range(numSpec):
             delDoD = instrumentState.pixelGroupingInstrumentParameters[index].deRelativeResolution
+            
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(SmoothDataExcludingPeaks)
