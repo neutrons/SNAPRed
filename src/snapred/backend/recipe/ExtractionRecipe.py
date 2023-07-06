@@ -22,7 +22,6 @@ class ExtractionRecipe:
     def chopIngredeients(self, ingredients: ExtractionIngredients):
         pass
 
-
     def executeRecipe(self, ingredients: ExtractionIngredients) -> Dict[str, Any]:
         logger.info("Executing recipe for runId: %s" % ingredients.runConfig.runNumber)
         data: Dict[str, Any] = {}

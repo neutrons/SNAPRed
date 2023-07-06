@@ -1,9 +1,7 @@
-import json
 import random
-import numpy as np
 import unittest.mock as mock
 
-import pytest
+import numpy as np
 
 with mock.patch.dict(
     "sys.modules",
@@ -13,16 +11,12 @@ with mock.patch.dict(
     },
 ):
     from mantid.simpleapi import (
-        CreateWorkspace,
-        CreateEmptyTableWorkspace, 
         CompareWorkspaces,
-        ConvertTableToMatrixWorkspace,
-        mtd,
+        CreateWorkspace,
     )
     from snapred.backend.recipe.algorithm.ConvertDifCalLog import (
         ConvertDifCalLog as ThisAlgo,  # noqa: E402
     )
-    from snapred.meta.Config import Resource
 
     def test_set_properties():
         """Test that properties can be initialized"""
@@ -50,16 +44,12 @@ with mock.patch.dict(
         lenTest = 10
         dataX = range(lenTest)
         # create an offset workspace
-        CreateWorkspace(
-            OutputWorkspace = offsetWS,
-            DataX = dataX,
-            DataY = [0.1 for i in range(lenTest)]
-        )
+        CreateWorkspace(OutputWorkspace=offsetWS, DataX=dataX, DataY=[0.1 for i in range(lenTest)])
         # create a previous calibration workspace
         CreateWorkspace(
             OutputWorkspace=prevCal,
-            DataX = dataX,
-            DataY = [1]*lenTest,
+            DataX=dataX,
+            DataY=[1] * lenTest,
         )
         algo = ThisAlgo()
         algo.initialize()
@@ -68,8 +58,7 @@ with mock.patch.dict(
         algo.setProperty("OutputWorkspace", outputWS)
         algo.setProperty("BinWidth", dBin)
         algo.execute()
-        assert CompareWorkspaces(Workspace1=prevCal, Workspace2 = outputWS)
-        
+        assert CompareWorkspaces(Workspace1=prevCal, Workspace2=outputWS)
 
     def test_zero_offset():
         """Test that zero offsets result in no change"""
@@ -80,16 +69,12 @@ with mock.patch.dict(
         lenTest = 10
         dataX = range(lenTest)
         # create an offsets workspace
-        CreateWorkspace(
-            OutputWorkspace = offsetWS,
-            DataX = dataX,
-            DataY = [0.0 for i in range(lenTest)]
-        )
+        CreateWorkspace(OutputWorkspace=offsetWS, DataX=dataX, DataY=[0.0 for i in range(lenTest)])
         # create a previous calibration workspace
         CreateWorkspace(
             OutputWorkspace=prevCal,
-            DataX = dataX,
-            DataY = [2]*lenTest,
+            DataX=dataX,
+            DataY=[2] * lenTest,
         )
         algo = ThisAlgo()
         algo.initialize()
@@ -98,7 +83,7 @@ with mock.patch.dict(
         algo.setProperty("OutputWorkspace", outputWS)
         algo.setProperty("BinWidth", dBin)
         algo.execute()
-        assert CompareWorkspaces(Workspace1=prevCal, Workspace2 = outputWS)
+        assert CompareWorkspaces(Workspace1=prevCal, Workspace2=outputWS)
 
     def test_by_half():
         """
@@ -112,22 +97,18 @@ with mock.patch.dict(
         lenTest = 14
         dataX = range(lenTest)
         # create an offsets workspace
-        CreateWorkspace(
-            OutputWorkspace = offsetWS,
-            DataX = dataX,
-            DataY = [1.0 for i in range(lenTest)]
-        )
+        CreateWorkspace(OutputWorkspace=offsetWS, DataX=dataX, DataY=[1.0 for i in range(lenTest)])
         # create previous calibration workspace as powers of 2 for easier division
         CreateWorkspace(
             OutputWorkspace=prevCal,
-            DataX = dataX,
-            DataY = [2**i for i in range(lenTest)],
+            DataX=dataX,
+            DataY=[2**i for i in range(lenTest)],
         )
         # create expected result workspace, one power of 2 smaller
         CreateWorkspace(
             OutputWorkspace=testWS,
-            DataX = dataX,
-            DataY = [2**(i-1) for i in range(lenTest)],
+            DataX=dataX,
+            DataY=[2 ** (i - 1) for i in range(lenTest)],
         )
         algo = ThisAlgo()
         algo.initialize()
@@ -136,8 +117,7 @@ with mock.patch.dict(
         algo.setProperty("OutputWorkspace", outputWS)
         algo.setProperty("BinWidth", 1.0)
         algo.execute()
-        assert CompareWorkspaces(Workspace1=testWS, Workspace2 = outputWS)
-
+        assert CompareWorkspaces(Workspace1=testWS, Workspace2=outputWS)
 
     def test_random_values():
         """
@@ -153,24 +133,24 @@ with mock.patch.dict(
         # create workspace of random offsets
         offsets = np.array([random.random() for i in range(lenTest)])
         CreateWorkspace(
-            OutputWorkspace = offsetWS,
-            DataX = dataX,
-            DataY = offsets,
+            OutputWorkspace=offsetWS,
+            DataX=dataX,
+            DataY=offsets,
         )
         # create workspace of random previous calibrations
         dataYin = np.array([random.random() for i in range(lenTest)])
         CreateWorkspace(
             OutputWorkspace=prevCal,
-            DataX = dataX,
-            DataY = dataYin,
+            DataX=dataX,
+            DataY=dataYin,
         )
         # calculate expected values of calculation for comparison
-        multFactor = np.power(np.ones(lenTest)+np.abs(dBin), -1*offsets)
+        multFactor = np.power(np.ones(lenTest) + np.abs(dBin), -1 * offsets)
         dataYout = np.multiply(dataYin, multFactor)
         CreateWorkspace(
             OutputWorkspace=testWS,
-            DataX = dataX,
-            DataY = dataYout,
+            DataX=dataX,
+            DataY=dataYout,
         )
         algo = ThisAlgo()
         algo.initialize()
@@ -179,7 +159,7 @@ with mock.patch.dict(
         algo.setProperty("OutputWorkspace", outputWS)
         algo.setProperty("BinWidth", dBin)
         algo.execute()
-        assert CompareWorkspaces(Workspace1=testWS, Workspace2 = outputWS)
+        assert CompareWorkspaces(Workspace1=testWS, Workspace2=outputWS)
 
     def test_dbin_abs_value():
         """
@@ -191,19 +171,19 @@ with mock.patch.dict(
         outputWS1 = "outputWS1"
         outputWS2 = "outputWS2"
         lenTest = 10
-        dBin = -0.5 # must pick dBin on order 1
+        dBin = -0.5  # must pick dBin on order 1
         dataX = range(lenTest)
         # create an offsets workspace
         CreateWorkspace(
-            OutputWorkspace = offsetWS,
-            DataX = dataX,
-            DataY = [1.0 for i in range(len(dataX))],
+            OutputWorkspace=offsetWS,
+            DataX=dataX,
+            DataY=[1.0 for i in range(len(dataX))],
         )
         # create a previous calibration workspace
         CreateWorkspace(
             OutputWorkspace=prevCal,
-            DataX = dataX,
-            DataY = [2**i for i in range(len(dataX))],
+            DataX=dataX,
+            DataY=[2**i for i in range(len(dataX))],
         )
         algo = ThisAlgo()
         algo.initialize()
@@ -217,4 +197,4 @@ with mock.patch.dict(
         algo.setProperty("OutputWorkspace", outputWS2)
         algo.setProperty("BinWidth", -np.abs(dBin))
         algo.execute()
-        assert CompareWorkspaces(Workspace1=outputWS1, Workspace2 = outputWS2)
+        assert CompareWorkspaces(Workspace1=outputWS1, Workspace2=outputWS2)

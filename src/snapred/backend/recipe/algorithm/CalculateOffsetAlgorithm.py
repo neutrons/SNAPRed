@@ -23,13 +23,13 @@ class CalculateOffsetAlgorithmAlgorithm(PythonAlgorithm):
         dataDir = ingredients.dataDir
 
         with open(stateInitFilename, "r") as json_file:
-            self.sPrm = json.load(json_file) 
+            self.sPrm = json.load(json_file)
 
         getDSpacingWS(inputWStof, inputWSdsp)
 
         # focused grouping ws
         focusWSname = '_{runNumber}_FocGroup'
-        ext = 
+        ext =
         if ext=='nxs':
             LoadNexusProcessed(
                 Filename=groupingFile,
@@ -67,7 +67,7 @@ class CalculateOffsetAlgorithmAlgorithm(PythonAlgorithm):
 
         #For now, just choose median value...
         refID = getRefID(subGroupIDs)
-            
+
         wscc = 'CC_'+outputWS
         self.mantidSnapper.CrossCorrelate(
             "Cross-Correlating spectra",
@@ -86,7 +86,7 @@ class CalculateOffsetAlgorithmAlgorithm(PythonAlgorithm):
             Step = abs(self.dBin),
             XMin = -100,
             XMax = 100,
-            OffsetMode='Signed',           
+            OffsetMode='Signed',
         )
         self.mantidSnapper.DeleteWorkspace(
             "removing temp cross-correlate workspace",
@@ -146,12 +146,12 @@ class CalculateOffsetAlgorithmAlgorithm(PythonAlgorithm):
         ApplyDiffCal(
             InstrumentWorkspace=correctedWS,
             CalibrationWorkspace=calibrationWS
-        )  
+        )
         ConvertUnits(
             InputWorkspace=correctedWS,
             OutputWorkspace=correctedWS,
             Target='dSpacing'
-        )       
+        )
         Rebin(
             InputWorkspace=correctedWS,
             Params=f'{overallDMin},{self.dBin},{overallDMax}',
@@ -166,7 +166,7 @@ class CalculateOffsetAlgorithmAlgorithm(PythonAlgorithm):
             subGroupIDs = getSubgroupIDs(subGroup)
             nSpectraInSubGroup = len(subGroupIDs)
             MDSh = getMDSh(calibPeakListSorted)
-            
+
             wsname = f'{run}_subGroup{int(subGroup)}'
             calculateGroupOffset(subGroupIDs, wsname)
             offsetWSs.append(wsname)
@@ -195,7 +195,7 @@ class CalculateOffsetAlgorithmAlgorithm(PythonAlgorithm):
             **json.loads(self.getProperty("ExtractionIngredients").value)
         )
         self.chopIngredients(ingredients)
-        
+
         return self.rerunAlgo(self.rebinWS)
 
 # Register algorithm with Mantid

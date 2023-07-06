@@ -1,8 +1,6 @@
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-
 name = "ExtractionAlgorithm"
 
 
@@ -16,6 +14,7 @@ class ExtractionAlgorithm(PythonAlgorithm):
     def PyExec(self):
         # run the algo
         self.log().notice("Execution of extraction of calibration constants START!")
+
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(ExtractionAlgorithm)

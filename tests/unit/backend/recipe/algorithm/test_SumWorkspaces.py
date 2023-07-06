@@ -1,7 +1,4 @@
-import json
 import unittest.mock as mock
-
-import pytest
 
 with mock.patch.dict(
     "sys.modules",
@@ -14,7 +11,6 @@ with mock.patch.dict(
     from snapred.backend.recipe.algorithm.SumWorkspaces import (
         SumWorkspaces,  # noqa: E402
     )
-    from snapred.meta.Config import Resource
 
     def test_set_properties():
         """Test that list can be initialized"""
@@ -37,13 +33,12 @@ with mock.patch.dict(
         assert out.extractX() == [0]
         assert out.extractY() == [0]
 
-
     def test_scalar_sum():
         """Test that a list of scalars sums correctly"""
         dataX = [0]
         wsList = ["ws1", "ws2", "ws3"]
         trueSum = 0
-        for i,ws in enumerate(wsList):
+        for i, ws in enumerate(wsList):
             CreateWorkspace(OutputWorkspace=ws, DataX=dataX, DataY=[i])
             trueSum = trueSum + i
         algo = SumWorkspaces()
@@ -57,12 +52,12 @@ with mock.patch.dict(
 
     def test_list_sum():
         """Test that a list of vectors sums correctly"""
-        dataX = [0,1,2,3]
+        dataX = [0, 1, 2, 3]
         wsList = ["ws1", "ws2", "ws3"]
-        trueSum = [0]*len(dataX)
-        for i,ws in enumerate(wsList):
-            CreateWorkspace(OutputWorkspace=ws, DataX=dataX, DataY=[i+j for j in range(len(trueSum))])
-            trueSum = [x + i+j for j,x in enumerate(trueSum)]
+        trueSum = [0] * len(dataX)
+        for i, ws in enumerate(wsList):
+            CreateWorkspace(OutputWorkspace=ws, DataX=dataX, DataY=[i + j for j in range(len(trueSum))])
+            trueSum = [x + i + j for j, x in enumerate(trueSum)]
         algo = SumWorkspaces()
         algo.initialize()
         outName = "result"

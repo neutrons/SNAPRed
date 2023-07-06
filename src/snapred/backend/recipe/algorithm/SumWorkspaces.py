@@ -22,8 +22,8 @@ class SumWorkspaces(PythonAlgorithm):
             self.mantidSnapper.CreateWorkspace(
                 "No worksheets given, creating empty workspace",
                 OutputWorkspace=outputWS,
-                DataX = [0],
-                DataY = [0],
+                DataX=[0],
+                DataY=[0],
             )
         else:
             self.mantidSnapper.RenameWorkspace(
@@ -40,10 +40,11 @@ class SumWorkspaces(PythonAlgorithm):
                 )
                 self.mantidSnapper.DeleteWorkspace(
                     f"Deleting {ws}",
-                    Workspace = ws,
+                    Workspace=ws,
                 )
         self.mantidSnapper.executeQueue()
         return outputWS
+
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(SumWorkspaces)
