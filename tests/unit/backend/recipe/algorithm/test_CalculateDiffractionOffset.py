@@ -1,8 +1,5 @@
-import random
 import json
 import unittest.mock as mock
-
-import numpy as np
 
 with mock.patch.dict(
     "sys.modules",
@@ -11,14 +8,9 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from mantid.simpleapi import (
-        CompareWorkspaces,
-        CreateWorkspace,
-    )
     from snapred.backend.recipe.algorithm.CalculateDiffractionOffsets import (
         CalculateDiffractionOffsets as ThisAlgo,  # noqa: E402
     )
-    from snapred.backend.dao.state.InstrumentState import InstrumentState
     from snapred.meta.Config import Resource
 
     def mock_ingredients(dBin, runNumber):
@@ -65,8 +57,6 @@ with mock.patch.dict(
     #     assert fakeOutputWS == algo.getProperty("OutputWorkspace").value
     #     assert fakeBinWidth == algo.getProperty("BinWidth").value
 
-    
-
     # def test_zero_bin():
     #     """Test that a zero bin width results in no change"""
     #     offsetWS = "offsets"
@@ -91,7 +81,6 @@ with mock.patch.dict(
     #     algo.setProperty("BinWidth", dBin)
     #     assert algo.execute()
     #     assert CompareWorkspaces(Workspace1=prevCal, Workspace2=outputWS)
-
 
     # def test_random_values():
     #     """
@@ -134,5 +123,3 @@ with mock.patch.dict(
     #     algo.setProperty("BinWidth", dBin)
     #     assert algo.execute()
     #     assert CompareWorkspaces(Workspace1=testWS, Workspace2=outputWS)
-
-

@@ -108,7 +108,7 @@ with mock.patch.dict(
         CreateWorkspace(
             OutputWorkspace=testWS,
             DataX=dataX,
-            DataY=[2**(i - 1) for i in range(lenTest)],
+            DataY=[2 ** (i - 1) for i in range(lenTest)],
         )
         algo = ThisAlgo()
         algo.initialize()
