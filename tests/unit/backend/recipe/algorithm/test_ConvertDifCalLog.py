@@ -57,7 +57,7 @@ with mock.patch.dict(
         algo.setProperty("PreviousCalibration", prevCal)
         algo.setProperty("OutputWorkspace", outputWS)
         algo.setProperty("BinWidth", dBin)
-        algo.execute()
+        assert algo.execute()
         assert CompareWorkspaces(Workspace1=prevCal, Workspace2=outputWS)
 
     def test_zero_offset():
@@ -82,7 +82,7 @@ with mock.patch.dict(
         algo.setProperty("PreviousCalibration", prevCal)
         algo.setProperty("OutputWorkspace", outputWS)
         algo.setProperty("BinWidth", dBin)
-        algo.execute()
+        assert algo.execute()
         assert CompareWorkspaces(Workspace1=prevCal, Workspace2=outputWS)
 
     def test_by_half():
@@ -108,7 +108,7 @@ with mock.patch.dict(
         CreateWorkspace(
             OutputWorkspace=testWS,
             DataX=dataX,
-            DataY=[2 ** (i - 1) for i in range(lenTest)],
+            DataY=[2**(i - 1) for i in range(lenTest)],
         )
         algo = ThisAlgo()
         algo.initialize()
@@ -116,7 +116,7 @@ with mock.patch.dict(
         algo.setProperty("PreviousCalibration", prevCal)
         algo.setProperty("OutputWorkspace", outputWS)
         algo.setProperty("BinWidth", 1.0)
-        algo.execute()
+        assert algo.execute()
         assert CompareWorkspaces(Workspace1=testWS, Workspace2=outputWS)
 
     def test_random_values():
@@ -158,7 +158,7 @@ with mock.patch.dict(
         algo.setProperty("PreviousCalibration", prevCal)
         algo.setProperty("OutputWorkspace", outputWS)
         algo.setProperty("BinWidth", dBin)
-        algo.execute()
+        assert algo.execute()
         assert CompareWorkspaces(Workspace1=testWS, Workspace2=outputWS)
 
     def test_dbin_abs_value():
@@ -177,13 +177,13 @@ with mock.patch.dict(
         CreateWorkspace(
             OutputWorkspace=offsetWS,
             DataX=dataX,
-            DataY=[1.0 for i in range(len(dataX))],
+            DataY=[1.0 for i in range(lenTest)],
         )
         # create a previous calibration workspace
         CreateWorkspace(
             OutputWorkspace=prevCal,
             DataX=dataX,
-            DataY=[2**i for i in range(len(dataX))],
+            DataY=[2**i for i in range(lenTest)],
         )
         algo = ThisAlgo()
         algo.initialize()
@@ -196,5 +196,5 @@ with mock.patch.dict(
         # run again with negative (-abs to ensure)
         algo.setProperty("OutputWorkspace", outputWS2)
         algo.setProperty("BinWidth", -np.abs(dBin))
-        algo.execute()
+        assert algo.execute()
         assert CompareWorkspaces(Workspace1=outputWS1, Workspace2=outputWS2)

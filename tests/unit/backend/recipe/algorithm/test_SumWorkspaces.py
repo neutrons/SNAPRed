@@ -9,13 +9,13 @@ with mock.patch.dict(
 ):
     from mantid.simpleapi import CreateWorkspace, mtd
     from snapred.backend.recipe.algorithm.SumWorkspaces import (
-        SumWorkspaces,  # noqa: E402
+        SumWorkspaces as ThisAlgo,  # noqa: E402
     )
 
     def test_set_properties():
         """Test that list can be initialized"""
         fakeList = ["fakeWS1", "fakeWS2", "fakeWS3"]
-        algo = SumWorkspaces()
+        algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("InputWorkspaces", fakeList)
         assert fakeList == list(algo.getProperty("InputWorkspaces").value)
@@ -24,7 +24,7 @@ with mock.patch.dict(
         """Test that an empty list results in nothing"""
         emptyList = []
         emptyWS = "emptyWS"
-        algo = SumWorkspaces()
+        algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("InputWorkspaces", emptyList)
         algo.setProperty("OutputWorkspace", emptyWS)
@@ -41,12 +41,12 @@ with mock.patch.dict(
         for i, ws in enumerate(wsList):
             CreateWorkspace(OutputWorkspace=ws, DataX=dataX, DataY=[i])
             trueSum = trueSum + i
-        algo = SumWorkspaces()
+        algo = ThisAlgo()
         algo.initialize()
         outName = "result"
         algo.setProperty("InputWorkspaces", wsList)
         algo.setProperty("OutputWorkspace", outName)
-        algo.execute()
+        assert algo.execute()
         out = mtd[outName]
         assert out.extractY() == [trueSum]
 
@@ -58,12 +58,12 @@ with mock.patch.dict(
         for i, ws in enumerate(wsList):
             CreateWorkspace(OutputWorkspace=ws, DataX=dataX, DataY=[i + j for j in range(len(trueSum))])
             trueSum = [x + i + j for j, x in enumerate(trueSum)]
-        algo = SumWorkspaces()
+        algo = ThisAlgo()
         algo.initialize()
         outName = "result"
         algo.setProperty("InputWorkspaces", wsList)
         algo.setProperty("OutputWorkspace", outName)
-        algo.execute()
+        assert algo.execute()
         out = mtd[outName]
         assert dataX == list(out.extractX().ravel())
         assert trueSum == list(out.extractY().ravel())

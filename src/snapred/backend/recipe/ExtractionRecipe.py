@@ -30,6 +30,12 @@ class ExtractionRecipe:
         algo.setProperty("ExtractionIngredients", ingredients.json())
 
         try:
+            # here we need to call SNAPRed equivalent of:
+            # snp.instantiateGroupingWS
+            # snp.inotGroupingParams
+            # snp.peakPosFromCif
+            # snp.removeOverlappingPeaks
+
             data["result"] = algo.execute()
         except RuntimeError as e:
             errorString = str(e)
