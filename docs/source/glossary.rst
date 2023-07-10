@@ -1,5 +1,5 @@
 Glossary
-========
+===
 .. TODO: Provide links to a term's page if it exists
 .. glossary::
 
@@ -37,9 +37,6 @@ Glossary
     Diagnostic Mode
         TODO
 
-    Diffraction Focussing
-        TODO
-
     Focus Groups
         A predetermined set of parameters used to split diffraction data into useful formations, i.e. like slices vs squares of pizza
         This may include predetermined data such as dimmensions and tolerances, or derrived values such as Pixel Grouping Parameters
@@ -59,9 +56,6 @@ Glossary
     Mantid Snapper
         A thin wrapper around the Mantid Algorithm API that allows for meta processes to be performed around a queue of algorithms.
         Examples may include: Progress reporting, Quality of Life improvements, multi-threading, etc.
-
-    Pixel Grouping
-        TODO
 
     Pixel Grouping Parameters
         TODO
@@ -89,4 +83,7 @@ Glossary
         TODO
 
     Vanadium
-        TODO
+        A material that is often used as a container for a sample.
+        In the context of reduction, it must undergo many of the same reduction processes as a sample.
+        This is due to the interference it causes in the diffraction data, which must be accounted for.
+        Often in the code, the material is just referred to as Vanadium, but containers of other material are possible.
