@@ -11,8 +11,8 @@ from csaps import csaps
 
 from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import IngestCrystallographicInfoAlgorithm
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.recipe.algorithm.temp.DiffractionSpectrumPeakPredictor import DiffractionSpectrumPeakPredictor
-from snapred.backend.recipe.algorithm.temp.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
+# from snapred.backend.recipe.algorithm.DiffractionSpectrumPeakPredictor import DiffractionSpectrumPeakPredictor
+# from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
