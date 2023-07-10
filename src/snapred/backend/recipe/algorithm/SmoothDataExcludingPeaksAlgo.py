@@ -11,8 +11,8 @@ from csaps import csaps
 
 from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import IngestCrystallographicInfoAlgorithm
 from snapred.backend.dao.calibration.Calibration import Calibration
-# from snapred.backend.recipe.algorithm.DiffractionSpectrumPeakPredictor import DiffractionSpectrumPeakPredictor
-# from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
+from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
+from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
@@ -45,7 +45,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         # call the diffraction spectrum peak predictor
         peaks = []
         # TODO: Need to replace theses methods with Robert's script, just pass for now.
-        predictorAlgo = DiffractionSpectrumPeakPredictor()
+        predictorAlgo = DetectorPeakPredictor()
         predictorAlgo.initialize()
         predictorAlgo.setProperty("InstrumentState", instrumentState.json())
         predictorAlgo.setProperty("CrystalInfo", crystalInfo.json())
