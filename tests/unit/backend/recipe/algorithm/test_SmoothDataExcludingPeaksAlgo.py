@@ -1,39 +1,43 @@
-import json
 import unittest.mock as mock
+import json
 
 import pytest
 
-# with mock.patch.dict(
-#     "sys.modules",
-#     {
-#         "snapred.backend.log": mock.Mock(),
-#         "snapred.backend.log.logger": mock.Mock(),
-#     },
-# ):
+with mock.patch.dict(
+    "sys.modules",
+    {
+        "snapred.backend.log": mock.Mock(),
+        "snapred.backend.log.logger": mock.Mock(),
+    },
+):
+    from pydantic import parse_file_as
+    from mantid.simpleapi import (
+        DeleteWorkspace,
+        LoadNexusProcessed,
+        mtd,
+    )
+    from snapred.backend.dao.calibration.Calibration import Calibration
+    from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import PixelGroupingParametersCalculationAlgorithm
+    from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import CrystallographicInfo
+    from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
+    from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
+    from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import IngestCrystallographicInfoAlgorithm
+    from snapred.meta.Config import Resource
 
-# from mantid.simpleapi import DeleteWorkspace, mtd
+    def setup():
+        pass
 
-# from snapred.backend.dao.calibration.Calibration import Calibration
-# from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
-#     PixelGroupingParametersCalculationAlgorithm,
-# )
-# from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import (
-#     CrystallographicInfo,
-# )
-from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import (
-    SmoothDataExcludingPeaks,
-)
-# from snapred.meta.Config import Resource
+    def teardown():
+        workspaces = mtd.getObjectNames()
 
-# Define test data paths
-spectrum_data_path = "/home/dzj/Documents/Work/csaps/DSP_58882_cal_CC_Column.nxs"
-weights_data_path = "/home/dzj/Documents/Work/csaps/stripPeaksWeight_58882_Column.nxs"
+        for workspace in workspaces:
+            try:
+                DeleteWorkspace(workspace)
+            except ValueError:
+                print(f"Workspace {workspace} doesn't exist!")
 
-def testSetup(self):
-    testAlgo = SmoothDataExcludingPeaks()
-    testAlgo.initialize()
-
-def testProperties(self):
-    assert self.testAlgo.getProperty("InputWorkspace").value == ""
-    assert self.testAlgo.getProperty("nxsPath").value == ""
-    assert self.testAlgo.getProperty("OutputWorkspace").value == ""
+    @pytest.fixture(autouse = True)
+    def _setup_teardown():
+        setup()
+        yield
+        teardown()
