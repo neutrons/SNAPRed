@@ -3,51 +3,37 @@ import unittest.mock as mock
 
 import pytest
 
-with mock.patch.dict(
-    "sys.modules",
-    {
-        "snapred.backend.log": mock.Mock(),
-        "snapred.backend.log.logger": mock.Mock(),
-    },
-):
-    from mantid.simpleapi import DeleteWorkspace, mtd
-    from snapred.backend.dao.calibration.Calibration import Calibration
-    from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
-        PixelGroupingParametersCalculationAlgorithm,
-    )
-    from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import (
-        CrystallographicInfo,
-    )
-    from snapred.backend.dao.SmoothDataPeaksIngredients import(
-        SmoothDataPeaksIngredients,
-    )
-    from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import (
-        SmoothDataExcludingPeaks,
-    )
-    from snapred.meta.Config import Resource
+# with mock.patch.dict(
+#     "sys.modules",
+#     {
+#         "snapred.backend.log": mock.Mock(),
+#         "snapred.backend.log.logger": mock.Mock(),
+#     },
+# ):
 
-    def test_init_path():
-        # Test functionality to initialize crystal ingestion algo from path name
-        fakeCIF = Resource.getPath("/inputs/crystalInfo/fake_file.cif")
-        try:
-            smoothAlgo = SmoothDataExcludingPeaks()
-            smoothAlgo.initialize()
-            smoothAlgo.setProperty("cifPath", fakeCIF)
-            assert fakeCIF == smoothAlgo.getProperty("cifPath").value
-        except Exception:
-            pytest.fail("Failed to open.")
+# from mantid.simpleapi import DeleteWorkspace, mtd
 
-    def test_load_crystalInfo():
-        CIFpath = Resource.getPath("/inputs/crystalInfo/example.cif")
-        CrystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
-        CalState = Calibration.parse_raw(Resource.read("/inputs/purge_peaks/input_parameters.json")).instrumentState
-        Ws = "testWorkSpace"
+# from snapred.backend.dao.calibration.Calibration import Calibration
+# from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
+#     PixelGroupingParametersCalculationAlgorithm,
+# )
+# from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import (
+#     CrystallographicInfo,
+# )
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import (
+    SmoothDataExcludingPeaks,
+)
+# from snapred.meta.Config import Resource
 
-        smoothAlgoIngredients = SmoothDataPeaksIngredients(crystalInfo = CrystalInfo, instrumentState = CalState, inputWorkspace = Ws)
-        try:
-            smoothAlgo = SmoothDataExcludingPeaks()
-            smoothAlgo.initialize()
-            smoothAlgo.setProperty("SmoothDataExcludingPeaksIngredients", smoothAlgoIngredients.json())
-            assert smoothAlgo.getProperty("SmoothDataExcludingPeaksIngredients").value == smoothAlgoIngredients.json()
-        except Exception:
-            pytest.fail("Failed to open.")
+# Define test data paths
+spectrum_data_path = "/home/dzj/Documents/Work/csaps/DSP_58882_cal_CC_Column.nxs"
+weights_data_path = "/home/dzj/Documents/Work/csaps/stripPeaksWeight_58882_Column.nxs"
+
+def testSetup(self):
+    testAlgo = SmoothDataExcludingPeaks()
+    testAlgo.initialize()
+
+def testProperties(self):
+    assert self.testAlgo.getProperty("InputWorkspace").value == ""
+    assert self.testAlgo.getProperty("nxsPath").value == ""
+    assert self.testAlgo.getProperty("OutputWorkspace").value == ""
