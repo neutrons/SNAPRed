@@ -32,7 +32,7 @@ class ReductionService(Service):
             # import json
             # data[run.runNumber] = json.dumps(reductionIngredients.__dict__, default=lambda o: o.__dict__)
             try:
-                ReductionRecipe().executeRecipe(reductionIngredients)
+                ReductionRecipe().executeRecipe(ReductionIngredients=reductionIngredients)
             except:
                 raise
         return data

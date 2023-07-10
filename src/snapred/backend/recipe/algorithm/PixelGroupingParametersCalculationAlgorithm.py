@@ -118,10 +118,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             file_extension = pathlib.Path(groupingFilePath).suffix
             if file_extension.upper()[1:] == "XML":
                 self.mantidSnapper.LoadDetectorsGroupingFile(
-                    "Loading detectors grouping file...",
-                    InputFile=groupingFilePath,
-                    InputWorkspace="idf",
-                    OutputWorkspace=grouping_ws_name,
+                    "Loading detectors grouping file...", InputFile=groupingFilePath, OutputWorkspace=grouping_ws_name
                 )
             else:  # from a workspace
                 self.mantidSnapper.LoadNexusProcessed(

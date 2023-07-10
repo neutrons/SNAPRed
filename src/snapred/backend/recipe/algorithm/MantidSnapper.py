@@ -80,9 +80,14 @@ class MantidSnapper:
             # if there are any, add them to a list for return
             outputProperties = {}
             mantidAlgorithm = AlgorithmManager.create(key)
-            for propname in set(kwargs.keys()).difference(mantidAlgorithm.getProperties()):
-                prop = mantidAlgorithm.getProperty(propname)
-                if Direction.values[prop.direction] in [Direction.Output, Direction.InOut]:
+            # get all output props
+            for prop in mantidAlgorithm.getProperties():
+                if Direction.values[prop.direction] == Direction.Output:
+                    outputProperties[prop.name] = self.createOutputCallback(prop)
+            # get only set inout props
+            for propName in set(kwargs.keys()).difference(mantidAlgorithm.getProperties()):
+                prop = mantidAlgorithm.getProperty(propName)
+                if Direction.values[prop.direction] == Direction.InOut:
                     outputProperties[prop.name] = self.createOutputCallback(prop)
 
             # TODO: Special cases are bad
