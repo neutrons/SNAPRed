@@ -17,21 +17,26 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
         self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
         self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
+        self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
         self.declareProperty(
             "WeightWorkspace", defaultValue="", direction=Direction.Input
-        )  # workspace created by the algorithm
+        )  # name of the output workspace to be created by the algorithm
 
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
-        # predict detector peaks
-        peakPredictorAlgo = DetectorPeakPredictor()
-        peakPredictorAlgo.initialize()
-        peakPredictorAlgo.setProperty("InstrumentState", self.getProperty("InstrumentState").value)
-        peakPredictorAlgo.setProperty("CrystalInfo", self.getProperty("CrystalInfo").value)
-        peakPredictorAlgo.execute()
-        predictedPeaks_json = json.loads(peakPredictorAlgo.getProperty("DetectorPeaks").value)
+        # get or generate predicted detector peaks
+        predictedPeaksInput = self.getProperty("DetectorPeaks").value
+        if predictedPeaksInput != "":
+            predictedPeaks_json = json.loads(predictedPeaksInput)
+        else:
+            peakPredictorAlgo = DetectorPeakPredictor()
+            peakPredictorAlgo.initialize()
+            peakPredictorAlgo.setProperty("InstrumentState", self.getProperty("InstrumentState").value)
+            peakPredictorAlgo.setProperty("CrystalInfo", self.getProperty("CrystalInfo").value)
+            peakPredictorAlgo.execute()
+            predictedPeaks_json = json.loads(peakPredictorAlgo.getProperty("DetectorPeaks").value)
 
         # clone input workspace to create a weight workspace
         input_ws_name = self.getProperty("InputWorkspace").value
