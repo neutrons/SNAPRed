@@ -16,10 +16,12 @@ with mock.patch.dict(
         mtd,
     )
     from snapred.backend.dao.calibration.Calibration import Calibration
-    from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import PixelGroupingParametersCalculationAlgorithm
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
-    from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
     from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import IngestCrystallographicInfoAlgorithm
+    from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
+        PixelGroupingParametersCalculationAlgorithm,
+    )
+    from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
 
     def setup():
         pass
@@ -40,7 +42,6 @@ with mock.patch.dict(
         teardown()
 
     def test_SmoothDataExcludingPeaksAlgo():
-        
         # input data
         inputWorkspaceFile = "/home/dzj/Documents/Work/csaps/TestData/DSP_58882_cal_CC_Column.nxs"
         calibrationFile = "/home/dzj/Documents/Work/csaps/TestData/CalibrationParameters.json"
@@ -50,7 +51,7 @@ with mock.patch.dict(
 
         # load a test workspace
         test_ws_name = "test_ws"
-        LoadNexus(Filename = inputWorkspaceFile, OutputWorkspace = test_ws_name)
+        LoadNexus(Filename=inputWorkspaceFile, OutputWorkspace=test_ws_name)
 
         # setup other algos involved within SmoothData Algo
         pixelGroupingAlgo = PixelGroupingParametersCalculationAlgorithm()
