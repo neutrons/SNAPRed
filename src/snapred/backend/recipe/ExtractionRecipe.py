@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from mantid.api import AlgorithmManager
 
-from snapred.backend.dao.ExtractionIngredients import ExtractionIngredients
+from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.ExtractionAlgorithm import (
     name as ExtractionAlgorithm,
@@ -19,15 +19,15 @@ class ExtractionRecipe:
     def __init__(self):
         pass
 
-    def chopIngredeients(self, ingredients: ExtractionIngredients):
+    def chopIngredeients(self, ingredients: DiffractionCalibrationIngredients):
         pass
 
-    def executeRecipe(self, ingredients: ExtractionIngredients) -> Dict[str, Any]:
+    def executeRecipe(self, ingredients: DiffractionCalibrationIngredients) -> Dict[str, Any]:
         logger.info("Executing recipe for runId: %s" % ingredients.runConfig.runNumber)
         data: Dict[str, Any] = {}
 
         algo = AlgorithmManager.create(self.extractionAlgorithmName)
-        algo.setProperty("ExtractionIngredients", ingredients.json())
+        algo.setProperty("DiffractionCalibrationIngredients", ingredients.json())
 
         try:
             # here we need to call SNAPRed equivalent of:

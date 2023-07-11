@@ -207,7 +207,7 @@ class CalculateDiffractionOffsets(PythonAlgorithm):
         self.log().notice("Execution of extraction of calibration constants START!")
 
         # get the ingredients
-        ingredients = ExtractionIngredients(**json.loads(self.getProperty("ExtractionIngredients").value))
+        ingredients = DiffractionCalibrationIngredients(**json.loads(self.getProperty("ExtractionIngredients").value))
         self.chopIngredients(ingredients)
 
         self.mantidSnapper.CalculateDIFC(
