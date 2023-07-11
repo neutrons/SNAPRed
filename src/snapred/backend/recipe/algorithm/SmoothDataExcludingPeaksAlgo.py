@@ -62,21 +62,21 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         weightCalAlgo.execute()
         weights = json.loads(weightCalAlgo.getProperty("WeightWorkspace").value)
 
-        # extract x & y data for csaps
-        x = []
-        y = []
-        for index in len(numSpec):
-            x = ws.readX(index)
-            y = ws.readY(index)
-            smoothing_result = csaps(x, y, xi = len(x))
-            yi = smoothing_result.values
-            smooth = smoothing_result.smooth
-            single_spectrum_ws_name = f"{ws}_temp_single_spectrum_{index}"
-            self.mantidSnapper.CreateWorkspace(DataX = x, DataY = yi, NSpec = index + 1, 
-            OutputWorkspace = single_spectrum_ws_name)
+        # # extract x & y data for csaps
+        # x = []
+        # y = []
+        # for index in len(numSpec):
+        #     x = ws.readX(index)
+        #     y = ws.readY(index)
+        #     smoothing_result = csaps(x, y, xi = len(x))
+        #     yi = smoothing_result.values
+        #     smooth = smoothing_result.smooth
+        #     single_spectrum_ws_name = f"{ws}_temp_single_spectrum_{index}"
+        #     self.mantidSnapper.CreateWorkspace(DataX = x, DataY = yi, NSpec = index + 1, 
+        #     OutputWorkspace = single_spectrum_ws_name)
         
-            # execute mantidsnapper
-            self.mantidSnapper.executeQueue()
+        #     # execute mantidsnapper
+        #     self.mantidSnapper.executeQueue()
 
 # Logic notes:
 """
