@@ -83,7 +83,4 @@ Glossary
         TODO
 
     Vanadium
-        A material that is often used as a container for a sample.
-        In the context of reduction, it must undergo many of the same reduction processes as a sample.
-        This is due to the interference it causes in the diffraction data, which must be accounted for.
-        Often in the code, the material is just referred to as Vanadium, but containers of other material are possible.
+        TODO
