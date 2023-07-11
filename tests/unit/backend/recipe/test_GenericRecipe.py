@@ -1,0 +1,68 @@
+import unittest
+from unittest import mock
+
+import pytest
+from snapred.backend.dao.ExtractionIngredients import ExtractionIngredients
+from snapred.backend.recipe.GenericRecipe import GenericRecipe
+
+
+class DummyAlgo:
+    pass
+
+
+class TestGenericRecipe(unittest.TestCase):
+    def setUp(self):
+        # Create a mock ReductionIngredients instance with the required attributes
+        self.mock_runConfig = mock.MagicMock()
+        self.mock_runConfig.runNumber = "12345"
+        self.mock_extractionIngredients = mock.MagicMock(spec=ExtractionIngredients)
+        self.mock_extractionIngredients.runConfig = self.mock_runConfig
+
+        class CakeRecipe(GenericRecipe[DummyAlgo]):
+            pass
+
+        self.GenericRecipe = CakeRecipe()
+        self.GenericRecipe.mantidSnapper = mock.Mock()
+        self.mockReturn = mock.Mock()
+        self.mockReturn.get.return_value = "Mocked result"
+        # self.GenericRecipe.mantidSnapper.DummyAlgo = lambda x:"Mocked result"
+        self.GenericRecipe.mantidSnapper.DummyAlgo.return_value = self.mockReturn
+
+    @mock.patch("snapred.backend.recipe.GenericRecipe.MantidSnapper")
+    def test_execute_successful(self, mock_MantidSnapper):  # noqa: ARG002
+        result = self.GenericRecipe.executeRecipe(Input=self.mock_extractionIngredients)
+
+        assert result == "Mocked result"
+        self.GenericRecipe.mantidSnapper.DummyAlgo.assert_called_once_with(
+            "", Input=self.mock_extractionIngredients.json()
+        )
+
+    @mock.patch("snapred.backend.recipe.GenericRecipe.MantidSnapper")
+    def test_execute_unsuccessful(self, mock_MantidSnapper):  # noqa: ARG002
+        self.GenericRecipe.mantidSnapper.executeQueue.side_effect = RuntimeError("passed")
+
+        try:
+            self.GenericRecipe.executeRecipe(Input=self.mock_extractionIngredients)
+        except Exception as e:  # noqa: E722 BLE001
+            assert str(e) == "passed"  # noqa: PT017
+        else:
+            # fail if execute did not raise an exception
+            pytest.fail("Test should have raised RuntimeError, but no error raised")
+
+        self.GenericRecipe.mantidSnapper.DummyAlgo.assert_called_once_with(
+            "", Input=self.mock_extractionIngredients.json()
+        )
+
+
+# this at teardown removes the loggers, eliminating logger error printouts
+# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
+@pytest.fixture(autouse=True)
+def clear_loggers():  # noqa: PT004
+    """Remove handlers from all loggers"""
+    import logging
+
+    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
+    for logger in loggers:
+        handlers = getattr(logger, "handlers", [])
+        for handler in handlers:
+            logger.removeHandler(handler)

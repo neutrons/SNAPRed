@@ -13,7 +13,7 @@ class TestMantidSnapper(unittest.TestCase):
         self.fakeOutput.direction = Direction.Output
 
         self.fakeFunction = mock.Mock()
-        self.fakeFunction.getProperties.return_value = {}
+        self.fakeFunction.getProperties.return_value = [self.fakeOutput]
         self.fakeFunction.getProperty.return_value = self.fakeOutput
 
     @mock.patch("snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager")

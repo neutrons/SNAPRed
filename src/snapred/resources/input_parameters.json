@@ -1,0 +1,115 @@
+{
+    "instrumentState": {
+      "instrumentConfig": {
+        "version": "1.4",
+        "facility": "SNS",
+        "name": "SNAP",
+        "nexusFileExtension": ".nxs.h5",
+        "nexusFilePrefix": "SNAP_",
+        "calibrationFileExtension": "json",
+        "calibrationFilePrefix": "SNAPcalibLog",
+        "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+        "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+        "sharedDirectory": "shared/",
+        "nexusDirectory": "nexus/",
+        "reducedDataDirectory": "shared/manualReduced/",
+        "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+        "bandwidth": 3.0,
+        "maxBandwidth": 3.0,
+        "L1": 15,
+        "L2": 0.5,
+        "delTOverT": 0.002,
+        "delLOverL": 6.453e-5,
+        "delThNoGuide": 3.20e-3,
+        "delThWithGuide": 3.20e-3
+      },
+      "detectorState": {
+        "arc": [
+          -65.3,
+          104.95
+        ],
+        "wav": 2.1,
+        "freq": 60.0,
+        "guideStat": 1,
+        "lin": [
+          0.045,
+          0.043
+        ]
+      },
+      "gsasParameters": {
+        "alpha": 0.1,
+        "beta": [
+          0.02,
+          0.05
+        ]
+      },
+      "particleBounds": {
+        "wavelength": {
+          "minimum": 0.60,
+          "maximum": 3.60
+        },
+        "tof": {
+          "minimum": 1959.0,
+          "maximum": 14496.6
+        }
+      },
+      "defaultGroupingSliceValue": 5,
+      "fwhmMultiplierLimit": {
+        "minimum": 1.5,
+        "maximum": 1.5
+        },
+        "pixelGroupingInstrumentState": [
+            {
+                "twoThetaAverage": 2.1108948177427838,
+                "dhkl": {
+                    "minimum": 0.2873164190984029,
+                    "maximum": 2.1261415013281812
+                },
+                "delta_dhkl_over_dhkl": 0.002699865774827431
+            },
+            {
+                "twoThetaAverage": 1.82310673131693,
+                "dhkl": {
+                    "minimum": 0.31627307109869773,
+                    "maximum": 2.340420726130363
+                },
+                "delta_dhkl_over_dhkl": 0.0031863552001173434
+            },
+            {
+                "twoThetaAverage": 1.5352228379083572,
+                "dhkl": {
+                    "minimum": 0.36001346277099444,
+                    "maximum": 2.6640996245053588
+                },
+                "delta_dhkl_over_dhkl": 0.003872908058770528
+            },
+            {
+                "twoThetaAverage": 1.440276389170165,
+                "dhkl": {
+                    "minimum": 0.3790816270355628,
+                    "maximum": 2.8052040400631646
+                },
+                "delta_dhkl_over_dhkl": 0.004160341882643039
+            },
+            {
+              "twoThetaAverage": 1.1543988461042238,
+              "dhkl": {
+                  "minimum": 0.4581446222528327,
+                  "maximum": 3.3902702046709625
+              },
+              "delta_dhkl_over_dhkl": 0.0053059972420510075
+            },
+            {
+              "twoThetaAverage": 0.8690010092470938,
+              "dhkl": {
+                  "minimum": 0.5938843544407365,
+                  "maximum": 4.39474422286145
+              },
+              "delta_dhkl_over_dhkl": 0.007179854355740084
+            }
+        ]
+    },
+    "seedRun": 123,
+    "creationDate": "2023-05-25T11:50:23.438776",
+    "name": "test"
+  }

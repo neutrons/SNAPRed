@@ -21,6 +21,7 @@ class InterfaceController:
         # execute the recipe
         # return the result
         try:
+            logger.debug("Request Received: {}".format(request.json()))
             result = self.serviceFactory.getService(request.path).orchestrateRecipe(request)
 
             response = SNAPResponse(responseCode=200, responseMessage=None, responseData=result)
