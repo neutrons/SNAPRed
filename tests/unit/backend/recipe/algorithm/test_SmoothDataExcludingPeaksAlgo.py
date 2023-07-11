@@ -10,7 +10,6 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from pydantic import parse_file_as
     from mantid.simpleapi import (
         DeleteWorkspace,
         LoadNexus,
@@ -34,7 +33,7 @@ with mock.patch.dict(
             except ValueError:
                 print(f"Workspace {workspace} doesn't exist!")
 
-    @pytest.fixture(autouse = True)
+    @pytest.fixture(autouse=True)
     def _setup_teardown():
         setup()
         yield
