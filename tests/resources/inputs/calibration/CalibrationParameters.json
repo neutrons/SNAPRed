@@ -62,5 +62,6 @@
   },
   "seedRun": 123,
   "creationDate": "2023-05-25T11:50:23.438776",
-  "name": "test"
+  "name": "test",
+  "version": 0
 }

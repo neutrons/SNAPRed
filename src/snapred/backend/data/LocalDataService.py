@@ -321,11 +321,11 @@ class LocalDataService:
     def getCalibrationRecordPath(self, runId: str, version: str):
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationPath(stateId)
-        recordPath: str = calibrationPath + "{}/CalibrationRecord_v{}.json".format(runId, version)
+        recordPath: str = calibrationPath + "{}/v_{}/CalibrationRecord.json".format(runId, version)
         return recordPath
 
     def _extractFileVersion(self, file: str):
-        return int(file.split("_v")[-1].split(".json")[0])
+        return int(file.split("/v_")[-1].split("/")[0])
 
     def _getFileOfVersion(self, fileRegex: str, version):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
@@ -352,8 +352,6 @@ class LocalDataService:
         # Need to run this because of its side effect, TODO: Remove side effect
         self._readReductionParameters(runId)
         recordPath: str = self.getCalibrationRecordPath(runId, "*")
-        # lookup record by regex
-        self._findMatchingFileList(recordPath, throws=False)
         # find the latest version
         latestFile = ""
         if version:
@@ -375,9 +373,10 @@ class LocalDataService:
             version = previousCalibration.version + 1
         recordPath: str = self.getCalibrationRecordPath(record.parameters.runConfig.runNumber, version)
         record.version = version
+        calibrationPath += f"{record.parameters.runConfig.runNumber}/v_{version}"
         # check if directory exists for runId
-        if not os.path.exists(calibrationPath + record.parameters.runConfig.runNumber):
-            os.makedirs(calibrationPath + record.parameters.runConfig.runNumber)
+        if not os.path.exists(calibrationPath):
+            os.makedirs(calibrationPath)
         # append to record and write to file
         with open(recordPath, "w") as recordFile:
             recordFile.write(json.dumps(record.dict()))
@@ -443,19 +442,26 @@ class LocalDataService:
         version = self._getVersionFromCalibrationIndex(runId)
         return self.readCalibrationRecord(runId, version)
 
-    def readCalibrationState(self, runId: str):
-        # get stateId and check to see if such a folder exists, if not create an initialize it
+    def getCalibrationStatePath(self, runId: str, version: str):
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationPath(stateId)
-        calibrationState = None
-        if os.path.exists(calibrationPath):
-            # check for the existenece of a calibration parameters file
-            calibrationParametersPath = calibrationPath + "CalibrationParameters.json"
-            if os.path.exists(calibrationParametersPath):
-                # read the file and return the calibration state
-                calibrationState = parse_file_as(Calibration, calibrationParametersPath)
+        statePath: str = calibrationPath + "{}/v_{}/CalibrationParameters.json".format(runId, version)
+        return statePath
+
+    def readCalibrationState(self, runId: str, version: str = None):
+        # get stateId and check to see if such a folder exists, if not create an initialize it
+        stateId, _ = self._generateStateId(runId)
+        calibrationStatePath = self.getCalibrationStatePath(runId, "*")
+
+        latestFile = ""
+        if version:
+            latestFile = self._getFileOfVersion(calibrationStatePath, version)
         else:
-            os.makedirs(calibrationPath)
+            latestFile = self._getLatestFile(calibrationStatePath)
+
+        calibrationState = None
+        if latestFile:
+            calibrationState = parse_file_as(Calibration, latestFile)
 
         return calibrationState
 
@@ -463,8 +469,14 @@ class LocalDataService:
         # get stateId and check to see if such a folder exists, if not create an initialize it
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationPath(stateId)
+        version = 1
+        previousState = self.readCalibrationState(runId)
+        if previousState:
+            version = previousState.version + 1
         # check for the existenece of a calibration parameters file
-        calibrationParametersPath = calibrationPath + "CalibrationParameters.json"
+        calibrationParametersPath = self.getCalibrationStatePath(runId, version)
+        calibration.version = version
+        calibrationPath += f"{runId}/v_{version}"
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
         # write the file and return the calibration state
@@ -515,6 +527,7 @@ class LocalDataService:
             name=name,
             seedRun=runId,
             creationDate=datetime.datetime.now(),
+            version=0,
         )
 
         self.writeCalibrationState(runId, calibration)
@@ -525,4 +538,3 @@ class LocalDataService:
             return mtd[name]
         except RuntimeError:
             return None
-

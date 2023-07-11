@@ -151,10 +151,7 @@ class CalibrationService(Service):
         instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams[0]
 
         purgePeakMap = PurgeOverlappingPeaksRecipe().executeRecipe(
-            InstrumentState=instrumentState,
-            CrystalInfo=crystalInfo,
-            NumFocusGroups=str(len(focusGroups)),
-            OutputPeakMap="",
+            InstrumentState=instrumentState, CrystalInfo=crystalInfo, NumFocusGroups=str(len(focusGroups))
         )
 
         strippedFocussedData = CustomStripPeaksRecipe().executeRecipe(
