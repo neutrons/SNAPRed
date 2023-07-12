@@ -12,16 +12,13 @@ with mock.patch.dict(
 ):
     from mantid.simpleapi import (
         DeleteWorkspace,
-        LoadNexus,
+        LoadNexusProcessed,
         mtd,
     )
-    from snapred.backend.dao.calibration.Calibration import Calibration
-    from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
-    from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import IngestCrystallographicInfoAlgorithm
-    from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
-        PixelGroupingParametersCalculationAlgorithm,
-    )
     from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
+    from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
+    from snapred.backend.dao.calibration.Calibration import Calibration
+    from snapred.meta.Config import Resource
 
     def setup():
         pass
@@ -43,39 +40,24 @@ with mock.patch.dict(
 
     def test_SmoothDataExcludingPeaksAlgo():
         # input data
-        inputWorkspaceFile = "/home/dzj/Documents/Work/csaps/TestData/DSP_58882_cal_CC_Column.nxs"
-        calibrationFile = "/home/dzj/Documents/Work/csaps/TestData/CalibrationParameters.json"
-        instrumentDefinitionFile = "/home/dzj/Documents/Work/csaps/TestData/SNAPLite.xml"
-        groupingFile = "/home/dzj/Documents/Work/csaps/TestData/SNAPFocGroup_Column.lite.nxs"
-        cifPath = "/home/dzj/Documents/Work/csaps/TestData/EntryWithCollCode51688.cif"
-
-        # load a test workspace
+        testWorkspaceFile = "inputs/strip_peaks/DSP_58882_cal_CC_Column_spectra.nxs"
+       
+        # loading test workspace
         test_ws_name = "test_ws"
-        LoadNexus(Filename=inputWorkspaceFile, OutputWorkspace=test_ws_name)
+        LoadNexusProcessed(Filename = Resource.getPath(testWorkspaceFile), OutputWorkspace = test_ws_name)
 
-        # setup other algos involved within SmoothData Algo
-        pixelGroupingAlgo = PixelGroupingParametersCalculationAlgorithm()
-        pixelGroupingAlgo.initialize()
-        pixelGroupingAlgo.setProperty("InputState", parse_file_as(Calibration, calibrationFile).json())
-        pixelGroupingAlgo.setProperty("InstrumentDefinitionFile", instrumentDefinitionFile)
-        pixelGroupingAlgo.setProperty("GroupingFile", groupingFile)
-        assert pixelGroupingAlgo.execute()
-        pixelGroupingParams_json = json.loads(pixelGroupingAlgo.getProperty("OutputParameters").value)
+        # load crystal info for testing
+        crystalInfo = CrystallographicInfo.parse_raw(Resource.read("inputs/purge_peaks/input_crystalInfo.json"))
 
-        calibrationState = parse_file_as(Calibration, calibrationFile)
-        instrumentState = calibrationState.instrumentState
-        instrumentState.pixelGroupingInstrumentParameters = []
-        for index in pixelGroupingParams_json:
-            instrumentState.pixelGroupingInstrumentParameters.append(PixelGroupingParameters.parse_raw(index))
+        # load instrument state for testing
+        instrumentState = Calibration.parse_raw(Resource.read("inputs/purge_peaks/input_parameters.json")).instrumentState
 
-        ingestAlgo = IngestCrystallographicInfoAlgorithm()
-        ingestAlgo.intialize()
-        ingestAlgo.setProperty("cifPath", cifPath)
-        assert ingestAlgo.execute()
-
-        # set the inputs for test algo
-        SmoothAlgo = SmoothDataExcludingPeaks()
-        SmoothAlgo.intialize()
-        SmoothAlgo.setProperty("InputWorkspace", test_ws_name)
-
-        assert SmoothAlgo.execute()
+        # initialize and run smoothdata algo
+        smoothDataAlgo = SmoothDataExcludingPeaks()
+        smoothDataAlgo.initialize()
+        smoothDataAlgo.setProperty("InputWorkspace", test_ws_name)
+        smoothDataAlgo.setProperty("CrystalInfo", crystalInfo.json())
+        smoothDataAlgo.setProperty("InstrumentState", instrumentState.json())
+        smoothDataAlgo.execute()
+        
+        assert smoothDataAlgo.getProperty("InputWorkspace").value == "test_ws"

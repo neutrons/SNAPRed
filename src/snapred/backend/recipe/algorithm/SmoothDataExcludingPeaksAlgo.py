@@ -8,10 +8,10 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
-from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
-from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import IngestCrystallographicInfoAlgorithm
+from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "SmoothDataExcludingPeaks"
@@ -21,6 +21,8 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
+        self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
+        self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
@@ -33,12 +35,11 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         ws = self.mantidSnapper.mtd[input_ws]
         numSpec = ws.getNumberHistograms()
 
-        # load crystal info
-        crystalInfo = IngestCrystallographicInfoAlgorithm.parse_raw(self.getProperty("crystalInfo"))
+        # load instrument state
+        instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
 
-        # load calibration
-        calibrationState = Calibration.parse_raw(self.getProperty("InputState").value)
-        instrumentState = calibrationState.instrumentState
+        # load crystal info
+        crystalInfo = CrystallographicInfo.parse_raw(self.getProperty("CrystalInfo").value)
 
         # call the diffraction spectrum peak predictor
         peaks = []
@@ -47,17 +48,16 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         predictorAlgo.initialize()
         predictorAlgo.setProperty("InstrumentState", instrumentState.json())
         predictorAlgo.setProperty("CrystalInfo", crystalInfo.json())
-        predictorAlgo.setProperty("NumFocusGroups", numSpec)
         predictorAlgo.execute()
         peaks = json.loads(predictorAlgo.getProperty("DetectorPeaks").value)
 
         # call the diffraction spectrum weight calculator
         weightCalAlgo = DiffractionSpectrumWeightCalculator()
         weightCalAlgo.initialize()
-        weightCalAlgo.setProperty("InputWorkspace", ws)
-        weightCalAlgo.setProperty("PredictedPeaks", peaks)  # only pass single peak at a time
+        weightCalAlgo.setProperty("InputWorkspace", input_ws)
+        weightCalAlgo.setProperty("DetectorPeaks", json.dumps(peaks))
         weightCalAlgo.execute()
-        json.loads(weightCalAlgo.getProperty("WeightWorkspace").value)
+        weights_ws = weightCalAlgo.getProperty("WeightWorkspace").value
 
         # extract x & y data for csaps
         x = []
