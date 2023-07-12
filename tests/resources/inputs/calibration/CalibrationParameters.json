@@ -58,7 +58,8 @@
     "fwhmMultiplierLimit": {
       "minimum": -2,
       "maximum": 2
-    }
+    },
+    "peakTailCoefficient": 2.0
   },
   "seedRun": 123,
   "creationDate": "2023-05-25T11:50:23.438776",

@@ -501,6 +501,7 @@ class LocalDataService:
             minimum=Config["calibration.parameters.default.FWHMMultiplier"][0],
             maximum=Config["calibration.parameters.default.FWHMMultiplier"][1],
         )
+        peakTailCoefficient = Config["calibration.parameters.default.peakTailCoefficient"]
         gsasParameters = GSASParameters(
             alpha=Config["calibration.parameters.default.alpha"], beta=Config["calibration.parameters.default.beta"]
         )
@@ -520,6 +521,7 @@ class LocalDataService:
             particleBounds=particleBounds,
             defaultGroupingSliceValue=defaultGroupSliceValue,
             fwhmMultiplierLimit=fwhmMultiplier,
+            peakTailCoefficient=peakTailCoefficient,
         )
 
         calibration = Calibration(

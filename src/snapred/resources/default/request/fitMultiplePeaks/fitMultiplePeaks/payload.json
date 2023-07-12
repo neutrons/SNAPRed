@@ -107,7 +107,8 @@
     "fwhmMultiplierLimit": {
       "minimum": 1.5,
       "maximum": 1.5
-    }
+    },
+    "peakTailCoefficient": 2.0
   },
   "CrystalInfo": {
     "peaks": [

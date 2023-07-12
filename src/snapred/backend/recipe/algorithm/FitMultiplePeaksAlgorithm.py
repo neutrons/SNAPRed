@@ -4,6 +4,7 @@ import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm, WorkspaceGroup, mtd
 from mantid.kernel import Direction
 
+from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
@@ -28,11 +29,9 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         crystalInfo = fitPeakIngredients.CrystalInfo
         peakType = fitPeakIngredients.PeakType
 
-        beta_0 = instrumentState.gsasParameters.beta[0]
-        beta_1 = instrumentState.gsasParameters.beta[1]
-        FWHMMultiplierLeft = instrumentState.fwhmMultiplierLimit.minimum
-        FWHMMultiplierRight = instrumentState.fwhmMultiplierLimit.maximum
-        L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
+        instrumentState.gsasParameters.beta[0]
+        instrumentState.gsasParameters.beta[1]
+        instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
         ws = self.mantidSnapper.mtd[wsName]
         # TODO: Fix this to use MantidSnapper when possible
         # Currently MantidSnapper is unable to return the List
@@ -40,10 +39,12 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         purgeAlgo = PurgeOverlappingPeaksAlgorithm()
         purgeAlgo.initialize()
         purgeAlgo.setProperty("InstrumentState", instrumentState.json())
-        purgeAlgo.setProperty("NumFocusGroups", str(numSpec))
         purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
         purgeAlgo.execute()
-        reducedList = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
+        reducedList_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
+        reducedList = [
+            [DetectorPeak.parse_raw(peak_json) for peak_json in peak_group_json] for peak_group_json in reducedList_json
+        ]
 
         ws_group = WorkspaceGroup()
         mtd.add("fitPeaksWSGroup", ws_group)
@@ -53,18 +54,12 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             fittedParams = f"{wsName}_fitted_params_{index}"
             fittedWS = f"{wsName}_fitted_{index}"
             fittedParamsErr = f"{wsName}_fitted_params_err_{index}"
-            delDoD = instrumentState.pixelGroupingInstrumentParameters[index].dRelativeResolution
-            tTheta = instrumentState.pixelGroupingInstrumentParameters[index].twoTheta
-            peakLimits = []
-            for peak, dspc in enumerate(reducedList[index]):
-                halfWindLeft = 2.35 * delDoD * dspc * FWHMMultiplierLeft
-                halfWindRight = 2.35 * delDoD * dspc * FWHMMultiplierRight
-                lowerLimit = dspc - halfWindLeft
 
-                beta_t = beta_0 + beta_1 / dspc**4
-                beta_d = 505.548 * L * np.sin(tTheta / 2) * beta_t
-                upperLimit = dspc + halfWindRight + (1 / beta_d)
-                peakLimits.extend([lowerLimit, upperLimit])
+            peakCenters = []
+            peakLimits = []
+            for peak in reducedList[index]:
+                peakCenters.append(peak.position)
+                peakLimits.extend([peak.limLeft, peak.limRight])
 
             self.mantidSnapper.ExtractSingleSpectrum(
                 "Extract Single Spectrm...", InputWorkspace=wsName, OutputWorkspace="ws2fit", WorkspaceIndex=index
@@ -73,7 +68,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             self.mantidSnapper.FitPeaks(
                 "Fit Peaks...",
                 InputWorkspace="ws2fit",
-                PeakCenters=",".join(np.array(reducedList[index]).astype("str")),
+                PeakCenters=",".join(np.array(peakCenters).astype("str")),
                 PeakFunction=peakType,
                 FitWindowBoundaryList=",".join(np.array(peakLimits).astype("str")),
                 OutputWorkspace=fittedPeakPos,

@@ -34,7 +34,7 @@ calibration:
       FWHMMultiplier:
         - -2
         - 2
-
+      peakTailCoefficient: 2.0
 
 logging:
   level: 10
