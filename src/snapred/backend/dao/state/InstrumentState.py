@@ -18,4 +18,4 @@ class InstrumentState(BaseModel):
     pixelGroupingInstrumentParameters: Optional[List[PixelGroupingParameters]]
     defaultGroupingSliceValue: float
     fwhmMultiplierLimit: Limit[float]
-    peakTailCoefficient: float
+    peakTailCoefficient: Optional[float]
