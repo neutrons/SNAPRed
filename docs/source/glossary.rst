@@ -37,6 +37,9 @@ Glossary
     Diagnostic Mode
         TODO
 
+    Diffraction Focussing
+        TODO
+
     Focus Groups
         A predetermined set of parameters used to split diffraction data into useful formations, i.e. like slices vs squares of pizza
         This may include predetermined data such as dimmensions and tolerances, or derrived values such as Pixel Grouping Parameters
@@ -56,6 +59,9 @@ Glossary
     Mantid Snapper
         A thin wrapper around the Mantid Algorithm API that allows for meta processes to be performed around a queue of algorithms.
         Examples may include: Progress reporting, Quality of Life improvements, multi-threading, etc.
+
+    Pixel Grouping
+        TODO
 
     Pixel Grouping Parameters
         TODO
