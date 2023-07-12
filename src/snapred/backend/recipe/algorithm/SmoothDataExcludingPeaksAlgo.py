@@ -8,10 +8,10 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
+from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
-from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "SmoothDataExcludingPeaks"
@@ -57,7 +57,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         weightCalAlgo.setProperty("InputWorkspace", input_ws)
         weightCalAlgo.setProperty("DetectorPeaks", json.dumps(peaks))
         weightCalAlgo.execute()
-        weights_ws = weightCalAlgo.getProperty("WeightWorkspace").value
+        weightCalAlgo.getProperty("WeightWorkspace").value
 
         # extract x & y data for csaps
         x = []
