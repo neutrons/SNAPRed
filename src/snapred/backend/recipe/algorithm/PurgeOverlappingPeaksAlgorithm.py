@@ -29,13 +29,14 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         # build lists of non-overlapping peaks for each focus group. Combine them into the total list.
         outputPeaks = []
         for focusGroupPeaks_json in predictedPeaks_json:
+            # build a list of DetectorPeak objects for this focus group
             peakList = []
             for peak_json in focusGroupPeaks_json:
                 peakList.append(DetectorPeak.parse_raw(peak_json))
 
+            # do the overlap rejection logic
             nPks = len(peakList)
             keep = [True for i in range(nPks)]
-
             outputPeakList = []
             for i in range(nPks - 1):
                 if keep[i]:
@@ -48,7 +49,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
                         outputPeakList.append(peakList[i].json())
             # and add last peak:
             if nPks > 0 and keep[-1]:
-                outputPeakList.append(peakList[-1].json())  # TODO: add check that DMAx is sufficient
+                outputPeakList.append(peakList[-1].json())
 
             self.log().notice(f" {nPks} peaks in and {len(outputPeakList)} peaks out")
             outputPeaks.append(outputPeakList)
