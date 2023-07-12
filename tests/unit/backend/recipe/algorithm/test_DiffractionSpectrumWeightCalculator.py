@@ -77,5 +77,5 @@ with mock.patch.dict(
             y_calc = weight_ws.readY(index)
             x_ref = ref_weight_ws.readX(index)
             y_ref = ref_weight_ws.readY(index)
-            assert (abs(x_calc - x_ref) < 1.0e-14).all()
+            assert (x_calc == x_ref).all()
             assert (y_calc == y_ref).all()
