@@ -52,9 +52,6 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         weightCalAlgo.setProperty("CrystalInfo", crystalInfo)
         weightCalAlgo.setProperty("WeightWorkspace", weight_ws_name)
         weightCalAlgo.execute()
-<<<<<<< HEAD
-        weightCalAlgo.getProperty("WeightWorkspace").value
-=======
         weights_ws = mtd[weight_ws_name]
 
         # create workspace group
@@ -62,7 +59,6 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         mtd.add("SmoothedDataExcludingPeaks", ws_group)
 
         numSpec = weights_ws.getNumberHistograms()
->>>>>>> 26455a0 (Csaps errors!! outdata_{index value}.txt created to include printed values of x_midpoints array as per Michael's request for further testing.)
 
         # extract x & y data for csaps
         for index in range(numSpec):
