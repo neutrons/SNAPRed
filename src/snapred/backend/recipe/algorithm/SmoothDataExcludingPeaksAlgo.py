@@ -1,8 +1,3 @@
-import json
-import numpy as np
-import pdb
-
-from csaps import csaps
 from mantid.api import *
 from mantid.api import (
     AlgorithmFactory,
@@ -11,9 +6,6 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
-from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -62,12 +54,13 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
         # extract x & y data for csaps
         for index in range(numSpec):
-            x = weights_ws.readX(index) # len of 1794
-            w = weights_ws.readY(index) # len of 1793
-            y = ws.readY(index)
-            x_midpoints = (x[:-1] + x[1:]) / 2 # len of 1793
+            x = weights_ws.readX(index)  # len of 1794
+            weights_ws.readY(index)  # len of 1793
+            ws.readY(index)
+            x_midpoints = (x[:-1] + x[1:]) / 2  # len of 1793
 
-            with open(f'./outdata_{index}.txt', 'w') as file: file.write(",".join(map(str, x_midpoints)))
+            with open(f"./outdata_{index}.txt", "w") as file:
+                file.write(",".join(map(str, x_midpoints)))
 
             # pdb.set_trace()
             # smoothing_results = csaps(x_midpoints, y)
@@ -81,6 +74,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
             # self.mantidSnapper.executeQueue()
             # self.setProperty("OutputWorkspace", ws_group.name())
             # return ws_group
+
 
 # Logic notes:
 """
