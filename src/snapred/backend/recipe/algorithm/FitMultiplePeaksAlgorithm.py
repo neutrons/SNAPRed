@@ -29,9 +29,6 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         crystalInfo = fitPeakIngredients.CrystalInfo
         peakType = fitPeakIngredients.PeakType
 
-        instrumentState.gsasParameters.beta[0]
-        instrumentState.gsasParameters.beta[1]
-        instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
         ws = self.mantidSnapper.mtd[wsName]
         # TODO: Fix this to use MantidSnapper when possible
         # Currently MantidSnapper is unable to return the List
@@ -58,8 +55,8 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             peakCenters = []
             peakLimits = []
             for peak in reducedList[index]:
-                peakCenters.append(peak.position)
-                peakLimits.extend([peak.limLeft, peak.limRight])
+                peakCenters.append(peak.position.value)
+                peakLimits.extend([peak.position.minimum, peak.position.maximum])
 
             self.mantidSnapper.ExtractSingleSpectrum(
                 "Extract Single Spectrm...", InputWorkspace=wsName, OutputWorkspace="ws2fit", WorkspaceIndex=index

@@ -11,7 +11,6 @@ with mock.patch.dict(
 
     from snapred.backend.dao.calibration.Calibration import Calibration
     from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-    from snapred.backend.dao.DetectorPeak import DetectorPeak
     from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import (
         PurgeOverlappingPeaksAlgorithm,  # noqa: E402
     )
@@ -41,14 +40,8 @@ with mock.patch.dict(
         purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
         purgeAlgo.execute()
 
-        expected_pos = json.loads(Resource.read("/outputs/purge_peaks/output.json"))
-
-        # retrieve a list of json-serialized DetectorPeak lists. Extract a list of peak position lists,
         actual_pos_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
-        actual_pos = [
-            [DetectorPeak.parse_raw(peak_json).position for peak_json in peak_group_json]
-            for peak_group_json in actual_pos_json
-        ]
+        expected_pos_json = json.loads(Resource.read("/outputs/purge_peaks/output.json"))
 
-        print(actual_pos)
-        assert expected_pos == actual_pos
+        print(actual_pos_json)
+        assert expected_pos_json == actual_pos_json

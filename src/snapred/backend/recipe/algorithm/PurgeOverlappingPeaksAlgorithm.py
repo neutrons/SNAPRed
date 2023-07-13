@@ -40,8 +40,8 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             outputPeakList = []
             for i in range(nPks - 1):
                 if keep[i]:
-                    if (peakList[i].limRight >= peakList[i + 1].limLeft) and (
-                        peakList[i + 1].position != peakList[i].position
+                    if (peakList[i].position.maximum >= peakList[i + 1].position.minimum) and (
+                        peakList[i + 1].position.value != peakList[i].position.value
                     ):
                         keep[i] = False
                         keep[i + 1] = False
@@ -55,6 +55,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             outputPeaks.append(outputPeakList)
 
         self.setProperty("OutputPeakMap", json.dumps(outputPeaks))
+
         return outputPeaks
 
 
