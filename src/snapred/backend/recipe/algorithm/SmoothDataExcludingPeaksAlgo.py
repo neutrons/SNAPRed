@@ -1,10 +1,13 @@
 import json
+import numpy as np
+import pdb;
 
 from csaps import csaps
 from mantid.api import *
 from mantid.api import (
     AlgorithmFactory,
     PythonAlgorithm,
+    WorkspaceGroup,
 )
 from mantid.kernel import Direction
 
@@ -33,48 +36,55 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         # load workspace
         input_ws = self.getProperty("InputWorkspace").value
         ws = self.mantidSnapper.mtd[input_ws]
-        numSpec = ws.getNumberHistograms()
 
         # load instrument state
-        instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
+        instrumentState = self.getProperty("InstrumentState").value
 
         # load crystal info
-        crystalInfo = CrystallographicInfo.parse_raw(self.getProperty("CrystalInfo").value)
-
-        # call the diffraction spectrum peak predictor
-        peaks = []
-        # TODO: Need to replace theses methods with Robert's script, just pass for now.
-        predictorAlgo = DetectorPeakPredictor()
-        predictorAlgo.initialize()
-        predictorAlgo.setProperty("InstrumentState", instrumentState.json())
-        predictorAlgo.setProperty("CrystalInfo", crystalInfo.json())
-        predictorAlgo.execute()
-        peaks = json.loads(predictorAlgo.getProperty("DetectorPeaks").value)
+        crystalInfo = self.getProperty("CrystalInfo").value
 
         # call the diffraction spectrum weight calculator
+        weight_ws_name = "weight_ws"
         weightCalAlgo = DiffractionSpectrumWeightCalculator()
         weightCalAlgo.initialize()
         weightCalAlgo.setProperty("InputWorkspace", input_ws)
-        weightCalAlgo.setProperty("DetectorPeaks", json.dumps(peaks))
+        weightCalAlgo.setProperty("InstrumentState", instrumentState)
+        weightCalAlgo.setProperty("CrystalInfo", crystalInfo)
+        weightCalAlgo.setProperty("WeightWorkspace", weight_ws_name)
         weightCalAlgo.execute()
+<<<<<<< HEAD
         weightCalAlgo.getProperty("WeightWorkspace").value
+=======
+        weights_ws = mtd[weight_ws_name]
+
+        # create workspace group
+        ws_group = WorkspaceGroup()
+        mtd.add("SmoothedDataExcludingPeaks", ws_group)
+
+        numSpec = weights_ws.getNumberHistograms()
+>>>>>>> 26455a0 (Csaps errors!! outdata_{index value}.txt created to include printed values of x_midpoints array as per Michael's request for further testing.)
 
         # extract x & y data for csaps
-        x = []
-        y = []
-        for index in len(numSpec):
-            x = ws.readX(index)
+        for index in range(numSpec):
+            x = weights_ws.readX(index) # len of 1794
+            w = weights_ws.readY(index) # len of 1793
             y = ws.readY(index)
-            smoothing_result = csaps(x, y, xi=len(x))
-            yi = smoothing_result.values
-            single_spectrum_ws_name = f"{ws}_temp_single_spectrum_{index}"
-            self.mantidSnapper.CreateWorkspace(
-                DataX=x, DataY=yi, NSpec=index + 1, OutputWorkspace=single_spectrum_ws_name
-            )
+            x_midpoints = (x[:-1] + x[1:]) / 2 # len of 1793
 
-            # execute mantidsnapper
-            self.mantidSnapper.executeQueue()
+            with open(f'./outdata_{index}.txt', 'w') as file: file.write(",".join(map(str, x_midpoints)))
 
+            # pdb.set_trace()
+            # smoothing_results = csaps(x_midpoints, y)
+            # yi = smoothing_result.values
+            # single_spectrum_ws_name = f"{input_ws}_temp_single_spectrum_{index}"
+            # self.mantidSnapper.CreateWorkspace(
+            #     DataX=x, DataY=yi, NSpec=index + 1, OutputWorkspace=single_spectrum_ws_name
+            # )
+            # ws_group.add(single_spectrum_ws_name)
+            # # execute mantidsnapper
+            # self.mantidSnapper.executeQueue()
+            # self.setProperty("OutputWorkspace", ws_group.name())
+            # return ws_group
 
 # Logic notes:
 """
