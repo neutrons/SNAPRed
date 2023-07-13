@@ -1,6 +1,6 @@
 import json
 import numpy as np
-import pdb;
+import pdb
 
 from csaps import csaps
 from mantid.api import *
