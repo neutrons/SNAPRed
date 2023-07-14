@@ -7,10 +7,10 @@ from mantid.kernel import Direction
 from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "CalculateDiffractionOffsets"
+name = "CalculateOffsetDIFC"
 
 
-class CalculateDiffractionOffsets(PythonAlgorithm):
+class CalculateOffsetDIFC(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
@@ -235,4 +235,4 @@ class CalculateDiffractionOffsets(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(CalculateDiffractionOffsets)
+AlgorithmFactory.subscribe(CalculateOffsetDIFC)

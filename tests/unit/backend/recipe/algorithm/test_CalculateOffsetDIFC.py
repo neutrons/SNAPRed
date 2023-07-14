@@ -11,8 +11,8 @@ with mock.patch.dict(
     from snapred.backend.dao.RunConfig import RunConfig
     from snapred.backend.dao.state.FocusGroup import FocusGroup
     from snapred.backend.dao.state.InstrumentState import InstrumentState
-    from snapred.backend.recipe.algorithm.CalculateDiffractionOffsets import (
-        CalculateDiffractionOffsets as ThisAlgo,  # noqa: E402
+    from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import (
+        CalculateOffsetDIFC as ThisAlgo,  # noqa: E402
     )
     from snapred.meta.Config import Resource
 
