@@ -48,8 +48,8 @@ with mock.patch.dict(
     def test_with_predicted_peaks():
         """Test the weight calculator given predicted peaks"""
         inputWorkspaceFile = "/inputs/strip_peaks/DSP_58882_cal_CC_Column_spectra.nxs"
-        inputPeaksFile = "/inputs/strip_peaks/peaks.json"
-        referenceWeightFile = "/outputs/strip_peaks/weights.nxs"
+        inputPeaksFile = "/outputs/predict_peaks/peaks.json"
+        referenceWeightFile = "/outputs/weight_spectra/weights.nxs"
 
         # load test workspace
         input_ws_name = "input_ws"
