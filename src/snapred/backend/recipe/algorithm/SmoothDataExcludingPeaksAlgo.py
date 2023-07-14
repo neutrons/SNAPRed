@@ -62,7 +62,8 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         # create workspace group
         ws_group = WorkspaceGroup()
         mtd.add("SmoothedDataExcludingPeaks", ws_group)
-
+        
+        # get number of spectrum to iterate over
         numSpec = weights_ws.getNumberHistograms()
 
         # extract x & y data for csaps
