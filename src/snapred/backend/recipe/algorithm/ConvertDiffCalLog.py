@@ -3,10 +3,10 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 from mantid.simpleapi import CreateEmptyTableWorkspace, mtd
 
-name = "ConvertDifCalLog"
+name = "ConvertDiffCalLog"
 
 
-class ConvertDifCalLog(PythonAlgorithm):
+class ConvertDiffCalLog(PythonAlgorithm):
     # This algo extends the functionality of the usual mantid ConvertDifCal algorithm
     # It is intended as a stop-gap, until that algorithm is patched with this behavior here
     # Delete this algo once the new work has been completed in mantid
@@ -50,4 +50,4 @@ class ConvertDifCalLog(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(ConvertDifCalLog)
+AlgorithmFactory.subscribe(ConvertDiffCalLog)

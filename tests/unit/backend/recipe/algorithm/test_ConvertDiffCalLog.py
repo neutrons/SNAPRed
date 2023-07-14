@@ -14,8 +14,8 @@ with mock.patch.dict(
         CompareWorkspaces,
         CreateWorkspace,
     )
-    from snapred.backend.recipe.algorithm.ConvertDifCalLog import (
-        ConvertDifCalLog as ThisAlgo,  # noqa: E402
+    from snapred.backend.recipe.algorithm.ConvertDiffCalLog import (
+        ConvertDiffCalLog as ThisAlgo,  # noqa: E402
     )
 
     def test_set_properties():
