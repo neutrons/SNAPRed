@@ -62,3 +62,4 @@ with mock.patch.dict(
         smoothDataAlgo.execute()
 
         assert smoothDataAlgo.getProperty("InputWorkspace").value == "test_ws"
+        assert smoothDataAlgo.getProperty("OutputWorkspace").value == "SmoothedDataExcludingPeaks"

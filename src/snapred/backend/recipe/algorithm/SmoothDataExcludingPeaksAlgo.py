@@ -1,3 +1,18 @@
+# Logic notes:
+"""
+    load nexus
+    num spe = num groups (instrument state) --> consitant with workspace
+    state & crystal info --> consitant with workspace
+    call diffraction spectrum peak predictor --> to get peaks (num groups)
+    call diffraction spectrum weight calc (send one spectra only)
+    extract x and y data from a workspace (numpy arrray)
+    implement csaps
+    create new workspace with csaps data
+"""
+
+from scipy.interpolate import splrep, splev
+
+from csaps import CubicSmoothingSpline
 from mantid.api import *
 from mantid.api import (
     AlgorithmFactory,
@@ -54,39 +69,33 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
         # extract x & y data for csaps
         for index in range(numSpec):
-            x = weights_ws.readX(index)  # len of 1794
-            weights_ws.readY(index)  # len of 1793
-            ws.readY(index)
-            x_midpoints = (x[:-1] + x[1:]) / 2  # len of 1793
+            x = weights_ws.readX(index) # len of 1794
+            w = weights_ws.readY(index) # len of 1793
+            y = ws.readY(index)
+            x_midpoints = (x[:-1] + x[1:]) / 2 # len of 1793
+            x_list = x_midpoints.tolist()
+            y_list = y.tolist()
+            w_list = w.tolist()
+            joined_list = []
+            joined_list = []
 
-            with open(f"./outdata_{index}.txt", "w") as file:
-                file.write(",".join(map(str, x_midpoints)))
-
-            # pdb.set_trace()
-            # smoothing_results = csaps(x_midpoints, y)
-            # yi = smoothing_result.values
-            # single_spectrum_ws_name = f"{input_ws}_temp_single_spectrum_{index}"
-            # self.mantidSnapper.CreateWorkspace(
-            #     DataX=x, DataY=yi, NSpec=index + 1, OutputWorkspace=single_spectrum_ws_name
-            # )
-            # ws_group.add(single_spectrum_ws_name)
-            # # execute mantidsnapper
-            # self.mantidSnapper.executeQueue()
-            # self.setProperty("OutputWorkspace", ws_group.name())
-            # return ws_group
-
-
-# Logic notes:
-"""
-    load nexus
-    num spe = num groups (instrument state) --> consitant with workspace
-    state & crystal info --> consitant with workspace
-    call diffraction spectrum peak predictor --> to get peaks (num groups)
-    call diffraction spectrum weight calc (send one spectra only)
-    extract x and y data from a workspace (numpy arrray)
-    implement csaps
-    create new workspace with csaps data
-"""
+            # joining weight array with y values array
+            for i, y_value in enumerate(y_list):
+                joined_list.append(y_value * w_list[i]) 
+            tck = splrep(x_list, joined_list)
+            smoothing_results = splev(x_list, tck)
+            single_spectrum_ws_name = f"{input_ws}_temp_single_spectrum_{index}"
+            self.mantidSnapper.CreateWorkspace(
+                "Creating new workspace for smoothed spectrum data...",
+                DataX=x, DataY=smoothing_results, NSpec=index + 1, 
+                OutputWorkspace=single_spectrum_ws_name
+            )
+            
+            # execute mantidsnapper
+            self.mantidSnapper.executeQueue()
+            ws_group.add(single_spectrum_ws_name)
+            self.setProperty("OutputWorkspace", ws_group.name())
+            return ws_group
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(SmoothDataExcludingPeaks)
