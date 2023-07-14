@@ -61,7 +61,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             # for each peak extent, set zeros to the weights array
             for peak_json in spectrumPredictedPeaks_json:
                 peak = DetectorPeak.parse_raw(peak_json)
-                mask_indices = np.where(np.logical_and(x > peak.limLeft, x < peak.limRight))
+                mask_indices = np.where(np.logical_and(x > peak.position.minimum, x < peak.position.maximum))
                 weights[mask_indices] = 0.0
             weight_ws.setY(index, weights)
 

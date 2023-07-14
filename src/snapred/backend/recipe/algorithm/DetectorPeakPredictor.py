@@ -6,6 +6,7 @@ from mantid.kernel import Direction
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.DetectorPeak import DetectorPeak
+from snapred.backend.dao.Limit import LimitedValue
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 name = "DetectorPeakPredictor"
@@ -27,6 +28,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         beta_1 = instrumentState.gsasParameters.beta[1]
         FWHMMultiplierLeft = instrumentState.fwhmMultiplierLimit.minimum
         FWHMMultiplierRight = instrumentState.fwhmMultiplierLimit.maximum
+        peakTailCoefficient = instrumentState.peakTailCoefficient
         L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
 
         fSquared = np.array(crystalInfo.fSquared)
@@ -55,10 +57,10 @@ class DetectorPeakPredictor(PythonAlgorithm):
 
                 fwhm = 2.35 * delDoD * d
                 widthLeft = fwhm * FWHMMultiplierLeft
-                widthRight = fwhm * FWHMMultiplierRight + 2 / beta_d
+                widthRight = fwhm * FWHMMultiplierRight + peakTailCoefficient / beta_d
 
                 singleFocusGroupPeaks.append(
-                    DetectorPeak(position=d, limLeft=d - widthLeft, limRight=d + widthRight).json()
+                    DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight)).json()
                 )
 
             self.log().notice(f"Focus group {index} : {len(dList)} peaks out")
