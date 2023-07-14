@@ -17,6 +17,7 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.Calibration import Calibration
     from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
     from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
+    from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
     from snapred.meta.Config import Resource
 
     def setup():
@@ -53,12 +54,16 @@ with mock.patch.dict(
             Resource.read("inputs/purge_peaks/input_parameters.json")
         ).instrumentState
 
+        # populate ingredients
+        smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
+            CrystalInfo=crystalInfo, InstrumentState=instrumentState
+        )
+
         # initialize and run smoothdata algo
         smoothDataAlgo = SmoothDataExcludingPeaks()
         smoothDataAlgo.initialize()
         smoothDataAlgo.setProperty("InputWorkspace", test_ws_name)
-        smoothDataAlgo.setProperty("CrystalInfo", crystalInfo.json())
-        smoothDataAlgo.setProperty("InstrumentState", instrumentState.json())
+        smoothDataAlgo.setProperty("SmoothDataExcludingPeaksIngredients", smoothDataIngredients.json())
         smoothDataAlgo.execute()
 
         assert smoothDataAlgo.getProperty("InputWorkspace").value == "test_ws"

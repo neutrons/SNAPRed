@@ -30,6 +30,7 @@ name = "SmoothDataExcludingPeaks"
 class SmoothDataExcludingPeaks(PythonAlgorithm):
     def PyInit(self):
         # declare properties
+        self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
         self.declareProperty("SmoothDataExcludingPeaksIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
@@ -44,10 +45,11 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         )
 
         # load workspace
-        input_ws = smoothdataIngredients.InputWorkspace
+        input_ws = self.getProperty("InputWorkspace").value
+        self.mantidSnapper.mtd[input_ws]
 
         # load instrument state
-        instrumentState = smoothdataIngredients.InstrumentState.instrumentState
+        instrumentState = smoothdataIngredients.InstrumentState
 
         # load crystal info
         crystalInfo = smoothdataIngredients.CrystalInfo
@@ -58,7 +60,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         weight_ws_name = "weight_ws"
         weightCalAlgo = DiffractionSpectrumWeightCalculator()
         weightCalAlgo.initialize()
-        weightCalAlgo.setProperty("InputWorkspace", input_ws.json())
+        weightCalAlgo.setProperty("InputWorkspace", input_ws)
         weightCalAlgo.setProperty("InstrumentState", instrumentState.json())
         weightCalAlgo.setProperty("CrystalInfo", crystalInfo.json())
         weightCalAlgo.setProperty("WeightWorkspace", weight_ws_name)
