@@ -3,14 +3,14 @@ from unittest import mock
 
 import pytest
 from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients as TheseIngredients
-from snapred.backend.recipe.ExtractionRecipe import ExtractionRecipe as ThisRecipe
+from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as ThisRecipe
 
-PatchThis: str = "snapred.backend.recipe.ExtractionRecipe.AlgorithmManager"
-CalledAlgo: str = "ExtractionAlgorithm"
+PatchThis: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.AlgorithmManager"
+CalledAlgo: str = "CalculateOffsetDIFC"
 CalledIngredients: str = TheseIngredients.__name__
 
 
-class TestExtractionRecipe(unittest.TestCase):
+class TestDiffractionCalibtationRecipe(unittest.TestCase):
     def setUp(self):
         print(CalledIngredients)
         # Create a mock algorithm instance and set the expected return value
@@ -24,6 +24,9 @@ class TestExtractionRecipe(unittest.TestCase):
         self.mock_ingredients.runConfig = self.mock_runConfig
 
         self.recipe = ThisRecipe()
+
+    def test_chop_ingredients(self):
+        assert not self.recipe.chopIngredients(self.mock_ingredients)
 
     @mock.patch(PatchThis)
     def test_execute_successful(self, mock_AlgorithmManager):
