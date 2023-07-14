@@ -10,6 +10,7 @@
     create new workspace with csaps data
 """
 import json
+
 from mantid.api import (
     AlgorithmFactory,
     PythonAlgorithm,
@@ -19,8 +20,8 @@ from mantid.api import (
 from mantid.kernel import Direction
 from scipy.interpolate import splev, splrep
 
-from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "SmoothDataExcludingPeaks"

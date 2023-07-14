@@ -15,12 +15,14 @@ class SmoothDataExcludingPeaksService(Service):
         super().__init__()
         self.registerPath("smoothDataExcludingPeaks", self.smooth_data_excluding_peaks)
         return
-    
+
     def name(self):
         return self._name
-    
+
     @FromString
-    def smooth_data_excluding_peaks(self, smoothDataExcludingPeaksIngredients: SmoothDataExcludingPeaksIngredients) -> Dict[Any, Any]:
+    def smooth_data_excluding_peaks(
+        self, smoothDataExcludingPeaksIngredients: SmoothDataExcludingPeaksIngredients
+    ) -> Dict[Any, Any]:
         data: Dict[Any, Any] = {}
         try:
             data = SmoothDataExcludingPeaksRecipe().executeRecipe(smoothDataExcludingPeaksIngredients)
