@@ -9,17 +9,18 @@
     implement csaps
     create new workspace with csaps data
 """
-
-from mantid.api import *
+import json
 from mantid.api import (
     AlgorithmFactory,
     PythonAlgorithm,
     WorkspaceGroup,
+    mtd,
 )
 from mantid.kernel import Direction
 from scipy.interpolate import splev, splrep
 
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
+from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "SmoothDataExcludingPeaks"
@@ -28,9 +29,7 @@ name = "SmoothDataExcludingPeaks"
 class SmoothDataExcludingPeaks(PythonAlgorithm):
     def PyInit(self):
         # declare properties
-        self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-        self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
-        self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
+        self.declareProperty("SmoothDataExcludingPeaksIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
@@ -38,23 +37,29 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
     def PyExec(self):
         self.log().notice("Removing peaks and smoothing data")
 
+        # load ingredients
+        smoothdataIngredients = SmoothDataExcludingPeaksIngredients(
+            **json.loads(self.getProperty("SmoothDataExcludingPeaksIngredients").value)
+        )
+
         # load workspace
-        input_ws = self.getProperty("InputWorkspace").value
-        ws = self.mantidSnapper.mtd[input_ws]
+        input_ws = smoothdataIngredients.InputWorkspace
 
         # load instrument state
-        instrumentState = self.getProperty("InstrumentState").value
+        instrumentState = smoothdataIngredients.InstrumentState.instrumentState
 
         # load crystal info
-        crystalInfo = self.getProperty("CrystalInfo").value
+        crystalInfo = smoothdataIngredients.CrystalInfo
+
+        ws = self.mantidSnapper.mtd[input_ws]
 
         # call the diffraction spectrum weight calculator
         weight_ws_name = "weight_ws"
         weightCalAlgo = DiffractionSpectrumWeightCalculator()
         weightCalAlgo.initialize()
-        weightCalAlgo.setProperty("InputWorkspace", input_ws)
-        weightCalAlgo.setProperty("InstrumentState", instrumentState)
-        weightCalAlgo.setProperty("CrystalInfo", crystalInfo)
+        weightCalAlgo.setProperty("InputWorkspace", input_ws.json())
+        weightCalAlgo.setProperty("InstrumentState", instrumentState.json())
+        weightCalAlgo.setProperty("CrystalInfo", crystalInfo.json())
         weightCalAlgo.setProperty("WeightWorkspace", weight_ws_name)
         weightCalAlgo.execute()
         weights_ws = mtd[weight_ws_name]
