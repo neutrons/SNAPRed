@@ -8,8 +8,7 @@
                         valid-to     ="2100-01-31 23:59:59"
 		        last-modified="2019-05-03 11:30:00">
   <!--Data taken from /SNS/SNAP/2010_2_3_CAL/calibrations/SNAP_geom_2010_03_22.xml-->
-  <!--Created by Vickie Lynch, modified by Janik Zikovsky -->
-  <!-- Modified by Vickie Lynch, Feb 17,2011 Bank names changed from local_name to name -->
+  <!--THIS IS A FAKE INSTRUMENT DEFINITION FOR TESTING ONLY-->
   <!--DEFAULTS-->
   <defaults>
     <length unit="metre"/>
@@ -43,7 +42,7 @@
   </component>
   <type is="monitor" name="only-monitor">
     <component type="monitor">
-      <location x="0.0" y="0.0" z="-3.0" name="monitor1"/>
+      <location x="0.0" y="0.0" z="15" name="monitor1"/>
     </component>
   </type>
 
@@ -69,32 +68,32 @@
   </type>
 
   <type name="Column1">
-    <component type="panel" idstart="0" idfillbyfirst="y" idstepbyrow="10" >
-      <location name="bank1">  <!-- was bank1 - 720896 -->
-        <trans x="-0.167548" y="0.167548" />
+    <component type="panel" idstart="0" idfillbyfirst="y" idstepbyrow="1" >
+      <location name="bank1">  <!-- was bank4 - 655360 -->
+        <trans x="0.0" y="0.0" />
       </location>
     </component>
-    <component type="panel" idstart="100" idfillbyfirst="y" idstepbyrow="10" >
+    <component type="panel" idstart="8" idfillbyfirst="y" idstepbyrow="1" >
       <location name="bank2">  <!-- was bank4 - 655360 -->
-        <trans x="-0.167548" y="0.0" />
+        <trans x="1.0" y="0.0" />
       </location>
     </component>
   </type>
 
 <!-- Rectangular Detector Panel -->
 <type name="panel" is="rectangular_detector" type="pixel"
-    xpixels="10" xstart="-0.076632" xstep="+0.004944"
-    ypixels="10" ystart="-0.076632" ystep="+0.004944" >
+    xpixels="1" xstart="0.0" xstep="+0.001"
+    ypixels="8" ystart="0.0" ystep="+0.001" >
   <properties/>
 </type>
 
 <!-- Pixel for Detectors-->
 <type is="detector" name="pixel">
   <cuboid id="pixel-shape">
-    <left-front-bottom-point y="-0.002472" x="-0.002472" z="0.0"/>
-    <left-front-top-point y="0.002472" x="-0.002472" z="0.0"/>
-    <left-back-bottom-point y="-0.002472" x="-0.002472" z="-0.0001"/>
-    <right-front-bottom-point y="0.002472" x="-0.002472" z="0.0"/>
+    <left-front-bottom-point  y="0.0" x="0.0" z="0.0"/>
+    <left-front-top-point     y="1.0" x="0.0" z="0.0"/>
+    <left-back-bottom-point   y="0.0" x="0.0" z="-0.0001"/>
+    <right-front-bottom-point y="0.0" x="1.0" z="0.0"/>
   </cuboid>
   <algebra val="pixel-shape"/>
 </type>
@@ -105,8 +104,8 @@
   <cylinder id="some-shape">
     <centre-of-bottom-base p="0.0" r="0.0" t="0.0"/>
     <axis y="0.0" x="0.0" z="1.0"/>
-    <radius val="0.01"/>
-    <height val="0.03"/>
+    <radius val="1.00"/>
+    <height val="1.00"/>
   </cylinder>
   <algebra val="some-shape"/>
 </type>

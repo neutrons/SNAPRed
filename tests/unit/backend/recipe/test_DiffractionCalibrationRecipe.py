@@ -25,6 +25,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
         self.recipe = ThisRecipe()
 
+    # TODO: once recipe implemented, this should do something
     def test_chop_ingredients(self):
         assert not self.recipe.chopIngredients(self.mock_ingredients)
 

@@ -1,4 +1,7 @@
+import random
 import unittest.mock as mock
+
+from mantid.simpleapi import *
 
 with mock.patch.dict(
     "sys.modules",
@@ -23,15 +26,15 @@ with mock.patch.dict(
         fakeRunConfig = RunConfig(runNumber=str(runNumber))
 
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/calibration/sampleInstrumentState.json"))
-        fakeInstrumentState.particleBounds.tof.minimum = 1567
-        fakeInstrumentState.particleBounds.tof.maximum = 10186
+        fakeInstrumentState.particleBounds.tof.minimum = 10
+        fakeInstrumentState.particleBounds.tof.maximum = 1000
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/calibration/sampleFocusGroup.json"))
         ntest = fakeFocusGroup.nHst
         fakeFocusGroup.dBin = [-abs(dBin)] * ntest
         fakeFocusGroup.dMax = [float(x) for x in range(100 * ntest, 101 * ntest)]
         fakeFocusGroup.dMin = [float(x) for x in range(ntest)]
-        fakeFocusGroup.FWHM = [1] * ntest
+        fakeFocusGroup.FWHM = [5 * random.random() for x in range(ntest)]
 
         fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,
@@ -137,16 +140,9 @@ with mock.patch.dict(
 
     def test_reexecution_and_convergence():
         """Test that units can be converted between TOF and d-spacing"""
-        from mantid.simpleapi import (
-            CalculateDIFC,
-            CreateSampleWorkspace,
-            CreateWorkspace,
-            LoadDetectorsGroupingFile,
-            LoadInstrument,
-            mtd,
-        )
+        # from mantid.simpleapi import *
 
-        fakeDBin = -abs(0.002)
+        fakeDBin = -abs(0.001)
         fakeRunNumber = "555"
         fakeIngredients = mock_ingredients(fakeRunNumber, fakeDBin)
 
@@ -160,13 +156,20 @@ with mock.patch.dict(
         # prepare with test data
         CreateSampleWorkspace(
             OutputWorkspace=algo.inputWStof,
-            WorkspaceType="Histogram",
-            Function="Powder Diffraction",
+            # WorkspaceType="Histogram",
+            Function="User Defined",
+            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
+            Xmin=algo.TOFMin,
+            Xmax=algo.TOFMax,
+            BinWidth=0.1,
             XUnit="TOF",
+            NumBanks=4,  # must produce same number of pixels as fake instrument
+            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
             Random=True,
         )
-        algo.convertUnitsAndRebin(algo.inputWStof, algo.inputWStof)
-        algo.convertUnitsAndRebin(algo.inputWStof, algo.inputWSdsp)
+
+        algo.convertUnitsAndRebin(algo.inputWStof, algo.inputWStof, "TOF")
+        algo.convertUnitsAndRebin(algo.inputWStof, algo.inputWSdsp, "dSpacing")
 
         # manually setup the grouping workspace
         algo.focusWSname = "_focusws_name_"
@@ -195,16 +198,21 @@ with mock.patch.dict(
         )
 
         # weak execution of algorithm
+        algo.reexecute(wsdifc)  # run once for better stability
         data = algo.reexecute(wsdifc)
-        assert data["medianOffset"] is not None
-        assert data["medianOffset"] <= 2
 
-        # TODO: all offsets are zero, so this test fails
-        # find sample data where offsets *won't* all be zero
+        assert data["meanOffset"] is not None
+        assert data["meanOffset"] != 0
+        assert data["meanOffset"] <= 2
+
         # check that value converges
-        # numIter = 5
-        # for i in range(numIter):
-        # previousOffset = data["medianOffset"]
-        # data = algo.reexecute(wsdifc)
-        # print(f"iteration {i} check {data['medianOffset']} < {previousOffset}")
-        # assert data["medianOffset"] < previousOffset
+        numIter = 5
+        allOffsets = [data["meanOffset"]]
+        for i in range(numIter):
+            data = algo.reexecute(wsdifc)
+            allOffsets.append(data["meanOffset"])
+            assert allOffsets[-1] <= allOffsets[-2]
+
+    # TODO: if on SNS analysis cluster, test execution with real data
+    def test_execute():
+        pass

@@ -55,7 +55,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.mantidSnapper.LoadEventNexus(
             "Loading Event Nexus for {} ...".format(self.rawDataPath),
             Filename=self.rawDataPath,
-            FilterByTofMin=2000,
+            FilterByTofMin=2000,  # TODO: why these values?
             FilterByTofMax=14500,
             OutputWorkspace=self.inputWStof,
         )
@@ -97,11 +97,12 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             Params=rebinParams,
             OutputWorkspace=outputWS,
         )
+        self.mantidSnapper.executeQueue()
 
-    # TODO: replace the median with some better method, to be determined
+    # TODO: replace the minimum with some better method, to be determined
     # for choosing a reference pixel (and not using brightest pixel)
     def getRefID(self, subgroupIDs):
-        return int(np.median(subgroupIDs))
+        return int(np.min(subgroupIDs))
 
     def reexecute(self, difcWS):
         # difcWS is name of workspace holding the calibration constants, DIFC
@@ -112,8 +113,10 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         wscc = f"_{self.runNumber}_tmp_subgroup_CC"
         for subGroup in self.groupIDs:
             subGroupIDs = self.focusWS.getDetectorIDsOfGroup(int(subGroup))
+            print(f"SUBGROUP IDS: {subGroupIDs}")
             maxDspaceShift = self.maxDSpaceShifts
             refID = self.getRefID(subGroupIDs)
+            print(f"REFID {refID}")
 
             self.mantidSnapper.CrossCorrelate(
                 f"Cross-Correlating spectra for {wscc}",
@@ -135,10 +138,12 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                 OffsetMode="Signed",
                 MaxOffset=2,
             )
+            self.mantidSnapper.executeQueue()
+            print(f"OFFSET {subGroup}: {np.median(self.mantidSnapper.mtd[wsoff].extractY().ravel())}")
 
             # add in group offsets to total, or begin the sum if none
             if subGroup == self.groupIDs[0]:
-                self.mantidSnapper.RenameWorkspace(
+                self.mantidSnapper.CloneWorkspace(
                     f"Starting summation with offset workspace {wsoff}",
                     InputWorkspace=wsoff,
                     OutputWorkspace=totalOffsetWS,
@@ -154,7 +159,11 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # offsets should converge to 0 with reexecution of the process
         # use the median, to avoid issues with possible pathologic pixels
         self.mantidSnapper.executeQueue()  # queue must run before ws in mantid data
-        data["medianOffset"] = np.median(self.mantidSnapper.mtd[totalOffsetWS].extractY().ravel())
+        offsets = list(self.mantidSnapper.mtd[totalOffsetWS].extractY().ravel())
+        data["medianOffset"] = abs(np.median(offsets))
+        data["meanOffset"] = abs(np.mean(offsets))
+        data["minOffset"] = abs(np.min(offsets))
+        data["maxOffset"] = abs(np.max(offsets))
 
         # get difcal corrected by offsets
         calibrationWS = f"_{self.runNumber}_CAL_CC_temp"
