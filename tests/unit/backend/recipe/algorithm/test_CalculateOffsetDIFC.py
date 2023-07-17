@@ -1,7 +1,7 @@
 import random
 import unittest.mock as mock
 
-from mantid.simpleapi import *
+from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
 
 with mock.patch.dict(
     "sys.modules",
@@ -138,9 +138,18 @@ with mock.patch.dict(
         algo.mantidSnapper.executeQueue()
         assert CompareWorkspaces(Workspace1=wsdsp, Workspace2=wsdsp_expected)
 
+    # patch to
+    @mock.patch.object(ThisAlgo, "getRefID", lambda self, x: int(min(x)))  # noqa
     def test_reexecution_and_convergence():
         """Test that units can be converted between TOF and d-spacing"""
-        # from mantid.simpleapi import *
+        from mantid.simpleapi import (
+            CalculateDIFC,
+            CreateSampleWorkspace,
+            CreateWorkspace,
+            LoadDetectorsGroupingFile,
+            LoadInstrument,
+            mtd,
+        )
 
         fakeDBin = -abs(0.001)
         fakeRunNumber = "555"
