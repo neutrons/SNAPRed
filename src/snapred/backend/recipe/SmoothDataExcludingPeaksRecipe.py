@@ -30,5 +30,5 @@ class SmoothDataExcludingPeaksRecipe:
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
-        logger.into("SmoothDataExcludingPeaks complete")
+        logger.info("SmoothDataExcludingPeaks complete")
         return data
