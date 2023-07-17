@@ -1,9 +1,10 @@
 import unittest
-import pytest
 from unittest import mock
 
+import pytest
 from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.recipe.SmoothDataExcludingPeaksRecipe import SmoothDataExcludingPeaksRecipe
+
 
 class TestSmoothDataExcludingPeaksRecipe(unittest.TestCase):
     @mock.patch("snapred.backend.recipe.SmoothDataExcludingPeaksRecipe.AlgorithmManager")
@@ -36,7 +37,7 @@ class TestSmoothDataExcludingPeaksRecipe(unittest.TestCase):
         try:
             smoothDataRecipe.executeRecipe(mock_SmoothDataIngredients)
         except Exception as e:  # noqa: E722 BLE001
-            assert str(e) == "passed"   # noqa: PT017
+            assert str(e) == "passed"  # noqa: PT017
             mock_algo.execute.assert_called_once()
         else:
             pytest.fail("Test should raise RuntimeError, but no error has been raised.")

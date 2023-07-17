@@ -5,9 +5,8 @@ with mock.patch.dict(
     {
         "snapred.backend.log": mock.Mock(),
         "snapred.backend.log.logger": mock.Mock(),
-    }
+    },
 ):
-    
     from snapred.backend.recipe.SmoothDataExcludingPeaksRecipe import SmoothDataExcludingPeaksRecipe
     from snapred.backend.service.SmoothDataExcludingPeaksService import SmoothDataExcludingPeaksService
 
