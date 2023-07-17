@@ -138,10 +138,10 @@ with mock.patch.dict(
         algo.mantidSnapper.executeQueue()
         assert CompareWorkspaces(Workspace1=wsdsp, Workspace2=wsdsp_expected)
 
-    # patch to
+    # patch to make the offsets of sample data non-zero
     @mock.patch.object(ThisAlgo, "getRefID", lambda self, x: int(min(x)))  # noqa
     def test_reexecution_and_convergence():
-        """Test that units can be converted between TOF and d-spacing"""
+        """Test that the algorithm can run, and that it will converge to an answer"""
         from mantid.simpleapi import (
             CalculateDIFC,
             CreateSampleWorkspace,
