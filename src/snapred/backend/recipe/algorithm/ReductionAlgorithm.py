@@ -19,12 +19,6 @@ name = "ReductionAlgorithm"
 # and after is equivalent                             #
 #######################################################
 class ReductionAlgorithm(PythonAlgorithm):
-    _endrange = 0
-    _progressCounter = 0
-    _prog_reporter = None
-    # _algorithmQueue = []
-    _exportScript = ""
-    _export = False
 
     def PyInit(self):
         # declare properties
@@ -325,8 +319,8 @@ class ReductionAlgorithm(PythonAlgorithm):
 
         # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours
         #              -- done to both data, can be applied to vanadium per state
-        self.applyCalibrationPixelMask(Workspace=raw_data, MaskedWorkspace=diffCalPrefix + "_mask")
-        self.applyCalibrationPixelMask(Workspace=vanadium, MaskedWorkspace=diffCalPrefix + "_mask")
+        self.mantidSnapper.applyCalibrationPixelMask(Workspace=raw_data, MaskedWorkspace=diffCalPrefix + "_mask")
+        self.mantidSnapper.applyCalibrationPixelMask(Workspace=vanadium, MaskedWorkspace=diffCalPrefix + "_mask")
 
         self.mantidSnapper.ApplyDiffCal(
             "Applying Diffcal...", InstrumentWorkspace=raw_data, CalibrationWorkspace=diffCalPrefix + "_cal"
