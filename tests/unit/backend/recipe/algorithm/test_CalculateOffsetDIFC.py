@@ -23,6 +23,7 @@ with mock.patch.dict(
         return [k for k in Class.__annotations__.keys()]
 
     def mock_ingredients(runNumber, dBin):
+        """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         fakeRunConfig = RunConfig(runNumber=str(runNumber))
 
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/calibration/sampleInstrumentState.json"))

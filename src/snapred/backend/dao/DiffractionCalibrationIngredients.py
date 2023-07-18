@@ -6,7 +6,7 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 
 class DiffractionCalibrationIngredients(BaseModel):
-    """Class to hold the instrument configuration."""
+    """Class to hold the ingredients to diffraction calibration"""
 
     runConfig: RunConfig
     instrumentState: InstrumentState

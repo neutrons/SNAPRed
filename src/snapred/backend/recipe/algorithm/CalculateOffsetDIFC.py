@@ -12,6 +12,12 @@ name = "CalculateOffsetDIFC"
 
 
 class CalculateOffsetDIFC(PythonAlgorithm):
+    """
+    Calculate the offset-corrected DIFC associated with a given workspace.
+    One part of diffraction calibration.
+    After being called by `execute`, may be called iteratively with `reexecute` to ensure convergence.
+    """
+
     def PyInit(self):
         # declare properties
         self.declareProperty(
@@ -23,6 +29,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
 
     # TODO: ensure all ingredients loaded elsewhere, no superfluous ingredients
     def chopIngredients(self, ingredients):
+        """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         self.runNumber = ingredients.runConfig.runNumber
         self.ipts = ingredients.runConfig.IPTS
         self.rawDataPath = self.ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(ingredients.runConfig.runNumber)
@@ -53,6 +60,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.focusWSname = f"_{self.runNumber}_FocGroup"
 
     def initializeRawDataWorkspace(self):
+        """Initialize the input TOF data from the input filename in the ingredients"""
         self.mantidSnapper.LoadEventNexus(
             "Loading Event Nexus for {} ...".format(self.rawDataPath),
             Filename=self.rawDataPath,
@@ -79,6 +87,10 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.groupIDs = self.focusWS.getGroupIDs()
 
     def convertUnitsAndRebin(self, inputWS, outputWS, target="dSpacing"):
+        """
+        Convert units to target (either TOF or dSpacing) and then rebin logarithmically.
+        If 'converting' from and to the same units, will only rebin.
+        """
         self.mantidSnapper.ConvertUnits(
             f"Convert units to {target}",
             InputWorkspace=inputWS,
@@ -103,11 +115,26 @@ class CalculateOffsetDIFC(PythonAlgorithm):
     # TODO: replace the median with some better method, to be determined
     # for choosing a reference pixel (and not using brightest pixel)
     def getRefID(self, subgroupIDs):
+        """
+        Calculate a unique reference pixel for a pixel grouping, based in the pixel geometry.
+        input:
+            subgroupIDs: List[int] -- a list of all of the detector IDs in that group
+        output:
+            the median pixel ID (to be replaced with angular COM pixel)
+        """
         return int(np.median(subgroupIDs))
 
     def reexecute(self, difcWS):
-        # difcWS is name of workspace holding the calibration constants, DIFC
-        # for each group separately, find needed offsets
+        """
+        Execute the main algorithm, in a way that can be iteratively called.
+        First the initial DIFC values must be calculated.  Then, group-by-group,
+        the spectra are cross-correlated, the offsets calculated, and the original DIFC
+        values are corrected by the offsets.
+        input:
+            difcWS: str -- the name of workspace holding the calibration constants, DIFC
+        output:
+            data: dict -- several statistics of the offsets, for testing convergence
+        """
         data = {}
         totalOffsetWS = f"offsets_{self.runNumber}"
         wsoff = f"_{self.runNumber}_tmp_subgroup_offset"
@@ -173,7 +200,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         )
 
         # save the resulting DIFC for starting point in next iteration
-        # TODO: this might now be necessary when ConverDiffCal is edited
+        # TODO: this might not be necessary when ConverDiffCal is edited
         self.mantidSnapper.ConvertTableToMatrixWorkspace(
             "Save the DIFC for starting point in next iteration",
             InputWorkspace=calibrationWS,
@@ -213,11 +240,13 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         return data
 
     def PyExec(self):
-        # run the algo
+        """Run the algo, including processing ingredients and initializing the input form file"""
         self.log().notice("Execution of extraction of calibration constants START!")
 
         # get the ingredients
-        ingredients = DiffractionCalibrationIngredients(**json.loads(self.getProperty("ExtractionIngredients").value))
+        ingredients = DiffractionCalibrationIngredients(
+            **json.loads(self.getProperty("DiffractionCalibrationIngredients").value)
+        )
         self.chopIngredients(ingredients)
 
         # create string names of workspaces that will be used by algorithm
