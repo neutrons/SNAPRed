@@ -15,13 +15,6 @@ name = "ReductionAlgorithm"
 # and after is equivalent                             #
 #######################################################
 class ReductionAlgorithm(PythonAlgorithm):
-    _endrange = 0
-    _progressCounter = 0
-    _prog_reporter = None
-    _algorithmQueue = []
-    _exportScript = ""
-    _export = False
-
     def PyInit(self):
         # declare properties
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)

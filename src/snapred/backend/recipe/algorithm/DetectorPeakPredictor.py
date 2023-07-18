@@ -67,7 +67,6 @@ class DetectorPeakPredictor(PythonAlgorithm):
             allFocusGroupsPeaks.append(singleFocusGroupPeaks)
 
         self.setProperty("DetectorPeaks", json.dumps(allFocusGroupsPeaks))
-
         return allFocusGroupsPeaks
 
 
