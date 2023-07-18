@@ -64,6 +64,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         weightCalAlgo.setProperty("InstrumentState", instrumentState.json())
         weightCalAlgo.setProperty("CrystalInfo", crystalInfo.json())
         weightCalAlgo.setProperty("WeightWorkspace", weight_ws_name)
+        weightCalAlgo.setChild(True)
         weightCalAlgo.execute()
         weights_ws = mtd[weight_ws_name]
 
