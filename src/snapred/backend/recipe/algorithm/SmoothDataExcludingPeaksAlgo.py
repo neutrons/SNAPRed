@@ -46,7 +46,6 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
         # load workspace
         input_ws = self.getProperty("InputWorkspace").value
-        self.mantidSnapper.mtd[input_ws]
 
         # load instrument state
         instrumentState = smoothdataIngredients.instrumentState
