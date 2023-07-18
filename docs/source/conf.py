@@ -4,6 +4,15 @@
 
 import versioningit
 
+# add in relative path for readthedocs
+try:
+    import snapred  # noqa: F401
+except ImportError:
+    import os
+    import sys
+
+    sys.path.insert(0, os.path.abspath("../../src"))
+
 project = "SNAPRed"
 project_copyright = "2021, ORNL"
 author = "ORNL"
