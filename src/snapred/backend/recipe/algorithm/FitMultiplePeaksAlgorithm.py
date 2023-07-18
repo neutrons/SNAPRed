@@ -37,6 +37,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         purgeAlgo.initialize()
         purgeAlgo.setProperty("InstrumentState", instrumentState.json())
         purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
+        purgeAlgo.setChild(True)
         purgeAlgo.execute()
         reducedList_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
         reducedList = [

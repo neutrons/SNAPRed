@@ -23,6 +23,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         peakPredictorAlgo.initialize()
         peakPredictorAlgo.setProperty("InstrumentState", self.getProperty("InstrumentState").value)
         peakPredictorAlgo.setProperty("CrystalInfo", self.getProperty("CrystalInfo").value)
+        peakPredictorAlgo.setChild(True)
         peakPredictorAlgo.execute()
         predictedPeaks_json = json.loads(peakPredictorAlgo.getProperty("DetectorPeaks").value)
 
