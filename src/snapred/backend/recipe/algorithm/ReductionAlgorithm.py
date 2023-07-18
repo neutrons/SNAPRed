@@ -78,13 +78,13 @@ class ReductionAlgorithm(PythonAlgorithm):
         # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours
         #              -- done to both data, can be applied to vanadium per state
         self.mantidSnapper.MaskDetectors(
-            "Applying Pixel Mask...", 
-            Workspace=raw_data, 
+            "Applying Pixel Mask...",
+            Workspace=raw_data,
             MaskedWorkspace=diffCalPrefix + "_mask",
         )
         self.mantidSnapper.MaskDetectors(
-            "Applying Pixel Mask...", 
-            Workspace=vanadium, 
+            "Applying Pixel Mask...",
+            Workspace=vanadium,
             MaskedWorkspace=diffCalPrefix + "_mask",
         )
         self.mantidSnapper.ApplyDiffCal(
