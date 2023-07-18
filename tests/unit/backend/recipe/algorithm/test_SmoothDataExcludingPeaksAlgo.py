@@ -56,7 +56,7 @@ with mock.patch.dict(
 
         # populate ingredients
         smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
-            CrystalInfo=crystalInfo, InstrumentState=instrumentState
+            crystalInfo=crystalInfo, instrumentState=instrumentState
         )
 
         # initialize and run smoothdata algo

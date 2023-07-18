@@ -5,5 +5,5 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 
 class SmoothDataExcludingPeaksIngredients(BaseModel):
-    InstrumentState: InstrumentState
-    CrystalInfo: CrystallographicInfo
+    instrumentState: InstrumentState
+    crystalInfo: CrystallographicInfo

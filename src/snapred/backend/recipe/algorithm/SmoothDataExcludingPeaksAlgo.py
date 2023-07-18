@@ -49,10 +49,10 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         self.mantidSnapper.mtd[input_ws]
 
         # load instrument state
-        instrumentState = smoothdataIngredients.InstrumentState
+        instrumentState = smoothdataIngredients.instrumentState
 
         # load crystal info
-        crystalInfo = smoothdataIngredients.CrystalInfo
+        crystalInfo = smoothdataIngredients.crystalInfo
 
         ws = self.mantidSnapper.mtd[input_ws]
 
