@@ -12,6 +12,7 @@ with mock.patch.dict(
     },
 ):
     from mantid.simpleapi import (
+        CompareWorkspaces,
         DeleteWorkspace,
         LoadNexusProcessed,
         mtd,
@@ -71,11 +72,6 @@ with mock.patch.dict(
         # match results with reference
         weight_ws = mtd[weight_ws_name]
         ref_weight_ws = LoadNexusProcessed(Filename=Resource.getPath(referenceWeightFile))
-        assert weight_ws.getNumberHistograms() == ref_weight_ws.getNumberHistograms()
-        for index in range(weight_ws.getNumberHistograms()):
-            x_calc = weight_ws.readX(index)
-            y_calc = weight_ws.readY(index)
-            x_ref = ref_weight_ws.readX(index)
-            y_ref = ref_weight_ws.readY(index)
-            assert (x_calc == x_ref).all()
-            assert (y_calc == y_ref).all()
+
+        result, _ = CompareWorkspaces(ref_weight_ws, weight_ws, CheckInstrument=False)
+        assert result

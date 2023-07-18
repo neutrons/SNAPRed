@@ -35,6 +35,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             peakPredictorAlgo.initialize()
             peakPredictorAlgo.setProperty("InstrumentState", self.getProperty("InstrumentState").value)
             peakPredictorAlgo.setProperty("CrystalInfo", self.getProperty("CrystalInfo").value)
+            peakPredictorAlgo.setChild(True)
             peakPredictorAlgo.execute()
             predictedPeaks_json = json.loads(peakPredictorAlgo.getProperty("DetectorPeaks").value)
 
@@ -65,7 +66,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
                 weights[mask_indices] = 0.0
             weight_ws.setY(index, weights)
 
-        return self.mantidSnapper.mtd[weight_ws_name]
+        return weight_ws
 
 
 AlgorithmFactory.subscribe(DiffractionSpectrumWeightCalculator)
