@@ -18,6 +18,8 @@ dependencies:
 - conda-build
 - conda-verify
 - setuptools
+- sphinx
+- sphinx_rtd_theme=1.2.*
 - python-build
 - boa
 - pycifrw
