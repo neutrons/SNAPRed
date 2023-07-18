@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QMainWindow,
-    QMessageBox,
     QPushButton,
     QSplitter,
     QStatusBar,
@@ -20,8 +19,6 @@ from snapred.meta.Config import Resource
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
-
-logger = snapredLogger.getLogger(__name__)
 
 
 class SNAPRedGUI(QMainWindow):
@@ -97,18 +94,19 @@ def qapp():
 
 
 def start(option=None):  # noqa: ARG001
+    logger = snapredLogger.getLogger(__name__)
+
     app = qapp()
     with Resource.open("style.qss", "r") as styleSheet:
         app.setStyleSheet(styleSheet.read())
+
+    logger.info("Welcome User! Happy Reducing!")
     try:
         ex = SNAPRedGUI()
-
-        logger.info("Welcome User! Happy Reducing!")
         ex.show()
-        ret = app.exec_()
-        return sys.exit(ret)
 
-    except Exception as uncaughtError:  # noqa: BLE001
-        ex = QWidget()
+        return app.exec_()
+
+    except Exception:
         logger.exception("Uncaught Error bubbled up to main!")
-        QMessageBox.critical(ex, "Uncaught Error!", str(uncaughtError))
+        return -1

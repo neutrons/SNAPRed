@@ -15,9 +15,10 @@ def main(args=None):  # noqa: ARG001
         for value, line in enumerate(snapRedText):
             print("\033[38:2:0:136:{}:{}m {}\033[00m".format(value * 4 + 51, value * 4 + 46, line))
 
+    # start the gui
     from snapred.ui.main import start
 
-    start()
+    return start()
 
 
 if __name__ == "__main__":
