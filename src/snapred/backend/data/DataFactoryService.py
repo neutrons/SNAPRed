@@ -1,6 +1,5 @@
 from typing import Dict
 
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.ReductionState import ReductionState
