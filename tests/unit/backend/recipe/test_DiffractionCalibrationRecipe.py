@@ -2,12 +2,17 @@ import unittest
 from unittest import mock
 
 import pytest
-from snapred.backend.dao.ExtractionIngredients import ExtractionIngredients
-from snapred.backend.recipe.ExtractionRecipe import ExtractionRecipe
+from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients as TheseIngredients
+from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as ThisRecipe
+
+PatchThis: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.AlgorithmManager"
+CalledAlgo: str = "CalculateOffsetDIFC"
+CalledIngredients: str = TheseIngredients.__name__
 
 
-class TestExtractionRecipe(unittest.TestCase):
+class TestDiffractionCalibtationRecipe(unittest.TestCase):
     def setUp(self):
+        print(CalledIngredients)
         # Create a mock algorithm instance and set the expected return value
         self.mock_algo = mock.MagicMock()
         self.mock_algo.execute.return_value = "Mocked result"
@@ -15,31 +20,33 @@ class TestExtractionRecipe(unittest.TestCase):
         # Create a mock ReductionIngredients instance with the required attributes
         self.mock_runConfig = mock.MagicMock()
         self.mock_runConfig.runNumber = "12345"
-        self.mock_extractionIngredients = mock.MagicMock(spec=ExtractionIngredients)
-        self.mock_extractionIngredients.runConfig = self.mock_runConfig
+        self.mock_ingredients = mock.MagicMock(spec=TheseIngredients)
+        self.mock_ingredients.runConfig = self.mock_runConfig
 
-        self.extractionRecipe = ExtractionRecipe()
+        self.recipe = ThisRecipe()
 
-    @mock.patch("snapred.backend.recipe.ExtractionRecipe.AlgorithmManager")
+    # TODO: once recipe implemented, this should do something
+    def test_chop_ingredients(self):
+        assert not self.recipe.chopIngredients(self.mock_ingredients)
+
+    @mock.patch(PatchThis)
     def test_execute_successful(self, mock_AlgorithmManager):
         mock_AlgorithmManager.create.return_value = self.mock_algo
 
-        result = self.extractionRecipe.executeRecipe(self.mock_extractionIngredients)
+        result = self.recipe.executeRecipe(self.mock_ingredients)
 
         assert result["result"] == "Mocked result"
         self.mock_algo.execute.assert_called_once()
-        self.mock_algo.setProperty.assert_called_once_with(
-            "ExtractionIngredients", self.mock_extractionIngredients.json()
-        )
-        mock_AlgorithmManager.create.assert_called_once_with("ExtractionAlgorithm")
+        self.mock_algo.setProperty.assert_called_once_with(CalledIngredients, self.mock_ingredients.json())
+        mock_AlgorithmManager.create.assert_called_once_with(CalledAlgo)
 
-    @mock.patch("snapred.backend.recipe.ExtractionRecipe.AlgorithmManager")
+    @mock.patch(PatchThis)
     def test_execute_unsuccessful(self, mock_AlgorithmManager):
         self.mock_algo.execute.side_effect = RuntimeError("passed")
         mock_AlgorithmManager.create.return_value = self.mock_algo
 
         try:
-            self.extractionRecipe.executeRecipe(self.mock_extractionIngredients)
+            self.recipe.executeRecipe(self.mock_ingredients)
         except Exception as e:  # noqa: E722 BLE001
             assert str(e) == "passed"  # noqa: PT017
             self.mock_algo.execute.assert_called_once()
@@ -47,10 +54,8 @@ class TestExtractionRecipe(unittest.TestCase):
             # fail if execute did not raise an exception
             pytest.fail("Test should have raised RuntimeError, but no error raised")
 
-        self.mock_algo.setProperty.assert_called_once_with(
-            "ExtractionIngredients", self.mock_extractionIngredients.json()
-        )
-        mock_AlgorithmManager.create.assert_called_once_with("ExtractionAlgorithm")
+        self.mock_algo.setProperty.assert_called_once_with(CalledIngredients, self.mock_ingredients.json())
+        mock_AlgorithmManager.create.assert_called_once_with(CalledAlgo)
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
