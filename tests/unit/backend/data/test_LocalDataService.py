@@ -36,7 +36,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
     def test_readInstrumentConfig():
         localDataService = LocalDataService()
         localDataService._readInstrumentParameters = _readInstrumentParameters
-        actual = localDataService.readInstrumentConfig()
+        actual = localDataService.readInstrumentConfig(verifyPaths=False)
         assert actual is not None
         assert actual.version == "1.4"
         assert actual.name == "SNAP"
