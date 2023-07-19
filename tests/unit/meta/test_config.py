@@ -1,4 +1,4 @@
-# import pytest
+import pytest
 from snapred.meta.Config import Config, Resource, _find_root_dir
 
 
@@ -31,3 +31,17 @@ def test_resource_read():
 def test_resouce_open():
     with Resource.open("application.yml", "r") as file:
         assert file is not None
+
+
+def test_config_accessor():
+    # these values are copied from tests/resources/application.yml
+    assert Config["environment"] == "test"
+    assert Config["instrument.name"] == "SNAP"
+    assert Config["nexus.file.extension"] == ".nxs.h5"
+    assert Config["calibration.file.extension"] == ".json"
+
+    # these should throw KeyError
+    with pytest.raises(KeyError):
+        assert Config["garbage"]
+    with pytest.raises(KeyError):
+        assert Config["orchestration.garbage"]
