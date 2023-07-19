@@ -1,9 +1,13 @@
 # import pytest
-from snapred.meta.Config import Config, Resource
+from snapred.meta.Config import Config, Resource, _find_root_dir
 
 
 def test_environment():
     assert Config["environment"] == "test"
+
+
+def test_find_root_dir():
+    assert _find_root_dir().endswith("/tests")
 
 
 def test_instrument_home():

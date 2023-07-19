@@ -1,4 +1,5 @@
 import importlib.resources as resources
+import logging
 import os
 import sys
 from typing import Any, Dict
@@ -8,40 +9,51 @@ from pydantic.utils import deep_update
 
 from snapred.meta.decorators.Singleton import Singleton
 
-ROOT_MODULE = None
-if os.environ.get("env") != "test":
-    ROOT_MODULE = sys.modules["__main__"].__file__
-else:
-    ROOT_MODULE = sys.modules["conftest"].__file__
 
-if ROOT_MODULE is None:
-    raise Exception("Unable to determine root directory")
+def _find_root_dir():
+    ROOT_MODULE = None
+    if os.environ.get("env") != "test":
+        ROOT_MODULE = sys.modules["__main__"].__file__
+    else:
+        ROOT_MODULE = sys.modules["conftest"].__file__
 
-ROOT_DIR = os.path.dirname(ROOT_MODULE)
+    if ROOT_MODULE is None:
+        raise Exception("Unable to determine root directory")
+
+    return os.path.dirname(ROOT_MODULE)
 
 
 @Singleton
 class _Resource:
-    _packageMode = False
-    _resourcesPath = ROOT_DIR + "/resources/"
+    _packageMode: bool
+    _resourcesPath: str
+    _logger = logging.getLogger("snapred.meta.Config.Resource")
 
     def __init__(self):
-        try:
-            self.open("application.yml", "r")
-        except FileNotFoundError:
-            self._packageMode = True
-            self._resourcesPath = "/resources/"
-        # filename = resource_filename(Requirement.parse("MyProject"),"sample.conf")
-
-    def exists(self, subPath):
+        # where the location of resources are depends on whether or not this is in package mode
+        self._packageMode = not self._existsInPackage("application.yml")
         if self._packageMode:
-            with resources.path("snapred.resources", subPath) as path:
-                return os.path.exists(path)
+            self._logger.debug("In package mode")
+            self._resourcesPath = "/resources/"
+        else:
+            self._logger.debug("Not in package mode")
+            self._resourcesPath = os.path.join(_find_root_dir(), "resources/")
+
+    def _existsInPackage(self, subPath) -> bool:
+        with resources.path("snapred.resources", subPath) as path:
+            return os.path.exists(path)
+
+    def exists(self, subPath) -> bool:
+        if self._packageMode:
+            return self._existsInPackage(subPath)
         else:
             return os.path.exists(self.getPath(subPath))
 
     def getPath(self, subPath):
-        return self._resourcesPath + subPath
+        if subPath.startswith("/"):
+            return os.path.join(self._resourcesPath, subPath[1:])
+        else:
+            return os.path.join(self._resourcesPath, subPath)
 
     def read(self, subPath):
         with self.open(subPath, "r") as file:
