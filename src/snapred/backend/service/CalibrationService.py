@@ -2,13 +2,19 @@ import json
 import time
 from typing import List
 
+from pydantic import parse_raw_as
+
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
+from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
 from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
 from snapred.backend.dao.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
+from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.FocusGroupParameters import FocusGroupParameters
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.log.logger import snapredLogger
@@ -61,13 +67,9 @@ class CalibrationService(Service):
         return {}
 
     @FromString
-    def save(self, entry: CalibrationIndexEntry):
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(entry.runNumber)
-        # TODO: get peak fitting filepath
-        # save calibration reduction result to disk
-        calibrationWorkspaceName = Config["calibration.reduction.output.format"].format(entry.runNumber)
-        self.dataExportService.exportCalibrationReductionResult(entry.runNumber, calibrationWorkspaceName)
-        calibrationRecord = CalibrationRecord(parameters=reductionIngredients)
+    def save(self, request: CalibrationExportRequest):
+        entry = request.calibrationIndexEntry
+        calibrationRecord = request.calibrationRecord
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         entry.version = calibrationRecord.version
         self.saveCalibrationToIndex(entry)
@@ -126,7 +128,7 @@ class CalibrationService(Service):
         reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
         calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
         focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
-        instrumentState = self.dataFactoryService.getCalibrationState(run.runNumber).instrumentState
+        instrumentState = calibration.instrumentState
         crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
         crystalInfo = crystalInfoDict["crystalInfo"]
         # check if there is focussed data for this run
@@ -147,6 +149,15 @@ class CalibrationService(Service):
                 self._calculatePixelGroupingParameters(calibration, focusGroup.definition)["parameters"]
             )
 
+        focusGroupParameters = []
+        for focusGroup, pixelGroupingParam in zip(focusGroups, pixelGroupingParams):
+            focusGroupParameters.append(
+                FocusGroupParameters(
+                    focusGroupName=focusGroup.name,
+                    pixelGroupingParameters=pixelGroupingParam,
+                )
+            )
+
         # TODO: should this be a list of lists? it only uses one focus group
         instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams[0]
 
@@ -160,8 +171,10 @@ class CalibrationService(Service):
             FocusGroups=json.dumps([focusGroup.dict() for focusGroup in focusGroups]),
             OutputWorkspace="strippedFocussedData",
         )
-        metricsMap = {}
-        for workspace in GroupWorkspaceIterator(strippedFocussedData):
+        strippedFocussedDatas = [ws for ws in GroupWorkspaceIterator(strippedFocussedData)]
+        metrics = []
+        fittedWorkspaceNames = []
+        for workspace, focusGroup in zip(strippedFocussedDatas, focusGroups):
             fitMultiplePeaksIngredients = FitMultiplePeaksIngredients(
                 InstrumentState=instrumentState, CrystalInfo=crystalInfo, InputWorkspace=workspace
             )
@@ -169,12 +182,32 @@ class CalibrationService(Service):
                 FitMultiplePeaksIngredients=fitMultiplePeaksIngredients,
                 OutputWorkspaceGroup="fitted_{}".format(workspace),
             )
-            metricsMap[workspace] = CalibrationMetricExtractionRecipe().executeRecipe(
-                InputWorkspace=fitPeaksResult, CrystallographicInfo=crystalInfo, OutputMetrics=""
+            fittedWorkspaceNames.append(fitPeaksResult)
+            metric = parse_raw_as(
+                List[CalibrationMetric],
+                CalibrationMetricExtractionRecipe().executeRecipe(InputWorkspace=fitPeaksResult),
             )
+            metrics.append(FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric))
+        self.dataExportService.deleteWorkspace(strippedFocussedData)
         # TODO: loads previous focussed data for comparison if it exists
-        # TODO: generate graphs comparing results to default or previous calibration
-        # the following should go in a gather metrics recipe/algorithm
-        # TODO: save outputWorkspaceGroup to disk
-        # TODO: save peakMetrics to disk
-        return metricsMap
+        # previousFittedData = self.dataFactoryService.getFittedCalibrationData(run.runNumber)
+        # previousMetrics = self.dataFactoryService.getCalibrationMetrics(run.runNumber)
+        # if previousFittedData is not None:
+        #     load them or something for comparison
+        # else save the fitted data and metrics to disk
+
+        # Saving should perhaps be a follow up backend request
+        outputWorkspaces = []
+        outputWorkspaces.extend(fittedWorkspaceNames)
+        outputWorkspaces.append(outputNameFormat.format(run.runNumber))
+        record = CalibrationRecord(
+            reductionIngredients=reductionIngredients,
+            calibrationFittingIngredients=calibration,
+            focusGroupParameters=focusGroupParameters,
+            focusGroupCalibrationMetrics=metrics,
+            workspaceNames=outputWorkspaces,
+        )
+        entry = CalibrationIndexEntry(runNumber=run.runNumber, comments="", author="")
+        self.save(CalibrationExportRequest(calibrationRecord=record, calibrationIndexEntry=entry))
+
+        return record

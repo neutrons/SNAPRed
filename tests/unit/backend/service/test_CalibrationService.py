@@ -48,7 +48,7 @@ with mock.patch.dict(
         )
         dataExportService.dataFactoryService.getReductionIngredients = mock.Mock()
         dataExportService.dataFactoryService.getReductionIngredients.return_value = readReductionIngredientsFromFile()
-        dataExportService.save(CalibrationIndexEntry(runNumber="1", comments="", author=""))
+        dataExportService.save(mock.Mock())
         assert dataExportService.dataExportService.exportCalibrationRecord.called
         savedEntry = dataExportService.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None

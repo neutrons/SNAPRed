@@ -30,3 +30,6 @@ class DataExportService:
 
     def initializeState(self, runId: str, name: str):
         return self.dataService.initializeState(runId, name)
+
+    def deleteWorkspace(self, workspaceName: str):
+        return self.dataService.deleteWorkspace(workspaceName)

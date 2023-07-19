@@ -34,7 +34,7 @@ class CustomStripPeaks(PythonAlgorithm):
                     "Stripping peaks...",
                     InputWorkspace=inputGroupWorkspace.getItem(workspaceIndex),
                     PeakPositions=peakPositions[workspaceIndex],
-                    OutputWorkspace=outputWorkspace + "_stripped",
+                    OutputWorkspace=outputWorkspace + "_stripped_{}".format(workspaceIndex),
                 )
             )
         output = self.mantidSnapper.GroupWorkspaces(

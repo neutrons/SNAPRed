@@ -21,7 +21,6 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
 
     def PyExec(self):
         instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
-        numFocusGroups = int(self.getProperty("NumFocusGroups").value)
         crystalInfo = CrystallographicInfo.parse_raw(self.getProperty("CrystalInfo").value)
         crystalInfo.peaks.sort(key=lambda x: x.dSpacing)
         beta_0 = instrumentState.gsasParameters.beta[0]
@@ -38,7 +37,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
 
         outputPeaks = []
 
-        for index in range(numFocusGroups):
+        for index in range(len(instrumentState.pixelGroupingInstrumentParameters)):
             delDoD = instrumentState.pixelGroupingInstrumentParameters[index].dRelativeResolution
             tTheta = instrumentState.pixelGroupingInstrumentParameters[index].twoTheta
 

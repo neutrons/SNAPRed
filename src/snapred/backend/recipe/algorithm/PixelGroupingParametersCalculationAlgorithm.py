@@ -49,6 +49,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             CopyGroupingFromWorkspace=grouping_ws_name,
             OutputWorkspace=grouped_ws_name,
         )
+        self.mantidSnapper.DeleteWorkspace("Cleaning up grouping workspace.", Workspace=grouping_ws_name)
         self.mantidSnapper.executeQueue()
 
         # define/calculate some auxiliary state-derived parameters
@@ -63,11 +64,13 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         delTheta = instrumentState.instrumentConfig.delThWithGuide
 
         # estimate the relative resolution for all pixel groupings
+        pgpca_resolution_ws = "pgpca_resolution_ws"
+        pgpca_resolution_partials = "pgpca_resolution_partials"
         self.mantidSnapper.EstimateResolutionDiffraction(
             "Estimating diffraction resolution...",
             InputWorkspace=grouped_ws_name,
-            OutputWorkspace="pgpca_resolution_ws",
-            PartialResolutionWorkspaces="pgpca_resolution_partials",
+            OutputWorkspace=pgpca_resolution_ws,
+            PartialResolutionWorkspaces=pgpca_resolution_partials,
             DeltaTOFOverTOF=deltaTOverT,
             SourceDeltaL=delL,
             SourceDeltaTheta=delTheta,
@@ -77,7 +80,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         # calculate and store all pixel grouping parameters as strings
         allGroupingParams_str = []
         grouped_ws = mtd[grouped_ws_name]
-        resws = mtd["pgpca_resolution_ws"]
+        resws = mtd[pgpca_resolution_ws]
         specInfo = grouped_ws.spectrumInfo()
         for groupIndex in range(grouped_ws.getNumberHistograms()):
             twoTheta = specInfo.twoTheta(groupIndex)
@@ -92,6 +95,12 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
 
         outputParams = json.dumps(allGroupingParams_str)
         self.setProperty("OutputParameters", outputParams)
+        self.mantidSnapper.DeleteWorkspace("Cleaning up grouped workspace.", Workspace=grouped_ws_name)
+        self.mantidSnapper.DeleteWorkspace("Cleaning up resolution workspace.", Workspace=pgpca_resolution_ws)
+        self.mantidSnapper.DeleteWorkspace(
+            "Cleaning up partial resolution workspace.", Workspace=pgpca_resolution_partials
+        )
+        self.mantidSnapper.executeQueue()
 
     # create a grouping workspace from a grouping file
     def CreateGroupingWorkspace(self, grouping_ws_name):

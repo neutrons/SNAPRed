@@ -1,7 +1,8 @@
 import json
+from enum import Enum
 
 import numpy as np
-from mantid.api import AlgorithmFactory, PythonAlgorithm, WorkspaceGroup, mtd
+from mantid.api import AlgorithmFactory, PythonAlgorithm, WorkspaceFactory, WorkspaceGroup, mtd
 from mantid.kernel import Direction
 
 from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
@@ -11,19 +12,34 @@ from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import Purg
 name = "FitMultiplePeaksAlgorithm"
 
 
+class FitOutputEnum(Enum):
+    PeakPosition = 0
+    Parameters = 1
+    Workspace = 2
+    ParameterError = 3
+
+
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("FitMultiplePeaksIngredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspaceGroup", defaultValue="", direction=Direction.Output)
+        self.declareProperty("OutputWorkspaceGroup", defaultValue="fitPeaksWSGroup", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
+
+    def listToWorkspace(self, aList, name):
+        ws = WorkspaceFactory.create("Workspace2D", NVectors=1, XLength=len(aList), YLength=len(aList))
+        ws.setX(0, np.asarray(aList))
+        # register ws in mtd
+        mtd.add(name, ws)
+        return ws
 
     def PyExec(self):
         fitPeakIngredients = FitMultiplePeaksIngredients(
             **json.loads(self.getProperty("FitMultiplePeaksIngredients").value)
         )
         wsName = fitPeakIngredients.InputWorkspace
+        outputeWsName = self.getProperty("OutputWorkspaceGroup").value
         instrumentState = fitPeakIngredients.InstrumentState
         crystalInfo = fitPeakIngredients.CrystalInfo
         peakType = fitPeakIngredients.PeakType
@@ -46,17 +62,18 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         reducedList = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
 
         ws_group = WorkspaceGroup()
-        mtd.add("fitPeaksWSGroup", ws_group)
+        mtd.add(outputeWsName, ws_group)
 
-        for index in range(numSpec):
-            fittedPeakPos = f"{wsName}_fitted_peakpositions_{index}"
-            fittedParams = f"{wsName}_fitted_params_{index}"
-            fittedWS = f"{wsName}_fitted_{index}"
-            fittedParamsErr = f"{wsName}_fitted_params_err_{index}"
-            delDoD = instrumentState.pixelGroupingInstrumentParameters[index].dRelativeResolution
-            tTheta = instrumentState.pixelGroupingInstrumentParameters[index].twoTheta
+        for subgroupIndex in range(numSpec):
+            outputNames = [None for _ in range(len(FitOutputEnum))]
+            outputNames[FitOutputEnum.PeakPosition.value] = f"{wsName}_fitted_peakpositions_{subgroupIndex}"
+            outputNames[FitOutputEnum.Parameters.value] = f"{wsName}_fitted_params_{subgroupIndex}"
+            outputNames[FitOutputEnum.Workspace.value] = f"{wsName}_fitted_{subgroupIndex}"
+            outputNames[FitOutputEnum.ParameterError.value] = f"{wsName}_fitted_params_err_{subgroupIndex}"
+            delDoD = instrumentState.pixelGroupingInstrumentParameters[subgroupIndex].dRelativeResolution
+            tTheta = instrumentState.pixelGroupingInstrumentParameters[subgroupIndex].twoTheta
             peakLimits = []
-            for peak, dspc in enumerate(reducedList[index]):
+            for peak, dspc in enumerate(reducedList[subgroupIndex]):
                 halfWindLeft = 2.35 * delDoD * dspc * FWHMMultiplierLeft
                 halfWindRight = 2.35 * delDoD * dspc * FWHMMultiplierRight
                 lowerLimit = dspc - halfWindLeft
@@ -65,29 +82,31 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 beta_d = 505.548 * L * np.sin(tTheta / 2) * beta_t
                 upperLimit = dspc + halfWindRight + (1 / beta_d)
                 peakLimits.extend([lowerLimit, upperLimit])
+                # strain = dref-dobserved / sigma
 
             self.mantidSnapper.ExtractSingleSpectrum(
-                "Extract Single Spectrm...", InputWorkspace=wsName, OutputWorkspace="ws2fit", WorkspaceIndex=index
+                "Extract Single Spectrm...",
+                InputWorkspace=wsName,
+                OutputWorkspace="ws2fit",
+                WorkspaceIndex=subgroupIndex,
             )
 
             self.mantidSnapper.FitPeaks(
                 "Fit Peaks...",
                 InputWorkspace="ws2fit",
-                PeakCenters=",".join(np.array(reducedList[index]).astype("str")),
+                PeakCenters=",".join(np.array(reducedList[subgroupIndex]).astype("str")),
                 PeakFunction=peakType,
                 FitWindowBoundaryList=",".join(np.array(peakLimits).astype("str")),
-                OutputWorkspace=fittedPeakPos,
-                OutputPeakParametersWorkspace=fittedParams,
+                OutputWorkspace=outputNames[FitOutputEnum.PeakPosition.value],
+                OutputPeakParametersWorkspace=outputNames[FitOutputEnum.Parameters.value],
                 BackgroundType="Quadratic",
-                FittedPeaksWorkspace=fittedWS,
+                FittedPeaksWorkspace=outputNames[FitOutputEnum.Workspace.value],
                 ConstrainPeakPositions=True,
-                OutputParameterFitErrorsWorkspace=fittedParamsErr,
+                OutputParameterFitErrorsWorkspace=outputNames[FitOutputEnum.ParameterError.value],
             )
             self.mantidSnapper.executeQueue()
-            ws_group.add(fittedPeakPos)
-            ws_group.add(fittedParams)
-            ws_group.add(fittedWS)
-            ws_group.add(fittedParamsErr)
+            for output in outputNames:
+                ws_group.add(output)
 
         self.mantidSnapper.DeleteWorkspace(
             "Deleting fitting workspace...",
