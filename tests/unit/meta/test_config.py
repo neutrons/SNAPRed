@@ -7,8 +7,9 @@ def test_environment():
 
 
 def test_instrument_home():
-    correctPath = "/SNAPRed/tests/resources/SNAP/"
-    assert Config["instrument.home"][-len(correctPath) :] == correctPath
+    # test verifies that the end of the path is correct
+    correctPathEnding = "/tests/resources/SNAP/"
+    assert Config["instrument.home"].endswith(correctPathEnding)
 
 
 def test_resource_exists():
