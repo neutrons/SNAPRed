@@ -75,16 +75,27 @@ class _Config:
     _config: Dict[str, Any] = {}
 
     def __init__(self):
-        with Resource.open("application.yml", "r") as file:
-            self._config = yaml.safe_load(file)
-            env = os.environ.get("env")
-            if env is None:
-                env = self._config.get("environment", None)
-            if env is not None:
-                with Resource.open("{}.yml".format(env), "r") as file:
-                    envConfig = yaml.safe_load(file)
-                    self._config = deep_update(self._config, envConfig)
-            self._config["environment"] = env
+        # use refresh to do initial load, clearing shouldn't matter
+        self.refresh("application", True)
+        del self._config["environment"]
+
+        # see if user used environment injection to modify what is needed
+        # this will get from the os environment or from the currently loaded one
+        # first case wins
+        env = os.environ.get("env", self._config.get("environment", None))
+        if env is not None:
+            self.refresh(env)
+
+    def refresh(self, env_name: str, clearPrevious: bool = False) -> None:
+        if clearPrevious:
+            self._config.clear()
+
+        with Resource.open(f"{env_name}.yml", "r") as file:
+            envConfig = yaml.safe_load(file)
+            self._config = deep_update(self._config, envConfig)
+
+        # add the name to the config object
+        self._config["environment"] = env_name
 
     # period delimited key lookup
     def __getitem__(self, key):
