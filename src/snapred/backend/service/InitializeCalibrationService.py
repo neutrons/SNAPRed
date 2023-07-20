@@ -52,7 +52,7 @@ class InitializeCalibrationService(Service):
             for run in runs:
                 reductionIngredients = self.dataFactory.getReductionIngredients(run.runNumber)
                 ipts = reductionIngredients.runConfig.IPTS
-                rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
+                ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
 
                 # identify the instrument state for measurement
                 state = self.dataExport.getStateConfig(run.runNumber)
