@@ -47,15 +47,17 @@ class InitializeCalibrationService(Service):
 
         else:
             for run in runs:
-                # reductionIngredients = self.dataFactory.getReductionIngredients(run.runNumber) -> may not need this
+                reductionIngredients = self.dataFactory.getReductionIngredients(run.runNumber)
+                ipts = reductionIngredients.runConfig.IPTS
+                rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
 
                 # identify the instrument state for measurement
                 states = []
-                instrumentState = self.dataExport.getStateConfig(run.runNumber)
-                states.append(instrumentState)
+                state = self.dataExport.getStateConfig(run.runNumber)
+                states.append(state)
 
                 # check if state exists and create in case it does not exist
-                if not instrumentState:
+                if not state in states:
                     # TODO: prompt for new state input which might need to be extrapolated to UI popup or text box within the view
                     userInputName = input("Please enter the name of the new state: ")  # place holder
                     self.request.humanReadableName = userInputName
