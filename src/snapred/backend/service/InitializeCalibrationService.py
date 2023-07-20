@@ -46,13 +46,15 @@ class InitializeCalibrationService(Service):
             raise ValueError("List is empty")
 
         else:
+            # list to store states
+            states = []
+
             for run in runs:
                 reductionIngredients = self.dataFactory.getReductionIngredients(run.runNumber)
                 ipts = reductionIngredients.runConfig.IPTS
-                ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
+                rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
 
                 # identify the instrument state for measurement
-                states = []
                 state = self.dataExport.getStateConfig(run.runNumber)
                 states.append(state)
 
