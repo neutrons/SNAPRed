@@ -45,7 +45,7 @@ jobs:
       uses: codecov/codecov-action@v3
     - name: Gui tests
       run: |
-        which snapred
+        python -m pip install -e . # install the application in editable mode
         xvfb-run --server-args="-screen 0 1280x1024x16" --auto-servernum snapred --headcheck
 
 
