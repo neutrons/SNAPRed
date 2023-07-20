@@ -47,23 +47,25 @@ class LocalDataService:
     iptsCache: Dict[str, Any] = {}
     stateIdCache: Dict[str, str] = {}
     instrumentConfig: InstrumentConfig  # Optional[InstrumentConfig]
+    verifyPaths: bool = True
 
-    def __init__(self, verifyPaths: bool = True) -> None:
-        self.instrumentConfig = self.readInstrumentConfig(verifyPaths)
+    def __init__(self) -> None:
+        self.verifyPaths = Config["localdataservice.config.verifypaths"]
+        self.instrumentConfig = self.readInstrumentConfig()
 
-    def _determineInstrConfigPaths(self, verifyPaths) -> None:
+    def _determineInstrConfigPaths(self) -> None:
         """This method locates the instrument configuration path and
         sets the instance variable ``instrumentConfigPath``."""
         # verify parent directory exists
         self.dataPath = Path(Config["instrument.home"])
-        if verifyPaths and not self.dataPath.exists():
+        if self.verifyPaths and not self.dataPath.exists():
             raise _createFileNotFoundError("Config['instrument.home']", self.dataPath)
 
         # look for the config file and verify it exists
         self.instrumentConfigPath = self.dataPath / Config["instrument.config"]
 
-    def readInstrumentConfig(self, verifyPaths: bool = True) -> InstrumentConfig:
-        self._determineInstrConfigPaths(verifyPaths)
+    def readInstrumentConfig(self) -> InstrumentConfig:
+        self._determineInstrConfigPaths()
 
         instrumentParameterMap = self._readInstrumentParameters()
         try:
@@ -76,7 +78,7 @@ class LocalDataService:
             raise KeyError(f"{e}: while reading instrument configuration '{self.instrumentConfigPath}'") from e
         if self.dataPath:
             instrumentConfig.calibrationDirectory = self.dataPath / "shared/Calibration/"
-            if verifyPaths and not instrumentConfig.calibrationDirectory.exists():
+            if self.verifyPaths and not instrumentConfig.calibrationDirectory.exists():
                 raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
 
         return instrumentConfig
