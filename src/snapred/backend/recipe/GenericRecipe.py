@@ -2,11 +2,7 @@ import json
 from typing import Generic, TypeVar, get_args
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import CalibrationReductionAlgorithm
-from snapred.backend.recipe.algorithm.CustomStripPeaks import CustomStripPeaks
-from snapred.backend.recipe.algorithm.ExtractionAlgorithm import ExtractionAlgorithm
-from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm
@@ -56,23 +52,7 @@ class GenericRecipe(Generic[T]):
         return get_args(self.__orig_bases__[0])[0]
 
 
-class CalibrationMetricExtractionRecipe(GenericRecipe[CalibrationMetricExtractionAlgorithm]):
-    pass
-
-
 class CalibrationReductionRecipe(GenericRecipe[CalibrationReductionAlgorithm]):
-    pass
-
-
-class CustomStripPeaksRecipe(GenericRecipe[CustomStripPeaks]):
-    pass
-
-
-class ExtractionRecipe(GenericRecipe[ExtractionAlgorithm]):
-    pass
-
-
-class FitMultiplePeaksRecipe(GenericRecipe[FitMultiplePeaksAlgorithm]):
     pass
 
 
