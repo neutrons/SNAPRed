@@ -68,10 +68,13 @@ class InitializeCalibrationService(Service):
                 # if state exists, initialize it
                 runId = self.request.runId = run.runNumber
                 name = self.request.humanReadableName = run.maskFileName  # TODO: Is this correct?
-                self.calibrationService.initializeState(runId, name)
+                stateInfo = self.calibrationService.initializeState(runId, name)
 
+                groupingFile = reductionIngredients.reductionState.stateConfig.focusGroups.definition
                 # calculate pixel grouping parameters
                 try:
-                    self.calibrationService.calculatePixelGroupingParameters(runs, """stateInfo..... -> groupingFile""")
+                    pixelGroupingParameters = self.calibrationService.calculatePixelGroupingParameters(runs, groupingFile)
+                    status = "Ready To Calibrate!" # TODO: Needs to be incorporated within UI
+                    return pixelGroupingParameters, status
                 except:
-                    raise Exception("Pixel grouping parameters calculation failed")
+                    raise Exception("Unable to calculate pixel grouping parameters")
