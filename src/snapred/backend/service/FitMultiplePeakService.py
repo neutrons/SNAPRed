@@ -9,15 +9,14 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class FitMultiplePeaksService(Service):
-    _name = "fitMultiplePeaks"
-
     def __init__(self):
         super().__init__()
         self.registerPath("fitMultiplePeaks", self.fit_multiple_peaks)
         return
 
-    def name(self):
-        return self._name
+    @staticmethod
+    def name():
+        return "fitMultiplePeaks"
 
     @FromString
     def fit_multiple_peaks(self, fitMultiplePeaksIngredients: FitMultiplePeaksIngredients) -> Dict[Any, Any]:
