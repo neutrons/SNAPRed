@@ -67,3 +67,8 @@ class InitializeCalibrationService(Service):
                 runId = self.request.runId = run.runNumber
                 name = self.request.humanReadableName = run.maskFileName  # TODO: Is this correct?
                 self.calibrationService.initializeState(runId, name)
+
+                try:
+                    self.calibrationService.calculatePixelGroupingParameters(run, """groupingfile""")
+                except:
+                    raise Exception("Pixel grouping parameters calculation failed")
