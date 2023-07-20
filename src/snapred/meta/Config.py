@@ -2,6 +2,7 @@ import importlib.resources as resources
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import Any, Dict
 
 import yaml
@@ -73,10 +74,11 @@ Resource = _Resource()
 @Singleton
 class _Config:
     _config: Dict[str, Any] = {}
+    _logger = logging.getLogger("snapred.meta.Config.Config")
 
     def __init__(self):
         # use refresh to do initial load, clearing shouldn't matter
-        self.refresh("application", True)
+        self.refresh("application.yml", True)
         del self._config["environment"]
 
         # see if user used environment injection to modify what is needed
@@ -86,16 +88,51 @@ class _Config:
         if env is not None:
             self.refresh(env)
 
+    def _fix_directory_properties(self):
+        """Some developers set instrument.home to use ~/ and this fixes that"""
+
+        def expandhome(direc: str) -> str:
+            if "~" in direc:
+                return str(Path(direc).expanduser())
+            else:
+                return direc
+
+        if "instrument" in self._config and "home" in self._config["instrument"]:
+            self._config["instrument"]["home"] = expandhome(self._config["instrument"]["home"])
+        if "samples" in self._config and "home" in self._config["samples"]:
+            self._config["samples"]["home"] = expandhome(self._config["samples"]["home"])
+
     def refresh(self, env_name: str, clearPrevious: bool = False) -> None:
         if clearPrevious:
             self._config.clear()
 
-        with Resource.open(f"{env_name}.yml", "r") as file:
-            envConfig = yaml.safe_load(file)
+        if env_name.endswith(".yml"):
+            # name to be put into config
+            new_env_name = env_name
+
+            # this is a filename that should be loaded
+            filepath = Path(env_name)
+            if filepath.exists():
+                self._logger.debug(f"Loading config from {filepath.absolute()}")
+                with open(filepath, "r") as file:
+                    envConfig = yaml.safe_load(file)
+            else:
+                # load from the resource
+                with Resource.open(env_name, "r") as file:
+                    envConfig = yaml.safe_load(file)
+                new_env_name = env_name.replace(".yml", "")
+            # update the configuration with the  new environment
             self._config = deep_update(self._config, envConfig)
 
-        # add the name to the config object
-        self._config["environment"] = env_name
+            # add the name to the config object if it wasn't specified
+            if "environment" not in envConfig:
+                self._config["environment"] = new_env_name
+
+            # do fixups on items that are directories
+            self._fix_directory_properties()
+        else:
+            # recurse this function with a fuller name
+            self.refresh(f"{env_name}.yml", clearPrevious)
 
     # period delimited key lookup
     def __getitem__(self, key):
