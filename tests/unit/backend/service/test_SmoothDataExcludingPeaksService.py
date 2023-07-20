@@ -14,6 +14,5 @@ with mock.patch.dict(
         smoothdataService = SmoothDataExcludingPeaksService()
         SmoothDataExcludingPeaksRecipe.executeRecipe = mock.Mock()
         smoothdataIngredients = mock.Mock()
-        ingredients = smoothdataIngredients()
-        smoothdataService.smooth_data_excluding_peaks(ingredients)
+        smoothdataService.smooth_data_excluding_peaks(smoothdataIngredients)
         SmoothDataExcludingPeaksRecipe.executeRecipe.assert_called()

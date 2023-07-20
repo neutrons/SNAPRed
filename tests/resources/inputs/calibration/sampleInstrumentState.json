@@ -1,0 +1,61 @@
+{
+  "instrumentConfig": {
+    "version": "1.4",
+    "facility": "SNS",
+    "name": "SNAP",
+    "nexusFileExtension": ".nxs.h5",
+    "nexusFilePrefix": "SNAP_",
+    "calibrationFileExtension": "json",
+    "calibrationFilePrefix": "SNAPcalibLog",
+    "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+    "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+    "sharedDirectory": "shared/",
+    "nexusDirectory": "nexus/",
+    "reducedDataDirectory": "shared/manualReduced/",
+    "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+    "bandwidth": 3,
+    "maxBandwidth": 3,
+    "L1": 15,
+    "L2": 0.5,
+    "delTOverT": 0.002,
+    "delLOverL": 0.00006453,
+    "delThNoGuide": 0.0032,
+    "delThWithGuide": 0.0032
+  },
+  "detectorState": {
+    "arc": [
+      1,
+      2
+    ],
+    "wav": 1.1,
+    "freq": 1.2,
+    "guideStat": 1,
+    "lin": [
+      1,
+      2
+    ]
+  },
+  "gsasParameters": {
+    "alpha": 1.1,
+    "beta": [
+      1,
+      2
+    ]
+  },
+  "particleBounds": {
+    "wavelength": {
+      "minimum": -0.3999999999999999,
+      "maximum": 2.6
+    },
+    "tof": {
+      "minimum": -1567.2000202219353,
+      "maximum": 10186.800131442584
+    }
+  },
+  "pixelGroupingInstrumentParameters": null,
+  "defaultGroupingSliceValue": 5,
+  "fwhmMultiplierLimit": {
+    "minimum": -2,
+    "maximum": 2
+  }
+}

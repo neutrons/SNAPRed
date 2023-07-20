@@ -2,12 +2,27 @@
 
 # -- Project information
 
+import versioningit
+
+# add in relative path for readthedocs
+try:
+    import snapred  # noqa: F401
+except ImportError:
+    import os
+    import sys
+
+    sys.path.insert(0, os.path.abspath("../../src"))
+
 project = "SNAPRed"
 project_copyright = "2021, ORNL"
 author = "ORNL"
 
-release = "0.1"
-version = "0.1.0"
+# The short X.Y version
+# NOTE: need to specify the location of the pyproject.toml file instead of the
+#       location of the source tree
+version = versioningit.get_version("../../")
+# The full version, including alpha/beta/rc tags
+release = ".".join(version.split(".")[:-1])
 
 # -- General configuration
 

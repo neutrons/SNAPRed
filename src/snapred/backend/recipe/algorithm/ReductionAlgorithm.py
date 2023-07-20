@@ -1,10 +1,14 @@
 import json
 
-from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
+from mantid.api import *
+from mantid.api import AlgorithmFactory, PythonAlgorithm
+from mantid.kernel import *
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+
+# from snapred.backend.recipe.algorithm.CustomGroupWorkspace import name as CustomGroupWorkspace
 
 name = "ReductionAlgorithm"
 
@@ -35,9 +39,16 @@ class ReductionAlgorithm(PythonAlgorithm):
         diffCalPath = reductionIngredients.reductionState.stateConfig.diffractionCalibrant.diffCalPath
 
         raw_data = self.mantidSnapper.LoadEventNexus(
-            "Load Event Nexus... ", Filename=rawDataPath, OutputWorkspace="raw_data"
+            "Loading Event for Nexus for {}...".format(rawDataPath),
+            Filename=rawDataPath,
+            OutputWorkspace="raw_data",
         )
-        vanadium = self.mantidSnapper.LoadNexus("Load Nexus... ", Filename=vanadiumFilePath, OutputWorkspace="vanadium")
+
+        vanadium = self.mantidSnapper.LoadNexus(
+            "Loading Nexus for {}...".format(vanadiumFilePath),
+            Filename=vanadiumFilePath,
+            OutputWorkspace="vanadium",
+        )
 
         # 4 Not Lite? SumNeighbours  -- just apply to data
         # self.sumNeighbours(InputWorkspace=raw_data, SumX=SuperPixEdge, SumY=SuperPixEdge, OutputWorkspace=raw_data)
@@ -46,37 +57,47 @@ class ReductionAlgorithm(PythonAlgorithm):
         #                           -- done to both data and vanadium
         # self.applyCotainerMask()
         # 8 CreateGroupWorkspace      TODO: Assess performance, use alternative Andrei came up with that is faster
-        groupingworkspace = self.mantidSnapper.CreateGroupWorkspace(
-            "Create Group Workspace...",
-            reductionIngredients.reductionState.stateConfig,
-            reductionIngredients.reductionState.instrumentConfig.name,
+        groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
+            "Creating Group Workspace...",
+            StateConfig=reductionIngredients.reductionState.stateConfig.json(),
+            InstrumentName=reductionIngredients.reductionState.instrumentConfig.name,
+            OutputWorkSpace="CommonRed",
         )
 
         # 3 ApplyDiffCal  -- just apply to data
-        diffCalPrefix = self.mantidSnapper.LoadDiffCal(
-            "Load Diff Cal...", Filename=diffCalPath, WorkspaceName="diffcal"
+        diffCalPrefix = "diffcal"
+        self.mantidSnapper.LoadDiffcal(
+            "Loading Diffcal for {} ...".format(diffCalPath),
+            InstrumentFilename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+            MakeGroupingWorkspace=False,
+            MakeMaskWorkspace=True,
+            Filename=diffCalPrefix,
+            WorkspaceName=diffCalPrefix,
         )
 
         # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours
         #              -- done to both data, can be applied to vanadium per state
         self.mantidSnapper.MaskDetectors(
-            "Apply Calibration Pixle Mask...", Workspace=raw_data, MaskedWorkspace=diffCalPrefix + "_mask"
+            "Applying Pixel Mask...",
+            Workspace=raw_data,
+            MaskedWorkspace=diffCalPrefix + "_mask",
         )
         self.mantidSnapper.MaskDetectors(
-            "Apply Calibration Pixle Mask...", Workspace=vanadium, MaskedWorkspace=diffCalPrefix + "_mask"
+            "Applying Pixel Mask...",
+            Workspace=vanadium,
+            MaskedWorkspace=diffCalPrefix + "_mask",
         )
-
         self.mantidSnapper.ApplyDiffCal(
-            "Apply Diff Cal...", InstrumentWorkspace=raw_data, CalibrationWorkspace=diffCalPrefix + "_cal"
+            "Applying Diffcal...", InstrumentWorkspace=raw_data, CalibrationWorkspace=diffCalPrefix + "_cal"
         )
 
-        self.mantidSnapper.DeleteWorkspace("Freeing workspace...", Workspace=diffCalPrefix + "_mask")
-        self.mantidSnapper.DeleteWorkspace("Freeing workspace...", Workspace=diffCalPrefix + "_cal")
-        self.mantidSnapper.DeleteWorkspace("Freeing workspace...", Workspace="idf")
+        self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Mask", Workspace=diffCalPrefix + "_mask")
+        self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Calibration", Workspace=diffCalPrefix + "_cal")
+        self.mantidSnapper.DeleteWorkspace("Deleting IDF", Workspace="idf")
 
         # 9 Does it have a container? Apply Container Attenuation Correction
         data = self.mantidSnapper.ConvertUnits(
-            "Converting Units...",
+            "Converting to Units of dSpacing...",
             InputWorkspace=raw_data,
             EMode="Elastic",
             Target="dSpacing",
@@ -84,7 +105,7 @@ class ReductionAlgorithm(PythonAlgorithm):
             ConvertFromPointData=True,
         )
         vanadium = self.mantidSnapper.ConvertUnits(
-            "Converting Units...",
+            "Converting to Units of dSpacing...",
             InputWorkspace=vanadium,
             EMode="Elastic",
             Target="dSpacing",
@@ -103,24 +124,24 @@ class ReductionAlgorithm(PythonAlgorithm):
         #                                  OutputWorkspace="rebinned_vanadium_before_focus")
         # vanadium = "rebinned_vanadium_before_focus"
         # 11 For each Group (no for each loop, the algos apply things based on groups of group workspace)
-        data = self.mantidSnapper.DiffractionFocusing(
-            "Diffraction Focussing...",
+        data = self.mantidSnapper.DiffractionFocussing(
+            "Applying Diffraction Focussing...",
             InputWorkspace=data,
             GroupingWorkspace=groupingworkspace,
             OutputWorkspace="focused_data",
         )
-        vanadium = self.mantidSnapper.DiffractionFocusing(
-            "Diffraction Focussing...",
+        vanadium = self.mantidSnapper.DiffractionFocussing(
+            "Applying Diffraction Focussing...",
             InputWorkspace=vanadium,
             GroupingWorkspace=groupingworkspace,
             OutputWorkspace="diffraction_focused_vanadium",
         )
 
         # 2 NormalizeByCurrent -- just apply to data
-        self.mantidSnapper.NormaliseByCurrent("Normalize by current...", InputWorkspace=data, OutputWorkspace=data)
+        self.mantidSnapper.NormaliseByCurrent("Normalizing Current ...", InputWorkspace=data, OutputWorkspace=data)
 
         # self.deleteWorkspace(Workspace=rebinned_data_before_focus)
-        self.mantidSnapper.DeleteWorkspace("Freeing workspace...", Workspace="CommonRed")
+        self.mantidSnapper.DeleteWorkspace("Deleting Rebinned Data Before Focus...", Workspace="CommonRed")
 
         # compress data
         # data = self.compressEvents(InputWorkspace=data, OutputWorkspace='event_compressed_data')
@@ -140,21 +161,21 @@ class ReductionAlgorithm(PythonAlgorithm):
             OutputWorkspace="peaks_stripped_vanadium",
         )
         vanadium = self.mantidSnapper.SmoothData(
-            "Smoothing Data ...",
+            "Smoothing Data...",
             InputWorkspace=vanadium,
             NPoints=reductionIngredients.reductionState.stateConfig.normalizationCalibrant.smoothPoints,
             OutputWorkspace="smoothed_data_vanadium",
         )
 
         data = self.mantidSnapper.RebinToWorkspace(
-            "Rebinning to workspace...",
+            "Rebinning to Workspace...",
             WorkspaceToRebin=data,
             WorkspaceToMatch=vanadium,
             OutputWorkspace="rebinned_data",
             PreserveEvents=False,
         )
         data = self.mantidSnapper.Divide(
-            LHSWorkspace=data, RHSWorkspace=vanadium, OutputWorkspace="data_minus_vanadium"
+            "Rebinning ragged bins...", LHSWorkspace=data, RHSWorkspace=vanadium, OutputWorkspace="data_minus_vanadium"
         )
 
         # TODO: Refactor so excute only needs to be called once
@@ -164,13 +185,16 @@ class ReductionAlgorithm(PythonAlgorithm):
         for workspaceIndex in range(len(focusGroups)):
             data = self.mantidSnapper.RebinRagged(
                 "Rebinning ragged bins...",
-                InputWorkspace=self.mantidSnapper.mtd[groupedData].getItem(workspaceIndex),
+                InputWorkspace=mtd[groupedData].getItem(workspaceIndex),
                 XMin=focusGroups[workspaceIndex].dMin,
                 XMax=focusGroups[workspaceIndex].dMax,
                 Delta=focusGroups[workspaceIndex].dBin,
                 OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[workspaceIndex].name),
             )
-        self.mantidSnapper.deleteWorkspace(Workspace="data_minus_vanadium")
+        self.DeleteWorkspace(
+            "Freeing workspace...",
+            Workspace="data_minus_vanadium",
+        )
         # self.renameWorkspace(InputWorkspace=data, OutputWorkspace="SomethingSensible")
 
         self.mantidSnapper.executeQueue()

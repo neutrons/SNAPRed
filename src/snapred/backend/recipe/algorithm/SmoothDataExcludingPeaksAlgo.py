@@ -46,13 +46,12 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
         # load workspace
         input_ws = self.getProperty("InputWorkspace").value
-        self.mantidSnapper.mtd[input_ws]
 
         # load instrument state
-        instrumentState = smoothdataIngredients.InstrumentState
+        instrumentState = smoothdataIngredients.instrumentState
 
         # load crystal info
-        crystalInfo = smoothdataIngredients.CrystalInfo
+        crystalInfo = smoothdataIngredients.crystalInfo
 
         ws = self.mantidSnapper.mtd[input_ws]
 
@@ -64,6 +63,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         weightCalAlgo.setProperty("InstrumentState", instrumentState.json())
         weightCalAlgo.setProperty("CrystalInfo", crystalInfo.json())
         weightCalAlgo.setProperty("WeightWorkspace", weight_ws_name)
+        weightCalAlgo.setChild(True)
         weightCalAlgo.execute()
         weights_ws = mtd[weight_ws_name]
 
