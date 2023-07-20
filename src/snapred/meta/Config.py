@@ -12,10 +12,10 @@ from snapred.meta.decorators.Singleton import Singleton
 
 def _find_root_dir():
     ROOT_MODULE = None
-    if os.environ.get("env") != "test":
-        ROOT_MODULE = sys.modules["__main__"].__file__
-    else:
+    if os.environ.get("env") == "test":
         ROOT_MODULE = sys.modules["conftest"].__file__
+    else:
+        ROOT_MODULE = sys.modules["snapred"].__file__
 
     if ROOT_MODULE is None:
         raise Exception("Unable to determine root directory")
