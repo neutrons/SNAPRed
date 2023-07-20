@@ -138,7 +138,7 @@ class MantidSnapper:
                     if prop in ["GroupingWorkspace", "MaskWorkspace", "CalWorkspace"]:
                         continue
                 returnVal = getattr(algorithm.getProperty(prop), "value", None)
-                if not returnVal:
+                if returnVal is None:
                     returnVal = getattr(algorithm.getProperty(prop), "valueAsStr", None)
                 val.update(returnVal)
         except RuntimeError as e:
