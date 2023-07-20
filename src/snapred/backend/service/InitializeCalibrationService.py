@@ -66,7 +66,7 @@ class InitializeCalibrationService(Service):
                 # if state exists, initialize it
                 runId = self.request.runId = run.runNumber
                 name = self.request.humanReadableName = run.maskFileName  # TODO: Is this correct?
-                stateInfo = self.calibrationService.initializeState(runId, name)
+                self.calibrationService.initializeState(runId, name)
 
                 # calculate pixel grouping parameters
                 try:
