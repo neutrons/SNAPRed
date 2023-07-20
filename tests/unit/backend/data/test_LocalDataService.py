@@ -4,6 +4,7 @@ import shutil
 import unittest.mock as mock
 from typing import List
 
+import pytest
 from pydantic import parse_raw_as
 from snapred.meta.Config import Resource
 
@@ -381,3 +382,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         actual = localDataService.initializeState("123", "test")
         actual.creationDate = testCalibrationData.creationDate
         assert actual == testCalibrationData
+
+    def test_badPaths():
+        """This verifies that a broken configuration (from production) can't find all of the files"""
+        with pytest.raises(FileNotFoundError):
+            LocalDataService()
