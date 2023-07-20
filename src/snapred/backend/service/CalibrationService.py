@@ -47,6 +47,7 @@ class CalibrationService(Service):
         super().__init__()
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
+        self.registerPath("load", self.load)
         self.registerPath("initializeState", self.initializeState)
         self.registerPath("calculatePixelGroupingParameters", self.calculatePixelGroupingParameters)
         self.registerPath("assessment", self.assessQuality)
@@ -73,6 +74,11 @@ class CalibrationService(Service):
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         entry.version = calibrationRecord.version
         self.saveCalibrationToIndex(entry)
+
+    @FromString
+    def load(self, run: RunConfig):
+        runId = run.runNumber
+        return self.dataFactoryService.getCalibrationRecord(runId)
 
     @FromString
     def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
@@ -189,12 +195,10 @@ class CalibrationService(Service):
             )
             metrics.append(FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric))
         self.dataExportService.deleteWorkspace(strippedFocussedData)
-        # TODO: loads previous focussed data for comparison if it exists
-        # previousFittedData = self.dataFactoryService.getFittedCalibrationData(run.runNumber)
-        # previousMetrics = self.dataFactoryService.getCalibrationMetrics(run.runNumber)
-        # if previousFittedData is not None:
-        #     load them or something for comparison
-        # else save the fitted data and metrics to disk
+
+        # TODO: Seperate Request to load previous calibration record stuffs
+        # previousCalibrationRecord = self.dataFactoryService.getCalibrationRecord(run.runNumber)
+        # if previousCalibrationRecord:
 
         # Saving should perhaps be a follow up backend request
         outputWorkspaces = []
@@ -207,7 +211,5 @@ class CalibrationService(Service):
             focusGroupCalibrationMetrics=metrics,
             workspaceNames=outputWorkspaces,
         )
-        entry = CalibrationIndexEntry(runNumber=run.runNumber, comments="", author="")
-        self.save(CalibrationExportRequest(calibrationRecord=record, calibrationIndexEntry=entry))
 
         return record

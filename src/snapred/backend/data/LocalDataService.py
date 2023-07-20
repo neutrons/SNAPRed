@@ -447,7 +447,7 @@ class LocalDataService:
         return record
 
     def writeWorkspace(self, path: str, workspaceName: str):
-        saveAlgo = AlgorithmManager.create("Save")
+        saveAlgo = AlgorithmManager.create("SaveNexus")
         saveAlgo.setProperty("InputWorkspace", workspaceName)
         saveAlgo.setProperty("Filename", path + workspaceName)
         saveAlgo.execute()
@@ -508,7 +508,6 @@ class LocalDataService:
         # get stateId and check to see if such a folder exists, if not create an initialize it
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationStatePath(stateId)
-        version = 1
         previousVersion = self._getLatestCalibrationVersion(stateId)
         if not version:
             version = previousVersion + 1

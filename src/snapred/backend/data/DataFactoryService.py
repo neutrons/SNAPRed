@@ -57,3 +57,6 @@ class DataFactoryService:
 
     def getWorkspaceForName(self, name):
         return self.lookupService.getWorkspaceForName(name)
+
+    def getCalibrationRecord(self, runId):
+        return self.lookupService.readCalibrationRecord(runId)
