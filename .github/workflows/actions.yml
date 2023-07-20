@@ -45,6 +45,8 @@ jobs:
       uses: codecov/codecov-action@v3
     - name: Gui tests
       run: |
+        mkdir -p SNAP/shared/Calibration/
+        touch SNAP/shared/Calibration/SNAPInstPrm.json
         python -m pip install -e . # install the application in editable mode
         env=tests/resources/headcheck.yml xvfb-run --server-args="-screen 0 1280x1024x16" --auto-servernum snapred --headcheck
 
