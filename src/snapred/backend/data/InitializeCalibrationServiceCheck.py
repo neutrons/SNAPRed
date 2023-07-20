@@ -14,7 +14,6 @@ from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRe
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
@@ -22,13 +21,12 @@ from snapred.meta.decorators.Singleton import Singleton
 
 
 @Singleton
-class InitializeCalibrationServiceCheck(Service):
-    _name = "initializeCalibrationServiceCheck"
+class InitializeCalibrationCheck(Service):
+    _name = "initializeCalibrationCheck"
     dataFactory = DataFactoryService()
     dataExport = DataExportService()
     calibrationService = CalibrationService()
     request = InitializeStateRequest()
-    pixelGroupingParametersCalculationRecipe = PixelGroupingParametersCalculationRecipe()
 
     # register the service in ServiceFactory
     def __init__(self):
