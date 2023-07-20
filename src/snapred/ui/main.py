@@ -1,7 +1,7 @@
 import sys
 
 from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -93,7 +93,7 @@ def qapp():
     return _app
 
 
-def start(option=None):  # noqa: ARG001
+def start(options=None):
     logger = snapredLogger.getLogger(__name__)
 
     app = qapp()
@@ -105,7 +105,11 @@ def start(option=None):  # noqa: ARG001
         ex = SNAPRedGUI()
         ex.show()
 
-        return app.exec_()
+        if options.headcheck:
+            SECONDS = 3  # arbitrarily chosen
+            logger.warn(f"Closing in {SECONDS} seconds")
+            QTimer.singleShot(SECONDS * 1000, lambda: app.exit(0))
+        return app.exec()
 
     except Exception:
         logger.exception("Uncaught Error bubbled up to main!")

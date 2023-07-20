@@ -41,6 +41,11 @@ def main(args=None):
     parser.add_argument(
         "--reportusage", action="store_true", help="post telemetry data to mantid usage reporting service"
     )
+    parser.add_argument(
+        "--headcheck",
+        action="store_true",
+        help="start the gui then shut it down after 5 seconds. This is used for testing",
+    )
     options = parser.parse_args(args)
 
     # fix up some of the options for mantid
