@@ -59,8 +59,8 @@ class InitializeCalibrationCheck(Service):
 
                 # check if state exists and create in case it does not exist
                 for state in states:
-                   # this boolean will be used to prompt user for new state name input incase it does not exist
-                    checkStateExists = self.checkStateExists(state)
+                    # this boolean will be used to prompt user for new state name input incase it does not exist
+                    self.checkStateExists(state)
 
                 # initialize state
                 runId = self.request.runId = run.runNumber
@@ -77,8 +77,7 @@ class InitializeCalibrationCheck(Service):
                     return pixelGroupingParameters, status
                 except:
                     raise Exception("Unable to calculate pixel grouping parameters")
-                
-                
+
     def checkStateExists(self, state: StateConfig) -> bool:
         if state.diffractionCalibrant.name == "":
             return False

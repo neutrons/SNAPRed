@@ -11,8 +11,8 @@ from snapred.backend.service.ConfigLookupService import ConfigLookupService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.FitMultiplePeakService import FitMultiplePeaksService
 from snapred.backend.service.ReductionService import ReductionService
-from snapred.backend.service.SmoothDataExcludingPeaksService import SmoothDataExcludingPeaksService
 from snapred.backend.service.ServiceDirectory import ServiceDirectory
+from snapred.backend.service.SmoothDataExcludingPeaksService import SmoothDataExcludingPeaksService
 from snapred.backend.service.StateIdLookupService import StateIdLookupService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
