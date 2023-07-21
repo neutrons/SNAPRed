@@ -84,18 +84,18 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
         #     OutputWorkspace="focussed_vanadium",
         # )
 
-        smoothedVanadium = self.mantidSnapper.SmoothDataExcludingPeaks(
-            "Fit and Smooth Peaks...",
-            InputWorkspace=vanadium,
-            SmoothDataExcludingPeaksIngredients=smoothIngredients,
-            OutputWorkspace="smooth_vanadium",
-        )
+        # smoothedVanadium = self.mantidSnapper.SmoothDataExcludingPeaks(
+        #     "Fit and Smooth Peaks...",
+        #     InputWorkspace=vanadium,
+        #     SmoothDataExcludingPeaksIngredients=smoothIngredients.json(),
+        #     OutputWorkspace="smooth_vanadium",
+        # )
 
         self.mantidSnapper.executeQueue()
-        ws_group = WorkspaceGroup()
-        mtd.add('vanadiumFocussedWSGroup', ws_group)
-        ws_group.add(vanadium)
-        ws_group.add(smoothedVanadium)
+        # ws_group = WorkspaceGroup()
+        # mtd.add('vanadiumFocussedWSGroup', ws_group)
+        # ws_group.add(vanadium)
+        # ws_group.add(smoothedVanadium)
         self.log().notice("Execution of VanadiumFocussedReduction COMPLETE!")
         self.setProperty("OutputWorkspaceGroup", ws_group.name())
         return ws_group
