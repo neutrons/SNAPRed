@@ -12,7 +12,7 @@ def test_find_root_dir():
 
 def test_instrument_home():
     # test verifies that the end of the path is correct
-    correctPathEnding = "/tests/resources/SNAP/"
+    correctPathEnding = "/tests/resources/"
     assert Config["instrument.home"].endswith(correctPathEnding)
 
 
