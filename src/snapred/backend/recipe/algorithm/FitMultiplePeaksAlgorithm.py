@@ -29,17 +29,12 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         crystalInfo = fitPeakIngredients.CrystalInfo
         peakType = fitPeakIngredients.PeakType
 
-        ws = self.mantidSnapper.mtd[wsName]
-        # TODO: Fix this to use MantidSnapper when possible
-        # Currently MantidSnapper is unable to return the List
-        numSpec = ws.getNumberHistograms()
-        purgeAlgo = PurgeOverlappingPeaksAlgorithm()
-        purgeAlgo.initialize()
-        purgeAlgo.setProperty("InstrumentState", instrumentState.json())
-        purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
-        purgeAlgo.setChild(True)
-        purgeAlgo.execute()
-        reducedList_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
+        result = self.mantidSnapper.PurgeOverlappingPeaksAlgorithm(
+            "Purging overlapping peaks...", InstrumentState=instrumentState.json(), CrystalInfo=crystalInfo.json()
+        )
+        self.mantidSnapper.executeQueue()
+        reducedList_json = json.loads(result.get())
+
         reducedList = [
             [DetectorPeak.parse_raw(peak_json) for peak_json in peak_group_json] for peak_group_json in reducedList_json
         ]
@@ -47,7 +42,8 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         ws_group = WorkspaceGroup()
         mtd.add("fitPeaksWSGroup", ws_group)
 
-        for index in range(numSpec):
+        ws = self.mantidSnapper.mtd[wsName]
+        for index in range(ws.getNumberHistograms()):
             fittedPeakPos = f"{wsName}_fitted_peakpositions_{index}"
             fittedParams = f"{wsName}_fitted_params_{index}"
             fittedWS = f"{wsName}_fitted_{index}"
