@@ -159,27 +159,6 @@
             0.65
           ],
           "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_All.lite.xml"
-        },
-        {
-          "name": "Mid",
-          "FWHM": [
-            5,
-            5
-          ],
-          "nHst": 2,
-          "dBin": [
-            -0.001,
-            -0.001
-          ],
-          "dMax": [
-            2.75,
-            3.73
-          ],
-          "dMin": [
-            0.65,
-            0.65
-          ],
-          "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Mid.lite.xml"
         }
       ],
       "isLiteMode": true,
