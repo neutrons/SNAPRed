@@ -12,6 +12,7 @@ from typing import Any, Dict, List
 
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.service.CalibrationService import CalibrationService
@@ -31,7 +32,7 @@ class InitializeCalibrationCheck(Service):
     # register the service in ServiceFactory
     def __init__(self):
         super().__init__()
-        self.registerPath("", self.initializeCalibrationCheck)
+        self.registerPath("initializeCalibrationCheck", self.initializeCalibrationCheck)
         return
 
     def name(self):
@@ -53,17 +54,15 @@ class InitializeCalibrationCheck(Service):
                 ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
 
                 # identify the instrument state for measurement
-                state = self.dataExport.getStateConfig(run.runNumber)
+                state = self.dataFactory.getStateConfig(run.runNumber)
                 states.append(state)
 
                 # check if state exists and create in case it does not exist
-                if state not in states:
-                    # TODO: prompt for new state input which might need to be extrapolated to UI popup or text box within the view
-                    userInputName = input("Please enter the name of the new state: ")  # place holder
-                    self.request.humanReadableName = userInputName
-                    self.request.runId = run.runNumber
+                for state in states:
+                   # this boolean will be used to prompt user for new state name input incase it does not exist
+                    checkStateExists = self.checkStateExists(state)
 
-                # if state exists, initialize it
+                # initialize state
                 runId = self.request.runId = run.runNumber
                 name = self.request.humanReadableName = run.maskFileName  # TODO: Is this correct?
                 self.calibrationService.initializeState(runId, name)
@@ -78,3 +77,10 @@ class InitializeCalibrationCheck(Service):
                     return pixelGroupingParameters, status
                 except:
                     raise Exception("Unable to calculate pixel grouping parameters")
+                
+                
+    def checkStateExists(self, state: StateConfig) -> bool:
+        if state.diffractionCalibrant.name == "":
+            return False
+        else:
+            return True
