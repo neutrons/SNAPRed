@@ -3,6 +3,7 @@ from typing import Any, Dict
 from mantid.api import AlgorithmManager
 
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm import (
     name as VanadiumFocussedReductionAlgorithm,
@@ -19,12 +20,15 @@ class VanadiumFocussedReductionRecipe:
     def __init__(self):
         pass
 
-    def executeRecipe(self, reductionIngredients: ReductionIngredients):
+    def executeRecipe(
+        self, reductionIngredients: ReductionIngredients, smoothIngredients: SmoothDataExcludingPeaksIngredients
+    ):
         logger.info("Executing recipe for runId: %s" % reductionIngredients.runConfig.runNumber)
         data: Dict[str, Any] = {}
 
         algo = AlgorithmManager.create(self.reductionAlgorithmName)
         algo.setProperty("ReductionIngredients", reductionIngredients.json())
+        algo.setProperty("SmoothDataIngredients", smoothIngredients.json())
         try:
             data["result"] = algo.execute()
         except RuntimeError as e:

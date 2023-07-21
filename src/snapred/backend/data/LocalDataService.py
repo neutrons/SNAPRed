@@ -105,9 +105,7 @@ class LocalDataService:
             focusGroups=self._readFocusGroups(runId),
             isLiteMode=True,  # TODO: Support non lite mode
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=self.instrumentConfig.calibrationDirectory
-            + "Powder/"
-            + reductionParameters["stateId"]
+            vanadiumFilePath=self.instrumentConfig.calibrationDirectory / "Powder" / reductionParameters["stateId"]
             + "/"
             + reductionParameters["rawVCorrFileName"],
             calibrationMaskFileName=reductionParameters.get("CalibrationMaskFilename"),
