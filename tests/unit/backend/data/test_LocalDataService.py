@@ -36,7 +36,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
     def test_readInstrumentConfig():
         localDataService = LocalDataService()
         localDataService._readInstrumentParameters = _readInstrumentParameters
-        actual = localDataService.readInstrumentConfig(verifyPaths=False)
+        actual = localDataService.readInstrumentConfig()
         assert actual is not None
         assert actual.version == "1.4"
         assert actual.name == "SNAP"
@@ -274,16 +274,23 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert actualFile == "Powder/1234/v_2/CalibrationRecord.json"
 
     def test_writeCalibrationReductionResult():
-        from snapred.backend.data.LocalDataService import LocalDataService as LocalDataService2
+        import mantid.api
 
-        localDataService = LocalDataService2()
-        localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("123", "456")
-        localDataService._constructCalibrationPath = mock.Mock()
-        localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
+        mantid.api = mock.Mock()
+        mantid.api.AlgorithmManager = mock.Mock()
+        mantid.api.AlgorithmManager.create = mock.Mock()
+        with mock.patch.dict("sys.modules", {"mantid.api": mantid.api}):
+            from snapred.backend.data.LocalDataService import LocalDataService as LocalDataService2
 
-        filename = localDataService.writeCalibrationReductionResult("123", "ws", dryrun=True)
-        assert filename.endswith("tests/resources/outputs/123/ws_v1.nxs")
+            localDataService = LocalDataService2()
+            localDataService._generateStateId = mock.Mock()
+            localDataService._generateStateId.return_value = ("123", "456")
+            localDataService._constructCalibrationPath = mock.Mock()
+            localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
+
+            localDataService.writeCalibrationReductionResult("123", "ws")
+
+            assert mantid.api.AlgorithmManager.create.called
 
     def test__isApplicableEntry_equals():
         localDataService = LocalDataService()
