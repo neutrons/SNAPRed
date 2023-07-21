@@ -4,7 +4,7 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "PurgeOverlappingPeaksAlgorithm"
 
@@ -15,17 +15,19 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
         self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputPeakMap", defaultValue="", direction=Direction.Output)
+
         self.setRethrows(True)
+        self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
         # predict detector peaks for all focus groups
-        peakPredictorAlgo = DetectorPeakPredictor()
-        peakPredictorAlgo.initialize()
-        peakPredictorAlgo.setProperty("InstrumentState", self.getProperty("InstrumentState").value)
-        peakPredictorAlgo.setProperty("CrystalInfo", self.getProperty("CrystalInfo").value)
-        peakPredictorAlgo.setChild(True)
-        peakPredictorAlgo.execute()
-        predictedPeaks_json = json.loads(peakPredictorAlgo.getProperty("DetectorPeaks").value)
+        result = self.mantidSnapper.DetectorPeakPredictor(
+            "Predicting peaks...",
+            InstrumentState=self.getProperty("InstrumentState").value,
+            CrystalInfo=self.getProperty("CrystalInfo").value,
+        )
+        self.mantidSnapper.executeQueue()
+        predictedPeaks_json = json.loads(result.get())
 
         # build lists of non-overlapping peaks for each focus group. Combine them into the total list.
         outputPeaks = []
