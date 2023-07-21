@@ -57,14 +57,14 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
         # call the diffraction spectrum weight calculator
         weight_ws_name = "weight_ws"
-        weightCalAlgo = DiffractionSpectrumWeightCalculator()
-        weightCalAlgo.initialize()
-        weightCalAlgo.setProperty("InputWorkspace", input_ws)
-        weightCalAlgo.setProperty("InstrumentState", instrumentState.json())
-        weightCalAlgo.setProperty("CrystalInfo", crystalInfo.json())
-        weightCalAlgo.setProperty("WeightWorkspace", weight_ws_name)
-        weightCalAlgo.setChild(True)
-        weightCalAlgo.execute()
+        self.mantidSnapper.DiffractionSpectrumWeightCalculator(
+            "Calculating spectrum weights...",
+            InputWorkspace=input_ws,
+            InstrumentState=instrumentState.json(),
+            CrystalInfo=crystalInfo.json(),
+            WeightWorkspace=weight_ws_name,
+        )
+        self.mantidSnapper.executeQueue()
         weights_ws = mtd[weight_ws_name]
 
         # create workspace group
