@@ -5,6 +5,7 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
+from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "DiffractionSpectrumWeightCalculator"
