@@ -45,11 +45,8 @@ jobs:
       uses: codecov/codecov-action@v3
     - name: Gui tests
       run: |
-        # copy a set of instrument parameters into the test area
-        mkdir -p SNAP/shared/Calibration/
-        cp tests/resources/inputs/SNAPInstPrm.json SNAP/shared/Calibration/SNAPInstPrm.json
         python -m pip install -e . # install the application in editable mode
-        env=tests/resources/test.yml xvfb-run --server-args="-screen 0 1280x1024x16" --auto-servernum snapred --headcheck
+        env=tests/resources/headcheck.yml xvfb-run --server-args="-screen 0 1280x1024x16" --auto-servernum snapred --headcheck
 
   conda-build:
     runs-on: ${{ matrix.os }}
