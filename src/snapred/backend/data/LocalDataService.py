@@ -3,6 +3,8 @@ import glob
 import hashlib
 import json
 import os
+from errno import ENOENT as NOT_FOUND
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import h5py
@@ -35,35 +37,60 @@ from snapred.meta.decorators.Singleton import Singleton
 """
 
 
+def _createFileNotFoundError(msg, filename):
+    return FileNotFoundError(NOT_FOUND, os.strerror(NOT_FOUND) + " " + msg, filename)
+
+
 @Singleton
 class LocalDataService:
     reductionParameterCache: Dict[str, Any] = {}
     iptsCache: Dict[str, Any] = {}
     stateIdCache: Dict[str, str] = {}
-    dataPath = Config["instrument.home"]
-    instrumentConfigPath: str = dataPath + Config["instrument.config"]
     instrumentConfig: InstrumentConfig  # Optional[InstrumentConfig]
+    verifyPaths: bool = True
 
     def __init__(self) -> None:
+        self.verifyPaths = Config["localdataservice.config.verifypaths"]
         self.instrumentConfig = self.readInstrumentConfig()
 
+    def _determineInstrConfigPaths(self) -> None:
+        """This method locates the instrument configuration path and
+        sets the instance variable ``instrumentConfigPath``."""
+        # verify parent directory exists
+        self.dataPath = Path(Config["instrument.home"])
+        if self.verifyPaths and not self.dataPath.exists():
+            raise _createFileNotFoundError("Config['instrument.home']", self.dataPath)
+
+        # look for the config file and verify it exists
+        self.instrumentConfigPath = self.dataPath / Config["instrument.config"]
+
     def readInstrumentConfig(self) -> InstrumentConfig:
+        self._determineInstrConfigPaths()
+
         instrumentParameterMap = self._readInstrumentParameters()
-        instrumentParameterMap["bandwidth"] = instrumentParameterMap.pop("neutronBandwidth")
-        instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
-        instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
-        instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
-        instrumentConfig = InstrumentConfig(**instrumentParameterMap)
+        try:
+            instrumentParameterMap["bandwidth"] = instrumentParameterMap.pop("neutronBandwidth")
+            instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
+            instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
+            instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
+            instrumentConfig = InstrumentConfig(**instrumentParameterMap)
+        except KeyError as e:
+            raise KeyError(f"{e}: while reading instrument configuration '{self.instrumentConfigPath}'") from e
         if self.dataPath:
-            instrumentConfig.calibrationDirectory = self.dataPath + "shared/Calibration/"
+            instrumentConfig.calibrationDirectory = self.dataPath / "shared/Calibration/"
+            if self.verifyPaths and not instrumentConfig.calibrationDirectory.exists():
+                raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
 
         return instrumentConfig
 
     def _readInstrumentParameters(self) -> Dict[str, Any]:
         instrumentParameterMap: Dict[str, Any] = {}
-        with open(self.instrumentConfigPath, "r") as json_file:
-            instrumentParameterMap = json.load(json_file)
-        return instrumentParameterMap
+        try:
+            with open(self.instrumentConfigPath, "r") as json_file:
+                instrumentParameterMap = json.load(json_file)
+            return instrumentParameterMap
+        except FileNotFoundError as e:
+            raise _createFileNotFoundError("Instrument configuration file", self.instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str) -> StateConfig:
         reductionParameters = self._readReductionParameters(runId)

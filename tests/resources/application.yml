@@ -36,6 +36,10 @@ calibration:
         - 2
       peakTailCoefficient: 2.0
 
+localdataservice:
+  config:
+    verifypaths: true
+
 logging:
   level: 10
   SNAP:
