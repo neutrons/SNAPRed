@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.meta.Config import Resource
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.widget.FitPeaksPlot import FitPeaksPlot
+from snapred.ui.widget.VanadiumFocussedReductionPlot import VanadiumFoucussedReductionPlot
 from snapred.ui.widget.WorkflowNode import finalizeWorkflow, startWorkflow
 
 
@@ -20,7 +20,7 @@ class VanadiumFocussedReductionView(BackendRequestView):
             self.layout.addWidget(runNumberField, 0, 0)
 
             def examineOutput():
-                FitPeaksPlot("testWS")
+                VanadiumFoucussedReductionPlot()
                 workflow = startWorkflow(lambda workflow: None, self._labelView("Did it work?"))  # noqa: ARG005
                 workflow = finalizeWorkflow(workflow, self)
                 workflow.widget.show()
