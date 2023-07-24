@@ -157,8 +157,14 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                 "Loading instrument...", Workspace=ws_name, FileName=idf, RewriteSpectraMap=False
             )
         else:  # full instrument
+            # self.mantidSnapper.LoadInstrument(
+            #     "Loading instrument...", Workspace=ws_name, InstrumentName="SNAP", RewriteSpectraMap="False"
+            # )
             self.mantidSnapper.LoadInstrument(
-                "Loading instrument...", Workspace=ws_name, InstrumentName="SNAP", RewriteSpectraMap="False"
+                "Loading instrument...",
+                Workspace=ws_name,
+                FileName="/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition.xml",
+                RewriteSpectraMap=False,
             )
         self.mantidSnapper.executeQueue()
 

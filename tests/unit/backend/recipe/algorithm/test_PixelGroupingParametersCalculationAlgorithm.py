@@ -50,14 +50,19 @@ with mock.patch.dict(
             Calibration, "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/CalibrationParameters.json"
         ).instrumentState.json()
 
+    def getInstrumentDefinitionFilePath(isLite=True):
+        if isLite:
+            return "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
+        else:
+            return "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition.xml"
+
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_column():
-        instrumentDefinitionFile = ""
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.xml"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.json"
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(isLite=False),
             instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
@@ -65,14 +70,13 @@ with mock.patch.dict(
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_column_lite():
-        instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
         referenceParametersFile = (
             "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
         )
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
             instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
@@ -80,12 +84,11 @@ with mock.patch.dict(
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_bank():
-        instrumentDefinitionFile = ""
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Bank.xml"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Bank_parameters_newCalc.json"
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(isLite=False),
             instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
@@ -93,14 +96,13 @@ with mock.patch.dict(
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_bank_lite():
-        instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Bank.lite.nxs"
         referenceParametersFile = (
             "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Bank_parameters_newCalc.lite.json"
         )
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
             instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
@@ -108,12 +110,11 @@ with mock.patch.dict(
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_all():
-        instrumentDefinitionFile = ""
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.xml"
         referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/All_parameters_newCalc.json"
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(isLite=False),
             instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
@@ -121,14 +122,13 @@ with mock.patch.dict(
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_all_lite():
-        instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.nxs"
         referenceParametersFile = (
             "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/All_parameters_newCalc.lite.json"
         )
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
             instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
@@ -136,14 +136,13 @@ with mock.patch.dict(
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_wrong_idf():
-        instrumentDefinitionFile = "junk"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
         referenceParametersFile = (
             "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
         )
         with pytest.raises(RuntimeError) as excinfo:
             run_test(
-                instrumentDefinitionFile=instrumentDefinitionFile,
+                instrumentDefinitionFile="junk",
                 instrumentState=getInstrumentState(),
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,
@@ -152,7 +151,6 @@ with mock.patch.dict(
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_wrong_grouping_file():
-        instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "junk"
         referenceParametersFile = (
             "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
@@ -160,7 +158,7 @@ with mock.patch.dict(
 
         with pytest.raises(RuntimeError) as excinfo:
             run_test(
-                instrumentDefinitionFile=instrumentDefinitionFile,
+                instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
                 instrumentState=getInstrumentState(),
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,
@@ -169,7 +167,6 @@ with mock.patch.dict(
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_wrong_instrument_state():
-        instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
         referenceParametersFile = (
             "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
@@ -177,7 +174,7 @@ with mock.patch.dict(
 
         with pytest.raises(RuntimeError) as excinfo:
             run_test(
-                instrumentDefinitionFile=instrumentDefinitionFile,
+                instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
                 instrumentState="junk",
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,
