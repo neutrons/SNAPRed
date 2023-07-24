@@ -58,6 +58,7 @@
         "minimum": 1.5,
         "maximum": 1.5
         },
+        "peakTailCoefficient": 2.0,
         "pixelGroupingInstrumentParameters": [
             {
                 "twoTheta": 2.1108948177427838,

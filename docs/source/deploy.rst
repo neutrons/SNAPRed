@@ -7,12 +7,15 @@ Deploying a new release
 -----------------------
 Execute the following commands substituting the appropriate values for
 ``<version>``, ``<upstream-branch>``, and ``<branch>``.:
-::
+
+.. code-block:: sh
+
     git checkout <branch>  # the target release branch
     git rebase -v origin/<branch>  # make sure it is up to date
     git merge --ff-only origin/<upstream-branch> # advance the tip of from upstream-branch
     git tag <version>  # create the release candidate
     git push --tags origin <branch>  # publish the tag
+
 
 Version Naming Semenatics
 --------------------------
@@ -38,7 +41,7 @@ Branch Specific Procedures
 --------------------------
 The following sections describe the procedures for each branch.
 
-.. _main:
+.. _next:
 
 Dev Branch
 ```````````

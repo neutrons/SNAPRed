@@ -37,10 +37,11 @@ with mock.patch.dict(
         purgeAlgo = PurgeOverlappingPeaksAlgorithm()
         purgeAlgo.initialize()
         purgeAlgo.setProperty("InstrumentState", instrumentState.json())
-        purgeAlgo.setProperty("NumFocusGroups", "6")
         purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
         purgeAlgo.execute()
-        expected = json.loads(Resource.read("/outputs/purge_peaks/output.json"))
-        actual = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
-        print(actual)
-        assert expected == actual
+
+        actual_pos_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
+        expected_pos_json = json.loads(Resource.read("/outputs/purge_peaks/output.json"))
+
+        print(actual_pos_json)
+        assert expected_pos_json == actual_pos_json
