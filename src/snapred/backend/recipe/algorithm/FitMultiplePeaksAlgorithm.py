@@ -40,7 +40,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             **json.loads(self.getProperty("FitMultiplePeaksIngredients").value)
         )
         wsName = fitPeakIngredients.InputWorkspace
-        self.getProperty("OutputWorkspaceGroup").value
+        outputWorkspaceName = self.getProperty("OutputWorkspaceGroup").value
         instrumentState = fitPeakIngredients.InstrumentState
         crystalInfo = fitPeakIngredients.CrystalInfo
         peakType = fitPeakIngredients.PeakType
@@ -56,7 +56,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         ]
 
         ws_group = WorkspaceGroup()
-        mtd.add("fitPeaksWSGroup", ws_group)
+        mtd.add(outputWorkspaceName, ws_group)
 
         ws = self.mantidSnapper.mtd[wsName]
         for subgroupIndex in range(ws.getNumberHistograms()):

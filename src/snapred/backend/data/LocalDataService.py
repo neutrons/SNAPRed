@@ -105,8 +105,8 @@ class LocalDataService:
             focusGroups=self._readFocusGroups(runId),
             isLiteMode=True,  # TODO: Support non lite mode
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=self.instrumentConfig.calibrationDirectory
-            + "Powder/"
+            vanadiumFilePath=str(self.instrumentConfig.calibrationDirectory)  # TODO: Propogate pathlib through codebase
+            + "/Powder/"
             + reductionParameters["stateId"]
             + "/"
             + reductionParameters["rawVCorrFileName"],
@@ -127,8 +127,8 @@ class LocalDataService:
             filename=reductionParameters["calFileName"],
             runNumber=reductionParameters["CRun"][0],
             name=reductionParameters.get("CalibrantName"),
-            diffCalPath=self.instrumentConfig.calibrationDirectory
-            + "Powder/"
+            diffCalPath=str(self.instrumentConfig.calibrationDirectory)  # TODO: Propogate pathlib through codebase
+            + "/Powder/"
             + reductionParameters["stateId"]
             + "/"
             + reductionParameters["calFileName"],
@@ -170,8 +170,10 @@ class LocalDataService:
                     dBin=reductionParameters["focGroupDBin"][i],
                     dMax=reductionParameters["focGroupDMax"][i],
                     dMin=reductionParameters["focGroupDMin"][i],
-                    definition=self.instrumentConfig.calibrationDirectory
-                    + "Powder/"
+                    definition=str(
+                        self.instrumentConfig.calibrationDirectory
+                    )  # TODO: Propogate pathlib through codebase
+                    + "/Powder/"
                     + self.instrumentConfig.pixelGroupingDirectory
                     + reductionParameters["focGroupDefinition"][i],
                 )
@@ -283,7 +285,8 @@ class LocalDataService:
         return fileList
 
     def _constructCalibrationStatePath(self, stateId):
-        return self.instrumentConfig.calibrationDirectory + "Powder/" + stateId + "/"
+        # TODO: Propogate pathlib through codebase
+        return str(self.instrumentConfig.calibrationDirectory) + "/Powder/" + stateId + "/"
 
     def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
         # lookup IPST number
@@ -523,6 +526,7 @@ class LocalDataService:
         if version:
             latestFile = self._getFileOfVersion(calibrationStatePath, version)
         else:
+            # TODO: This should refer to the calibration index
             latestFile = self._getLatestFile(calibrationStatePath)
 
         calibrationState = None

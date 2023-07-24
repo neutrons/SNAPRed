@@ -79,7 +79,6 @@ class _Config:
     def __init__(self):
         # use refresh to do initial load, clearing shouldn't matter
         self.refresh("application.yml", True)
-        del self._config["environment"]
 
         # see if user used environment injection to modify what is needed
         # this will get from the os environment or from the currently loaded one

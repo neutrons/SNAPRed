@@ -27,17 +27,20 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 name = "SmoothDataExcludingPeaks"
 
 
+# TODO: Rename so it matches filename
 class SmoothDataExcludingPeaks(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
         self.declareProperty("SmoothDataExcludingPeaksIngredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
+        self.declareProperty("OutputWorkspace", defaultValue="SmoothedDataExcludingPeaks", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
         self.log().notice("Removing peaks and smoothing data")
+
+        outputWorkspaceName = self.getProperty("OutputWorkspace").value
 
         # load ingredients
         smoothdataIngredients = SmoothDataExcludingPeaksIngredients(
@@ -65,16 +68,14 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
             WeightWorkspace=weight_ws_name,
         )
         self.mantidSnapper.executeQueue()
-        weights_ws = mtd[weight_ws_name]
-
-        # create workspace group
-        ws_group = WorkspaceGroup()
-        mtd.add("SmoothedDataExcludingPeaks", ws_group)
+        weights_ws = self.mantidSnapper.mtd[weight_ws_name]
 
         # get number of spectrum to iterate over
         numSpec = weights_ws.getNumberHistograms()
 
         # extract x & y data for csaps
+        dataX = []
+        dataY = []
         for index in range(numSpec):
             x = weights_ws.readX(index)  # len of 1794
             w = weights_ws.readY(index)  # len of 1793
@@ -91,20 +92,22 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
                 joined_list.append(y_value * w_list[i])
             tck = splrep(x_list, joined_list)
             smoothing_results = splev(x_list, tck)
-            single_spectrum_ws_name = f"{input_ws}_temp_single_spectrum_{index}"
-            self.mantidSnapper.CreateWorkspace(
-                "Creating new workspace for smoothed spectrum data...",
-                DataX=x,
-                DataY=smoothing_results,
-                NSpec=index + 1,
-                OutputWorkspace=single_spectrum_ws_name,
-            )
+            dataX.extend(x)
+            dataY.extend(smoothing_results)
 
-            # execute mantidsnapper
-            self.mantidSnapper.executeQueue()
-            ws_group.add(single_spectrum_ws_name)
-            self.setProperty("OutputWorkspace", ws_group.name())
-            return ws_group
+        self.mantidSnapper.CreateWorkspace(
+            "Creating new workspace for smoothed spectrum data...",
+            DataX=dataX,
+            DataY=dataY,
+            NSpec=numSpec,
+            OutputWorkspace=outputWorkspaceName,
+        )
+        self.mantidSnapper.DeleteWorkspace("Cleaning up weight workspace...", Workspace=weight_ws_name)
+        # execute mantidsnapper
+        self.mantidSnapper.executeQueue()
+
+        self.setProperty("OutputWorkspace", outputWorkspaceName)
+        return outputWorkspaceName
 
 
 # Register algorithm with Mantid

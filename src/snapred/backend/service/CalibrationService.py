@@ -14,6 +14,7 @@ from snapred.backend.dao.request.CalibrationAssessmentRequest import Calibration
 from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.dao.state.FocusGroupParameters import FocusGroupParameters
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
@@ -24,6 +25,7 @@ from snapred.backend.recipe.GenericRecipe import (
     CustomStripPeaksRecipe,
     FitMultiplePeaksRecipe,
     PurgeOverlappingPeaksRecipe,
+    SmoothDataExcludingPeaksRecipe,
 )
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
@@ -32,6 +34,7 @@ from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -126,6 +129,17 @@ class CalibrationService(Service):
             raise
         return data
 
+    def collectFocusGroupParameters(self, focusGroups, pixelGroupingParams):
+        focusGroupParameters = []
+        for focusGroup, pixelGroupingParam in zip(focusGroups, pixelGroupingParams):
+            focusGroupParameters.append(
+                FocusGroupParameters(
+                    focusGroupName=focusGroup.name,
+                    pixelGroupingParameters=pixelGroupingParam,
+                )
+            )
+        return focusGroupParameters
+
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
         run = request.run
@@ -155,32 +169,20 @@ class CalibrationService(Service):
                 self._calculatePixelGroupingParameters(calibration, focusGroup.definition)["parameters"]
             )
 
-        focusGroupParameters = []
-        for focusGroup, pixelGroupingParam in zip(focusGroups, pixelGroupingParams):
-            focusGroupParameters.append(
-                FocusGroupParameters(
-                    focusGroupName=focusGroup.name,
-                    pixelGroupingParameters=pixelGroupingParam,
-                )
-            )
-
-        # TODO: should this be a list of lists? it only uses one focus group
-        instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams[0]
-
-        purgePeakMap = PurgeOverlappingPeaksRecipe().executeRecipe(
-            InstrumentState=instrumentState, CrystalInfo=crystalInfo, NumFocusGroups=str(len(focusGroups))
-        )
-
-        strippedFocussedData = CustomStripPeaksRecipe().executeRecipe(
-            InputGroupWorkspace=focussedData,
-            PeakPositions=purgePeakMap,
-            FocusGroups=json.dumps([focusGroup.dict() for focusGroup in focusGroups]),
-            OutputWorkspace="strippedFocussedData",
-        )
-        strippedFocussedDatas = [ws for ws in GroupWorkspaceIterator(strippedFocussedData)]
+        groupedWorkspaceNames = [ws for ws in GroupWorkspaceIterator(focussedData)]
         metrics = []
         fittedWorkspaceNames = []
-        for workspace, focusGroup in zip(strippedFocussedDatas, focusGroups):
+        for workspace, focusGroup, index in zip(groupedWorkspaceNames, focusGroups, range(len(focusGroups))):
+            instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams[index]
+            smoothIngredients = SmoothDataExcludingPeaksIngredients(
+                instrumentState=instrumentState, crystalInfo=crystalInfo
+            )
+            workspace = SmoothDataExcludingPeaksRecipe().executeRecipe(
+                InputWorkspace=workspace,
+                SmoothDataExcludingPeaksIngredients=smoothIngredients,
+                OutputWorkspace=workspace + "(smooth+stripped)",
+            )
+
             fitMultiplePeaksIngredients = FitMultiplePeaksIngredients(
                 InstrumentState=instrumentState, CrystalInfo=crystalInfo, InputWorkspace=workspace
             )
@@ -188,13 +190,20 @@ class CalibrationService(Service):
                 FitMultiplePeaksIngredients=fitMultiplePeaksIngredients,
                 OutputWorkspaceGroup="fitted_{}".format(workspace),
             )
-            fittedWorkspaceNames.append(fitPeaksResult)
+
+            pixelGroupingInput = list_to_raw(pixelGroupingParams[index])
             metric = parse_raw_as(
                 List[CalibrationMetric],
-                CalibrationMetricExtractionRecipe().executeRecipe(InputWorkspace=fitPeaksResult),
+                CalibrationMetricExtractionRecipe().executeRecipe(
+                    InputWorkspace=fitPeaksResult, PixelGroupingParameter=pixelGroupingInput
+                ),
             )
+
+            fittedWorkspaceNames.append(fitPeaksResult)
             metrics.append(FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric))
-        self.dataExportService.deleteWorkspace(strippedFocussedData)
+
+        for workspaceName in groupedWorkspaceNames:
+            self.dataExportService.deleteWorkspace(workspaceName)
 
         # TODO: Seperate Request to load previous calibration record stuffs
         # previousCalibrationRecord = self.dataFactoryService.getCalibrationRecord(run.runNumber)
@@ -204,6 +213,7 @@ class CalibrationService(Service):
         outputWorkspaces = []
         outputWorkspaces.extend(fittedWorkspaceNames)
         outputWorkspaces.append(outputNameFormat.format(run.runNumber))
+        focusGroupParameters = self.collectFocusGroupParameters(focusGroups, pixelGroupingParams)
         record = CalibrationRecord(
             reductionIngredients=reductionIngredients,
             calibrationFittingIngredients=calibration,

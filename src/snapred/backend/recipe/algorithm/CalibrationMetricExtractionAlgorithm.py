@@ -1,10 +1,13 @@
 import json
+from typing import List
 
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
+from pydantic import parse_raw_as
 
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
+from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -19,12 +22,16 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
+        self.declareProperty("PixelGroupingParameter", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputMetrics", defaultValue="", direction=Direction.Output)
         self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
         inputWorkspace = self.getProperty("InputWorkspace").value
         inputWorkspace = self.mantidSnapper.mtd[inputWorkspace]
+        pixelGroupingParameters = parse_raw_as(
+            List[PixelGroupingParameters], self.getProperty("PixelGroupingParameter").value
+        )
         # collect all params and peak positions
         fitDataList = []
         for increment in range(0, inputWorkspace.getNumberOfEntries(), len(FitOutputEnum)):
@@ -32,17 +39,16 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
             parameters = inputWorkspace.getItem(increment + FitOutputEnum.Parameters.value)
             workspace = inputWorkspace.getItem(increment + FitOutputEnum.Workspace.value)
             parameterError = inputWorkspace.getItem(increment + FitOutputEnum.ParameterError.value)
-            fitDataTuple = (peakPosition, parameters, workspace, parameterError)
+            fitDataTuple = (peakPosition, parameters, workspace, parameterError, int(increment / len(FitOutputEnum)))
             fitDataList.append(fitDataTuple)
 
         peakMetrics = []
-        for peakPos, params, workspace, _ in fitDataList:
+        for peakPos, params, workspace, _, index in fitDataList:
             sigmaAverage = 0
             sigmaStandardDeviation = 0
             strainAverage = 0
             strainStandardDeviation = 0
             twoThetaAverage = 0
-            spectrumInfo = workspace.spectrumInfo()
             self.log().notice("------------------------------------------------------------------------------")
             strains = []
             sigmas = []
@@ -57,16 +63,16 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
                 sigmas.append(sig / pos)
                 self.log().notice(f"sig: {sig}, pos: {pos}, d_ref: {d_ref}")
 
-            for spectrumIndex in range(workspace.getNumberHistograms()):
-                twoTheta = spectrumInfo.twoTheta(spectrumIndex)
-                twoThetaAverage += twoTheta
-
             strains = np.array(strains)
+            # Ignoring NaNs did not help the results, and may serve to spoil them.
+            # strains = np.ma.array(strains, mask=np.isnan(strains))
+
             sigmas = np.array(sigmas)
+            # sigmas = np.ma.array(sigmas, mask=np.isnan(sigmas))
 
             sigmaAverage = np.average(sigmas)
             strainAverage = np.average(strains)
-            twoThetaAverage = twoThetaAverage / workspace.getNumberHistograms()
+            twoThetaAverage = pixelGroupingParameters[index].twoTheta
 
             sigmaStandardDeviation = np.std(sigmas)
             strainStandardDeviation = np.std(strains)
