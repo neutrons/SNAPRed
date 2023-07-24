@@ -33,10 +33,10 @@ class VanadiumFocussedReductionService(Service):
             reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
             if run.runNumber == "48741":
                 crystalInfo = CrystallographicInfo.parse_raw(
-                    Resource.read("vanadiumReduction/vanadiumReduction/input_crystalInfo.json")
+                    Resource.read("default/request/vanadiumReduction/vanadiumReduction/input_crystalInfo.json")
                 )
                 instrumentState = Calibration.parse_raw(
-                    Resource.read("vanadiumReduction/vanadiumReduction/input_parameters.json")
+                    Resource.read("default/request/vanadiumReduction/vanadiumReduction/input_parameters.json")
                 ).instrumentState
                 smoothIngredients = SmoothDataExcludingPeaksIngredients(
                     crystalInfo=crystalInfo, instrumentState=instrumentState

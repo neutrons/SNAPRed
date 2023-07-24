@@ -105,9 +105,12 @@ class LocalDataService:
             focusGroups=self._readFocusGroups(runId),
             isLiteMode=True,  # TODO: Support non lite mode
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=self.instrumentConfig.calibrationDirectory / "Powder" / reductionParameters["stateId"]
-            + "/"
-            + reductionParameters["rawVCorrFileName"],
+            vanadiumFilePath=str(
+                self.instrumentConfig.calibrationDirectory
+                / "Powder"
+                / reductionParameters["stateId"]
+                / reductionParameters["rawVCorrFileName"]
+            ),
             calibrationMaskFileName=reductionParameters.get("CalibrationMaskFilename"),
             stateId=reductionParameters["stateId"],
             tofBin=reductionParameters["tofBin"],
@@ -125,11 +128,12 @@ class LocalDataService:
             filename=reductionParameters["calFileName"],
             runNumber=reductionParameters["CRun"][0],
             name=reductionParameters.get("CalibrantName"),
-            diffCalPath=self.instrumentConfig.calibrationDirectory
-            + "Powder/"
-            + reductionParameters["stateId"]
-            + "/"
-            + reductionParameters["calFileName"],
+            diffCalPath=str(
+                self.instrumentConfig.calibrationDirectory
+                / "Powder"
+                / reductionParameters["stateId"]
+                / reductionParameters["calFileName"]
+            ),
             latticeParameters=None,  # TODO: missing, reductionParameters['CalibrantLatticeParameters'],
             reference=None,
         )  # TODO: missing, reductionParameters['CalibrantReference'])
@@ -168,10 +172,12 @@ class LocalDataService:
                     dBin=reductionParameters["focGroupDBin"][i],
                     dMax=reductionParameters["focGroupDMax"][i],
                     dMin=reductionParameters["focGroupDMin"][i],
-                    definition=self.instrumentConfig.calibrationDirectory
-                    + "Powder/"
-                    + self.instrumentConfig.pixelGroupingDirectory
-                    + reductionParameters["focGroupDefinition"][i],
+                    definition=str(
+                        self.instrumentConfig.calibrationDirectory
+                        / "Powder"
+                        / self.instrumentConfig.pixelGroupingDirectory
+                        / reductionParameters["focGroupDefinition"][i]
+                    ),
                 )
             )
         return focusGroups
@@ -271,7 +277,7 @@ class LocalDataService:
         return fileList
 
     def _constructCalibrationPath(self, stateId):
-        return self.instrumentConfig.calibrationDirectory + "Powder/" + stateId + "/"
+        return str(self.instrumentConfig.calibrationDirectory) + "/Powder/" + str(stateId) + "/"
 
     def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
         # lookup IPST number

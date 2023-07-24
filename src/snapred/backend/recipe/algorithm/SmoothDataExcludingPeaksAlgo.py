@@ -68,9 +68,12 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         weights_ws = mtd[weight_ws_name]
 
         # create workspace group
-        ws_group = WorkspaceGroup()
-        mtd.add("SmoothedDataExcludingPeaks", ws_group)
 
+        if mtd.doesExist("SmoothedDataExcludingPeaks"):
+            ws_group = mtd["SmoothedDataExcludingPeaks"]
+        else:
+            ws_group = WorkspaceGroup()
+            mtd.add("SmoothedDataExcludingPeaks", ws_group)
         # get number of spectrum to iterate over
         numSpec = weights_ws.getNumberHistograms()
 
@@ -96,15 +99,15 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
                 "Creating new workspace for smoothed spectrum data...",
                 DataX=x,
                 DataY=smoothing_results,
-                NSpec=index + 1,
+                NSpec=1,
                 OutputWorkspace=single_spectrum_ws_name,
             )
 
             # execute mantidsnapper
             self.mantidSnapper.executeQueue()
             ws_group.add(single_spectrum_ws_name)
-            self.setProperty("OutputWorkspace", ws_group.name())
-            return ws_group
+        self.setProperty("OutputWorkspace", ws_group.name())
+        return ws_group
 
 
 # Register algorithm with Mantid

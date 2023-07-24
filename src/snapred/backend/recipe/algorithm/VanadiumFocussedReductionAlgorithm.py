@@ -1,11 +1,13 @@
 import json
 
-from mantid.api import AlgorithmFactory, PythonAlgorithm, WorkspaceGroup, mtd
+from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.recipe.algorithm.CustomGroupWorkspace import CustomGroupWorkspace  # noqa F401
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks  # noqa F401
 
 name = "VanadiumFocussedReductionAlgorithm"
 
@@ -28,7 +30,6 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
         self.log().notice("Execution of VanadiumFocussedReduction START!")
 
         vanadiumFilePath = reductionIngredients.reductionState.stateConfig.vanadiumFilePath
-        diffCalPath = reductionIngredients.reductionState.stateConfig.diffractionCalibrant.diffCalPath
 
         vanadium = self.mantidSnapper.LoadNexus(
             "Loading Nexus for {}...".format(vanadiumFilePath),
@@ -43,21 +44,20 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
             OutputWorkSpace="CommonRed",
         )
 
-        diffCalPrefix = "diffcal"
-        self.mantidSnapper.LoadDiffcal(
-            "Loading Diffcal for {} ...".format(diffCalPath),
-            InstrumentFilename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
-            MakeGroupingWorkspace=False,
-            MakeMaskWorkspace=True,
-            Filename=diffCalPrefix,
-            WorkspaceName=diffCalPrefix,
-        )
+        # diffCalPrefix = self.mantidSnapper.LoadDiffCal(
+        #    "Loading Diffcal for {} ...".format(diffCalPath),
+        #    InstrumentFilename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+        #    MakeGroupingWorkspace=False,
+        #    MakeMaskWorkspace=True,
+        #    Filename=diffCalPath,
+        #    WorkspaceName='diffCal',
+        # )
 
-        self.mantidSnapper.MaskDetectors(
-            "Applying Pixel Mask...",
-            Workspace=vanadium,
-            MaskedWorkspace=diffCalPrefix + "_mask",
-        )
+        # self.mantidSnapper.MaskDetectors(
+        #    "Applying Pixel Mask...",
+        #    Workspace=vanadium,
+        #    MaskedWorkspace=diffCalPrefix + "_mask",
+        # )
 
         vanadium = self.mantidSnapper.ConvertUnits(
             "Converting to Units of dSpacing...",
@@ -75,28 +75,22 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
             OutputWorkspace="diffraction_focused_vanadium",
         )
         self.mantidSnapper.executeQueue()
-        ws_group = WorkspaceGroup()
-        mtd.add("vanadium_group", ws_group)
+
         diff_group = mtd["diffraction_focused_vanadium"]
         ws_list = list(diff_group.getNames())
 
         for idx, ws in enumerate(ws_list):
-            focussed_ws_name = f"focussed_vanadium_{idx}"
-            smooth_ws_name = f"smooth_vanadium_{idx}"
-            self.mantidSnapper.RenameWorkspace(ws, focussed_ws_name)
             self.mantidSnapper.SmoothDataExcludingPeaks(
                 "Fit and Smooth Peaks...",
-                InputWorkspace=focussed_ws_name,
+                InputWorkspace=ws,
                 SmoothDataExcludingPeaksIngredients=smoothIngredients.json(),
-                OutputWorkspace=smooth_ws_name,
+                OutputWorkspace="smooth_ws",
             )
-            self.mantidSnapper.executeQueue()
-            ws_group.add(focussed_ws_name)
-            ws_group.add(smooth_ws_name)
+        self.mantidSnapper.executeQueue()
 
         self.log().notice("Execution of VanadiumFocussedReduction COMPLETE!")
-        self.setProperty("OutputWorkspaceGroup", ws_group.name())
-        return ws_group
+        self.setProperty("OutputWorkspaceGroup", "diffraction_focused_vanadium")
+        return diff_group
 
 
 AlgorithmFactory.subscribe(VanadiumFocussedReductionAlgorithm)
