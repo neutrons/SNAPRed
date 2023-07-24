@@ -24,16 +24,16 @@ class PixelGroupingParametersCalculationRecipe:
 
         algo = AlgorithmManager.create(self.PixelGroupingParametersCalculationAlgorithmName)
 
-        algo.setProperty("InputState", ingredients.calibrationState.json())
+        algo.setProperty("InstrumentState", ingredients.instrumentState.json())
         algo.setProperty("InstrumentDefinitionFile", ingredients.instrumentDefinitionFile)
         algo.setProperty("GroupingFile", ingredients.groupingFile)
 
         try:
             data["result"] = algo.execute()
             # parse the algorithm output and create a list of calculated PixelGroupingParameters
-            pixelGroupingParams_strs = json.loads(algo.getProperty("OutputParameters").value)
+            pixelGroupingParams_json = json.loads(algo.getProperty("OutputParameters").value)
             pixelGroupingParams = []
-            for item in pixelGroupingParams_strs:
+            for item in pixelGroupingParams_json:
                 pixelGroupingParams.append(PixelGroupingParameters.parse_raw(item))
             data["parameters"] = pixelGroupingParams
         except RuntimeError as e:
