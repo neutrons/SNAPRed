@@ -9,17 +9,18 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class CrystallographicInfoService(Service):
-    _name = "ingestion"
-    dataFactoryService = DataFactoryService()
+    dataFactoryService = "DataFactoryService"
 
     # register the service in ServiceFactory please!
     def __init__(self):
         super().__init__()
+        self.dataFactoryService = DataFactoryService()
         self.registerPath("", self.ingest)
         return
 
-    def name(self):
-        return self._name
+    @staticmethod
+    def name():
+        return "ingestion"
 
     @FromString
     def ingest(self, cifPath: str) -> Dict[Any, Any]:

@@ -10,17 +10,18 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class ReductionService(Service):
-    _name = "reduction"
-    dataFactoryService = DataFactoryService()
+    dataFactoryService = "DataFactoryService"
 
     # register the service in ServiceFactory please!
     def __init__(self):
         super().__init__()
+        self.dataFactoryService = DataFactoryService()
         self.registerPath("", self.reduce)
         return
 
-    def name(self):
-        return self._name
+    @staticmethod
+    def name():
+        return "reduction"
 
     @FromString
     def reduce(self, runs: List[RunConfig]) -> Dict[Any, Any]:
