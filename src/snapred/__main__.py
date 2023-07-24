@@ -21,10 +21,7 @@ def _bool_to_mtd_str(arg: bool) -> str:
     """mantid.kernel.ConfigService does not understand bool, but does understand
     the strings "0" and "1". This method converts things
     """
-    if arg:
-        return "1"
-    else:
-        return "0"
+    return "1" if arg else "0"
 
 
 def main(args=None):
