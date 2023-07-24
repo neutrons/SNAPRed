@@ -32,6 +32,10 @@ calibration:
         - 0.02
         - 0.05
 
+localdataservice:
+  config:
+    verifypaths: true
+
 logging:
   level: 10
   SNAP:

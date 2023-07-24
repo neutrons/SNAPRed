@@ -1,5 +1,10 @@
 instrument:
-  home: SNAP/
+  home: ""
+  config: inputs/SNAPInstPrm.json
+
+localdataservice:
+  config:
+    verifypaths: false
 
 test:
   outputs:
