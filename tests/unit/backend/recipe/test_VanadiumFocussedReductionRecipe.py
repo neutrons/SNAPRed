@@ -18,7 +18,9 @@ class TestVanadiumFocussedReductionRecipe(unittest.TestCase):
         self.mock_ReductionIngredients = mock.MagicMock(spec=ReductionIngredients)
         self.mock_ReductionIngredients.runConfig = self.mock_runConfig
 
+        self.mock_smoothIngredients = mock.MagicMock()
         self.vanadiumRecipe = VanadiumFocussedReductionRecipe()
+        self.call_list = [mock.call("ReductionIngredients", mock.ANY), mock.call("SmoothDataIngredients", mock.ANY)]
 
     @mock.patch("snapred.backend.recipe.VanadiumFocussedReductionRecipe.AlgorithmManager")
     def test_execute_successful(self, mock_AlgorithmManager):
@@ -26,13 +28,11 @@ class TestVanadiumFocussedReductionRecipe(unittest.TestCase):
         self.mock_algo.execute.return_value = "Mocked result"
         mock_AlgorithmManager.create.return_value = self.mock_algo
 
-        result = self.vanadiumRecipe.executeRecipe(self.mock_ReductionIngredients)
+        result = self.vanadiumRecipe.executeRecipe(self.mock_ReductionIngredients, self.mock_smoothIngredients)
 
         assert result["result"] == "Mocked result"
         self.mock_algo.execute.assert_called_once()
-        self.mock_algo.setProperty.assert_called_once_with(
-            "ReductionIngredients", self.mock_ReductionIngredients.json()
-        )
+        assert self.mock_algo.setProperty.call_args_list == self.call_list
         mock_AlgorithmManager.create.assert_called_once_with("VanadiumFocussedReductionAlgorithm")
 
     @mock.patch("snapred.backend.recipe.VanadiumFocussedReductionRecipe.AlgorithmManager")
@@ -41,7 +41,7 @@ class TestVanadiumFocussedReductionRecipe(unittest.TestCase):
         mock_AlgorithmManager.create.return_value = self.mock_algo
 
         try:
-            self.vanadiumRecipe.executeRecipe(self.mock_ReductionIngredients)
+            self.vanadiumRecipe.executeRecipe(self.mock_ReductionIngredients, self.mock_smoothIngredients)
         except Exception as e:  # noqa: E722 BLE001
             assert str(e) == "passed"  # noqa: PT017
             self.mock_algo.execute.assert_called_once()
@@ -49,7 +49,5 @@ class TestVanadiumFocussedReductionRecipe(unittest.TestCase):
             # fail if execute did not raise an exception
             pytest.fail("Test should have raised RuntimeError, but no error raised")
 
-        self.mock_algo.setProperty.assert_called_once_with(
-            "ReductionIngredients", self.mock_ReductionIngredients.json()
-        )
+        assert self.mock_algo.setProperty.call_args_list == self.call_list
         mock_AlgorithmManager.create.assert_called_once_with("VanadiumFocussedReductionAlgorithm")

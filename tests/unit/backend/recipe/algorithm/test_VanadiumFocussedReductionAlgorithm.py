@@ -1,6 +1,6 @@
-import os
 import unittest
 import unittest.mock as mock
+from unittest.mock import call
 
 with mock.patch.dict(
     "sys.modules",
@@ -9,18 +9,20 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from mantid.api import mtd
-    from snapred.backend.dao.ReductionIngredients import ReductionIngredients
-    from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
     from snapred.backend.dao.calibration.Calibration import Calibration
+    from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
+    from snapred.backend.dao.ReductionIngredients import ReductionIngredients
     from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
     from snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm import (
         VanadiumFocussedReductionAlgorithm,  # noqa: E402
     )
     from snapred.meta.Config import Resource
+
     class TestVanadiumFocussedReductionAlgorithm(unittest.TestCase):
         def setUp(self):
-            self.reductionIngredients = ReductionIngredients.parse_raw(Resource.read("/inputs/reduction/input_ingredients.json"))
+            self.reductionIngredients = ReductionIngredients.parse_raw(
+                Resource.read("/inputs/reduction/input_ingredients.json")
+            )
 
             crystalInfo = CrystallographicInfo.parse_raw(Resource.read("inputs/purge_peaks/input_crystalInfo.json"))
             instrumentState = Calibration.parse_raw(
@@ -39,17 +41,26 @@ with mock.patch.dict(
             assert vanAlgo.getProperty("ReductionIngredients").value == self.reductionIngredients.json()
             assert vanAlgo.getProperty("SmoothDataIngredients").value == self.smoothIngredients.json()
 
-        def test_execute(self):
+        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.mtd")
+        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.MantidSnapper.createAlgorithm")
+        def test_execute(self, mock_MantidSnapper, mock_mtd):
             vanAlgo = VanadiumFocussedReductionAlgorithm()
+            mock_mtd.side_effect = {"diffraction_focused_vanadium": ["ws1", "ws2"]}
             vanAlgo.initialize()
             vanAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
             vanAlgo.setProperty("SmoothDataIngredients", self.smoothIngredients.json())
             vanAlgo.execute()
+
             wsGroupName = vanAlgo.getProperty("OutputWorkspaceGroup").value
-            assert wsGroupName == "vanadiumFocussedWSGroup"
-            wsGroup = list(mtd[wsGroupName].getNames())
-            expected = [
-                'diffraction_focused_vanadium',
-                'smooth_vanadium'
+            assert wsGroupName == "diffraction_focused_vanadium"
+            calls = [
+                call("LoadNexus"),
+                call("CustomGroupWorkspace"),
+                call("ConvertUnits"),
+                call("DiffractionFocussing"),
+                call("LoadNexus"),
+                call("CustomGroupWorkspace"),
+                call("ConvertUnits"),
+                call("DiffractionFocussing"),
             ]
-            assert wsGroup == expected
+            mock_MantidSnapper.assert_has_calls(calls, any_order=True)

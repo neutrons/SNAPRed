@@ -20,6 +20,7 @@ with mock.patch.dict(
         VanadiumFocussedReductionRecipe.executeRecipe = mock.Mock()
         mock_runConfig = mock.MagicMock()
         mock_runConfig.runNumber = "1234"
+        mock_smoothIngredients = mock.MagicMock()
         runs = [mock_runConfig]
-        vanadiumService.vanadiumReduction(runs)
+        vanadiumService.vanadiumReduction(runs, mock_smoothIngredients)
         VanadiumFocussedReductionRecipe.executeRecipe.assert_called()

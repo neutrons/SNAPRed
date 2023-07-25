@@ -44,21 +44,6 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
             OutputWorkSpace="CommonRed",
         )
 
-        # diffCalPrefix = self.mantidSnapper.LoadDiffCal(
-        #    "Loading Diffcal for {} ...".format(diffCalPath),
-        #    InstrumentFilename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
-        #    MakeGroupingWorkspace=False,
-        #    MakeMaskWorkspace=True,
-        #    Filename=diffCalPath,
-        #    WorkspaceName='diffCal',
-        # )
-
-        # self.mantidSnapper.MaskDetectors(
-        #    "Applying Pixel Mask...",
-        #    Workspace=vanadium,
-        #    MaskedWorkspace=diffCalPrefix + "_mask",
-        # )
-
         vanadium = self.mantidSnapper.ConvertUnits(
             "Converting to Units of dSpacing...",
             InputWorkspace=vanadium,
