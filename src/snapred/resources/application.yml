@@ -6,8 +6,8 @@ orchestration:
 
 instrument:
   name: SNAP
-  home: /SNS/SNAP/
-  config: shared/Calibration/SNAPInstPrm.json
+  home: /home/dzj/Documents/Work/SNAPred_req/
+  config: SNAPInstPrm.json
 
 nexus:
   home: nexus/

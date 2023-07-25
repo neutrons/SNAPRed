@@ -39,7 +39,7 @@ class CalibrationService(Service):
 
     @FromString
     def reduction(self, runs: List[RunConfig]):
-        # TODO: collect runs by state then by calibration of state, execute sets of runs by calibration of thier state
+        # TODO: collect runs by state then by calibration of state, execute sets of runs by calibration of their state
         for run in runs:
             reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
             try:

@@ -11,6 +11,7 @@ from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
 from snapred.ui.view.FitMultiplePeaksView import FitMultiplePeaksView
+from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibrationCheckView
 from snapred.ui.widget.JsonForm import JsonForm
 
 logger = snapredLogger.getLogger(__name__)
@@ -88,6 +89,8 @@ class TestPanelPresenter(object):
             newWidget = CalibrationReductionRequestView(newForm, parent=self.view)
         elif selection.startswith("fitMultiplePeaks"):
             newWidget = FitMultiplePeaksView(newForm, parent=self.view)
+        elif selection.startswith("initializeCalibrationCheck"):
+            newWidget = InitializeCalibrationCheckView(newForm, parent=self.view)
         else:
             newWidget = BackendRequestView(newForm, selection, parent=self.view)
 

@@ -7,6 +7,7 @@ Iniailize state by calculating the corresponding parameters ->
 Finally calculate the grouping-dependent parameters -> (PixelGroupingParameters)
 Software should confirm when all operations are complete and execute successfully as "ready to calibrate" status
 """
+from PyQt5.QtWidgets import QComboBox, QMessageBox, QInputDialog
 
 from typing import Any, Dict, List
 
@@ -27,7 +28,7 @@ class InitializeCalibrationCheck(Service):
     dataFactory = DataFactoryService()
     dataExport = DataExportService()
     calibrationService = CalibrationService()
-    request = InitializeStateRequest()
+    request: InitializeStateRequest
 
     # register the service in ServiceFactory
     def __init__(self):
@@ -73,13 +74,24 @@ class InitializeCalibrationCheck(Service):
                     pixelGroupingParameters = self.calibrationService.calculatePixelGroupingParameters(
                         runs, groupingFile
                     )
-                    status = "Ready To Calibrate!"  # TODO: Needs to be incorporated within UI
-                    return pixelGroupingParameters, status
+                    QMessageBox.information(self, "Ready to Calibrate", "All operations are complete. Ready to calibrate!")
+                    return pixelGroupingParameters
                 except:
-                    raise Exception("Unable to calculate pixel grouping parameters")
+                    raise Exception(QMessageBox.information(self, "Ready to Calibrate", "All operations are complete. Ready to calibrate!"))
 
-    def checkStateExists(self, state: StateConfig) -> bool:
+    def promptStateName(self):
+        state_name, ok_pressed = QInputDialog.getText(self, "State Name", "Enter State Name:")
+        if ok_pressed and state_name:
+            return state_name
+        return None
+
+    def checkStateExists(self, state: StateConfig):
         if state.diffractionCalibrant.name == "":
-            return False
+            state_name = self.promptStateName()
+            if state_name is not None:
+                state.diffractionCalibrant.name = state_name
+                return True
+            else:
+                return False
         else:
             return True
