@@ -1,7 +1,6 @@
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.dao.VanadiumReductionIngredients import VanadiumReductionIngredients
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.recipe.VanadiumFocussedReductionRecipe import VanadiumFocussedReductionRecipe
 from snapred.backend.service.Service import Service
@@ -24,16 +23,15 @@ class VanadiumFocussedReductionService(Service):
         return self._name
 
     @FromString
-    def vanadiumReduction(
-        self, runs: List[RunConfig], smoothIngredients: SmoothDataExcludingPeaksIngredients
-    ) -> Dict[Any, Any]:
+    def vanadiumReduction(self, vanadiumReductionIngredients: VanadiumReductionIngredients) -> Dict[Any, Any]:
         data: Dict[Any, Any] = {}
-        for run in runs:
-            reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
-            try:
-                VanadiumFocussedReductionRecipe().executeRecipe(
-                    reductionIngredients=reductionIngredients, smoothIngredients=smoothIngredients
-                )
-            except:
-                raise
+        run = vanadiumReductionIngredients.run
+        reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
+        smoothIngredients = vanadiumReductionIngredients.smoothIngredients
+        try:
+            VanadiumFocussedReductionRecipe().executeRecipe(
+                reductionIngredients=reductionIngredients, smoothIngredients=smoothIngredients
+            )
+        except:
+            raise
         return data
