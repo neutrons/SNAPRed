@@ -11,6 +11,7 @@
 """
 import json
 
+import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     PythonAlgorithm,
@@ -18,7 +19,7 @@ from mantid.api import (
     mtd,
 )
 from mantid.kernel import Direction
-from scipy.interpolate import splev, splrep
+from scipy.interpolate import make_smoothing_spline, splev
 
 from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
@@ -67,43 +68,37 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
             CrystalInfo=crystalInfo.json(),
             WeightWorkspace=weight_ws_name,
         )
+        # This is because its a histogram
+        self.mantidSnapper.CloneWorkspace(
+            "Cloning new workspace for smoothed spectrum data...",
+            InputWorkspace=input_ws,
+            OutputWorkspace=outputWorkspaceName,
+        )
         self.mantidSnapper.executeQueue()
+        outputWorkspace = self.mantidSnapper.mtd[outputWorkspaceName]
         weights_ws = self.mantidSnapper.mtd[weight_ws_name]
 
         # get number of spectrum to iterate over
         numSpec = weights_ws.getNumberHistograms()
 
         # extract x & y data for csaps
-        dataX = []
-        dataY = []
         for index in range(numSpec):
-            x = weights_ws.readX(index)  # len of 1794
+            weightX = weights_ws.readX(index)  # len of 1794
+            x = ws.readX(index)
             w = weights_ws.readY(index)  # len of 1793
             y = ws.readY(index)
-            x_midpoints = (x[:-1] + x[1:]) / 2  # len of 1793
-            x_list = x_midpoints.tolist()
-            y_list = y.tolist()
-            w_list = w.tolist()
-            joined_list = []
-            joined_list = []
+            weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2  # len of 1793
+            xMidpoints = (x[:-1] + x[1:]) / 2
 
-            # joining weight array with y values array
-            for i, y_value in enumerate(y_list):
-                joined_list.append(y_value * w_list[i])
-            tck = splrep(x_list, joined_list)
-            smoothing_results = splev(x_list, tck)
-            dataX.extend(x)
-            dataY.extend(smoothing_results)
+            weightXMidpoints = weightXMidpoints[w != 0]
+            y = y[w != 0]
 
-        self.mantidSnapper.CreateWorkspace(
-            "Creating new workspace for smoothed spectrum data...",
-            DataX=dataX,
-            DataY=dataY,
-            NSpec=numSpec,
-            OutputWorkspace=outputWorkspaceName,
-        )
+            tck = make_smoothing_spline(weightXMidpoints, y)
+            smoothing_results = splev(xMidpoints, tck)
+
+            outputWorkspace.setY(index, smoothing_results)
+
         self.mantidSnapper.DeleteWorkspace("Cleaning up weight workspace...", Workspace=weight_ws_name)
-        # execute mantidsnapper
         self.mantidSnapper.executeQueue()
 
         self.setProperty("OutputWorkspace", outputWorkspaceName)

@@ -182,7 +182,7 @@ class CalibrationService(Service):
                 SmoothDataExcludingPeaksIngredients=smoothIngredients,
                 OutputWorkspace=workspace + "(smooth+stripped)",
             )
-
+            breakpoint()
             fitMultiplePeaksIngredients = FitMultiplePeaksIngredients(
                 InstrumentState=instrumentState, CrystalInfo=crystalInfo, InputWorkspace=workspace
             )
@@ -201,9 +201,6 @@ class CalibrationService(Service):
 
             fittedWorkspaceNames.append(fitPeaksResult)
             metrics.append(FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric))
-
-        for workspaceName in groupedWorkspaceNames:
-            self.dataExportService.deleteWorkspace(workspaceName)
 
         # TODO: Seperate Request to load previous calibration record stuffs
         # previousCalibrationRecord = self.dataFactoryService.getCalibrationRecord(run.runNumber)
