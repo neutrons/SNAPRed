@@ -15,6 +15,9 @@ class ServiceDirectory:
         serviceName = service.name()
         self._services[serviceName] = service
 
+    def __contains__(self, key):
+        return key in self._services
+
     def __getitem__(self, key):
         # convert the held value from class to instance
         value = self._services[key]
@@ -30,5 +33,8 @@ class ServiceDirectory:
     def keys(self):
         return self._services.keys()
 
-    def get(self, key, default):
-        return self._services.get(key, default)
+    def get(self, key, default=None):
+        if key in self:
+            return self[key]
+        else:
+            return default
