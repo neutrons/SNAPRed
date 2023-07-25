@@ -19,13 +19,8 @@ class InterfaceController:
         # execute the recipe
         # return the result
         try:
-            # ServiceFactory doesn't always return an instance so it needs to be fixed here
+            # leaving this a separate line makes stack traces make more sense
             service = self.serviceFactory.getService(request.path)
-            if inspect.isclass(service):
-                try:
-                    service = service()
-                except Exception as e:  # noqa BLE001
-                    raise RuntimeError("Failed to create service") from e
             # run the recipe
             result = service.orchestrateRecipe(request)
             # convert the response into object to communicate with
