@@ -6,7 +6,7 @@ from snapred.ui.widget.Toggle import Toggle
 
 class InitializeCalibrationCheckView(BackendRequestView):
     def __init__(self, jsonForm, parent=None):
-        selection = "initializeCalibrationCheck/initializeCalibrationCheck"
+        selection = "initializeCalibrationCheck"
         super(InitializeCalibrationCheckView, self).__init__(jsonForm, selection, parent=parent)
         runNumberField = self._labeledField("Run Number", jsonForm.getField("runNumber"))
         litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self))
