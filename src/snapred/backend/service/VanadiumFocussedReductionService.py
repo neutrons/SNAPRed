@@ -10,17 +10,14 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class VanadiumFocussedReductionService(Service):
-    _name = "vanadiumReduction"
-    dataFactoryService = DataFactoryService()
-
-    # register the service in ServiceFactory please!
     def __init__(self):
         super().__init__()
         self.registerPath("vanadiumReduction", self.vanadiumReduction)
         return
 
-    def name(self):
-        return self._name
+    @staticmethod
+    def name():
+        return "vanadiumReduction"
 
     @FromString
     def vanadiumReduction(self, vanadiumReductionIngredients: VanadiumReductionIngredients) -> Dict[Any, Any]:
