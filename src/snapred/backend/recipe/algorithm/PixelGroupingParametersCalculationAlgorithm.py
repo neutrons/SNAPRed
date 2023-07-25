@@ -133,9 +133,6 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
     def LoadSNAPInstrument(self, ws_name):
         self.log().notice("Load SNAP instrument based on the Instrument Definition File")
 
-        # load the idf into workspace
-        idf = self.getProperty("InstrumentDefinitionFile").value
-
         # get detector state from the input state
         instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
         detectorState = instrumentState.detectorState
@@ -150,22 +147,13 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                     LogText=str(getattr(detectorState, param_name)[index]),
                     LogType="Number Series",
                 )
-        self.mantidSnapper.executeQueue()
 
-        if idf != "":  # lite instrument
-            self.mantidSnapper.LoadInstrument(
-                "Loading instrument...", Workspace=ws_name, FileName=idf, RewriteSpectraMap=False
-            )
-        else:  # full instrument
-            # self.mantidSnapper.LoadInstrument(
-            #     "Loading instrument...", Workspace=ws_name, InstrumentName="SNAP", RewriteSpectraMap="False"
-            # )
-            self.mantidSnapper.LoadInstrument(
-                "Loading instrument...",
-                Workspace=ws_name,
-                FileName="/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition.xml",
-                RewriteSpectraMap=False,
-            )
+        # load the idf into workspace
+        idf = self.getProperty("InstrumentDefinitionFile").value
+        self.mantidSnapper.LoadInstrument(
+            "Loading instrument...", Workspace=ws_name, FileName=idf, RewriteSpectraMap=False
+        )
+
         self.mantidSnapper.executeQueue()
 
 
