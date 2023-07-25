@@ -182,7 +182,7 @@ class CalibrationService(Service):
                 SmoothDataExcludingPeaksIngredients=smoothIngredients,
                 OutputWorkspace=workspace + "(smooth+stripped)",
             )
-            breakpoint()
+
             fitMultiplePeaksIngredients = FitMultiplePeaksIngredients(
                 InstrumentState=instrumentState, CrystalInfo=crystalInfo, InputWorkspace=workspace
             )

@@ -190,4 +190,4 @@ class MantidSnapper:
         if self.parentAlgorithm:
             self._prog_reporter.report(self._endrange, "Done")
         self._progressCounter = 0
-        self.algorithmQueue = []
+        self._algorithmQueue = []
