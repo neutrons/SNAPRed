@@ -18,9 +18,9 @@ with mock.patch.dict(
     def test_vanadiumFocussedReductionService():
         vanadiumService = VanadiumFocussedReductionService()
         VanadiumFocussedReductionRecipe.executeRecipe = mock.Mock()
-        mock_runConfig = mock.MagicMock()
-        mock_runConfig.runNumber = "1234"
-        mock_smoothIngredients = mock.MagicMock()
-        runs = [mock_runConfig]
-        vanadiumService.vanadiumReduction(runs, mock_smoothIngredients)
+        mock_ingredients = mock.Mock()
+        mock_ingredients.run = mock.Mock()
+        mock_ingredients.smoothIngredients = mock.Mock()
+
+        vanadiumService.vanadiumReduction(mock_ingredients)
         VanadiumFocussedReductionRecipe.executeRecipe.assert_called()

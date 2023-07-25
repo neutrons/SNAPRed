@@ -1,5 +1,8 @@
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget
 
+from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.dao.VanadiumReductionIngredients import VanadiumReductionIngredients
+from snapred.meta.Config import Resource
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.VanadiumFocussedReductionPlot import VanadiumFoucussedReductionPlot
 from snapred.ui.widget.WorkflowNode import finalizeWorkflow, startWorkflow
@@ -11,6 +14,12 @@ class VanadiumFocussedReductionView(BackendRequestView):
         super(VanadiumFocussedReductionView, self).__init__(jsonForm, selection, parent=parent)
 
         def vanadiumReductionFlow():
+            ingredients = VanadiumReductionIngredients.parse_raw(
+                Resource.read("default/request/vanadiumReduction/vanadiumReduction/payload.json")
+            )
+            request = SNAPRequest(path=selection, payload=ingredients.json())
+            self.handleButtonClicked(request, self.beginFlowButton)
+
             def examineOutput():
                 VanadiumFoucussedReductionPlot()
                 workflow = startWorkflow(lambda workflow: None, self._labelView("Did it work?"))  # noqa: ARG005

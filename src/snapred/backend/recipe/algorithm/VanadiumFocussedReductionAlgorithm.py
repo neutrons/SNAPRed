@@ -71,6 +71,12 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
                 SmoothDataExcludingPeaksIngredients=smoothIngredients.json(),
                 OutputWorkspace="smooth_ws",
             )
+
+        self.mantidSnapper.DeleteWorkspace("Clean up workspace...", workspace="idf")
+        self.mantidSnapper.DeleteWorkspace("Clean up workspace...", workspace="weight_ws")
+        self.mantidSnapper.DeleteWorkspace("Clean up workspace...", workspace="vanadium")
+        self.mantidSnapper.DeleteWorkspace("Clean up workspace...", workspace="vanadium_dspacing")
+        self.mantidSnapper.DeleteWorkspace("Clean up workspace...", workspace="CommonRed")
         self.mantidSnapper.executeQueue()
 
         self.log().notice("Execution of VanadiumFocussedReduction COMPLETE!")

@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 import unittest.mock as mock
+from pathlib import Path
 from typing import List
 
 from pydantic import parse_raw_as
@@ -50,7 +51,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def getMockInstrumentConfig():
         instrumentConfig = mock.Mock()
-        instrumentConfig.calibrationDirectory = "test"
+        instrumentConfig.calibrationDirectory = Path("test")
         instrumentConfig.sharedDirectory = "test"
         instrumentConfig.reducedDataDirectory = "test"
         instrumentConfig.pixelGroupingDirectory = "test"
