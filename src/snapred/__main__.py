@@ -43,7 +43,7 @@ def main(args=None):
         action="store_true",
         help="start the gui then shut it down after 5 seconds. This is used for testing",
     )
-    options = parser.parse_args(args)
+    options, _ = parser.parse_known_args(args)
 
     # fix up some of the options for mantid
     options.checkfornewmantid = _bool_to_mtd_str(options.checkfornewmantid)
