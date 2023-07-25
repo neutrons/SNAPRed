@@ -11,7 +11,6 @@ from PyQt5.QtWidgets import QComboBox, QMessageBox, QInputDialog
 
 from typing import Any, Dict, List
 
-from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.DataExportService import DataExportService
@@ -28,7 +27,6 @@ class InitializeCalibrationCheck(Service):
     dataFactory = DataFactoryService()
     dataExport = DataExportService()
     calibrationService = CalibrationService()
-    request: InitializeStateRequest
 
     # register the service in ServiceFactory
     def __init__(self):
@@ -63,9 +61,9 @@ class InitializeCalibrationCheck(Service):
                     # this boolean will be used to prompt user for new state name input incase it does not exist
                     self.checkStateExists(state)
 
-                # initialize state
-                runId = self.request.runId = run.runNumber
-                name = self.request.humanReadableName = run.maskFileName  # TODO: Is this correct?
+                # initialize state // TODO: Is this correct?
+                runId = run.runNumber
+                name = run.maskFileName
                 self.calibrationService.initializeState(runId, name)
 
                 groupingFile = reductionIngredients.reductionState.stateConfig.focusGroups.definition
@@ -77,7 +75,7 @@ class InitializeCalibrationCheck(Service):
                     QMessageBox.information(self, "Ready to Calibrate", "All operations are complete. Ready to calibrate!")
                     return pixelGroupingParameters
                 except:
-                    raise Exception(QMessageBox.information(self, "Ready to Calibrate", "All operations are complete. Ready to calibrate!"))
+                    raise Exception("Error in calculating pixel grouping parameters")
 
     def promptStateName(self):
         state_name, ok_pressed = QInputDialog.getText(self, "State Name", "Enter State Name:")
