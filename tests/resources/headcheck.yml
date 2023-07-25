@@ -1,0 +1,7 @@
+instrument:
+  home: ""
+  config: tests/resources/inputs/SNAPInstPrm.json
+
+localdataservice:
+  config:
+    verifypaths: false

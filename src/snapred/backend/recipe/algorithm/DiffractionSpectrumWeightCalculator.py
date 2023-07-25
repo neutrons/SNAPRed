@@ -31,13 +31,13 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         if predictedPeaksInput != "":
             predictedPeaks_json = json.loads(predictedPeaksInput)
         else:
-            peakPredictorAlgo = DetectorPeakPredictor()
-            peakPredictorAlgo.initialize()
-            peakPredictorAlgo.setProperty("InstrumentState", self.getProperty("InstrumentState").value)
-            peakPredictorAlgo.setProperty("CrystalInfo", self.getProperty("CrystalInfo").value)
-            peakPredictorAlgo.setChild(True)
-            peakPredictorAlgo.execute()
-            predictedPeaks_json = json.loads(peakPredictorAlgo.getProperty("DetectorPeaks").value)
+            result = self.mantidSnapper.DetectorPeakPredictor(
+                "Predicting peaks...",
+                InstrumentState=self.getProperty("InstrumentState").value,
+                CrystalInfo=self.getProperty("CrystalInfo").value,
+            )
+            self.mantidSnapper.executeQueue()
+            predictedPeaks_json = json.loads(result.get())
 
         # clone input workspace to create a weight workspace
         input_ws_name = self.getProperty("InputWorkspace").value
