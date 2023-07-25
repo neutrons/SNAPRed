@@ -65,22 +65,22 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
             WeightWorkspace=weight_ws_name,
         )
         self.mantidSnapper.executeQueue()
-        weights_ws = mtd[weight_ws_name]
 
         # create workspace group
-
         if mtd.doesExist("SmoothedDataExcludingPeaks"):
             ws_group = mtd["SmoothedDataExcludingPeaks"]
         else:
             ws_group = WorkspaceGroup()
             mtd.add("SmoothedDataExcludingPeaks", ws_group)
+
         # get number of spectrum to iterate over
-        numSpec = weights_ws.getNumberHistograms()
+
+        numSpec = mtd[weight_ws_name].getNumberHistograms()
 
         # extract x & y data for csaps
         for index in range(numSpec):
-            x = weights_ws.readX(index)  # len of 1794
-            w = weights_ws.readY(index)  # len of 1793
+            x = mtd[weight_ws_name].readX(index)  # len of 1794
+            w = mtd[weight_ws_name].readY(index)  # len of 1793
             y = ws.readY(index)
             x_midpoints = (x[:-1] + x[1:]) / 2  # len of 1793
             x_list = x_midpoints.tolist()
@@ -106,7 +106,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
             # execute mantidsnapper
             self.mantidSnapper.executeQueue()
             ws_group.add(single_spectrum_ws_name)
-        self.setProperty("OutputWorkspace", ws_group.name())
+        self.setProperty("OutputWorkspace", "SmoothedDataExcludingPeaks")
         return ws_group
 
 

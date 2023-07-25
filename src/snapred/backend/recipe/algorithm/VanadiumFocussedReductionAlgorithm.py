@@ -13,6 +13,16 @@ name = "VanadiumFocussedReductionAlgorithm"
 
 
 class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
+    """
+    This algorithm creates focussed vanadium to be used during the calibration process. This will allow
+    optimizing the parameters that are used by inspection of the output workspaces created.
+    Inputs:
+        ReductionIngredients: str -- JSON string of ReductionIngredients object
+        SmoothDataIngredients: str -- JSON string of SmoothDataExcludingPeaksIngredients object
+    Output:
+        OutputWorkspaceGroup: str -- the name of the Output Workspace group (diffraction_focused_vanadium)
+    """
+
     def PyInit(self):
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("SmoothDataIngredients", defaultValue="", direction=Direction.Input)
