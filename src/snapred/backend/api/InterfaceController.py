@@ -24,11 +24,11 @@ class InterfaceController:
             # run the recipe
             result = service.orchestrateRecipe(request)
             # convert the response into object to communicate with
-            response = SNAPResponse(responseCode=200, responseMessage=None, responseData=result)
+            response = SNAPResponse(code=200, message=None, data=result)
         except Exception as e:  # noqa BLE001
             # handle exceptions, inform client if recoverable
             self.logger.exception("Failed to call service")
-            response = SNAPResponse(responseCode=500, responseMessage=str(e))
+            response = SNAPResponse(code=500, message=str(e))
 
         self.logger.debug(response.json())
         return response

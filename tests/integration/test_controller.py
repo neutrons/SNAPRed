@@ -23,10 +23,10 @@ def test_excuteRequest_noop():
     response = interfaceController.executeRequest(request=request)
 
     # verify response code
-    assert response.responseCode == 200
+    assert response.code == 200
 
     # verify the expected keys
-    apiDict = response.responseData
+    apiDict = response.data
     keys = list(apiDict.keys())
     keys.sort()
     assert keys == expected_keys
