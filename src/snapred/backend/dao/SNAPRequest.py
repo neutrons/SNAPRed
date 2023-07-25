@@ -7,4 +7,4 @@ class SNAPRequest(BaseModel):
     """"""
 
     path: str
-    payload: Optional[str]
+    payload: Optional[str] = None
