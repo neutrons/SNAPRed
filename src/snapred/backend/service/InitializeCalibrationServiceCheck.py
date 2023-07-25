@@ -72,7 +72,7 @@ class InitializeCalibrationCheck(Service):
                     pixelGroupingParameters = self.calibrationService.calculatePixelGroupingParameters(
                         runs, groupingFile
                     )
-                    QMessageBox.information(self, "Ready to Calibrate", "All operations are complete. Ready to calibrate!")
+                    # QMessageBox.information("All operations are complete. Ready to calibrate!")
                     return pixelGroupingParameters
                 except:
                     raise Exception("Error in calculating pixel grouping parameters")
