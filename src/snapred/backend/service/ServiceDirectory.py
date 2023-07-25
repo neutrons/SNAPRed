@@ -1,3 +1,4 @@
+import inspect
 from typing import Any, Dict
 
 from snapred.meta.Config import Config
@@ -15,7 +16,13 @@ class ServiceDirectory:
         self._services[serviceName] = service
 
     def __getitem__(self, key):
-        return self._services[key]
+        # convert the held value from class to instance
+        value = self._services[key]
+        if inspect.isclass(value):
+            self._services[key] = value()
+            return self._services[key]
+        else:
+            return value
 
     def asDict(self):
         return self._services

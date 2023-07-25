@@ -12,12 +12,15 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class DataFactoryService:
-    lookupService: LocalDataService  # Optional[LocalDataService]
+    lookupService: "LocalDataService"  # Optional[LocalDataService]
     # TODO: rules for busting cache
     cache: Dict[str, ReductionState] = {}
 
-    def __init__(self, lookupService: LocalDataService = LocalDataService()) -> None:
-        self.lookupService = lookupService
+    def __init__(self, lookupService: LocalDataService = None) -> None:
+        if lookupService is None:
+            self.lookupService = LocalDataService()
+        else:
+            self.lookupService = lookupService
 
     def getReductionIngredients(self, runId: str) -> ReductionIngredients:
         return ReductionIngredients(

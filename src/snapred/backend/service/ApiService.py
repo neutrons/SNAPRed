@@ -32,16 +32,17 @@ def _convertToJsonSchema(parameterDic):
 
 @Singleton
 class ApiService(Service):
-    _name = "api"
-    serviceDirectory: ServiceDirectory = ServiceDirectory()
+    serviceDirectory: "ServiceDirectory"
 
     def __init__(self):
         super().__init__()
+        self.serviceDirectory = ServiceDirectory()
         self.registerPath("", self.getValidPaths)
         return
 
-    def name(self):
-        return self._name
+    @staticmethod
+    def name():
+        return "api"
 
     def getValidPaths(self):
         # for every path in serviceDirectory and every path register on each service

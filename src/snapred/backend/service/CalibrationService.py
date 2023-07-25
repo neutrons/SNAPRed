@@ -21,21 +21,23 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class CalibrationService(Service):
-    _name = "calibration"
-    dataFactoryService = DataFactoryService()
-    dataExportService = DataExportService()
+    dataFactoryService: "DataFactoryService"
+    dataExportService: "DataExportService"
 
     # register the service in ServiceFactory please!
     def __init__(self):
         super().__init__()
+        self.dataFactoryService = DataFactoryService()
+        self.dataExportService = DataExportService()
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
         self.registerPath("initializeState", self.initializeState)
         self.registerPath("calculatePixelGroupingParameters", self.calculatePixelGroupingParameters)
         return
 
-    def name(self):
-        return self._name
+    @staticmethod
+    def name():
+        return "calibration"
 
     @FromString
     def reduction(self, runs: List[RunConfig]):

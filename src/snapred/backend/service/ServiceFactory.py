@@ -25,14 +25,14 @@ class ServiceFactory:
 
     def __init__(self):
         # register the services
-        self.serviceDirectory.registerService(ConfigLookupService())
-        self.serviceDirectory.registerService(ReductionService())
-        self.serviceDirectory.registerService(StateIdLookupService())
-        self.serviceDirectory.registerService(CalibrationService())
-        self.serviceDirectory.registerService(CrystallographicInfoService())
-        self.serviceDirectory.registerService(CalibrantSampleService())
-        self.serviceDirectory.registerService(ApiService())
-        self.serviceDirectory.registerService(FitMultiplePeaksService())
+        self.serviceDirectory.registerService(ConfigLookupService)
+        self.serviceDirectory.registerService(ReductionService)
+        self.serviceDirectory.registerService(StateIdLookupService)
+        self.serviceDirectory.registerService(CalibrationService)
+        self.serviceDirectory.registerService(CrystallographicInfoService)
+        self.serviceDirectory.registerService(CalibrantSampleService)
+        self.serviceDirectory.registerService(ApiService)
+        self.serviceDirectory.registerService(FitMultiplePeaksService)
 
     def getServiceNames(self):
         return self.serviceDirectory.keys()

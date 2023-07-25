@@ -11,17 +11,18 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class ConfigLookupService(Service):
-    _name = "config"
-    dataFactoryService = DataFactoryService()
+    dataFactoryService: "DataFactoryService"
 
     # register the service in ServiceFactory
     def __init__(self):
         super().__init__()
+        self.dataFactoryService = DataFactoryService()
         self.registerPath("", self.getConfigs)
         return
 
-    def name(self):
-        return self._name
+    @staticmethod
+    def name():
+        return "config"
 
     @FromString
     def getConfigs(self, runs: List[RunConfig]):
