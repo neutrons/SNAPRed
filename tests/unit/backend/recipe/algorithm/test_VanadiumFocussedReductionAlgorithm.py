@@ -65,7 +65,9 @@ with mock.patch.dict(
             ]
             mock_MantidSnapper.assert_has_calls(calls, any_order=True)
 
-        def test_coverage(self):
+        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.mtd")
+        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.MantidSnapper.createAlgorithm")
+        def test_fullCoverage(self, mock_snapper, mock_mtd):  # noqa ARG002
             vanAlgo = VanadiumFocussedReductionAlgorithm()
             vanAlgo.PyInit()
             vanAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
