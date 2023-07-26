@@ -1,7 +1,9 @@
 import json
 import math
 import pathlib
+from statistics import mean
 
+import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     PythonAlgorithm,
@@ -9,8 +11,8 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.Limit import Limit
+from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -20,7 +22,7 @@ name = "PixelGroupingParametersCalculationAlgorithm"
 class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
-        self.declareProperty("InputState", defaultValue="", direction=Direction.Input)
+        self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
 
         self.declareProperty("InstrumentDefinitionFile", defaultValue="", direction=Direction.Input)
 
@@ -52,8 +54,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
         # define/calculate some auxiliary state-derived parameters
-        calibrationState = Calibration.parse_raw(self.getProperty("InputState").value)
-        instrumentState = calibrationState.instrumentState
+        instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
         tofMin = instrumentState.particleBounds.tof.minimum
         tofMax = instrumentState.particleBounds.tof.maximum
         deltaTOverT = instrumentState.instrumentConfig.delTOverT
@@ -74,23 +75,44 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-        # calculate and store all pixel grouping parameters as strings
-        allGroupingParams_str = []
-        grouped_ws = mtd[grouped_ws_name]
+        # calculate parameters for all pixel groupings and store them in json format
+        allGroupingParams_json = []
+        grouping_ws = self.mantidSnapper.mtd[grouping_ws_name]
+        grouped_ws = self.mantidSnapper.mtd[grouped_ws_name]
         resws = mtd["pgpca_resolution_ws"]
-        specInfo = grouped_ws.spectrumInfo()
+
+        grouping_detInfo = grouping_ws.detectorInfo()
         for groupIndex in range(grouped_ws.getNumberHistograms()):
-            twoTheta = specInfo.twoTheta(groupIndex)
-            dMin = 3.9561e-3 * (1 / (2 * math.sin(twoTheta / 2))) * tofMin / L
-            dMax = 3.9561e-3 * (1 / (2 * math.sin(twoTheta / 2))) * tofMax / L
+            detIDsInGroup = grouping_ws.getDetectorIDsOfGroup(groupIndex + 1)
+
+            groupMin2Theta = 2 * np.pi
+            groupMax2Theta = 0.0
+            groupAverage2Theta = 0.0
+            count = 0
+            for detID in detIDsInGroup:
+                if grouping_detInfo.isMonitor(int(detID)) or grouping_detInfo.isMasked(int(detID)):
+                    continue
+                count += 1
+                twoThetaTemp = grouping_detInfo.twoTheta(int(detID))
+                groupMin2Theta = min(groupMin2Theta, twoThetaTemp)
+                groupMax2Theta = max(groupMax2Theta, twoThetaTemp)
+                groupAverage2Theta += twoThetaTemp
+            if count > 0:
+                groupAverage2Theta /= count
+            del twoThetaTemp
+
+            dMin = 3.9561e-3 * (1 / (2 * math.sin(groupMax2Theta / 2))) * tofMin / L
+            dMax = 3.9561e-3 * (1 / (2 * math.sin(groupMin2Theta / 2))) * tofMax / L
             delta_d_over_d = resws.readY(groupIndex)[0]
 
-            groupingParams_str = PixelGroupingParameters(
-                twoTheta=twoTheta, dResolution=Limit(minimum=dMin, maximum=dMax), dRelativeResolution=delta_d_over_d
+            groupingParams_json = PixelGroupingParameters(
+                twoTheta=groupAverage2Theta,
+                dResolution=Limit(minimum=dMin, maximum=dMax),
+                dRelativeResolution=delta_d_over_d,
             ).json()
-            allGroupingParams_str.append(groupingParams_str)
+            allGroupingParams_json.append(groupingParams_json)
 
-        outputParams = json.dumps(allGroupingParams_str)
+        outputParams = json.dumps(allGroupingParams_json)
         self.setProperty("OutputParameters", outputParams)
 
     # create a grouping workspace from a grouping file
@@ -111,12 +133,9 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
     def LoadSNAPInstrument(self, ws_name):
         self.log().notice("Load SNAP instrument based on the Instrument Definition File")
 
-        # load the idf into workspace
-        idf = self.getProperty("InstrumentDefinitionFile").value
-
         # get detector state from the input state
-        calibrationState = Calibration.parse_raw(self.getProperty("InputState").value)
-        detectorState = calibrationState.instrumentState.detectorState
+        instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
+        detectorState = instrumentState.detectorState
 
         # add sample logs with detector "arc" and "lin" parameters to the workspace
         for param_name in ["arc", "lin"]:
@@ -128,11 +147,13 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                     LogText=str(getattr(detectorState, param_name)[index]),
                     LogType="Number Series",
                 )
-        self.mantidSnapper.executeQueue()
 
+        # load the idf into workspace
+        idf = self.getProperty("InstrumentDefinitionFile").value
         self.mantidSnapper.LoadInstrument(
-            "Loading instrument...", Workspace=ws_name, FileName=idf, RewriteSpectraMap="False"
+            "Loading instrument...", Workspace=ws_name, FileName=idf, RewriteSpectraMap=False
         )
+
         self.mantidSnapper.executeQueue()
 
 
