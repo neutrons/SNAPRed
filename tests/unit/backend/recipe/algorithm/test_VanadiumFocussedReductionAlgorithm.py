@@ -64,3 +64,12 @@ with mock.patch.dict(
                 call("DiffractionFocussing"),
             ]
             mock_MantidSnapper.assert_has_calls(calls, any_order=True)
+
+        def test_coverage(self):
+            vanAlgo = VanadiumFocussedReductionAlgorithm()
+            vanAlgo.PyInit()
+            vanAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
+            vanAlgo.setProperty("SmoothDataIngredients", self.smoothIngredients.json())
+            vanAlgo.PyExec()
+            wsGroupName = vanAlgo.getProperty("OutputWorkspaceGroup").value
+            assert wsGroupName == "diffraction_focused_vanadium"
