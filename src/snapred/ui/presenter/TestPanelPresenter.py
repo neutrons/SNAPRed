@@ -22,7 +22,7 @@ class TestPanelPresenter(object):
 
     def __init__(self, view):
         reductionRequest = SNAPRequest(path="api", payload=None)
-        self.apiDict = self.interfaceController.executeRequest(reductionRequest).responseData
+        self.apiDict = self.interfaceController.executeRequest(reductionRequest).data
 
         self.apiComboBox = self.setupApiComboBox(self.apiDict, view)
 

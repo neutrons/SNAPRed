@@ -49,7 +49,7 @@ class LogTablePresenter(object):
 
     def update_reduction_config_element(self, response: SNAPResponse):
         # import pdb; pdb.set_trace()
-        if response.responseCode == 200:
+        if response.code == 200:
             from snapred.ui.widget.WorkflowNode import continueWorkflow, finalizeWorkflow, startWorkflow
 
             workflow = startWorkflow(lambda workflow: None, self._labelView("Did it work?"))  # noqa: ARG005
@@ -61,7 +61,7 @@ class LogTablePresenter(object):
         else:
             messageBox = QMessageBox()
             messageBox.setIcon(QMessageBox.Critical)
-            messageBox.setText(response.responseMessage)
+            messageBox.setText(response.message)
             messageBox.setFixedSize(500, 200)
             messageBox.exec()
 
