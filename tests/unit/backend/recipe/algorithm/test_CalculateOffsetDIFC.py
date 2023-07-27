@@ -123,7 +123,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("CalibrationWorkspace", difcWS)
-        assert algo.getProperty("DiffractionCalibrationIngredients").value == self.fakeIngredients.json()
+        assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
         assert algo.getProperty("CalibrationWorkspace").value == difcWS
 
     # TODO: this test is not necessary, and is only here for:
