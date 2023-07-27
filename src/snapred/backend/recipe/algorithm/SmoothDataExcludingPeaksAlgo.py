@@ -92,8 +92,9 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
             weightXMidpoints = weightXMidpoints[w != 0]
             y = y[w != 0]
-
+            # Generate spline with purged dataset
             tck = make_smoothing_spline(weightXMidpoints, y)
+            # fill in the removed data using the spline function and original datapoints
             smoothing_results = splev(xMidpoints, tck)
 
             outputWorkspace.setY(index, smoothing_results)

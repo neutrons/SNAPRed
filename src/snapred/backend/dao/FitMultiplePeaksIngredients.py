@@ -7,6 +7,7 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 class FitMultiplePeaksIngredients(BaseModel):
     """Class to hold fit multiple peaks parameters"""
 
+    # TODO: Change these variable names to camel case
     InstrumentState: InstrumentState
     CrystalInfo: CrystallographicInfo
     PeakType: str = "Gaussian"
