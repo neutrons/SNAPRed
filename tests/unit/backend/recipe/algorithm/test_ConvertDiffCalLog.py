@@ -12,11 +12,23 @@ with mock.patch.dict(
 ):
     from mantid.simpleapi import (
         CompareWorkspaces,
+        CreateEmptyTableWorkspace,
         CreateWorkspace,
+        mtd,
     )
     from snapred.backend.recipe.algorithm.ConvertDiffCalLog import (
         ConvertDiffCalLog as ThisAlgo,  # noqa: E402
     )
+
+    def createDIFCTable(tableName, detids, difcs):
+        CreateEmptyTableWorkspace(
+            OutputWorkspace=tableName,
+        )
+        table = mtd[tableName]
+        table.addColumn(type="int", name="detid", plottype=6)
+        table.addColumn(type="double", name="difc", plottype=6)
+        for detid, difc in zip(detids, difcs):
+            table.addRow({"detid": detid, "difc": difc})
 
     def test_set_properties():
         """Test that properties can be initialized"""
@@ -42,15 +54,13 @@ with mock.patch.dict(
         outputWS = "outputWS"
         dBin = 0.0
         lenTest = 10
-        dataX = range(lenTest)
+        detids = range(lenTest)
+        difcs = [1] * lenTest
         # create an offset workspace
-        CreateWorkspace(OutputWorkspace=offsetWS, DataX=dataX, DataY=[0.1 for i in range(lenTest)])
+        CreateWorkspace(OutputWorkspace=offsetWS, DataX=detids, DataY=[0.1 for i in range(lenTest)])
         # create a previous calibration workspace
-        CreateWorkspace(
-            OutputWorkspace=prevCal,
-            DataX=dataX,
-            DataY=[1] * lenTest,
-        )
+        createDIFCTable(prevCal, detids, difcs)
+        # run the algo
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("OffsetsWorkspace", offsetWS)
@@ -71,11 +81,8 @@ with mock.patch.dict(
         # create an offsets workspace
         CreateWorkspace(OutputWorkspace=offsetWS, DataX=dataX, DataY=[0.0 for i in range(lenTest)])
         # create a previous calibration workspace
-        CreateWorkspace(
-            OutputWorkspace=prevCal,
-            DataX=dataX,
-            DataY=[2] * lenTest,
-        )
+        createDIFCTable(prevCal, dataX, [2] * lenTest)
+        # run algo
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("OffsetsWorkspace", offsetWS)
@@ -99,17 +106,10 @@ with mock.patch.dict(
         # create an offsets workspace
         CreateWorkspace(OutputWorkspace=offsetWS, DataX=dataX, DataY=[1.0 for i in range(lenTest)])
         # create previous calibration workspace as powers of 2 for easier division
-        CreateWorkspace(
-            OutputWorkspace=prevCal,
-            DataX=dataX,
-            DataY=[2**i for i in range(lenTest)],
-        )
+        createDIFCTable(prevCal, dataX, [2 ** (i) for i in range(lenTest)])
         # create expected result workspace, one power of 2 smaller
-        CreateWorkspace(
-            OutputWorkspace=testWS,
-            DataX=dataX,
-            DataY=[2 ** (i - 1) for i in range(lenTest)],
-        )
+        createDIFCTable(testWS, dataX, [2 ** (i - 1) for i in range(lenTest)])
+        # run algo
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("OffsetsWorkspace", offsetWS)
@@ -139,19 +139,12 @@ with mock.patch.dict(
         )
         # create workspace of random previous calibrations
         dataYin = np.array([random.random() for i in range(lenTest)])
-        CreateWorkspace(
-            OutputWorkspace=prevCal,
-            DataX=dataX,
-            DataY=dataYin,
-        )
+        createDIFCTable(prevCal, dataX, dataYin)
         # calculate expected values of calculation for comparison
         multFactor = np.power(np.ones(lenTest) + np.abs(dBin), -1 * offsets)
         dataYout = np.multiply(dataYin, multFactor)
-        CreateWorkspace(
-            OutputWorkspace=testWS,
-            DataX=dataX,
-            DataY=dataYout,
-        )
+        createDIFCTable(testWS, dataX, dataYout)
+        # run algo
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("OffsetsWorkspace", offsetWS)
@@ -180,11 +173,8 @@ with mock.patch.dict(
             DataY=[1.0 for i in range(lenTest)],
         )
         # create a previous calibration workspace
-        CreateWorkspace(
-            OutputWorkspace=prevCal,
-            DataX=dataX,
-            DataY=[2**i for i in range(lenTest)],
-        )
+        createDIFCTable(prevCal, dataX, [2**i for i in range(lenTest)])
+        # run algo
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("OffsetsWorkspace", offsetWS)

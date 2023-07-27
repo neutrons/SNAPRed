@@ -13,16 +13,16 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import (
-    CalculateOffsetDIFC as ThisAlgo,  # noqa: E402
+from snapred.backend.recipe.algorithm.GroupByGroupCalibration import (
+    GroupByGroupCalibration as ThisAlgo,  # noqa: E402
 )
-from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
 from snapred.meta.Config import Resource
 
 
-class TestCalculateOffsetDIFC(unittest.TestCase):
+class TestGroupByGroupCalibration(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         self.fakeDBin = -abs(0.001)
@@ -42,7 +42,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         fakeFocusGroup.definition = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
 
         peakList = [
-            DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 2, "maximum": 3}}),
+            DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
             DetectorPeak.parse_obj({"position": {"value": 5, "minimum": 4, "maximum": 6}}),
         ]
 
@@ -70,8 +70,6 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
             Random=True,
         )
-        algo.convertUnitsAndRebin(algo.inputWStof, algo.inputWStof, "TOF")
-        algo.convertUnitsAndRebin(algo.inputWStof, algo.inputWSdsp, "dSpacing")
 
         # manually setup the grouping workspace
         focusWSname = "_focusws_name_"
@@ -122,69 +120,11 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("CalibrationWorkspace", difcWS)
-        assert algo.getProperty("DiffractionCalibrationIngredients").value == self.fakeIngredients.json()
-        assert algo.getProperty("CalibrationWorkspace").value == difcWS
-
-    # TODO: this test is not necessary, and is only here for:
-    # 1. the principle that all methods should have independent tests
-    # 2. demonstration of using CreateSampleWorkspace
-    # 3. making codecov happier
-    # feel free to remove
-    def test_convert_and_rebin(self):
-        """Test that units can be converted between TOF and d-spacing"""
-        from mantid.simpleapi import (
-            CompareWorkspaces,
-            ConvertUnits,
-            CreateSampleWorkspace,
-            Rebin,
-        )
-
-        wstof = "_test_tof_data"
-        wsdsp = "_test_dsp_data"
-        CreateSampleWorkspace(
-            OutputWorkspace=wstof,
-            WorkspaceType="Histogram",
-            Function="Powder Diffraction",
-            XUnit="TOF",
-            InstrumentName="SNAP",
-            NumBanks=1,
-            BankPixelWidth=10,
-        )
-
-        # weak setup of algorithm
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.chopIngredients(self.fakeIngredients)
-
-        # try just rebinning the current workspace
-        wstof_expected = "_test_tof_expected"
-        Rebin(
-            InputWorkspace=wstof,
-            Params=f"{algo.TOFMin},{-abs(algo.TOFBin)},{algo.TOFMax}",
-            OutputWorkspace=wstof_expected,
-        )
-        algo.convertUnitsAndRebin(wstof, wstof, target="TOF")
-        assert CompareWorkspaces(Workspace1=wstof, Workspace2=wstof_expected)
-
-        # now try converting and rebinning workspace
-        wsdsp_expected = "_test_dsp_expected"
-        ConvertUnits(
-            InputWorkspace=wstof_expected,
-            OutputWorkspace=wsdsp_expected,
-            Target="dSpacing",
-        )
-        Rebin(
-            InputWorkspace=wsdsp_expected,
-            Params=f"{algo.overallDMin},{-abs(algo.dBin)},{algo.overallDMax}",
-            OutputWorkspace=wsdsp_expected,
-        )
-        algo.convertUnitsAndRebin(wstof, wsdsp)
-        algo.mantidSnapper.executeQueue()
-        assert CompareWorkspaces(Workspace1=wsdsp, Workspace2=wsdsp_expected)
+        algo.setProperty("PreviousCalibrationTable", difcWS)
+        assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
+        assert algo.getProperty("PreviousCalibrationTable").value == difcWS
 
     @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
-    @mock.patch.object(ThisAlgo, "getRefID", lambda self, x: int(min(x)))  # noqa
     def test_execute(self):
         """Test that the algorithm executes"""
 
@@ -193,42 +133,9 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("CalibrationWorkspace", difcWS)
+        algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
+        algo.setProperty("PreviousCalibrationTable", difcWS)
         assert algo.execute()
-
-        data = json.loads(algo.getProperty("data").value)
-        assert data["meanOffset"] is not None
-        assert data["meanOffset"] != 0
-        assert data["meanOffset"] > 0
-        assert data["meanOffset"] <= 2
-
-    # patch to make the offsets of sample data non-zero
-    @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
-    @mock.patch.object(ThisAlgo, "getRefID", lambda self, x: int(min(x)))  # noqa
-    def test_reexecution_and_convergence(self):
-        """Test that the algorithm can run, and that it will converge to an answer"""
-
-        difcWS = f"_{self.fakeRunNumber}_difcs_test"
-
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("CalibrationWorkspace", difcWS)
-        assert algo.execute()
-
-        data = json.loads(algo.getProperty("data").value)
-        assert data["meanOffset"] is not None
-        assert data["meanOffset"] != 0
-        assert data["meanOffset"] <= 2
-
-        # check that value converges
-        numIter = 5
-        allOffsets = [data["meanOffset"]]
-        for i in range(numIter):
-            algo.reexecute(difcWS)
-            data = json.loads(algo.getProperty("data").value)
-            allOffsets.append(data["meanOffset"])
-            assert allOffsets[-1] <= allOffsets[-2]
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
