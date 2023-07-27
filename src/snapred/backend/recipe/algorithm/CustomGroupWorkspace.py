@@ -2,15 +2,9 @@ import json
 
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
-from mantid.simpleapi import (
-    CreateWorkspace,
-    DeleteWorkspace,
-    GroupWorkspaces,
-    LoadDetectorsGroupingFile,
-    LoadInstrument,
-)
 
 from snapred.backend.dao.StateConfig import StateConfig
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "CustomGroupWorkspace"
 
@@ -26,6 +20,7 @@ class CustomGroupWorkspace(PythonAlgorithm):
 
         self.declareProperty("InstrumentName", defaultValue="SNAP", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="CommonRed", direction=Direction.Output)
+        self.mantidSnapper = MantidSnapper(self, name)
 
     # TODO: This was largely copied from Malcolm's prototype and is due for a refactor
     def PyExec(self):
@@ -38,30 +33,33 @@ class CustomGroupWorkspace(PythonAlgorithm):
         loadEmptyInstrument = bool(not donorWorkspace)
         if loadEmptyInstrument:
             donorWorkspace = "idf"  # name doesn't matter
-            CreateWorkspace(OutputWorkspace=donorWorkspace, DataX=1, DataY=1)
-            LoadInstrument(
+            self.mantidSnapper.LoadEmptyInstrument(
                 Workspace=donorWorkspace,
                 Filename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
                 MonitorList="-2--1",
                 RewriteSpectraMap=False,
             )
+            self.mantidSnapper.executeQueue()
         else:
             # convert workspace to string to avoid dangling pointers
             donorWorkspace = str(donorWorkspace)
 
         for grpIndx, focusGroup in enumerate(focusGroups):
-            LoadDetectorsGroupingFile(
+            self.mantidSnapper.LoadDetectorsGroupingFile(
                 InputFile=focusGroup.definition, InputWorkspace=donorWorkspace, OutputWorkspace=focusGroup.name
             )
+            self.mantidSnapper.executeQueue()
 
         # cleanup temporary workspace
         if loadEmptyInstrument:
-            DeleteWorkspace(Workspace=donorWorkspace)
+            self.mantidSnapper.DeleteWorkspace(Workspace=donorWorkspace)
+            self.mantidSnapper.executeQueue()
 
         # create a workspace group of GroupWorkspaces
-        GroupWorkspaces(
+        self.mantidSnapper.GroupWorkspaces(
             InputWorkspaces=[focusGroup.name for focusGroup in focusGroups], OutputWorkspace=outputWorkspace
         )
+        self.mantidSnapper.executeQueue()
 
 
 # Register algorithm with Mantid
