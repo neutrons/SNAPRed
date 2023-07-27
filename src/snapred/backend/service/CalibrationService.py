@@ -1,4 +1,6 @@
 import time
+import os
+import json
 from typing import List
 
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
@@ -6,8 +8,10 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
+from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationReductionRecipe import CalibrationReductionRecipe
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
@@ -24,6 +28,7 @@ class CalibrationService(Service):
     _name = "calibration"
     dataFactoryService = DataFactoryService()
     dataExportService = DataExportService()
+    localDataService = LocalDataService()
 
     # register the service in ServiceFactory please!
     def __init__(self):
@@ -32,6 +37,7 @@ class CalibrationService(Service):
         self.registerPath("save", self.save)
         self.registerPath("initializeState", self.initializeState)
         self.registerPath("calculatePixelGroupingParameters", self.calculatePixelGroupingParameters)
+        self.registerPath("intializeCalibrationCheck", self.intializeCalibrationCheck)
         return
 
     def name(self):
@@ -96,3 +102,53 @@ class CalibrationService(Service):
                 self.dataExportService.exportCalibrationState(runId=run.runNumber, calibration=calibrationState)
             except:
                 raise
+
+    @FromString
+    def hasState(self, runId: str, version: str):
+        stateID, _ = self.localDataService._generateStateId(runId)
+        calibrationStatePath = self.localDataService._constructCalibrationPath(stateID)
+
+        if os.path.exists(calibrationStatePath):
+            recordPath: str = calibrationStatePath + "{}/v{}/CalibrationRecord.json".format(runId, version)
+            if os.path.exists(recordPath):
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    @FromString # TODO: Need to implement UI in this method
+    def promptUserForName(self):
+        name = input("Enter a name for the state: ")
+        return name
+
+    @FromString
+    def intializeCalibrationCheck(self, runs: List[RunConfig]):
+        if not runs:
+            raise ValueError("List is empty")
+        else:
+            # list to store states
+            states = []
+            for run in runs:
+                # identify the instrument state for measurement
+                state = self.dataFactoryService.getStateConfig(run.runNumber)
+                states.append(state)
+                # check if state exists and create in case it does not exist
+                for state in states:
+                    hasState = self.hasState(state, "*")
+                    if not hasState:
+                        name = self.promptUserForName()
+                        request = InitializeStateRequest(run.runNumber, name)
+                        self.initializeState(request)
+                        break
+
+                reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
+                groupingFile = reductionIngredients.reductionState.stateConfig.focusGroups.definition
+                # calculate pixel grouping parameters
+                pixelGroupingParameters = self.calculatePixelGroupingParameters(
+                        runs, groupingFile
+                    )
+                if pixelGroupingParameters:
+                    return print("Ready to calibrate")  # TODO: Need to implement UI in this method
+                else:
+                    raise Exception("Error in calculating pixel grouping parameters")
