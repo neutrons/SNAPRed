@@ -1,7 +1,7 @@
 import json
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QComboBox
+from PyQt5.QtWidgets import QComboBox, QPushButton
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.SNAPRequest import SNAPRequest
@@ -87,10 +87,10 @@ class TestPanelPresenter(object):
         self._loadDefaultJsonInput(selection, newForm)
         if selection.startswith("calibration/reduction"):
             newWidget = CalibrationReductionRequestView(newForm, parent=self.view)
+        elif selection.startswith("calibration/intializeCalibrationCheck"):
+            newWidget = InitializeCalibrationCheckView(newForm, parent=self.view)
         elif selection.startswith("fitMultiplePeaks"):
             newWidget = FitMultiplePeaksView(newForm, parent=self.view)
-        elif selection.startswith("initializeCalibrationCheck"):
-            newWidget = InitializeCalibrationCheckView(newForm, parent=self.view)
         else:
             newWidget = BackendRequestView(newForm, selection, parent=self.view)
 
