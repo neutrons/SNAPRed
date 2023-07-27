@@ -1,128 +1,69 @@
 import sys
 
-from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
-    QApplication,
-    QHBoxLayout,
-    QMainWindow,
-    QMessageBox,
-    QPushButton,
-    QSplitter,
-    QStatusBar,
-    QVBoxLayout,
-    QWidget,
-)
-from workbench.plugins.workspacewidget import WorkspaceWidget
-
-from snapred.backend.log.logger import snapredLogger
+from snapred import __version__ as snapred_version
+from snapred.backend.shims import amend_mantid_config
 from snapred.meta.Config import Resource
-from snapred.ui.widget.LogTable import LogTable
-from snapred.ui.widget.TestPanel import TestPanel
-from snapred.ui.widget.ToolBar import ToolBar
-
-logger = snapredLogger.getLogger(__name__)
 
 
-class SNAPRedGUI(QMainWindow):
-    def __init__(self, parent=None):
-        super(SNAPRedGUI, self).__init__(parent)
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setAttribute(Qt.WA_DontCreateNativeAncestors, True)
-        logTable = LogTable("load dummy", self)
-        splitter = QSplitter(Qt.Vertical)
-        splitter.addWidget(logTable.widget)
-
-        # add button to open new window
-        button = QPushButton("Open Test Panel")
-        button.clicked.connect(self.openNewWindow)
-        splitter.addWidget(button)
-
-        # myiv = get_instrumentview(ws)
-        # myiv.show_view()
-
-        # import pdb; pdb.set_trace()
-        workspaceWidgetWrapper = QWidget()
-        workspaceWidgetWrapperLayout = QHBoxLayout()
-        workspaceWidget = WorkspaceWidget(self)
-        workspaceWidgetWrapper.setObjectName("workspaceTreeWidget")
-        workspaceWidgetWrapperLayout.addWidget(workspaceWidget, alignment=Qt.AlignCenter)
-        workspaceWidgetWrapper.setLayout(workspaceWidgetWrapperLayout)
-        splitter.addWidget(workspaceWidgetWrapper)
-        splitter.addWidget(AlgorithmProgressWidget())
-
-        centralWidget = QWidget()
-        centralWidget.setObjectName("centralwidget")
-        centralLayout = QVBoxLayout()
-        centralWidget.setLayout(centralLayout)
-
-        self.setCentralWidget(centralWidget)
-        self.setWindowTitle("SNAPRed")
-        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-
-        self.titleBar = ToolBar(centralWidget)
-        centralLayout.addWidget(self.titleBar.widget)
-        centralLayout.addWidget(splitter)
-
-        self.setContentsMargins(0, self.titleBar.widget.height(), 0, 0)
-
-        self.resize(320, self.titleBar.widget.height() + 480)
-        self.setMinimumSize(320, self.titleBar.widget.height() + 480)
-
-        self.statusBar = QStatusBar()
-        self.setStatusBar(self.statusBar)
-
-    def openNewWindow(self):
-        self.newWindow = TestPanel(self)
-        self.newWindow.widget.setWindowTitle("Test Panel")
-        self.newWindow.widget.show()
-
-    def closeEvent(self, event):
-        event.accept()
-
-    def changeEvent(self, event):
-        if event.type() == event.WindowStateChange:
-            self.titleBar.presenter.windowStateChanged(self.windowState())
-
-    def resizeEvent(self, event):
-        self.titleBar.presenter.resizeEvent(event)
+def _print_text_splash():
+    TXT_FILENAME = "ascii.txt"
+    with Resource.open(TXT_FILENAME, "r") as asciiArt:
+        artString = asciiArt.read().split("\n")
+        ornlLogo = artString[:33]
+        snapRedText = artString[33:]
+        for value, line in enumerate(ornlLogo):
+            print("\033[38:2:8:{}:{}:{}m{}\033[00m".format(0, 60 + value * 4, value * 2, line))
+        for value, line in enumerate(snapRedText):
+            print("\033[38:2:0:136:{}:{}m {}\033[00m".format(value * 4 + 51, value * 4 + 46, line))
 
 
-def qapp():
-    if QApplication.instance():
-        _app = QApplication.instance()
-    else:
-        _app = QApplication(sys.argv)
-    return _app
+def _bool_to_mtd_str(arg: bool) -> str:
+    """mantid.kernel.ConfigService does not understand bool, but does understand
+    the strings "0" and "1". This method converts things
+    """
+    return "1" if arg else "0"
 
 
-def main(args=None):  # noqa: ARG001
-    app = qapp()
-    with Resource.open("style.qss", "r") as styleSheet:
-        app.setStyleSheet(styleSheet.read())
-    try:
-        ex = SNAPRedGUI()
+def main(args=None):
+    import argparse
 
-        # ex.resize(700, 700)
-        asciiPath = "ascii.txt"
-        with Resource.open(asciiPath, "r") as asciiArt:
-            artString = asciiArt.read().split("\n")
-            ornlLogo = artString[:33]
-            snapRedText = artString[33:]
-            for value, line in enumerate(ornlLogo):
-                print("\033[38:2:8:{}:{}:{}m{}\033[00m".format(0, 60 + value * 4, value * 2, line))
-            for value, line in enumerate(snapRedText):
-                print("\033[38:2:0:136:{}:{}m {}\033[00m".format(value * 4 + 51, value * 4 + 46, line))
+    parser = argparse.ArgumentParser(
+        prog="snapred", description="Data reduction software for SNAP", epilog="https://snapred.readthedocs.io/"
+    )
+    parser.add_argument("-v", "--version", action="version", version=snapred_version)
+    parser.add_argument("--checkfornewmantid", action="store_true", help="check for new mantid version on startup")
+    parser.add_argument(
+        "--updateinstruments", action="store_true", help="update user's cache of mantid instrument definitions"
+    )
+    parser.add_argument(
+        "--reportusage", action="store_true", help="post telemetry data to mantid usage reporting service"
+    )
+    parser.add_argument(
+        "--headcheck",
+        action="store_true",
+        help="start the gui then shut it down after 5 seconds. This is used for testing",
+    )
+    options, _ = parser.parse_known_args(args)
 
-        logger.info("Welcome User! Happy Reducing!")
-        ex.show()
-        ret = app.exec_()
-        return sys.exit(ret)
+    # fix up some of the options for mantid
+    options.checkfornewmantid = _bool_to_mtd_str(options.checkfornewmantid)
+    options.updateinstruments = _bool_to_mtd_str(options.updateinstruments)
+    options.reportusage = _bool_to_mtd_str(options.reportusage)
 
-    except Exception as uncaughtError:  # noqa: BLE001
-        ex = QWidget()
-        logger.exception("Uncaught Error bubbled up to main!")
-        QMessageBox.critical(ex, "Uncaught Error!", str(uncaughtError))
+    # show the ascii splash screen
+    _print_text_splash()
+
+    # start the gui
+    with amend_mantid_config(
+        new_config={
+            "CheckMantidVersion.OnStartup": options.checkfornewmantid,
+            "UpdateInstrumentDefinitions.OnStartup": options.updateinstruments,
+            "usagereports.enabled": options.reportusage,
+        }
+    ):
+        from snapred.ui.main import start
+
+        return start(options)
 
 
 if __name__ == "__main__":

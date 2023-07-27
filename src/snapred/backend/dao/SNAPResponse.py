@@ -1,14 +1,18 @@
+from enum import IntEnum
 from typing import Optional
 
 from pydantic import BaseModel
 
 
-class SNAPResponse(BaseModel):
-    """"""
+class ResponseCode(IntEnum):
+    OK = 200
+    ERROR = 500
 
-    responseCode: int
-    responseMessage: Optional[str]
-    responseData: Optional[dict]
+
+class SNAPResponse(BaseModel):
+    code: ResponseCode
+    message: Optional[str] = None
+    data: Optional[dict] = None
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

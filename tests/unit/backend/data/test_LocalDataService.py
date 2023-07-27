@@ -4,6 +4,7 @@ import shutil
 import unittest.mock as mock
 from typing import List
 
+import pytest
 from pydantic import parse_raw_as
 from snapred.meta.Config import Resource
 
@@ -273,23 +274,16 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert actualFile == "Powder/1234/v_2/CalibrationRecord.json"
 
     def test_writeCalibrationReductionResult():
-        import mantid.api
+        from snapred.backend.data.LocalDataService import LocalDataService as LocalDataService2
 
-        mantid.api = mock.Mock()
-        mantid.api.AlgorithmManager = mock.Mock()
-        mantid.api.AlgorithmManager.create = mock.Mock()
-        with mock.patch.dict("sys.modules", {"mantid.api": mantid.api}):
-            from snapred.backend.data.LocalDataService import LocalDataService as LocalDataService2
+        localDataService = LocalDataService2()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
+        localDataService._constructCalibrationPath = mock.Mock()
+        localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
 
-            localDataService = LocalDataService2()
-            localDataService._generateStateId = mock.Mock()
-            localDataService._generateStateId.return_value = ("123", "456")
-            localDataService._constructCalibrationPath = mock.Mock()
-            localDataService._constructCalibrationPath.return_value = Resource.getPath("outputs/")
-
-            localDataService.writeCalibrationReductionResult("123", "ws")
-
-            assert mantid.api.AlgorithmManager.create.called
+        filename = localDataService.writeCalibrationReductionResult("123", "ws", dryrun=True)
+        assert filename.endswith("tests/resources/outputs/123/ws_v1.nxs")
 
     def test__isApplicableEntry_equals():
         localDataService = LocalDataService()
@@ -381,3 +375,13 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         actual = localDataService.initializeState("123", "test")
         actual.creationDate = testCalibrationData.creationDate
         assert actual == testCalibrationData
+
+    def test_badPaths():
+        """This verifies that a broken configuration (from production) can't find all of the files"""
+        # get a handle on the service
+        service = LocalDataService()
+        service.verifyPaths = True  # override test setting
+        with pytest.raises(FileNotFoundError):
+            service.readInstrumentConfig()
+
+        service.verifyPaths = False  # put the setting back

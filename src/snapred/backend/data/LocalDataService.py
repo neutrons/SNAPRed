@@ -46,7 +46,7 @@ class LocalDataService:
     reductionParameterCache: Dict[str, Any] = {}
     iptsCache: Dict[str, Any] = {}
     stateIdCache: Dict[str, str] = {}
-    instrumentConfig: InstrumentConfig  # Optional[InstrumentConfig]
+    instrumentConfig: "InstrumentConfig"  # Optional[InstrumentConfig]
     verifyPaths: bool = True
 
     def __init__(self) -> None:
@@ -482,7 +482,7 @@ class LocalDataService:
         saveAlgo.setProperty("Filename", path + workspaceName)
         saveAlgo.execute()
 
-    def writeCalibrationReductionResult(self, runId: str, workspaceName: str):
+    def writeCalibrationReductionResult(self, runId: str, workspaceName: str, dryrun: bool = False):
         # use mantid to write workspace to file
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationStatePath(stateId)
@@ -491,10 +491,13 @@ class LocalDataService:
         foundFiles = self._findMatchingFileList(filenameFormat.format("*"), throws=False)
         version = len(foundFiles) + 1
 
-        saveAlgo = AlgorithmManager.create("SaveNexus")
-        saveAlgo.setProperty("InputWorkspace", workspaceName)
-        saveAlgo.setProperty("Filename", filenameFormat.format(version))
-        saveAlgo.execute()
+        filename = filenameFormat.format(version)
+        if not dryrun:
+            saveAlgo = AlgorithmManager.create("SaveNexus")
+            saveAlgo.setProperty("InputWorkspace", workspaceName)
+            saveAlgo.setProperty("Filename", filename)
+            saveAlgo.execute()
+        return filename
 
     def writeCalibrantSample(self, sample: CalibrantSamples):
         samplePath: str = Config["samples.home"]
