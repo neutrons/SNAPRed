@@ -45,6 +45,7 @@ class FitCalibrationWorkspaceRecipe:
             SmoothDataExcludingPeaksIngredients=self.smoothIngredients,
             OutputWorkspace=self.fitIngredients.InputWorkspace,
         )
+
         fitResult = FitMultiplePeaksRecipe().executeRecipe(
             FitMultiplePeaksIngredients=self.fitIngredients,
             OutputWorkspaceGroup="fitted_{}".format(self.fitIngredients.InputWorkspace),
