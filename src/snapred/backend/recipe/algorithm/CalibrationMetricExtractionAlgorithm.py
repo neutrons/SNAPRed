@@ -25,6 +25,7 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
         self.declareProperty("PixelGroupingParameter", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputMetrics", defaultValue="", direction=Direction.Output)
         self.mantidSnapper = MantidSnapper(self, name)
+        self.setRethrows(True)
 
     def PyExec(self):
         inputWorkspace = self.getProperty("InputWorkspace").value
@@ -49,7 +50,7 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
             strainAverage = 0
             strainStandardDeviation = 0
             twoThetaAverage = 0
-            self.log().notice("------------------------------------------------------------------------------")
+
             strains = []
             sigmas = []
             for rowIndex in range(params.rowCount()):
@@ -61,14 +62,10 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
                     continue
                 strains.append((d_ref - pos) / sig)
                 sigmas.append(sig / pos)
-                self.log().notice(f"sig: {sig}, pos: {pos}, d_ref: {d_ref}")
 
             strains = np.array(strains)
-            # Ignoring NaNs did not help the results, and may serve to spoil them.
-            # strains = np.ma.array(strains, mask=np.isnan(strains))
 
             sigmas = np.array(sigmas)
-            # sigmas = np.ma.array(sigmas, mask=np.isnan(sigmas))
 
             sigmaAverage = np.average(sigmas)
             strainAverage = np.average(strains)
