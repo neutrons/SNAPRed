@@ -26,8 +26,9 @@ build:
 
 requirements:
   host:
-    - versioningit
     - python
+    - versioningit
+    - pydantic=1.10
 
   build:
     - setuptools
