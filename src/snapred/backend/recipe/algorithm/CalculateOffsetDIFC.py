@@ -89,10 +89,8 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         focusWS = self.mantidSnapper.mtd[focusWSname]
         self.groupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
         self.subgroupWorkspaceIndices: Dict[int, List[int]] = {}
-        self.allDetectorIDs: List[int] = []
         for groupID in self.groupIDs:
             groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
-            self.allDetectorIDs.extend(groupDetectorIDs)
             self.subgroupWorkspaceIndices[groupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
         self.mantidSnapper.DeleteWorkspace(
             "Delete temp",

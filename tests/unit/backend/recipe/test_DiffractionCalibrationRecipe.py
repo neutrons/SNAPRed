@@ -113,37 +113,38 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     @mock.patch(TheAlgorithmManager)
     def test_execute_unsuccessful_later_calls(self, mock_AlgorithmManager):
-        mock.Mock()
-
         # a scoped dummy algorithm to test all three try/except blocks
         class DummyFailingAlgo(PythonAlgorithm):
             def PyInit(self):
                 self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
+                self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
+                self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
+                self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.InOut)
+                self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.InOut)
+                self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.InOut)
                 self.declareProperty("fails", defaultValue=0, direction=Direction.Input)
                 self.declareProperty("times", defaultValue=0, direction=Direction.InOut)
                 self.declareProperty("data", defaultValue="", direction=Direction.Output)
+                self.setRethrows(True)
 
             def PyExec(self):
-                self.fails = self.getProperty("fails").value
                 self.reexecute()
 
             def reexecute(self):
+                fails = self.getProperty("fails").value
                 times = self.getProperty("times").value
                 self.setProperty("data", json.dumps({"medianOffset": 2 ** (-times)}))
                 times += 1
-                if times >= self.fails:
+                if times >= fails:
                     raise RuntimeError(f"passed {times}")
                 self.setProperty("times", times)
 
         mockAlgo = DummyFailingAlgo()
         mockAlgo.initialize()
+        mock_AlgorithmManager.create.return_value = mockAlgo
 
         for i in range(1, 4):
             mockAlgo.setProperty("fails", i)
-
-            # mock_algo.execute.side_effect = RuntimeError("passed")
-            mock_AlgorithmManager.create.return_value = mockAlgo
-
             try:
                 self.recipe.executeRecipe(self.fakeIngredients)
             except Exception as e:  # noqa: E722 BLE001
