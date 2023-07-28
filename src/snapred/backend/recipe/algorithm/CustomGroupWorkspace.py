@@ -45,7 +45,9 @@ class CustomGroupWorkspace(PythonAlgorithm):
 
         for grpIndx, focusGroup in enumerate(focusGroups):
             self.mantidSnapper.LoadDetectorsGroupingFile(
-                InputFile=focusGroup.definition, InputWorkspace=donorWorkspace, OutputWorkspace=focusGroup.name
+                InputFile=focusGroup.definition,
+                InputWorkspace=donorWorkspace,
+                OutputWorkspace=focusGroup.name,
             )
             self.mantidSnapper.executeQueue()
 
