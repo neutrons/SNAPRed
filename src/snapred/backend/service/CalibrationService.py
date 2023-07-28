@@ -37,7 +37,7 @@ class CalibrationService(Service):
         self.registerPath("save", self.save)
         self.registerPath("initializeState", self.initializeState)
         self.registerPath("calculatePixelGroupingParameters", self.calculatePixelGroupingParameters)
-        self.registerPath("intializeCalibrationCheck", self.intializeCalibrationCheck)
+        self.registerPath("initializeCalibrationCheck", self.initializeCalibrationCheck)
         return
 
     def name(self):
@@ -123,7 +123,7 @@ class CalibrationService(Service):
         return name
 
     @FromString
-    def intializeCalibrationCheck(self, runs: List[RunConfig]):
+    def initializeCalibrationCheck(self, runs: List[RunConfig]):
         if not runs:
             raise ValueError("List is empty")
         else:

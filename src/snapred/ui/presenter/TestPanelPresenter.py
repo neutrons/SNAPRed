@@ -87,7 +87,7 @@ class TestPanelPresenter(object):
         self._loadDefaultJsonInput(selection, newForm)
         if selection.startswith("calibration/reduction"):
             newWidget = CalibrationReductionRequestView(newForm, parent=self.view)
-        elif selection.startswith("calibration/intializeCalibrationCheck"):
+        elif selection.startswith("calibration/initializeCalibrationCheck"):
             newWidget = InitializeCalibrationCheckView(newForm, parent=self.view)
         elif selection.startswith("fitMultiplePeaks"):
             newWidget = FitMultiplePeaksView(newForm, parent=self.view)
