@@ -46,5 +46,4 @@ with mock.patch.dict(
         # TODO edit the purge_peaks version of output file to correct format
         expected_pos_json = json.loads(Resource.read("/outputs/predict_peaks/peaks.json"))
 
-        print(actual_pos_json)
         assert expected_pos_json == actual_pos_json

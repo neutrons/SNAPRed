@@ -237,45 +237,77 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         assert algo.getProperty("PreviousCalibrationTable").value == difcWS
 
     @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
+    @mock.patch.object(ThisAlgo, "storeInPantry", mock.Mock(return_value=None))
     def test_execute(self):
-        from mantid.simpleapi import (
-            CompareWorkspaces,
-            LoadDiffCal,
-            SaveAscii,
-            mtd,
-        )
-
         """Test that the algorithm executes"""
-
         difcWS = f"_{self.fakeRunNumber}_difcs_test"
         self.initDIFCTable(difcWS)
-        print(f"CHECK IF {difcWS} EXISTS: {mtd.doesExist(difcWS)}")
 
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
         algo.setProperty("PreviousCalibrationTable", difcWS)
-        print(f"CHECK IF {difcWS} EXISTS: {mtd.doesExist(difcWS)}")
         assert algo.execute()
-        SaveAscii(
-            Inputworkspace=algo.getProperty("FinalCalibrationTable").value,
-            Filename=Resource.getPath("outputs/calibration/checkme1.txt"),
+
+    def test_save_load(self):
+        """Test that files are correctly saved and loaded"""
+        import os
+
+        from mantid.simpleapi import (
+            CompareWorkspaces,
+            CreateEmptyTableWorkspace,
+            LoadDiffCal,
+            mtd,
         )
-        LoadDiffCal(
-            InstrumentFilename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
-            Filename=Resource.getPath("outputs/calibration/SNAP555_calib_geom_20230727.h5"),
-            WorkspaceName="checkme",
+
+        difcws = f"_{self.fakeRunNumber}_difcs_test"
+        # create a simple test calibration table
+        CreateEmptyTableWorkspace(
+            OutputWorkspace=difcws,
         )
+        DIFCtable = mtd[difcws]
+        DIFCtable.addColumn(type="int", name="detid", plottype=6)
+        DIFCtable.addColumn(type="double", name="difc", plottype=6)
+        DIFCtable.addColumn(type="double", name="difa", plottype=6)
+        DIFCtable.addColumn(type="double", name="tzero", plottype=6)
+        DIFCtable.addColumn(type="double", name="tofmin", plottype=6)
+        detids = range(10)
+        difcs = [detid * 2.0 for detid in detids]
+        for detid, difc in zip(detids, difcs):
+            DIFCtable.addRow(
+                {
+                    "detid": detid,
+                    "difc": difc,
+                    "difa": 0,
+                    "tzero": 0,
+                    "tofmin": 0,
+                }
+            )
+
+        algo = ThisAlgo()
+        algo.initialize()
+        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
+        algo.setProperty("PreviousCalibrationTable", difcws)
+        algo.setProperty("FinalCalibrationTable", difcws)
+        algo.outputFilename: str = Resource.getPath("outputs/calibration/fakeCalibrationTable.h5")
+        algo.storeInPantry()
         assert CompareWorkspaces(
-            Workspace1="checkme_cal",
+            Workspace1=difcws,
             Workspace2=algo.getProperty("FinalCalibrationTable").value,
         )
-        mtd["checkme_cal"]
-        SaveAscii(
-            InputWorkspace="checkme_cal",
-            Filename=Resource.getPath("outputs/calibration/checkme2.txt"),
+
+        LoadDiffCal(
+            InstrumentFilename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            Filename=algo.outputFilename,
+            WorkspaceName="ReloadedCalibrationTable",
         )
+        assert CompareWorkspaces(
+            Workspace1="ReloadedCalibrationTable_cal",
+            Workspace2=algo.getProperty("FinalCalibrationTable").value,
+        )
+        os.remove(algo.outputFilename)
 
     # TODO more and more better tests of behavior
 

@@ -22,6 +22,8 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, name)
 
     def chopIngredients(self, ingredients):
+        from datetime import date
+
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         self.runNumber: str = ingredients.runConfig.runNumber
         self.ipts: str = ingredients.runConfig.IPTS
@@ -30,6 +32,17 @@ class GroupByGroupCalibration(PythonAlgorithm):
         # TODO setup for SNAPLite
         self.isLite = False
         self.stateFolder: str = ingredients.calPath
+
+        # set output filename
+        self.outputFilename: str
+        if self.isLite:
+            self.outputFilename = (
+                f'{self.stateFolder}SNAP{self.runNumber}_calib_geom_{date.today().strftime("%Y%m%d")}.lite.h5'
+            )
+        else:
+            self.outputFilename = (
+                f'{self.stateFolder}SNAP{self.runNumber}_calib_geom_{date.today().strftime("%Y%m%d")}.h5'
+            )
 
         # fdrom the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
@@ -145,20 +158,10 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
     def storeInPantry(self) -> None:
-        from datetime import date
-
-        now = date.today()
-
-        h5OutputFilename: str
-        if self.isLite:
-            h5OutputFilename = f'{self.stateFolder}SNAP{self.runNumber}_calib_geom_{now.strftime("%Y%m%d")}.lite.h5'
-        else:
-            h5OutputFilename = f'{self.stateFolder}SNAP{self.runNumber}_calib_geom_{now.strftime("%Y%m%d")}.h5'
-
         self.mantidSnapper.SaveDiffCal(
-            f"Saving the Diffraction Calibration table to {h5OutputFilename}",
-            CalibrationWorkspace=self.calibrationTable,
-            Filename=h5OutputFilename,
+            f"Saving the Diffraction Calibration table to {self.outputFilename}",
+            CalibrationWorkspace=self.getProperty("FinalCalibrationTable").value,
+            Filename=self.outputFilename,
         )
         self.mantidSnapper.executeQueue()
 
@@ -167,7 +170,6 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.log().notice("Execution of extraction of calibration constants START!")
 
         # get the ingredients
-        print(self.getProperty("Ingredients").value)
         ingredients = DiffractionCalibrationIngredients.parse_raw(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
         self.retrieveFromPantry()

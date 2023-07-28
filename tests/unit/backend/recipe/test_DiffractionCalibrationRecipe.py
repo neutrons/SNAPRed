@@ -88,7 +88,6 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         mock_AlgorithmManager.create.return_value = mockAlgo
 
         result = self.recipe.executeRecipe(self.fakeIngredients)
-        print(result)
         assert result["result"]
         assert len(result["steps"]) == 3
         assert [x["medianOffset"] for x in result["steps"]] == [2.0, 1.0, 0.5]
