@@ -32,7 +32,7 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         self.mantidSnapper.CustomGroupWorkspace(
             "Creating group workspace...",
             StateConfig=reductionIngredients.reductionState.stateConfig.json(),
-            InstrumentName=reductionIngredients.reductionState.instrumentConfig.name,
+            InputWorkspace="vanadium",
         )
 
         # 3 ApplyDiffCal  -- just apply to data

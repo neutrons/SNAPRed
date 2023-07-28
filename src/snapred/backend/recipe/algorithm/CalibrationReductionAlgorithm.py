@@ -46,7 +46,7 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",
             StateConfig=reductionIngredients.reductionState.stateConfig.json(),
-            InstrumentName=reductionIngredients.reductionState.instrumentConfig.name,
+            InputWorkspace=raw_data,
             OutputWorkspace="CommonRed",
         )
 

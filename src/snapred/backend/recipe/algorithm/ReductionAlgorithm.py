@@ -60,7 +60,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",
             StateConfig=reductionIngredients.reductionState.stateConfig.json(),
-            InstrumentName=reductionIngredients.reductionState.instrumentConfig.name,
+            InputWorkspace="vanadium",
             OutputWorkSpace="CommonRed",
         )
 
