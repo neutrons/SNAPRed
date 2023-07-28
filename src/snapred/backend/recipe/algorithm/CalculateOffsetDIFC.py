@@ -80,22 +80,33 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.mantidSnapper.LoadDetectorsGroupingFile(
             "Load XML grouping file",
             InputFile=self.groupingFile,
+            InputWorkspace=self.inputWStof,
             OutputWorkspace=focusWSname,
         )
 
         # get handle to group focusing workspace and retrieve all detector IDs
         self.mantidSnapper.executeQueue()
         focusWS = self.mantidSnapper.mtd[focusWSname]
-        self.groupIDs: List[int] = focusWS.getGroupIDs()
-        self.subgroupDetectorIDs: Dict[int, List[int]]
+        self.groupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
+        self.subgroupWorkspaceIndices: Dict[int, List[int]] = {}
+        self.allDetectorIDs: List[int] = []
         for groupID in self.groupIDs:
-            self.subgroupDetectorIDs[groupID] = focusWS.getDetectorIDsOfGroup(int(groupID))
+            groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
+            self.allDetectorIDs.extend(groupDetectorIDs)
+            self.subgroupWorkspaceIndices[groupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
         self.mantidSnapper.DeleteWorkspace(
             "Delete temp",
             Workspace=focusWSname,
         )
+        self.mantidSnapper.executeQueue()
 
     def initDIFCTable(self):
+        """
+        Use the instrument definition to create an initial DIFC table
+        Because the created DIFC is inside a matrix workspace, it must
+        be manually loaded into a table workspace
+        """
+
         # prepare initial diffraction calibration workspace
         self.mantidSnapper.CalculateDIFC(
             "Calculating initial DIFC values",
@@ -117,6 +128,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         DIFCtable.addColumn(type="double", name="tofmin", plottype=6)
         detids = [int(x) for x in tmpDifcWS.extractX()]
         difcs = [float(x) for x in tmpDifcWS.extractY()]
+        # TODO why is detid always 1 in tests?
         for detid, difc in zip(detids, difcs):
             DIFCtable.addRow(
                 {
@@ -177,25 +189,24 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         First the initial DIFC values must be calculated.  Then, group-by-group,
         the spectra are cross-correlated, the offsets calculated, and the original DIFC
         values are corrected by the offsets.
-        input:
-            difcWS: str -- the name of workspace holding the calibration constants, DIFC
-        output:
+        outputs:
             data: dict -- several statistics of the offsets, for testing convergence
+            OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
+            CalibrationTable: str -- the final table of DIFC values
         """
         data: Dict[str, float] = {}
         totalOffsetWS: str = f"offsets_{self.runNumber}"
         wsoff: str = f"_{self.runNumber}_tmp_subgroup_offset"
         wscc: str = f"_{self.runNumber}_tmp_subgroup_CC"
 
-        for groupID, groupDetectorIDs in self.subgroupDetectorIDs.items():
-            refID: int = self.getRefID(groupDetectorIDs)
-
+        for groupID, groupWorkspaceIndices in self.subgroupWorkspaceIndices.items():
+            refID: int = self.getRefID(groupWorkspaceIndices)
             self.mantidSnapper.CrossCorrelate(
                 f"Cross-Correlating spectra for {wscc}",
                 InputWorkspace=self.inputWSdsp,
                 OutputWorkspace=wscc,
                 ReferenceSpectra=refID,
-                WorkspaceIndexList=groupDetectorIDs,  # TODO: needs to be converted to workspace IDs
+                WorkspaceIndexList=groupWorkspaceIndices,
                 XMin=self.overallDMin,
                 XMax=self.overallDMax,
                 MaxDSpaceShift=self.maxDSpaceShifts,
@@ -283,7 +294,15 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.setProperty("CalibrationTable", self.difcWS)
 
     def PyExec(self) -> None:
-        """Run the algo, including processing ingredients and initializing the input form file"""
+        """
+        Calculate pixel calibration DIFC values on each spectrum group.
+        inputs:
+            Ingredients: DiffractionCalibrationIngredients -- the DAO holding data needed to run the algorithm
+        outputs:
+            data: dict -- several statistics of the offsets, for testing convergence
+            OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
+            CalibrationTable: str -- the final table of DIFC values
+        """
         self.log().notice("Extraction of calibration constants START!")
 
         # get the ingredients

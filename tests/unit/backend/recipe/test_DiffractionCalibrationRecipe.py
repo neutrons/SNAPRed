@@ -18,32 +18,6 @@ from snapred.meta.Config import Resource
 TheAlgorithmManager: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.AlgorithmManager"
 
 
-class DummyCalibrationAlgorithm(PythonAlgorithm):
-    def PyInit(self):
-        # declare properties of offset algo
-        self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
-        self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
-        self.declareProperty("data", defaultValue="", direction=Direction.Output)
-        # declare properties of calibration algo
-        self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
-        self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.Input)
-        self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
-
-    def PyExec(self):
-        self.medianOffset: float = 4.0
-        self.reexecute()
-        self.setProperty("PreviousCalibrationTable", self.getProperty("CalibrationTable").value)
-        self.setProperty("OutputWorkspace", self.getProperty("InputWorkspace").value)
-        self.setProperty("FinalCalibrationTable", self.getProperty("PreviousCalibrationTable").value)
-
-    def reexecute(self):
-        self.medianOffset *= 0.5
-        data = {"medianOffset": self.medianOffset}
-        self.setProperty("data", json.dumps(data))
-        self.setProperty("CalibrationTable", "fake calibration table")
-
-
 class TestDiffractionCalibtationRecipe(unittest.TestCase):
     def setUp(self):
         self.fakeDBin = -abs(0.001)
@@ -83,6 +57,32 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     @mock.patch(TheAlgorithmManager)
     def test_execute_successful(self, mock_AlgorithmManager):
+        # a scoped dummy algorithm to test the recipe's behavior
+        class DummyCalibrationAlgorithm(PythonAlgorithm):
+            def PyInit(self):
+                # declare properties of offset algo
+                self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
+                self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
+                self.declareProperty("data", defaultValue="", direction=Direction.Output)
+                # declare properties of calibration algo
+                self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
+                self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
+                self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.Input)
+                self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
+
+            def PyExec(self):
+                self.medianOffset: float = 4.0
+                self.reexecute()
+                self.setProperty("PreviousCalibrationTable", self.getProperty("CalibrationTable").value)
+                self.setProperty("OutputWorkspace", self.getProperty("InputWorkspace").value)
+                self.setProperty("FinalCalibrationTable", self.getProperty("PreviousCalibrationTable").value)
+
+            def reexecute(self):
+                self.medianOffset *= 0.5
+                data = {"medianOffset": self.medianOffset}
+                self.setProperty("data", json.dumps(data))
+                self.setProperty("CalibrationTable", "fake calibration table")
+
         mockAlgo = DummyCalibrationAlgorithm()
         mockAlgo.initialize()
         mock_AlgorithmManager.create.return_value = mockAlgo
@@ -110,6 +110,47 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
         mock_algo.setProperty.assert_called_once_with("Ingredients", self.fakeIngredients.json())
         mock_AlgorithmManager.create.assert_called_once_with("CalculateOffsetDIFC")
+
+    @mock.patch(TheAlgorithmManager)
+    def test_execute_unsuccessful_later_calls(self, mock_AlgorithmManager):
+        mock.Mock()
+
+        # a scoped dummy algorithm to test all three try/except blocks
+        class DummyFailingAlgo(PythonAlgorithm):
+            def PyInit(self):
+                self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
+                self.declareProperty("fails", defaultValue=0, direction=Direction.Input)
+                self.declareProperty("times", defaultValue=0, direction=Direction.InOut)
+                self.declareProperty("data", defaultValue="", direction=Direction.Output)
+
+            def PyExec(self):
+                self.fails = self.getProperty("fails").value
+                self.reexecute()
+
+            def reexecute(self):
+                times = self.getProperty("times").value
+                self.setProperty("data", json.dumps({"medianOffset": 2 ** (-times)}))
+                times += 1
+                if times >= self.fails:
+                    raise RuntimeError(f"passed {times}")
+                self.setProperty("times", times)
+
+        mockAlgo = DummyFailingAlgo()
+        mockAlgo.initialize()
+
+        for i in range(1, 3):
+            mockAlgo.setProperty("fails", i)
+
+            # mock_algo.execute.side_effect = RuntimeError("passed")
+            mock_AlgorithmManager.create.return_value = mockAlgo
+
+            try:
+                self.recipe.executeRecipe(self.fakeIngredients)
+            except Exception as e:  # noqa: E722 BLE001
+                assert str(e) == f"passed {i}"  # noqa: PT017
+            else:
+                # fail if execute did not raise an exception
+                pytest.fail("Test should have raised RuntimeError, but no error raised")
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

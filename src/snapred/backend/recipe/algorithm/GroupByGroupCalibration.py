@@ -22,6 +22,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, name)
 
     def chopIngredients(self, ingredients):
+        """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         from datetime import date
 
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
@@ -158,6 +159,11 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
     def storeInPantry(self) -> None:
+        """
+        Save the calculated diffraction calibration table to file.
+        Will be saved inside the state folder, with name of form
+            `/stateFolder/SNAP{run number}_calib_geom_{today's date}.h5`
+        """
         self.mantidSnapper.SaveDiffCal(
             f"Saving the Diffraction Calibration table to {self.outputFilename}",
             CalibrationWorkspace=self.getProperty("FinalCalibrationTable").value,
@@ -166,6 +172,20 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
     def PyExec(self) -> None:
+        """
+        Execute the group-by-group calibration algorithm.
+        First a table of previous pixel calibrations must be loaded.
+        Then, group-by-group, each spectrum is calibrated by fitting peaks, and the
+        resulting DIFCs are combined with the previous table.
+        The final calibration table is saved to disk for future use.
+        input:
+            Ingredients: DiffractionCalibrationIngredients -- the DAO holding data needed to run the algorithm
+            InputWorkspace: str -- the name of workspace holding the initial TOF data
+            PreviousCalibrationTable: str -- the name of the table workspace with previous DIFC values
+        output:
+            OutputWorkspace: str -- the name of the diffraction-focussed d-spacing data after the final calibration
+            FinalCalibrationTable: str -- the name of the final table of DIFC values
+        """
         # run the algo
         self.log().notice("Execution of extraction of calibration constants START!")
 
