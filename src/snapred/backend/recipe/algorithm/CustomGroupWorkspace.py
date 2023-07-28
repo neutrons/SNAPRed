@@ -36,7 +36,6 @@ class CustomGroupWorkspace(PythonAlgorithm):
             self.mantidSnapper.LoadEmptyInstrument(
                 Workspace=donorWorkspace,
                 Filename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
-                MonitorList="-2--1",
                 RewriteSpectraMap=False,
             )
             self.mantidSnapper.executeQueue()
