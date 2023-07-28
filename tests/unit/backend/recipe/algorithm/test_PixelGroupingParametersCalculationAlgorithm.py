@@ -62,12 +62,6 @@ with mock.patch.dict(
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/calibration/sampleInstrumentState.json"))
         fakeInstrumentState.particleBounds.tof.minimum = 10
         fakeInstrumentState.particleBounds.tof.maximum = 1000
-        fakeInstrumentParams = []
-        fakeParams = json.loads(Resource.read("inputs/calibration/samplePixelGroupingParameters.json"))
-        for fakeParam in fakeParams:
-            print(fakeParam)
-            fakeInstrumentParams.append(PixelGroupingParameters.parse_obj(fakeParam))
-        fakeInstrumentState.pixelGroupingInstrumentParameters = fakeInstrumentParams
         return fakeInstrumentState
 
     def mockRetrieveFromPantry(algo):

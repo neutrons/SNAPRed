@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List
 
 from mantid.api import AlgorithmManager
@@ -24,7 +25,7 @@ class DiffractionCalibrationRecipe:
         pass
 
     def chopIngredients(self, ingredients: DiffractionCalibrationIngredients):
-        self.runNumber = ingredients.conConfig.runNumber
+        self.runNumber = ingredients.runConfig.runNumber
         self.threshold = ingredients.threshold
         pass
 
@@ -33,14 +34,15 @@ class DiffractionCalibrationRecipe:
 
         logger.info(f"Executing diffraction calibration for runId: {self.runNumber}")
         data: Dict[str, Any] = {}
-        dataSteps: List[Dict[str, Any]] = {}
+        dataSteps: List[Dict[str, Any]] = []
         medianOffsets: List[float] = []
 
         logger.info("Calibrating by cross-correlation and adjusting offsets...")
         offsetAlgo = AlgorithmManager.create(self.offsetDIFCAlgorithmName)
-        offsetAlgo.setProperty("DiffractionCalibrationIngredients", ingredients.json())
+        offsetAlgo.setProperty("Ingredients", ingredients.json())
         try:
-            dataSteps.append(offsetAlgo.execute())
+            offsetAlgo.execute()
+            dataSteps.append(json.loads(offsetAlgo.getProperty("data").value))
             medianOffsets.append(dataSteps[-1]["medianOffset"])
         except RuntimeError as e:
             errorString = str(e)
@@ -51,7 +53,8 @@ class DiffractionCalibrationRecipe:
             counter = counter + 1
             logger.info(f"... converging to answer; step {counter}, {medianOffsets[-1]} > {self.threshold}")
             try:
-                dataSteps.append(offsetAlgo.reexecute())
+                offsetAlgo.reexecute()
+                dataSteps.append(json.loads(offsetAlgo.getProperty("data").value))
                 medianOffsets.append(dataSteps[-1]["medianOffset"])
             except RuntimeError as e:
                 errorString = str(e)
@@ -61,12 +64,12 @@ class DiffractionCalibrationRecipe:
 
         logger.info("Beginning group-by-group fitting calibration")
         calibrateAlgo = AlgorithmManager.create(self.pdcalibrateAlgorithmName)
-        calibrateAlgo.setProperty("DiffractionCalibrationIngredients", ingredients.json())
-        calibrateAlgo.setProperty("etc.")
-
+        calibrateAlgo.setProperty("Ingredients", ingredients.json())
+        calibrateAlgo.setProperty("InputWorkspace", offsetAlgo.getProperty("OutputWorkspace").value)
+        calibrateAlgo.setProperty("PreviousCalibrationTable", offsetAlgo.getProperty("CalibrationTable").value)
         try:
             data["result"] = calibrateAlgo.execute()
-            data["calibrationTable"] = calibrateAlgo.getProperty("").value
+            data["calibrationTable"] = calibrateAlgo.getProperty("FinalCalibrationTable").value
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])

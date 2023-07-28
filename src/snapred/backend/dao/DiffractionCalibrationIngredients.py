@@ -15,3 +15,5 @@ class DiffractionCalibrationIngredients(BaseModel):
     instrumentState: InstrumentState
     focusGroup: FocusGroup
     groupedPeakLists: List[GroupPeakList]
+    calPath: str
+    threshold: float

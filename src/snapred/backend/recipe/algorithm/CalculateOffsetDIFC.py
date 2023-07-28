@@ -22,7 +22,8 @@ class CalculateOffsetDIFC(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
-        self.declareProperty("CalibrationWorkspace", defaultValue="", direction=Direction.Output)
+        self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
+        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
@@ -36,7 +37,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
 
         # TODO setup for SNAPLite
         self.isLite: bool = False
-        self.stateFolder: str = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/"
 
         # fdrom the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
@@ -57,7 +57,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # create string names of workspaces that will be used by algorithm
         self.inputWStof: str = f"_TOF_{self.runNumber}_raw"
         self.inputWSdsp: str = f"_DSP_{self.runNumber}_raw"
-        self.difcWS: str = self.getProperty("CalibrationWorkspace").value
+        self.difcWS: str = f"_DIFC_{self.runNumber}"
 
     def retrieveFromPantry(self) -> None:
         """Initialize the input TOF data from the input filename in the ingredients"""
@@ -171,7 +171,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         """
         return int(np.median(detectorIDs))
 
-    def reexecute(self, difcWS: str) -> None:
+    def reexecute(self) -> None:
         """
         Execute the main algorithm, in a way that can be iteratively called.
         First the initial DIFC values must be calculated.  Then, group-by-group,
@@ -240,7 +240,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.mantidSnapper.ConvertDiffCalLog(
             "Correct previous calibration constants by offsets",
             OffsetsWorkspace=totalOffsetWS,
-            PreviousCalibration=difcWS,
+            PreviousCalibration=self.difcWS,
             OutputWorkspace=calibrationWS,
             BinWidth=self.dBin,
         )
@@ -249,7 +249,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.mantidSnapper.RenameWorkspace(
             "Save the DIFC for starting point in next iteration",
             InputWorkspace=calibrationWS,
-            OutputWorkspace=difcWS,
+            OutputWorkspace=self.difcWS,
             OverwriteExisting=True,
         )
 
@@ -257,7 +257,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.mantidSnapper.ApplyDiffCal(
             "Apply the diffraction calibration to the input TOF workspace",
             InstrumentWorkspace=self.inputWStof,
-            CalibrationWorkspace=difcWS,
+            CalibrationWorkspace=self.difcWS,
         )
         # convert to d-spacing and rebin logarithmically
         self.convertUnitsAndRebin(self.inputWStof, self.inputWSdsp)
@@ -279,6 +279,8 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
         # data["calibrationTable"] = self.difcWS
         self.setProperty("data", json.dumps(data))
+        self.setProperty("OutputWorkspace", self.inputWStof)
+        self.setProperty("CalibrationTable", self.difcWS)
 
     def PyExec(self) -> None:
         """Run the algo, including processing ingredients and initializing the input form file"""
@@ -293,7 +295,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.initDIFCTable()
 
         # now calculate and correct by offsets
-        self.reexecute(self.difcWS)
+        self.reexecute()
 
 
 # Register algorithm with Mantid

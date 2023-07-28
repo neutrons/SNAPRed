@@ -51,6 +51,8 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
             groupedPeakLists=[GroupPeakList(groupID=3, peaks=peakList)],
+            calPath=Resource.getPath("outputs/calibration/"),
+            threshold=1.0,
         )
 
     def mockRetrieveFromPantry(algo):
@@ -118,13 +120,10 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
 
     def test_init_properties(self):
         """Test that he properties of the algorithm can be initialized"""
-        difcWS = f"_{self.fakeRunNumber}_difcs_test"
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("CalibrationWorkspace", difcWS)
         assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
-        assert algo.getProperty("CalibrationWorkspace").value == difcWS
 
     # TODO: this test is not necessary, and is only here for:
     # 1. the principle that all methods should have independent tests
@@ -188,12 +187,9 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
     def test_execute(self):
         """Test that the algorithm executes"""
 
-        difcWS = f"_{self.fakeRunNumber}_difcs_test"
-
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("CalibrationWorkspace", difcWS)
         assert algo.execute()
 
         data = json.loads(algo.getProperty("data").value)
@@ -208,12 +204,9 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
     def test_reexecution_and_convergence(self):
         """Test that the algorithm can run, and that it will converge to an answer"""
 
-        difcWS = f"_{self.fakeRunNumber}_difcs_test"
-
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("CalibrationWorkspace", difcWS)
         assert algo.execute()
 
         data = json.loads(algo.getProperty("data").value)
@@ -225,7 +218,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         numIter = 5
         allOffsets = [data["meanOffset"]]
         for i in range(numIter):
-            algo.reexecute(difcWS)
+            algo.reexecute()
             data = json.loads(algo.getProperty("data").value)
             allOffsets.append(data["meanOffset"])
             assert allOffsets[-1] <= allOffsets[-2]

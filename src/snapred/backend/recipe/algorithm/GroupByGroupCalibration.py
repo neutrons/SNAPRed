@@ -29,7 +29,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
 
         # TODO setup for SNAPLite
         self.isLite = False
-        self.stateFolder: str = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/"
+        self.stateFolder: str = ingredients.calPath
 
         # fdrom the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
@@ -104,6 +104,12 @@ class GroupByGroupCalibration(PythonAlgorithm):
 
         # now diffraction focus the d-spacing data and conver to TOF
         focusWSname = f"_{self.runNumber}_focusGroup"
+        self.mantidSnapper.LoadDetectorsGroupingFile(
+            "Load XML grouping file",
+            InputFile=self.groupingFile,
+            OutputWorkspace=focusWSname,
+        )
+
         diffractionfocusedWSdsp: str = f"_DSP_{self.runNumber}_diffoc"
         self.mantidSnapper.DiffractionFocussing(
             "Refocus with offset-corrections",
@@ -119,12 +125,15 @@ class GroupByGroupCalibration(PythonAlgorithm):
         )
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
-            InputWorkspace=self.diffractionfocuxedWStof,
+            InputWorkspace=self.diffractionfocusedWStof,
             Params=f"{self.TOFMin},{-abs(self.TOFBin)},{self.TOFMax}",
             OutputWorkspace=self.diffractionfocusedWStof,
         )
-
         # clean up d-spacing workspaces
+        self.mantidSnapper.DeleteWorkspace(
+            "Clean up d-spacing data",
+            Workspace=focusWSname,
+        )
         self.mantidSnapper.DeleteWorkspace(
             "Clean up d-spacing data",
             Workspace=inputWSdsp,
@@ -136,7 +145,9 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
     def storeInPantry(self) -> None:
-        from datetime.datetime import now
+        from datetime import date
+
+        now = date.today()
 
         h5OutputFilename: str
         if self.isLite:
@@ -156,13 +167,20 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.log().notice("Execution of extraction of calibration constants START!")
 
         # get the ingredients
-        ingredients = DiffractionCalibrationIngredients(**json.loads(self.getProperty("Ingredients").value))
+        print(self.getProperty("Ingredients").value)
+        ingredients = DiffractionCalibrationIngredients.parse_raw(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
         self.retrieveFromPantry()
 
         pdcalibratedWorkspace = "_tmp_PDCal_subgroup"
 
-        for groupID in self.groupIDs:
+        diffocWS = self.mantidSnapper.mtd[self.diffractionfocusedWStof]
+        nHist = diffocWS.getNumberHistograms()
+        if nHist != len(self.groupIDs):
+            raise RuntimeError("error, the number of spectra in focused workspace, and number of groups, do not match")
+
+        for index in range(nHist):
+            groupID = self.groupIDs[index]
             self.mantidSnapper.PDCalibration(
                 f"Perform PDCalibration on subgroup {groupID}",
                 InputWorkspace=self.diffractionfocusedWStof,
@@ -176,21 +194,23 @@ class GroupByGroupCalibration(PythonAlgorithm):
                 OutputCalibrationTable=pdcalibratedWorkspace,
                 DiagnosticWorkspaces=f"_PDCal_diag_{groupID}",
                 # limit to specific spectrum
-                StartWorkspaceIndex=int(groupID - 1),
-                EndWorkspaceIndex=int(groupID - 1),
+                StartWorkspaceIndex=index,
+                StopWorkspaceIndex=index,
             )
             self.mantidSnapper.DeleteWorkspace(
-                "Cleanup needles diagnostic workspace", Workspace=f"_PDCal_diag_{groupID}"
+                "Cleanup needles diagnostic workspace",
+                Workspace=f"_PDCal_diag_{groupID}",
             )
-
             self.mantidSnapper.CombineDiffCal(
+                "Combine the new calibration values",
                 PixelCalibration=self.calibrationTable,  # previous calibration values, DIFCprev
                 GroupedCalibration=pdcalibratedWorkspace,  # values from PDCalibrate, DIFCpd
-                CalibrationWorkspace=self.diffractionfocuseWStof,  # input WS to PDCalibrate, source for DIFCarb
+                CalibrationWorkspace=self.diffractionfocusedWStof,  # input WS to PDCalibrate, source for DIFCarb
                 OutputWorkspace=self.calibrationTable,  # resulting corrected calibration values, DIFCeff
             )
             self.mantidSnapper.DeleteWorkspace(
-                "Cleanup needless mask workspace", Workspace=pdcalibratedWorkspace + "_mask"
+                "Cleanup needless mask workspace",
+                Workspace=pdcalibratedWorkspace + "_mask",
             )
             self.mantidSnapper.executeQueue()
 

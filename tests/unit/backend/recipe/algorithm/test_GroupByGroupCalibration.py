@@ -29,11 +29,11 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
-        fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/calibration/sampleInstrumentState.json"))
+        fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/calibration/sampleInstrumentState.json"))
         fakeInstrumentState.particleBounds.tof.minimum = 10
         fakeInstrumentState.particleBounds.tof.maximum = 1000
 
-        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/calibration/sampleFocusGroup.json"))
+        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("inputs/calibration/sampleFocusGroup.json"))
         ntest = fakeFocusGroup.nHst
         fakeFocusGroup.dBin = [-abs(self.fakeDBin)] * ntest
         fakeFocusGroup.dMax = [float(x) for x in range(100 * ntest, 101 * ntest)]
@@ -41,16 +41,24 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         fakeFocusGroup.FWHM = [5 * random.random() for x in range(ntest)]
         fakeFocusGroup.definition = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
 
-        peakList = [
+        peakList1 = [
             DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
             DetectorPeak.parse_obj({"position": {"value": 5, "minimum": 4, "maximum": 6}}),
         ]
+        group1 = GroupPeakList(groupID=1, peaks=peakList1)
+        peakList2 = [
+            DetectorPeak.parse_obj({"position": {"value": 3, "minimum": 2, "maximum": 4}}),
+            DetectorPeak.parse_obj({"position": {"value": 6, "minimum": 5, "maximum": 7}}),
+        ]
+        group2 = GroupPeakList(groupID=2, peaks=peakList2)
 
         self.fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
-            groupedPeakLists=[GroupPeakList(groupID=3, peaks=peakList)],
+            groupedPeakLists=[group1, group2],
+            calPath=Resource.getPath("outputs/calibration/"),
+            threshold=1.0,
         )
 
     def mockRetrieveFromPantry(algo):
@@ -69,6 +77,26 @@ class TestGroupByGroupCalibration(unittest.TestCase):
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
             Random=True,
+        )
+        algo.mantidSnapper.Rebin(
+            "Rebin the workspace logarithmically",
+            InputWorkspace=algo.inputWStof,
+            Params=f"{algo.TOFMin},{-abs(algo.TOFBin)},{algo.TOFMax}",
+            OutputWorkspace=algo.inputWStof,
+        )
+        # also find d-spacing data and rebin logarithmically
+        inputWSdsp: str = f"_DSP_{algo.runNumber}"
+        algo.mantidSnapper.ConvertUnits(
+            "Convert units to d-spacing",
+            InputWorkspace=algo.inputWStof,
+            OutputWorkspace=inputWSdsp,
+            Target="dSpacing",
+        )
+        algo.mantidSnapper.Rebin(
+            "Rebin the workspace logarithmically",
+            InputWorkspace=inputWSdsp,
+            Params=f"{algo.overallDMin},{-abs(algo.dBin)},{algo.overallDMax}",
+            OutputWorkspace=inputWSdsp,
         )
 
         # manually setup the grouping workspace
@@ -92,15 +120,99 @@ class TestGroupByGroupCalibration(unittest.TestCase):
             InputWorkspace="idf",
             OutputWorkspace=focusWSname,
         )
+
+        # now diffraction focus
+        diffractionfocusedWSdsp: str = f"_DSP_{algo.runNumber}_diffoc"
+        algo.mantidSnapper.DiffractionFocussing(
+            "Refocus with offset-corrections",
+            InputWorkspace=inputWSdsp,
+            GroupingWorkspace=focusWSname,
+            OutputWorkspace=diffractionfocusedWSdsp,
+        )
+        algo.mantidSnapper.ConvertUnits(
+            "Convert units to TOF",
+            InputWorkspace=diffractionfocusedWSdsp,
+            OutputWorkspace=algo.diffractionfocusedWStof,
+            Target="TOF",
+        )
+        algo.mantidSnapper.Rebin(
+            "Rebin the workspace logarithmically",
+            InputWorkspace=algo.diffractionfocusedWStof,
+            Params=f"{algo.TOFMin},{-abs(algo.TOFBin)},{algo.TOFMax}",
+            OutputWorkspace=algo.diffractionfocusedWStof,
+        )
+
+        # clean up
+        algo.mantidSnapper.DeleteWorkspace(
+            "Clean up",
+            Workspace="idf",
+        )
+        algo.mantidSnapper.DeleteWorkspace(
+            "Clean up",
+            Workspace=focusWSname,
+        )
+        algo.mantidSnapper.DeleteWorkspace(
+            "Clean up d-spacing data",
+            Workspace=inputWSdsp,
+        )
+        algo.mantidSnapper.DeleteWorkspace(
+            "Clean up d-spaced diffraction focused data",
+            Workspace=diffractionfocusedWSdsp,
+        )
         algo.mantidSnapper.executeQueue()
-        focusWS = algo.mantidSnapper.mtd[focusWSname]
-        assert "getGroupIDs" in dir(focusWS)
-        algo.groupIDs = focusWS.getGroupIDs()
-        algo.subgroupDetectorIDs: Dict[int, List[int]] = {}
-        for groupID in algo.groupIDs:
-            algo.subgroupDetectorIDs[groupID] = focusWS.getDetectorIDsOfGroup(int(groupID))
-        algo.mantidSnapper.DeleteWorkspace("Clean up", Workspace=focusWSname)
-        algo.mantidSnapper.executeQueue()
+
+    def initDIFCTable(self, difcws):
+        from mantid.simpleapi import (
+            CalculateDIFC,
+            CreateEmptyTableWorkspace,
+            CreateWorkspace,
+            DeleteWorkspace,
+            LoadInstrument,
+            mtd,
+        )
+
+        # prepare initial diffraction calibration workspace
+        CreateWorkspace(
+            OutputWorkspace="idf",
+            DataX=1,
+            DataY=1,
+        )
+        LoadInstrument(
+            Workspace="idf",
+            Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            MonitorList="-2--1",
+            RewriteSpectraMap=False,
+        )
+        CalculateDIFC(
+            InputWorkspace="idf",
+            OutputWorkspace="_tmp_difc_ws",
+        )
+        # convert the calibration workspace into a calibration table
+        CreateEmptyTableWorkspace(
+            OutputWorkspace=difcws,
+        )
+
+        tmpDifcWS = mtd["_tmp_difc_ws"]
+        DIFCtable = mtd[difcws]
+        DIFCtable.addColumn(type="int", name="detid", plottype=6)
+        DIFCtable.addColumn(type="double", name="difc", plottype=6)
+        DIFCtable.addColumn(type="double", name="difa", plottype=6)
+        DIFCtable.addColumn(type="double", name="tzero", plottype=6)
+        DIFCtable.addColumn(type="double", name="tofmin", plottype=6)
+        detids = [int(x) for x in tmpDifcWS.extractX()]
+        difcs = [float(x) for x in tmpDifcWS.extractY()]
+        for detid, difc in zip(detids, difcs):
+            DIFCtable.addRow(
+                {
+                    "detid": detid,
+                    "difc": difc,
+                    "difa": 0,
+                    "tzero": 0,
+                    "tofmin": 0,
+                }
+            )
+        DeleteWorkspace("_tmp_difc_ws")
+        DeleteWorkspace("idf")
 
     def test_chop_ingredients(self):
         """Test that ingredients for algo are properly processed"""
@@ -126,16 +238,46 @@ class TestGroupByGroupCalibration(unittest.TestCase):
 
     @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
     def test_execute(self):
+        from mantid.simpleapi import (
+            CompareWorkspaces,
+            LoadDiffCal,
+            SaveAscii,
+            mtd,
+        )
+
         """Test that the algorithm executes"""
 
         difcWS = f"_{self.fakeRunNumber}_difcs_test"
+        self.initDIFCTable(difcWS)
+        print(f"CHECK IF {difcWS} EXISTS: {mtd.doesExist(difcWS)}")
 
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
         algo.setProperty("PreviousCalibrationTable", difcWS)
+        print(f"CHECK IF {difcWS} EXISTS: {mtd.doesExist(difcWS)}")
         assert algo.execute()
+        SaveAscii(
+            Inputworkspace=algo.getProperty("FinalCalibrationTable").value,
+            Filename=Resource.getPath("outputs/calibration/checkme1.txt"),
+        )
+        LoadDiffCal(
+            InstrumentFilename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("outputs/calibration/SNAP555_calib_geom_20230727.h5"),
+            WorkspaceName="checkme",
+        )
+        assert CompareWorkspaces(
+            Workspace1="checkme_cal",
+            Workspace2=algo.getProperty("FinalCalibrationTable").value,
+        )
+        mtd["checkme_cal"]
+        SaveAscii(
+            InputWorkspace="checkme_cal",
+            Filename=Resource.getPath("outputs/calibration/checkme2.txt"),
+        )
+
+    # TODO more and more better tests of behavior
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
