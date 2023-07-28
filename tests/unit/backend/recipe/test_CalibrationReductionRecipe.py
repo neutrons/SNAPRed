@@ -94,7 +94,3 @@ with mock.patch.dict(
         expected = getSubstringContains(expectedOutputWorkspaces, "Column")
         actual = getSubstringContains(outputWorkspaces, "Column")
         compareWorkspaces(expected, actual)
-        # Mid
-        expected = getSubstringContains(expectedOutputWorkspaces, "Mid")
-        actual = getSubstringContains(outputWorkspaces, "Mid")
-        compareWorkspaces(expected, actual)

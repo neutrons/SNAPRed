@@ -203,7 +203,7 @@ class ReductionAlgorithm(PythonAlgorithm):
             with open("/SNS/users/wqp/git/snapred/snap_reduction.py", "w") as file:
                 file.write(self._exportScript)
 
-        self.cleanup()
+        self.mantidSnapper.cleanup()
         self.log().notice("Execution of ReductionAlgorithm COMPLETE!")
         return data
 

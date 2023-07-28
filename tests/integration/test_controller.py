@@ -14,6 +14,7 @@ def test_excuteRequest_noop():
         "calibrant_sample",
         "api",
         "fitMultiplePeaks",
+        "vanadiumReduction",
     ]
     expected_keys.sort()
 
