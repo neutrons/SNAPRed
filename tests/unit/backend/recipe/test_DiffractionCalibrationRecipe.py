@@ -138,7 +138,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         mockAlgo = DummyFailingAlgo()
         mockAlgo.initialize()
 
-        for i in range(1, 3):
+        for i in range(1, 4):
             mockAlgo.setProperty("fails", i)
 
             # mock_algo.execute.side_effect = RuntimeError("passed")
