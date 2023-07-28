@@ -60,7 +60,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 peakLimits.extend([peak.position.minimum, peak.position.maximum])
 
             self.mantidSnapper.ExtractSingleSpectrum(
-                "Extract Single Spectrm...",
+                "Extract Single Spectrum...",
                 InputWorkspace=wsName,
                 OutputWorkspace="ws2fit",
                 WorkspaceIndex=index,
