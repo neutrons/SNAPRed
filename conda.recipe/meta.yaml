@@ -32,13 +32,13 @@ requirements:
   build:
     - setuptools
     - versioningit
-    - pydantic
+    - {{ pin_compatible("pydantic", min_pin="1.10", max_pin="2") }}
     - mantidworkbench
     - qtpy
     - pytest
 
   run:
-    - pydantic
+    - {{ pin_compatible("pydantic", min_pin="1.10", max_pin="2") }}
     - mantidworkbench
 
 about:
