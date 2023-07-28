@@ -2,7 +2,9 @@ from typing import Any, Dict
 
 from snapred.backend.dao.VanadiumReductionIngredients import VanadiumReductionIngredients
 from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.recipe.VanadiumFocussedReductionRecipe import VanadiumFocussedReductionRecipe
+
+# from snapred.backend.recipe.VanadiumFocussedReductionRecipe import VanadiumFocussedReductionRecipe
+from snapred.backend.recipe.GenericRecipe import VanadiumFocussedReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
@@ -28,7 +30,7 @@ class VanadiumFocussedReductionService(Service):
         smoothIngredients = vanadiumReductionIngredients.smoothIngredients
         try:
             VanadiumFocussedReductionRecipe().executeRecipe(
-                reductionIngredients=reductionIngredients, smoothIngredients=smoothIngredients
+                reductionIngredients=reductionIngredients, SmoothDataIngredients=smoothIngredients
             )
         except:
             raise

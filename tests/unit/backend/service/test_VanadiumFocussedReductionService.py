@@ -10,7 +10,7 @@ with mock.patch.dict(
         "snapred.backend.data.DataFactoryService": mock.Mock(),
     },
 ):
-    from snapred.backend.recipe.VanadiumFocussedReductionRecipe import VanadiumFocussedReductionRecipe  # noqa: E402
+    from snapred.backend.recipe.GenericRecipe import VanadiumFocussedReductionRecipe  # noqa: E402
     from snapred.backend.service.VanadiumFocussedReductionService import VanadiumFocussedReductionService  # noqa: E402
 
     def test_vanadiumFocussedReductionService():
