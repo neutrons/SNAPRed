@@ -42,7 +42,7 @@ with mock.patch.dict(
             assert vanAlgo.getProperty("SmoothDataIngredients").value == self.smoothIngredients.json()
 
         @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.mtd")
-        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.MantidSnapper.createAlgorithm")
+        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.MantidSnapper")
         def test_execute(self, mock_MantidSnapper, mock_mtd):
             vanAlgo = VanadiumFocussedReductionAlgorithm()
             mock_mtd.side_effect = {"diffraction_focused_vanadium": ["ws1", "ws2"]}
@@ -53,20 +53,27 @@ with mock.patch.dict(
 
             wsGroupName = vanAlgo.getProperty("OutputWorkspaceGroup").value
             assert wsGroupName == "diffraction_focused_vanadium"
-            calls = [
-                call("LoadNexus"),
-                call("CustomGroupWorkspace"),
-                call("ConvertUnits"),
-                call("DiffractionFocussing"),
-                call("LoadNexus"),
-                call("CustomGroupWorkspace"),
-                call("ConvertUnits"),
-                call("DiffractionFocussing"),
+            expected_calls = [
+                call().LoadNexus,
+                call().CustomGroupWorkspace,
+                call().ConvertUnits,
+                call().DiffractionFocussing,
+                call().executeQueue,
+                call().DeleteWorkspace,
+                call().DeleteWorkspace,
+                call().DeleteWorkspace,
+                call().DeleteWorkspace,
+                call().DeleteWorkspace,
+                call().executeQueue,
             ]
-            mock_MantidSnapper.assert_has_calls(calls, any_order=True)
+
+            actual_calls = [call[0] for call in mock_MantidSnapper.mock_calls if call[0]]
+
+            # Assertions
+            assert actual_calls == [call[0] for call in expected_calls]
 
         @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.mtd")
-        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.MantidSnapper.createAlgorithm")
+        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.MantidSnapper")
         def test_fullCoverage(self, mock_snapper, mock_mtd):  # noqa ARG002
             vanAlgo = VanadiumFocussedReductionAlgorithm()
             vanAlgo.PyInit()
