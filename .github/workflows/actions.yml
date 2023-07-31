@@ -44,6 +44,8 @@ jobs:
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
       with:
+        fail_ci_if_error: true
+        gcov: true
         gcov_ignore: src/snapred/recipe/algorithm/**
     - name: Gui tests
       run: |
