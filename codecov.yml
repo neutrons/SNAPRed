@@ -1,2 +1,11 @@
+# All PythonAlgorithms define functionality by
+# PyInit, PyExec functions, but are called inside
+# python using algo.initialize() and algo.execute(),
+# which invoke mantid, which call these methods.
+# However, this process is opaque to CodeCov, which
+# is errantly reporting all of our algortihms to have,
+# essentially, zero code coverage, regardless of how
+# many unittests are run.
+# Therefore CodeCov is turned off for algoritms.
 ignore:
   - "src/snapred/backend/recipe/algorithm/**/*"
