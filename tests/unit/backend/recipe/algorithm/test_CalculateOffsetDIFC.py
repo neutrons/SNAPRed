@@ -206,10 +206,10 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         """Test that the algorithm can run, and that it will converge to an answer"""
 
         algo = ThisAlgo()
-        algo.PyInit()  # call PyInit to make codecov happy
+        algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        assert algo.PyExec() is None  # call PyExec to make codecov happy
-        algo.reexecute()
+        assert algo.execute()
+        assert algo.reexecute()
 
         data = json.loads(algo.getProperty("data").value)
         assert data["meanOffset"] is not None
@@ -230,7 +230,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         from mantid.simpleapi import mtd
 
         algo = ThisAlgo()
-        algo.initialize()  # call PyInit to make codecov happy
+        algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.chopIngredients(self.fakeIngredients)
         algo.retrieveFromPantry()
@@ -273,7 +273,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         )
 
         algo = ThisAlgo()
-        algo.initialize()  # call PyInit to make codecov happy
+        algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.chopIngredients(self.fakeIngredients)
 

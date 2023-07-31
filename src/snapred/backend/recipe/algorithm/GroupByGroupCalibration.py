@@ -45,10 +45,10 @@ class GroupByGroupCalibration(PythonAlgorithm):
                 f'{self.stateFolder}SNAP{self.runNumber}_calib_geom_{date.today().strftime("%Y%m%d")}.h5'
             )
 
-        # fdrom the instrument state, read the overall min/max TOF
+        # from the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
-        self.TOFBin: float = -0.001
+        self.TOFBin: float = -0.001  # must be negative for log binning, value chosen by @mguthriem
 
         # from grouping parameters, read the overall min/max d-spacings
         self.overallDMin: float = max(ingredients.focusGroup.dMin)

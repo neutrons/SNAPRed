@@ -182,7 +182,7 @@ with mock.patch.dict(
         # run once with positive (abs to ensure)
         algo.setProperty("OutputWorkspace", outputWS1)
         algo.setProperty("BinWidth", np.abs(dBin))
-        algo.PyExec()  # use pyexec to appease codecov
+        assert algo.execute()
         # run again with negative (-abs to ensure)
         algo.setProperty("OutputWorkspace", outputWS2)
         algo.setProperty("BinWidth", -np.abs(dBin))

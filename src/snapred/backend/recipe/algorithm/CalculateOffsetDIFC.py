@@ -41,7 +41,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # fdrom the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
-        self.TOFBin: float = -0.001
+        self.TOFBin: float = -0.001  # must be negative for log binning, value chosen by @mguthriem
 
         # from grouping parameters, read the overall min/max d-spacings
         self.overallDMin: float = max(ingredients.focusGroup.dMin)
@@ -290,6 +290,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.setProperty("data", json.dumps(data))
         self.setProperty("OutputWorkspace", self.inputWStof)
         self.setProperty("CalibrationTable", self.difcWS)
+        return 1
 
     def PyExec(self) -> None:
         """
@@ -312,7 +313,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.initDIFCTable()
 
         # now calculate and correct by offsets
-        self.reexecute()
+        return self.reexecute()
 
 
 # Register algorithm with Mantid

@@ -10,4 +10,3 @@ class GroupPeakList(BaseModel):
 
     peaks: List[DetectorPeak]
     groupID: int
-    spectrumNumber: Optional[int]
