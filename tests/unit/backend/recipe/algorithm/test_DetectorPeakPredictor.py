@@ -85,3 +85,15 @@ with mock.patch.dict(
         with pytest.raises(RuntimeError) as excinfo:
             peakPredictorAlgo.execute()
         assert "CrystallographicInfo" in str(excinfo.value)
+
+    def test_full_codecov():
+        calibrationFile = "/inputs/purge_peaks/input_parameters.json"
+        crystalInfoFile = "/inputs/purge_peaks/input_crystalInfo.json"
+
+        instrumentState = Calibration.parse_raw(Resource.read(calibrationFile)).instrumentState
+
+        peakPredictorAlgo = DetectorPeakPredictor()
+        peakPredictorAlgo.PyInit()
+        peakPredictorAlgo.setProperty("InstrumentState", instrumentState.json())
+        peakPredictorAlgo.setProperty("CrystalInfo", Resource.read(crystalInfoFile))
+        assert peakPredictorAlgo.PyExec()
