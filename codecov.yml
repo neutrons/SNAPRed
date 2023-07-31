@@ -1,0 +1,7 @@
+# CodeCov is not able to see inside the PyInit and PyExec functions
+# It therefore erroneously labels all algos as almost entirely untested
+# Since Codecov reports on algorithms are not meaningful,
+# it makes sense to not include them in reports, until a better way
+# of quantifying code coverage is found.
+ignore:
+  - "src/snapred/backend/recipe/algorithm"
