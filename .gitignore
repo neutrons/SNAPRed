@@ -1,5 +1,6 @@
 # project specific files
 src/snapred/_version.py
+conda.recipe/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
