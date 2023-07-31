@@ -41,7 +41,11 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # fdrom the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
-        self.TOFBin: float = -0.001  # must be negative for log binning, value chosen by @mguthriem
+        # the binning must be negative to signal logarithmic binning
+        self.TOFBin: float = -abs(
+            ingredients.instrumentState.instrumentConfig.delTOverT / ingredients.instrumentState.instrumentConfig.NBins
+        )
+        # self.TOFBin: float = -abs(ingredients.instrumentState.particleBounds.tof.binning)
 
         # from grouping parameters, read the overall min/max d-spacings
         self.overallDMin: float = max(ingredients.focusGroup.dMin)
