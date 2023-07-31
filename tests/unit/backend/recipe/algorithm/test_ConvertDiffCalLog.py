@@ -176,13 +176,13 @@ with mock.patch.dict(
         createDIFCTable(prevCal, dataX, [2**i for i in range(lenTest)])
         # run algo
         algo = ThisAlgo()
-        algo.initialize()
+        algo.PyInit()  # use pyinit to appease codecov
         algo.setProperty("OffsetsWorkspace", offsetWS)
         algo.setProperty("PreviousCalibration", prevCal)
         # run once with positive (abs to ensure)
         algo.setProperty("OutputWorkspace", outputWS1)
         algo.setProperty("BinWidth", np.abs(dBin))
-        algo.execute()
+        algo.PyExec()  # use pyexec to appease codecov
         # run again with negative (-abs to ensure)
         algo.setProperty("OutputWorkspace", outputWS2)
         algo.setProperty("BinWidth", -np.abs(dBin))
