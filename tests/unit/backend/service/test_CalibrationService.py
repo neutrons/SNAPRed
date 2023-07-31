@@ -33,24 +33,24 @@ with mock.patch.dict(
 
     # test export calibration
     def test_exportCalibrationIndex():
-        dataExportService = CalibrationService()
-        dataExportService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
-        dataExportService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
-        dataExportService.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""))
-        assert dataExportService.dataExportService.exportCalibrationIndexEntry.called
-        savedEntry = dataExportService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
+        calibrationService = CalibrationService()
+        calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
+        calibrationService.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""))
+        assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
+        savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">1"
         assert savedEntry.timestamp is not None
 
     def test_save():
-        dataExportService = CalibrationService()
-        dataExportService.dataExportService.exportCalibrationRecord = mock.Mock()
-        dataExportService.dataExportService.exportCalibrationRecord.return_value = MagicMock(version="1.0.0")
-        dataExportService.dataFactoryService.getReductionIngredients = mock.Mock()
-        dataExportService.dataFactoryService.getReductionIngredients.return_value = readReductionIngredientsFromFile()
-        dataExportService.save(mock.Mock())
-        assert dataExportService.dataExportService.exportCalibrationRecord.called
-        savedEntry = dataExportService.dataExportService.exportCalibrationRecord.call_args.args[0]
+        calibrationService = CalibrationService()
+        calibrationService.dataExportService.exportCalibrationRecord = mock.Mock()
+        calibrationService.dataExportService.exportCalibrationRecord.return_value = MagicMock(version="1.0.0")
+        calibrationService.dataFactoryService.getReductionIngredients = mock.Mock()
+        calibrationService.dataFactoryService.getReductionIngredients.return_value = readReductionIngredientsFromFile()
+        calibrationService.save(mock.Mock())
+        assert calibrationService.dataExportService.exportCalibrationRecord.called
+        savedEntry = calibrationService.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
 
     # test calculate pixel grouping parameters
