@@ -45,7 +45,7 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         # codecov cannot see inside algorithm PyExec, so turn off for algos
-        gcov_ignore: src/snapred/recipe/algorithm
+        gcov_ignore: src/snapred/recipe/algorithm/*
     - name: Gui tests
       run: |
         python -m pip install -e . # install the application in editable mode
