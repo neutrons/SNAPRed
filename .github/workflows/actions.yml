@@ -44,7 +44,6 @@ jobs:
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
       with:
-        # codecov cannot see inside algorithm PyExec, so turn off for algos
         gcov_ignore: src/snapred/recipe/algorithm/**
     - name: Gui tests
       run: |
