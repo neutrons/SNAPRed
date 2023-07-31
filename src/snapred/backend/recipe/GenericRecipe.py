@@ -6,6 +6,7 @@ from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import Calib
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm
+from snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm import VanadiumFocussedReductionAlgorithm
 from snapred.meta.decorators.FromString import isBaseModel, isListOfBaseModel
 
 logger = snapredLogger.getLogger(__name__)
@@ -61,4 +62,8 @@ class PurgeOverlappingPeaksRecipe(GenericRecipe[PurgeOverlappingPeaksAlgorithm])
 
 
 class ReductionRecipe(GenericRecipe[ReductionAlgorithm]):
+    pass
+
+
+class VanadiumFocussedReductionRecipe(GenericRecipe[VanadiumFocussedReductionAlgorithm]):
     pass

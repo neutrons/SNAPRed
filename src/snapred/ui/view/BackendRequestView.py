@@ -22,7 +22,7 @@ class BackendRequestView(QWidget):
         self.layout.addWidget(self.beginFlowButton, 3, 0, 1, 2)
 
         def commenceFlow():
-            if selection.startswith("fitMultiplePeaks"):
+            if selection.startswith("fitMultiplePeaks") or selection.startswith("vanadium"):
                 return
             request = SNAPRequest(path=selection, payload=json.dumps(jsonForm.collectData()))
             self.handleButtonClicked(request, self.beginFlowButton)
@@ -45,9 +45,9 @@ class BackendRequestView(QWidget):
 
         def executeRequest(reductionRequest):
             response = self.interfaceController.executeRequest(reductionRequest)
-            if response.responseCode != 200:
+            if response.code != 200:
                 ex = QWidget()
-                QMessageBox.critical(ex, "Error! :^(", str(response.responseMessage))
+                QMessageBox.critical(ex, "Error! :^(", str(response.message))
 
         # setup workers with work targets and args
         self.worker = self.worker_pool.createWorker(target=executeRequest, args=(reductionRequest))

@@ -33,7 +33,7 @@ with mock.patch.dict(
         assert fmpAlgo.getProperty("FitMultiplePeaksIngredients").value == fitIngredients.json()
 
     def test_execute():
-        inputFile = os.path.join(Resource._resourcesPath, "FitMultiplePeaksTestWS.nxs").replace("tests", "src/snapred")
+        inputFile = os.path.join(Resource._resourcesPath, "inputs", "fitMultPeaks", "FitMultiplePeaksTestWS.nxs")
         LoadNexusProcessed(Filename=inputFile, OutputWorkspace="testWS")
         instrumentState = Calibration.parse_raw(
             Resource.read("/inputs/purge_peaks/input_parameters.json")
