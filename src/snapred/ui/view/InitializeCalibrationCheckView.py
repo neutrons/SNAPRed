@@ -1,6 +1,8 @@
 import os
 import json
-from PyQt5.QtWidgets import QComboBox, QMessageBox, QInputDialog, QPushButton, QLabel, QVBoxLayout, QWidget
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
 
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
@@ -34,21 +36,30 @@ class InitializeCalibrationCheckView(BackendRequestView):
             request = SNAPRequest(path = selection, payload = json.dumps(jsonForm.collectData()))
             self.handleButtonClicked(request, self.beginFlowButton)
 
-            def showResult():
-                workflow = startWorkflow(lambda workflow: None, self._labelView("Test"))
+            def showResult(resultText: str, needText: bool):
+                workflow = startWorkflow(lambda workflow: None, self._labelView(resultText, needText))
                 workflow = finalizeWorkflow(workflow, self)
                 workflow.widget.show()
-
-            self.worker.finished.connect(lambda: showResult())
+            
+            self.worker.finished.connect(lambda: showResult("Test", True))
 
         self.beginFlowButton.clicked.connect(initializeCalibrationCheckFlow)
 
-    def _labelView(self, text):
+    def _labelView(self, text: str, needText: bool):
         win = QWidget()
         win.setStyleSheet("background-color: #F5E9E2;")
-        label = QLabel(text)
+
         vbox = QVBoxLayout()
+
+        label = QLabel(text)
+        label.setAlignment(Qt.AlignCenter)
         vbox.addWidget(label)
+
+        if needText:
+            name_input = QLineEdit()
+            name_input.setPlaceholderText("Enter name for state")
+            vbox.addWidget(name_input)
+
         vbox.addStretch()
         win.setLayout(vbox)
         return win
@@ -61,6 +72,14 @@ class InitializeCalibrationCheckView(BackendRequestView):
             if response.responseCode != 200:
                 ex = QWidget()
                 QMessageBox.critical(ex, "Error", str(response.responseMessage))
+
+            elif response.responseData == "success":
+                self.showResult("Ready to Calibrate!", False)
+                
+            elif response.responseData == "needText":
+                self.showResult("Please enter name for State!", True)
+                # return self.name_input.text()
+                
         self.worker = self.worker_pool.createWorker(target=executeRequest, args=(intializationRequest))
 
         self.worker.finished.connect(lambda: button.setEnabled(True))

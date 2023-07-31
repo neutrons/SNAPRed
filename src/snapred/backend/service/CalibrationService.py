@@ -149,6 +149,7 @@ class CalibrationService(Service):
                         runs, groupingFile
                     )
                 if pixelGroupingParameters:
-                    return print("Ready to calibrate")  # TODO: Need to implement UI in this method
+                    success = str("success")
+                    return success
                 else:
                     raise Exception("Error in calculating pixel grouping parameters")
