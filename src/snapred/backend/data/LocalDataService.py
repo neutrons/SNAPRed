@@ -277,6 +277,10 @@ class LocalDataService:
         return fileList
 
     def _findMatchingDirList(self, pattern, throws=True) -> List[str]:
+        """
+        Similar to the above method `_findMatchingFileList` except for directories!
+        Throw if nothing found.(Or dont!)
+        """
         fileList: List[str] = []
         for fname in glob.glob(pattern, recursive=True):
             if os.path.isdir(fname):
@@ -351,6 +355,9 @@ class LocalDataService:
         return calibrationIndex
 
     def _isApplicableEntry(self, calibrationIndexEntry, runId):
+        """
+        Checks to see if an entry in the calibration index applies to a given run id via numerical comparison.
+        """
         if calibrationIndexEntry.appliesTo == runId:
             return True
         if calibrationIndexEntry.appliesTo.startswith(">"):
@@ -364,6 +371,9 @@ class LocalDataService:
         return False
 
     def _getVersionFromCalibrationIndex(self, runId: str):
+        """
+        Loads calibration index and inspects all entries to attain latest calibration version that applies to the run id
+        """
         # lookup calibration index
         calibrationIndex = self.readCalibrationIndex(runId)
         # From the index find the latest calibration
@@ -381,12 +391,18 @@ class LocalDataService:
         return version
 
     def _constructCalibrationDataPath(self, runId: str, version: str):
+        """
+        Generates the path for an instrument state's versioned calibration files.
+        """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructCalibrationStatePath(stateId)
         cablibrationVersionPath: str = statePath + "v_{}/".format(version)
         return cablibrationVersionPath
 
     def _getCalibrationDataPath(self, runId: str):
+        """
+        Given a run id, get the latest and greatest calibration file set's path for said run.
+        """
         version = self._getVersionFromCalibrationIndex(runId)
         if version is None:
             raise ValueError("No calibration data found for runId {}".format(runId))
@@ -431,6 +447,9 @@ class LocalDataService:
         return latestFile
 
     def _getLatestCalibrationVersion(self, stateId: str):
+        """
+        Ignoring the calibration index, whats the last set of calibration files to be generated.
+        """
         calibrationStatePath = self._constructCalibrationStatePath(stateId)
         calibrationVersionPath = calibrationStatePath + "v_*/"
         latestVersion = 0
@@ -458,6 +477,9 @@ class LocalDataService:
         return record
 
     def writeCalibrationRecord(self, record: CalibrationRecord, version: int = None):
+        """
+        Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
+        """
         runNumber = record.reductionIngredients.runConfig.runNumber
         stateId, _ = self._generateStateId(record.reductionIngredients.runConfig.runNumber)
         previousVersion = self._getLatestCalibrationVersion(stateId)
@@ -479,6 +501,9 @@ class LocalDataService:
         return record
 
     def writeWorkspace(self, path: str, workspaceName: str):
+        """
+        Writes a Mantid Workspace to disk.
+        """
         saveAlgo = AlgorithmManager.create("SaveNexus")
         saveAlgo.setProperty("InputWorkspace", workspaceName)
         saveAlgo.setProperty("Filename", path + workspaceName)
@@ -541,7 +566,9 @@ class LocalDataService:
         return calibrationState
 
     def writeCalibrationState(self, runId: str, calibration: Calibration, version: int = None):
-        # get stateId and check to see if such a folder exists, if not create an initialize it
+        """
+        Writes a `Calibration` to either a new version folder, or overwrite a specific version.
+        """
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationStatePath(stateId)
         previousVersion = self._getLatestCalibrationVersion(stateId)
@@ -610,12 +637,22 @@ class LocalDataService:
         return calibration
 
     def getWorkspaceForName(self, name):
+        """
+        Returns a workspace from Mantid if it exists.
+        Abstraction for the Service layer to interact with mantid data.
+        Usually we only deal in references as its quicker,
+        but sometimes its already in memory due to some previous step.
+        """
         try:
             return mtd[name]
         except RuntimeError:
             return None
 
     def deleteWorkspace(self, workspaceName: str):
+        """
+        Deletes a workspace from Mantid.
+        Mostly for cleanup at the Service Layer.
+        """
         if self.getWorkspaceForName(workspaceName) is not None:
             deleteWorkspaceAlgo = AlgorithmManager.create("DeleteWorkspace")
             deleteWorkspaceAlgo.setProperty("Workspace", workspaceName)

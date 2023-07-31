@@ -17,6 +17,8 @@ name = "CalibrationMetricExtractionAlgorithm"
 class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
     """
     This algorithm is used to extract calibration metrics from the output of the peak fitting algorithm FitMultiplePeaks
+    It calculates the Sigma and Strain averages/standard deviations, and then packages them with the two theta average.
+    This is done per group, strain and sigma collected over spectra within said group.
     """
 
     def PyInit(self):

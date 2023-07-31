@@ -15,16 +15,27 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class FitCalibrationWorkspaceRecipe:
+    """
+    Fits Peaks of a given workspace using data that can be found on disk.
+    Plus some calculated Pixel Grouping Parameters.
+    """
+
     def __init__(self):
         pass
 
     def chop(self, ingredients: FitCalibrationWorkspaceIngredients):
+        """
+        Extract and prep data from valided object.
+        """
         self.instrumentState = ingredients.instrumentState
         self.crystalInfo = ingredients.crystalInfo
         self.workspaceName = ingredients.workspaceName
         self.pixelGroupingParameters = ingredients.pixelGroupingParameters
 
     def portion(self):
+        """
+        Prep most ingredients for sub-recipes.
+        """
         self.smoothIngredients = SmoothDataExcludingPeaksIngredients(
             instrumentState=self.instrumentState, crystalInfo=self.crystalInfo
         )

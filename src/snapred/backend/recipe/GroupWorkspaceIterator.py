@@ -2,6 +2,10 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 class GroupWorkspaceIterator:
+    """
+    Utility class that enables the pythonic iteration of a group workspace by workspace name.
+    """
+
     def __init__(self, groupingWorkspaceName):
         self.mantidSnapper = MantidSnapper(None, self.__class__.__name__)
         self.groupingWorkspace = self.mantidSnapper.mtd[groupingWorkspaceName]

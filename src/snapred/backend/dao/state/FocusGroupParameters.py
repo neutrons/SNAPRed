@@ -6,5 +6,9 @@ from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParam
 
 
 class FocusGroupParameters(BaseModel):
+    """
+    A join object that maps a list of Pixel Grouping Parameters to a focus group.
+    """
+
     focusGroupName: str
     pixelGroupingParameters: List[PixelGroupingParameters]
