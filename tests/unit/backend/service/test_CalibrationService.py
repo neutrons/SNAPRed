@@ -46,6 +46,8 @@ with mock.patch.dict(
         calibrationService = CalibrationService()
         calibrationService.dataExportService.exportCalibrationRecord = mock.Mock()
         calibrationService.dataExportService.exportCalibrationRecord.return_value = MagicMock(version="1.0.0")
+        calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
         calibrationService.dataFactoryService.getReductionIngredients = mock.Mock()
         calibrationService.dataFactoryService.getReductionIngredients.return_value = readReductionIngredientsFromFile()
         calibrationService.save(mock.Mock())

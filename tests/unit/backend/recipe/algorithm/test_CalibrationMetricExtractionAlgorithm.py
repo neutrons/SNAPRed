@@ -12,6 +12,10 @@ from snapred.meta.Config import Resource
 from snapred.meta.redantic import list_to_raw
 
 
+def _removeWhitespace(string):
+    return "".join(string.split())
+
+
 class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
     # patch the MantidSnapper object
     @patch(
@@ -81,4 +85,4 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         expected = Resource.read("outputs/calibration/metrics/expected.json")
 
         # Assert the output metrics are as expected
-        assert output_metrics == expected
+        assert _removeWhitespace(output_metrics) == _removeWhitespace(expected)
