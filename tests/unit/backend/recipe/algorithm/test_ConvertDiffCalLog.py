@@ -176,7 +176,7 @@ with mock.patch.dict(
         createDIFCTable(prevCal, dataX, [2**i for i in range(lenTest)])
         # run algo
         algo = ThisAlgo()
-        algo.initialize()  # use pyinit to appease codecov
+        algo.initialize()
         algo.setProperty("OffsetsWorkspace", offsetWS)
         algo.setProperty("PreviousCalibration", prevCal)
         # run once with positive (abs to ensure)
