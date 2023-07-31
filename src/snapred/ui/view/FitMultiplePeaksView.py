@@ -18,7 +18,7 @@ class FitMultiplePeaksView(BackendRequestView):
 
         def fitPeaksFlow():
             LoadNexusProcessed(
-                Filename=os.path.join(Resource._resourcesPath, "FitMultiplePeaksTestWS.nxs"), OutputWorkspace="testWS"
+                Filename="/SNS/SNAP/shared/Malcolm/Temp/DSP_57514_calibFoc.nxs", OutputWorkspace="testWS"
             )
             # TODO: Once jsonForm can correctly parse the input this will not be required
             ingredients = FitMultiplePeaksIngredients.parse_raw(

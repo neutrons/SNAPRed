@@ -9,6 +9,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
+from snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm import VanadiumFocussedReductionAlgorithm
 from snapred.meta.decorators.FromString import isBaseModel, isListOfBaseModel
 
 logger = snapredLogger.getLogger(__name__)
@@ -76,4 +77,8 @@ class ReductionRecipe(GenericRecipe[ReductionAlgorithm]):
 
 
 class SmoothDataExcludingPeaksRecipe(GenericRecipe[SmoothDataExcludingPeaks]):
+    pass
+
+
+class VanadiumFocussedReductionRecipe(GenericRecipe[VanadiumFocussedReductionAlgorithm]):
     pass

@@ -4,6 +4,7 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+from snapred.backend.recipe.algorithm.CustomGroupWorkspace import CustomGroupWorkspace  # noqa F401
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 
@@ -46,7 +47,7 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",
             StateConfig=reductionIngredients.reductionState.stateConfig.json(),
-            InstrumentName=reductionIngredients.reductionState.instrumentConfig.name,
+            InputWorkspace=raw_data,
             OutputWorkspace="CommonRed",
         )
 

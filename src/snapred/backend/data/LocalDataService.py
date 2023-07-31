@@ -105,11 +105,12 @@ class LocalDataService:
             focusGroups=self._readFocusGroups(runId),
             isLiteMode=True,  # TODO: Support non lite mode
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=str(self.instrumentConfig.calibrationDirectory)  # TODO: Propogate pathlib through codebase
-            + "/Powder/"
-            + reductionParameters["stateId"]
-            + "/"
-            + reductionParameters["rawVCorrFileName"],
+            vanadiumFilePath=str(
+                self.instrumentConfig.calibrationDirectory
+                / "Powder"
+                / reductionParameters["stateId"]
+                / reductionParameters["rawVCorrFileName"]
+            ),
             calibrationMaskFileName=reductionParameters.get("CalibrationMaskFilename"),
             stateId=reductionParameters["stateId"],
             tofBin=reductionParameters["tofBin"],
@@ -127,11 +128,12 @@ class LocalDataService:
             filename=reductionParameters["calFileName"],
             runNumber=reductionParameters["CRun"][0],
             name=reductionParameters.get("CalibrantName"),
-            diffCalPath=str(self.instrumentConfig.calibrationDirectory)  # TODO: Propogate pathlib through codebase
-            + "/Powder/"
-            + reductionParameters["stateId"]
-            + "/"
-            + reductionParameters["calFileName"],
+            diffCalPath=str(
+                self.instrumentConfig.calibrationDirectory
+                / "Powder"
+                / reductionParameters["stateId"]
+                / reductionParameters["calFileName"]
+            ),
             latticeParameters=None,  # TODO: missing, reductionParameters['CalibrantLatticeParameters'],
             reference=None,
         )  # TODO: missing, reductionParameters['CalibrantReference'])
@@ -172,10 +174,10 @@ class LocalDataService:
                     dMin=reductionParameters["focGroupDMin"][i],
                     definition=str(
                         self.instrumentConfig.calibrationDirectory
-                    )  # TODO: Propogate pathlib through codebase
-                    + "/Powder/"
-                    + self.instrumentConfig.pixelGroupingDirectory
-                    + reductionParameters["focGroupDefinition"][i],
+                        / "Powder"
+                        / self.instrumentConfig.pixelGroupingDirectory
+                        / reductionParameters["focGroupDefinition"][i]
+                    ),
                 )
             )
         return focusGroups

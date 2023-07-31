@@ -79,7 +79,8 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         weights_ws = self.mantidSnapper.mtd[weight_ws_name]
 
         # get number of spectrum to iterate over
-        numSpec = weights_ws.getNumberHistograms()
+
+        numSpec = mtd[weight_ws_name].getNumberHistograms()
 
         # extract x & y data for csaps
         for index in range(numSpec):
