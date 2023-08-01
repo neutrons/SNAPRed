@@ -5,7 +5,7 @@ except ImportError:
     __version__ = "unknown"
 
 
-def pullAllModules(file=__file__):
+def _pullAllModules(file=__file__):
     import os
     from glob import glob
 
@@ -15,3 +15,21 @@ def pullAllModules(file=__file__):
     modules = glob(f"{moduleDir}/*.py")
     # Import all modules
     return [module[:-3].split("/")[-1] for module in modules if not module.endswith("__init__.py")]
+
+
+def pullModuleMembers(file=__file__, name=__name__):
+    import importlib
+
+    allz = []
+    localz = {}
+    for moduleName in _pullAllModules(file):
+        module = importlib.import_module(f"{name}.{moduleName}", moduleName)
+        if module.__dict__.get("__all__", None) is not None:
+            allz.extend(module.__dict__["__all__"])
+            # update locals with all the names in __all__
+            localz.update({key: module.__dict__[key] for key in module.__dict__["__all__"]})
+        else:
+            # this assumes the FileName=ClassName pattern
+            allz.append(moduleName)
+            localz.update({moduleName: module.__dict__[moduleName]})
+    return allz, localz
