@@ -8,7 +8,6 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -37,7 +36,8 @@ class CalibrationService(Service):
         self.registerPath("save", self.save)
         self.registerPath("initializeState", self.initializeState)
         self.registerPath("calculatePixelGroupingParameters", self.calculatePixelGroupingParameters)
-        self.registerPath("initializeCalibrationCheck", self.initializeCalibrationCheck)
+        self.registerPath("hasState", self.hasState)
+        self.registerPath("checkDataExists", self.calculatePixelGroupingParameters)
         return
 
     def name(self):
@@ -116,40 +116,10 @@ class CalibrationService(Service):
                 return False
         else:
             return False
-
-    @FromString # TODO: Need to implement UI in this method
-    def promptUserForName(self):
-        name = input("Enter a name for the state: ")
-        return name
-
+        
     @FromString
-    def initializeCalibrationCheck(self, runs: List[RunConfig]):
-        if not runs:
-            raise ValueError("List is empty")
+    def checkDataExists(self, run: RunConfig):
+        if not run:
+            raise ValueError("Runs list empty")
         else:
-            # list to store states
-            states = []
-            for run in runs:
-                # identify the instrument state for measurement
-                state = self.dataFactoryService.getStateConfig(run.runNumber)
-                states.append(state)
-                # check if state exists and create in case it does not exist
-                for state in states:
-                    hasState = self.hasState(state, "*")
-                    if not hasState:
-                        name = self.promptUserForName()
-                        request = InitializeStateRequest(run.runNumber, name)
-                        self.initializeState(request)
-                        break
-
-                reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
-                groupingFile = reductionIngredients.reductionState.stateConfig.focusGroups.definition
-                # calculate pixel grouping parameters
-                pixelGroupingParameters = self.calculatePixelGroupingParameters(
-                        runs, groupingFile
-                    )
-                if pixelGroupingParameters:
-                    success = str("success")
-                    return success
-                else:
-                    raise Exception("Error in calculating pixel grouping parameters")
+            return True

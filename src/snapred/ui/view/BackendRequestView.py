@@ -24,8 +24,6 @@ class BackendRequestView(QWidget):
         def commenceFlow():
             if selection.startswith("fitMultiplePeaks"):
                 return
-            elif selection.startswith("initializeCalibrationCheck"):
-                return
             request = SNAPRequest(path=selection, payload=json.dumps(jsonForm.collectData()))
             self.handleButtonClicked(request, self.beginFlowButton)
 
