@@ -645,7 +645,7 @@ class LocalDataService:
         """
         try:
             return mtd[name]
-        except RuntimeError:
+        except ValueError:
             return None
 
     def deleteWorkspace(self, workspaceName: str):

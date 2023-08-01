@@ -95,7 +95,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             "parameters": f"params for {focus_def}"
         }
 
-    def test_load_focused_data_success(self):
+    def test_LoadFocussedData_Success(self):
         # Mock the dataFactoryService.getWorkspaceForName method to return a non-None value
         self.instance.dataFactoryService.getWorkspaceForName = MagicMock(return_value="mock_workspace")
 
@@ -106,7 +106,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         expected_result = self.outputNameFormat.format(self.runId)
         assert result == expected_result
 
-    def test_load_focused_data_failure(self):
+    def test_LoadFocussedData_Failure(self):
         # Mock the dataFactoryService.getWorkspaceForName method to return None
         self.instance.dataFactoryService.getWorkspaceForName = MagicMock(return_value=None)
 
@@ -120,7 +120,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert str(context.exception) == expected_message
 
-    def test_get_pixel_grouping_params(self):
+    def test_GetPixelGroupingParams(self):
         # Mock input data
         calibration = "calibration_data"
         focusGroups = [MagicMock(definition="focus1"), MagicMock(definition="focus2"), MagicMock(definition="focus3")]
@@ -132,7 +132,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         expected_result = ["params for focus1", "params for focus2", "params for focus3"]
         assert result == expected_result
 
-    def test_get_pixel_grouping_params_empty(self):
+    def test_GetPixelGroupingParams_Empty(self):
         # Test with an empty focusGroups list
         calibration = "calibration_data"
         focusGroups = []
@@ -159,7 +159,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @patch("snapred.backend.service.CalibrationService.list_to_raw", return_value="mock_metric")
     @patch("snapred.backend.service.CalibrationService.parse_raw_as", return_value="mock_crystal_info")
     @patch("snapred.backend.service.CalibrationService.FocusGroupMetric", return_value="mock_metric")
-    def test_fit_and_collect_metrics(
+    def test_fitAndCollectMetrics(
         self,
         groupWorkspaceIterator,  # noqa: ARG002
         fitCalibrationWorkspaceIngredients,  # noqa: ARG002
@@ -201,7 +201,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         return_value=MagicMock(ingest=MagicMock(return_value={"crystalInfo": "mock_crystal_info"})),
     )
     @patch("snapred.backend.service.CalibrationService.CalibrationRecord", return_value="mock_calibration_record")
-    def test_assess_quality(self, crystallographicInfoService, calibrationRecord):  # noqa: ARG002
+    def test_assessQuality(self, crystallographicInfoService, calibrationRecord):  # noqa: ARG002
         # Mock input data
         request = MagicMock()
         run = MagicMock()

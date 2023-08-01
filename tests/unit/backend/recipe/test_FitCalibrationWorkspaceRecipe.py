@@ -13,7 +13,7 @@ class TestFitCalibrationWorkspaceRecipe(unittest.TestCase):
         return_value=MagicMock(executeRecipe=MagicMock()),
     )
     @patch("snapred.backend.recipe.FitCalibrationWorkspaceRecipe.FitMultiplePeaksRecipe")
-    def test_execute_recipe(
+    def test_executeRecipe(
         self,
         FitMultiplePeaksRecipe,
         SmoothDataExcludingPeaksRecipe,
