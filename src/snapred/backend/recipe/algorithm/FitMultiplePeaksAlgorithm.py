@@ -6,6 +6,7 @@ from mantid.kernel import Direction
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
+from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 
@@ -35,15 +36,18 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
         reducedList_json = json.loads(result.get())
 
-        reducedList = [
-            [DetectorPeak.parse_raw(peak_json) for peak_json in peak_group_json] for peak_group_json in reducedList_json
-        ]
-
         ws_group = WorkspaceGroup()
         mtd.add("fitPeaksWSGroup", ws_group)
 
-        ws = self.mantidSnapper.mtd[wsName]
-        for index in range(ws.getNumberHistograms()):
+        groupIDs = []
+        reducedList = {}
+        for x in reducedList_json:
+            groupPeakList = GroupPeakList.parse_obj(x)
+            groupIDs.append(groupPeakList.groupID)
+            reducedList[groupPeakList.groupID] = groupPeakList.peaks
+
+        self.mantidSnapper.mtd[wsName]
+        for index, groupID in enumerate(groupIDs):
             fittedPeakPos = f"{wsName}_fitted_peakpositions_{index}"
             fittedParams = f"{wsName}_fitted_params_{index}"
             fittedWS = f"{wsName}_fitted_{index}"
@@ -51,12 +55,15 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
 
             peakCenters = []
             peakLimits = []
-            for peak in reducedList[index]:
+            for peak in reducedList[groupID]:
                 peakCenters.append(peak.position.value)
                 peakLimits.extend([peak.position.minimum, peak.position.maximum])
 
             self.mantidSnapper.ExtractSingleSpectrum(
-                "Extract Single Spectrm...", InputWorkspace=wsName, OutputWorkspace="ws2fit", WorkspaceIndex=index
+                "Extract Single Spectrum...",
+                InputWorkspace=wsName,
+                OutputWorkspace="ws2fit",
+                WorkspaceIndex=index,
             )
 
             self.mantidSnapper.FitPeaks(

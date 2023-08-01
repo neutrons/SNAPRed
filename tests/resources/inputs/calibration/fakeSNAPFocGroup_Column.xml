@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<detector-grouping idf-date="2018-05-01T00:00:01" instrument="fakeSNAPLite.xml">
+<detector-grouping idf-date="2018-05-01T00:00:01" instrument="fakeSNAPLite">
 	<group ID="1">
 		<detids>0-8</detids>
 	</group>

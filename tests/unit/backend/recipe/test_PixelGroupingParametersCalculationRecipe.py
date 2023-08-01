@@ -15,7 +15,7 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         # mock algorithm execution result and output
         mockAlgo.execute.return_value = "passed"
         params = PixelGroupingParameters(
-            twoTheta=3.14, dResolution=Limit(minimum=0.1, maximum=1.0), dRelativeResolution=0.01
+            groupID=1, twoTheta=3.14, dResolution=Limit(minimum=0.1, maximum=1.0), dRelativeResolution=0.01
         )
         mock_output_val = [params.json()]
         mockAlgo.getProperty("OutputParameters").value = json.dumps(mock_output_val)
@@ -29,6 +29,8 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         assert isinstance(data, dict)
         assert data["result"] is not None
         assert data["result"] == "passed"
+        assert isinstance(data["parameters"], list)
+        assert data["parameters"][0].json() == mock_output_val[0]
 
     def test_execute_unsuccessful():
         mockAlgo.execute.side_effect = RuntimeError("passed")

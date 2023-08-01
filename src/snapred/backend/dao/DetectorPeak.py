@@ -7,3 +7,15 @@ class DetectorPeak(BaseModel):
     """Class to hold diffraction peak position and limits in d-spacing"""
 
     position: LimitedValue[float]
+
+    @property
+    def value(self) -> float:
+        return self.position.value
+
+    @property
+    def minimum(self) -> float:
+        return self.position.minimum
+
+    @property
+    def maximum(self) -> float:
+        return self.position.maximum

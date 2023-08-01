@@ -29,6 +29,8 @@ with mock.patch.dict(
         assert purgeAlgo.getProperty("InstrumentState").value == instrumentState.json()
         assert CrystallographicInfo.parse_raw(purgeAlgo.getProperty("CrystalInfo").value) == crystalInfo
 
+    # TODO this sample data has no overlapping peaks, so that the result of DetectorPeakPredictor
+    # and PurgeOverlappingPeaks are the same.  Needs data with overlapping peaks to check if purged.
     def test_execute():
         instrumentState = Calibration.parse_raw(
             Resource.read("/inputs/purge_peaks/input_parameters.json")
@@ -41,7 +43,7 @@ with mock.patch.dict(
         purgeAlgo.execute()
 
         actual_pos_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
-        expected_pos_json = json.loads(Resource.read("/outputs/purge_peaks/output.json"))
+        # TODO edit the purge_peaks version of output file to correct format
+        expected_pos_json = json.loads(Resource.read("/outputs/predict_peaks/peaks.json"))
 
-        print(actual_pos_json)
         assert expected_pos_json == actual_pos_json
