@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 
 class CalibrationIndexEntry(BaseModel):
@@ -12,3 +12,20 @@ class CalibrationIndexEntry(BaseModel):
     comments: str
     author: str
     timestamp: Optional[int]
+
+    @validator("appliesTo")
+    def appliesToFormatChecker(cls, v):
+        """
+        This validator ensures that if appliesTo is present,
+        it is in the format of 'runNumber', '>runNumber', or '<runNumber'.
+        """
+        testValue = v
+        if testValue is not None:
+            if testValue.startswith(">") or testValue.startswith("<"):
+                testValue = testValue[1:]
+                try:
+                    int(testValue)
+                except ValueError:
+                    raise ValueError("appliesTo must be in the format of 'runNumber', '>runNumber', or '<runNumber'.")
+
+        return v
