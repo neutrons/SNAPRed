@@ -36,9 +36,15 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
             "ParameterError": np.array([{}, {}, {}]),
         }
         fakePixelGroupingParameter = [
-            PixelGroupingParameters(twoTheta=30, dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1),
-            PixelGroupingParameters(twoTheta=40, dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1),
-            PixelGroupingParameters(twoTheta=50, dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1),
+            PixelGroupingParameters(
+                groupID=0, twoTheta=30, dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1
+            ),
+            PixelGroupingParameters(
+                groupID=1, twoTheta=40, dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1
+            ),
+            PixelGroupingParameters(
+                groupID=2, twoTheta=50, dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1
+            ),
         ]
 
         # Create the algorithm instance and set properties

@@ -43,4 +43,4 @@ class TestFitCalibrationWorkspaceRecipe(unittest.TestCase):
             FitMultiplePeaksIngredients=FitMultiplePeaksIngredients(),
             OutputWorkspaceGroup=f"fitted_{FitMultiplePeaksIngredients().InputWorkspace}",
         )
-        assert result == FitCalibrationWorkspaceRecipe().executeRecipe()
+        assert result == FitCalibrationWorkspaceRecipe().executeRecipe(ingredients)
