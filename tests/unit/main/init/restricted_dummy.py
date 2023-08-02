@@ -11,4 +11,4 @@ class super_secret_dummy:
     pass
 
 
-myUnsecurePassword = "password123"
+myUnsecureBitcoinWallet = "password123"
