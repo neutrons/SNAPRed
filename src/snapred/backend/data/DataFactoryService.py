@@ -54,7 +54,7 @@ class DataFactoryService:
         return self.lookupService.readStateConfig(runId)
 
     def constructStateId(self, runId):
-        return self.lookupService._generateStateId(self.getRunConfig(runId))
+        return self.lookupService._generateStateId(runId)
 
     def getCalibrationState(self, runId) -> Calibration:
         return self.lookupService.getCalibrationState(runId)
