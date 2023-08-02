@@ -88,7 +88,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         # calculate parameters for all pixel groupings and store them in json format
         allGroupingParams_json = []
         grouping_ws = self.mantidSnapper.mtd[self.grouping_ws_name]
-        self.mantidSnapper.mtd[self.grouped_ws_name]
+
         resws = mtd[self.pgpca_resolution_ws]
 
         grouping_detInfo = grouping_ws.detectorInfo()
