@@ -1,3 +1,5 @@
+# This is a more restrictive dummy module for testing the pullModuleMembers function.
+
 __all__ = ["restricted_dummy"]
 
 

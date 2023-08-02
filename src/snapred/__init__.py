@@ -6,6 +6,9 @@ except ImportError:
 
 
 def _pullAllModules(file=__file__):
+    """
+    Grabs all the modules in the package.
+    """
     import os
     from glob import glob
 
@@ -18,6 +21,12 @@ def _pullAllModules(file=__file__):
 
 
 def pullModuleMembers(file=__file__, name=__name__):
+    """
+    Does a shallow pull of all the modules in the package.
+    Returns a flattened list of all the __all__ lists in the modules.
+    Returns a dict of used to update the local namespace of the caller.
+    (This enables `from snapred.dao import Data` instead of `from snapred.dao.Data import Data`)
+    """
     import importlib
 
     allz = []
