@@ -24,6 +24,7 @@ with mock.patch.dict(
     )
     from snapred.backend.service.CalibrationService import CalibrationService  # noqa: E402
     from snapred.meta.Config import Resource  # noqa: E402
+    
 
     def readReductionIngredientsFromFile():
         with Resource.open("/inputs/calibration/input.json", "r") as f:
@@ -62,3 +63,9 @@ with mock.patch.dict(
         localMock.return_value = mock.MagicMock()
         calibrationService.calculatePixelGroupingParameters(runs, groupingFile)
         assert localMock.called
+
+    def test_hasState():
+        calibrationService = CalibrationService()
+        runId = '123'
+        version = '1'
+        calibrationService.hasState(runId, version)

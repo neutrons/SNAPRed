@@ -1,22 +1,15 @@
-import json
-
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.StateConfig import StateConfig
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.ui.view.PromptUserforCalibrationInputView import PromptUserforCalibrationInputView
-from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.widget.JsonForm import JsonForm
 
 class CalibrationCheck(object):
-    runConfig = RunConfig()
     stateConfig = StateConfig()
-    worker_pool = WorkerPool()
-    interfaceController = InterfaceController()
     jsonForm = JsonForm()
 
     def __init__(self, view):
@@ -59,7 +52,6 @@ class CalibrationCheck(object):
 
         if pixelGroupingParametersRequest:
             self._labelView("Ready to Calibrate!")
-
 
     def _spawnStateCreationWorkflow(self, response: SNAPResponse):
         if response.responseCode == 200:
