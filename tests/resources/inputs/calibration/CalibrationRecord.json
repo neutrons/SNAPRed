@@ -366,6 +366,7 @@
         "focusGroupName": "Bank",
         "pixelGroupingParameters": [
           {
+            "groupID": 0,
             "twoTheta": 1.8230747956560218,
             "dResolution": {
               "minimum": 0.4427877783643468,
@@ -374,6 +375,7 @@
             "dRelativeResolution": 0.003379514789208845
           },
           {
+            "groupID": 1,
             "twoTheta": 1.1545587481738246,
             "dResolution": {
               "minimum": 0.641323731469231,
@@ -387,6 +389,7 @@
         "focusGroupName": "All",
         "pixelGroupingParameters": [
           {
+            "groupID": 0,
             "twoTheta": 1.4888167719149363,
             "dResolution": {
               "minimum": 0.5165770976155033,
