@@ -34,6 +34,11 @@ calibration:
       beta:
         - 0.02
         - 0.05
+      FWHMMultiplier:
+        - 2.0
+        - 2.0
+      peakTailCoefficient:
+        - 2.0
 
 localdataservice:
   config:

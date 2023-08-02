@@ -14,10 +14,12 @@ with mock.patch.dict(
     from mantid.simpleapi import DeleteWorkspace, mtd
     from pydantic import parse_file_as
     from snapred.backend.dao.calibration.Calibration import Calibration
+    from snapred.backend.dao.state.InstrumentState import InstrumentState
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
     from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
-        PixelGroupingParametersCalculationAlgorithm,
+        PixelGroupingParametersCalculationAlgorithm as ThisAlgo,
     )
+    from snapred.meta.Config import Resource
 
     IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
@@ -56,6 +58,70 @@ with mock.patch.dict(
         else:
             return "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition.xml"
 
+    def getFakeInstrumentState():
+        fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/calibration/sampleInstrumentState.json"))
+        fakeInstrumentState.particleBounds.tof.minimum = 10
+        fakeInstrumentState.particleBounds.tof.maximum = 1000
+        return fakeInstrumentState
+
+    def mockRetrieveFromPantry(algo):
+        groupingFilePath = algo.getProperty("GroupingFile").value
+        idf = algo.getProperty("InstrumentDefinitionFile").value
+        algo.mantidSnapper.CreateWorkspace(
+            "Create workspace to hold IDF",
+            OutputWorkspace="idf",
+            DataX=1,
+            DataY=1,
+        )
+        algo.mantidSnapper.LoadInstrument(
+            "Load a fake instrument for testing",
+            Workspace="idf",
+            Filename=idf,
+            MonitorList="-2--1",
+            RewriteSpectraMap=False,
+        )
+        algo.mantidSnapper.LoadDetectorsGroupingFile(
+            "Load a fake grouping  file for testing",
+            InputFile=groupingFilePath,
+            InputWorkspace="idf",
+            OutputWorkspace=algo.grouping_ws_name,
+        )
+        algo.mantidSnapper.DeleteWorkspace(
+            "Remove temporary IDF workspace",
+            Workspace="idf",
+        )
+        algo.mantidSnapper.executeQueue()
+
+    def test_chop_ingredients():
+        algo = ThisAlgo()
+        algo.initialize()
+        fakeInstrumentState = getFakeInstrumentState()
+        algo.chopIngredients(fakeInstrumentState)
+        assert algo.tofMin is not None
+        assert algo.tofMin == fakeInstrumentState.particleBounds.tof.minimum
+        assert algo.tofMax == fakeInstrumentState.particleBounds.tof.maximum
+        assert algo.deltaTOverT == fakeInstrumentState.instrumentConfig.delTOverT
+        assert algo.delLOverL == fakeInstrumentState.instrumentConfig.delLOverL
+        assert algo.L == fakeInstrumentState.instrumentConfig.L1 + fakeInstrumentState.instrumentConfig.L2
+        assert algo.delL == algo.L * algo.delLOverL
+        assert algo.delTheta == fakeInstrumentState.instrumentConfig.delThWithGuide
+        assert algo.delL is not None
+        assert algo.deltaTOverT is not None
+        assert algo.delTheta is not None
+
+    @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
+    def test_local():
+        groupingFile = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
+        referenceParametersFile = Resource.getPath("outputs/calibration/output.json")
+
+        run_test(
+            instrumentDefinitionFile=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            instrumentState=Resource.read("/inputs/calibration/sampleInstrumentState.json"),
+            groupingFile=groupingFile,
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    # TODO fix all of the files on the analysis cluster
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_column():
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.xml"
@@ -183,7 +249,7 @@ with mock.patch.dict(
 
     def run_test(instrumentDefinitionFile, instrumentState, groupingFile, referenceParametersFile):
         """Test execution of PixelGroupingParametersCalculationAlgorithm"""
-        pixelGroupingAlgo = PixelGroupingParametersCalculationAlgorithm()
+        pixelGroupingAlgo = ThisAlgo()
         pixelGroupingAlgo.initialize()
 
         pixelGroupingAlgo.setProperty("InstrumentState", instrumentState)
@@ -199,8 +265,8 @@ with mock.patch.dict(
             pixelGroupingParams_calc.append(PixelGroupingParameters.parse_raw(item))
 
         # parse the reference file. Note, in the reference file each kind of parameter is grouped into its own list
-        f = open(referenceParametersFile)
-        pixelGroupingParams_ref = json.load(f)
+        with open(referenceParametersFile) as f:
+            pixelGroupingParams_ref = json.load(f)
 
         # compare calculated and reference parameters
         number_of_groupings_calc = len(pixelGroupingParams_calc)

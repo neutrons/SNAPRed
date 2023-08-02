@@ -73,6 +73,7 @@ class LocalDataService:
             instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
             instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
             instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
+            instrumentParameterMap["NBins"] = 10  # default value specified by @mguthriem
             instrumentConfig = InstrumentConfig(**instrumentParameterMap)
         except KeyError as e:
             raise KeyError(f"{e}: while reading instrument configuration '{self.instrumentConfigPath}'") from e

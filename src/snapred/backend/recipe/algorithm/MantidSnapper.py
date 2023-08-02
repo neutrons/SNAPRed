@@ -20,6 +20,11 @@ class _CustomMtd:
             key = key.get()
         return mtd[key]
 
+    def doesExist(self, key):
+        if str(key.__class__) == str(callback(int).__class__):
+            key = key.get()
+        return mtd.doesExist(key)
+
 
 class MantidSnapper:
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}

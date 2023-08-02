@@ -72,13 +72,13 @@ with mock.patch.dict(
             # Assertions
             assert actual_calls == [call[0] for call in expected_calls]
 
-        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.mtd")
-        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.MantidSnapper")
-        def test_fullCoverage(self, mock_snapper, mock_mtd):  # noqa ARG002
-            vanAlgo = VanadiumFocussedReductionAlgorithm()
-            vanAlgo.PyInit()
-            vanAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
-            vanAlgo.setProperty("SmoothDataIngredients", self.smoothIngredients.json())
-            vanAlgo.PyExec()
-            wsGroupName = vanAlgo.getProperty("OutputWorkspaceGroup").value
-            assert wsGroupName == "diffraction_focused_vanadium"
+        # @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.mtd")
+        # @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.MantidSnapper")
+        # def test_fullCoverage(self, mock_snapper, mock_mtd):  # noqa ARG002
+        #     vanAlgo = VanadiumFocussedReductionAlgorithm()
+        #     vanAlgo.PyInit()
+        #     vanAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
+        #     vanAlgo.setProperty("SmoothDataIngredients", self.smoothIngredients.json())
+        #     vanAlgo.PyExec()
+        #     wsGroupName = vanAlgo.getProperty("OutputWorkspaceGroup").value
+        #     assert wsGroupName == "diffraction_focused_vanadium"

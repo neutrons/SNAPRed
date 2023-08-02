@@ -15,31 +15,33 @@ class ConvertDiffCalLog(PythonAlgorithm):
     Delete this algo once the new work has been completed in mantid
     inputs:
         OffsetsWorkspace: str -- name of an OffsetsWorkspace containing signed offsets
-        PreviousCalibration: str -- name of a MatrixWorkspace of DIFCs which are to be corrected (x: detid, y: difc)
+        PreviousCalibration: str -- name of a TableWorkspace of DIFCs which are to be corrected (cols 'detid', 'difc')
         BinWidth: float -- the binwidth, dBin, used in the update equations
     output:
         OutputWorkspace -- the corrected calibration workspace of DIFCs, as a TableWorkspace
     """
 
-    def PyInit(self):
+    def PyInit(self) -> None:
         # declare properties
         self.declareProperty("OffsetsWorkspace", defaultValue="", direction=Direction.Input)
-        self.declareProperty("PreviousCalibration", defaultValue="", direction=Direction.Input)
+        self.declareProperty("PreviousCalibration", defaultValue="", direction=Direction.Input)  # a table workspace
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("BinWidth", defaultValue=-0.001, direction=Direction.Input)
         self.setRethrows(True)
 
-    def PyExec(self):
+    def PyExec(self) -> None:
         # get offsets
         offsetWS = self.getProperty("OffsetsWorkspace").value
         difcWS = self.getProperty("PreviousCalibration").value
         outputWS = self.getProperty("OutputWorkspace").value
         dBin = self.getProperty("BinWidth").value
+        previousCal = mtd[difcWS]
 
         # calculate multiplicative offsets
         #  DIFCnew = DIFCold * (1 + dBin)^{-offset}
         offsets = mtd[offsetWS].extractY().ravel()
-        difc_old = mtd[difcWS].extractY().ravel()
+        detid_old = previousCal.column("detid")
+        difc_old = previousCal.column("difc")
         multOff = np.power(np.ones_like(difc_old) + np.abs(dBin), -1 * offsets)
         difc_new = np.multiply(difc_old, multOff)
 
@@ -54,10 +56,10 @@ class ConvertDiffCalLog(PythonAlgorithm):
         outws.addColumn(type="float", name="tofmin", plottype=6)
         outws.setLinkedYCol(0, 1)
 
-        for i in range(len(difc_old)):
-            nextRow = {"detid": i, "difc": difc_new[i], "difa": 0, "tzero": 0, "tofmin": 0}
+        for detid, difc in zip(detid_old, difc_new):
+            nextRow = {"detid": detid, "difc": difc, "difa": 0, "tzero": 0, "tofmin": 0}
             outws.addRow(nextRow)
-        return outws
+        return
 
 
 # Register algorithm with Mantid
