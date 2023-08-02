@@ -237,6 +237,7 @@
         },
         "pixelGroupingInstrumentParameters": [
           {
+            "groupID": 0,
             "twoTheta": 2.1108948177427838,
             "dResolution": {
               "minimum": 0.40224298673776404,
@@ -245,6 +246,7 @@
             "dRelativeResolution": 0.002771822370612031
           },
           {
+            "groupID": 1,
             "twoTheta": 1.82310673131693,
             "dResolution": {
               "minimum": 0.44278229953817677,
@@ -253,6 +255,7 @@
             "dRelativeResolution": 0.003234525153614593
           },
           {
+            "groupID": 2,
             "twoTheta": 1.5352228379083572,
             "dResolution": {
               "minimum": 0.5040188478793922,
@@ -261,6 +264,7 @@
             "dRelativeResolution": 0.004014748859873182
           },
           {
+            "groupID": 3,
             "twoTheta": 1.440276389170165,
             "dResolution": {
               "minimum": 0.530714277849788,
@@ -269,6 +273,7 @@
             "dRelativeResolution": 0.004309856397320412
           },
           {
+            "groupID": 4,
             "twoTheta": 1.1543988461042238,
             "dResolution": {
               "minimum": 0.6414024711539658,
@@ -277,6 +282,7 @@
             "dRelativeResolution": 0.005408489642872038
           },
           {
+            "groupID": 5,
             "twoTheta": 0.8690010092470938,
             "dResolution": {
               "minimum": 0.831438096217031,
@@ -301,6 +307,7 @@
         "focusGroupName": "Column",
         "pixelGroupingParameters": [
           {
+            "groupID": 0,
             "twoTheta": 2.1108948177427838,
             "dResolution": {
               "minimum": 0.40224298673776404,
@@ -309,6 +316,7 @@
             "dRelativeResolution": 0.002771822370612031
           },
           {
+            "groupID": 1,
             "twoTheta": 1.82310673131693,
             "dResolution": {
               "minimum": 0.44278229953817677,
@@ -317,6 +325,7 @@
             "dRelativeResolution": 0.003234525153614593
           },
           {
+            "groupID": 2,
             "twoTheta": 1.5352228379083572,
             "dResolution": {
               "minimum": 0.5040188478793922,
@@ -325,6 +334,7 @@
             "dRelativeResolution": 0.004014748859873182
           },
           {
+            "groupID": 3,
             "twoTheta": 1.440276389170165,
             "dResolution": {
               "minimum": 0.530714277849788,
@@ -333,6 +343,7 @@
             "dRelativeResolution": 0.004309856397320412
           },
           {
+            "groupID": 4,
             "twoTheta": 1.1543988461042238,
             "dResolution": {
               "minimum": 0.6414024711539658,
@@ -341,6 +352,7 @@
             "dRelativeResolution": 0.005408489642872038
           },
           {
+            "groupID": 5,
             "twoTheta": 0.8690010092470938,
             "dResolution": {
               "minimum": 0.831438096217031,
