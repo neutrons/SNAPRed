@@ -3,17 +3,27 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 
 class PromptUserforCalibrationInputView(QWidget):
-    win = QWidget()
-    win.setStyleSheet("background-color: #F5E9E2;")
-    vbox = QVBoxLayout()
-    label = QLabel("State not found, please enter a run number and state name!")
-    run_input = QLineEdit()
-    run_input = setPlaceholderText("Enter run number")
-    name_input = QLineEdit()
-    name_input.setPlaceholderText("Enter name for state")
-    vbox.addWidget(run_input)
-    vbox.addWidget(name_input)
-    label.setAlignment(Qt.AlignCenter)
-    vbox.addWidget(label)
-    vbox.addStretch()
-    win.setLayout(vbox)
+
+    def __init__(self, jsonForm, parent=None):
+        super().__init__(parent)
+        
+        layout = QVBoxLayout(self)
+        layout.setStyleSheet("background-color: #F5E9E2;")
+        
+        label = QLabel("State not found, please enter a run number and state name!")
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+        
+        self.run_input = QLineEdit() 
+        self.run_input.setPlaceholderText("Enter run number")
+        layout.addWidget(self.run_input)
+
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("Enter name for state")
+        layout.addWidget(self.name_input)
+
+    def getRunNumber(self):
+        return self.run_input.text()
+
+    def getName(self): 
+        return self.name_input.text()
