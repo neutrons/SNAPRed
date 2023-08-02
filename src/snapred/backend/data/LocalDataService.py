@@ -272,7 +272,7 @@ class LocalDataService:
             if os.path.isfile(fname):
                 fileList.append(fname)
         if len(fileList) == 0 and throws:
-            raise ValueError("No files could be found with pattern: {}".format(pattern))
+            raise ValueError(f"No files could be found with pattern: {pattern}")
 
         return fileList
 
@@ -286,13 +286,13 @@ class LocalDataService:
             if os.path.isdir(fname):
                 fileList.append(fname)
         if len(fileList) == 0 and throws:
-            raise ValueError("No directories could be found with pattern: {}".format(pattern))
+            raise ValueError(f"No directories could be found with pattern: {pattern}")
 
         return fileList
 
     def _constructCalibrationStatePath(self, stateId):
         # TODO: Propogate pathlib through codebase
-        return str(self.instrumentConfig.calibrationDirectory) + "/Powder/" + stateId + "/"
+        return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId}/"
 
     def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
         # lookup IPST number
@@ -385,7 +385,7 @@ class LocalDataService:
             # filter for latest applicable
             relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runId), calibrationIndex))
             if len(relevantEntries) < 1:
-                raise ValueError("No applicable calibration index entries found for runId {}".format(runId))
+                raise ValueError(f"No applicable calibration index entries found for runId {runId}")
             latestCalibration = relevantEntries[-1]
             version = latestCalibration.version
         return version
@@ -405,7 +405,7 @@ class LocalDataService:
         """
         version = self._getVersionFromCalibrationIndex(runId)
         if version is None:
-            raise ValueError("No calibration data found for runId {}".format(runId))
+            raise ValueError(f"No calibration data found for runId {runId}")
         return self._constructCalibrationDataPath(runId, version)
 
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
@@ -419,7 +419,7 @@ class LocalDataService:
             indexFile.write(json.dumps([entry.dict() for entry in calibrationIndex]))
 
     def getCalibrationRecordPath(self, runId: str, version: str):
-        recordPath: str = self._constructCalibrationDataPath(runId, version) + "CalibrationRecord.json"
+        recordPath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationRecord.json"
         return recordPath
 
     def _extractFileVersion(self, file: str):
@@ -451,7 +451,7 @@ class LocalDataService:
         Ignoring the calibration index, whats the last set of calibration files to be generated.
         """
         calibrationStatePath = self._constructCalibrationStatePath(stateId)
-        calibrationVersionPath = calibrationStatePath + "v_*/"
+        calibrationVersionPath = f"{calibrationStatePath}v_*/"
         latestVersion = 0
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
         for versionDir in versionDirs:
@@ -513,7 +513,7 @@ class LocalDataService:
         # use mantid to write workspace to file
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationStatePath(stateId)
-        filenameFormat = calibrationPath + "{}/".format(runId) + workspaceName + "_v{}.nxs"
+        filenameFormat = f"{calibrationPath}{runId}/{workspaceName}" + "_v{}.nxs"
         # find total number of files
         foundFiles = self._findMatchingFileList(filenameFormat.format("*"), throws=False)
         version = len(foundFiles) + 1
@@ -544,7 +544,7 @@ class LocalDataService:
         return self.readCalibrationRecord(runId, version)
 
     def getCalibrationStatePath(self, runId: str, version: str):
-        statePath: str = self._constructCalibrationDataPath(runId, version) + "CalibrationParameters.json"
+        statePath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationParameters.json"
         return statePath
 
     def readCalibrationState(self, runId: str, version: str = None):

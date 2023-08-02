@@ -42,12 +42,12 @@ class FitCalibrationWorkspaceRecipe:
         self.fitIngredients = FitMultiplePeaksIngredients(
             InstrumentState=self.instrumentState,
             CrystalInfo=self.crystalInfo,
-            InputWorkspace=self.workspaceName + "(smooth+stripped)",
+            InputWorkspace=f"{self.workspaceName}(smooth+stripped)",
         )
 
     # would be nice to have a from kwarg decorator...
     def executeRecipe(self, ingredients: FitCalibrationWorkspaceIngredients) -> Dict[str, Any]:
-        logger.info("Executing recipe for: %s" % ingredients.workspaceName)
+        logger.info(f"Executing recipe for: {ingredients.workspaceName}")
         self.chop(ingredients)
         self.portion()
 
@@ -59,7 +59,7 @@ class FitCalibrationWorkspaceRecipe:
 
         fitResult = FitMultiplePeaksRecipe().executeRecipe(
             FitMultiplePeaksIngredients=self.fitIngredients,
-            OutputWorkspaceGroup="fitted_{}".format(self.fitIngredients.InputWorkspace),
+            OutputWorkspaceGroup=f"fitted_{self.fitIngredients.InputWorkspace}",
         )
-        logger.info("Finished smoothing and fitting workspace: %s" % self.workspaceName)
+        logger.info(f"Finished smoothing and fitting workspace: {self.workspaceName}")
         return fitResult
