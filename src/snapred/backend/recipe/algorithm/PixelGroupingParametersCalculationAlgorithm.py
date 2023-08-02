@@ -70,7 +70,6 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             CopyGroupingFromWorkspace=self.grouping_ws_name,
             OutputWorkspace=self.grouped_ws_name,
         )
-        self.mantidSnapper.DeleteWorkspace("Cleaning up grouping workspace.", Workspace=self.grouping_ws_name)
         self.mantidSnapper.executeQueue()
 
         # estimate the relative resolution for all pixel groupings
@@ -127,6 +126,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
 
         outputParams = json.dumps(allGroupingParams_json)
         self.setProperty("OutputParameters", outputParams)
+        self.mantidSnapper.DeleteWorkspace("Cleaning up grouping workspace.", Workspace=self.grouping_ws_name)
         self.mantidSnapper.DeleteWorkspace("Cleaning up grouped workspace.", Workspace=self.grouped_ws_name)
         self.mantidSnapper.DeleteWorkspace("Cleaning up resolution workspace.", Workspace=self.pgpca_resolution_ws)
         self.mantidSnapper.DeleteWorkspace(
