@@ -32,6 +32,15 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
     def PyExec(self):
         inputWorkspace = self.getProperty("InputWorkspace").value
         inputWorkspace = self.mantidSnapper.mtd[inputWorkspace]
+
+        if not inputWorkspace.isGroup():
+            raise RuntimeError("Input Workspace for CalibrationMetricExtractionAlgorithm must be a GroupWorkspace!")
+        if inputWorkspace.getNumberOfEntries() % len(FitOutputEnum) != 0:
+            raise RuntimeError(
+                f"Number of groups in InputWorkspace must be divisible by {len(FitOutputEnum)}.  \
+                    Did you use FitMultiplePeaksAlgorithm to get InputWorkspace?"
+            )
+
         pixelGroupingParameters = parse_raw_as(
             List[PixelGroupingParameters], self.getProperty("PixelGroupingParameter").value
         )

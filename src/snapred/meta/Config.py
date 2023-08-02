@@ -1,6 +1,7 @@
 import importlib.resources as resources
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict
@@ -133,6 +134,22 @@ class _Config:
             # recurse this function with a fuller name
             self.refresh(f"{env_name}.yml", clearPrevious)
 
+    # method to regex for string pattern of ${key} and replace with value
+    def _replace(self, value: str) -> str:
+        # if the value is not a string, then just return it
+        if not isinstance(value, str):
+            return value
+
+        # Regex all keys of the form ${key.subkey} and store in a list
+        regex = r"\$\{([a-zA-Z0-9_\.]+)\}"
+        matches = re.finditer(regex, value, re.MULTILINE)
+        # replace all keys with their values
+        for match in matches:
+            key = match.group()[2:-1]
+            value = value.replace(f"${{{key}}}", self[key])
+
+        return value
+
     # period delimited key lookup
     def __getitem__(self, key):
         keys = key.split(".")
@@ -141,6 +158,8 @@ class _Config:
             if val is None:
                 break
             val = val[k]
+        if val is not None:
+            val = self._replace(val)
         return val
 
 

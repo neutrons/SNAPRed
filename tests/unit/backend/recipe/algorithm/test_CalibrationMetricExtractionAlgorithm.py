@@ -24,9 +24,9 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
     )
     def test_pyexec(self, mock_mantid_snapper):  # noqa: ARG002
         # Mock input data
-        input_workspace = "mock_input_workspace"
+        fakeInputWorkspace = "mock_input_workspace"
         vals = np.array([[1.0], [2.0], [3.0]])
-        input_workspace_data = {
+        fakeInputWorkspaceData = {
             "PeakPosition": MagicMock(readY=MagicMock(return_value=vals), readX=MagicMock(return_value=vals)),
             "Parameters": MagicMock(
                 rowCount=MagicMock(return_value=3),
@@ -35,44 +35,21 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
             "Workspace": np.array(["ws1", "ws2", "ws3"]),
             "ParameterError": np.array([{}, {}, {}]),
         }
-        pixel_grouping_parameter = [
+        fakePixelGroupingParameter = [
             PixelGroupingParameters(twoTheta=30, dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1),
             PixelGroupingParameters(twoTheta=40, dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1),
             PixelGroupingParameters(twoTheta=50, dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1),
-        ]
-        [
-            CalibrationMetric(
-                sigmaAverage=0.1,
-                sigmaStandardDeviation=0.0,
-                strainAverage=-0.0,
-                strainStandardDeviation=0.0,
-                twoThetaAverage=30,
-            ).dict(),
-            CalibrationMetric(
-                sigmaAverage=0.2,
-                sigmaStandardDeviation=0.0,
-                strainAverage=-0.0,
-                strainStandardDeviation=0.0,
-                twoThetaAverage=40,
-            ).dict(),
-            CalibrationMetric(
-                sigmaAverage=0.3,
-                sigmaStandardDeviation=0.0,
-                strainAverage=-0.0,
-                strainStandardDeviation=0.0,
-                twoThetaAverage=50,
-            ).dict(),
         ]
 
         # Create the algorithm instance and set properties
         algorithm = CalibrationMetricExtractionAlgorithm()
         algorithm.initialize()
-        algorithm.setProperty("InputWorkspace", input_workspace)
-        algorithm.setProperty("PixelGroupingParameter", list_to_raw(pixel_grouping_parameter))
+        algorithm.setProperty("InputWorkspace", fakeInputWorkspace)
+        algorithm.setProperty("PixelGroupingParameter", list_to_raw(fakePixelGroupingParameter))
         algorithm.mantidSnapper.mtd = {
-            input_workspace: MagicMock(
+            fakeInputWorkspace: MagicMock(
                 getNumberOfEntries=MagicMock(return_value=4),
-                getItem=MagicMock(side_effect=input_workspace_data.values()),
+                getItem=MagicMock(side_effect=fakeInputWorkspaceData.values()),
             )
         }
         # Call the PyExec method to test

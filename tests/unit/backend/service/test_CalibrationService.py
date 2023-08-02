@@ -65,21 +65,18 @@ with mock.patch.dict(
     @mock.patch("snapred.backend.service.CalibrationService.PixelGroupingIngredients")
     @mock.patch("snapred.backend.service.CalibrationService.DataExportService")
     def test_calculatePixelGroupingParameters(
-        dataFactoryServiceMock,
-        pixelGroupingIngredientsMock,  # noqa: ARG001
-        pixelGroupingParametersCalculationRecipeMock,
-        dataExportServiceMock,
+        mockDataFactoryService,  # noqa: ARG001
+        mockPixelGroupingIngredients,  # noqa: ARG001
+        mockPixelGroupingParametersCalculationRecipe,
+        mockDataExportService,  # noqa: ARG001
     ):
-        calibrationService = CalibrationService()
-        calibrationService.dataFactoryService = dataFactoryServiceMock
-        calibrationService.dataFactoryService.exportCalibrationState = mock.Mock()
-        calibrationService.dataExportService = dataExportServiceMock
         runs = [RunConfig(runNumber="1")]
+        calibrationService = CalibrationService()
         groupingFile = mock.Mock()
         setattr(PixelGroupingParametersCalculationRecipe, "executeRecipe", localMock)
         localMock.return_value = mock.MagicMock()
         calibrationService.calculatePixelGroupingParameters(runs, groupingFile)
-        assert pixelGroupingParametersCalculationRecipeMock.called
+        assert mockPixelGroupingParametersCalculationRecipe.called
 
 
 from snapred.backend.service.CalibrationService import CalibrationService  # noqa: E402, F811
@@ -170,23 +167,23 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         metricTypeMock,  # noqa: ARG002
     ):
         # Mock input data
-        instrumentState = MagicMock()
-        focussedData = "mock_focussed_data"
-        focusGroups = [MagicMock(name="group1"), MagicMock(name="group2")]
-        pixelGroupingParams = [{"param1": 1}, {"param2": 2}]
-        crystalInfo = "mock_crystal_info"
+        mockInstrumentState = MagicMock()
+        fakeFocussedData = "mock_focussed_data"
+        fakeFocusGroups = [MagicMock(name="group1"), MagicMock(name="group2")]
+        fakePixelGroupingParams = [{"param1": 1}, {"param2": 2}]
+        fakeCrystalInfo = "mock_crystal_info"
 
         # Mock the necessary method calls
-        GroupWorkspaceIterator = MagicMock(return_value=["ws1", "ws2"])
+        mockGroupWorkspaceIterator = MagicMock(return_value=["ws1", "ws2"])
         # FitCalibrationWorkspaceRecipe = MagicMock(side_effect=["fit_result_1", "fit_result_2"])
         # fitCalibrationWorkspaceRecipe.executeRecipe = MagicMock(return_value="fit_result")
-        CalibrationMetricExtractionRecipe = MagicMock(return_value="mock_metric")
-        self.instance.GroupWorkspaceIterator = GroupWorkspaceIterator
-        self.instance.CalibrationMetricExtractionRecipe = CalibrationMetricExtractionRecipe
+        mockCalibrationMetricExtractionRecipe = MagicMock(return_value="mock_metric")
+        self.instance.GroupWorkspaceIterator = mockGroupWorkspaceIterator
+        self.instance.CalibrationMetricExtractionRecipe = mockCalibrationMetricExtractionRecipe
 
         # Call the method to test
         fittedWorkspaceNames, metrics = self.instance._fitAndCollectMetrics(
-            instrumentState, focussedData, focusGroups, pixelGroupingParams, crystalInfo
+            mockInstrumentState, fakeFocussedData, fakeFocusGroups, fakePixelGroupingParams, fakeCrystalInfo
         )
 
         # Assert the results are as expected
@@ -201,39 +198,36 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         return_value=MagicMock(ingest=MagicMock(return_value={"crystalInfo": "mock_crystal_info"})),
     )
     @patch("snapred.backend.service.CalibrationService.CalibrationRecord", return_value="mock_calibration_record")
-    def test_assessQuality(self, crystallographicInfoService, calibrationRecord):  # noqa: ARG002
+    def test_assessQuality(self, mockCrystallographicInfoService, mockCalibrationRecord):  # noqa: ARG002
         # Mock input data
-        request = MagicMock()
-        run = MagicMock()
-        cifPath = "mock_cif_path"
-        reductionIngredients = MagicMock()
-        calibration = MagicMock()
-        instrumentState = MagicMock()
-        crystalInfoDict = {"crystalInfo": "mock_crystal_info"}
-        focussedData = "mock_focussed_data"
-        pixelGroupingParams = [{"param1": 1}, {"param2": 2}]
-        fittedWorkspaceNames = ["ws1", "ws2"]
-        metrics = [
+        mockRequest = MagicMock()
+        mockRun = MagicMock()
+        fakeCifPath = "mock_cif_path"
+        mockReductionIngredients = MagicMock()
+        mockCalibration = MagicMock()
+        mockInstrumentState = MagicMock()
+        fakeFocussedData = "mock_focussed_data"
+        fakePixelGroupingParams = [{"param1": 1}, {"param2": 2}]
+        fakeFittedWorkspaceNames = ["ws1", "ws2"]
+        fakeMetrics = [
             {"focusGroupName": "focus1", "calibrationMetric": "metric1"},
             {"focusGroupName": "focus2", "calibrationMetric": "metric2"},
         ]
-        focusGroupParameters = {"focus1": {"param1": 1}, "focus2": {"param2": 2}}
+        fakeFocusGroupParameters = {"focus1": {"param1": 1}, "focus2": {"param2": 2}}
 
         # Mock the necessary method calls
-        request.run = run
-        request.cifPath = cifPath
-        self.instance.dataFactoryService.getReductionIngredients = MagicMock(return_value=reductionIngredients)
-        self.instance.dataFactoryService.getCalibrationState = MagicMock(return_value=calibration)
-        calibration.instrumentState = instrumentState
-        CrystallographicInfoService = MagicMock(return_value=crystalInfoDict)
-        self.instance.CrystallographicInfoService = CrystallographicInfoService
-        self.instance._loadFocusedData = MagicMock(return_value=focussedData)
-        self.instance._getPixelGroupingParams = MagicMock(return_value=pixelGroupingParams)
-        self.instance._fitAndCollectMetrics = MagicMock(return_value=(fittedWorkspaceNames, metrics))
-        self.instance.collectFocusGroupParameters = MagicMock(return_value=focusGroupParameters)
+        mockRequest.run = mockRun
+        mockRequest.cifPath = fakeCifPath
+        self.instance.dataFactoryService.getReductionIngredients = MagicMock(return_value=mockReductionIngredients)
+        self.instance.dataFactoryService.getCalibrationState = MagicMock(return_value=mockCalibration)
+        mockCalibration.instrumentState = mockInstrumentState
+        self.instance._loadFocusedData = MagicMock(return_value=fakeFocussedData)
+        self.instance._getPixelGroupingParams = MagicMock(return_value=fakePixelGroupingParams)
+        self.instance._fitAndCollectMetrics = MagicMock(return_value=(fakeFittedWorkspaceNames, fakeMetrics))
+        self.instance.collectFocusGroupParameters = MagicMock(return_value=fakeFocusGroupParameters)
 
         # Call the method to test
-        result = self.instance.assessQuality(request)
+        result = self.instance.assessQuality(mockRequest)
 
         # Assert the result is as expected
         expected_record = "mock_calibration_record"

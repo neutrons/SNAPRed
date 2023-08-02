@@ -123,7 +123,7 @@ class CalibrationService(Service):
     def _calculatePixelGroupingParameters(self, calibrationState, groupingFile: str):
         groupingIngredients = PixelGroupingIngredients(
             calibrationState=calibrationState,
-            instrumentDefinitionFile="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+            instrumentDefinitionFile=Config["instrument.lite.definition.file"],
             groupingFile=groupingFile,
         )
         try:
