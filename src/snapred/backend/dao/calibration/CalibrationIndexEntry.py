@@ -13,7 +13,7 @@ class CalibrationIndexEntry(BaseModel):
     author: str
     timestamp: Optional[int]
 
-    @validator("appliesTo")
+    @validator("appliesTo", allow_reuse=True)
     def appliesToFormatChecker(cls, v):
         """
         This validator ensures that if appliesTo is present,
