@@ -1,7 +1,8 @@
 from datetime import datetime
 
 from pydantic import BaseModel
-from snapred.backend.dao.state.InstrumentState import InstrumentState
+
+from snapred.backend.dao.state import InstrumentState
 
 
 class Calibration(BaseModel):

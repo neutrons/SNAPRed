@@ -1,7 +1,8 @@
 from typing import Optional
 
 from pydantic import BaseModel
-from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+
+from snapred.backend.dao import ReductionIngredients
 
 
 class CalibrationRecord(BaseModel):
