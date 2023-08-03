@@ -1,6 +1,7 @@
 from typing import List
 
 from pydantic import BaseModel
+
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
