@@ -16,8 +16,24 @@ name = "DetectorPeakPredictor"
 class DetectorPeakPredictor(PythonAlgorithm):
     def PyInit(self) -> None:
         # declare properties
-        self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
-        self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
+        self.declareProperty(
+            "InstrumentState",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="The input value that holds instrument state!",
+        )
+        self.declareProperty(
+            "CrystalInfo",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="The input value that holds crystal info.",
+        )
+        self.declareProperty(
+            "PeakIntensityThreshold",
+            defaultValue=0.05,
+            direction=Direction.Input,
+            doc="The input value for setting the threshold for peak intensity",
+        )
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
 
@@ -36,7 +52,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         multiplicity = np.array(crystalInfo.multiplicities)
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
-        thresholdA = np.max(A) * 0.05
+        thresholdA = np.max(A) * self.getProperty("PeakIntensityThreshold").value
 
         allFocusGroupsPeaks = []
         allGroupIDs = [x.groupID for x in instrumentState.pixelGroupingInstrumentParameters]
