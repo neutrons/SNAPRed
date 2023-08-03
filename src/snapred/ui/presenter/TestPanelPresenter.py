@@ -11,6 +11,7 @@ from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
 from snapred.ui.view.FitMultiplePeaksView import FitMultiplePeaksView
+from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibrationCheckView
 from snapred.ui.widget.JsonForm import JsonForm
 
 logger = snapredLogger.getLogger(__name__)
@@ -31,9 +32,12 @@ class TestPanelPresenter(object):
         self.jsonForm = JsonForm("Advanced Parameters", jsonSchema=jsonSchema, parent=view)
         self._loadDefaultJsonInput("config//runs", self.jsonForm)
         self.comboSelectionView = BackendRequestView(self.jsonForm, "config//runs", parent=self.view)
+        self.calibrationCheckView = InitializeCalibrationCheckView(self.jsonForm, parent=self.view)
         self.view.centralWidget.layout().addWidget(self.apiComboBox)
         self.view.centralWidget.layout().addWidget(self.comboSelectionView)
         self.view.centralWidget.layout().setAlignment(self.comboSelectionView, Qt.AlignTop | Qt.AlignHCenter)
+        self.view.centralWidget.layout().addWidget(self.calibrationCheckView)
+        self.view.centralWidget.layout().setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
         self.view.adjustSize()
 
     def _getPaths(self, apiDict):

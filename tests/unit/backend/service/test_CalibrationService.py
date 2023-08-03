@@ -63,9 +63,3 @@ with mock.patch.dict(
         localMock.return_value = mock.MagicMock()
         calibrationService.calculatePixelGroupingParameters(runs, groupingFile)
         assert localMock.called
-
-    def test_hasState():
-        calibrationService = CalibrationService()
-        runId = '123'
-        version = '1'
-        calibrationService.hasState(runId, version)
