@@ -19,13 +19,15 @@ class DetectorPeakPredictor(PythonAlgorithm):
         self.declareProperty(
             "InstrumentState",
             defaultValue="",
-            direction=Direction.Input
-            doc="The input value that holds instrument state!")
+            direction=Direction.Input,
+            doc="The input value that holds instrument state!",
+        )
         self.declareProperty(
             "CrystalInfo",
             defaultValue="",
             direction=Direction.Input,
-            doc="The input value that holds crystal info.")
+            doc="The input value that holds crystal info.",
+        )
         self.declareProperty(
             "PeakIntensityThreshold",
             defaultValue=0.05,
