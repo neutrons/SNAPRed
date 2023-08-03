@@ -1,7 +1,6 @@
 import inspect
 
-from snapred.backend.dao.SNAPRequest import SNAPRequest
-from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.service.ServiceFactory import ServiceFactory
 from snapred.meta.decorators.Singleton import Singleton

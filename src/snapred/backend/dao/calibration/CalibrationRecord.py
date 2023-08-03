@@ -1,10 +1,10 @@
 from typing import List, Optional
 
 from pydantic import BaseModel
-from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
-from snapred.backend.dao.ReductionIngredients import ReductionIngredients
-from snapred.backend.dao.state.FocusGroupParameters import FocusGroupParameters
+
+from snapred.backend.dao import ReductionIngredients
+from snapred.backend.dao.calibration import Calibration, FocusGroupMetric
+from snapred.backend.dao.state import FocusGroupParameters
 
 
 class CalibrationRecord(BaseModel):
