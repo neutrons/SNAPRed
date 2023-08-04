@@ -22,9 +22,11 @@ from snapred.ui.widget.ToolBar import ToolBar
 
 
 class SNAPRedGUI(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, window_flags=None, translucentBackground=False):
         super(SNAPRedGUI, self).__init__(parent)
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        if window_flags:
+            self.setWindowFlags(window_flags)
+        self.setAttribute(Qt.WA_TranslucentBackground, translucentBackground)
         self.setAttribute(Qt.WA_DontCreateNativeAncestors, True)
         logTable = LogTable("load dummy", self)
         splitter = QSplitter(Qt.Vertical)
@@ -102,7 +104,7 @@ def start(options=None):
 
     logger.info("Welcome User! Happy Reducing!")
     try:
-        ex = SNAPRedGUI()
+        ex = SNAPRedGUI(translucentBackground=True)
         ex.show()
 
         if options.headcheck:
