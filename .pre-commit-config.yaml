@@ -27,8 +27,8 @@ repos:
     - id: black
       args: ['--line-length=120']
       exclude: "tests/cis_tests/.*"
-# disable for now
-#- repo: https://github.com/pre-commit/mirrors-mypy
-#  rev: v1.1.1
-#  hooks:
-#  - id: mypy
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.4.1
+  hooks:
+    - id: mypy
+      stages: [pre-push]
