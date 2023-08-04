@@ -1,3 +1,5 @@
+import json
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget
 
@@ -32,7 +34,9 @@ class CalibrationCheck(object):
         # Check to see if data exists
         runNumber = self.view.getRunNumber()
         runNumber_str = str(runNumber)
-        dataCheckRequest = SNAPRequest(path="/calibration/checkDataExists", payload=runNumber_str)
+        dataCheckRequest = SNAPRequest(
+            path="/calibration/checkDataExists", payload=json.dumps({"runNumber": runNumber_str})
+        )
 
         self.worker = self.worker_pool.createWorker(
             target=self.interfaceController.executeRequest, args=(dataCheckRequest)
@@ -44,10 +48,13 @@ class CalibrationCheck(object):
     def handleDataCheckResult(self, response: SNAPResponse):
         if response.responseCode != 200:
             self._labelView("Error, data doesn't exist")
+            self.view.beginFlowButton.setEnabled(True)
             return
+        else:
+            pass
 
         runNumber_str = str(self.view.getRunNumber())
-        stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload=runNumber_str)
+        stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload=json.dumps({"runNumber": runNumber_str}))
 
         self.worker = self.worker_pool.createWorker(
             target=self.interfaceController.executeRequest, args=(stateCheckRequest)
@@ -60,9 +67,13 @@ class CalibrationCheck(object):
         if response.responseCode != 200:
             self._spawnStateCreationWorkflow()
             return
+        else:
+            pass
 
         groupingFile = str(StateConfig.focusGroups.definition)
-        pixelGroupingParametersRequest = SNAPRequest("/calibration/calculatePixelGroupingParameters", groupingFile)
+        pixelGroupingParametersRequest = SNAPRequest(
+            "/calibration/calculatePixelGroupingParameters", payload=json.dumps({"groupingFile": groupingFile})
+        )
 
         self.worker = self.worker_pool.createWorker(
             target=self.interfaceController.executeRequest, args=(pixelGroupingParametersRequest)
@@ -80,17 +91,17 @@ class CalibrationCheck(object):
 
         promptView = PromptUserforCalibrationInputView()
 
-        def push_data_to_interface_controller(workflow):
+        def push_data_to_interface_controller():
             run_number = promptView.getRunNumber()
             state_name = promptView.getName()
 
             payload = {"runNumber": run_number, "stateName": state_name}
 
-            request = SNAPRequest(path="/path/to/initialize/state", payload=payload)
+            request = SNAPRequest(path="/calibration/initializeState", payload=payload)
 
             self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request,))
 
-            def handle_response(response):
+            def handle_response():
                 pass
 
             self.worker.result.connect(handle_response)
