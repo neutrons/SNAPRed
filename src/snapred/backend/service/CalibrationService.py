@@ -1,6 +1,4 @@
 import time
-import os
-import json
 from typing import List
 
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
