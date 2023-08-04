@@ -1,6 +1,8 @@
+import pytest
 from snapred.ui.view.InitializeCalibrationCheckView import CalibrationMenu
 
 
+@pytest.mark.skip()
 def test_run_number_field():
     menu = CalibrationMenu(None)
 

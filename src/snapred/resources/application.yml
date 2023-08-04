@@ -1,0 +1,50 @@
+# environment: dev
+
+orchestration:
+  path:
+    delimiter: /
+
+instrument:
+  name: SNAP
+  home: /SNS/SNAP/
+  config: shared/Calibration/SNAPInstPrm.json
+
+nexus:
+  home: nexus/
+  file:
+    extension: .nxs.h5
+    prefix: SNAP_
+
+calibration:
+  file:
+    extension: .json
+    prefix: SNAPcalibLog
+  reduction:
+    output:
+      extension: .nxs
+      format: "{}_calibration_reduction_result"
+  parameters:
+    default:
+      # degrees
+      groupSliceValue: 5
+      alpha: 0.1
+      beta:
+        - 0.02
+        - 0.05
+      FWHMMultiplier:
+        - 2.0
+        - 2.0
+      peakTailCoefficient:
+        - 2.0
+
+localdataservice:
+  config:
+    verifypaths: true
+
+logging:
+  level: 10
+  SNAP:
+    format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
+
+samples:
+  home: /SNS/SNAP/shared/Calibration/CalibrantSamples
