@@ -90,6 +90,7 @@ class LocalDataService:
             instrumentConfig.calibrationDirectory = Path(Config["instrument.calibration.home"])
             if self.verifyPaths and not instrumentConfig.calibrationDirectory.exists():
                 raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
+            instrumentConfig.calibrationDirectory = str(calibrationDirectory)
 
         return instrumentConfig
 
@@ -116,7 +117,7 @@ class LocalDataService:
             isLiteMode=True,  # TODO: Support non lite mode
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
             vanadiumFilePath=str(
-                self.instrumentConfig.calibrationDirectory
+                Path(self.instrumentConfig.calibrationDirectory)
                 / "Powder"
                 / reductionParameters["stateId"]
                 / reductionParameters["rawVCorrFileName"]
@@ -139,7 +140,7 @@ class LocalDataService:
             runNumber=reductionParameters["CRun"][0],
             name=reductionParameters.get("CalibrantName"),
             diffCalPath=str(
-                self.instrumentConfig.calibrationDirectory
+                Path(self.instrumentConfig.calibrationDirectory)
                 / "Powder"
                 / reductionParameters["stateId"]
                 / reductionParameters["calFileName"]
@@ -183,7 +184,7 @@ class LocalDataService:
                     dMax=reductionParameters["focGroupDMax"][i],
                     dMin=reductionParameters["focGroupDMin"][i],
                     definition=str(
-                        self.instrumentConfig.calibrationDirectory
+                        Path(self.instrumentConfig.calibrationDirectory)
                         / "Powder"
                         / self.instrumentConfig.pixelGroupingDirectory
                         / reductionParameters["focGroupDefinition"][i]
@@ -299,8 +300,8 @@ class LocalDataService:
         return fileList
 
     def _constructCalibrationStatePath(self, stateId):
-        # TODO: Propogate pathlib through codebase
-        return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId}/"
+        filepath = Path(self.instrumentConfig.calibrationDirectory) / "Powder" / str(stateId)
+        return str(filepath)
 
     def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
         # lookup IPTS number

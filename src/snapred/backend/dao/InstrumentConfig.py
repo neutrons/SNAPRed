@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from pydantic import BaseModel
 
 
@@ -13,7 +11,7 @@ class InstrumentConfig(BaseModel):
     nexusFilePrefix: str
     calibrationFileExtension: str
     calibrationFilePrefix: str
-    calibrationDirectory: Path
+    calibrationDirectory: str
     pixelGroupingDirectory: str
     sharedDirectory: str
     nexusDirectory: str
