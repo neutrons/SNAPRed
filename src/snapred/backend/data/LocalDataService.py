@@ -5,7 +5,7 @@ import json
 import os
 from errno import ENOENT as NOT_FOUND
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import h5py
 from mantid.api import AlgorithmManager, mtd
@@ -39,9 +39,9 @@ from snapred.meta.redantic import (
 )
 
 """
-    Looks up data on disk
-    TBD the interface such that it is fairly generic
-    but intersects that of the potential oncat data service interface
+Looks up data on disk
+TBD the interface such that it is fairly generic
+but intersects that of the potential oncat data service interface
 """
 
 
@@ -56,6 +56,7 @@ class LocalDataService:
     stateIdCache: Dict[str, str] = {}
     instrumentConfig: "InstrumentConfig"  # Optional[InstrumentConfig]
     verifyPaths: bool = True
+    dataPath: Path
 
     def __init__(self) -> None:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
@@ -225,13 +226,11 @@ class LocalDataService:
 
     def _constructPVFilePath(self, runId: str):
         runConfig = self._readRunConfig(runId)
-        return (
-            runConfig.IPTS
-            + self.instrumentConfig.nexusDirectory
-            + "/SNAP_"
-            + str(runConfig.runNumber)
-            + self.instrumentConfig.nexusFileExtension
-        )
+        if runConfig.IPTS is None:
+            raise RuntimeError("IPTS is not defined")
+
+        filename = f"/SNAP_{runConfig.runNumber}{self.instrumentConfig.nexusFileExtension}"
+        return runConfig.IPTS + self.instrumentConfig.nexusDirectory + filename
 
     def _readPVFile(self, runId: str):
         fName: str = self._constructPVFilePath(runId)
@@ -468,7 +467,7 @@ class LocalDataService:
                 latestVersion = version
         return latestVersion
 
-    def readCalibrationRecord(self, runId: str, version: str = None):
+    def readCalibrationRecord(self, runId: str, version: Optional[str] = None):
         # Need to run this because of its side effect, TODO: Remove side effect
         self._readReductionParameters(runId)
         recordPath: str = self.getCalibrationRecordPath(runId, "*")
@@ -479,7 +478,7 @@ class LocalDataService:
         else:
             latestFile = self._getLatestFile(recordPath)
         # read the file
-        record: CalibrationRecord = None
+        record: Optional[CalibrationRecord] = None
         if latestFile:
             record = parse_file_as(CalibrationRecord, latestFile)
         return record
@@ -493,7 +492,7 @@ class LocalDataService:
         previousVersion = self._getLatestCalibrationVersion(stateId)
         if not version:
             version = previousVersion + 1
-        recordPath: str = self.getCalibrationRecordPath(runNumber, version)
+        recordPath: str = self.getCalibrationRecordPath(runNumber, str(version))
         record.version = version
         calibrationPath = self._constructCalibrationDataPath(runNumber, version)
         # check if directory exists for runId
@@ -572,7 +571,7 @@ class LocalDataService:
         statePath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationParameters.json"
         return statePath
 
-    def readCalibrationState(self, runId: str, version: str = None):
+    def readCalibrationState(self, runId: str, version: Optional[str] = None):
         # get stateId and check to see if such a folder exists, if not create an initialize it
         stateId, _ = self._generateStateId(runId)
         calibrationStatePath = self.getCalibrationStatePath(runId, "*")
@@ -600,7 +599,7 @@ class LocalDataService:
         if not version:
             version = previousVersion + 1
         # check for the existenece of a calibration parameters file
-        calibrationParametersPath = self.getCalibrationStatePath(runId, version)
+        calibrationParametersPath = self.getCalibrationStatePath(runId, str(version))
         calibration.version = version
         calibrationPath = self._constructCalibrationDataPath(runId, version)
         if not os.path.exists(calibrationPath):
@@ -608,7 +607,7 @@ class LocalDataService:
         # write the file and return the calibration state
         write_model_pretty(calibration, calibrationParametersPath)
 
-    def initializeState(self, runId: str, name: str = None):
+    def initializeState(self, runId: str, name: Optional[str] = None):
         # pull pv data similar to how we generate stateId
         pvFile = self._readPVFile(runId)
         detectorState = DetectorState(
