@@ -34,6 +34,7 @@ class CustomGroupWorkspace(PythonAlgorithm):
         if loadEmptyInstrument:
             donorWorkspace = "idf"  # name doesn't matter
             self.mantidSnapper.LoadEmptyInstrument(
+                "Loading empty instrument...",
                 Workspace=donorWorkspace,
                 Filename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
                 RewriteSpectraMap=False,
@@ -45,6 +46,7 @@ class CustomGroupWorkspace(PythonAlgorithm):
 
         for grpIndx, focusGroup in enumerate(focusGroups):
             self.mantidSnapper.LoadDetectorsGroupingFile(
+                f"Loading grouping file for focus group {focusGroup.name}...",
                 InputFile=focusGroup.definition,
                 InputWorkspace=donorWorkspace,
                 OutputWorkspace=focusGroup.name,
@@ -53,12 +55,14 @@ class CustomGroupWorkspace(PythonAlgorithm):
 
         # cleanup temporary workspace
         if loadEmptyInstrument:
-            self.mantidSnapper.DeleteWorkspace(Workspace=donorWorkspace)
+            self.mantidSnapper.DeleteWorkspace("Deleting empty instrument...", Workspace=donorWorkspace)
             self.mantidSnapper.executeQueue()
 
         # create a workspace group of GroupWorkspaces
         self.mantidSnapper.GroupWorkspaces(
-            InputWorkspaces=[focusGroup.name for focusGroup in focusGroups], OutputWorkspace=outputWorkspace
+            "Grouping workspaces...",
+            InputWorkspaces=[focusGroup.name for focusGroup in focusGroups],
+            OutputWorkspace=outputWorkspace,
         )
         self.mantidSnapper.executeQueue()
 
