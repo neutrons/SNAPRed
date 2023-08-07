@@ -32,3 +32,4 @@ repos:
   hooks:
     - id: mypy
       stages: [pre-push]
+      additional_dependencies: [ pydantic<2 ]
