@@ -45,6 +45,8 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.delTheta = instrumentState.instrumentConfig.delThWithGuide
         self.grouping_ws_name = "pgpca_grouping_ws"
         self.grouped_ws_name = "pgpca_grouped_ws"
+        self.pgpca_resolution_ws = "pgpca_resolution_ws"
+        self.pgpca_resolution_partials = "pgpca_resolution_partials"
         return
 
     def retrieveFromPantry(self):
@@ -62,20 +64,20 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.retrieveFromPantry()
 
         # create a dummy grouped-by-detector workspace from the grouping workspace
-        grouped_ws_name = "pgpca_grouped_ws"
         self.mantidSnapper.GroupDetectors(
             "Grouping detectors...",
             InputWorkspace=self.grouping_ws_name,
             CopyGroupingFromWorkspace=self.grouping_ws_name,
             OutputWorkspace=self.grouped_ws_name,
         )
+        self.mantidSnapper.executeQueue()
 
         # estimate the relative resolution for all pixel groupings
         self.mantidSnapper.EstimateResolutionDiffraction(
             "Estimating diffraction resolution...",
-            InputWorkspace=grouped_ws_name,
-            OutputWorkspace="pgpca_resolution_ws",
-            PartialResolutionWorkspaces="pgpca_resolution_partials",
+            InputWorkspace=self.grouped_ws_name,
+            OutputWorkspace=self.pgpca_resolution_ws,
+            PartialResolutionWorkspaces=self.pgpca_resolution_partials,
             DeltaTOFOverTOF=self.deltaTOverT,
             SourceDeltaL=self.delL,
             SourceDeltaTheta=self.delTheta,
@@ -85,8 +87,8 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         # calculate parameters for all pixel groupings and store them in json format
         allGroupingParams_json = []
         grouping_ws = self.mantidSnapper.mtd[self.grouping_ws_name]
-        # grouped_ws = self.mantidSnapper.mtd[grouped_ws_name]
-        resws = mtd["pgpca_resolution_ws"]
+
+        resws = mtd[self.pgpca_resolution_ws]
 
         grouping_detInfo = grouping_ws.detectorInfo()
         groupIDs = grouping_ws.getGroupIDs()
@@ -124,17 +126,35 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
 
         outputParams = json.dumps(allGroupingParams_json)
         self.setProperty("OutputParameters", outputParams)
+        self.mantidSnapper.DeleteWorkspace("Cleaning up grouping workspace.", Workspace=self.grouping_ws_name)
+        self.mantidSnapper.DeleteWorkspace("Cleaning up grouped workspace.", Workspace=self.grouped_ws_name)
+        self.mantidSnapper.DeleteWorkspace("Cleaning up resolution workspace.", Workspace=self.pgpca_resolution_ws)
+        self.mantidSnapper.DeleteWorkspace(
+            "Cleaning up partial resolution workspace.", Workspace=self.pgpca_resolution_partials
+        )
+        self.mantidSnapper.executeQueue()
 
     # create a grouping workspace from a grouping file
     def CreateGroupingWorkspace(self, grouping_ws_name):
         groupingFilePath = self.getProperty("GroupingFile").value
-        file_extension = pathlib.Path(groupingFilePath).suffix
-        if file_extension.upper()[1:] == "XML":
+        if "lite" in groupingFilePath:
+            self.mantidSnapper.CreateWorkspace(
+                "Creating Instrument Definition Workspace ...", OutputWorkspace="idf", DataX=1, DataY=1
+            )
+            self.mantidSnapper.LoadInstrument(
+                "Loading instrument definition file ...",
+                Workspace="idf",
+                Filename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+                MonitorList="-2--1",
+                RewriteSpectraMap=False,
+            )
             self.mantidSnapper.LoadDetectorsGroupingFile(
                 "Loading detectors grouping file...",
                 InputFile=groupingFilePath,
+                InputWorkspace="idf",
                 OutputWorkspace=grouping_ws_name,
             )
+            self.mantidSnapper.DeleteWorkspace("Deleting idf...", Workspace="idf")
         else:  # from a workspace
             self.mantidSnapper.LoadNexusProcessed(
                 "Loading grouping workspace...",

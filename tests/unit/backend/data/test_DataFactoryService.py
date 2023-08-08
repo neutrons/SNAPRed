@@ -64,8 +64,8 @@ with mock.patch.dict(
 
     def test_getCalibrationState():
         dataExportService = DataFactoryService()
-        dataExportService.lookupService.getCalibrationState = mock.Mock()
-        dataExportService.lookupService.getCalibrationState.return_value = "expected"
+        dataExportService.lookupService.readCalibrationState = mock.Mock()
+        dataExportService.lookupService.readCalibrationState.return_value = "expected"
         actual = dataExportService.getCalibrationState(mock.Mock())
 
         assert actual == "expected"

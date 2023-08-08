@@ -54,7 +54,7 @@ def FromString(func: callable):
 
         argMap["self"] = zelf
         # replace args with new args in order
-        args = (argMap[k] for k in func_args)
+        args = (argMap[k] for k in func_args if k in argMap)
 
         return func(*args, **kwargs)
 

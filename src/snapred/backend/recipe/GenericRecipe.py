@@ -2,10 +2,13 @@ import json
 from typing import Generic, TypeVar, get_args
 
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import CalibrationReductionAlgorithm
+from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
 from snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm import VanadiumFocussedReductionAlgorithm
 from snapred.meta.decorators.FromString import isBaseModel, isListOfBaseModel
 
@@ -53,7 +56,15 @@ class GenericRecipe(Generic[T]):
         return get_args(self.__orig_bases__[0])[0]
 
 
+class CalibrationMetricExtractionRecipe(GenericRecipe[CalibrationMetricExtractionAlgorithm]):
+    pass
+
+
 class CalibrationReductionRecipe(GenericRecipe[CalibrationReductionAlgorithm]):
+    pass
+
+
+class FitMultiplePeaksRecipe(GenericRecipe[FitMultiplePeaksAlgorithm]):
     pass
 
 
@@ -62,6 +73,10 @@ class PurgeOverlappingPeaksRecipe(GenericRecipe[PurgeOverlappingPeaksAlgorithm])
 
 
 class ReductionRecipe(GenericRecipe[ReductionAlgorithm]):
+    pass
+
+
+class SmoothDataExcludingPeaksRecipe(GenericRecipe[SmoothDataExcludingPeaks]):
     pass
 
 

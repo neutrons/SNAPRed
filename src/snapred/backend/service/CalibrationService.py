@@ -1,20 +1,41 @@
+import json
 import time
 from typing import List
 
+from pydantic import parse_raw_as
+
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
+from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
+from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
+from snapred.backend.dao.ingredients.FitCalibrationWorkspaceIngredients import FitCalibrationWorkspaceIngredients
 from snapred.backend.dao.PixelGroupingIngredients import PixelGroupingIngredients
+from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
+from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.dao.state.FocusGroupParameters import FocusGroupParameters
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.CalibrationReductionRecipe import CalibrationReductionRecipe
+from snapred.backend.recipe.FitCalibrationWorkspaceRecipe import FitCalibrationWorkspaceRecipe
+from snapred.backend.recipe.GenericRecipe import (
+    CalibrationMetricExtractionRecipe,
+    CalibrationReductionRecipe,
+    FitMultiplePeaksRecipe,
+    PurgeOverlappingPeaksRecipe,
+    SmoothDataExcludingPeaksRecipe,
+)
+from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
+from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -31,8 +52,10 @@ class CalibrationService(Service):
         self.dataExportService = DataExportService()
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
+        self.registerPath("load", self.load)
         self.registerPath("initializeState", self.initializeState)
         self.registerPath("calculatePixelGroupingParameters", self.calculatePixelGroupingParameters)
+        self.registerPath("assessment", self.assessQuality)
         return
 
     @staticmethod
@@ -45,22 +68,23 @@ class CalibrationService(Service):
         for run in runs:
             reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
             try:
-                CalibrationReductionRecipe().executeRecipe(reductionIngredients)
+                CalibrationReductionRecipe().executeRecipe(ReductionIngredients=reductionIngredients)
             except:
                 raise
         return {}
 
     @FromString
-    def save(self, entry: CalibrationIndexEntry):
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(entry.runNumber)
-        # TODO: get peak fitting filepath
-        # save calibration reduction result to disk
-        calibrationWorkspaceName = Config["calibration.reduction.output.format"].format(entry.runNumber)
-        self.dataExportService.exportCalibrationReductionResult(entry.runNumber, calibrationWorkspaceName)
-        calibrationRecord = CalibrationRecord(parameters=reductionIngredients)
+    def save(self, request: CalibrationExportRequest):
+        entry = request.calibrationIndexEntry
+        calibrationRecord = request.calibrationRecord
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         entry.version = calibrationRecord.version
         self.saveCalibrationToIndex(entry)
+
+    @FromString
+    def load(self, run: RunConfig):
+        runId = run.runNumber
+        return self.dataFactoryService.getCalibrationRecord(runId)
 
     @FromString
     def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
@@ -84,17 +108,110 @@ class CalibrationService(Service):
         return states
 
     @FromString
-    def calculatePixelGroupingParameters(self, runs: List[RunConfig], groupingFile: str):
+    def calculatePixelGroupingParameters(self, runs: List[RunConfig], groupingFile: str, export: bool = True):
         for run in runs:
             calibrationState = self.dataFactoryService.getCalibrationState(run.runNumber)
-            groupingIngredients = PixelGroupingIngredients(
-                calibrationState=calibrationState,
-                instrumentDefinitionFile="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
-                groupingFile=groupingFile,
-            )
             try:
-                data = PixelGroupingParametersCalculationRecipe().executeRecipe(groupingIngredients)
+                data = self._calculatePixelGroupingParameters(calibrationState, groupingFile)
                 calibrationState.instrumentState.pixelGroupingInstrumentParameters = data["parameters"]
-                self.dataExportService.exportCalibrationState(runId=run.runNumber, calibration=calibrationState)
+                if export is True:
+                    self.dataExportService.exportCalibrationState(runId=run.runNumber, calibration=calibrationState)
             except:
                 raise
+        return data
+
+    def _calculatePixelGroupingParameters(self, calibrationState, groupingFile: str):
+        groupingIngredients = PixelGroupingIngredients(
+            calibrationState=calibrationState,
+            instrumentDefinitionFile=Config["instrument.lite.definition.file"],
+            groupingFile=groupingFile,
+        )
+        try:
+            data = PixelGroupingParametersCalculationRecipe().executeRecipe(groupingIngredients)
+        except:
+            raise
+        return data
+
+    def collectFocusGroupParameters(self, focusGroups, pixelGroupingParams):
+        focusGroupParameters = []
+        for focusGroup, pixelGroupingParam in zip(focusGroups, pixelGroupingParams):
+            focusGroupParameters.append(
+                FocusGroupParameters(
+                    focusGroupName=focusGroup.name,
+                    pixelGroupingParameters=pixelGroupingParam,
+                )
+            )
+        return focusGroupParameters
+
+    def _loadFocusedData(self, runId):
+        outputNameFormat = Config["calibration.reduction.output.format"]
+        focussedData = self.dataFactoryService.getWorkspaceForName(outputNameFormat.format(runId))
+        if focussedData is None:
+            raise Exception(f"No focussed data found for run {runId}, Please run Calibration Reduction on this Data.")
+        else:
+            focussedData = outputNameFormat.format(runId)
+        return focussedData
+
+    def _getPixelGroupingParams(self, calibration, focusGroups):
+        pixelGroupingParams = []
+        for focusGroup in focusGroups:
+            pixelGroupingParams.append(
+                self._calculatePixelGroupingParameters(calibration, focusGroup.definition)["parameters"]
+            )
+        return pixelGroupingParams
+
+    def _fitAndCollectMetrics(self, instrumentState, focussedData, focusGroups, pixelGroupingParams, crystalInfo):
+        groupedWorkspaceNames = [ws for ws in GroupWorkspaceIterator(focussedData)]
+        metrics = []
+        fittedWorkspaceNames = []
+        for workspace, focusGroup, index in zip(groupedWorkspaceNames, focusGroups, range(len(focusGroups))):
+            instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams[index]
+            ingredients = FitCalibrationWorkspaceIngredients(
+                instrumentState=instrumentState,
+                crystalInfo=crystalInfo,
+                workspaceName=workspace,
+                pixelGroupingParameters=pixelGroupingParams[index],
+            )
+            fitPeaksResult = FitCalibrationWorkspaceRecipe().executeRecipe(ingredients)
+
+            pixelGroupingInput = list_to_raw(pixelGroupingParams[index])
+            metric = parse_raw_as(
+                List[CalibrationMetric],
+                CalibrationMetricExtractionRecipe().executeRecipe(
+                    InputWorkspace=fitPeaksResult, PixelGroupingParameter=pixelGroupingInput
+                ),
+            )
+            fittedWorkspaceNames.append(fitPeaksResult)
+            metrics.append(FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric))
+        return fittedWorkspaceNames, metrics
+
+    @FromString
+    def assessQuality(self, request: CalibrationAssessmentRequest):
+        run = request.run
+        cifPath = request.cifPath
+        reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
+        calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
+        focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
+        instrumentState = calibration.instrumentState
+        crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
+        crystalInfo = crystalInfoDict["crystalInfo"]
+        focussedData = self._loadFocusedData(run.runNumber)
+        pixelGroupingParams = self._getPixelGroupingParams(calibration, focusGroups)
+
+        fittedWorkspaceNames, metrics = self._fitAndCollectMetrics(
+            instrumentState, focussedData, focusGroups, pixelGroupingParams, crystalInfo
+        )
+
+        outputWorkspaces = []
+        outputWorkspaces.extend(fittedWorkspaceNames)
+        outputWorkspaces.append(focussedData)
+        focusGroupParameters = self.collectFocusGroupParameters(focusGroups, pixelGroupingParams)
+        record = CalibrationRecord(
+            reductionIngredients=reductionIngredients,
+            calibrationFittingIngredients=calibration,
+            focusGroupParameters=focusGroupParameters,
+            focusGroupCalibrationMetrics=metrics,
+            workspaceNames=outputWorkspaces,
+        )
+
+        return record

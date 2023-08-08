@@ -1,6 +1,5 @@
 from typing import Dict
 
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.ReductionState import ReductionState
@@ -56,5 +55,11 @@ class DataFactoryService:
     def constructStateId(self, runId):
         return self.lookupService._generateStateId(runId)
 
-    def getCalibrationState(self, runId) -> Calibration:
-        return self.lookupService.getCalibrationState(runId)
+    def getCalibrationState(self, runId):
+        return self.lookupService.readCalibrationState(runId)
+
+    def getWorkspaceForName(self, name):
+        return self.lookupService.getWorkspaceForName(name)
+
+    def getCalibrationRecord(self, runId):
+        return self.lookupService.readCalibrationRecord(runId)

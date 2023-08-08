@@ -13,7 +13,7 @@ with mock.patch.dict(
 ):
     from mantid.simpleapi import CompareWorkspaces, DeleteWorkspace, LoadNexusProcessed, mtd
     from snapred.backend.dao.ReductionIngredients import ReductionIngredients  # noqa: E402
-    from snapred.backend.recipe.CalibrationReductionRecipe import CalibrationReductionRecipe  # noqa: E402
+    from snapred.backend.recipe.GenericRecipe import CalibrationReductionRecipe  # noqa: E402
     from snapred.meta.Config import Config, Resource
 
     IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
@@ -67,7 +67,7 @@ with mock.patch.dict(
         # create recipe
         recipe = CalibrationReductionRecipe()
         reductionIngredients = ReductionIngredients(**json.loads(input_json))
-        recipe.executeRecipe(reductionIngredients)
+        recipe.executeRecipe(ReductionIngredients=reductionIngredients, OutputWorkspace="ws")
 
         outputWorkspaces = []
         workspaces = mtd.getObjectNames()

@@ -45,3 +45,10 @@ def test_config_accessor():
         assert Config["garbage"]
     with pytest.raises(KeyError):
         assert Config["orchestration.garbage"]
+
+
+def test_key_substitution():
+    testString = "This is a test string with a ${test.key} in it"
+    Config._config["test"]["key"] = "value"
+    Config._config["test"]["substitution"] = testString
+    assert Config["test.substitution"] == "This is a test string with a value in it"

@@ -18,6 +18,7 @@ class InterfaceController:
         # execute the recipe
         # return the result
         try:
+            self.logger.debug(f"Request Received: {request.json()}")
             # leaving this a separate line makes stack traces make more sense
             service = self.serviceFactory.getService(request.path)
             # run the recipe
