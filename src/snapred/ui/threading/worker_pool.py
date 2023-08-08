@@ -7,6 +7,7 @@ from snapred.meta.decorators.Singleton import Singleton
 
 class Worker(QObject):
     finished = pyqtSignal()
+    success = pyqtSignal(bool)
     result = pyqtSignal(object)
     progress = pyqtSignal(int)
 
@@ -20,7 +21,13 @@ class Worker(QObject):
 
     def run(self):
         """Long-running task."""
-        self.result.emit(self.target(self.args))
+        try:
+            self.result.emit(self.target(self.args))
+            self.success.emit(True)
+        except Exception as e:  # noqa: BLE001
+            print(e)
+            self.result.emit(None)
+            self.success.emit(False)
         self.finished.emit()
 
 
