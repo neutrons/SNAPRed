@@ -70,7 +70,7 @@ class CalibrationCheck(object):
         else:
             pass
 
-        groupingFile = str(StateConfig.focusGroups.definition)
+        groupingFile = str(StateConfig.focusGroups.definition)  # This is incorrect, how do I find the groupingFile??
         pixelGroupingParametersRequest = SNAPRequest(
             "/calibration/calculatePixelGroupingParameters", payload=json.dumps({"groupingFile": groupingFile})
         )
@@ -91,7 +91,7 @@ class CalibrationCheck(object):
 
         promptView = PromptUserforCalibrationInputView()
 
-        def push_data_to_interface_controller():
+        def pushDataToInterfaceController():
             run_number = promptView.getRunNumber()
             state_name = promptView.getName()
 
@@ -109,7 +109,7 @@ class CalibrationCheck(object):
             self.worker_pool.submitWorker(self.worker)
 
         Start = startWorkflow(None, promptView)
-        Continue = continueWorkflow(Start, push_data_to_interface_controller, promptView)
+        Continue = continueWorkflow(Start, pushDataToInterfaceController, promptView)
         Finish = finalizeWorkflow(Continue)
 
         Finish.presenter.show()

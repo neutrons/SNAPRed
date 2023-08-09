@@ -1,12 +1,13 @@
+from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
 
 from snapred.ui.presenter.InitializeCalibrationPresenter import CalibrationCheck
 from snapred.ui.widget.Toggle import Toggle
 
+
 class CalibrationMenu(QDialog):
-    def __init__(self, jsonForm, parent=None):
+    def __init__(self, parent=None):
         super(CalibrationMenu, self).__init__(parent)
         self.setWindowTitle("Calibration Menu")
 
@@ -16,19 +17,22 @@ class CalibrationMenu(QDialog):
         self.runNumberField.setPlaceholderText("Enter Run Number")
         layout.addWidget(self.runNumberField, 0, 0)
 
-        sampleDropdown = QComboBox()
-        sampleDropdown.addItem("Select Sample")
-        groupingFileDropdown = QComboBox()
-        groupingFileDropdown.addItem("Select Grouping File")
+        self.sampleDropdown = QComboBox()
+        self.sampleDropdown.setObjectName("sampleDropdown")  # set the object name
+        self.sampleDropdown.addItem("Select Sample")
 
-        layout.addWidget(sampleDropdown, 1, 0)
-        layout.addWidget(groupingFileDropdown, 1, 1)
+        self.groupingFileDropdown = QComboBox()
+        self.groupingFileDropdown.setObjectName("groupingFileDropdown")  # set the object name
+        self.groupingFileDropdown.addItem("Select Grouping File")
+
+        layout.addWidget(self.sampleDropdown, 1, 0)
+        layout.addWidget(self.groupingFileDropdown, 1, 1)
 
         self.beginFlowButton = QPushButton("Check")
         layout.addWidget(self.beginFlowButton, 2, 0, 1, 2)
 
-        liteModeToggle = self._labeledField("Lite Mode", Toggle(parent=self))
-        layout.addWidget(liteModeToggle, 0, 1)
+        self.liteModeToggle = self._labeledField("Lite Mode", Toggle(parent=self))
+        layout.addWidget(self.liteModeToggle, 0, 1)
 
         self.setLayout(layout)
 
@@ -44,13 +48,12 @@ class CalibrationMenu(QDialog):
         layout.addWidget(label)
         layout.addWidget(field)
         return widget
-    
+
     def getRunNumber(self):
         return self.runNumberField.text()
 
 
 class InitializeCalibrationCheckView(QWidget):
-
     def __init__(self, jsonForm, parent=None):
         super(InitializeCalibrationCheckView, self).__init__(parent)
         self.layout = QGridLayout()
