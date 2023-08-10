@@ -44,11 +44,17 @@ with mock.patch.dict(
         yield
         teardown()
 
-    def getInstrumentDefinitionFilePath(isLite=True):
-        if isLite:
-            return "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
+    def getInstrumentDefinitionFilePath(isLocalTest, isLiteInstrument):
+        if isLocalTest:
+            if isLiteInstrument:
+                return Resource.getPath("inputs/pixel_grouping/SNAPLite_Definition.xml")
+            else:
+                return Resource.getPath("inputs/pixel_grouping/SNAP_Definition.xml")
         else:
-            return "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition.xml"
+            if isLiteInstrument:
+                return "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
+            else:
+                return "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition.xml"
 
     with tempfile.TemporaryDirectory() as tmp_dir:
 
@@ -70,7 +76,9 @@ with mock.patch.dict(
             loadingAlgo.initialize()
             loaded_ws_name = "loaded_ws"
             loadingAlgo.setProperty("GroupingFilename", outputFilePath)
-            loadingAlgo.setProperty("InstrumentFilename", getInstrumentDefinitionFilePath())
+            loadingAlgo.setProperty(
+                "InstrumentFilename", getInstrumentDefinitionFilePath(isLocalTest=False, isLiteInstrument=True)
+            )
             loadingAlgo.setProperty("OutputWorkspace", loaded_ws_name)
             assert loadingAlgo.execute()
 
@@ -78,8 +86,8 @@ with mock.patch.dict(
             saved_and_loaded_ws = mtd[loaded_ws_name]
 
             lnp_ws_name = "lnp_ws_name"
-            orginal_ws = LoadNexusProcessed(Filename=groupingFile, OutputWorkspace=lnp_ws_name)
-            result, _ = CompareWorkspaces(orginal_ws, saved_and_loaded_ws)
+            original_ws = LoadNexusProcessed(Filename=groupingFile, OutputWorkspace=lnp_ws_name)
+            result, _ = CompareWorkspaces(original_ws, saved_and_loaded_ws)
 
             assert result
 
@@ -101,7 +109,9 @@ with mock.patch.dict(
             loadingAlgo.initialize()
             loaded_ws_name = "loaded_ws"
             loadingAlgo.setProperty("GroupingFilename", outputFilePath)
-            loadingAlgo.setProperty("InstrumentFilename", getInstrumentDefinitionFilePath(isLite=False))
+            loadingAlgo.setProperty(
+                "InstrumentFilename", getInstrumentDefinitionFilePath(isLocalTest=False, isLiteInstrument=False)
+            )
             loadingAlgo.setProperty("OutputWorkspace", loaded_ws_name)
             assert loadingAlgo.execute()
 
@@ -109,9 +119,9 @@ with mock.patch.dict(
             saved_and_loaded_ws = mtd[loaded_ws_name]
 
             ldgf_ws_name = "ldgf_ws_name"
-            orginal_ws = LoadDetectorsGroupingFile(InputFile=groupingFile, OutputWorkspace=ldgf_ws_name)
+            original_ws = LoadDetectorsGroupingFile(InputFile=groupingFile, OutputWorkspace=ldgf_ws_name)
 
-            result, _ = CompareWorkspaces(orginal_ws, saved_and_loaded_ws)
+            result, _ = CompareWorkspaces(original_ws, saved_and_loaded_ws)
             assert result
 
         @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
@@ -122,7 +132,7 @@ with mock.patch.dict(
 
             # create a workspace from the input file
             lnp_ws_name = "lnp_ws_name"
-            orginal_ws = LoadNexusProcessed(Filename=groupingFile, OutputWorkspace=lnp_ws_name)
+            original_ws = LoadNexusProcessed(Filename=groupingFile, OutputWorkspace=lnp_ws_name)
 
             # save the created workspace in the calibration format
             outputFilePath = os.path.join(tmp_dir, output_file_name)
@@ -137,13 +147,48 @@ with mock.patch.dict(
             loadingAlgo.initialize()
             loaded_ws_name = "loaded_ws"
             loadingAlgo.setProperty("GroupingFilename", outputFilePath)
-            loadingAlgo.setProperty("InstrumentFilename", getInstrumentDefinitionFilePath())
+            loadingAlgo.setProperty(
+                "InstrumentFilename", getInstrumentDefinitionFilePath(isLocalTest=False, isLiteInstrument=True)
+            )
             loadingAlgo.setProperty("OutputWorkspace", loaded_ws_name)
             assert loadingAlgo.execute()
 
             # retrieve the loaded workspace and compare it with the workspace created from the input grouping file
             saved_and_loaded_ws = mtd[loaded_ws_name]
-            result, _ = CompareWorkspaces(orginal_ws, saved_and_loaded_ws)
+            result, _ = CompareWorkspaces(original_ws, saved_and_loaded_ws)
+            assert result
+
+        def test_local_with_grouping_workspace():
+            groupingFile = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.xml")
+            output_file_name = pathlib.Path(groupingFile).stem + ".hdf"
+            outputFilePath = os.path.join(tmp_dir, output_file_name)
+
+            # create a workspace from the input file
+            ldgf_ws_name = "lnp_ws_name"
+            original_ws = LoadDetectorsGroupingFile(InputFile=groupingFile, OutputWorkspace=ldgf_ws_name)
+
+            # save the created workspace in the calibration format
+            outputFilePath = os.path.join(tmp_dir, output_file_name)
+            savingAlgo = SavingAlgo()
+            savingAlgo.initialize()
+            savingAlgo.setProperty("GroupingWorkspace", ldgf_ws_name)
+            savingAlgo.setProperty("OutputFilename", outputFilePath)
+            assert savingAlgo.execute()
+
+            # load the saved grouping definition as a workspace
+            loadingAlgo = LoadingAlgo()
+            loadingAlgo.initialize()
+            loaded_ws_name = "loaded_ws"
+            loadingAlgo.setProperty("GroupingFilename", outputFilePath)
+            loadingAlgo.setProperty(
+                "InstrumentFilename", getInstrumentDefinitionFilePath(isLocalTest=True, isLiteInstrument=False)
+            )
+            loadingAlgo.setProperty("OutputWorkspace", loaded_ws_name)
+            assert loadingAlgo.execute()
+
+            # retrieve the loaded workspace and compare it with the workspace created from the input grouping file
+            saved_and_loaded_ws = mtd[loaded_ws_name]
+            result, _ = CompareWorkspaces(original_ws, saved_and_loaded_ws)
             assert result
 
     def test_with_invalid_grouping_file():
