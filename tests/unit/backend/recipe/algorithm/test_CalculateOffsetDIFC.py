@@ -89,10 +89,12 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
             RewriteSpectraMap=False,
         )
-        algo.mantidSnapper.LoadDetectorsGroupingFile(
-            "Load a fake grouping  file for testing",
-            InputFile=Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml"),
-            InputWorkspace="idf",
+
+        inputFilePath = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
+        algo.mantidSnapper.LoadGroupingDefinition(
+            f"Loading grouping file {inputFilePath}...",
+            GroupingFilename=inputFilePath,
+            InstrumentDonor="idf",
             OutputWorkspace=focusWSname,
         )
         algo.mantidSnapper.executeQueue()

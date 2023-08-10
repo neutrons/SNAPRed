@@ -4,6 +4,7 @@ from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, 
 from mantid.kernel import Direction
 
 from snapred.backend.dao.StateConfig import StateConfig
+from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "CustomGroupWorkspace"
@@ -45,10 +46,10 @@ class CustomGroupWorkspace(PythonAlgorithm):
             donorWorkspace = str(donorWorkspace)
 
         for grpIndx, focusGroup in enumerate(focusGroups):
-            self.mantidSnapper.LoadDetectorsGroupingFile(
+            self.mantidSnapper.LoadGroupingDefinition(
                 f"Loading grouping file for focus group {focusGroup.name}...",
-                InputFile=focusGroup.definition,
-                InputWorkspace=donorWorkspace,
+                GroupingFilename=focusGroup.definition,
+                InstrumentDonor=donorWorkspace,
                 OutputWorkspace=focusGroup.name,
             )
             self.mantidSnapper.executeQueue()

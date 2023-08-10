@@ -93,7 +93,6 @@ class ReductionAlgorithm(PythonAlgorithm):
 
         self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Mask", Workspace=diffCalPrefix + "_mask")
         self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Calibration", Workspace=diffCalPrefix + "_cal")
-        self.mantidSnapper.DeleteWorkspace("Deleting IDF", Workspace="idf")
 
         # 9 Does it have a container? Apply Container Attenuation Correction
         data = self.mantidSnapper.ConvertUnits(
