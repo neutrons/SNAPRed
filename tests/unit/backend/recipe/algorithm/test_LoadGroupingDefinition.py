@@ -1,8 +1,5 @@
-import json
-import os
 import os.path
 import socket
-import tempfile
 import unittest.mock as mock
 
 import pytest

@@ -120,11 +120,6 @@ class GroupByGroupCalibration(PythonAlgorithm):
 
         # now diffraction focus the d-spacing data and conver to TOF
         focusWSname = f"_{self.runNumber}_focusGroup"
-        # self.mantidSnapper.LoadDetectorsGroupingFile(
-        #     "Load XML grouping file",
-        #     InputFile=self.groupingFile,
-        #     OutputWorkspace=focusWSname,
-        # )
         self.mantidSnapper.LoadGroupingDefinition(
             f"Loading grouping file {self.groupingFile}...",
             GroupingFilename=self.groupingFile,

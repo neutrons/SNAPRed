@@ -1,6 +1,5 @@
 import pathlib
 
-import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 from mantid.simpleapi import mtd
@@ -15,7 +14,7 @@ class SaveGroupingDefinition(PythonAlgorithm):
     """
     This algorithm takes in a grouping definition (file or object) and saves it in a diffraction calibration file format
     inputs:
-        GroupingFilename: str -- path of an input grouping file (nexus or XML)
+        GroupingFilename: str -- path of an input grouping file (NEXUS or XML)
         GroupingWorkspace: str -- name of an input grouping workspace
         Note, either GroupingFilename or GroupingWorkspace must be specified, but not both.
     output:

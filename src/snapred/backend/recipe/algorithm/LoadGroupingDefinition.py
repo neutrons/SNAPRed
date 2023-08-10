@@ -1,9 +1,7 @@
 import pathlib
 
-import numpy as np
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
-from mantid.simpleapi import RenameWorkspace, mtd
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -14,7 +12,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
     """
     This algorithm creates a grouping workspace from a grouping definition file.
     inputs:
-        GroupingFilename: str -- path of an input grouping definition file (nexus, XML, or calibration format)
+        GroupingFilename: str -- path of an input grouping definition file (NEXUS, XML, or DiffCal/HDF5)
         InstrumentName: str -- name of an associated instrument
         InstrumentFilename: str -- path of an associated instrument definition file
         InstrumentDonor: str -- Workspace to optionally take the associate instrument from
@@ -101,7 +99,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
                 InputWorkspace=self.getProperty("InstrumentDonor").value,
                 OutputWorkspace=output_ws_name,
             )
-        else:  # must be a nexus file
+        else:  # must be a NEXUS file
             self.mantidSnapper.LoadNexusProcessed(
                 "Loading grouping definition from grouping workspace...",
                 Filename=grouping_file_name,
