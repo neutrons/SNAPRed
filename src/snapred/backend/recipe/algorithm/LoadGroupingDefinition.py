@@ -28,7 +28,10 @@ class LoadGroupingDefinition(PythonAlgorithm):
             doc="Path of an input grouping definition file",
         )
         self.declareProperty(
-            "InstrumentName", defaultValue="", direction=Direction.Input, doc="Name of an associated instrument"
+            "InstrumentName",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="Name of an associated instrument",
         )
         self.declareProperty(
             "InstrumentFilename",
@@ -41,7 +44,10 @@ class LoadGroupingDefinition(PythonAlgorithm):
             doc="Workspace to optionally take the instrument from, when GroupingFilename is in XML format",
         )
         self.declareProperty(
-            "OutputWorkspace", defaultValue="", direction=Direction.Output, doc="Name of an output grouping workspace"
+            "OutputWorkspace",
+            defaultValue="",
+            direction=Direction.Output,
+            doc="Name of an output grouping workspace",
         )
 
         self.setRethrows(True)
