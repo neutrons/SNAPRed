@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<detector-grouping idf-date="2018-05-01T00:00:01" instrument="SNAP">
+	<group ID="1">
+		<detids>0-196607</detids>
+	</group>
+	<group ID="2">
+		<detids>196608-393215</detids>
+	</group>
+	<group ID="3">
+		<detids>393216-589823</detids>
+	</group>
+	<group ID="4">
+		<detids>983040-1179647</detids>
+	</group>
+	<group ID="5">
+		<detids>786432-983039</detids>
+	</group>
+	<group ID="6">
+		<detids>589824-786431</detids>
+	</group>
+</detector-grouping>

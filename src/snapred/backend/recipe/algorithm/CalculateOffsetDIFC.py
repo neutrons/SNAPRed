@@ -78,11 +78,10 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.convertUnitsAndRebin(self.inputWStof, self.inputWSdsp)
 
         focusWSname: str = f"_{self.runNumber}_FocGroup"
-        # TODO: enable opening different types of grouping files (eg .nxs)
-        self.mantidSnapper.LoadDetectorsGroupingFile(
-            "Load XML grouping file",
-            InputFile=self.groupingFile,
-            InputWorkspace=self.inputWStof,
+        self.mantidSnapper.LoadGroupingDefinition(
+            f"Loading grouping file {self.groupingFile}...",
+            GroupingFilename=self.groupingFile,
+            InstrumentDonor=self.inputWStof,
             OutputWorkspace=focusWSname,
         )
 

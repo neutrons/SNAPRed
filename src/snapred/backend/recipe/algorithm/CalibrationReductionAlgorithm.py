@@ -71,7 +71,6 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
 
         self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Mask", Workspace=diffCalPrefix + "_mask")
         self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Calibration", Workspace=diffCalPrefix + "_cal")
-        self.mantidSnapper.DeleteWorkspace("Deleting IDF", Workspace="idf")
 
         data = self.mantidSnapper.ConvertUnits(
             "Converting to Units of dSpacing ...",
