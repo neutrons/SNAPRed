@@ -63,3 +63,6 @@ class DataFactoryService:
 
     def getCalibrationRecord(self, runId):
         return self.lookupService.readCalibrationRecord(runId)
+
+    def getFocusGroups(self, runId: str):
+        return self.lookupService._readFocusGroups(runId)

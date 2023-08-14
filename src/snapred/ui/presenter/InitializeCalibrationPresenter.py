@@ -59,20 +59,19 @@ class CalibrationCheck(object):
         self.worker = self.worker_pool.createWorker(
             target=self.interfaceController.executeRequest, args=(stateCheckRequest)
         )
-        self.worker.result.connect(self.handleStateCheckResult)
+        self.worker.result.connect(self.handleStateCheckResult(runNumber_str))
 
         self.worker_pool.submitWorker(self.worker)
 
-    def handleStateCheckResult(self, response: SNAPResponse):
+    def handleStateCheckResult(self, response: SNAPResponse, runID: str):
         if response.responseCode != 200:
             self._spawnStateCreationWorkflow()
             return
         else:
             pass
 
-        groupingFile = str(StateConfig.focusGroups.definition)  # This is incorrect, how do I find the groupingFile??
         pixelGroupingParametersRequest = SNAPRequest(
-            "/calibration/calculatePixelGroupingParameters", payload=json.dumps({"groupingFile": groupingFile})
+            "/calibration/retrievePixelGroupingParams", payload=json.dumps({"runNumber": runID})
         )
 
         self.worker = self.worker_pool.createWorker(
