@@ -25,7 +25,11 @@ class Worker(QObject):
             self.result.emit(self.target(self.args))
             self.success.emit(True)
         except Exception as e:  # noqa: BLE001
+            # print stacktrace
+            import traceback
+
             print(e)
+            traceback.print_exc()
             self.result.emit(None)
             self.success.emit(False)
         self.finished.emit()

@@ -1,6 +1,9 @@
+from snapred.backend.log.logger import snapredLogger
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.WorkflowView import WorkflowView
+
+logger = snapredLogger.getLogger(__name__)
 
 
 class WorkflowPresenter(object):
@@ -18,7 +21,11 @@ class WorkflowPresenter(object):
     def _hookupSignals(self):
         for i, model in enumerate(self.model):
             widget = self.view.tabWidget.widget(i)
-            widget.onContinueButtonClicked(lambda: self.handleContinueButtonClicked(model))
+            logger.debug(
+                f"Hooking up signals for tab {widget.view} to {widget.model.continueAction} \
+                    to continue button {widget.continueButton}"
+            )
+            widget.onContinueButtonClicked(self.handleContinueButtonClicked)
             widget.onCancelButtonClicked(self.view.deleteLater)
 
     def handleContinueButtonClicked(self, model):

@@ -43,6 +43,10 @@ class WorkflowView(QWidget):
             self.tabWidget.setCurrentIndex(self.currentTab)
 
     @property
+    def tabView(self):
+        return self.tabWidget.widget(self.currentTab).view
+
+    @property
     def continueButton(self):
         widget = self.tabWidget.widget(self.currentTab)
         return widget.continueButton
@@ -59,7 +63,7 @@ class WorkflowView(QWidget):
             widget.forwardButton.setVisible(True)
             # disable continue button of previous tab
             widget.continueButton.setEnabled(False)
-
+            # TODO: Forward fields from previous tab to next tab
             self.position = max(self.currentTab + 1, self.position)
             self.currentTab += 1
             self.tabWidget.setTabEnabled(self.currentTab, True)

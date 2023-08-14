@@ -38,11 +38,23 @@ class ApiService(Service):
         super().__init__()
         self.serviceDirectory = ServiceDirectory()
         self.registerPath("", self.getValidPaths)
+        self.registerPath("parameters", self.getPathParameters)
         return
 
     @staticmethod
     def name():
         return "api"
+
+    def getPathParameters(self, path: str):
+        mainPath = path.split("/")[0]
+        service = self.serviceDirectory[mainPath]
+        subPath = "/".join(path.split("/")[1:])
+        func = service.getPaths()[subPath]
+        argMap = _parametersToDict(inspect.signature(func).parameters)
+        argMap = _convertToJsonSchema(argMap)
+        if len(argMap) < 1:
+            argMap = None
+        return argMap
 
     def getValidPaths(self):
         # for every path in serviceDirectory and every path register on each service

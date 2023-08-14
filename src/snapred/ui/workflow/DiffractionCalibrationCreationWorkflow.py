@@ -1,6 +1,13 @@
+import json
+
 from PyQt5.QtWidgets import QLabel
 
+from snapred.backend.api.InterfaceController import InterfaceController
+from snapred.backend.dao import RunConfig, SNAPRequest
+from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.backend.dao.request import CalibrationAssessmentRequest, CalibrationExportRequest
 from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
+from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
 
@@ -10,29 +17,69 @@ class DiffractionCalibrationCreationWorkflow:
         # Calibrate     ->
         # Assess        ->
         # Save?         ->
+        self.requests = []
+        self.responses = []
+        self.interfaceController = InterfaceController()
+        request = SNAPRequest(path="api/parameters", payload="calibration/assessment")
+        self.assessmentSchema = self.interfaceController.executeRequest(request).data
+        # for each key, read string and convert to json
+        self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
+        request = SNAPRequest(path="api/parameters", payload="calibration/save")
+        self.saveSchema = self.interfaceController.executeRequest(request).data
+        self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
+
         self.workflow = (
             WorkflowBuilder(parent)
             .addNode(
-                DiffractionCalibrationCreationWorkflow._triggerCalibrationReduction,
+                self._triggerCalibrationReduction,
                 CalibrationReductionRequestView(jsonForm, parent=parent),
                 "Calibrating",
             )
             .addNode(
-                DiffractionCalibrationCreationWorkflow._assessCalibration, QLabel("Assessing Calibration"), "Assessing"
+                self._assessCalibration,
+                JsonFormList("Assessing Calibration", self.assessmentSchema, parent).widget,
+                "Assessing",
             )
-            .addNode(DiffractionCalibrationCreationWorkflow._saveCalibration, QLabel("Saving Calibration"), "Saving")
+            .addNode(
+                self._saveCalibration, JsonFormList("Saving Calibration", self.saveSchema, parent).widget, "Saving"
+            )
             .build()
         )
 
-    def _triggerCalibrationReduction(workflowPresenter):
-        pass
+    def _triggerCalibrationReduction(self, workflowPresenter):
+        view = workflowPresenter.widget.tabView
+        # pull fields from view for calibration reduction
+        payload = RunConfig(runNumber=view.getFieldText("runNumber"))
+        request = SNAPRequest(path="calibration/reduction", payload=payload.json())
+        response = self.interfaceController.executeRequest(request)
+        self.responses.append(response)
 
-    def _assessCalibration(workflowPresenter):
-        # Load Previous ->
-        pass
+    def _assessCalibration(self, workflowPresenter):
+        # TODO Load Previous ->
+        view = workflowPresenter.widget.tabView
+        # pull fields from view for calibration assessment
+        payload = CalibrationAssessmentRequest(
+            runConfig=RunConfig(runNumber=str(view.getFieldText("runNumber"))), cifPath=view.getFieldText("cifPath")
+        )
+        request = SNAPRequest(path="calibration/assessment", payload=payload.json())
+        response = self.interfaceController.executeRequest(request)
+        self.responses.append(response)
 
-    def _saveCalibration(workflowPresenter):
-        pass
+    def _saveCalibration(self, workflowPresenter):
+        view = workflowPresenter.widget.tabView
+        # pull fields from view for calibration save
+        calibrationRecord = self.responses[-1]
+        calibrationIndexEntry = CalibrationIndexEntry(
+            runNumber=str(view.getFieldText("runNumber")),
+            comments=view.getFieldText("comments"),
+            author=view.getFieldText("author"),
+        )
+        payload = CalibrationExportRequest(
+            calibrationRecord=calibrationRecord, calibrationIndexEntry=calibrationIndexEntry
+        )
+        request = SNAPRequest(path="calibration/save", payload=payload.json())
+        response = self.interfaceController.executeRequest(request)
+        self.responses.append(response)
 
     @property
     def widget(self):

@@ -34,7 +34,7 @@ class WorkflowNodeView(QWidget):
         self.forwardButton.clicked.connect(slot)
 
     def onContinueButtonClicked(self, slot):
-        self.continueButton.clicked.connect(slot)
+        self.continueButton.clicked.connect(lambda: slot(self.model))
 
     def onCancelButtonClicked(self, slot):
         self.cancelButton.clicked.connect(slot)

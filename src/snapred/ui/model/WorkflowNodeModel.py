@@ -13,8 +13,18 @@ class WorkflowNodeModel(object):
     nextModel: WorkflowNodeModel
     name: str = "Unnamed"
 
-    # define iterator to iterate over all models
     def __iter__(self):
-        yield self
-        if self.nextModel is not None:
-            yield from self.nextModel
+        return _WorkflowModelIterator(self)
+
+
+class _WorkflowModelIterator:
+    def __init__(self, model):
+        self.model = model
+
+    def __next__(self):
+        if self.model is None:
+            raise StopIteration
+        else:
+            model = self.model
+            self.model = self.model.nextModel
+            return model
