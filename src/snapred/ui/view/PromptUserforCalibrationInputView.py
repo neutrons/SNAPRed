@@ -1,9 +1,9 @@
+from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
+
 
 class PromptUserforCalibrationInputView(QWidget):
-
     def __init__(self, parent=None):
         super(PromptUserforCalibrationInputView, self).__init__(parent)
         self.setStyleSheet("background-color: #F5E9E2;")
@@ -24,7 +24,7 @@ class PromptUserforCalibrationInputView(QWidget):
     def getRunNumber(self):
         return self.run_input.text()
 
-    def getName(self): 
+    def getName(self):
         return self.name_input.text()
 
     def handle_continue_click(self):

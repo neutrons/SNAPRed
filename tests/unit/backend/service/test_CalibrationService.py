@@ -26,7 +26,6 @@ with mock.patch.dict(
     )
     from snapred.backend.service.CalibrationService import CalibrationService  # noqa: E402
     from snapred.meta.Config import Resource  # noqa: E402
-    
 
     def readReductionIngredientsFromFile():
         with Resource.open("/inputs/calibration/input.json", "r") as f:

@@ -138,7 +138,7 @@ class CalibrationService(Service):
                 return False
         else:
             return False
-        
+
     @FromString
     def checkDataExists(self, run: RunConfig):
         if not run:
