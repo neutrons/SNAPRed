@@ -97,7 +97,6 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
 
         resws = mtd[self.resolution_ws_name]
 
-        grouping_detInfo = grouping_ws.detectorInfo()
         groupIDs = grouping_ws.getGroupIDs()
         grouping_detInfo = grouping_ws.detectorInfo()
         for groupIndex, groupID in enumerate(groupIDs):
