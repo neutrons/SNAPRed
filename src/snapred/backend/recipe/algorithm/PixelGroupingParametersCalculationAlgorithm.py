@@ -97,7 +97,6 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
 
         resws = mtd[self.resolution_ws_name]
 
-        grouping_detInfo = grouping_ws.detectorInfo()
         groupIDs = grouping_ws.getGroupIDs()
         grouping_detInfo = grouping_ws.detectorInfo()
         for groupIndex, groupID in enumerate(groupIDs):
@@ -108,10 +107,11 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             groupAverage2Theta = 0.0
             count = 0
             for detID in detIDsInGroup:
-                if grouping_detInfo.isMonitor(int(detID)) or grouping_detInfo.isMasked(int(detID)):
+                detIndex = grouping_detInfo.indexOf(int(detID))
+                if grouping_detInfo.isMonitor(int(detIndex)) or grouping_detInfo.isMasked(int(detIndex)):
                     continue
                 count += 1
-                twoThetaTemp = grouping_detInfo.twoTheta(int(detID))
+                twoThetaTemp = grouping_detInfo.twoTheta(int(detIndex))
                 groupMin2Theta = min(groupMin2Theta, twoThetaTemp)
                 groupMax2Theta = max(groupMax2Theta, twoThetaTemp)
                 groupAverage2Theta += twoThetaTemp
