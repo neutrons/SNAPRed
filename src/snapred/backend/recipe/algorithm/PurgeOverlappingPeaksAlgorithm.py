@@ -4,7 +4,9 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
+from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "PurgeOverlappingPeaksAlgorithm"
 
@@ -15,24 +17,28 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
         self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputPeakMap", defaultValue="", direction=Direction.Output)
+
         self.setRethrows(True)
+        self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
         # predict detector peaks for all focus groups
-        peakPredictorAlgo = DetectorPeakPredictor()
-        peakPredictorAlgo.initialize()
-        peakPredictorAlgo.setProperty("InstrumentState", self.getProperty("InstrumentState").value)
-        peakPredictorAlgo.setProperty("CrystalInfo", self.getProperty("CrystalInfo").value)
-        peakPredictorAlgo.execute()
-        predictedPeaks_json = json.loads(peakPredictorAlgo.getProperty("DetectorPeaks").value)
+        result = self.mantidSnapper.DetectorPeakPredictor(
+            "Predicting peaks...",
+            InstrumentState=self.getProperty("InstrumentState").value,
+            CrystalInfo=self.getProperty("CrystalInfo").value,
+        )
+        self.mantidSnapper.executeQueue()
+        predictedPeaks_json = json.loads(result.get())
 
         # build lists of non-overlapping peaks for each focus group. Combine them into the total list.
         outputPeaks = []
         for focusGroupPeaks_json in predictedPeaks_json:
             # build a list of DetectorPeak objects for this focus group
+            groupPeakList = GroupPeakList.parse_obj(focusGroupPeaks_json)
             peakList = []
-            for peak_json in focusGroupPeaks_json:
-                peakList.append(DetectorPeak.parse_raw(peak_json))
+            for peak in groupPeakList.peaks:
+                peakList.append(peak)
 
             # do the overlap rejection logic
             nPks = len(peakList)
@@ -46,13 +52,14 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
                         keep[i] = False
                         keep[i + 1] = False
                     else:
-                        outputPeakList.append(peakList[i].json())
+                        outputPeakList.append(peakList[i])
             # and add last peak:
             if nPks > 0 and keep[-1]:
-                outputPeakList.append(peakList[-1].json())
+                outputPeakList.append(peakList[-1])
 
             self.log().notice(f" {nPks} peaks in and {len(outputPeakList)} peaks out")
-            outputPeaks.append(outputPeakList)
+            outputGroupPeakList = GroupPeakList(groupID=groupPeakList.groupID, peaks=outputPeakList)
+            outputPeaks.append(outputGroupPeakList.dict())
 
         self.setProperty("OutputPeakMap", json.dumps(outputPeaks))
 

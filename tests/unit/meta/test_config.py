@@ -12,7 +12,7 @@ def test_find_root_dir():
 
 def test_instrument_home():
     # test verifies that the end of the path is correct
-    correctPathEnding = "/tests/resources/SNAP/"
+    correctPathEnding = "/tests/resources/"
     assert Config["instrument.home"].endswith(correctPathEnding)
 
 
@@ -45,3 +45,10 @@ def test_config_accessor():
         assert Config["garbage"]
     with pytest.raises(KeyError):
         assert Config["orchestration.garbage"]
+
+
+def test_key_substitution():
+    testString = "This is a test string with a ${test.key} in it"
+    Config._config["test"]["key"] = "value"
+    Config._config["test"]["substitution"] = testString
+    assert Config["test.substitution"] == "This is a test string with a value in it"

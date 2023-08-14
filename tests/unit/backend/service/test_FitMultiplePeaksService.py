@@ -9,7 +9,7 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from snapred.backend.recipe.FitMultiplePeaksRecipe import FitMultiplePeaksRecipe  # noqa: E402
+    from snapred.backend.recipe.GenericRecipe import FitMultiplePeaksRecipe  # noqa: E402
     from snapred.backend.service.FitMultiplePeakService import FitMultiplePeaksService  # noqa: E402
 
     # test export calibration

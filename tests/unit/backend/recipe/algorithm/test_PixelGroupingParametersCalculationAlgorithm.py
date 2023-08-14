@@ -14,10 +14,12 @@ with mock.patch.dict(
     from mantid.simpleapi import DeleteWorkspace, mtd
     from pydantic import parse_file_as
     from snapred.backend.dao.calibration.Calibration import Calibration
+    from snapred.backend.dao.state.InstrumentState import InstrumentState
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
     from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
-        PixelGroupingParametersCalculationAlgorithm,
+        PixelGroupingParametersCalculationAlgorithm as ThisAlgo,
     )
+    from snapred.meta.Config import Resource
 
     IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
@@ -45,168 +47,226 @@ with mock.patch.dict(
         yield
         teardown()
 
-    def getCalibrationState():
+    def getInstrumentState():
         return parse_file_as(
-            Calibration, "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/CalibrationParameters.json"
-        ).json()
+            Calibration, "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/CalibrationParameters.json"
+        ).instrumentState.json()
 
-    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
-    def test_column():
-        instrumentDefinitionFile = "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition_2011-09-07.xml"
-        groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.xml"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters.json"
+    def getInstrumentDefinitionFilePath(isLite=True):
+        if isLite:
+            return "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
+        else:
+            return "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition.xml"
+
+    def getFakeInstrumentState():
+        fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/calibration/sampleInstrumentState.json"))
+        fakeInstrumentState.particleBounds.tof.minimum = 10
+        fakeInstrumentState.particleBounds.tof.maximum = 1000
+        return fakeInstrumentState
+
+    def mockRetrieveFromPantry(algo):
+        groupingFilePath = algo.getProperty("GroupingFile").value
+        idf = algo.getProperty("InstrumentDefinitionFile").value
+        algo.mantidSnapper.CreateWorkspace(
+            "Create workspace to hold IDF",
+            OutputWorkspace="idf",
+            DataX=1,
+            DataY=1,
+        )
+        algo.mantidSnapper.LoadInstrument(
+            "Load a fake instrument for testing",
+            Workspace="idf",
+            Filename=idf,
+            MonitorList="-2--1",
+            RewriteSpectraMap=False,
+        )
+        algo.mantidSnapper.LoadDetectorsGroupingFile(
+            "Load a fake grouping  file for testing",
+            InputFile=groupingFilePath,
+            InputWorkspace="idf",
+            OutputWorkspace=algo.grouping_ws_name,
+        )
+        algo.mantidSnapper.DeleteWorkspace(
+            "Remove temporary IDF workspace",
+            Workspace="idf",
+        )
+        algo.mantidSnapper.executeQueue()
+
+    def test_chop_ingredients():
+        algo = ThisAlgo()
+        algo.initialize()
+        fakeInstrumentState = getFakeInstrumentState()
+        algo.chopIngredients(fakeInstrumentState)
+        assert algo.tofMin is not None
+        assert algo.tofMin == fakeInstrumentState.particleBounds.tof.minimum
+        assert algo.tofMax == fakeInstrumentState.particleBounds.tof.maximum
+        assert algo.deltaTOverT == fakeInstrumentState.instrumentConfig.delTOverT
+        assert algo.delLOverL == fakeInstrumentState.instrumentConfig.delLOverL
+        assert algo.L == fakeInstrumentState.instrumentConfig.L1 + fakeInstrumentState.instrumentConfig.L2
+        assert algo.delL == algo.L * algo.delLOverL
+        assert algo.delTheta == fakeInstrumentState.instrumentConfig.delThWithGuide
+        assert algo.delL is not None
+        assert algo.deltaTOverT is not None
+        assert algo.delTheta is not None
+
+    @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
+    def test_local():
+        groupingFile = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
+        referenceParametersFile = Resource.getPath("outputs/calibration/output.json")
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
-            calibrationState=getCalibrationState(),
+            instrumentDefinitionFile=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            instrumentState=Resource.read("/inputs/calibration/sampleInstrumentState.json"),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
-            reverseGroupingIndex=False,
+        )
+
+    # TODO fix all of the files on the analysis cluster
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_column():
+        groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.xml"
+        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.json"
+
+        run_test(
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(isLite=False),
+            instrumentState=getInstrumentState(),
+            groupingFile=groupingFile,
+            referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_column_lite():
-        instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_lite_parameters.json"
+        referenceParametersFile = (
+            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
+        )
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
-            calibrationState=getCalibrationState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
+            instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
-            reverseGroupingIndex=True,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_bank():
-        instrumentDefinitionFile = "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition_2011-09-07.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Bank.xml"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Bank_parameters.json"
+        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Bank_parameters_newCalc.json"
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
-            calibrationState=getCalibrationState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(isLite=False),
+            instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
-            reverseGroupingIndex=False,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_bank_lite():
-        instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Bank.lite.nxs"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Bank_lite_parameters.json"
+        referenceParametersFile = (
+            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Bank_parameters_newCalc.lite.json"
+        )
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
-            calibrationState=getCalibrationState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
+            instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
-            reverseGroupingIndex=True,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_all():
-        instrumentDefinitionFile = "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition_2011-09-07.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.xml"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/All_parameters.json"
+        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/All_parameters_newCalc.json"
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
-            calibrationState=getCalibrationState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(isLite=False),
+            instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
-            reverseGroupingIndex=False,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_all_lite():
-        instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.nxs"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/All_lite_parameters.json"
+        referenceParametersFile = (
+            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/All_parameters_newCalc.lite.json"
+        )
 
         run_test(
-            instrumentDefinitionFile=instrumentDefinitionFile,
-            calibrationState=getCalibrationState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
+            instrumentState=getInstrumentState(),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
-            reverseGroupingIndex=True,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_wrong_idf():
-        instrumentDefinitionFile = "junk"
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_lite_parameters.json"
+        referenceParametersFile = (
+            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
+        )
         with pytest.raises(RuntimeError) as excinfo:
             run_test(
-                instrumentDefinitionFile=instrumentDefinitionFile,
-                calibrationState=getCalibrationState(),
+                instrumentDefinitionFile="junk",
+                instrumentState=getInstrumentState(),
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,
-                reverseGroupingIndex=True,
             )
         assert "FileDescriptor" in str(excinfo.value)
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_wrong_grouping_file():
-        instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
         groupingFile = "junk"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_lite_parameters.json"
+        referenceParametersFile = (
+            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
+        )
 
         with pytest.raises(RuntimeError) as excinfo:
             run_test(
-                instrumentDefinitionFile=instrumentDefinitionFile,
-                calibrationState=getCalibrationState(),
+                instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
+                instrumentState=getInstrumentState(),
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,
-                reverseGroupingIndex=True,
             )
         assert "Filename" in str(excinfo.value)
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
-    def test_wrong_calibration_state():
-        instrumentDefinitionFile = "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
+    def test_wrong_instrument_state():
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_lite_parameters.json"
+        referenceParametersFile = (
+            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
+        )
 
         with pytest.raises(RuntimeError) as excinfo:
             run_test(
-                instrumentDefinitionFile=instrumentDefinitionFile,
-                calibrationState="junk",
+                instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
+                instrumentState="junk",
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,
-                reverseGroupingIndex=True,
             )
-        assert "Calibration" in str(excinfo.value)
+        assert "InstrumentState" in str(excinfo.value)
 
-    def run_test(
-        instrumentDefinitionFile,
-        calibrationState,
-        groupingFile,
-        referenceParametersFile,
-        reverseGroupingIndex,
-    ):
+    def run_test(instrumentDefinitionFile, instrumentState, groupingFile, referenceParametersFile):
         """Test execution of PixelGroupingParametersCalculationAlgorithm"""
-        pixelGroupingAlgo = PixelGroupingParametersCalculationAlgorithm()
+        pixelGroupingAlgo = ThisAlgo()
         pixelGroupingAlgo.initialize()
 
-        pixelGroupingAlgo.setProperty("InputState", calibrationState)
+        pixelGroupingAlgo.setProperty("InstrumentState", instrumentState)
         pixelGroupingAlgo.setProperty("InstrumentDefinitionFile", instrumentDefinitionFile)
         pixelGroupingAlgo.setProperty("GroupingFile", groupingFile)
 
         assert pixelGroupingAlgo.execute()
 
         # parse the algorithm output and create a list of PixelGroupingParameters
-        pixelGroupingParams_str = json.loads(pixelGroupingAlgo.getProperty("OutputParameters").value)
+        pixelGroupingParams_json = json.loads(pixelGroupingAlgo.getProperty("OutputParameters").value)
         pixelGroupingParams_calc = []
-        for item in pixelGroupingParams_str:
+        for item in pixelGroupingParams_json:
             pixelGroupingParams_calc.append(PixelGroupingParameters.parse_raw(item))
 
         # parse the reference file. Note, in the reference file each kind of parameter is grouped into its own list
-        f = open(referenceParametersFile)
-        pixelGroupingParams_ref = json.load(f)
+        with open(referenceParametersFile) as f:
+            pixelGroupingParams_ref = json.load(f)
 
         # compare calculated and reference parameters
         number_of_groupings_calc = len(pixelGroupingParams_calc)
@@ -215,25 +275,22 @@ with mock.patch.dict(
         assert len(pixelGroupingParams_ref["dMax"]) == number_of_groupings_calc
         assert len(pixelGroupingParams_ref["delDOverD"]) == number_of_groupings_calc
 
-        # reverseGroupingIndex takes care of the different order of pixel groupings between "full" anf "lite"
-        # instruments. This has to do with how Mantid treats different kinds of grouping files used by
-        # PixelGroupingParametersCalculationAlgorithm
-        index = 0 if reverseGroupingIndex else number_of_groupings_calc - 1
+        index = 0
         for param in pixelGroupingParams_ref["twoTheta"]:
-            assert abs(float(param) - pixelGroupingParams_calc[index].twoTheta) < 1.0e-5
-            index += 1 if reverseGroupingIndex else -1
+            assert abs(float(param) - pixelGroupingParams_calc[index].twoTheta) == 0
+            index += 1
 
-        index = 0 if reverseGroupingIndex else number_of_groupings_calc - 1
+        index = 0
         for param in pixelGroupingParams_ref["dMin"]:
-            assert abs(float(param) - pixelGroupingParams_calc[index].dResolution.minimum) < 1.0e-4
-            index += 1 if reverseGroupingIndex else -1
+            assert abs(float(param) - pixelGroupingParams_calc[index].dResolution.minimum) == 0
+            index += 1
 
-        index = 0 if reverseGroupingIndex else number_of_groupings_calc - 1
+        index = 0
         for param in pixelGroupingParams_ref["dMax"]:
-            assert abs(float(param) - pixelGroupingParams_calc[index].dResolution.maximum) < 1.0e-4
-            index += 1 if reverseGroupingIndex else -1
+            assert abs(float(param) - pixelGroupingParams_calc[index].dResolution.maximum) == 0
+            index += 1
 
-        index = 0 if reverseGroupingIndex else number_of_groupings_calc - 1
+        index = 0
         for param in pixelGroupingParams_ref["delDOverD"]:
             assert abs(float(param) - pixelGroupingParams_calc[index].dRelativeResolution) < 1.0e-3
-            index += 1 if reverseGroupingIndex else -1
+            index += 1

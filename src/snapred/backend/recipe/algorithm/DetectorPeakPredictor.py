@@ -6,6 +6,7 @@ from mantid.kernel import Direction
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.DetectorPeak import DetectorPeak
+from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.Limit import LimitedValue
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
@@ -13,14 +14,30 @@ name = "DetectorPeakPredictor"
 
 
 class DetectorPeakPredictor(PythonAlgorithm):
-    def PyInit(self):
+    def PyInit(self) -> None:
         # declare properties
-        self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
-        self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
+        self.declareProperty(
+            "InstrumentState",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="The input value that holds instrument state!",
+        )
+        self.declareProperty(
+            "CrystalInfo",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="The input value that holds crystal info.",
+        )
+        self.declareProperty(
+            "PeakIntensityThreshold",
+            defaultValue=0.05,
+            direction=Direction.Input,
+            doc="The input value for setting the threshold for peak intensity",
+        )
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
 
-    def PyExec(self):
+    def PyExec(self) -> None:
         instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
         crystalInfo = CrystallographicInfo.parse_raw(self.getProperty("CrystalInfo").value)
         crystalInfo.peaks.sort(key=lambda x: x.dSpacing)
@@ -35,11 +52,13 @@ class DetectorPeakPredictor(PythonAlgorithm):
         multiplicity = np.array(crystalInfo.multiplicities)
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
-        thresholdA = np.max(A) * 0.05
+        thresholdA = np.max(A) * self.getProperty("PeakIntensityThreshold").value
 
         allFocusGroupsPeaks = []
-        numFocusGroups = len(instrumentState.pixelGroupingInstrumentParameters)
-        for index in range(numFocusGroups):
+        allGroupIDs = [x.groupID for x in instrumentState.pixelGroupingInstrumentParameters]
+        # numFocusGroups = len(instrumentState.pixelGroupingInstrumentParameters)
+        # for index in range(numFocusGroups):
+        for index, groupID in enumerate(allGroupIDs):
             delDoD = instrumentState.pixelGroupingInstrumentParameters[index].dRelativeResolution
             tTheta = instrumentState.pixelGroupingInstrumentParameters[index].twoTheta
 
@@ -60,11 +79,12 @@ class DetectorPeakPredictor(PythonAlgorithm):
                 widthRight = fwhm * FWHMMultiplierRight + peakTailCoefficient / beta_d
 
                 singleFocusGroupPeaks.append(
-                    DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight)).json()
+                    DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight))
                 )
 
-            self.log().notice(f"Focus group {index} : {len(dList)} peaks out")
-            allFocusGroupsPeaks.append(singleFocusGroupPeaks)
+            singleFocusGroupPeakList = GroupPeakList(peaks=singleFocusGroupPeaks, groupID=groupID)
+            self.log().notice(f"Focus group {groupID} : {len(dList)} peaks out")
+            allFocusGroupsPeaks.append(singleFocusGroupPeakList.dict())
 
         self.setProperty("DetectorPeaks", json.dumps(allFocusGroupsPeaks))
         return allFocusGroupsPeaks

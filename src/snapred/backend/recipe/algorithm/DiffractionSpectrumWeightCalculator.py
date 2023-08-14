@@ -5,6 +5,7 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
+from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -31,13 +32,21 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         if predictedPeaksInput != "":
             predictedPeaks_json = json.loads(predictedPeaksInput)
         else:
-            peakPredictorAlgo = DetectorPeakPredictor()
-            peakPredictorAlgo.initialize()
-            peakPredictorAlgo.setProperty("InstrumentState", self.getProperty("InstrumentState").value)
-            peakPredictorAlgo.setProperty("CrystalInfo", self.getProperty("CrystalInfo").value)
-            peakPredictorAlgo.setChild(True)
-            peakPredictorAlgo.execute()
-            predictedPeaks_json = json.loads(peakPredictorAlgo.getProperty("DetectorPeaks").value)
+            result = self.mantidSnapper.DetectorPeakPredictor(
+                "Predicting peaks...",
+                InstrumentState=self.getProperty("InstrumentState").value,
+                CrystalInfo=self.getProperty("CrystalInfo").value,
+                PeakIntensityThreshold="0",
+            )
+            self.mantidSnapper.executeQueue()
+            predictedPeaks_json = json.loads(result.get())
+
+        groupIDs = []
+        predictedPeaks = {}
+        for prediction in predictedPeaks_json:
+            groupPeakList = GroupPeakList.parse_obj(prediction)
+            groupIDs.append(groupPeakList.groupID)
+            predictedPeaks[groupPeakList.groupID] = groupPeakList.peaks
 
         # clone input workspace to create a weight workspace
         input_ws_name = self.getProperty("InputWorkspace").value
@@ -50,18 +59,14 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
         weight_ws = self.mantidSnapper.mtd[weight_ws_name]
 
-        numSpec = weight_ws.getNumberHistograms()
-        for index in range(numSpec):
+        for index, groupID in enumerate(groupIDs):
             # get spectrum X,Y
             x = weight_ws.readX(index)
             y = weight_ws.readY(index)
             # create and initialize a weights array
             weights = np.ones(len(y))
-            # get peaks predicted for this spectrum
-            spectrumPredictedPeaks_json = predictedPeaks_json[index]
             # for each peak extent, set zeros to the weights array
-            for peak_json in spectrumPredictedPeaks_json:
-                peak = DetectorPeak.parse_raw(peak_json)
+            for peak in predictedPeaks[groupID]:
                 mask_indices = np.where(np.logical_and(x > peak.position.minimum, x < peak.position.maximum))
                 weights[mask_indices] = 0.0
             weight_ws.setY(index, weights)

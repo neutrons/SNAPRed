@@ -7,16 +7,17 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class CalibrantSampleService(Service):
-    _name = "calibrant_sample"
-    dataExportService = DataExportService()
+    dataExportService: "DataExportService"
 
     def __init__(self):
         super().__init__()
+        self.dataExportService = DataExportService()
         self.registerPath("save_sample", self.save_sample)
         return
 
-    def name(self):
-        return self._name
+    @staticmethod
+    def name():
+        return "calibrant_sample"
 
     @FromString
     def save_sample(self, calibrantSample: CalibrantSamples):

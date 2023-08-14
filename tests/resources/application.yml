@@ -8,6 +8,9 @@ instrument:
   name: SNAP
   home: /SNS/SNAP/
   config: shared/Calibration/SNAPInstPrm.json
+  lite:
+    definition:
+      file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
 
 nexus:
   home: nexus/
@@ -35,6 +38,10 @@ calibration:
         - -2
         - 2
       peakTailCoefficient: 2.0
+
+localdataservice:
+  config:
+    verifypaths: true
 
 logging:
   level: 10

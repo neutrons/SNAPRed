@@ -12,6 +12,7 @@ from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
 from snapred.ui.view.FitMultiplePeaksView import FitMultiplePeaksView
 from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibrationCheckView
+from snapred.ui.view.VanadiumFocussedReductionView import VanadiumFocussedReductionView
 from snapred.ui.widget.JsonForm import JsonForm
 
 logger = snapredLogger.getLogger(__name__)
@@ -23,7 +24,7 @@ class TestPanelPresenter(object):
 
     def __init__(self, view):
         reductionRequest = SNAPRequest(path="api", payload=None)
-        self.apiDict = self.interfaceController.executeRequest(reductionRequest).responseData
+        self.apiDict = self.interfaceController.executeRequest(reductionRequest).data
 
         self.apiComboBox = self.setupApiComboBox(self.apiDict, view)
 
@@ -92,6 +93,8 @@ class TestPanelPresenter(object):
             newWidget = CalibrationReductionRequestView(newForm, parent=self.view)
         elif selection.startswith("fitMultiplePeaks"):
             newWidget = FitMultiplePeaksView(newForm, parent=self.view)
+        elif selection.startswith("vanadiumReduction"):
+            newWidget = VanadiumFocussedReductionView(newForm, parent=self.view)
         else:
             newWidget = BackendRequestView(newForm, selection, parent=self.view)
 

@@ -1,6 +1,5 @@
 from typing import Dict
 
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.ReductionState import ReductionState
@@ -12,12 +11,15 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class DataFactoryService:
-    lookupService: LocalDataService  # Optional[LocalDataService]
+    lookupService: "LocalDataService"  # Optional[LocalDataService]
     # TODO: rules for busting cache
     cache: Dict[str, ReductionState] = {}
 
-    def __init__(self, lookupService: LocalDataService = LocalDataService()) -> None:
-        self.lookupService = lookupService
+    def __init__(self, lookupService: LocalDataService = None) -> None:
+        if lookupService is None:
+            self.lookupService = LocalDataService()
+        else:
+            self.lookupService = lookupService
 
     def getReductionIngredients(self, runId: str) -> ReductionIngredients:
         return ReductionIngredients(
@@ -51,7 +53,13 @@ class DataFactoryService:
         return self.lookupService.readStateConfig(runId)
 
     def constructStateId(self, runId):
-        return self.lookupService._generateStateId(self.getRunConfig(runId))
+        return self.lookupService._generateStateId(runId)
 
-    def getCalibrationState(self, runId) -> Calibration:
-        return self.lookupService.getCalibrationState(runId)
+    def getCalibrationState(self, runId):
+        return self.lookupService.readCalibrationState(runId)
+
+    def getWorkspaceForName(self, name):
+        return self.lookupService.getWorkspaceForName(name)
+
+    def getCalibrationRecord(self, runId):
+        return self.lookupService.readCalibrationRecord(runId)

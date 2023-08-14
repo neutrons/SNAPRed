@@ -20,6 +20,11 @@ class _CustomMtd:
             key = key.get()
         return mtd[key]
 
+    def doesExist(self, key):
+        if str(key.__class__) == str(callback(int).__class__):
+            key = key.get()
+        return mtd.doesExist(key)
+
 
 class MantidSnapper:
     typeTranslationTable = {"string": str, "number": float, "dbl list": list, "boolean": bool}
@@ -80,9 +85,14 @@ class MantidSnapper:
             # if there are any, add them to a list for return
             outputProperties = {}
             mantidAlgorithm = AlgorithmManager.create(key)
-            for propname in set(kwargs.keys()).difference(mantidAlgorithm.getProperties()):
-                prop = mantidAlgorithm.getProperty(propname)
-                if Direction.values[prop.direction] in [Direction.Output, Direction.InOut]:
+            # get all output props
+            for prop in mantidAlgorithm.getProperties():
+                if Direction.values[prop.direction] == Direction.Output:
+                    outputProperties[prop.name] = self.createOutputCallback(prop)
+            # get only set inout props
+            for propName in set(kwargs.keys()).difference(mantidAlgorithm.getProperties()):
+                prop = mantidAlgorithm.getProperty(propName)
+                if Direction.values[prop.direction] == Direction.InOut:
                     outputProperties[prop.name] = self.createOutputCallback(prop)
 
             # TODO: Special cases are bad
@@ -112,6 +122,8 @@ class MantidSnapper:
         return enqueueAlgorithm
 
     def reportAndIncrement(self, message):
+        if not self._prog_reporter:
+            return
         self._prog_reporter.reportIncrement(self._progressCounter, message)
         self._progressCounter += 1
 
@@ -145,7 +157,8 @@ class MantidSnapper:
             raise AlgorithmException(name, str(e))
 
     def executeQueue(self):
-        self._prog_reporter = Progress(self.parentAlgorithm, start=0.0, end=1.0, nreports=self._endrange)
+        if self.parentAlgorithm:
+            self._prog_reporter = Progress(self.parentAlgorithm, start=0.0, end=1.0, nreports=self._endrange)
         for algorithmTuple in self._algorithmQueue:
             if self._export:
                 self._exportScript += "{}(".format(algorithmTuple[0])
@@ -179,6 +192,7 @@ class MantidSnapper:
             exportPath = self._generateExportPath()
             with open(exportPath, "a") as file:
                 file.write(self._exportScript)
-        self._prog_reporter.report(self._endrange, "Done")
+        if self.parentAlgorithm:
+            self._prog_reporter.report(self._endrange, "Done")
         self._progressCounter = 0
-        self.algorithmQueue = []
+        self._algorithmQueue = []

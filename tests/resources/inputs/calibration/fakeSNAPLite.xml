@@ -29,7 +29,7 @@
 
   <!--SAMPLE-->
   <component type="sample-position">
-    <location y="0.0" x="0.0" z="0.0"/>
+    <location y="0.0" x="0.0" z="-5.0"/>
   </component>
   <type name="sample-position" is="SamplePos"/>
 
@@ -70,7 +70,7 @@
   <type name="Column1">
     <component type="panel" idstart="0" idfillbyfirst="y" idstepbyrow="1" >
       <location name="bank1">  <!-- was bank4 - 655360 -->
-        <trans x="0.0" y="0.0" />
+        <trans x="0.0" y="1.0" />
       </location>
     </component>
     <component type="panel" idstart="8" idfillbyfirst="y" idstepbyrow="1" >

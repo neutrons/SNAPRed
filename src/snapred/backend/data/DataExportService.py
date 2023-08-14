@@ -8,10 +8,13 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class DataExportService:
-    dataService: LocalDataService  # Optional[LocalDataService]
+    dataService: "LocalDataService"  # Optional[LocalDataService]
 
-    def __init__(self, dataService: LocalDataService = LocalDataService()) -> None:
-        self.dataService = dataService
+    def __init__(self, dataService: LocalDataService = None) -> None:
+        if dataService:
+            self.dataService = dataService
+        else:
+            self.dataService = LocalDataService()
 
     def exportCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         self.dataService.writeCalibrationIndexEntry(entry)
@@ -30,3 +33,6 @@ class DataExportService:
 
     def initializeState(self, runId: str, name: str):
         return self.dataService.initializeState(runId, name)
+
+    def deleteWorkspace(self, workspaceName: str):
+        return self.dataService.deleteWorkspace(workspaceName)

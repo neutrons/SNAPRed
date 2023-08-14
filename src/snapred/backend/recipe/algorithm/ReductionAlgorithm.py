@@ -60,13 +60,13 @@ class ReductionAlgorithm(PythonAlgorithm):
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",
             StateConfig=reductionIngredients.reductionState.stateConfig.json(),
-            InstrumentName=reductionIngredients.reductionState.instrumentConfig.name,
+            InputWorkspace="vanadium",
             OutputWorkSpace="CommonRed",
         )
 
         # 3 ApplyDiffCal  -- just apply to data
         diffCalPrefix = "diffcal"
-        self.mantidSnapper.LoadDiffcal(
+        self.mantidSnapper.LoadDiffCal(
             "Loading Diffcal for {} ...".format(diffCalPath),
             InstrumentFilename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
             MakeGroupingWorkspace=False,
@@ -78,12 +78,12 @@ class ReductionAlgorithm(PythonAlgorithm):
         # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours
         #              -- done to both data, can be applied to vanadium per state
         self.mantidSnapper.MaskDetectors(
-            "Applying Pixel Mask...",
+            "Applying Pixel Mask to Raw Data...",
             Workspace=raw_data,
             MaskedWorkspace=diffCalPrefix + "_mask",
         )
         self.mantidSnapper.MaskDetectors(
-            "Applying Pixel Mask...",
+            "Applying Pixel Mask to Vanadium Data...",
             Workspace=vanadium,
             MaskedWorkspace=diffCalPrefix + "_mask",
         )
@@ -203,7 +203,7 @@ class ReductionAlgorithm(PythonAlgorithm):
             with open("/SNS/users/wqp/git/snapred/snap_reduction.py", "w") as file:
                 file.write(self._exportScript)
 
-        self.cleanup()
+        self.mantidSnapper.cleanup()
         self.log().notice("Execution of ReductionAlgorithm COMPLETE!")
         return data
 

@@ -25,3 +25,4 @@ class InstrumentConfig(BaseModel):
     delLOverL: float
     delThNoGuide: float
     delThWithGuide: float
+    NBins: int = 10

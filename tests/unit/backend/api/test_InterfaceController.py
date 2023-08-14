@@ -31,9 +31,9 @@ with mock.patch.dict(
         reductionRequest = mock.Mock()
         reductionRequest.path = "Test Service"
         response = interfaceController.executeRequest(reductionRequest)
-        assert response.responseCode == 200
-        assert response.responseMessage is None
-        assert response.responseData["result"] == "Success!"
+        assert response.code == 200
+        assert response.message is None
+        assert response.data["result"] == "Success!"
 
     def test_executeRequest_unsuccessful():
         """Test executeRequest with an unsuccessful service"""
@@ -42,6 +42,6 @@ with mock.patch.dict(
         reductionRequest.path = "Non-existent Test Service"
         # mock orchestrateRecipe to raise an exception
         response = interfaceController.executeRequest(reductionRequest)
-        assert response.responseCode == 500
-        assert response.responseMessage is not None
-        assert response.responseData is None
+        assert response.code == 500
+        assert response.message is not None
+        assert response.data is None

@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
+from snapred.backend.recipe.GenericRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
@@ -10,17 +10,18 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class ReductionService(Service):
-    _name = "reduction"
-    dataFactoryService = DataFactoryService()
+    dataFactoryService = "DataFactoryService"
 
     # register the service in ServiceFactory please!
     def __init__(self):
         super().__init__()
+        self.dataFactoryService = DataFactoryService()
         self.registerPath("", self.reduce)
         return
 
-    def name(self):
-        return self._name
+    @staticmethod
+    def name():
+        return "reduction"
 
     @FromString
     def reduce(self, runs: List[RunConfig]) -> Dict[Any, Any]:
@@ -32,7 +33,7 @@ class ReductionService(Service):
             # import json
             # data[run.runNumber] = json.dumps(reductionIngredients.__dict__, default=lambda o: o.__dict__)
             try:
-                ReductionRecipe().executeRecipe(reductionIngredients)
+                ReductionRecipe().executeRecipe(ReductionIngredients=reductionIngredients)
             except:
                 raise
         return data

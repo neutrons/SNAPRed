@@ -3,10 +3,12 @@ import glob
 import hashlib
 import json
 import os
+from errno import ENOENT as NOT_FOUND
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import h5py
-from mantid.api import AlgorithmManager
+from mantid.api import AlgorithmManager, mtd
 from pydantic import parse_file_as
 
 from snapred.backend.dao.calibration.Calibration import Calibration
@@ -35,35 +37,61 @@ from snapred.meta.decorators.Singleton import Singleton
 """
 
 
+def _createFileNotFoundError(msg, filename):
+    return FileNotFoundError(NOT_FOUND, os.strerror(NOT_FOUND) + " " + msg, filename)
+
+
 @Singleton
 class LocalDataService:
     reductionParameterCache: Dict[str, Any] = {}
     iptsCache: Dict[str, Any] = {}
     stateIdCache: Dict[str, str] = {}
-    dataPath = Config["instrument.home"]
-    instrumentConfigPath: str = dataPath + Config["instrument.config"]
-    instrumentConfig: InstrumentConfig  # Optional[InstrumentConfig]
+    instrumentConfig: "InstrumentConfig"  # Optional[InstrumentConfig]
+    verifyPaths: bool = True
 
     def __init__(self) -> None:
+        self.verifyPaths = Config["localdataservice.config.verifypaths"]
         self.instrumentConfig = self.readInstrumentConfig()
 
+    def _determineInstrConfigPaths(self) -> None:
+        """This method locates the instrument configuration path and
+        sets the instance variable ``instrumentConfigPath``."""
+        # verify parent directory exists
+        self.dataPath = Path(Config["instrument.home"])
+        if self.verifyPaths and not self.dataPath.exists():
+            raise _createFileNotFoundError("Config['instrument.home']", self.dataPath)
+
+        # look for the config file and verify it exists
+        self.instrumentConfigPath = self.dataPath / Config["instrument.config"]
+
     def readInstrumentConfig(self) -> InstrumentConfig:
+        self._determineInstrConfigPaths()
+
         instrumentParameterMap = self._readInstrumentParameters()
-        instrumentParameterMap["bandwidth"] = instrumentParameterMap.pop("neutronBandwidth")
-        instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
-        instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
-        instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
-        instrumentConfig = InstrumentConfig(**instrumentParameterMap)
+        try:
+            instrumentParameterMap["bandwidth"] = instrumentParameterMap.pop("neutronBandwidth")
+            instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
+            instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
+            instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
+            instrumentParameterMap["NBins"] = 10  # default value specified by @mguthriem
+            instrumentConfig = InstrumentConfig(**instrumentParameterMap)
+        except KeyError as e:
+            raise KeyError(f"{e}: while reading instrument configuration '{self.instrumentConfigPath}'") from e
         if self.dataPath:
-            instrumentConfig.calibrationDirectory = self.dataPath + "shared/Calibration/"
+            instrumentConfig.calibrationDirectory = self.dataPath / "shared/Calibration/"
+            if self.verifyPaths and not instrumentConfig.calibrationDirectory.exists():
+                raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
 
         return instrumentConfig
 
     def _readInstrumentParameters(self) -> Dict[str, Any]:
         instrumentParameterMap: Dict[str, Any] = {}
-        with open(self.instrumentConfigPath, "r") as json_file:
-            instrumentParameterMap = json.load(json_file)
-        return instrumentParameterMap
+        try:
+            with open(self.instrumentConfigPath, "r") as json_file:
+                instrumentParameterMap = json.load(json_file)
+            return instrumentParameterMap
+        except FileNotFoundError as e:
+            raise _createFileNotFoundError("Instrument configuration file", self.instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str) -> StateConfig:
         reductionParameters = self._readReductionParameters(runId)
@@ -78,11 +106,12 @@ class LocalDataService:
             focusGroups=self._readFocusGroups(runId),
             isLiteMode=True,  # TODO: Support non lite mode
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=self.instrumentConfig.calibrationDirectory
-            + "Powder/"
-            + reductionParameters["stateId"]
-            + "/"
-            + reductionParameters["rawVCorrFileName"],
+            vanadiumFilePath=str(
+                self.instrumentConfig.calibrationDirectory
+                / "Powder"
+                / reductionParameters["stateId"]
+                / reductionParameters["rawVCorrFileName"]
+            ),
             calibrationMaskFileName=reductionParameters.get("CalibrationMaskFilename"),
             stateId=reductionParameters["stateId"],
             tofBin=reductionParameters["tofBin"],
@@ -100,11 +129,12 @@ class LocalDataService:
             filename=reductionParameters["calFileName"],
             runNumber=reductionParameters["CRun"][0],
             name=reductionParameters.get("CalibrantName"),
-            diffCalPath=self.instrumentConfig.calibrationDirectory
-            + "Powder/"
-            + reductionParameters["stateId"]
-            + "/"
-            + reductionParameters["calFileName"],
+            diffCalPath=str(
+                self.instrumentConfig.calibrationDirectory
+                / "Powder"
+                / reductionParameters["stateId"]
+                / reductionParameters["calFileName"]
+            ),
             latticeParameters=None,  # TODO: missing, reductionParameters['CalibrantLatticeParameters'],
             reference=None,
         )  # TODO: missing, reductionParameters['CalibrantReference'])
@@ -143,10 +173,12 @@ class LocalDataService:
                     dBin=reductionParameters["focGroupDBin"][i],
                     dMax=reductionParameters["focGroupDMax"][i],
                     dMin=reductionParameters["focGroupDMin"][i],
-                    definition=self.instrumentConfig.calibrationDirectory
-                    + "Powder/"
-                    + self.instrumentConfig.pixelGroupingDirectory
-                    + reductionParameters["focGroupDefinition"][i],
+                    definition=str(
+                        self.instrumentConfig.calibrationDirectory
+                        / "Powder"
+                        / self.instrumentConfig.pixelGroupingDirectory
+                        / reductionParameters["focGroupDefinition"][i]
+                    ),
                 )
             )
         return focusGroups
@@ -241,19 +273,34 @@ class LocalDataService:
             if os.path.isfile(fname):
                 fileList.append(fname)
         if len(fileList) == 0 and throws:
-            raise ValueError("No files could be found with pattern: {}".format(pattern))
+            raise ValueError(f"No files could be found with pattern: {pattern}")
 
         return fileList
 
-    def _constructCalibrationPath(self, stateId):
-        return self.instrumentConfig.calibrationDirectory + "Powder/" + stateId + "/"
+    def _findMatchingDirList(self, pattern, throws=True) -> List[str]:
+        """
+        Similar to the above method `_findMatchingFileList` except for directories!
+        Throw if nothing found.(Or dont!)
+        """
+        fileList: List[str] = []
+        for fname in glob.glob(pattern, recursive=True):
+            if os.path.isdir(fname):
+                fileList.append(fname)
+        if len(fileList) == 0 and throws:
+            raise ValueError(f"No directories could be found with pattern: {pattern}")
+
+        return fileList
+
+    def _constructCalibrationStatePath(self, stateId):
+        # TODO: Propogate pathlib through codebase
+        return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId}/"
 
     def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
         # lookup IPST number
         run: int = int(runId)
         stateId, _ = self._generateStateId(runId)
 
-        calibrationPath: str = self._constructCalibrationPath(stateId)
+        calibrationPath: str = self._constructCalibrationStatePath(stateId)
         calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"  # noqa: E501
 
         foundFiles = self._findMatchingFileList(calibSearchPattern)
@@ -301,16 +348,70 @@ class LocalDataService:
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
         stateId, _ = self._generateStateId(runId)
-        calibrationPath: str = self._constructCalibrationPath(stateId)
+        calibrationPath: str = self._constructCalibrationStatePath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         calibrationIndex: List[CalibrationIndexEntry] = []
         if os.path.exists(indexPath):
             calibrationIndex = parse_file_as(List[CalibrationIndexEntry], indexPath)
         return calibrationIndex
 
+    def _isApplicableEntry(self, calibrationIndexEntry, runId):
+        """
+        Checks to see if an entry in the calibration index applies to a given run id via numerical comparison.
+        """
+        if calibrationIndexEntry.appliesTo == runId:
+            return True
+        if calibrationIndexEntry.appliesTo.startswith(">"):
+            # get latest entry that applies to a runId greater than this runId
+            if int(runId) > int(calibrationIndexEntry.appliesTo[1:]):
+                return True
+        if calibrationIndexEntry.appliesTo.startswith("<"):
+            # get latest entry that applies to a runId less than this runId
+            if int(runId) < int(calibrationIndexEntry.appliesTo[1:]):
+                return True
+        return False
+
+    def _getVersionFromCalibrationIndex(self, runId: str):
+        """
+        Loads calibration index and inspects all entries to attain latest calibration version that applies to the run id
+        """
+        # lookup calibration index
+        calibrationIndex = self.readCalibrationIndex(runId)
+        # From the index find the latest calibration
+        latestCalibration = None
+        version = None
+        if calibrationIndex:
+            # sort by timestamp
+            calibrationIndex.sort(key=lambda x: x.timestamp)
+            # filter for latest applicable
+            relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runId), calibrationIndex))
+            if len(relevantEntries) < 1:
+                raise ValueError(f"No applicable calibration index entries found for runId {runId}")
+            latestCalibration = relevantEntries[-1]
+            version = latestCalibration.version
+        return version
+
+    def _constructCalibrationDataPath(self, runId: str, version: str):
+        """
+        Generates the path for an instrument state's versioned calibration files.
+        """
+        stateId, _ = self._generateStateId(runId)
+        statePath = self._constructCalibrationStatePath(stateId)
+        cablibrationVersionPath: str = statePath + "v_{}/".format(version)
+        return cablibrationVersionPath
+
+    def _getCalibrationDataPath(self, runId: str):
+        """
+        Given a run id, get the latest and greatest calibration file set's path for said run.
+        """
+        version = self._getVersionFromCalibrationIndex(runId)
+        if version is None:
+            raise ValueError(f"No calibration data found for runId {runId}")
+        return self._constructCalibrationDataPath(runId, version)
+
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         stateId, _ = self._generateStateId(entry.runNumber)
-        calibrationPath: str = self._constructCalibrationPath(stateId)
+        calibrationPath: str = self._constructCalibrationStatePath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         # append to index and write to file
         calibrationIndex = self.readCalibrationIndex(entry.runNumber)
@@ -319,9 +420,7 @@ class LocalDataService:
             indexFile.write(json.dumps([entry.dict() for entry in calibrationIndex]))
 
     def getCalibrationRecordPath(self, runId: str, version: str):
-        stateId, _ = self._generateStateId(runId)
-        calibrationPath: str = self._constructCalibrationPath(stateId)
-        recordPath: str = calibrationPath + "{}/v_{}/CalibrationRecord.json".format(runId, version)
+        recordPath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationRecord.json"
         return recordPath
 
     def _extractFileVersion(self, file: str):
@@ -348,6 +447,20 @@ class LocalDataService:
                 latestFile = file
         return latestFile
 
+    def _getLatestCalibrationVersion(self, stateId: str):
+        """
+        Ignoring the calibration index, whats the last set of calibration files to be generated.
+        """
+        calibrationStatePath = self._constructCalibrationStatePath(stateId)
+        calibrationVersionPath = f"{calibrationStatePath}v_*/"
+        latestVersion = 0
+        versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
+        for versionDir in versionDirs:
+            version = int(versionDir.split("/")[-2].split("_")[-1])
+            if version > latestVersion:
+                latestVersion = version
+        return latestVersion
+
     def readCalibrationRecord(self, runId: str, version: str = None):
         # Need to run this because of its side effect, TODO: Remove side effect
         self._readReductionParameters(runId)
@@ -364,41 +477,60 @@ class LocalDataService:
             record = parse_file_as(CalibrationRecord, latestFile)
         return record
 
-    def writeCalibrationRecord(self, record: CalibrationRecord):
-        stateId, _ = self._generateStateId(record.parameters.runConfig.runNumber)
-        calibrationPath: str = self._constructCalibrationPath(stateId)
-        version = 1
-        previousCalibration = self.readCalibrationRecord(record.parameters.runConfig.runNumber)
-        if previousCalibration:
-            version = previousCalibration.version + 1
-        recordPath: str = self.getCalibrationRecordPath(record.parameters.runConfig.runNumber, version)
+    def writeCalibrationRecord(self, record: CalibrationRecord, version: int = None):
+        """
+        Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
+        """
+        runNumber = record.reductionIngredients.runConfig.runNumber
+        stateId, _ = self._generateStateId(record.reductionIngredients.runConfig.runNumber)
+        previousVersion = self._getLatestCalibrationVersion(stateId)
+        if not version:
+            version = previousVersion + 1
+        recordPath: str = self.getCalibrationRecordPath(record.reductionIngredients.runConfig.runNumber, version)
         record.version = version
-        calibrationPath += f"{record.parameters.runConfig.runNumber}/v_{version}"
+        calibrationPath = self._constructCalibrationDataPath(record.reductionIngredients.runConfig.runNumber, version)
         # check if directory exists for runId
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
         # append to record and write to file
         with open(recordPath, "w") as recordFile:
-            recordFile.write(json.dumps(record.dict()))
+            recordFile.write(record.json())
+
+        self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
+        for workspace in record.workspaceNames:
+            self.writeWorkspace(calibrationPath, workspace)
         return record
 
-    def writeCalibrationReductionResult(self, runId: str, workspaceName: str):
+    def writeWorkspace(self, path: str, workspaceName: str):
+        """
+        Writes a Mantid Workspace to disk.
+        """
+        saveAlgo = AlgorithmManager.create("SaveNexus")
+        saveAlgo.setProperty("InputWorkspace", workspaceName)
+        saveAlgo.setProperty("Filename", path + workspaceName)
+        saveAlgo.execute()
+
+    def writeCalibrationReductionResult(self, runId: str, workspaceName: str, dryrun: bool = False):
         # use mantid to write workspace to file
         stateId, _ = self._generateStateId(runId)
-        calibrationPath: str = self._constructCalibrationPath(stateId)
-        filenameFormat = calibrationPath + "{}/".format(runId) + workspaceName + "_v{}.nxs"
+        calibrationPath: str = self._constructCalibrationStatePath(stateId)
+        filenameFormat = f"{calibrationPath}{runId}/{workspaceName}" + "_v{}.nxs"
         # find total number of files
         foundFiles = self._findMatchingFileList(filenameFormat.format("*"), throws=False)
         version = len(foundFiles) + 1
 
-        saveAlgo = AlgorithmManager.create("SaveNexus")
-        saveAlgo.setProperty("InputWorkspace", workspaceName)
-        saveAlgo.setProperty("Filename", filenameFormat.format(version))
-        saveAlgo.execute()
+        filename = filenameFormat.format(version)
+        if not dryrun:
+            saveAlgo = AlgorithmManager.create("SaveNexus")
+            saveAlgo.setProperty("InputWorkspace", workspaceName)
+            saveAlgo.setProperty("Filename", filename)
+            saveAlgo.execute()
+        return filename
 
     def writeCalibrantSample(self, sample: CalibrantSamples):
         samplePath: str = Config["samples.home"]
         fileName: str = sample.name + "_" + sample.unique_id
+        # TODO: Test code should not pollute production code, why is this here?
         if fileName == "test_id123":
             filePath = os.path.join(Resource._resourcesPath + fileName) + ".json"
         else:
@@ -408,44 +540,12 @@ class LocalDataService:
         with open(filePath, "w") as sampleFile:
             sampleFile.write(json.dumps(sample.dict()))
 
-    def _isApplicableEntry(self, calibrationIndexEntry, runId):
-        if calibrationIndexEntry.appliesTo == runId:
-            return True
-        if calibrationIndexEntry.appliesTo.startswith(">"):
-            # get latest entry that applies to a runId greater than this runId
-            if int(runId) > int(calibrationIndexEntry.appliesTo[1:]):
-                return True
-        if calibrationIndexEntry.appliesTo.startswith("<"):
-            # get latest entry that applies to a runId less than this runId
-            if int(runId) < int(calibrationIndexEntry.appliesTo[1:]):
-                return True
-        return False
-
-    def _getVersionFromCalibrationIndex(self, runId: str):
-        # lookup calibration index
-        calibrationIndex = self.readCalibrationIndex(runId)
-        # From the index find the latest calibration
-        latestCalibration = None
-        version = None
-        if calibrationIndex:
-            # sort by timestamp
-            calibrationIndex.sort(key=lambda x: x.timestamp)
-            # filter for latest applicable
-            relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runId), calibrationIndex))
-            if len(relevantEntries) < 1:
-                raise ValueError("No applicable calibration index entries found for runId {}".format(runId))
-            latestCalibration = relevantEntries[-1]
-            version = latestCalibration.version
-        return version
-
     def _getCurrentCalibrationRecord(self, runId: str):
         version = self._getVersionFromCalibrationIndex(runId)
         return self.readCalibrationRecord(runId, version)
 
     def getCalibrationStatePath(self, runId: str, version: str):
-        stateId, _ = self._generateStateId(runId)
-        calibrationPath: str = self._constructCalibrationPath(stateId)
-        statePath: str = calibrationPath + "{}/v_{}/CalibrationParameters.json".format(runId, version)
+        statePath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationParameters.json"
         return statePath
 
     def readCalibrationState(self, runId: str, version: str = None):
@@ -457,6 +557,7 @@ class LocalDataService:
         if version:
             latestFile = self._getFileOfVersion(calibrationStatePath, version)
         else:
+            # TODO: This should refer to the calibration index
             latestFile = self._getLatestFile(calibrationStatePath)
 
         calibrationState = None
@@ -465,18 +566,19 @@ class LocalDataService:
 
         return calibrationState
 
-    def writeCalibrationState(self, runId: str, calibration: Calibration):
-        # get stateId and check to see if such a folder exists, if not create an initialize it
+    def writeCalibrationState(self, runId: str, calibration: Calibration, version: int = None):
+        """
+        Writes a `Calibration` to either a new version folder, or overwrite a specific version.
+        """
         stateId, _ = self._generateStateId(runId)
-        calibrationPath: str = self._constructCalibrationPath(stateId)
-        version = 1
-        previousState = self.readCalibrationState(runId)
-        if previousState:
-            version = previousState.version + 1
+        calibrationPath: str = self._constructCalibrationStatePath(stateId)
+        previousVersion = self._getLatestCalibrationVersion(stateId)
+        if not version:
+            version = previousVersion + 1
         # check for the existenece of a calibration parameters file
         calibrationParametersPath = self.getCalibrationStatePath(runId, version)
         calibration.version = version
-        calibrationPath += f"{runId}/v_{version}"
+        calibrationPath = self._constructCalibrationDataPath(runId, version)
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
         # write the file and return the calibration state
@@ -534,3 +636,25 @@ class LocalDataService:
 
         self.writeCalibrationState(runId, calibration)
         return calibration
+
+    def getWorkspaceForName(self, name):
+        """
+        Returns a workspace from Mantid if it exists.
+        Abstraction for the Service layer to interact with mantid data.
+        Usually we only deal in references as its quicker,
+        but sometimes its already in memory due to some previous step.
+        """
+        try:
+            return mtd[name]
+        except ValueError:
+            return None
+
+    def deleteWorkspace(self, workspaceName: str):
+        """
+        Deletes a workspace from Mantid.
+        Mostly for cleanup at the Service Layer.
+        """
+        if self.getWorkspaceForName(workspaceName) is not None:
+            deleteWorkspaceAlgo = AlgorithmManager.create("DeleteWorkspace")
+            deleteWorkspaceAlgo.setProperty("Workspace", workspaceName)
+            deleteWorkspaceAlgo.execute()

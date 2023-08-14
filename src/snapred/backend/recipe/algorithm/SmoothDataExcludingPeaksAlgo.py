@@ -11,6 +11,7 @@
 """
 import json
 
+import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     PythonAlgorithm,
@@ -18,7 +19,7 @@ from mantid.api import (
     mtd,
 )
 from mantid.kernel import Direction
-from scipy.interpolate import splev, splrep
+from scipy.interpolate import make_smoothing_spline, splev
 
 from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
@@ -27,17 +28,20 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 name = "SmoothDataExcludingPeaks"
 
 
+# TODO: Rename so it matches filename
 class SmoothDataExcludingPeaks(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
         self.declareProperty("SmoothDataExcludingPeaksIngredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
+        self.declareProperty("OutputWorkspace", defaultValue="SmoothedDataExcludingPeaks", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
         self.log().notice("Removing peaks and smoothing data")
+
+        outputWorkspaceName = self.getProperty("OutputWorkspace").value
 
         # load ingredients
         smoothdataIngredients = SmoothDataExcludingPeaksIngredients(
@@ -57,54 +61,50 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
         # call the diffraction spectrum weight calculator
         weight_ws_name = "weight_ws"
-        weightCalAlgo = DiffractionSpectrumWeightCalculator()
-        weightCalAlgo.initialize()
-        weightCalAlgo.setProperty("InputWorkspace", input_ws)
-        weightCalAlgo.setProperty("InstrumentState", instrumentState.json())
-        weightCalAlgo.setProperty("CrystalInfo", crystalInfo.json())
-        weightCalAlgo.setProperty("WeightWorkspace", weight_ws_name)
-        weightCalAlgo.setChild(True)
-        weightCalAlgo.execute()
-        weights_ws = mtd[weight_ws_name]
-
-        # create workspace group
-        ws_group = WorkspaceGroup()
-        mtd.add("SmoothedDataExcludingPeaks", ws_group)
+        self.mantidSnapper.DiffractionSpectrumWeightCalculator(
+            "Calculating spectrum weights...",
+            InputWorkspace=input_ws,
+            InstrumentState=instrumentState.json(),
+            CrystalInfo=crystalInfo.json(),
+            WeightWorkspace=weight_ws_name,
+        )
+        # This is because its a histogram
+        self.mantidSnapper.CloneWorkspace(
+            "Cloning new workspace for smoothed spectrum data...",
+            InputWorkspace=input_ws,
+            OutputWorkspace=outputWorkspaceName,
+        )
+        self.mantidSnapper.executeQueue()
+        outputWorkspace = self.mantidSnapper.mtd[outputWorkspaceName]
+        weights_ws = self.mantidSnapper.mtd[weight_ws_name]
 
         # get number of spectrum to iterate over
-        numSpec = weights_ws.getNumberHistograms()
+
+        numSpec = mtd[weight_ws_name].getNumberHistograms()
 
         # extract x & y data for csaps
         for index in range(numSpec):
-            x = weights_ws.readX(index)  # len of 1794
+            weightX = weights_ws.readX(index)  # len of 1794
+            x = ws.readX(index)
             w = weights_ws.readY(index)  # len of 1793
             y = ws.readY(index)
-            x_midpoints = (x[:-1] + x[1:]) / 2  # len of 1793
-            x_list = x_midpoints.tolist()
-            y_list = y.tolist()
-            w_list = w.tolist()
-            joined_list = []
-            joined_list = []
+            weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2  # len of 1793
+            xMidpoints = (x[:-1] + x[1:]) / 2
 
-            # joining weight array with y values array
-            for i, y_value in enumerate(y_list):
-                joined_list.append(y_value * w_list[i])
-            tck = splrep(x_list, joined_list)
-            smoothing_results = splev(x_list, tck)
-            single_spectrum_ws_name = f"{input_ws}_temp_single_spectrum_{index}"
-            self.mantidSnapper.CreateWorkspace(
-                "Creating new workspace for smoothed spectrum data...",
-                DataX=x,
-                DataY=smoothing_results,
-                NSpec=index + 1,
-                OutputWorkspace=single_spectrum_ws_name,
-            )
+            weightXMidpoints = weightXMidpoints[w != 0]
+            y = y[w != 0]
+            # Generate spline with purged dataset
+            tck = make_smoothing_spline(weightXMidpoints, y)
+            # fill in the removed data using the spline function and original datapoints
+            smoothing_results = splev(xMidpoints, tck)
 
-            # execute mantidsnapper
-            self.mantidSnapper.executeQueue()
-            ws_group.add(single_spectrum_ws_name)
-            self.setProperty("OutputWorkspace", ws_group.name())
-            return ws_group
+            outputWorkspace.setY(index, smoothing_results)
+
+        self.mantidSnapper.DeleteWorkspace("Cleaning up weight workspace...", Workspace=weight_ws_name)
+        self.mantidSnapper.executeQueue()
+
+        self.setProperty("OutputWorkspace", outputWorkspaceName)
+        return outputWorkspaceName
 
 
 # Register algorithm with Mantid
