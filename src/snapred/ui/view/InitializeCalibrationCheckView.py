@@ -1,6 +1,5 @@
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtGui import QDialog, QGridLayout
+from PyQt5.QtWidgets import QComboBox, QHBoxLayout, QLabel, QLineEdit, QPushButton, QWidget
 
 from snapred.ui.presenter.InitializeCalibrationPresenter import CalibrationCheck
 from snapred.ui.widget.Toggle import Toggle
@@ -18,11 +17,11 @@ class CalibrationMenu(QDialog):
         layout.addWidget(self.runNumberField, 0, 0)
 
         self.sampleDropdown = QComboBox()
-        self.sampleDropdown.setObjectName("sampleDropdown")  # set the object name
+        self.sampleDropdown.setObjectName("sampleDropdown")
         self.sampleDropdown.addItem("Select Sample")
 
         self.groupingFileDropdown = QComboBox()
-        self.groupingFileDropdown.setObjectName("groupingFileDropdown")  # set the object name
+        self.groupingFileDropdown.setObjectName("groupingFileDropdown")
         self.groupingFileDropdown.addItem("Select Grouping File")
 
         layout.addWidget(self.sampleDropdown, 1, 0)

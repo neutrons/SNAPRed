@@ -1,6 +1,6 @@
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QWidget
+from PyQt5.QtWidgets import QLabel, QLineEdit, QPushButton, QVBoxLayout
 
 
 class PromptUserforCalibrationInputView(QWidget):
