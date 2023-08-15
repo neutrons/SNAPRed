@@ -34,6 +34,10 @@ class CustomGroupWorkspace(PythonAlgorithm):
         loadEmptyInstrument = bool(not donorWorkspace)
         if loadEmptyInstrument:
             donorWorkspace = "idf"  # name doesn't matter
+            # TODO: THIS WILL BREAK
+            # I'm not changing it now since LoadGroupingDefinition is replacing this(I think)
+            # but this was refactored from LoadInstrument and the params were just carried over
+            # These two algos do not share the same params!!!
             self.mantidSnapper.LoadEmptyInstrument(
                 "Loading empty instrument...",
                 Workspace=donorWorkspace,

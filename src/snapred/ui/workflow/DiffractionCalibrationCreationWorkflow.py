@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QLabel
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest
-from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.backend.dao.calibration import CalibrationIndexEntry, CalibrationRecord
 from snapred.backend.dao.request import CalibrationAssessmentRequest, CalibrationExportRequest
 from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
 from snapred.ui.widget.JsonFormList import JsonFormList
@@ -58,9 +58,8 @@ class DiffractionCalibrationCreationWorkflow:
         # TODO Load Previous ->
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration assessment
-        payload = CalibrationAssessmentRequest(
-            runConfig=RunConfig(runNumber=str(view.getFieldText("runNumber"))), cifPath=view.getFieldText("cifPath")
-        )
+        runNumber = view.getFieldText("run.runNumber")
+        payload = CalibrationAssessmentRequest(run=RunConfig(runNumber=runNumber), cifPath=view.getFieldText("cifPath"))
         request = SNAPRequest(path="calibration/assessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
@@ -68,11 +67,11 @@ class DiffractionCalibrationCreationWorkflow:
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration save
-        calibrationRecord = self.responses[-1]
+        calibrationRecord = CalibrationRecord(**self.responses[-1].data)
         calibrationIndexEntry = CalibrationIndexEntry(
-            runNumber=str(view.getFieldText("runNumber")),
-            comments=view.getFieldText("comments"),
-            author=view.getFieldText("author"),
+            runNumber=view.getFieldText("calibrationIndexEntry.runNumber"),
+            comments=view.getFieldText("calibrationIndexEntry.comments"),
+            author=view.getFieldText("calibrationIndexEntry.author"),
         )
         payload = CalibrationExportRequest(
             calibrationRecord=calibrationRecord, calibrationIndexEntry=calibrationIndexEntry

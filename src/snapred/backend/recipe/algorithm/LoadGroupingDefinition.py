@@ -75,6 +75,10 @@ class LoadGroupingDefinition(PythonAlgorithm):
             absent_input_properties_count = sum(not prop for prop in [instrument_name, instrument_file_name])
             if absent_input_properties_count == 0 or absent_input_properties_count == 2:
                 raise Exception("Either InstrumentName or InstrumentFilename must be specified, but not both.")
+        if file_extension not in self.supported_xml_file_extensions:
+            instrument_donor = self.getProperty("InstrumentDonor").value
+            if instrument_donor:
+                raise Exception("InstrumentDonor only to be specified when GroupingFilename is in XML format.")
 
     def PyExec(self) -> None:
         self.validateInput()
@@ -99,12 +103,25 @@ class LoadGroupingDefinition(PythonAlgorithm):
                 OutputWorkspace=output_ws_name,
             )
         elif file_extension in self.supported_xml_file_extensions:
+            instrument_donor = self.getProperty("InstrumentDonor").value
+            preserve_donor = True if instrument_donor else False
+            if not instrument_donor:
+                # create one from the instrument definition file
+                instrument_donor = self.mantidSnapper.LoadEmptyInstrument(
+                    "Loading instrument definition file...",
+                    Filename=self.getProperty("InstrumentFilename").value,
+                    OutputWorkspace="idf",
+                )
             self.mantidSnapper.LoadDetectorsGroupingFile(
                 "Loading grouping definition from detectors grouping file...",
                 InputFile=grouping_file_name,
-                InputWorkspace=self.getProperty("InstrumentDonor").value,
+                InputWorkspace=instrument_donor,
                 OutputWorkspace=output_ws_name,
             )
+            if not preserve_donor:
+                self.mantidSnapper.DeleteWorkspace(
+                    "Deleting instrument definition workspace...", Workspace=instrument_donor
+                )
         else:  # must be a NEXUS file
             self.mantidSnapper.LoadNexusProcessed(
                 "Loading grouping definition from grouping workspace...",
