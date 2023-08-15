@@ -59,19 +59,20 @@ class CalibrationCheck(object):
         self.worker = self.worker_pool.createWorker(
             target=self.interfaceController.executeRequest, args=(stateCheckRequest)
         )
-        self.worker.result.connect(self.handleStateCheckResult(runNumber_str))
+        self.worker.result.connect(self.handleStateCheckResult)
 
         self.worker_pool.submitWorker(self.worker)
 
-    def handleStateCheckResult(self, response: SNAPResponse, runID: str):
+    def handleStateCheckResult(self, response: SNAPResponse):
         if response.responseCode != 200:
             self._spawnStateCreationWorkflow()
             return
         else:
             pass
 
+        runID = str(self.view.getRunNumber())
         pixelGroupingParametersRequest = SNAPRequest(
-            "/calibration/retrievePixelGroupingParams", payload=json.dumps({"runNumber": runID})
+            path="/calibration/retrievePixelGroupingParams", payload=json.dumps({"runNumber": runID})
         )
 
         self.worker = self.worker_pool.createWorker(

@@ -1,7 +1,8 @@
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.ui.presenter.InitializeCalibrationPresenter import CalibrationCheck
 
 
@@ -53,19 +54,13 @@ def test_handleDataCheckResult(mock_View):
 
 
 def test_handleStateCheckResult(mock_View):
-    calibrationCheck = CalibrationCheck(mock_View)
+    calibration_check = CalibrationCheck(mock_View)
     mock_response = Mock()
-    mock_response.responseCode = 200
+    mock_response.responseCode = 404
 
-    # Mock out the problematic StateConfig.focusGroups.definition TODO: Needs to be fixed and tested.
-    mock_focusGroups = MagicMock()
-    mock_focusGroups.definition = "mocked_definition"
-    with patch("snapred.ui.presenter.InitializeCalibrationPresenter.StateConfig.focusGroups", mock_focusGroups):
-        with patch("snapred.ui.presenter.InitializeCalibrationPresenter.SNAPRequest"):
-            calibrationCheck.handleStateCheckResult(mock_response)
-
-            calibrationCheck.worker_pool.createWorker.assert_called()
-            calibrationCheck.worker_pool.submitWorker.assert_called_with(calibrationCheck.worker)
+    with patch.object(calibration_check, "_spawnStateCreationWorkflow") as mock_spawn_workflow:
+        calibration_check.handleStateCheckResult(mock_response)
+        mock_spawn_workflow.assert_called_once()
 
 
 def test_handlePixelGroupingResult(mock_View):
