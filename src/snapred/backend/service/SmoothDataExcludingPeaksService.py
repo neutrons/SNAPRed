@@ -16,8 +16,9 @@ class SmoothDataExcludingPeaksService(Service):
         self.registerPath("smoothDataExcludingPeaks", self.smooth_data_excluding_peaks)
         return
 
-    def name(self):
-        return self._name
+    @staticmethod
+    def name():
+        return "smoothDataExcludingPeaks"
 
     @FromString
     def smooth_data_excluding_peaks(

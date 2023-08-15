@@ -36,6 +36,7 @@ class ServiceFactory:
         self.serviceDirectory.registerService(ApiService)
         self.serviceDirectory.registerService(FitMultiplePeaksService)
         self.serviceDirectory.registerService(VanadiumFocussedReductionService)
+        self.serviceDirectory.registerService(SmoothDataExcludingPeaksService)
 
     def getServiceNames(self):
         return self.serviceDirectory.keys()
