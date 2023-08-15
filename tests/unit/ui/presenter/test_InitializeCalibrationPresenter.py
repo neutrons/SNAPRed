@@ -1,6 +1,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from qtpy import QtCore
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.ui.presenter.InitializeCalibrationPresenter import CalibrationCheck
@@ -17,7 +18,7 @@ def mock_View():
     return view
 
 
-def test_labelView(mock_View):
+def test_labelView(mock_View, qtbot):
     calibrationCheck = CalibrationCheck(mock_View)
     test_text = "Test"
     calibrationCheck._labelView(test_text)
@@ -25,7 +26,7 @@ def test_labelView(mock_View):
     mock_View.layout().addWidget.assert_called()
 
 
-def test_handleButtonClicked(mock_View):
+def test_handleButtonClicked(mock_View, qtbot):
     with patch(
         "snapred.ui.presenter.InitializeCalibrationPresenter.CalibrationCheck.worker_pool.createWorker",
         return_value=Mock(),
@@ -39,7 +40,7 @@ def test_handleButtonClicked(mock_View):
         )
 
 
-def test_handleDataCheckResult(mock_View):
+def test_handleDataCheckResult(mock_View, qtbot):
     calibrationCheck = CalibrationCheck(mock_View)
     mock_response = Mock()
     mock_response.responseCode = 404
@@ -53,7 +54,7 @@ def test_handleDataCheckResult(mock_View):
     mock_labelView.assert_called_with("Error, data doesn't exist")
 
 
-def test_handleStateCheckResult(mock_View):
+def test_handleStateCheckResult(mock_View, qtbot):
     calibration_check = CalibrationCheck(mock_View)
     mock_response = Mock()
     mock_response.responseCode = 404
@@ -63,7 +64,7 @@ def test_handleStateCheckResult(mock_View):
         mock_spawn_workflow.assert_called_once()
 
 
-def test_handlePixelGroupingResult(mock_View):
+def test_handlePixelGroupingResult(mock_View, qtbot):
     calibrationCheck = CalibrationCheck(mock_View)
     mock_response = Mock()
     mock_response.responseCode = 200
