@@ -135,13 +135,6 @@ class CalibrationService(Service):
         else:
             return False
 
-    @FromString
-    def checkDataExists(self, run: RunConfig):
-        if not run:
-            raise ValueError("Runs list empty")
-        else:
-            return True
-
     def _calculatePixelGroupingParameters(self, calibrationState, groupingFile: str):
         groupingIngredients = PixelGroupingIngredients(
             calibrationState=calibrationState,

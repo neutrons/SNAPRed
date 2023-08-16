@@ -31,29 +31,9 @@ class CalibrationCheck(object):
     def handleButtonClicked(self):
         self.view.beginFlowButton.setEnabled(False)
 
-        # Check to see if data exists
         runNumber = self.view.getRunNumber()
         runNumber_str = str(runNumber)
-        dataCheckRequest = SNAPRequest(
-            path="/calibration/checkDataExists", payload=json.dumps({"runNumber": runNumber_str})
-        )
 
-        self.worker = self.worker_pool.createWorker(
-            target=self.interfaceController.executeRequest, args=(dataCheckRequest)
-        )
-        self.worker.result.connect(self.handleDataCheckResult)
-
-        self.worker_pool.submitWorker(self.worker)
-
-    def handleDataCheckResult(self, response: SNAPResponse):
-        if response.responseCode != 200:
-            self._labelView("Error, data doesn't exist")
-            self.view.beginFlowButton.setEnabled(True)
-            return
-        else:
-            pass
-
-        runNumber_str = str(self.view.getRunNumber())
         stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload=json.dumps({"runNumber": runNumber_str}))
 
         self.worker = self.worker_pool.createWorker(
