@@ -40,8 +40,7 @@ jobs:
         /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
     - name: Test with pytest
       run: |
-        xvfb-run --server-args="-screen 0 1280x1024x16" --auto-servernum
-        python -m pytest --cov=src --cov-report=xml --cov-report=term
+        xvfb-run --server-args="-screen 0 1280x1024x16" -a python -m pytest --cov=src --cov-report=xml --cov-report=term
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
       with:
