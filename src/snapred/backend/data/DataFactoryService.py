@@ -66,3 +66,6 @@ class DataFactoryService:
 
     def getFocusGroups(self, runId: str):
         return self.lookupService._readFocusGroups(runId)
+
+    def checkCalibrationStateExists(self, runId: str):
+        return self.lookupService.checkCalibrationFileExists(runId)

@@ -44,14 +44,12 @@ logger = snapredLogger.getLogger(__name__)
 class CalibrationService(Service):
     dataFactoryService: "DataFactoryService"
     dataExportService: "DataExportService"
-    localDataService: "LocalDataService"
 
     # register the service in ServiceFactory please!
     def __init__(self):
         super().__init__()
         self.dataFactoryService = DataFactoryService()
         self.dataExportService = DataExportService()
-        self.localDataService = LocalDataService()
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
@@ -126,16 +124,14 @@ class CalibrationService(Service):
         return data
 
     @FromString
-    def hasState(self, runId: str, version: str):
-        stateID, _ = self.localDataService._generateStateId(runId)
-        calibrationStatePath = self.localDataService._constructCalibrationPath(stateID)
-
-        if os.path.exists(calibrationStatePath):
-            recordPath: str = calibrationStatePath + "{}/v{}/CalibrationRecord.json".format(runId, version)
-            if os.path.exists(recordPath):
-                return True
-            else:
+    def hasState(self, runId: str):
+        calibrationFile = self.dataFactoryService.checkCalibrationStateExists(runId)
+        if calibrationFile:
+            record = self.dataFactoryService.getCalibrationRecord(runId)
+            if record is None:
                 return False
+            else:
+                return True
         else:
             return False
 

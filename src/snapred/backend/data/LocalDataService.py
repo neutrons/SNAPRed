@@ -658,3 +658,12 @@ class LocalDataService:
             deleteWorkspaceAlgo = AlgorithmManager.create("DeleteWorkspace")
             deleteWorkspaceAlgo.setProperty("Workspace", workspaceName)
             deleteWorkspaceAlgo.execute()
+
+    def checkCalibrationFileExists(self, runId: str):
+        stateID, _ = self._generateStateId(runId)
+        calibrationStatePath = self._constructCalibrationDataPath(stateID)
+
+        if os.path.exists(calibrationStatePath):
+            return True
+        else:
+            return False
