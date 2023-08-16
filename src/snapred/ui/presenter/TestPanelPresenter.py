@@ -33,7 +33,7 @@ class TestPanelPresenter(object):
         self.jsonForm = JsonForm("Advanced Parameters", jsonSchema=jsonSchema, parent=view)
         self._loadDefaultJsonInput("config//runs", self.jsonForm)
         self.comboSelectionView = BackendRequestView(self.jsonForm, "config//runs", parent=self.view)
-        self.calibrationCheckView = InitializeCalibrationCheckView(self.jsonForm, parent=self.view)
+        self.calibrationCheckView = InitializeCalibrationCheckView(parent=self.view)
         self.view.centralWidget.layout().addWidget(self.apiComboBox)
         self.view.centralWidget.layout().addWidget(self.comboSelectionView)
         self.view.centralWidget.layout().setAlignment(self.comboSelectionView, Qt.AlignTop | Qt.AlignHCenter)

@@ -44,7 +44,7 @@ class CalibrationCheck(object):
         self.worker_pool.submitWorker(self.worker)
 
     def handleStateCheckResult(self, response: SNAPResponse):
-        if response.responseCode != 200:
+        if response.code != 200:
             self._spawnStateCreationWorkflow()
             return
         else:
@@ -63,7 +63,7 @@ class CalibrationCheck(object):
         self.worker_pool.submitWorker(self.worker)
 
     def handlePixelGroupingResult(self, response: SNAPResponse):
-        if response.responseCode == 200:
+        if response.code == 200:
             self._labelView("Ready to Calibrate!")
 
     def _spawnStateCreationWorkflow(self):

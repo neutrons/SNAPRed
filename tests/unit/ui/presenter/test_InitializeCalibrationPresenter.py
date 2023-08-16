@@ -43,7 +43,7 @@ def test_handleButtonClicked(mock_View, qtbot):  # noqa: ARG001
 def test_handleStateCheckResult(mock_View, qtbot):  # noqa: ARG001
     calibration_check = CalibrationCheck(mock_View)
     mock_response = Mock()
-    mock_response.responseCode = 404
+    mock_response.code = 404
 
     with patch.object(calibration_check, "_spawnStateCreationWorkflow") as mock_spawn_workflow:
         calibration_check.handleStateCheckResult(mock_response)
@@ -53,7 +53,7 @@ def test_handleStateCheckResult(mock_View, qtbot):  # noqa: ARG001
 def test_handlePixelGroupingResult(mock_View, qtbot):  # noqa: ARG001
     calibrationCheck = CalibrationCheck(mock_View)
     mock_response = Mock()
-    mock_response.responseCode = 200
+    mock_response.code = 200
 
     mock_labelView = Mock()
     calibrationCheck._labelView = mock_labelView
