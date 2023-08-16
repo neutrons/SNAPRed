@@ -36,22 +36,8 @@ def test_handleButtonClicked(mock_View, qtbot):  # noqa: ARG001
 
         mock_createWorker.assert_called_once_with(
             target=calibrationCheck.interfaceController.executeRequest,
-            args=SNAPRequest(path="/calibration/checkDataExists", payload='{"runNumber": "12345"}'),
+            args=SNAPRequest(path="/calibration/hasState", payload='{"runNumber": "12345"}'),
         )
-
-
-def test_handleDataCheckResult(mock_View, qtbot):  # noqa: ARG001
-    calibrationCheck = CalibrationCheck(mock_View)
-    mock_response = Mock()
-    mock_response.responseCode = 404
-
-    mock_labelView = Mock()
-    calibrationCheck._labelView = mock_labelView
-
-    calibrationCheck.handleDataCheckResult(mock_response)
-
-    calibrationCheck.view.beginFlowButton.setEnabled.assert_called_with(True)
-    mock_labelView.assert_called_with("Error, data doesn't exist")
 
 
 def test_handleStateCheckResult(mock_View, qtbot):  # noqa: ARG001
