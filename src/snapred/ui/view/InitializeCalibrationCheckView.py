@@ -52,7 +52,7 @@ class CalibrationMenu(QDialog):
 
 
 class InitializeCalibrationCheckView(QWidget):
-    def __init__(self, jsonForm, parent=None):
+    def __init__(self, parent=None):
         super(InitializeCalibrationCheckView, self).__init__(parent)
         self.layout = QGridLayout()
         self.setLayout(self.layout)
@@ -61,8 +61,8 @@ class InitializeCalibrationCheckView(QWidget):
         self.layout.addWidget(self.beginFlowButton, 4, 0, 1, 2)
 
         self.calibrationCheck = CalibrationCheck(self)
-        self.beginFlowButton.clicked.connect(lambda: self.launchCalibrationCheck(jsonForm))
+        self.beginFlowButton.clicked.connect(lambda: self.launchCalibrationCheck())
 
-    def launchCalibrationCheck(self, jsonForm):
-        calibrationMenu = CalibrationMenu(jsonForm, parent=self)
+    def launchCalibrationCheck(self):
+        calibrationMenu = CalibrationMenu(parent=self)
         calibrationMenu.exec_()
