@@ -24,6 +24,7 @@ class DiffractionCalibrationCreationWorkflow:
         self.assessmentSchema = self.interfaceController.executeRequest(request).data
         # for each key, read string and convert to json
         self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
+
         request = SNAPRequest(path="api/parameters", payload="calibration/save")
         self.saveSchema = self.interfaceController.executeRequest(request).data
         self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
@@ -49,7 +50,14 @@ class DiffractionCalibrationCreationWorkflow:
     def _triggerCalibrationReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration reduction
-        payload = RunConfig(runNumber=view.getFieldText("runNumber"))
+
+        # TODO: prepopulate next run number
+        self.runNumber = view.getFieldText("runNumber")
+        # This code cause a segmentation fault when the ui element is viewed, why??
+        # nextRunNumberField = workflowPresenter.widget.nextTabView.getField("run.runNumber")
+        # nextRunNumberField.setText(self.runNumber)
+
+        payload = RunConfig(runNumber=self.runNumber)
         request = SNAPRequest(path="calibration/reduction", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)

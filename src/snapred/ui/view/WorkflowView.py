@@ -47,6 +47,13 @@ class WorkflowView(QWidget):
         return self.tabWidget.widget(self.currentTab).view
 
     @property
+    def nextTabView(self):
+        if self.currentTab + 1 < self.totalNodes - 1:
+            return self.tabWidget.widget(self.currentTab + 1).view
+        else:
+            return None
+
+    @property
     def continueButton(self):
         widget = self.tabWidget.widget(self.currentTab)
         return widget.continueButton
