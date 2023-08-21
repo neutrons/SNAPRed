@@ -58,14 +58,15 @@ Here's a simple example of how the `WorkflowBuilder` class can be used to create
 .. code-block:: python
 
     from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
+    from snapred.ui.view import CalibrationReductionView, CalibrationAssessmentView, SaveCalibrationView
 
     class WorkflowExample(QWidget):
         def __init__(self):
             self.workflow = (
                 WorkflowBuilder(parent=self)
-                .addNode(self.calibration_reduction_action, "Calibrating")
-                .addNode(self.assess_calibration_action, "Assessing")
-                .addNode(self.save_calibration_action, "Saving")
+                .addNode(self.calibration_reduction_action, CalibrationReductionView(), "Calibrating")
+                .addNode(self.assess_calibration_action, CalibrationAssessmentView(), "Assessing")
+                .addNode(self.save_calibration_action, SaveCalibrationView(), "Saving")
                 .build()
             )
             self.responses = {}
