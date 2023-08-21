@@ -56,6 +56,7 @@ Example Usage
 Here's a simple example of how the `WorkflowBuilder` class can be used to create and manage a multi-step workflow with custom steps:
 
 .. code-block:: python
+
     from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
     class WorkflowExample(QWidget):
