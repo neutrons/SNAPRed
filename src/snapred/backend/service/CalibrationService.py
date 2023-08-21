@@ -123,7 +123,6 @@ class CalibrationService(Service):
                 raise
         return data
 
-    @FromString
     def hasState(self, runId: str):
         calibrationFile = self.dataFactoryService.checkCalibrationStateExists(runId)
         if calibrationFile:

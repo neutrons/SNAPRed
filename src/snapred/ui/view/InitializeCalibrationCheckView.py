@@ -64,5 +64,5 @@ class InitializeCalibrationCheckView(QWidget):
         self.beginFlowButton.clicked.connect(lambda: self.launchCalibrationCheck())
 
     def launchCalibrationCheck(self):
-        calibrationMenu = CalibrationMenu(parent=self)
+        calibrationMenu = CalibrationMenu()
         calibrationMenu.exec_()

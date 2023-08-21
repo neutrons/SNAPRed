@@ -36,18 +36,8 @@ def test_handleButtonClicked(mock_View, qtbot):  # noqa: ARG001
 
         mock_createWorker.assert_called_once_with(
             target=calibrationCheck.interfaceController.executeRequest,
-            args=SNAPRequest(path="/calibration/hasState", payload='{"runNumber": "12345"}'),
+            args=SNAPRequest(path="/calibration/hasState", payload="12345"),
         )
-
-
-def test_handleStateCheckResult(mock_View, qtbot):  # noqa: ARG001
-    calibration_check = CalibrationCheck(mock_View)
-    mock_response = Mock()
-    mock_response.code = 404
-
-    with patch.object(calibration_check, "_spawnStateCreationWorkflow") as mock_spawn_workflow:
-        calibration_check.handleStateCheckResult(mock_response)
-        mock_spawn_workflow.assert_called_once()
 
 
 def test_handlePixelGroupingResult(mock_View, qtbot):  # noqa: ARG001

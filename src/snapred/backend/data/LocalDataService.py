@@ -661,7 +661,7 @@ class LocalDataService:
 
     def checkCalibrationFileExists(self, runId: str):
         stateID, _ = self._generateStateId(runId)
-        calibrationStatePath = self._constructCalibrationDataPath(stateID)
+        calibrationStatePath: str = self._constructCalibrationStatePath(stateID)
 
         if os.path.exists(calibrationStatePath):
             return True

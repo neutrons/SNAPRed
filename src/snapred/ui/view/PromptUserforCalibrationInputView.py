@@ -1,8 +1,10 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout
 
 
-class PromptUserforCalibrationInputView(QWidget):
+class PromptUserforCalibrationInputView(QDialog):
+    dataEntered = pyqtSignal(str, str)
+
     def __init__(self, parent=None):
         super(PromptUserforCalibrationInputView, self).__init__(parent)
         self.setStyleSheet("background-color: #F5E9E2;")
@@ -29,4 +31,5 @@ class PromptUserforCalibrationInputView(QWidget):
     def handle_continue_click(self):
         run_number = self.getRunNumber()
         state_name = self.getName()
-        return run_number, state_name
+        self.dataEntered.emit(run_number, state_name)
+        print(self.dataEntered)
