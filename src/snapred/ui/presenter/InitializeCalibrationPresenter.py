@@ -29,16 +29,40 @@ class CalibrationCheck(object):
         win.setLayout(vbox)
         self.view.layout().addWidget(win)
 
-    def handlePixelGroupingResult(self, response: SNAPResponse):
-        print(response, "\n\n\n\n\n\n\n")
+    def handleButtonClicked(self):
+        self.view.beginFlowButton.setEnabled(False)
 
-        if response.code == 200:
-            self._labelView("Ready to Calibrate!")
+        runNumber = self.view.getRunNumber()
+        runNumber_str = str(runNumber)
+
+        stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload=runNumber_str)
+
+        self.worker = self.worker_pool.createWorker(
+            target=self.interfaceController.executeRequest, args=(stateCheckRequest)
+        )
+        self.worker.result.connect(self.handleStateCheckResult)
+
+        self.worker_pool.submitWorker(self.worker)
+
+    def handleStateCheckResult(self, response: SNAPResponse):
+        print(response.data, "\n\n\n\n\n\n\n\n")
+        if response.data is False:
+            self._spawnStateCreationWorkflow()
         else:
-            raise Exception
+            pass
+
+        runID = str(self.view.getRunNumber())
+        pixelGroupingParametersRequest = SNAPRequest(path="/calibration/retrievePixelGroupingParams", payload=runID)
+
+        self.worker = self.worker_pool.createWorker(
+            target=self.interfaceController.executeRequest, args=(pixelGroupingParametersRequest)
+        )
+        self.worker.result.connect(self.handlePixelGroupingResult)
+
+        self.worker_pool.submitWorker(self.worker)
 
     def _spawnStateCreationWorkflow(self):
-        from snapred.ui.widget.WorkflowNode import finalizeWorkflow, startWorkflow
+        from snapred.ui.widget.WorkflowNode import continueWorkflow, finalizeWorkflow, startWorkflow
 
         promptView = PromptUserforCalibrationInputView()
         promptView.setWindowModality(Qt.WindowModal)
@@ -61,44 +85,16 @@ class CalibrationCheck(object):
         promptView.exec_()
 
         Start = startWorkflow(lambda workflow: None, promptView)  # noqa: ARG005
-        Finish = finalizeWorkflow(Start)
+        Continue = continueWorkflow(Start, pushDataToInterfaceController, promptView)
+        Finish = finalizeWorkflow(Continue)
 
         Finish.presenter.show()
 
-    def handleStateCheckResult(self, response: SNAPResponse):
-        print(response.code, "\n\n\n\n\n\n")
-        if response.code != 200:
-            self._spawnStateCreationWorkflow()
+    def handlePixelGroupingResult(self, response: SNAPResponse):
+        if response.code == 200:
+            self._labelView("Ready to Calibrate!")
         else:
-            pass
-
-        runID = str(self.view.getRunNumber())
-        pixelGroupingParametersRequest = SNAPRequest(path="/calibration/retrievePixelGroupingParams", payload=(runID))
-
-        self.worker = self.worker_pool.createWorker(
-            target=self.interfaceController.executeRequest, args=(pixelGroupingParametersRequest)
-        )
-        self.worker.result.connect(self.handlePixelGroupingResult)
-
-        self.worker_pool.submitWorker(self.worker)
-
-        print("Done calculating pixel grouping parameters...")
-
-    def handleButtonClicked(self):
-        self.view.beginFlowButton.setEnabled(False)
-
-        runNumber = self.view.getRunNumber()
-        runNumber_str = str(runNumber)
-
-        stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload=runNumber_str)
-
-        self.worker = self.worker_pool.createWorker(
-            target=self.interfaceController.executeRequest, args=(stateCheckRequest)
-        )
-        self.worker.result.connect(self.handleStateCheckResult)
-
-        self.worker_pool.submitWorker(self.worker)
-        print("Done hasState...\n\n\n\n\n\n")
+            raise Exception
 
     @property
     def widget(self):

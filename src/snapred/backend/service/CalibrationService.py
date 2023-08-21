@@ -136,7 +136,7 @@ class CalibrationService(Service):
 
     def _calculatePixelGroupingParameters(self, calibrationState, groupingFile: str):
         groupingIngredients = PixelGroupingIngredients(
-            calibrationState=calibrationState,
+            instrumentState=calibrationState.instrumentState,
             instrumentDefinitionFile=Config["instrument.lite.definition.file"],
             groupingFile=groupingFile,
         )
