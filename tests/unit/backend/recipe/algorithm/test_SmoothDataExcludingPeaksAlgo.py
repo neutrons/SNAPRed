@@ -56,7 +56,9 @@ with mock.patch.dict(
 
         # populate ingredients
         smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
-            crystalInfo=crystalInfo, instrumentState=instrumentState
+            crystalInfo=crystalInfo,
+            instrumentState=instrumentState,
+            smoothingParameter=0.5,
         )
 
         # initialize and run smoothdata algo
@@ -67,4 +69,4 @@ with mock.patch.dict(
         smoothDataAlgo.execute()
 
         assert smoothDataAlgo.getProperty("InputWorkspace").value == "test_ws"
-        assert smoothDataAlgo.getProperty("OutputWorkspace").value == "SmoothedDataExcludingPeaks"
+        assert smoothDataAlgo.getProperty("OutputWorkspace").value == "SmoothPeaks_out"

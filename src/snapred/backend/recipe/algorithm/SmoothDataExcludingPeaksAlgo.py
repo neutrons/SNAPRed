@@ -40,6 +40,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
     def chopIngredients(self, ingredients: TheseIngredients):
         # chop off instrument state and crystal info
+        self.lam = ingredients.smoothingParameter
         self.instrumentState = ingredients.instrumentState
         self.crystalInfo = ingredients.crystalInfo
 
@@ -91,7 +92,7 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
             weightXMidpoints = weightXMidpoints[w != 0]
             y = y[w != 0]
             # Generate spline with purged dataset
-            tck = make_smoothing_spline(weightXMidpoints, y)
+            tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
             # fill in the removed data using the spline function and original datapoints
             smoothing_results = splev(xMidpoints, tck)
 
