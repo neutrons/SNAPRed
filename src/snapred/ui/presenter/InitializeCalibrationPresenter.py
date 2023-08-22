@@ -5,7 +5,6 @@ from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.ui.threading.worker_pool import WorkerPool
@@ -45,7 +44,6 @@ class CalibrationCheck(object):
         self.worker_pool.submitWorker(self.worker)
 
     def handleStateCheckResult(self, response: SNAPResponse):
-        print(response.data, "\n\n\n\n\n\n\n\n")
         if response.data is False:
             self._spawnStateCreationWorkflow()
         else:

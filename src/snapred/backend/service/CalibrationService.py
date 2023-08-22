@@ -126,11 +126,7 @@ class CalibrationService(Service):
     def hasState(self, runId: str):
         calibrationFile = self.dataFactoryService.checkCalibrationStateExists(runId)
         if calibrationFile:
-            record = self.dataFactoryService.getCalibrationRecord(runId)
-            if record is None:
-                return False
-            else:
-                return True
+            return True
         else:
             return False
 
