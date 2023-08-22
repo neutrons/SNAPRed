@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
+from snapred.backend.dao.ingredients import FitMultiplePeaksIngredients
 from snapred.backend.recipe.GenericRecipe import FitMultiplePeaksRecipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString

@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 from mantid.api import AlgorithmManager
 
-from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import (
     name as CalculateOffsetDIFC,

@@ -16,7 +16,7 @@ with mock.patch.dict(
     )
     from snapred.backend.dao.calibration.Calibration import Calibration
     from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-    from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+    from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
     from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
     from snapred.meta.Config import Resource
 

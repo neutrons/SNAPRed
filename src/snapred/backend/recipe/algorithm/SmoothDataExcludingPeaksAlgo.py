@@ -21,9 +21,7 @@ from mantid.api import (
 from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline, splev
 
-from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import (
-    SmoothDataExcludingPeaksIngredients as TheseIngredients,
-)
+from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients as TheseIngredients
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 

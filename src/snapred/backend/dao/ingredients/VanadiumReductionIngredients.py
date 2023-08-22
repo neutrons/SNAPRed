@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
+from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 
 
 class VanadiumReductionIngredients(BaseModel):

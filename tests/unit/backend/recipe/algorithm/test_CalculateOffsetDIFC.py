@@ -6,8 +6,8 @@ from typing import Dict, List
 
 import pytest
 from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients
 from snapred.backend.dao.GroupPeakList import GroupPeakList
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
