@@ -162,7 +162,9 @@ class CalibrationService(Service):
             )
         return pixelGroupingParams
 
-    def _fitAndCollectMetrics(self, instrumentState, focussedData, focusGroups, pixelGroupingParams, crystalInfo):
+    def _fitAndCollectMetrics(
+        self, instrumentState, focussedData, focusGroups, pixelGroupingParams, crystalInfo, lam=None
+    ):
         groupedWorkspaceNames = [ws for ws in GroupWorkspaceIterator(focussedData)]
         metrics = []
         fittedWorkspaceNames = []
@@ -173,6 +175,7 @@ class CalibrationService(Service):
                 crystalInfo=crystalInfo,
                 workspaceName=workspace,
                 pixelGroupingParameters=pixelGroupingParams[index],
+                smoothingParameter=lam,
             )
             fitPeaksResult = FitCalibrationWorkspaceRecipe().executeRecipe(ingredients)
 
@@ -180,7 +183,8 @@ class CalibrationService(Service):
             metric = parse_raw_as(
                 List[CalibrationMetric],
                 CalibrationMetricExtractionRecipe().executeRecipe(
-                    InputWorkspace=fitPeaksResult, PixelGroupingParameter=pixelGroupingInput
+                    InputWorkspace=fitPeaksResult,
+                    PixelGroupingParameter=pixelGroupingInput,
                 ),
             )
             fittedWorkspaceNames.append(fitPeaksResult)
@@ -199,9 +203,15 @@ class CalibrationService(Service):
         crystalInfo = crystalInfoDict["crystalInfo"]
         focussedData = self._loadFocusedData(run.runNumber)
         pixelGroupingParams = self._getPixelGroupingParams(calibration, focusGroups)
+        lam = request.smoothingParameter
 
         fittedWorkspaceNames, metrics = self._fitAndCollectMetrics(
-            instrumentState, focussedData, focusGroups, pixelGroupingParams, crystalInfo
+            instrumentState,
+            focussedData,
+            focusGroups,
+            pixelGroupingParams,
+            crystalInfo,
+            lam,
         )
 
         outputWorkspaces = []

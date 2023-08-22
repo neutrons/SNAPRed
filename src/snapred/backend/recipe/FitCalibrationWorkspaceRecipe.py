@@ -33,13 +33,16 @@ class FitCalibrationWorkspaceRecipe:
         self.crystalInfo = ingredients.crystalInfo
         self.workspaceName = ingredients.workspaceName
         self.pixelGroupingParameters = ingredients.pixelGroupingParameters
+        self.smoothingParameter = ingredients.smoothingParameter
 
     def portion(self):
         """
         Prep most ingredients for sub-recipes.
         """
-        self.smoothIngredients = SmoothDataExcludingPeaksIngredients(
-            instrumentState=self.instrumentState, crystalInfo=self.crystalInfo
+        self.smoothingIngredients = SmoothDataExcludingPeaksIngredients(
+            instrumentState=self.instrumentState,
+            crystalInfo=self.crystalInfo,
+            smoothingParameter=self.smoothingParameter,
         )
         self.fitIngredients = FitMultiplePeaksIngredients(
             InstrumentState=self.instrumentState,
@@ -55,7 +58,7 @@ class FitCalibrationWorkspaceRecipe:
 
         SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=self.workspaceName,
-            SmoothDataExcludingPeaksIngredients=self.smoothIngredients,
+            SmoothDataExcludingPeaksIngredients=self.smoothingIngredients,
             OutputWorkspace=self.fitIngredients.InputWorkspace,
         )
 
