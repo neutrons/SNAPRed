@@ -183,7 +183,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Call the method to test
         fittedWorkspaceNames, metrics = self.instance._fitAndCollectMetrics(
-            mockInstrumentState, fakeFocussedData, fakeFocusGroups, fakePixelGroupingParams, fakeCrystalInfo
+            mockInstrumentState,
+            fakeFocussedData,
+            fakeFocusGroups,
+            fakePixelGroupingParams,
+            fakeCrystalInfo,
         )
 
         # Assert the results are as expected
@@ -218,6 +222,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Mock the necessary method calls
         mockRequest.run = mockRun
         mockRequest.cifPath = fakeCifPath
+        mockRequest.smoothingParameter = 0.5
         self.instance.dataFactoryService.getReductionIngredients = MagicMock(return_value=mockReductionIngredients)
         self.instance.dataFactoryService.getCalibrationState = MagicMock(return_value=mockCalibration)
         mockCalibration.instrumentState = mockInstrumentState

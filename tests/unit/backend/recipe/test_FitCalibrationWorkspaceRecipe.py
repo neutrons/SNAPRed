@@ -26,6 +26,7 @@ class TestFitCalibrationWorkspaceRecipe(unittest.TestCase):
         ingredients.crystalInfo = "mock_crystal_info"
         ingredients.workspaceName = "mock_workspace_name"
         ingredients.pixelGroupingParameters = {"param1": 1, "param2": 2}
+        ingredients.smoothingParameter = 0.2
 
         # Mock the necessary method calls
         recipe_instance = FitCalibrationWorkspaceRecipe()

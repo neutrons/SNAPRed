@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients as Ingredients
-from snapred.backend.recipe import SmoothDataExcludingPeaksRecipe as Recipe
+from snapred.backend.recipe.SmoothDataExcludingPeaksRecipe import SmoothDataExcludingPeaksRecipe as Recipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
