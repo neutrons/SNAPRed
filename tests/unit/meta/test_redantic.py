@@ -38,31 +38,31 @@ class TestRedantic(TestCase):
         cls.files = []
 
     def test_list_to_raw(self):
-        assert list_to_raw(self.modelList) == Resource.read("outputs/meta/redantic/list.json")
+        assert list_to_raw(self.modelList) == Resource.read("outputs/meta/redantic/list.json").strip()
 
     def test_to_raw_pretty(self):
-        assert list_to_raw_pretty(self.modelList) == Resource.read("outputs/meta/redantic/pretty_list.json")
+        assert list_to_raw_pretty(self.modelList) == Resource.read("outputs/meta/redantic/pretty_list.json").strip()
 
     def test_write_model(self):
         path = Resource.getPath("test.json")
         self.files.append(path)
         write_model(self.model, path)
-        assert Resource.read("test.json") == Resource.read("outputs/meta/redantic/model.json")
+        assert Resource.read("test.json") == Resource.read("outputs/meta/redantic/model.json").strip()
 
     def test_write_model_pretty(self):
         path = Resource.getPath("test.json")
         self.files.append(path)
         write_model_pretty(self.model, path)
-        assert Resource.read("test.json") == Resource.read("outputs/meta/redantic/pretty_model.json")
+        assert Resource.read("test.json") == Resource.read("outputs/meta/redantic/pretty_model.json").strip()
 
     def test_write_model_list(self):
         path = Resource.getPath("test.json")
         self.files.append(path)
         write_model_list(self.modelList, path)
-        assert Resource.read("test.json") == Resource.read("outputs/meta/redantic/list.json")
+        assert Resource.read("test.json") == Resource.read("outputs/meta/redantic/list.json").strip()
 
     def test_write_model_list_pretty(self):
         path = Resource.getPath("test.json")
         self.files.append(path)
         write_model_list_pretty(self.modelList, path)
-        assert Resource.read("test.json") == Resource.read("outputs/meta/redantic/pretty_list.json")
+        assert Resource.read("test.json") == Resource.read("outputs/meta/redantic/pretty_list.json").strip()
