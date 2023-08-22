@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
-from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.state import FocusGroupParameters
 
 

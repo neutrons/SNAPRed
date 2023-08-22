@@ -7,7 +7,7 @@ from mantid.kernel import Direction
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
+from snapred.backend.dao.ingredients import FitMultiplePeaksIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 

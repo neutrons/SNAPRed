@@ -19,7 +19,7 @@ with mock.patch.dict(
 ):
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
-    from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
+    from snapred.backend.dao.ingredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,  # noqa: E402

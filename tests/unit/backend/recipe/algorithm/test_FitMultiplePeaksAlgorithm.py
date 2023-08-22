@@ -11,7 +11,7 @@ with mock.patch.dict(
     from mantid.simpleapi import LoadNexusProcessed, mtd
     from snapred.backend.dao.calibration.Calibration import Calibration
     from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-    from snapred.backend.dao.ingredients.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
+    from snapred.backend.dao.ingredients import FitMultiplePeaksIngredients
     from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import (
         FitMultiplePeaksAlgorithm,  # noqa: E402
     )

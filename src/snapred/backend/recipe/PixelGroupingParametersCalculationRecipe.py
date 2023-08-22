@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 from mantid.api import AlgorithmManager
 
-from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
+from snapred.backend.dao.ingredients import PixelGroupingIngredients
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (

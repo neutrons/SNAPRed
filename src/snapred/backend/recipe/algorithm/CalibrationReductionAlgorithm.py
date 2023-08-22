@@ -3,7 +3,7 @@ import json
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
-from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.algorithm.CustomGroupWorkspace import CustomGroupWorkspace  # noqa F401
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config

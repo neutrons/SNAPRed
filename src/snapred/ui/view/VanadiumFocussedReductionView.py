@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget
 
-from snapred.backend.dao.ingredients.VanadiumReductionIngredients import VanadiumReductionIngredients
+from snapred.backend.dao.ingredients import VanadiumReductionIngredients
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.meta.Config import Resource
 from snapred.ui.view.BackendRequestView import BackendRequestView

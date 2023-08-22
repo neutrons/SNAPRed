@@ -11,8 +11,10 @@ with mock.patch.dict(
 ):
     from snapred.backend.dao.calibration.Calibration import Calibration
     from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-    from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
-    from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+    from snapred.backend.dao.ingredients import (
+        ReductionIngredients,
+        SmoothDataExcludingPeaksIngredients,
+    )
     from snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm import (
         VanadiumFocussedReductionAlgorithm,  # noqa: E402
     )
