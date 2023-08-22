@@ -7,8 +7,8 @@ import pytest
 from mantid.api import PythonAlgorithm
 from mantid.kernel import Direction
 from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients as TheseIngredients
 from snapred.backend.dao.GroupPeakList import GroupPeakList
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as TheseIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
