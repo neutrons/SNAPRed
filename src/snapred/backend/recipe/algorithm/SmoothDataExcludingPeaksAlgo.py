@@ -21,9 +21,7 @@ from mantid.api import (
 from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline, splev
 
-from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import (
-    SmoothDataExcludingPeaksIngredients as TheseIngredients,
-)
+from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -35,15 +33,10 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-        self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="SmoothPeaks_out", direction=Direction.Output)
+        self.declareProperty("SmoothDataExcludingPeaksIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("OutputWorkspace", defaultValue="SmoothedDataExcludingPeaks", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
-
-    def chopIngredients(self, ingredients: TheseIngredients):
-        # chop off instrument state and crystal info
-        self.instrumentState = ingredients.instrumentState
-        self.crystalInfo = ingredients.crystalInfo
 
     def PyExec(self):
         self.log().notice("Removing peaks and smoothing data")
@@ -51,11 +44,19 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         outputWorkspaceName = self.getProperty("OutputWorkspace").value
 
         # load ingredients
-        ingredients = TheseIngredients(**json.loads(self.getProperty("Ingredients").value))
-        self.chopIngredients(ingredients)
+        smoothdataIngredients = SmoothDataExcludingPeaksIngredients(
+            **json.loads(self.getProperty("SmoothDataExcludingPeaksIngredients").value)
+        )
 
         # load workspace
         input_ws = self.getProperty("InputWorkspace").value
+
+        # load instrument state
+        instrumentState = smoothdataIngredients.instrumentState
+
+        # load crystal info
+        crystalInfo = smoothdataIngredients.crystalInfo
+
         ws = self.mantidSnapper.mtd[input_ws]
 
         # call the diffraction spectrum weight calculator
@@ -63,8 +64,8 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
         self.mantidSnapper.DiffractionSpectrumWeightCalculator(
             "Calculating spectrum weights...",
             InputWorkspace=input_ws,
-            InstrumentState=self.instrumentState.json(),
-            CrystalInfo=self.crystalInfo.json(),
+            InstrumentState=instrumentState.json(),
+            CrystalInfo=crystalInfo.json(),
             WeightWorkspace=weight_ws_name,
         )
         # This is because its a histogram

@@ -12,14 +12,14 @@ with mock.patch.dict(
         "snapred.backend.data.DataExportService": mock.Mock(),
         "snapred.backend.data.DataFactoryService": mock.Mock(),
         "snapred.backend.recipe.CalibrationReductionRecipe": mock.Mock(),
-        "snapred.backend.dao.PixelGroupingIngredients": mock.MagicMock(),
+        "snapred.backend.dao.ingredients.PixelGroupingIngredients": mock.MagicMock(),
         "snapred.backend.log": mock.Mock(),
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
-    from snapred.backend.dao.ReductionIngredients import ReductionIngredients  # noqa: E402
+    from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,  # noqa: E402

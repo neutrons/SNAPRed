@@ -8,14 +8,14 @@ from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationInd
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
-from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
 from snapred.backend.dao.ingredients.FitCalibrationWorkspaceIngredients import FitCalibrationWorkspaceIngredients
-from snapred.backend.dao.PixelGroupingIngredients import PixelGroupingIngredients
+from snapred.backend.dao.ingredients.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
+from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
+from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
 from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.dao.state.FocusGroupParameters import FocusGroupParameters
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService

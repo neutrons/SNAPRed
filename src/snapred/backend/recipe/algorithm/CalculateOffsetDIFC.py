@@ -5,7 +5,7 @@ import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
-from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients
+from snapred.backend.dao.ingredients.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients
 from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 

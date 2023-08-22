@@ -12,7 +12,7 @@ with mock.patch.dict(
     },
 ):
     from mantid.simpleapi import CompareWorkspaces, DeleteWorkspace, LoadNexusProcessed, mtd
-    from snapred.backend.dao.ReductionIngredients import ReductionIngredients  # noqa: E402
+    from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.recipe.GenericRecipe import CalibrationReductionRecipe  # noqa: E402
     from snapred.meta.Config import Config, Resource
 

@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from snapred.backend.dao.VanadiumReductionIngredients import VanadiumReductionIngredients
+from snapred.backend.dao.ingredients.VanadiumReductionIngredients import VanadiumReductionIngredients
 from snapred.backend.data.DataFactoryService import DataFactoryService
 
 # from snapred.backend.recipe.VanadiumFocussedReductionRecipe import VanadiumFocussedReductionRecipe
