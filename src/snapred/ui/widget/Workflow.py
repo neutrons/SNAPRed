@@ -15,3 +15,6 @@ class Workflow:
     @property
     def widget(self):
         return self._presenter.widget
+
+    def show(self):
+        self._presenter.show()

@@ -1,3 +1,5 @@
+from PyQt5.QtWidgets import QMainWindow
+
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
@@ -17,6 +19,12 @@ class WorkflowPresenter(object):
     @property
     def widget(self):
         return self.view
+
+    def show(self):
+        # wrap view in QApplication
+        self.window = QMainWindow(self.view.parent())
+        self.window.setCentralWidget(self.view)
+        self.window.show()
 
     def _hookupSignals(self):
         for i, model in enumerate(self.model):
