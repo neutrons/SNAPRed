@@ -5,12 +5,6 @@ from typing import List
 
 from pydantic import parse_raw_as
 
-from snapred.backend.dao.ingredients import (
-    FitCalibrationWorkspaceIngredients,
-    FitMultiplePeaksIngredients,
-    PixelGroupingIngredients,
-    SmoothDataExcludingPeaksIngredients,
-)
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.calibration import (
     CalibrationIndexEntry,
@@ -18,7 +12,12 @@ from snapred.backend.dao.calibration import (
     CalibrationRecord,
     FocusGroupMetric,
 )
-from snapred.backend.dao.ingredients import FitCalibrationWorkspaceIngredients
+from snapred.backend.dao.ingredients import (
+    FitCalibrationWorkspaceIngredients,
+    FitMultiplePeaksIngredients,
+    PixelGroupingIngredients,
+    SmoothDataExcludingPeaksIngredients,
+)
 from snapred.backend.dao.request import CalibrationAssessmentRequest, CalibrationExportRequest, InitializeStateRequest
 from snapred.backend.dao.state.FocusGroupParameters import FocusGroupParameters
 from snapred.backend.data.DataExportService import DataExportService
