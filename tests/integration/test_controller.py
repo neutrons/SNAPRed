@@ -15,6 +15,7 @@ def test_excuteRequest_noop():
         "api",
         "fitMultiplePeaks",
         "vanadiumReduction",
+        "smoothDataExcludingPeaks",
     ]
     expected_keys.sort()
 

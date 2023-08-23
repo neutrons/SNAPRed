@@ -1,4 +1,5 @@
 import json
+import os
 import time
 from typing import List
 
@@ -21,6 +22,7 @@ from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroupParameters import FocusGroupParameters
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
+from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.FitCalibrationWorkspaceRecipe import FitCalibrationWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
@@ -57,7 +59,10 @@ class CalibrationService(Service):
         self.registerPath("load", self.load)
         self.registerPath("initializeState", self.initializeState)
         self.registerPath("calculatePixelGroupingParameters", self.calculatePixelGroupingParameters)
+        self.registerPath("hasState", self.hasState)
+        self.registerPath("checkDataExists", self.calculatePixelGroupingParameters)
         self.registerPath("assessment", self.assessQuality)
+        self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
         return
 
     @staticmethod
@@ -66,7 +71,7 @@ class CalibrationService(Service):
 
     @FromString
     def reduction(self, runs: List[RunConfig]):
-        # TODO: collect runs by state then by calibration of state, execute sets of runs by calibration of thier state
+        # TODO: collect runs by state then by calibration of state, execute sets of runs by calibration of their state
         for run in runs:
             reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
             try:
@@ -122,9 +127,16 @@ class CalibrationService(Service):
                 raise
         return data
 
+    def hasState(self, runId: str):
+        calibrationFile = self.dataFactoryService.checkCalibrationStateExists(runId)
+        if calibrationFile:
+            return True
+        else:
+            return False
+
     def _calculatePixelGroupingParameters(self, calibrationState, groupingFile: str):
         groupingIngredients = PixelGroupingIngredients(
-            calibrationState=calibrationState,
+            instrumentState=calibrationState.instrumentState,
             instrumentDefinitionFile=Config["instrument.lite.definition.file"],
             groupingFile=groupingFile,
         )
@@ -227,3 +239,12 @@ class CalibrationService(Service):
         )
 
         return record
+
+    @FromString
+    def retrievePixelGroupingParams(self, runID: str):
+        calibration = self.dataFactoryService.getCalibrationState(runID)
+        focusGroups = self.dataFactoryService.getFocusGroups(runID)
+
+        pixelGroupingParams = self._getPixelGroupingParams(calibration, focusGroups)
+
+        return pixelGroupingParams
