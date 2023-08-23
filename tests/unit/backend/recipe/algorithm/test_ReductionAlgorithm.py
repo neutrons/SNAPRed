@@ -10,7 +10,7 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+    from snapred.backend.dao.ingredients import ReductionIngredients
     from snapred.backend.dao.RunConfig import RunConfig
     from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm  # noqa: E402
     from snapred.meta.Config import Resource

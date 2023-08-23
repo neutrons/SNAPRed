@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from mantid.api import AlgorithmManager
 
-from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import (
     name as SmoothDataExcludingPeaksAlgo,

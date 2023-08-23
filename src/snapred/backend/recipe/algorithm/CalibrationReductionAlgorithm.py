@@ -3,7 +3,7 @@ import json
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
-from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.algorithm.CustomGroupWorkspace import CustomGroupWorkspace  # noqa F401
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -71,7 +71,6 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
 
         self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Mask", Workspace=diffCalPrefix + "_mask")
         self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Calibration", Workspace=diffCalPrefix + "_cal")
-        self.mantidSnapper.DeleteWorkspace("Deleting IDF", Workspace="idf")
 
         data = self.mantidSnapper.ConvertUnits(
             "Converting to Units of dSpacing ...",

@@ -2,7 +2,7 @@ import unittest
 from unittest import mock
 
 import pytest
-from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.GenericRecipe import GenericRecipe
 
 

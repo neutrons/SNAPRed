@@ -47,16 +47,27 @@ with mock.patch.dict(
         yield
         teardown()
 
-    def getInstrumentState():
-        return parse_file_as(
-            Calibration, "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/CalibrationParameters.json"
-        ).instrumentState.json()
-
-    def getInstrumentDefinitionFilePath(isLite=True):
-        if isLite:
-            return "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
+    def getInstrumentState(isLocalTest):
+        if isLocalTest:
+            calibrationPath = Resource.getPath("inputs/pixel_grouping/CalibrationParameters.json")
         else:
-            return "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition.xml"
+            calibrationPath = (
+                "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/CalibrationParameters.json"
+            )
+
+        return parse_file_as(Calibration, calibrationPath).instrumentState.json()
+
+    def getInstrumentDefinitionFilePath(isLocalTest, isLiteInstrument):
+        if isLocalTest:
+            if isLiteInstrument:
+                return Resource.getPath("inputs/pixel_grouping/SNAPLite_Definition.xml")
+            else:
+                return Resource.getPath("inputs/pixel_grouping/SNAP_Definition.xml")
+        else:
+            if isLiteInstrument:
+                return "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
+            else:
+                return "/opt/anaconda/envs/mantid-dev/instrument/SNAP_Definition.xml"
 
     def getFakeInstrumentState():
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/calibration/sampleInstrumentState.json"))
@@ -77,15 +88,15 @@ with mock.patch.dict(
             "Load a fake instrument for testing",
             Workspace="idf",
             Filename=idf,
-            MonitorList="-2--1",
             RewriteSpectraMap=False,
         )
-        algo.mantidSnapper.LoadDetectorsGroupingFile(
+        algo.mantidSnapper.LoadGroupingDefinition(
             "Load a fake grouping  file for testing",
-            InputFile=groupingFilePath,
-            InputWorkspace="idf",
+            GroupingFilename=groupingFilePath,
+            InstrumentDonor="idf",
             OutputWorkspace=algo.grouping_ws_name,
         )
+
         algo.mantidSnapper.DeleteWorkspace(
             "Remove temporary IDF workspace",
             Workspace="idf",
@@ -110,7 +121,7 @@ with mock.patch.dict(
         assert algo.delTheta is not None
 
     @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
-    def test_local():
+    def test_local_fake_grouping_file():
         groupingFile = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
         referenceParametersFile = Resource.getPath("outputs/calibration/output.json")
 
@@ -121,126 +132,248 @@ with mock.patch.dict(
             referenceParametersFile=referenceParametersFile,
         )
 
-    # TODO fix all of the files on the analysis cluster
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
-    def test_column():
+    def test_column_full():
+        isLocalTest = False
+        isLiteInstrument = False
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.xml"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.json"
+        referenceParametersFile = (
+            "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.json"
+        )
 
         run_test(
-            instrumentDefinitionFile=getInstrumentDefinitionFilePath(isLite=False),
-            instrumentState=getInstrumentState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
+            groupingFile=groupingFile,
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    def test_local_column_full():
+        isLocalTest = True
+        isLiteInstrument = False
+        groupingFile = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.hdf")
+        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Column_parameters.json")
+
+        run_test(
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_column_lite():
-        groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
+        isLocalTest = False
+        isLiteInstrument = True
+        groupingFile = (
+            "/SNS/SNAP/shared/Calibration_Prototype/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
+        )
         referenceParametersFile = (
-            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
+            "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
         )
 
         run_test(
-            instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
-            instrumentState=getInstrumentState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=False),
+            groupingFile=groupingFile,
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    def test_local_column_lite():
+        isLocalTest = True
+        isLiteInstrument = True
+        groupingFile = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.lite.hdf")
+        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Column_parameters.lite.json")
+
+        run_test(
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
-    def test_bank():
+    def test_bank_full():
+        isLocalTest = False
+        isLiteInstrument = False
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Bank.xml"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Bank_parameters_newCalc.json"
+        referenceParametersFile = (
+            "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/Bank_parameters_newCalc.json"
+        )
 
         run_test(
-            instrumentDefinitionFile=getInstrumentDefinitionFilePath(isLite=False),
-            instrumentState=getInstrumentState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
+            groupingFile=groupingFile,
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    def test_local_bank_full():
+        isLocalTest = True
+        isLiteInstrument = False
+        groupingFile = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Bank.hdf")
+        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Bank_parameters.json")
+
+        run_test(
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_bank_lite():
+        isLocalTest = False
+        isLiteInstrument = True
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Bank.lite.nxs"
         referenceParametersFile = (
-            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Bank_parameters_newCalc.lite.json"
+            "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/Bank_parameters_newCalc.lite.json"
         )
 
         run_test(
-            instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
-            instrumentState=getInstrumentState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
+            groupingFile=groupingFile,
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    def test_local_bank_lite():
+        isLocalTest = True
+        isLiteInstrument = True
+        groupingFile = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Bank.lite.hdf")
+        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Bank_parameters.lite.json")
+
+        run_test(
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
-    def test_all():
+    def test_all_full():
+        isLocalTest = False
+        isLiteInstrument = False
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.xml"
-        referenceParametersFile = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/All_parameters_newCalc.json"
+        referenceParametersFile = (
+            "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/All_parameters_newCalc.json"
+        )
 
         run_test(
-            instrumentDefinitionFile=getInstrumentDefinitionFilePath(isLite=False),
-            instrumentState=getInstrumentState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
+            groupingFile=groupingFile,
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    def test_local_all_full():
+        isLocalTest = True
+        isLiteInstrument = False
+        groupingFile = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_All.hdf")
+        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/All_parameters.json")
+
+        run_test(
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_all_lite():
+        isLocalTest = False
+        isLiteInstrument = True
         groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.nxs"
         referenceParametersFile = (
-            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/All_parameters_newCalc.lite.json"
+            "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/All_parameters_newCalc.lite.json"
         )
 
         run_test(
-            instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
-            instrumentState=getInstrumentState(),
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
             groupingFile=groupingFile,
             referenceParametersFile=referenceParametersFile,
         )
 
-    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
-    def test_wrong_idf():
-        groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
-        referenceParametersFile = (
-            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
+    def test_local_all_lite():
+        isLocalTest = True
+        isLiteInstrument = True
+        groupingFile = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_All.lite.hdf")
+        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/All_parameters.lite.json")
+
+        run_test(
+            instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+            ),
+            instrumentState=getInstrumentState(isLocalTest=isLocalTest),
+            groupingFile=groupingFile,
+            referenceParametersFile=referenceParametersFile,
         )
+
+    def test_local_wrong_idf():
+        isLocalTest = True
+        groupingFile = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.lite.hdf")
+        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Column_parameters.lite.json")
+
         with pytest.raises(RuntimeError) as excinfo:
             run_test(
                 instrumentDefinitionFile="junk",
-                instrumentState=getInstrumentState(),
+                instrumentState=getInstrumentState(isLocalTest=isLocalTest),
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,
             )
-        assert "FileDescriptor" in str(excinfo.value)
+        assert "File 'junk' does not exist" in str(excinfo.value)
 
-    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
-    def test_wrong_grouping_file():
+    def test_local_wrong_grouping_file():
+        isLocalTest = True
+        isLiteInstrument = True
         groupingFile = "junk"
-        referenceParametersFile = (
-            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
-        )
+        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Column_parameters.lite.json")
 
         with pytest.raises(RuntimeError) as excinfo:
             run_test(
-                instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
-                instrumentState=getInstrumentState(),
+                instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                    isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+                ),
+                instrumentState=getInstrumentState(isLocalTest=isLocalTest),
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,
             )
-        assert "Filename" in str(excinfo.value)
+        assert "LoadGroupingDefinition" in str(excinfo.value)
 
-    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
-    def test_wrong_instrument_state():
-        groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.nxs"
-        referenceParametersFile = (
-            "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/Column_parameters_newCalc.lite.json"
-        )
+    def test_local_wrong_calibration_file():
+        isLocalTest = True
+        isLiteInstrument = True
+        groupingFile = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.lite.hdf")
+        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Column_parameters.lite.json")
 
         with pytest.raises(RuntimeError) as excinfo:
             run_test(
-                instrumentDefinitionFile=getInstrumentDefinitionFilePath(),
+                instrumentDefinitionFile=getInstrumentDefinitionFilePath(
+                    isLocalTest=isLocalTest, isLiteInstrument=isLiteInstrument
+                ),
                 instrumentState="junk",
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,

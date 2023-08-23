@@ -1,9 +1,11 @@
 import json
 from typing import Any, Dict
 
-from snapred.backend.dao.FitMultiplePeaksIngredients import FitMultiplePeaksIngredients
-from snapred.backend.dao.ingredients.FitCalibrationWorkspaceIngredients import FitCalibrationWorkspaceIngredients
-from snapred.backend.dao.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.dao.ingredients import (
+    FitCalibrationWorkspaceIngredients,
+    FitMultiplePeaksIngredients,
+    SmoothDataExcludingPeaksIngredients,
+)
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenericRecipe import (
     FitMultiplePeaksRecipe,
@@ -31,13 +33,16 @@ class FitCalibrationWorkspaceRecipe:
         self.crystalInfo = ingredients.crystalInfo
         self.workspaceName = ingredients.workspaceName
         self.pixelGroupingParameters = ingredients.pixelGroupingParameters
+        self.smoothingParameter = ingredients.smoothingParameter
 
     def portion(self):
         """
         Prep most ingredients for sub-recipes.
         """
-        self.smoothIngredients = SmoothDataExcludingPeaksIngredients(
-            instrumentState=self.instrumentState, crystalInfo=self.crystalInfo
+        self.smoothingIngredients = SmoothDataExcludingPeaksIngredients(
+            instrumentState=self.instrumentState,
+            crystalInfo=self.crystalInfo,
+            smoothingParameter=self.smoothingParameter,
         )
         self.fitIngredients = FitMultiplePeaksIngredients(
             InstrumentState=self.instrumentState,
@@ -53,7 +58,7 @@ class FitCalibrationWorkspaceRecipe:
 
         SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=self.workspaceName,
-            SmoothDataExcludingPeaksIngredients=self.smoothIngredients,
+            SmoothDataExcludingPeaksIngredients=self.smoothingIngredients,
             OutputWorkspace=self.fitIngredients.InputWorkspace,
         )
 

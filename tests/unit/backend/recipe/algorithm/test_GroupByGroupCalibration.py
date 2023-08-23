@@ -6,8 +6,8 @@ from typing import Dict, List
 
 import pytest
 from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients
 from snapred.backend.dao.GroupPeakList import GroupPeakList
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
@@ -111,13 +111,14 @@ class TestGroupByGroupCalibration(unittest.TestCase):
             "Load a fake instrument for testing",
             Workspace="idf",
             Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
-            MonitorList="-2--1",
             RewriteSpectraMap=False,
         )
-        algo.mantidSnapper.LoadDetectorsGroupingFile(
-            "Load a fake grouping  file for testing",
-            InputFile=Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml"),
-            InputWorkspace="idf",
+
+        inputFilePath = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
+        algo.mantidSnapper.LoadGroupingDefinition(
+            f"Loading a fake grouping  file {inputFilePath} for testing...",
+            GroupingFilename=inputFilePath,
+            InstrumentDonor="idf",
             OutputWorkspace=focusWSname,
         )
 
@@ -180,7 +181,6 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         LoadInstrument(
             Workspace="idf",
             Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
-            MonitorList="-2--1",
             RewriteSpectraMap=False,
         )
         CalculateDIFC(

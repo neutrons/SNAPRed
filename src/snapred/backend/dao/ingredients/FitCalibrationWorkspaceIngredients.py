@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -14,3 +14,4 @@ class FitCalibrationWorkspaceIngredients(BaseModel):
     crystalInfo: CrystallographicInfo
     pixelGroupingParameters: List[PixelGroupingParameters]
     workspaceName: str
+    smoothingParameter: Optional[float]

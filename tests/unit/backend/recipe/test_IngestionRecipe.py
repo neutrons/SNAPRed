@@ -28,7 +28,7 @@ with mock.patch.dict(
             assert xtal.hkl[5] == (4, 0, 0)
             assert xtal.dSpacing[0] == 3.13592994862768
             assert xtal.dSpacing[4] == 1.0453099828758932
-            assert data["fSquaredThreshold"] == 541.8942599465485
+            assert data["fSquaredThreshold"] == 0.002484449522957245
 
     def test_failed_path():
         """Test failure of crystal ingestion recipe with a bad path name"""

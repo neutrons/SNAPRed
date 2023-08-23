@@ -4,7 +4,7 @@ from typing import Dict, List
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
-from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "GroupByGroupCalibration"
@@ -120,9 +120,9 @@ class GroupByGroupCalibration(PythonAlgorithm):
 
         # now diffraction focus the d-spacing data and conver to TOF
         focusWSname = f"_{self.runNumber}_focusGroup"
-        self.mantidSnapper.LoadDetectorsGroupingFile(
-            "Load XML grouping file",
-            InputFile=self.groupingFile,
+        self.mantidSnapper.LoadGroupingDefinition(
+            f"Loading grouping file {self.groupingFile}...",
+            GroupingFilename=self.groupingFile,
             OutputWorkspace=focusWSname,
         )
 
