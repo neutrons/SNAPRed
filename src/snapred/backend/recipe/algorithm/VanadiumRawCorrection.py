@@ -22,12 +22,16 @@ class VanadiumRawCorrection(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="SmoothPeaks_out", direction=Direction.Output)
+        self.declareProperty("OutputWorkspace", defaultValue="vanadiumrawcorr_out", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
         #
+
+        self.vanadiumRunNumber = ingredients.runNumber
+        self.vanadiumBackgroundRunNumber = ingredients.runNumber
+
         self.geomCalibFile: str = ""  # iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ sPrm['calFileName']
 
         # geomCalibFile= calibrationPath + geomCalibFilename
@@ -41,15 +45,18 @@ class VanadiumRawCorrection(PythonAlgorithm):
         self.TOFPars: Tuple[float, float, float] = (0, 0, 0)  # (sPrm['tofMin'], sPrm['tofBin'], sPrm['tofMax'] )
         self.IPTSLoc = self.mantidSnapper.GetIPTS(RunNumber=self.runNumber, Instrument="SNAP")
         self.mantidSnapper.executeQueue()
-        if liteMode:
-            self.vanadium_filename = f"{self.IPTSLoc}shared/lite/SNAP_{self.runNumber}.lite.nxs.h5"
-        else:
-            self.vanadium_filename = f"{self.IPTSLoc}nexus/SNAP_{self.runNumber}.nxs.h5"
+        self.liteMode = ingredients.isLite
+
         pass
 
-    def raidPantry(self, wsName: str) -> None:
+    def raidPantry(self, wsName: str, runNumber: int) -> None:
+        if self.liteMode:
+            vanadium_filename = f"{self.IPTSLoc}shared/lite/SNAP_{runNumber}.lite.nxs.h5"
+        else:
+            vanadium_filename = f"{self.IPTSLoc}nexus/SNAP_{runNumber}.nxs.h5"
+
         self.mantidSnapper.LoadEventNexus(
-            Filename=self.vanadium_filename,
+            Filename=vanadium_filename,
             OutputWorkspace=wsName,
             FilterByTofMin=self.TOFPars[0],
             FilterByTofMax=self.TOFPars[2],
@@ -73,7 +80,7 @@ class VanadiumRawCorrection(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-    def restockPantry(self, wsName: str, filename: str) -> None:
+    def restockPantry(self, wsName: str, fileName: str) -> None:
         self.mantidSnapper.SaveNexus(
             InputWorkspace=wsName,
             Filename=fileName,
@@ -83,21 +90,33 @@ class VanadiumRawCorrection(PythonAlgorithm):
         wsNameV = "TOF_V"
         wsNameVB = "TOF_VB"
         wsName_cylinder = "cylAbsCalc"
-        outputWS = "output_workspace"
+        outputWS = self.getProperty("OutputWorkspace").value
 
         # Load and pre-process vanadium and empty datasets
-
-        process_raw_data(wsNameV, VRun, TOFPars, geomCalibFile)
-        process_raw_data(wsNameVB, VBRun, TOFPars, geomCalibFile)
+        ingredients: Ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
+        self.chopIngredients(ingredients)
+        self.raidPantry(wsNameV, self.vanadiumRunNumber)
+        self.raidPantry(wsNameVB, self.vanadiumBackgroundRunNumber)
 
         # take difference
-        self.mantidSnapper.Minus(LHSWorkspace=wsNameV, RHSWorkspace=wsNameVB, OutputWorkspace=outputWS)
-        self.mantidSnapper.DeleteWorkspaces(WorkspaceList=[wsNameV, wsNameVB])
+        self.mantidSnapper.Minus(
+            LHSWorkspace=wsNameV,
+            RHSWorkspace=wsNameVB,
+            OutputWorkspace=outputWS,
+        )
+        self.mantidSnapper.DeleteWorkspaces(
+            WorkspaceList=[wsNameV, wsNameVB],
+        )
 
         if not self.liteMode:
-            self.mantidSnapper.SumNeighbours(InputWorkspace=outputWS, SumX=8, SumY=8, OutputWorkspace=outpuwWS)
+            self.mantidSnapper.SumNeighbours(
+                InputWorkspace=outputWS,
+                SumX=8,  # TODO: extract this from SNAPLite definition
+                SumY=8,  # TODO: extract this from SNAPLite definition
+                OutputWorkspace=outputWS,
+            )
 
-        # # calculate and apply cylindrical absorption
+        # calculate and apply cylindrical absorption
 
         self.mantidSnapper.ConvertUnits(
             InputWorkspace=outputWS,
@@ -128,7 +147,9 @@ class VanadiumRawCorrection(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-        self.restockPantry(outputWS, rawVFile)
+        # save results
+
+        self.restockPantry(outputWS, self.rawVFile)
 
 
 # Register algorithm with Mantid
