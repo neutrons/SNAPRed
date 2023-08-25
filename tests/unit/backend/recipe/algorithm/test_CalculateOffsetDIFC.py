@@ -18,7 +18,6 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import (
     CalculateOffsetDIFC as ThisAlgo,  # noqa: E402
 )
-from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
 from snapred.meta.Config import Resource
 
 
@@ -128,63 +127,6 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
 
-    # TODO: this test is not necessary, and is only here for:
-    # 1. the principle that all methods should have independent tests
-    # 2. demonstration of using CreateSampleWorkspace
-    # 3. making codecov happier
-    # feel free to remove
-    def test_convert_and_rebin(self):
-        """Test that units can be converted between TOF and d-spacing"""
-        from mantid.simpleapi import (
-            CompareWorkspaces,
-            ConvertUnits,
-            CreateSampleWorkspace,
-            Rebin,
-        )
-
-        wstof = "_test_tof_data"
-        wsdsp = "_test_dsp_data"
-        CreateSampleWorkspace(
-            OutputWorkspace=wstof,
-            WorkspaceType="Histogram",
-            Function="Powder Diffraction",
-            XUnit="TOF",
-            InstrumentName="SNAP",
-            NumBanks=1,
-            BankPixelWidth=10,
-        )
-
-        # weak setup of algorithm
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.chopIngredients(self.fakeIngredients)
-
-        # try just rebinning the current workspace
-        wstof_expected = "_test_tof_expected"
-        Rebin(
-            InputWorkspace=wstof,
-            Params=f"{algo.TOFMin},{-abs(algo.TOFBin)},{algo.TOFMax}",
-            OutputWorkspace=wstof_expected,
-        )
-        algo.convertUnitsAndRebin(wstof, wstof, target="TOF")
-        assert CompareWorkspaces(Workspace1=wstof, Workspace2=wstof_expected)
-
-        # now try converting and rebinning workspace
-        wsdsp_expected = "_test_dsp_expected"
-        ConvertUnits(
-            InputWorkspace=wstof_expected,
-            OutputWorkspace=wsdsp_expected,
-            Target="dSpacing",
-        )
-        Rebin(
-            InputWorkspace=wsdsp_expected,
-            Params=f"{algo.overallDMin},{-abs(algo.dBin)},{algo.overallDMax}",
-            OutputWorkspace=wsdsp_expected,
-        )
-        algo.convertUnitsAndRebin(wstof, wsdsp)
-        algo.mantidSnapper.executeQueue()
-        assert CompareWorkspaces(Workspace1=wsdsp, Workspace2=wsdsp_expected)
-
     @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
     @mock.patch.object(ThisAlgo, "getRefID", lambda self, x: int(min(x)))  # noqa
     def test_execute(self):
@@ -238,10 +180,12 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.retrieveFromPantry()
         algo.initDIFCTable()
         difcTable = mtd[algo.difcWS]
-        # TODO this commented-out assertion loop should run
+        # TODO this commented-out assertion loop should pass
         # the uncommented one is what actually passes
         # for i,row in enumerare(difcTable.column('detid')):
         #     assert row == i
+        # TODO this uncommented loop is what actually passes
+        # need to find out why, and fix
         for row in difcTable.column("detid"):
             assert row == 1
         difc_refs = [

@@ -4,7 +4,7 @@ from typing import Dict, List
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "GroupByGroupCalibration"
@@ -21,7 +21,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
-    def chopIngredients(self, ingredients):
+    def chopIngredients(self, ingredients: Ingredients) -> None:
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         from datetime import date
 
@@ -99,8 +99,9 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=self.inputWStof,
-            Params=f"{self.TOFMin},{-abs(self.TOFBin)},{self.TOFMax}",
+            Params=(self.TOFMin, self.TOFBin, self.TOFMax),
             OutputWorkspace=self.inputWStof,
+            BinningMode="Logarithmic",
         )
 
         # also find d-spacing data and rebin logarithmically
@@ -114,8 +115,9 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=inputWSdsp,
-            Params=f"{self.overallDMin},{-abs(self.dBin)},{self.overallDMax}",
+            Params=(self.overallDMin, self.dBin, self.overallDMax),
             OutputWorkspace=inputWSdsp,
+            BinningMode="Logarithmic",
         )
 
         # now diffraction focus the d-spacing data and conver to TOF
@@ -142,21 +144,14 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=self.diffractionfocusedWStof,
-            Params=f"{self.TOFMin},{-abs(self.TOFBin)},{self.TOFMax}",
+            Params=(self.TOFMin, self.TOFBin, self.TOFMax),
             OutputWorkspace=self.diffractionfocusedWStof,
+            BinningMode="Logarithmic",
         )
         # clean up d-spacing workspaces
-        self.mantidSnapper.DeleteWorkspace(
+        self.mantidSnapper.DeleteWorkspaces(
             "Clean up d-spacing data",
-            Workspace=focusWSname,
-        )
-        self.mantidSnapper.DeleteWorkspace(
-            "Clean up d-spacing data",
-            Workspace=inputWSdsp,
-        )
-        self.mantidSnapper.Deleteworkspace(
-            "Clean up d-spaced diffraction focused data",
-            Workspace=diffractionfocusedWSdsp,
+            WorkspaceList=[focusWSname, inputWSdsp, diffractionfocusedWSdsp],
         )
         self.mantidSnapper.executeQueue()
 
@@ -192,7 +187,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.log().notice("Execution of extraction of calibration constants START!")
 
         # get the ingredients
-        ingredients = DiffractionCalibrationIngredients.parse_raw(self.getProperty("Ingredients").value)
+        ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
         self.retrieveFromPantry()
 

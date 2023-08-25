@@ -1,12 +1,11 @@
 import json
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
-from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "CalculateOffsetDIFC"
@@ -29,7 +28,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, name)
 
     # TODO: ensure all ingredients loaded elsewhere, no superfluous ingredients
-    def chopIngredients(self, ingredients: DiffractionCalibrationIngredients) -> None:
+    def chopIngredients(self, ingredients: Ingredients) -> None:
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         self.runNumber: str = ingredients.runConfig.runNumber
         self.ipts: str = ingredients.runConfig.IPTS
@@ -38,7 +37,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # TODO setup for SNAPLite
         self.isLite: bool = False
 
-        # fdrom the instrument state, read the overall min/max TOF
+        # from the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
         # the binning must be negative to signal logarithmic binning
@@ -111,6 +110,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             "Calculating initial DIFC values",
             InputWorkspace=self.inputWStof,
             OutputWorkspace="_tmp_difc_ws",
+            OffsetMode="Signed",
         )
         # convert the calibration workspace into a calibration table
         self.mantidSnapper.CreateEmptyTableWorkspace(
@@ -156,17 +156,18 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             Target=target,
         )
 
-        rebinParams: str
+        rebinParams: Tuple[float, float, float]
         if target == "dSpacing":
-            rebinParams = f"{self.overallDMin},{-abs(self.dBin)},{self.overallDMax}"
+            rebinParams = (self.overallDMin, -abs(self.dBin), self.overallDMax)
         elif target == "TOF":
-            rebinParams = f"{self.TOFMin},{-abs(self.TOFBin)},{self.TOFMax}"
+            rebinParams = (self.TOFMin, -abs(self.TOFBin), self.TOFMax)
 
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=outputWS,
             OutputWorkspace=outputWS,
             Params=rebinParams,
+            BinningMode="Logarithmic",
         )
         self.mantidSnapper.executeQueue()
 
@@ -245,22 +246,13 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         data["maxOffset"] = abs(np.max(offsets))
 
         # get difcal corrected by offsets
-        calibrationWS = f"_{self.runNumber}_CAL_CC_temp"
-        # TODO: replace this with appropriately edited mantid version
-        self.mantidSnapper.ConvertDiffCalLog(
+        self.mantidSnapper.ConvertDiffCal(
             "Correct previous calibration constants by offsets",
             OffsetsWorkspace=totalOffsetWS,
             PreviousCalibration=self.difcWS,
-            OutputWorkspace=calibrationWS,
-            BinWidth=self.dBin,
-        )
-
-        # save the resulting DIFC for starting point in next iteration
-        self.mantidSnapper.RenameWorkspace(
-            "Save the DIFC for starting point in next iteration",
-            InputWorkspace=calibrationWS,
             OutputWorkspace=self.difcWS,
-            OverwriteExisting=True,
+            OffsetMode="Signed",
+            BinWidth=self.dBin,
         )
 
         # apply offset correction to input workspace
@@ -273,17 +265,9 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.convertUnitsAndRebin(self.inputWStof, self.inputWSdsp)
 
         # cleanup memory usage
-        self.mantidSnapper.DeleteWorkspace(
-            f"Deleting temporary cross-correlation workspace {wscc}",
-            Workspace=wscc,
-        )
-        self.mantidSnapper.DeleteWorkspace(
-            f"Deleting temporary offset workspace {wsoff}",
-            Workspace=wsoff,
-        )
-        self.mantidSnapper.DeleteWorkspace(
-            "Deleting total offset workspace",
-            Workspace=totalOffsetWS,
+        self.mantidSnapper.DeleteWorkspaces(
+            "Deleting temporary workspaces",
+            WorkspaceList=[wscc, wsoff, totalOffsetWS],
         )
         # now execute the queue
         self.mantidSnapper.executeQueue()
@@ -306,11 +290,13 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.log().notice("Extraction of calibration constants START!")
 
         # get the ingredients
-        ingredients = DiffractionCalibrationIngredients(**json.loads(self.getProperty("Ingredients").value))
+        ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
         self.chopIngredients(ingredients)
 
         # load and process the input data for algorithm
         self.retrieveFromPantry()
+
+        # prepare initial diffraction calibration workspace
         self.initDIFCTable()
 
         # now calculate and correct by offsets
