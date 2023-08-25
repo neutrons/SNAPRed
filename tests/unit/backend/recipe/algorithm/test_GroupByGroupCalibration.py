@@ -13,7 +13,6 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.GroupByGroupCalibration import (
