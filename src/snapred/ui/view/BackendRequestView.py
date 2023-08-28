@@ -15,7 +15,7 @@ class BackendRequestView(QWidget):
         super(BackendRequestView, self).__init__(parent)
         self.layout = QGridLayout()
         self.setLayout(self.layout)
-
+        self.jsonForm = jsonForm
         self.layout.addWidget(jsonForm.widget, 2, 0, 1, 2)
 
         self.beginFlowButton = QPushButton("Begin Operation")
@@ -28,6 +28,12 @@ class BackendRequestView(QWidget):
             self.handleButtonClicked(request, self.beginFlowButton)
 
         self.beginFlowButton.clicked.connect(commenceFlow)
+
+    def getFieldText(self, key):
+        return self.jsonForm.getField(key).text()
+
+    def getField(self, key):
+        return self.jsonForm.getField(key)
 
     def _labeledField(self, label, field):
         widget = QWidget()

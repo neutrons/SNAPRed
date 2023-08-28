@@ -14,6 +14,7 @@ from snapred.ui.view.FitMultiplePeaksView import FitMultiplePeaksView
 from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibrationCheckView
 from snapred.ui.view.VanadiumFocussedReductionView import VanadiumFocussedReductionView
 from snapred.ui.widget.JsonForm import JsonForm
+from snapred.ui.workflow.DiffractionCalibrationCreationWorkflow import DiffractionCalibrationCreationWorkflow
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -90,7 +91,7 @@ class TestPanelPresenter(object):
         newForm = JsonForm(selection.split("/")[-1], jsonSchema=jsonSchema, parent=self.view)
         self._loadDefaultJsonInput(selection, newForm)
         if selection.startswith("calibration/reduction"):
-            newWidget = CalibrationReductionRequestView(newForm, parent=self.view)
+            newWidget = DiffractionCalibrationCreationWorkflow(newForm, parent=self.view).widget
         elif selection.startswith("fitMultiplePeaks"):
             newWidget = FitMultiplePeaksView(newForm, parent=self.view)
         elif selection.startswith("vanadiumReduction"):
