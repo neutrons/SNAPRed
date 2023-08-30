@@ -25,4 +25,11 @@ class LiteDataService(Service):
 
     @FromString
     def reduceLiteData(self, runs: List[RunConfig]) -> Dict[Any, Any]:
-        pass
+        data: Dict[Any, Any] = {}
+        for run in runs:
+            inputWorkspace = "SNAP_" + str(run.runNumber) + ".nxs"
+            try:
+                LiteDataRecipe().executeRecipe(InputWorkspace=inputWorkspace)
+            except:
+                raise
+        return data
