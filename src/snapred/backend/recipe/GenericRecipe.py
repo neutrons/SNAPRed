@@ -5,6 +5,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import CalibrationReductionAlgorithm
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
+from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm
@@ -78,6 +79,10 @@ class ReductionRecipe(GenericRecipe[ReductionAlgorithm]):
 
 
 class SmoothDataExcludingPeaksRecipe(GenericRecipe[SmoothDataExcludingPeaks]):
+    pass
+
+
+class LiteDataRecipe(GenericRecipe[LiteDataCreationAlgo]):
     pass
 
 

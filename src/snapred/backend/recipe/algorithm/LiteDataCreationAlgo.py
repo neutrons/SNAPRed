@@ -2,7 +2,7 @@ import json
 
 from mantid.api import *
 from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
-from mantid.Kernel import Direction
+from mantid.kernel import Direction
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
