@@ -19,6 +19,16 @@ name = "VanadiumRawCorrection"
 
 # TODO: Rename so it matches filename
 class VanadiumRawCorrection(PythonAlgorithm):
+    VANADIUM_CYLINDER = {
+        "attenuationXSection": 4.878,
+        "scatteringXSection": 5.159,
+        "sampleNumberDensity": 0.070,
+        "cylinderSampleHeight": 0.30,  # cm
+        "cylinderSampleRadius": 0.15,  # cm
+        "numberOfSlices": 10,
+        "numberOfAnnuli": 10,
+    }
+
     def PyInit(self):
         # declare properties
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
@@ -27,51 +37,44 @@ class VanadiumRawCorrection(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, name)
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
-        #
-
-        self.vanadiumRunNumber = ingredients.runNumber
-        self.vanadiumBackgroundRunNumber = ingredients.runNumber
-
-        self.geomCalibFile: str = ""  # iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ sPrm['calFileName']
-
-        # geomCalibFile= calibrationPath + geomCalibFilename
-        self.rawVFile = ""  # iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ f'RVMB{VRun}
-        if ingredients.liteMode:
-            extns = ".lite.nxs"
-        else:
-            extns = ".nxs"
-        self.rawVFile = self.rawVFile + extns
-
-        self.TOFPars: Tuple[float, float, float] = (0, 0, 0)  # (sPrm['tofMin'], sPrm['tofBin'], sPrm['tofMax'] )
-        self.IPTSLoc = self.mantidSnapper.GetIPTS(RunNumber=self.runNumber, Instrument="SNAP")
-        self.mantidSnapper.executeQueue()
-        self.liteMode = ingredients.isLite
-
+        stateConfig = ingredients.reductionState.stateConfig
+        self.liteMode = stateConfig.isLiteMode
+        self.vanadiumRunNumber = ingredients.runConfig.runNumber
+        self.vanadiumBackgroundRunNumber = stateConfig.emptyInstrumentRunNumber
+        self.geomCalibFile: str = stateConfig.geometryCalibrationFileName
+        self.rawVFile = (
+            stateConfig.rawVanadiumCorrectionFileName
+        )  # iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ f'RVMB{VRun}
+        self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
         pass
 
-    def raidPantry(self, wsName: str, runNumber: int) -> None:
+    def raidPantry(self, wsName: str, filename: str) -> None:
         if self.liteMode:
-            vanadium_filename = f"{self.IPTSLoc}shared/lite/SNAP_{runNumber}.lite.nxs.h5"
+            pass
         else:
-            vanadium_filename = f"{self.IPTSLoc}nexus/SNAP_{runNumber}.nxs.h5"
+            pass
 
         self.mantidSnapper.LoadEventNexus(
-            Filename=vanadium_filename,
+            "Load the indicated data",
+            Filename=filename,
             OutputWorkspace=wsName,
             FilterByTofMin=self.TOFPars[0],
             FilterByTofMax=self.TOFPars[2],
             NumberOfBins=1,
         )
         self.mantidSnapper.NormaliseByCurrent(
+            "Normalize by current",
             InputWorkspace=wsName,
             OutputWorkspace=wsName,
         )
         self.mantidSnapper.ApplyDiffCal(
+            "Apply diffraction calibration from geometry file",
             InstrumentWorkspace=wsName,
             CalibrationFile=self.geomCalibFile,
         )
 
         self.mantidSnapper.Rebin(
+            "Rebin in log TOF",
             InputWorkspace=wsName,
             Params=self.TOFPars,
             PreserveEvents=False,
@@ -80,10 +83,11 @@ class VanadiumRawCorrection(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-    def restockPantry(self, wsName: str, fileName: str) -> None:
+    def restockPantry(self, wsName: str, filename: str) -> None:
         self.mantidSnapper.SaveNexus(
+            "Saving results",
             InputWorkspace=wsName,
-            Filename=fileName,
+            Filename=filename,
         )
 
     def PyExec(self):
@@ -95,21 +99,31 @@ class VanadiumRawCorrection(PythonAlgorithm):
         # Load and pre-process vanadium and empty datasets
         ingredients: Ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
-        self.raidPantry(wsNameV, self.vanadiumRunNumber)
+        self.IPTSLoc = self.mantidSnapper.GetIPTS(
+            "Retrieve IPTS location",
+            RunNumber=self.vanadiumRunNumber,
+            Instrument="SNAP",
+        )
+        self.mantidSnapper.executeQueue()
+
+        self.raidPantry(wsNameV, self.rawVFile)
         self.raidPantry(wsNameVB, self.vanadiumBackgroundRunNumber)
 
         # take difference
         self.mantidSnapper.Minus(
+            "Subtract off empty background",
             LHSWorkspace=wsNameV,
             RHSWorkspace=wsNameVB,
             OutputWorkspace=outputWS,
         )
         self.mantidSnapper.DeleteWorkspaces(
+            "Remove cluttering workspaces",
             WorkspaceList=[wsNameV, wsNameVB],
         )
 
         if not self.liteMode:
             self.mantidSnapper.SumNeighbours(
+                "Add neighboring pixels",
                 InputWorkspace=outputWS,
                 SumX=8,  # TODO: extract this from SNAPLite definition
                 SumY=8,  # TODO: extract this from SNAPLite definition
@@ -119,28 +133,35 @@ class VanadiumRawCorrection(PythonAlgorithm):
         # calculate and apply cylindrical absorption
 
         self.mantidSnapper.ConvertUnits(
+            "Convert to wavelength",
             InputWorkspace=outputWS,
             OutputWorkspace=outputWS,
             Target="Wavelength",
         )
         self.mantidSnapper.CylinderAbsorption(
+            "Create cylinder absorption data",
             InputWorkspace=outputWS,
             OutputWorkspace=wsName_cylinder,
-            AttenuationXSection=4.878,
-            ScatteringXSection=5.159,
-            SampleNumberDensity=0.070,
-            CylinderSampleHeight=0.3,  # cm
-            CylinderSampleRadius=0.15,  # cm
-            NumberOfSlices=10,
-            NumberOfAnnuli=10,
+            AttenuationXSection=self.VANADIUM_CYLINDER["attenuationXSection"],
+            ScatteringXSection=self.VANADIUM_CYLINDER["scatteringXSection"],
+            SampleNumberDensity=self.VANADIUM_CYLINDER["sampleNumberDensity"],
+            CylinderSampleHeight=self.VANADIUM_CYLINDER["cylinderSampleHeight"],  # cm
+            CylinderSampleRadius=self.VANADIUM_CYLINDER["cylinderSampleRadius"],  # cm
+            NumberOfSlices=self.VANADIUM_CYLINDER["numberOfSlices"],
+            NumberOfAnnuli=self.VANADIUM_CYLINDER["numberOfAnnuli"],
         )
         self.mantidSnapper.Divide(
+            "Divide out the cylinder absorption data",
             LHSWorkspace=outputWS,
             RHSWorkspace=wsName_cylinder,
             OutputWorkspace=outputWS,
         )
-        self.mantidSnapper.DeleteWorkspace(Workspace=wsName_cylinder)
+        self.mantidSnapper.DeleteWorkspace(
+            "Delete cluttering workspace",
+            Workspace=wsName_cylinder,
+        )
         self.mantidSnapper.ConvertUnits(
+            "Convert units back to TOF",
             InputWorkspace=outputWS,
             OutputWorkspace=outputWS,
             Target="TOF",
