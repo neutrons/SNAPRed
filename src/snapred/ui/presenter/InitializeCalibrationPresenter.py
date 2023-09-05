@@ -60,7 +60,7 @@ class CalibrationCheck(object):
         self.worker_pool.submitWorker(self.worker)
 
     def _spawnStateCreationWorkflow(self):
-        from snapred.ui.widget.WorkflowNode import continueWorkflow, finalizeWorkflow, startWorkflow
+        from snapred.ui.workflow.WorkfflowBuilder import WorkflowBuilder
 
         promptView = PromptUserforCalibrationInputView()
         promptView.setWindowModality(Qt.WindowModal)
@@ -81,12 +81,13 @@ class CalibrationCheck(object):
 
         promptView.dataEntered.connect(pushDataToInterfaceController)
         promptView.exec_()
-
-        Start = startWorkflow(lambda workflow: None, promptView)  # noqa: ARG005
-        Continue = continueWorkflow(Start, pushDataToInterfaceController, promptView)
-        Finish = finalizeWorkflow(Continue)
-
-        Finish.presenter.show()
+        self.workflow = (
+            WorkflowBuilder(self.view)
+            .addNode(lambda workflow: None, promptView, "Calibration Input")  # noqa: ARG005
+            .addNode(pushDataToInterfaceController, promptView, "Initialize State")
+            .build()
+        )
+        self.workflow.show()
 
     def handlePixelGroupingResult(self, response: SNAPResponse):
         if response.code == 200:

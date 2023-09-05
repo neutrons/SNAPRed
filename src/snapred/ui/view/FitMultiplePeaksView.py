@@ -8,7 +8,7 @@ from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.meta.Config import Resource
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.FitPeaksPlot import FitPeaksPlot
-from snapred.ui.widget.WorkflowNode import finalizeWorkflow, startWorkflow
+from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
 
 class FitMultiplePeaksView(BackendRequestView):
@@ -29,8 +29,11 @@ class FitMultiplePeaksView(BackendRequestView):
 
             def examineOutput():
                 FitPeaksPlot("testWS")
-                workflow = startWorkflow(lambda workflow: None, self._labelView("Did it work?"))  # noqa: ARG005
-                workflow = finalizeWorkflow(workflow, self)
+                workflow = (
+                    WorkflowBuilder(parent)
+                    .addNode(lambda workflow: None, self._labelView("Did it work?"))  # noqa: ARG005, E501
+                    .build()
+                )
                 workflow.widget.show()
 
             self.worker.finished.connect(lambda: examineOutput())
