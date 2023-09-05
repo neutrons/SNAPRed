@@ -40,6 +40,9 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         # IEventWorkspace ID is equivalent to spec ID
         numSpec = outputWorkspace.getNumberHistograms()
 
+        # access the instrument definition
+        outputWorkspace.getInstrument()
+
         # iterate over IEventWorkspace IDs
         for spec in range(numSpec):
             # wsID = outputWorkspace.getSpectrum(spec)
