@@ -1,3 +1,4 @@
+import os
 import unittest.mock as mock
 
 import numpy as np
@@ -15,6 +16,12 @@ with mock.patch.dict(
     from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 
 
+# Define the HAVE_MOUNT_SNAP fixture
+@pytest.fixture(scope="session")
+def HAVE_MOUNT_SNAP():
+    return os.path.exists("/SNS/SNAP/")
+
+
 @pytest.fixture(autouse=True)
 def _setup_teardown():
     """Clear all workspaces before and after tests."""
@@ -26,6 +33,8 @@ def _setup_teardown():
             print(f"Workspace {workspace} doesn't exist!")
 
 
+@pytest.mark.mount_snap()
+@pytest.mark.skipif(not HAVE_MOUNT_SNAP, reason="Mount SNAP not available")
 def test_LiteDataCreationAlgo_basic_functionality():
     testWorkspaceFile = "/SNS/SNAP/IPTS-26687/nexus/SNAP_51877.nxs.h5"
     test_ws_name = "test_ws"
@@ -58,6 +67,8 @@ def test_LiteDataCreationAlgo_basic_functionality():
     DeleteWorkspace(output_ws_name)
 
 
+@pytest.mark.mount_snap()
+@pytest.mark.skipif(not HAVE_MOUNT_SNAP, reason="Mount SNAP not available")
 def test_LiteDataCreationAlgo_invalid_input():
     """test how the algorithm handles an invalid input workspace."""
     with pytest.raises(RuntimeError):  # noqa: PT012
