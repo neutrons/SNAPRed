@@ -20,8 +20,10 @@ def _setup_teardown():
     """Clear all workspaces before and after tests."""
     workspaces = mtd.getObjectNames()
     for workspace in workspaces:
-        DeleteWorkspace(workspace)
-    return
+        try:
+            DeleteWorkspace(workspace)
+        except ValueError:
+            print(f"Workspace {workspace} doesn't exist!")
 
 
 def test_LiteDataCreationAlgo_basic_functionality():
