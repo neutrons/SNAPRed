@@ -33,28 +33,14 @@ class TestVanadiumRawCorrection(unittest.TestCase):
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
-        # fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/calibration/sampleInstrumentState.json"))
-        # fakeInstrumentState.particleBounds.tof.minimum = 10
-        # fakeInstrumentState.particleBounds.tof.maximum = 1000
-
-        # fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/calibration/sampleFocusGroup.json"))
-        # ntest = fakeFocusGroup.nHst
-        # fakeFocusGroup.dBin = [-abs(self.fakeDBin)] * ntest
-        # fakeFocusGroup.dMax = [float(x) for x in range(100 * ntest, 101 * ntest)]
-        # fakeFocusGroup.dMin = [float(x) for x in range(ntest)]
-        # fakeFocusGroup.FWHM = [5 * random.random() for x in range(ntest)]
-        # fakeFocusGroup.definition = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
-
-        # peakList = [
-        #     DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 2, "maximum": 3}}),
-        #     DetectorPeak.parse_obj({"position": {"value": 5, "minimum": 4, "maximum": 6}}),
-        # ]
-
         self.fakeIngredients = Ingredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
         self.fakeIngredients.runConfig = fakeRunConfig
+        self.fakeIngredients.reductionState.stateConfig.tofMin = 1
+        self.fakeIngredients.reductionState.stateConfig.tofBin = 1
+        self.fakeIngredients.reductionState.stateConfig.tofMax = 100
         pass
 
-    def mockRaidPantry(algo, wsName, filename):
+    def mockRaidPantry(algo, wsName, filename):  # noqa
         """Will cause algorithm to execute with sample data, instead of loading from file"""
         # prepare with test data
         algo.mantidSnapper.CreateSampleWorkspace(
@@ -111,10 +97,10 @@ class TestVanadiumRawCorrection(unittest.TestCase):
         assert algo.getProperty("OutputWorkspace").value == goodOutputWSName
 
     @mock.patch.object(Algo, "raidPantry", mockRaidPantry)
-    @mock.patch.object(Algo, "restockPantry", lambda self, wsName, filename: None)
+    @mock.patch.object(Algo, "restockPantry", mock.Mock(return_value=None))
     @mock.patch(TheAlgorithmManager)
     def test_execute(self, mockAlgorithmManager):
-        # """Test that the algorithm executes"""
+        """Test that the algorithm executes"""
 
         class mockGetIPTS(PythonAlgorithm):
             def PyInit(self):
@@ -143,32 +129,6 @@ class TestVanadiumRawCorrection(unittest.TestCase):
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")
         assert algo.execute()
-
-    # patch to make the offsets of sample data non-zero
-    @mock.patch.object(Algo, "raidPantry", mockRaidPantry)
-    def test_reexecution_and_convergence(self):
-        # """Test that the algorithm can run, and that it will converge to an answer"""
-
-        # algo = Algo()
-        # algo.initialize()
-        # algo.setProperty("Ingredients", self.fakeIngredients.json())
-        # assert algo.execute()
-        # assert algo.reexecute()
-
-        # data = json.loads(algo.getProperty("data").value)
-        # assert data["meanOffset"] is not None
-        # assert data["meanOffset"] != 0
-        # assert data["meanOffset"] <= 2
-
-        # # check that value converges
-        # numIter = 5
-        # allOffsets = [data["meanOffset"]]
-        # for i in range(numIter):
-        #     algo.reexecute()
-        #     data = json.loads(algo.getProperty("data").value)
-        #     allOffsets.append(data["meanOffset"])
-        #     assert allOffsets[-1] <= allOffsets[-2]
-        pass
 
     def test_retrieve_from_pantry(self):
         # import os
