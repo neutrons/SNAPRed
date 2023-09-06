@@ -31,6 +31,9 @@ file = "src/snapred/_version.py"
 pythonpath = [
   "src"
 ]
+markers = [
+  "mount_snap: mark a test as using /SNS/SNAP/ data mount"
+]
 
 [tool.ruff]
 line-length = 120
