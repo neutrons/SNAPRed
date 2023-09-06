@@ -43,20 +43,8 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         # array to hold spectrum data
         spectrumData = []
 
-        # access the instrument definition
-        # outputWorkspace.getInstrument()
-
-        # # get number of detectors
-        # instrument = outputWorkspace.getInstrument()
-
-        # # modify instrument definition
-        # for detector_id in range(instrument.getNumberDetectors()):
-        #     detector = instrument.getDetector(self, detector_id)
-
         # iterate over IEventWorkspace IDs
         for spec in range(numSpec):
-            # wsID = outputWorkspace.getSpectrum(spec)
-
             # get event list per workspace
             spectrum = outputWorkspace.getSpectrum(workspaceIndex=spec)
             spectrumData.append(spectrum)
@@ -71,6 +59,12 @@ class LiteDataCreationAlgo(PythonAlgorithm):
                 spectrum.clearDetectorIDs()
                 spectrum.addDetectorID(superID)
 
+        self.mantidSnapper.LoadInstrument(
+            "Loading instrument...",
+            Workspace=outputWorkspace,
+            Filename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+            RewriteSpectraMap=False,
+        )
         # self.mantidSnapper.DeleteWorkspace("Cleaning up input workspace...", Workspace=ws)
         self.mantidSnapper.executeQueue()
 
