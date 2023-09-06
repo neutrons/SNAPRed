@@ -4,7 +4,6 @@ import unittest.mock as mock
 import numpy as np
 import pytest
 
-# Mocking external modules
 with mock.patch.dict(
     "sys.modules",
     {
@@ -15,11 +14,7 @@ with mock.patch.dict(
     from mantid.simpleapi import DeleteWorkspace, Load, mtd
     from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 
-
-# Define the HAVE_MOUNT_SNAP fixture
-@pytest.fixture(scope="session")
-def HAVE_MOUNT_SNAP():
-    return os.path.exists("/SNS/SNAP/")
+HAVE_MOUNT_SNAP = os.path.exists("/SNS/SNAP/")
 
 
 @pytest.fixture(autouse=True)
