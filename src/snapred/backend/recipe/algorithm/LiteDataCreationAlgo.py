@@ -26,7 +26,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
 
         # load input workspace
         inputWorkspace = self.getProperty("InputWorkspace").value
-        ws = self.mantidSnapper.mtd[inputWorkspace]
+        self.mantidSnapper.mtd[inputWorkspace]
 
         # clone the workspace
         self.mantidSnapper.CloneWorkspace(
@@ -35,31 +35,43 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             OutputWorkspace=outputWorkspaceName,
         )
         self.mantidSnapper.executeQueue()
-        outputWorkspace = self.mantidSnapper.mtd(outputWorkspaceName)
+        outputWorkspace = self.mantidSnapper.mtd[outputWorkspaceName]
 
         # IEventWorkspace ID is equivalent to spec ID
         numSpec = outputWorkspace.getNumberHistograms()
 
+        # array to hold spectrum data
+        spectrumData = []
+
         # access the instrument definition
-        outputWorkspace.getInstrument()
+        # outputWorkspace.getInstrument()
+
+        # # get number of detectors
+        # instrument = outputWorkspace.getInstrument()
+
+        # # modify instrument definition
+        # for detector_id in range(instrument.getNumberDetectors()):
+        #     detector = instrument.getDetector(self, detector_id)
 
         # iterate over IEventWorkspace IDs
         for spec in range(numSpec):
             # wsID = outputWorkspace.getSpectrum(spec)
 
             # get event list per workspace
-            eventList = outputWorkspace.getEventList(workspace_index=spec)
+            spectrum = outputWorkspace.getSpectrum(workspaceIndex=spec)
+            spectrumData.append(spectrum)
 
-            # allocate array of event IDs
-            for event in eventList:
-                eventID = eventList.getDetectorIDs()
-                superID = self.getSuperID(nativeID=eventID, xdim=superPixel[0], ydim=superPixel[0])
+        # allocate array of event IDs
+        for spectrum in spectrumData:
+            eventIDs = spectrum.getDetectorIDs()
+            for event in eventIDs:
+                superID = self.getSuperID(nativeID=event, xdim=superPixel[0], ydim=superPixel[0])
 
                 # clear detector IDs and then add the new modified super ID
-                event.clearDetectorIDs()
-                event.addDetectorID(superID)
+                spectrum.clearDetectorIDs()
+                spectrum.addDetectorID(superID)
 
-        self.mantidSnapper.DeleteWorkspace("Cleaning up input workspace...", Workspace=ws)
+        # self.mantidSnapper.DeleteWorkspace("Cleaning up input workspace...", Workspace=ws)
         self.mantidSnapper.executeQueue()
 
         self.setProperty("OutputWorkspace", outputWorkspaceName)
@@ -84,7 +96,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         superi = i // xdim
         superj = j // ydim
         superFirstPix = firstPix // NNat * superN
-        superIDs = (superi * superNy + superj + superFirstPix).astype(int)
+        superIDs = superi * superNy + superj + superFirstPix
 
         return superIDs
 
