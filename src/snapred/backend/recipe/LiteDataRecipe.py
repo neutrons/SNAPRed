@@ -18,7 +18,7 @@ class LiteDataRecipe:
     def __init__(self):
         pass
 
-    def exectuteRecipe(self, InputWorkspace: str):
+    def executeRecipe(self, InputWorkspace: str):
         logger.info("Executing LiteDataRecipe")
         data: Dict[str, Any] = {}
 
