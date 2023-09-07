@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
-from mantid.kernel import Direction
+from mantid.kernel import Direction, StringArrayProperty
 from mantid.simpleapi import DeleteWorkspace, DeleteWorkspaces
 
 from snapred.meta.Config import Config
@@ -20,7 +20,7 @@ class WashDishes(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("Workspace", defaultValue="", direction=Direction.Input)  # noqa: F821
-        self.declareProperty("WorkspaceList", defaultValue=[], direction=Direction.Input)
+        self.declareProperty(StringArrayProperty("WorkspaceList", defaultValue=[], direction=Direction.Input))
         self.setRethrows(True)
         self._CISmode: bool = Config["cis_mode"]
 
