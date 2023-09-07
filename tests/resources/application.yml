@@ -49,3 +49,5 @@ logging:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
   mantid:
     format: '%Y-%m-%d %H:%M:%S,%i - %p - %s - %t'
+
+cis-mode: yes

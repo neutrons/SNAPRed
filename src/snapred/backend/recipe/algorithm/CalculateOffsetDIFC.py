@@ -6,7 +6,9 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
+from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 
 name = "CalculateOffsetDIFC"
 
@@ -92,7 +94,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         for groupID in self.groupIDs:
             groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
             self.subgroupWorkspaceIndices[groupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
-        self.mantidSnapper.DeleteWorkspace(
+        self.mantidSnapper.WashDishes(
             "Delete temp",
             Workspace=focusWSname,
         )
@@ -111,6 +113,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             InputWorkspace=self.inputWStof,
             OutputWorkspace="_tmp_difc_ws",
             OffsetMode="Signed",
+            BinWidth=abs(self.TOFBin),
         )
         # convert the calibration workspace into a calibration table
         self.mantidSnapper.CreateEmptyTableWorkspace(
@@ -138,7 +141,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                     "tofmin": 0,
                 }
             )
-        self.mantidSnapper.DeleteWorkspace(
+        self.mantidSnapper.WashDishes(
             "Delete temp calibration workspace",
             Workspace="_tmp_difc_ws",
         )
@@ -265,7 +268,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.convertUnitsAndRebin(self.inputWStof, self.inputWSdsp)
 
         # cleanup memory usage
-        self.mantidSnapper.DeleteWorkspaces(
+        self.mantidSnapper.WashDishes(
             "Deleting temporary workspaces",
             WorkspaceList=[wscc, wsoff, totalOffsetWS],
         )
