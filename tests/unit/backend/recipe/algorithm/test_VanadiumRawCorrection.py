@@ -130,58 +130,56 @@ class TestVanadiumRawCorrection(unittest.TestCase):
         algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")
         assert algo.execute()
 
-    def test_retrieve_from_pantry(self):
-        # import os
+    def test_raid_pantry(self):
+        import os
 
-        # from mantid.simpleapi import (
-        #     CompareWorkspaces,
-        #     CreateSampleWorkspace,
-        #     LoadInstrument,
-        #     SaveNexus,
-        # )
+        from mantid.simpleapi import (
+            CompareWorkspaces,
+            CreateSampleWorkspace,
+            LoadInstrument,
+            SaveNexus,
+        )
 
-        # algo = Algo()
-        # algo.initialize()
-        # algo.setProperty("Ingredients", self.fakeIngredients.json())
-        # algo.chopIngredients(self.fakeIngredients)
+        algo = Algo()
+        algo.initialize()
+        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.chopIngredients(self.fakeIngredients)
 
-        # # create a fake nexus file to load
-        # fakeDataWorkspace = "_fake_sample_data"
-        # fakeNexusFile = Resource.getPath("outputs/calibration/testInputData.nxs")
-        # CreateSampleWorkspace(
-        #     OutputWorkspace=fakeDataWorkspace,
-        #     WorkspaceType="Event",
-        #     Function="User Defined",
-        #     UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-        #     Xmin=algo.TOFMin,
-        #     Xmax=algo.TOFMax,
-        #     BinWidth=0.1,
-        #     XUnit="TOF",
-        #     NumMonitors=1,
-        #     NumBanks=4,  # must produce same number of pixels as fake instrument
-        #     BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-        #     Random=True,
-        # )
-        # LoadInstrument(
-        #     Workspace=fakeDataWorkspace,
-        #     Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
-        #     InstrumentName="fakeSNAPLite",
-        #     RewriteSpectraMap=False,
-        # )
-        # SaveNexus(
-        #     InputWorkspace=fakeDataWorkspace,
-        #     Filename=fakeNexusFile,
-        # )
-        # algo.rawDataPath = fakeNexusFile
-        # algo.retrieveFromPantry()
-        # os.remove(fakeNexusFile)
-        # assert CompareWorkspaces(
-        #     Workspace1=algo.inputWStof,
-        #     Workspace2=fakeDataWorkspace,
-        # )
-        # assert len(algo.groupIDs) > 0
-        # assert algo.groupIDs == list(algo.subgroupWorkspaceIndices.keys())
-        pass
+        # create a fake nexus file to load
+        fakeDataWorkspace = "_fake_sample_data"
+        fakeNexusFile = Resource.getPath("outputs/calibration/testInputData.nxs")
+        CreateSampleWorkspace(
+            OutputWorkspace=fakeDataWorkspace,
+            WorkspaceType="Event",
+            Function="User Defined",
+            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
+            Xmin=algo.TOFPars[0],
+            Xmax=algo.TOFPars[2],
+            BinWidth=abs(algo.TOFPars[1]),
+            XUnit="TOF",
+            NumMonitors=1,
+            NumBanks=4,  # must produce same number of pixels as fake instrument
+            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
+            Random=True,
+        )
+        LoadInstrument(
+            Workspace=fakeDataWorkspace,
+            Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            InstrumentName="fakeSNAPLite",
+            RewriteSpectraMap=False,
+        )
+        SaveNexus(
+            InputWorkspace=fakeDataWorkspace,
+            Filename=fakeNexusFile,
+        )
+        algo.rawDataPath = fakeNexusFile
+        outputdataWS = "_test_RV_output"
+        algo.raidPantry(outputdataWS, fakeNexusFile)
+        os.remove(fakeNexusFile)
+        assert CompareWorkspaces(
+            Workspace1=algo.inputWStof,
+            Workspace2=fakeDataWorkspace,
+        )
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

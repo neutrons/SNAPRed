@@ -42,9 +42,8 @@ class VanadiumRawCorrection(PythonAlgorithm):
         self.vanadiumRunNumber = ingredients.runConfig.runNumber
         self.vanadiumBackgroundRunNumber = stateConfig.emptyInstrumentRunNumber
         self.geomCalibFile: str = stateConfig.geometryCalibrationFileName
-        self.rawVFile = (
-            stateConfig.rawVanadiumCorrectionFileName
-        )  # iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ f'RVMB{VRun}
+        # iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ f'RVMB{VRun}
+        self.rawVFile = stateConfig.rawVanadiumCorrectionFileName
         self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
         pass
 
