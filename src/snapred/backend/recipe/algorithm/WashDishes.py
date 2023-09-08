@@ -20,7 +20,7 @@ class WashDishes(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("Workspace", defaultValue="", direction=Direction.Input)  # noqa: F821
-        self.declareProperty(StringArrayProperty("WorkspaceList", defaultValue=[], direction=Direction.Input))
+        self.declareProperty(StringArrayProperty(name="WorkspaceList", values=[], direction=Direction.Input))
         self.setRethrows(True)
         self._CISmode: bool = Config["cis_mode"]
 
