@@ -209,17 +209,6 @@ class TestUnfocusedNormalizationCorrection(unittest.TestCase):
         assert algo.execute()
 
 
-# VANADIUM_CYLINDER = {
-#     "attenuationXSection": 4.878,
-#     "scatteringXSection": 5.159,
-#     "sampleNumberDensity": 0.070,
-#     "cylinderSampleHeight": 0.30,  # cm
-#     "cylinderSampleRadius": 0.15,  # cm
-#     "numberOfSlices": 10,
-#     "numberOfAnnuli": 10,
-# }
-
-
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
 @pytest.fixture(autouse=True)
