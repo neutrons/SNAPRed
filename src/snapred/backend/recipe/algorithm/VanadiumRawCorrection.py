@@ -5,8 +5,6 @@ import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     PythonAlgorithm,
-    WorkspaceGroup,
-    mtd,
 )
 from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline, splev
