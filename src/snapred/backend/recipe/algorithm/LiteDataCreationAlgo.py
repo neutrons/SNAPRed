@@ -26,7 +26,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
 
         # load input workspace
         inputWorkspace = self.getProperty("InputWorkspace").value
-        self.mantidSnapper.mtd[inputWorkspace]
 
         # clone the workspace
         self.mantidSnapper.CloneWorkspace(
@@ -53,7 +52,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         for spectrum in spectrumData:
             eventIDs = spectrum.getDetectorIDs()
             for event in eventIDs:
-                superID = self.getSuperID(nativeID=event, xdim=superPixel[0], ydim=superPixel[0])
+                superID = self.getSuperID(nativeID=event, xdim=superPixel[0], ydim=superPixel[1])
 
                 # clear detector IDs and then add the new modified super ID
                 spectrum.clearDetectorIDs()
