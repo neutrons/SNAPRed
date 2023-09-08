@@ -22,7 +22,7 @@ class WashDishes(PythonAlgorithm):
         self.declareProperty("Workspace", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty(StringArrayProperty(name="WorkspaceList", values=[], direction=Direction.Input))
         self.setRethrows(True)
-        self._CISmode: bool = Config._config["cis_mode"]
+        self._CISmode: bool = Config._config.get("cis_mode", True)
 
     def PyExec(self) -> None:
         self.log().notice("Washing the dishes...")

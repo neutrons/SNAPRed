@@ -149,7 +149,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
             BinningMode="Logarithmic",
         )
         # clean up d-spacing workspaces
-        self.mantidSnapper.DeleteWorkspaces(
+        self.mantidSnapper.WashDishes(
             "Clean up d-spacing data",
             WorkspaceList=[focusWSname, inputWSdsp, diffractionfocusedWSdsp],
         )
@@ -216,7 +216,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
                 StartWorkspaceIndex=index,
                 StopWorkspaceIndex=index,
             )
-            self.mantidSnapper.DeleteWorkspace(
+            self.mantidSnapper.WashDishes(
                 "Cleanup needles diagnostic workspace",
                 Workspace=f"_PDCal_diag_{groupID}",
             )
@@ -227,7 +227,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
                 CalibrationWorkspace=self.diffractionfocusedWStof,  # input WS to PDCalibrate, source for DIFCarb
                 OutputWorkspace=self.calibrationTable,  # resulting corrected calibration values, DIFCeff
             )
-            self.mantidSnapper.DeleteWorkspace(
+            self.mantidSnapper.WashDishes(
                 "Cleanup needless mask workspace",
                 Workspace=pdcalibratedWorkspace + "_mask",
             )
@@ -238,7 +238,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
             InstrumentWorkspace=self.inputWStof,
             CalibrationWorkspace=self.calibrationTable,
         )
-        self.mantidSnapper.DeleteWorkspace(
+        self.mantidSnapper.WashDishes(
             "Clean up pd group calibration table",
             Workspace=pdcalibratedWorkspace,
         )
