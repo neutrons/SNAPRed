@@ -127,7 +127,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         DIFCtable.addColumn(type="double", name="difc", plottype=6)
         DIFCtable.addColumn(type="double", name="difa", plottype=6)
         DIFCtable.addColumn(type="double", name="tzero", plottype=6)
-        DIFCtable.addColumn(type="double", name="tofmin", plottype=6)
         detids = [int(x) for x in tmpDifcWS.extractX()]
         difcs = [float(x) for x in tmpDifcWS.extractY()]
         # TODO why is detid always 1 in tests?
@@ -138,7 +137,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                     "difc": difc,
                     "difa": 0,
                     "tzero": 0,
-                    "tofmin": 0,
                 }
             )
         self.mantidSnapper.WashDishes(
