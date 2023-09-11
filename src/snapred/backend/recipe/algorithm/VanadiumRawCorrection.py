@@ -31,7 +31,7 @@ class VanadiumRawCorrection(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.input)
+        self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="vanadiumrawcorr_out", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
