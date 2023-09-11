@@ -5,6 +5,7 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
 from mantid.kernel import Direction
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Resource
 
 name = "LiteDataCreationAlgo"
 
@@ -61,7 +62,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         self.mantidSnapper.LoadInstrument(
             "Loading instrument...",
             Workspace=outputWorkspace,
-            Filename="/tests/resources/inputs/pixel_grouping/SNAPLite_Definition.xml",
+            Filename=Resource.getPath("/inputs/pixel_grouping/SNAPLite_Definition.xml"),
             RewriteSpectraMap=False,
         )
         # self.mantidSnapper.DeleteWorkspace("Cleaning up input workspace...", Workspace=ws)
