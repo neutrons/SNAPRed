@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction, StringArrayProperty
-from mantid.simpleapi import DeleteWorkspace, DeleteWorkspaces
+from mantid.simpleapi import DeleteWorkspace, DeleteWorkspaces, mtd
 
 from snapred.meta.Config import Config
 
@@ -26,11 +26,10 @@ class WashDishes(PythonAlgorithm):
 
     def PyExec(self) -> None:
         self.log().notice("Washing the dishes...")
-
-        workspace = self.getProperty("Workspace")
+        workspace = self.getProperty("Workspace").value
         if workspace != "" and not self._CISmode:
-            DeleteWorkspace(workspace)
-        workspaces = self.getProperty("WorkspaceList")
+            DeleteWorkspace(Workspace=workspace)
+        workspaces = self.getProperty("WorkspaceList").value
         if workspaces != [] and not self._CISmode:
             workspaces = [w for w in workspaces if isinstance(w, str)]
             DeleteWorkspaces(workspaces)
