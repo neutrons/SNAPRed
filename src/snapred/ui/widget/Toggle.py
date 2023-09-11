@@ -55,7 +55,7 @@ class Toggle(QWidget):
         painter.drawRoundedRect(self.rect(), self.width(), self.height() / 2)
         # draw the ellipse
         painter.setBrush(Qt.lightGray)
-        painter.drawEllipse((self.width() / 2) * self._ellipsePosition, 0, self.width() / 2, self.height())
+        painter.drawEllipse(int((self.width() / 2) * self._ellipsePosition), 0, int(self.width() / 2), self.height())
 
     def animateClick(self):
         # have ellipse slide to the opposite side

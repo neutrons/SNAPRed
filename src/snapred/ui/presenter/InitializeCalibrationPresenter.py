@@ -60,7 +60,7 @@ class CalibrationCheck(object):
         self.worker_pool.submitWorker(self.worker)
 
     def _spawnStateCreationWorkflow(self):
-        from snapred.ui.workflow.WorkfflowBuilder import WorkflowBuilder
+        from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
         promptView = PromptUserforCalibrationInputView()
         promptView.setWindowModality(Qt.WindowModal)
