@@ -13,11 +13,11 @@ from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "VanadiumRawCorrection"
+name = "UnfocusedNormalizationCorrection"
 
 
 # TODO: Rename so it matches filename
-class VanadiumRawCorrection(PythonAlgorithm):
+class UnfocusedNormalizationCorrection(PythonAlgorithm):
     VANADIUM_CYLINDER = {
         "attenuationXSection": 4.878,
         "scatteringXSection": 5.159,
@@ -212,4 +212,4 @@ class VanadiumRawCorrection(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(VanadiumRawCorrection)
+AlgorithmFactory.subscribe(UnfocusedNormalizationCorrection)

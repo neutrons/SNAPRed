@@ -19,15 +19,15 @@ from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.VanadiumRawCorrection import (
-    VanadiumRawCorrection as Algo,  # noqa: E402
+from snapred.backend.recipe.algorithm.UnfocusedNormalizationCorrection import (
+    UnfocusedNormalizationCorrection as Algo,  # noqa: E402
 )
 from snapred.meta.Config import Resource
 
 TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
 
 
-class TestVanadiumRawCorrection(unittest.TestCase):
+class TestUnfocusedNormalizationCorrection(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         self.fakeRunNumber = "555"
@@ -127,6 +127,9 @@ class TestVanadiumRawCorrection(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty(
+            "CalibrantSample",
+        )
         algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")
         assert algo.execute()
 
