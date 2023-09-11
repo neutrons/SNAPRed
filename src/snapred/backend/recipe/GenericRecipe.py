@@ -14,7 +14,6 @@ from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorit
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
 from snapred.backend.recipe.algorithm.UnfocusedNormalizationCorrection import UnfocusedNormalizationCorrection
 from snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm import VanadiumFocussedReductionAlgorithm
-from snapred.backend.recipe.algorithm.VanadiumRawCorrection import VanadiumRawCorrection
 from snapred.meta.decorators.FromString import isBaseModel, isListOfBaseModel
 
 logger = snapredLogger.getLogger(__name__)
@@ -94,5 +93,5 @@ class DetectorPeakPredictorRecipe(GenericRecipe[DetectorPeakPredictor]):
 class GenerateTableWorkspaceFromListOfDictRecipe(GenericRecipe[GenerateTableWorkspaceFromListOfDict]):
     pass
 
-class VanadiumRawCorrectionRecipe(GenericRecipe[VanadiumRawCorrection]):
+class UnfocusedNormalizationCorrectionRecipe(GenericRecipe[UnfocusedNormalizationCorrection]):
     pass
