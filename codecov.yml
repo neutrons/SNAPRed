@@ -5,3 +5,4 @@
 # of quantifying code coverage is found.
 ignore:
   - "src/snapred/backend/recipe/algorithm"
+  - "tests/cis_tests"
