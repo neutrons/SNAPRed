@@ -1,5 +1,5 @@
 import json
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 import numpy as np
 from mantid.api import (
@@ -10,6 +10,7 @@ from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline, splev
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
+from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "VanadiumRawCorrection"
@@ -30,6 +31,7 @@ class VanadiumRawCorrection(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.input)
         self.declareProperty("OutputWorkspace", defaultValue="vanadiumrawcorr_out", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
@@ -43,7 +45,34 @@ class VanadiumRawCorrection(PythonAlgorithm):
         # iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ f'RVMB{VRun}
         self.rawVFile = stateConfig.rawVanadiumCorrectionFileName
         self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
-        pass
+
+    def chopCalibrantSample(self, sample: CalibrantSamples) -> Dict[str, Any]:
+        self.sampleForm = sample.geometry.form
+        geometry = {
+            # SNAPRed specifies form as lowercase, mantid wants init cap
+            "Shape": f"{self.sampleForm[0].upper()}{self.sampleForm[1:]}",
+            "Radius": sample.geometry.radius,
+        }
+
+        # make the geometry dictionary
+        if geometry["Shape"] == "Cylinder":
+            geometry["Height"] = sample.geometry.total_height
+            geometry["Center"] = [0, 0, 0]  # @mguthriem confirms this is always true
+            geometry["Axis"] = [0, 1, 0]  # @mguthriem confirms this is always true
+        elif geometry["Shape"] == "Sphere":
+            geometry["Center"] = [0, 0, 0]  # @mguthrime confirms this is always true
+        else:
+            raise RuntimeError(f"Calibrant sample has shape {geometry['Shape']}: must be Cylinder or Sphere\n")
+
+        # make the material dictionary
+        material = {
+            "ChemicalFormula": sample.material.chemical_composition,
+        }
+
+        return {
+            "geometry": geometry,
+            "material": material,
+        }
 
     def raidPantry(self, wsName: str, filename: str) -> None:
         if self.liteMode:
@@ -87,6 +116,22 @@ class VanadiumRawCorrection(PythonAlgorithm):
             Filename=filename,
         )
 
+    def shapedAbsorption(self, outputWS: str, wsName_cylinder: str):
+        if self.sampleForm == "cylinder":
+            self.mantidSnapper.CylinderAbsorption(
+                "Create cylinder absorption data",
+                InputWorkspace=outputWS,
+                OutputWorkspace=wsName_cylinder,
+            )
+        elif self.sampleForm == "sphere":
+            self.mantidSnapper.SphericalAbsorption(
+                "Create spherical absorption data",
+                InputWorkspace=outputWS,
+                OutputWorkspace=wsName_cylinder,
+            )
+        else:
+            raise RuntimeError("Must use cylindrical or spherical calibrant samples\n")
+
     def PyExec(self):
         wsNameV = "TOF_V"
         wsNameVB = "TOF_VB"
@@ -128,25 +173,21 @@ class VanadiumRawCorrection(PythonAlgorithm):
             )
 
         # calculate and apply cylindrical absorption
-
         self.mantidSnapper.ConvertUnits(
             "Convert to wavelength",
             InputWorkspace=outputWS,
             OutputWorkspace=outputWS,
             Target="Wavelength",
         )
-        self.mantidSnapper.CylinderAbsorption(
-            "Create cylinder absorption data",
-            InputWorkspace=outputWS,
-            OutputWorkspace=wsName_cylinder,
-            AttenuationXSection=self.VANADIUM_CYLINDER["attenuationXSection"],
-            ScatteringXSection=self.VANADIUM_CYLINDER["scatteringXSection"],
-            SampleNumberDensity=self.VANADIUM_CYLINDER["sampleNumberDensity"],
-            CylinderSampleHeight=self.VANADIUM_CYLINDER["cylinderSampleHeight"],  # cm
-            CylinderSampleRadius=self.VANADIUM_CYLINDER["cylinderSampleRadius"],  # cm
-            NumberOfSlices=self.VANADIUM_CYLINDER["numberOfSlices"],
-            NumberOfAnnuli=self.VANADIUM_CYLINDER["numberOfAnnuli"],
+        # set the workspace's sample
+        sample = CalibrantSamples.parse_raw(self.getProperty("CalibrantSample").value)
+        toSet = self.chopCalibrantSample(sample)
+        self.mantidSnapper.SetSample(
+            IputWorkspace=outputWS,
+            Geometry=toSet["geometry"],
+            Material=toSet["material"],
         )
+        self.shapedAbsorption()
         self.mantidSnapper.Divide(
             "Divide out the cylinder absorption data",
             LHSWorkspace=outputWS,
