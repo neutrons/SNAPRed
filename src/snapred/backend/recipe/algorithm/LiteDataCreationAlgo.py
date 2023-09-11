@@ -61,7 +61,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         self.mantidSnapper.LoadInstrument(
             "Loading instrument...",
             Workspace=outputWorkspace,
-            Filename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+            Filename="/tests/resources/inputs/pixel_grouping/SNAPLite_Definition.xml",
             RewriteSpectraMap=False,
         )
         # self.mantidSnapper.DeleteWorkspace("Cleaning up input workspace...", Workspace=ws)
