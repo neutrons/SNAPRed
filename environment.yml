@@ -4,13 +4,14 @@ channels:
 - default
 - mantid/label/nightly
 dependencies:
-- python=3.8
+- python=3.10
 - pip
 - pydantic>=1.10,<2
 - mantidworkbench
 - qtpy
 - pre-commit
 - pytest
+- pytest-qt
 - pytest-cov
 - flake8
 - versioningit

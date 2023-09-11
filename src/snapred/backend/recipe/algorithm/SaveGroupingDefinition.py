@@ -14,11 +14,11 @@ class SaveGroupingDefinition(PythonAlgorithm):
     """
     This algorithm takes in a grouping definition (file or object) and saves it in a diffraction calibration file format
     inputs:
-        GroupingFilename: str -- path of an input grouping file (NEXUS or XML)
+        GroupingFilename: str -- path of an input grouping file (in NEXUS or XML format)
         GroupingWorkspace: str -- name of an input grouping workspace
         Note, either GroupingFilename or GroupingWorkspace must be specified, but not both.
     output:
-        OutputFilename: str -- path of an output file. Supported file name extensions: "h5", "hd5", "hdf", "cal".
+        OutputFilename: str -- path of an output file. Supported file name extensions: "h5", "hd5", "hdf".
     """
 
     def PyInit(self) -> None:
@@ -35,7 +35,7 @@ class SaveGroupingDefinition(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, name)
 
         # define supported file name extensions
-        self.supported_calib_file_extensions = ["H5", "HD5", "HDF", "CAL"]
+        self.supported_calib_file_extensions = ["H5", "HD5", "HDF"]
         self.supported_nexus_file_extensions = ["NXS", "NXS5"]
         self.supported_xml_file_extensions = ["XML"]
 
@@ -101,9 +101,12 @@ class SaveGroupingDefinition(PythonAlgorithm):
         cal_ws.addColumn(type="float", name="tzero", plottype=6)
         cal_ws.addColumn(type="float", name="tofmin", plottype=6)
 
-        for index in range(self.grouping_ws.getNumberHistograms()):
-            nextRow = {"detid": index, "difc": 0, "difa": 0, "tzero": 0, "tofmin": 0}
-            cal_ws.addRow(nextRow)
+        groupIDs = self.grouping_ws.getGroupIDs()
+        for groupID in groupIDs:
+            detIDs = self.grouping_ws.getDetectorIDsOfGroup(int(groupID))
+            for detID in detIDs:
+                nextRow = {"detid": int(detID), "difc": 0, "difa": 0, "tzero": 0, "tofmin": 0}
+                cal_ws.addRow(nextRow)
 
 
 # Register algorithm with Mantid

@@ -47,18 +47,12 @@ class LogTablePresenter(object):
         win.setLayout(vbox)
         return win
 
+    def _responseOK(self, response: SNAPResponse):
+        return response.code - 200 < 100
+
     def update_reduction_config_element(self, response: SNAPResponse):
         # import pdb; pdb.set_trace()
-        if response.code == 200:
-            from snapred.ui.widget.WorkflowNode import continueWorkflow, finalizeWorkflow, startWorkflow
-
-            workflow = startWorkflow(lambda workflow: None, self._labelView("Did it work?"))  # noqa: ARG005
-            workflow = continueWorkflow(
-                workflow, lambda workflow: None, self._labelView("Did it really?")  # noqa: ARG005
-            )
-            workflow = finalizeWorkflow(workflow, self.view)
-            workflow.widget.show()
-        else:
+        if not self._responseOK(response):
             messageBox = QMessageBox()
             messageBox.setIcon(QMessageBox.Critical)
             messageBox.setText(response.message)

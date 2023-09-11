@@ -1,47 +1,40 @@
 from PyQt5.QtWidgets import QGridLayout, QMainWindow, QPushButton, QWidget
 
 
-class WorkflowNodeView(QMainWindow):
-    def __init__(self, subview, parent=None):
+class WorkflowNodeView(QWidget):
+    def __init__(self, node, position, parent=None):
         super(WorkflowNodeView, self).__init__(parent)
-        self.subview = subview
-        self.centralWidget = QWidget(self)
-        self.setCentralWidget(self.centralWidget)
+        self.model = node
+        self.view = node.view
+        layout = QGridLayout()
+        self.setLayout(layout)
+        # add a back and forward button to the top left
+        self.backButton = QPushButton("Back \U00002B05", self)
+        layout.addWidget(self.backButton, 0, 0)
+        if position == 0:
+            self.backButton.setVisible(False)
 
-        self.grid = QGridLayout()
-        self.grid.columnStretch(1)
-        self.grid.rowStretch(1)
-        self.centralWidget.setLayout(self.grid)
+        self.forwardButton = QPushButton("Forward \U000027A1", self)
+        layout.addWidget(self.forwardButton, 0, 1)
+        self.forwardButton.setVisible(False)
 
-        self.buttonActionContinue = self._empty
-        self.buttonActionQuit = self._empty
+        layout.addWidget(self.view, 1, 0, 1, 2)
 
-        self.grid.addWidget(self.subview)
+        # add a continue and quit button to the bottom
+        self.continueButton = QPushButton("Continue \U00002705", self)
+        layout.addWidget(self.continueButton, 2, 0)
 
-        self.continueButton = QPushButton("Continue", self)
-        self.continueButton.clicked.connect(self.execButtonActionContinue)
-        self.grid.addWidget(self.continueButton)
+        self.cancelButton = QPushButton("Cancel \U0000274C", self)
+        layout.addWidget(self.cancelButton, 2, 1)
 
-        self.quitButton = QPushButton("Quit", self)
-        self.quitButton.clicked.connect(self.execButtonActionQuit)
-        self.grid.addWidget(self.quitButton)
+    def onBackButtonClicked(self, slot):
+        self.backButton.clicked.connect(slot)
 
-    def updateSubview(self, newSubview):
-        self.grid.replaceWidget(self.subview, newSubview)
-        self.subview.deleteLater()
-        self.subview = newSubview
-
-    def execButtonActionContinue(self):
-        self.buttonActionContinue()
-
-    def execButtonActionQuit(self):
-        self.buttonActionQuit()
-
-    def _empty(self):
-        pass
+    def onForwardButtonClicked(self, slot):
+        self.forwardButton.clicked.connect(slot)
 
     def onContinueButtonClicked(self, slot):
-        self.buttonActionContinue = slot
+        self.continueButton.clicked.connect(lambda: slot(self.model))
 
-    def onQuitButtonClicked(self, slot):
-        self.buttonActionQuit = slot
+    def onCancelButtonClicked(self, slot):
+        self.cancelButton.clicked.connect(slot)

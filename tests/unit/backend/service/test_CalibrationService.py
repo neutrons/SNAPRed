@@ -12,14 +12,14 @@ with mock.patch.dict(
         "snapred.backend.data.DataExportService": mock.Mock(),
         "snapred.backend.data.DataFactoryService": mock.Mock(),
         "snapred.backend.recipe.CalibrationReductionRecipe": mock.Mock(),
-        "snapred.backend.dao.PixelGroupingIngredients": mock.MagicMock(),
+        "snapred.backend.dao.ingredients.PixelGroupingIngredients": mock.MagicMock(),
         "snapred.backend.log": mock.Mock(),
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
-    from snapred.backend.dao.ReductionIngredients import ReductionIngredients  # noqa: E402
+    from snapred.backend.dao.ingredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,  # noqa: E402
@@ -183,7 +183,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Call the method to test
         fittedWorkspaceNames, metrics = self.instance._fitAndCollectMetrics(
-            mockInstrumentState, fakeFocussedData, fakeFocusGroups, fakePixelGroupingParams, fakeCrystalInfo
+            mockInstrumentState,
+            fakeFocussedData,
+            fakeFocusGroups,
+            fakePixelGroupingParams,
+            fakeCrystalInfo,
         )
 
         # Assert the results are as expected
@@ -218,6 +222,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Mock the necessary method calls
         mockRequest.run = mockRun
         mockRequest.cifPath = fakeCifPath
+        mockRequest.smoothingParameter = 0.5
         self.instance.dataFactoryService.getReductionIngredients = MagicMock(return_value=mockReductionIngredients)
         self.instance.dataFactoryService.getCalibrationState = MagicMock(return_value=mockCalibration)
         mockCalibration.instrumentState = mockInstrumentState

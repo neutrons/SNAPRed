@@ -29,6 +29,14 @@ from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.dao.StateId import StateId
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.redantic import (
+    list_to_raw,
+    list_to_raw_pretty,
+    write_model,
+    write_model_list,
+    write_model_list_pretty,
+    write_model_pretty,
+)
 
 """
     Looks up data on disk
@@ -416,8 +424,7 @@ class LocalDataService:
         # append to index and write to file
         calibrationIndex = self.readCalibrationIndex(entry.runNumber)
         calibrationIndex.append(entry)
-        with open(indexPath, "w") as indexFile:
-            indexFile.write(json.dumps([entry.dict() for entry in calibrationIndex]))
+        write_model_list_pretty(calibrationIndex, indexPath)
 
     def getCalibrationRecordPath(self, runId: str, version: str):
         recordPath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationRecord.json"
@@ -493,8 +500,7 @@ class LocalDataService:
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
         # append to record and write to file
-        with open(recordPath, "w") as recordFile:
-            recordFile.write(record.json())
+        write_model_pretty(record, recordPath)
 
         self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
         for workspace in record.workspaceNames:
@@ -537,8 +543,7 @@ class LocalDataService:
             filePath = os.path.join(samplePath, fileName) + ".json"
         if os.path.exists(filePath):
             raise ValueError(f"the file '{filePath}' already exists")
-        with open(filePath, "w") as sampleFile:
-            sampleFile.write(json.dumps(sample.dict()))
+        write_model_pretty(sample, filePath)
 
     def _getCurrentCalibrationRecord(self, runId: str):
         version = self._getVersionFromCalibrationIndex(runId)
@@ -582,8 +587,7 @@ class LocalDataService:
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
         # write the file and return the calibration state
-        with open(calibrationParametersPath, "w") as calibrationParametersFile:
-            calibrationParametersFile.write(calibration.json())
+        write_model_pretty(calibration, calibrationParametersPath)
 
     def initializeState(self, runId: str, name: str = None):
         # pull pv data similar to how we generate stateId
@@ -658,3 +662,12 @@ class LocalDataService:
             deleteWorkspaceAlgo = AlgorithmManager.create("DeleteWorkspace")
             deleteWorkspaceAlgo.setProperty("Workspace", workspaceName)
             deleteWorkspaceAlgo.execute()
+
+    def checkCalibrationFileExists(self, runId: str):
+        stateID, _ = self._generateStateId(runId)
+        calibrationStatePath: str = self._constructCalibrationStatePath(stateID)
+
+        if os.path.exists(calibrationStatePath):
+            return True
+        else:
+            return False

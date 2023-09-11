@@ -20,3 +20,4 @@ Contents
    usage
    api
    deploy
+   ./ui/workflow/WorkflowBuilder

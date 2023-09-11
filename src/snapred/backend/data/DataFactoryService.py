@@ -1,7 +1,7 @@
 from typing import Dict
 
+from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
@@ -63,3 +63,9 @@ class DataFactoryService:
 
     def getCalibrationRecord(self, runId):
         return self.lookupService.readCalibrationRecord(runId)
+
+    def getFocusGroups(self, runId: str):
+        return self.lookupService._readFocusGroups(runId)
+
+    def checkCalibrationStateExists(self, runId: str):
+        return self.lookupService.checkCalibrationFileExists(runId)

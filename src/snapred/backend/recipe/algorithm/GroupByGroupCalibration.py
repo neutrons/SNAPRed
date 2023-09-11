@@ -4,7 +4,7 @@ from typing import Dict, List
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
-from snapred.backend.dao.DiffractionCalibrationIngredients import DiffractionCalibrationIngredients
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "GroupByGroupCalibration"

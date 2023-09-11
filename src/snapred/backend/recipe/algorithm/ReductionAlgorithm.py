@@ -5,7 +5,7 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import *
 from mantid.kernel import Direction
 
-from snapred.backend.dao.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # from snapred.backend.recipe.algorithm.CustomGroupWorkspace import name as CustomGroupWorkspace
