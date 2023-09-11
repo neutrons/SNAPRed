@@ -13,6 +13,10 @@ from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
+from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
+from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
@@ -84,6 +88,73 @@ class TestUnfocusedNormalizationCorrection(unittest.TestCase):
         assert algo.geomCalibFile == self.fakeIngredients.reductionState.stateConfig.geometryCalibrationFileName
         assert algo.rawVFile == self.fakeIngredients.reductionState.stateConfig.rawVanadiumCorrectionFileName
 
+    def test_chop_calibrant_sample(self):
+        # create some nonsense material and crystallography
+        fakeMaterial = Material(
+            microstructure="single-crystal",
+            packing_fraction=0.3,
+            mass_density=2.0,
+            chemical_composition="V",
+        )
+        fakeXtal = Crystallography(
+            cif_file=Resource.getPath("inputs/crystalInfo/example.cif"),
+            space_group="BCC",
+            lattice_parameters=[1, 2, 3, 4, 5, 6],
+            atom_type="V",
+            atom_coordinates=[0, 0, 0],
+            site_occupation_factor=0.5,
+        )
+        # create two mock geometries for calibrant samples
+        sphere = Geometry(
+            form="sphere",
+            radius=1.0,
+            illuminated_height=0.7,
+        )
+        cylinder = Geometry(
+            form="cylinder",
+            radius=1.5,
+            illuminated_height=0.7,
+            total_height=2.0,
+        )
+        # not create two differently shaped calibrant sample entries
+        sphereSample = CalibrantSamples(
+            name="fake sphere sample",
+            unique_id="123fakest",
+            geometry=sphere,
+            material=fakeMaterial,
+            crystallography=fakeXtal,
+        )
+        cylinderSample = CalibrantSamples(
+            name="fake cylinder sample",
+            unique_id="435elmst",
+            geometry=cylinder,
+            material=fakeMaterial,
+            crystallography=fakeXtal,
+        )
+
+        # start the algorithm
+        algo = Algo()
+        algo.initialize()
+
+        # chop and verify the spherical sample
+        sample = algo.chopCalibrantSample(sphereSample)
+        assert sample["geometry"]["Shape"] == "Sphere"
+        assert sample["geometry"]["Radius"] == sphere.radius
+        assert sample["geometry"]["Center"] == [0, 0, 0]
+        assert sample["material"]["ChemicalFormula"] == fakeMaterial.chemical_composition
+
+        # chop and verify the cylindrical sample
+        sample = {}  # clear the sample
+        sample = algo.chopCalibrantSample(cylinderSample)
+        assert sample["geometry"]["Shape"] == "Cylinder"
+        assert sample["geometry"]["Radius"] == cylinder.radius
+        assert sample["geometry"]["Height"] == cylinder.total_height
+        assert sample["geometry"]["Center"] == [0, 0, 0]
+        assert sample["geometry"]["Axis"] == [0, 1, 0]
+        assert sample["material"]["ChemicalFormula"] == fakeMaterial.chemical_composition
+
+        self.calibrantSample = cylinderSample
+
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""
         goodOutputWSName = "_test_raw_vanadium_corr"
@@ -92,6 +163,10 @@ class TestUnfocusedNormalizationCorrection(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
+        if not hasattr(self, "calibrantSample"):
+            self.test_chop_calibrant_sample()
+        algo.setProperty("CalibrantSample", self.calibrantSample.json())
+        assert algo.getProperty("CalibrantSample").value == self.calibrantSample.json()
         assert algo.getProperty("OutputWorkspace").value == "vanadiumrawcorr_out"
         algo.setProperty("OutputWorkspace", goodOutputWSName)
         assert algo.getProperty("OutputWorkspace").value == goodOutputWSName
@@ -127,9 +202,9 @@ class TestUnfocusedNormalizationCorrection(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty(
-            "CalibrantSample",
-        )
+        if not hasattr(self, "calibrantSample"):
+            self.test_chop_calibrant_sample()
+        algo.setProperty("CalibrantSample", self.calibrantSample.json())
         algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")
         assert algo.execute()
 

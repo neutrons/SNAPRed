@@ -23,4 +23,6 @@ class Geometry(BaseModel):
         if form == "sphere" and total_height is not None:
             v.set("total_height", None)
             raise Warning("total height is not used with a sphere")
+        if form == "cylinder" and total_height is None:
+            raise ValueError("cylinders must have a total height")
         return v

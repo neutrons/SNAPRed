@@ -52,16 +52,14 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
             # SNAPRed specifies form as lowercase, mantid wants init cap
             "Shape": f"{self.sampleForm[0].upper()}{self.sampleForm[1:]}",
             "Radius": sample.geometry.radius,
+            "Center": [0, 0, 0],  # @mguthrime confirms this is always true
         }
 
         # make the geometry dictionary
         if geometry["Shape"] == "Cylinder":
             geometry["Height"] = sample.geometry.total_height
-            geometry["Center"] = [0, 0, 0]  # @mguthriem confirms this is always true
             geometry["Axis"] = [0, 1, 0]  # @mguthriem confirms this is always true
-        elif geometry["Shape"] == "Sphere":
-            geometry["Center"] = [0, 0, 0]  # @mguthrime confirms this is always true
-        else:
+        elif geometry["Shape"] != "Sphere":
             raise RuntimeError(f"Calibrant sample has shape {geometry['Shape']}: must be Cylinder or Sphere\n")
 
         # make the material dictionary
@@ -183,11 +181,12 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
         sample = CalibrantSamples.parse_raw(self.getProperty("CalibrantSample").value)
         toSet = self.chopCalibrantSample(sample)
         self.mantidSnapper.SetSample(
-            IputWorkspace=outputWS,
+            "Setting workspace with calibrant sample",
+            InputWorkspace=outputWS,
             Geometry=toSet["geometry"],
             Material=toSet["material"],
         )
-        self.shapedAbsorption()
+        self.shapedAbsorption(outputWS, wsName_cylinder)
         self.mantidSnapper.Divide(
             "Divide out the cylinder absorption data",
             LHSWorkspace=outputWS,
