@@ -155,7 +155,7 @@ class CalibrationService(Service):
         outputNameFormat = Config["calibration.reduction.output.format"]
         focussedData = self.dataFactoryService.getWorkspaceForName(outputNameFormat.format(runId))
         if focussedData is None:
-            raise Exception(f"No focussed data found for run {runId}, Please run Calibration Reduction on this Data.")
+            raise ValueError(f"No focussed data found for run {runId}, Please run Calibration Reduction on this Data.")
         else:
             focussedData = outputNameFormat.format(runId)
         return focussedData
