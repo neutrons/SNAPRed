@@ -238,12 +238,8 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.retrieveFromPantry()
         algo.initDIFCTable()
         difcTable = mtd[algo.difcWS]
-        # TODO this commented-out assertion loop should run
-        # the uncommented one is what actually passes
-        # for i,row in enumerare(difcTable.column('detid')):
-        #     assert row == i
-        for row in difcTable.column("detid"):
-            assert row == 1
+        for i, row in enumerate(difcTable.column("detid")):
+            assert row == i + 4
         difc_refs = [
             0.0,
             6.0668,
