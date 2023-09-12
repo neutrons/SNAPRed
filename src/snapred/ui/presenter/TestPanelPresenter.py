@@ -45,7 +45,7 @@ class TestPanelPresenter(object):
     def _getPaths(self, apiDict):
         paths = []
         for key, value in apiDict.items():
-            if type(value) is dict:
+            if isinstance(value, dict):
                 subpaths = self._getPaths(value)
                 paths.extend(["{}/{}".format(key, path) for path in subpaths])
             else:

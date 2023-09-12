@@ -15,10 +15,10 @@ class JsonFormPresenter:
         return fieldData
 
     def _collectData(self, data):
-        if type(data) is dict:
+        if isinstance(data, dict):
             collectedData = {}
             for key, value in data.items():
-                if type(value) is dict:
+                if isinstance(value, dict):
                     collectedData[key] = self._collectData(value)
                     # check if list, TODO: Handle tuples
                     if len(collectedData[key]) == 1:
@@ -46,14 +46,14 @@ class JsonFormPresenter:
     def _updateData(self, data, newData):
         if not newData:
             return
-        if type(data) is dict:
+        if isinstance(data, dict):
             for key, value in data.items():
-                if type(newData) is list:
-                    if type(newData[0]) is dict:
+                if isinstance(newData, list):
+                    if isinstance(newData[0], dict):
                         newData = newData[0]
                     else:
                         newData = {key: ",".join(map(str, newData))}
-                if type(value) is dict:
+                if isinstance(value, dict):
                     self._updateData(value, newData.get(key, None))
                 else:
                     self._updateField(value, newData.get(key, None))

@@ -1,14 +1,15 @@
 import unittest
 
+import pytest
 from snapred.meta.Callback import callback
 
 
 class TestCallback(unittest.TestCase):
     def test_unsetThrows(self):
         testCallback = callback(str)
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             testCallback.upper()
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             testCallback == "test"
 
     def test_stringCallback(self):
@@ -21,7 +22,7 @@ class TestCallback(unittest.TestCase):
 
     def test_updateCallback(self):
         testCallback = callback(str)
-        with self.assertRaises(AttributeError):
+        with pytest.raises(AttributeError):
             testCallback.get()
         testCallback.update("test")
         assert testCallback.get() == "test"
