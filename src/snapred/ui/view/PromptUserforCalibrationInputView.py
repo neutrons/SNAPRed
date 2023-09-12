@@ -32,4 +32,3 @@ class PromptUserforCalibrationInputView(QDialog):
         run_number = self.getRunNumber()
         state_name = self.getName()
         self.dataEntered.emit(run_number, state_name)
-        print(self.dataEntered)

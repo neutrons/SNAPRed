@@ -1,6 +1,6 @@
 import json
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QObject, Qt, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
@@ -11,14 +11,19 @@ from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.PromptUserforCalibrationInputView import PromptUserforCalibrationInputView
 
 
-class CalibrationCheck(object):
+class CalibrationCheck(QObject):
     worker_pool = WorkerPool()
     interfaceController = InterfaceController()
+    stateInitialized = pyqtSignal(SNAPResponse)
 
     def __init__(self, view):
+        super().__init__()
         self.view = view
 
     def _labelView(self, text: str):
+        if "Ready to Calibrate!" in [item.text() for item in self.view.findChildren(QLabel)]:
+            return
+
         win = QWidget()
         vbox = QVBoxLayout()
         label = QLabel(text)
@@ -44,23 +49,26 @@ class CalibrationCheck(object):
         self.worker_pool.submitWorker(self.worker)
 
     def handleStateCheckResult(self, response: SNAPResponse):
+        try:
+            self.stateInitialized.disconnect()
+        except TypeError:
+            pass
         if response.data is False:
             self._spawnStateCreationWorkflow()
+            self.stateInitialized.connect(self.handlePixelGroupingResult)
         else:
-            pass
+            runID = str(self.view.getRunNumber())
+            pixelGroupingParametersRequest = SNAPRequest(path="/calibration/retrievePixelGroupingParams", payload=runID)
 
-        runID = str(self.view.getRunNumber())
-        pixelGroupingParametersRequest = SNAPRequest(path="/calibration/retrievePixelGroupingParams", payload=runID)
+            self.worker = self.worker_pool.createWorker(
+                target=self.interfaceController.executeRequest, args=(pixelGroupingParametersRequest)
+            )
+            self.worker.result.connect(self.handlePixelGroupingResult)
 
-        self.worker = self.worker_pool.createWorker(
-            target=self.interfaceController.executeRequest, args=(pixelGroupingParametersRequest)
-        )
-        self.worker.result.connect(self.handlePixelGroupingResult)
-
-        self.worker_pool.submitWorker(self.worker)
+            self.worker_pool.submitWorker(self.worker)
 
     def _spawnStateCreationWorkflow(self):
-        from snapred.ui.workflow.WorkfflowBuilder import WorkflowBuilder
+        from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
         promptView = PromptUserforCalibrationInputView()
         promptView.setWindowModality(Qt.WindowModal)
@@ -72,15 +80,15 @@ class CalibrationCheck(object):
 
             self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request))
 
-            def handle_response():
-                pass
+            def handle_response(response: SNAPResponse):
+                self.stateInitialized.emit(response)
 
             self.worker.result.connect(handle_response)
 
             self.worker_pool.submitWorker(self.worker)
 
         promptView.dataEntered.connect(pushDataToInterfaceController)
-        promptView.exec_()
+        promptView.show()
         self.workflow = (
             WorkflowBuilder(self.view)
             .addNode(lambda workflow: None, promptView, "Calibration Input")  # noqa: ARG005
@@ -88,10 +96,12 @@ class CalibrationCheck(object):
             .build()
         )
         self.workflow.show()
+        promptView.close()
 
     def handlePixelGroupingResult(self, response: SNAPResponse):
         if response.code == 200:
             self._labelView("Ready to Calibrate!")
+            self.view.beginFlowButton.setEnabled(True)
         else:
             raise Exception
 

@@ -36,7 +36,17 @@ class CalibrationMenu(QDialog):
 
         self.calibrationCheck = CalibrationCheck(self)
 
+        try:
+            self.beginFlowButton.clicked.disconnect()
+        except:  # noqa: E722
+            pass
+
         self.beginFlowButton.clicked.connect(self.calibrationCheck.handleButtonClicked)
+
+        self.finished.connect(self.on_close)
+
+    def on_close(self):  #
+        self.beginFlowButton.setEnabled(True)
 
     def _labeledField(self, label, field):
         widget = QWidget()
