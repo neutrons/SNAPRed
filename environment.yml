@@ -7,7 +7,7 @@ dependencies:
 - python=3.10
 - pip
 - pydantic>=1.10,<2
-- mantidworkbench
+- mantidworkbench>=6.7
 - qtpy
 - pre-commit
 - pytest
