@@ -45,7 +45,7 @@ class CalibrationMenu(QDialog):
 
         self.finished.connect(self.on_close)
 
-    def on_close(self):  #
+    def on_close(self):
         self.beginFlowButton.setEnabled(True)
 
     def _labeledField(self, label, field):
