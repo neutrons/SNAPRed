@@ -8,7 +8,7 @@ from snapred.meta.decorators.Singleton import Singleton
 
 
 @Singleton
-class FitMultiplePeakService(Service):
+class FitMultiplePeaksService(Service):
     def __init__(self):
         super().__init__()
         self.registerPath("fitMultiplePeaks", self.fit_multiple_peaks)
