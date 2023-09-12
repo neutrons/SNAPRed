@@ -2,6 +2,8 @@ import unittest
 import unittest.mock as mock
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Mock out of scope modules before importing DataExportService
 
 localMock = mock.Mock()
@@ -108,14 +110,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getWorkspaceForName = MagicMock(return_value=None)
 
         # Call the method to test and expect an Exception to be raised
-        with self.assertRaises(Exception) as context:
-            self.instance._loadFocusedData(self.runId)
-
-        # Assert the Exception message is as expected
         expected_message = "No focussed data found for run {}, Please run Calibration Reduction on this Data.".format(
             self.runId
         )
-        assert str(context.exception) == expected_message
+        with pytest.raises(ValueError, match=expected_message):
+            self.instance._loadFocusedData(self.runId)
 
     def test_GetPixelGroupingParams(self):
         # Mock input data
