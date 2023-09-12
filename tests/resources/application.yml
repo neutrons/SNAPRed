@@ -50,4 +50,4 @@ logging:
   mantid:
     format: '%Y-%m-%d %H:%M:%S,%i - %p - %s - %t'
 
-cis-mode: yes
+cis_mode: true

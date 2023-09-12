@@ -51,4 +51,4 @@ logging:
 samples:
   home: /SNS/SNAP/shared/Calibration/CalibrantSamples
 
-cis_mode: yes
+cis_mode: true
