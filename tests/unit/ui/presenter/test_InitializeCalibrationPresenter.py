@@ -15,6 +15,9 @@ def mock_View():
     view.getRunNumber = Mock(return_value=12345)
     view.layout = Mock()
     view.layout().addWidget = Mock()
+    mock_label = Mock()
+    mock_label.text = Mock(return_value="")
+    view.findChildren = Mock(return_value=[mock_label])
     return view
 
 
