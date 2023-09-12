@@ -180,8 +180,6 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.retrieveFromPantry()
         algo.initDIFCTable()
         difcTable = mtd[algo.difcWS]
-        # TODO this commented-out assertion loop should pass
-        # the uncommented one is what actually passes
         for i, row in enumerate(difcTable.column("detid")):
             assert row == i + 4
         difc_refs = [
