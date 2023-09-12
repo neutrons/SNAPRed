@@ -5,7 +5,7 @@ import json
 
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService 
+from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.redantic import list_to_raw_pretty
@@ -51,7 +51,7 @@ for i,group in enumerate(peakList):
     tableWS.addColumn(type='float', name='max')
     for j,peak in enumerate(group['peaks']):
         tableWS.addRow({
-            'peak number': j, 
+            'peak number': j,
             'value': peak['position']['value'],
             'min': peak['position']['minimum'],
             'max': peak['position']['maximum'],
@@ -79,7 +79,7 @@ fig.show()
 #########################################################
 
 # using previously found ingredients, change the peakTailCoefficient within instrumentstate
-instrumentState.peakTailCoefficient = 10 
+instrumentState.peakTailCoefficient = 10
 
 detectorAlgo = DetectorPeakPredictor()
 detectorAlgo.initialize()
@@ -101,7 +101,7 @@ for i,group in enumerate(peakList):
     tableWS.addColumn(type='float', name='max')
     for j,peak in enumerate(group['peaks']):
         tableWS.addRow({
-            'peak number': j, 
+            'peak number': j,
             'value': peak['position']['value'],
             'min': peak['position']['minimum'],
             'max': peak['position']['maximum'],
