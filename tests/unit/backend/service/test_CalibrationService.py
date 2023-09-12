@@ -79,6 +79,7 @@ with mock.patch.dict(
         assert mockPixelGroupingParametersCalculationRecipe.called
 
 
+import pytest
 from snapred.backend.service.CalibrationService import CalibrationService  # noqa: E402, F811
 
 
@@ -108,7 +109,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getWorkspaceForName = MagicMock(return_value=None)
 
         # Call the method to test and expect an Exception to be raised
-        with self.assertRaises(Exception) as context:
+        with pytest.raises(Exception) as context:
             self.instance._loadFocusedData(self.runId)
 
         # Assert the Exception message is as expected
