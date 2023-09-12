@@ -10,11 +10,11 @@ with mock.patch.dict(
     },
 ):
     from snapred.backend.recipe.GenericRecipe import FitMultiplePeaksRecipe  # noqa: E402
-    from snapred.backend.service.FitMultiplePeakService import FitMultiplePeaksService  # noqa: E402
+    from snapred.backend.service.FitMultiplePeakService import FitMultiplePeakService  # noqa: E402
 
     # test export calibration
     def test_fit_multiple_peaks():
-        fitPeaksService = FitMultiplePeaksService()
+        fitPeaksService = FitMultiplePeakService()
         FitMultiplePeaksRecipe.executeRecipe = mock.Mock()
         FitMultiplePeaksIngredients = mock.Mock()
         ingredients = FitMultiplePeaksIngredients()
