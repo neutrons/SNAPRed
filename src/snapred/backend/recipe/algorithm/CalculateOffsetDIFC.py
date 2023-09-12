@@ -127,7 +127,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         DIFCtable.addColumn(type="double", name="difc", plottype=6)
         DIFCtable.addColumn(type="double", name="difa", plottype=6)
         DIFCtable.addColumn(type="double", name="tzero", plottype=6)
-        detids = [int(x) for x in tmpDifcWS.extractX()]
+        detids = [int(x) for x in tmpDifcWS.detectorInfo().detectorIDs()]
         difcs = [float(x) for x in tmpDifcWS.extractY()]
         # TODO why is detid always 1 in tests?
         for detid, difc in zip(detids, difcs):
