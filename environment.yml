@@ -7,7 +7,7 @@ dependencies:
 - python=3.10
 - pip
 - pydantic>=1.10,<2
-- mantidworkbench
+- mantidworkbench>=6.7
 - qtpy
 - pre-commit
 - pytest
@@ -21,10 +21,9 @@ dependencies:
 - setuptools
 - sphinx
 - sphinx_rtd_theme=1.2.*
+- types-pyyaml
 - python-build
 - boa
 - pycifrw
 - pip:
   - check-wheel-contents
-  - types-pyyaml
-  - setuptools==47.0.0
