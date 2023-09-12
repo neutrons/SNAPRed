@@ -50,10 +50,12 @@ class FormBuilder:
             subform, subdata = self.buildForm(self.lookupRef(prop["$ref"]), parent=parent)
             data = subdata
             widget = subform
-        else:  # list
+        elif prop.get("items") is not None:  # list
             widget = Section(name, parent=parent)
             data = {}
             iterable = None
+            if prop.get("items") is None:
+                breakpoint()
             if type(prop["items"]) is list:
                 iterable = [("type", p["type"]) for p in prop["items"]]
             if type(prop["items"]) is dict:
@@ -116,7 +118,11 @@ class JsonFormView(QWidget):
         self.setLayout(self.grid)
         self.jsonSchema = jsonSchema
         formBuilder = FormBuilder(jsonSchema)
-        widget, data = formBuilder.build(title=name)
-        self.formData = data
-        self.grid.addWidget(widget)
-        self.adjustSize()
+        try:
+            widget, data = formBuilder.build(title=name)
+            self.formData = data
+            self.grid.addWidget(widget)
+            self.adjustSize()
+        except Exception:  # noqa: BLE001
+            # Catch and raise exception with invalid json in console.
+            raise Exception(f"Invalid JSON Schema:\n {jsonSchema}")

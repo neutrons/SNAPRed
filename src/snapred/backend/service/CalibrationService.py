@@ -5,33 +5,27 @@ from typing import List
 
 from pydantic import parse_raw_as
 
-from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
-from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
-from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
+from snapred.backend.dao import RunConfig
+from snapred.backend.dao.calibration import (
+    CalibrationIndexEntry,
+    CalibrationMetric,
+    CalibrationRecord,
+    FocusGroupMetric,
+)
 from snapred.backend.dao.ingredients import (
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
-from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
-from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
-from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
-from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.request import CalibrationAssessmentRequest, CalibrationExportRequest, InitializeStateRequest
 from snapred.backend.dao.state.FocusGroupParameters import FocusGroupParameters
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.FitCalibrationWorkspaceRecipe import FitCalibrationWorkspaceRecipe
-from snapred.backend.recipe.GenericRecipe import (
-    CalibrationMetricExtractionRecipe,
-    CalibrationReductionRecipe,
-    FitMultiplePeaksRecipe,
-    PurgeOverlappingPeaksRecipe,
-    SmoothDataExcludingPeaksRecipe,
-)
+from snapred.backend.recipe.GenericRecipe import CalibrationMetricExtractionRecipe, CalibrationReductionRecipe
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
@@ -119,7 +113,7 @@ class CalibrationService(Service):
         for run in runs:
             calibrationState = self.dataFactoryService.getCalibrationState(run.runNumber)
             try:
-                data = self._calculatePixelGroupingParameters(calibrationState, groupingFile)
+                data = self._calculatePixelGroupingParameters(calibrationState.instrumentState, groupingFile)
                 calibrationState.instrumentState.pixelGroupingInstrumentParameters = data["parameters"]
                 if export is True:
                     self.dataExportService.exportCalibrationState(runId=run.runNumber, calibration=calibrationState)
@@ -134,9 +128,9 @@ class CalibrationService(Service):
         else:
             return False
 
-    def _calculatePixelGroupingParameters(self, calibrationState, groupingFile: str):
+    def _calculatePixelGroupingParameters(self, instrumentState, groupingFile: str):
         groupingIngredients = PixelGroupingIngredients(
-            instrumentState=calibrationState.instrumentState,
+            instrumentState=instrumentState,
             instrumentDefinitionFile=Config["instrument.lite.definition.file"],
             groupingFile=groupingFile,
         )
@@ -166,11 +160,11 @@ class CalibrationService(Service):
             focussedData = outputNameFormat.format(runId)
         return focussedData
 
-    def _getPixelGroupingParams(self, calibration, focusGroups):
+    def _getPixelGroupingParams(self, instrumentState, focusGroups):
         pixelGroupingParams = []
         for focusGroup in focusGroups:
             pixelGroupingParams.append(
-                self._calculatePixelGroupingParameters(calibration, focusGroup.definition)["parameters"]
+                self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition)["parameters"]
             )
         return pixelGroupingParams
 
@@ -214,8 +208,8 @@ class CalibrationService(Service):
         crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
         crystalInfo = crystalInfoDict["crystalInfo"]
         focussedData = self._loadFocusedData(run.runNumber)
-        pixelGroupingParams = self._getPixelGroupingParams(calibration, focusGroups)
         lam = request.smoothingParameter
+        pixelGroupingParams = self._getPixelGroupingParams(instrumentState, focusGroups)
 
         fittedWorkspaceNames, metrics = self._fitAndCollectMetrics(
             instrumentState,
@@ -245,6 +239,6 @@ class CalibrationService(Service):
         calibration = self.dataFactoryService.getCalibrationState(runID)
         focusGroups = self.dataFactoryService.getFocusGroups(runID)
 
-        pixelGroupingParams = self._getPixelGroupingParams(calibration, focusGroups)
+        pixelGroupingParams = self._getPixelGroupingParams(calibration.instrumentState, focusGroups)
 
         return pixelGroupingParams

@@ -16,6 +16,7 @@ def test_excuteRequest_noop():
         "fitMultiplePeaks",
         "vanadiumReduction",
         "smoothDataExcludingPeaks",
+        "reduceLiteData",
     ]
     expected_keys.sort()
 
