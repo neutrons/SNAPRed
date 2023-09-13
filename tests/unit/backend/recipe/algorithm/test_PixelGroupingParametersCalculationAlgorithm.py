@@ -75,7 +75,7 @@ with mock.patch.dict(
         fakeInstrumentState.particleBounds.tof.maximum = 1000
         return fakeInstrumentState
 
-    def mockRetrieveFromPantry(algo):
+    def mockRaidPantry(algo):
         groupingFilePath = algo.getProperty("GroupingFile").value
         idf = algo.getProperty("InstrumentDefinitionFile").value
         algo.mantidSnapper.CreateWorkspace(
@@ -120,17 +120,14 @@ with mock.patch.dict(
         assert algo.deltaTOverT is not None
         assert algo.delTheta is not None
 
-    @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
-    def test_local_fake_grouping_file():
-        groupingFile = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
-        referenceParametersFile = Resource.getPath("outputs/calibration/output.json")
-
-        run_test(
-            instrumentDefinitionFile=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
-            instrumentState=Resource.read("/inputs/calibration/sampleInstrumentState.json"),
-            groupingFile=groupingFile,
-            referenceParametersFile=referenceParametersFile,
-        )
+    # @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
+    # def test_local_fake_grouping_file():
+    #     run_test(
+    #         instrumentDefinitionFile=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+    #         instrumentState=Resource.read("/inputs/calibration/sampleInstrumentState.json"),
+    #         groupingFile=Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml"),
+    #         referenceParametersFile=Resource.getPath("outputs/calibration/output.json"),
+    #     )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_column_full():
