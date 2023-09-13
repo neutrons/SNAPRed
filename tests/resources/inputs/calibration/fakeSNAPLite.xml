@@ -33,19 +33,6 @@
   </component>
   <type name="sample-position" is="SamplePos"/>
 
-  <!--MONITORS-->
-  <idlist idname="only-monitor">
-    <id val="-1"/>
-  </idlist>
-  <component type="only-monitor" idlist="only-monitor">
-    <location/>
-  </component>
-  <type is="monitor" name="only-monitor">
-    <component type="monitor">
-      <location x="0.0" y="0.0" z="15" name="monitor1"/>
-    </component>
-  </type>
-
   <!--DETECTORS-->
   <component type="East">
     <location >

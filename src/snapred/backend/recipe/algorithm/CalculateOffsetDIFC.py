@@ -43,13 +43,13 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
         instrConfig = ingredients.instrumentState.instrumentConfig
-        self.TOFBin: float = abs(instrConfig.delTOverT / instrConfig.NBins)
+        self.TOFBin: float = instrConfig.delTOverT / instrConfig.NBins
 
         # from grouping parameters, read the overall min/max d-spacings
         self.overallDMin: float = max(ingredients.focusGroup.dMin)
         self.overallDMax: float = min(ingredients.focusGroup.dMax)
         self.dBin: float = min(ingredients.focusGroup.dBin)
-        self.maxDSpaceShifts: Dict[int, float] = {2.5 * instrConfig.delTOverT}
+        self.maxDSpaceShifts: float = 1.0
 
         # path to grouping file, specifying group IDs of pixels
         self.groupingFile: str = ingredients.focusGroup.definition
@@ -128,7 +128,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # TODO why is detid always 1 in tests?
         for wkspIndx, difc in enumerate(difcs):
             detids = tmpDifcWS.getSpectrum(wkspIndx).getDetectorIDs()
-            print(f"TABLE IDS {wkspIndx}, {detids}")
             for detid in detids:
                 DIFCtable.addRow(
                     {
@@ -161,7 +160,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             rebinParams = (self.overallDMin, self.dBin, self.overallDMax)
         elif target == "TOF":
             rebinParams = (self.TOFMin, self.TOFBin, self.TOFMax)
-
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=outputWS,
@@ -209,13 +207,13 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                 WorkspaceIndexList=groupWorkspaceIndices,
                 XMin=self.overallDMin,
                 XMax=self.overallDMax,
-                MaxDSpaceShift=0.1,  # self.maxDSpaceShifts,
+                MaxDSpaceShift=self.maxDSpaceShifts,
             )
             self.mantidSnapper.GetDetectorOffsets(
                 f"Calculate offset workspace {wsoff}",
                 InputWorkspace=wscc,
                 OutputWorkspace=wsoff,
-                Step=abs(self.dBin),  # Step must be positive
+                Step=self.dBin,  # Step must be positive
                 XMin=-100,
                 XMax=100,
                 OffsetMode="Signed",
