@@ -7,6 +7,7 @@ from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
+from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "CalculateOffsetDIFC"
@@ -125,7 +126,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         DIFCtable.addColumn(type="double", name="difa", plottype=6)
         DIFCtable.addColumn(type="double", name="tzero", plottype=6)
         DIFCtable.addColumn(type="double", name="tofmin", plottype=6)
-        detids = [int(x) for x in tmpDifcWS.extractX()]
+        detids = [int(x) for x in tmpDifcWS.detectorInfo().detectorIDs()]
         difcs = [float(x) for x in tmpDifcWS.extractY()]
         # TODO why is detid always 1 in tests?
         for detid, difc in zip(detids, difcs):

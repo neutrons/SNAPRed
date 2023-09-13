@@ -56,12 +56,12 @@ class FormBuilder:
             iterable = None
             if prop.get("items") is None:
                 breakpoint()
-            if type(prop["items"]) is list:
+            if isinstance(prop["items"], list):
                 iterable = [("type", p["type"]) for p in prop["items"]]
-            if type(prop["items"]) is dict:
+            if isinstance(prop["items"], dict):
                 iterable = prop["items"].items()
             for key, item in iterable:
-                if type(item) is str:
+                if isinstance(item, str):
                     item = {key: item}
                 subform, subdata = self._generateElement(item, name, parent=parent)
                 # tuples
