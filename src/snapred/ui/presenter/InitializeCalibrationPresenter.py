@@ -19,10 +19,16 @@ class CalibrationCheck(QObject):
     def __init__(self, view):
         super().__init__()
         self.view = view
+        self.message_widgets = []
+
+    def _removePreviousMessages(self):
+        for widget in self.message_widgets:
+            self.view.layout().removeWidget(widget)
+            widget.deleteLater()
+        self.message_widgets.clear()
 
     def _labelView(self, text: str):
-        if "Ready to Calibrate!" in [item.text() for item in self.view.findChildren(QLabel)]:
-            return
+        self._removePreviousMessages()
 
         win = QWidget()
         vbox = QVBoxLayout()
@@ -32,6 +38,7 @@ class CalibrationCheck(QObject):
         vbox.addStretch()
         win.setLayout(vbox)
         self.view.layout().addWidget(win)
+        self.message_widgets.append(win)
 
     def handleButtonClicked(self):
         self.view.beginFlowButton.setEnabled(False)
@@ -53,6 +60,7 @@ class CalibrationCheck(QObject):
             self.stateInitialized.disconnect()
         except TypeError:
             pass
+
         if response.data is False:
             self._spawnStateCreationWorkflow()
             self.stateInitialized.connect(self.handlePixelGroupingResult)
@@ -99,11 +107,12 @@ class CalibrationCheck(QObject):
         promptView.close()
 
     def handlePixelGroupingResult(self, response: SNAPResponse):
+        self.view.beginFlowButton.setEnabled(True)
         if response.code == 200:
             self._labelView("Ready to Calibrate!")
             self.view.beginFlowButton.setEnabled(True)
         else:
-            raise Exception
+            self._labelView(str(response.message))
 
     @property
     def widget(self):
