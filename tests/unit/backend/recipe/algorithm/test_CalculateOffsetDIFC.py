@@ -54,7 +54,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             threshold=1.0,
         )
 
-    def mockRetrieveFromPantry(algo):
+    def mockRaidPantry(algo):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
         # prepare with test data
         algo.mantidSnapper.CreateSampleWorkspace(
@@ -147,7 +147,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
 
-    @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
+    @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
     def test_execute(self):
         """Test that the algorithm executes"""
         algo = ThisAlgo()
@@ -162,7 +162,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         assert data["meanOffset"] <= 2
 
     # patch to make the offsets of sample data non-zero
-    @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
+    @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
     # @mock.patch.object(ThisAlgo, "getRefID", lambda self, x: int(min(x)))  # noqa
     def test_reexecution_and_convergence(self):
         """Test that the algorithm can run, and that it will converge to an answer"""
@@ -187,7 +187,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             allOffsets.append(data["medianOffset"])
             assert allOffsets[-1] <= max(1.0e-14, allOffsets[-2])
 
-    @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
+    @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
     def test_init_difc_table(self):
         from mantid.simpleapi import mtd
 
@@ -195,7 +195,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.chopIngredients(self.fakeIngredients)
-        algo.retrieveFromPantry()
+        algo.raidPantry()
         algo.initDIFCTable()
         difcTable = mtd[algo.difcWS]
         for i, row in enumerate(difcTable.column("detid")):
@@ -266,7 +266,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             Filename=fakeNexusFile,
         )
         algo.rawDataPath = fakeNexusFile
-        algo.retrieveFromPantry()
+        algo.raidPantry()
         os.remove(fakeNexusFile)
         assert CompareWorkspaces(
             Workspace1=algo.inputWStof,

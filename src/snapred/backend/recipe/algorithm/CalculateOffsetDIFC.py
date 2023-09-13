@@ -59,7 +59,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.inputWSdsp: str = f"_DSP_{self.runNumber}_raw"
         self.difcWS: str = f"_DIFC_{self.runNumber}"
 
-    def retrieveFromPantry(self) -> None:
+    def raidPantry(self) -> None:
         """Initialize the input TOF data from the input filename in the ingredients"""
         if not self.mantidSnapper.mtd.doesExist(self.inputWStof):
             self.mantidSnapper.LoadEventNexus(
@@ -292,7 +292,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
         self.chopIngredients(ingredients)
         # load and process the input data for algorithm
-        self.retrieveFromPantry()
+        self.raidPantry()
         # prepare initial diffraction calibration workspace
         self.initDIFCTable()
         # now calculate and correct by offsets

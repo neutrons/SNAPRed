@@ -60,7 +60,7 @@ class TestGroupByGroupCalibration(unittest.TestCase):
             threshold=1.0,
         )
 
-    def mockRetrieveFromPantry(algo):
+    def mockRaidPantry(algo):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
         # prepare with test data
         algo.mantidSnapper.CreateSampleWorkspace(
@@ -235,7 +235,7 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
         assert algo.getProperty("PreviousCalibrationTable").value == difcWS
 
-    @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
+    @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
     @mock.patch.object(ThisAlgo, "storeInPantry", mock.Mock(return_value=None))
     def test_execute(self):
         """Test that the algorithm executes"""

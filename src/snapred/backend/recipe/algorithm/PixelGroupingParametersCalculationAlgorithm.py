@@ -68,7 +68,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.chopIngredients(InstrumentState.parse_raw(self.getProperty("InstrumentState").value))
 
         # create a grouping workspace and load an instrument into the workspace
-        self.retrieveFromPantry()
+        self.raidPantry()
 
         # create a dummy grouped-by-detector workspace from the grouping workspace
         self.mantidSnapper.GroupDetectors(

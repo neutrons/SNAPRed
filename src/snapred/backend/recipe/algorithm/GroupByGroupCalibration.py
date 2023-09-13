@@ -83,7 +83,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.calibrationTable: str = self.getProperty("PreviousCalibrationTable").value
         self.diffractionfocusedWStof: str = f"_TOF_{self.runNumber}_diffoc"
 
-    def retrieveFromPantry(self):
+    def raidPantry(self):
         """Load required data, if not already loaded, and process it"""
 
         if not self.mantidSnapper.mtd.doesExist(self.inputWStof):
@@ -189,7 +189,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         # get the ingredients
         ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
-        self.retrieveFromPantry()
+        self.raidPantry()
 
         pdcalibratedWorkspace = "_tmp_PDCal_subgroup"
 
@@ -243,7 +243,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
             Workspace=pdcalibratedWorkspace,
         )
         # this will re-process diffraction focused WS with new calibrations
-        self.retrieveFromPantry()
+        self.raidPantry()
         # save the data
         self.storeInPantry()
         self.setProperty("OutputWorkspace", self.diffractionfocusedWStof)
