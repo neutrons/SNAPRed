@@ -34,7 +34,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/calibration/sampleFocusGroup.json"))
         ntest = fakeFocusGroup.nHst
-        fakeFocusGroup.dBin = [-abs(self.fakeDBin)] * ntest
+        fakeFocusGroup.dBin = [self.fakeDBin] * ntest
         fakeFocusGroup.dMax = [float(x) for x in range(100 * ntest, 101 * ntest)]
         fakeFocusGroup.dMin = [float(x) for x in range(ntest)]
         fakeFocusGroup.FWHM = [5 * random.random() for x in range(ntest)]
@@ -59,41 +59,58 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         # prepare with test data
         algo.mantidSnapper.CreateSampleWorkspace(
             "Make fake data for testing",
-            OutputWorkspace=algo.inputWStof,
+            OutputWorkspace=algo.inputWSdsp,
             # WorkspaceType="Histogram",
             Function="User Defined",
             UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=algo.TOFMin,
-            Xmax=algo.TOFMax,
-            BinWidth=0.1,
-            XUnit="TOF",
+            Xmin=algo.overallDMin,
+            Xmax=algo.overallDMax,
+            BinWidth=abs(algo.dBin),
+            XUnit="dSpacing",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
             Random=True,
         )
-        algo.convertUnitsAndRebin(algo.inputWStof, algo.inputWStof, "TOF")
-        algo.convertUnitsAndRebin(algo.inputWStof, algo.inputWSdsp, "dSpacing")
-
-        # manually setup the grouping workspace
-        focusWSname = "_focusws_name_"
-        algo.mantidSnapper.CreateWorkspace(
-            "Create workspace to hold IDF",
-            OutputWorkspace="idf",
-            DataX=1,
-            DataY=1,
-        )
         algo.mantidSnapper.LoadInstrument(
             "Load a fake instrument for testing",
-            Workspace="idf",
+            Workspace=algo.inputWSdsp,
             Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
             RewriteSpectraMap=False,
         )
+        algo.mantidSnapper.ChangeBinOffset(
+            "Change bin offsets",
+            InputWorkspace=algo.inputWSdsp,
+            OutputWorkspace=algo.inputWSdsp,
+            Offset=-1.0 * algo.overallDMin,
+        )
+        algo.mantidSnapper.RotateInstrumentComponent(
+            "",
+            Workspace=algo.inputWSdsp,
+            ComponentName="bank1",
+            Y=1.0,
+            Angle=90.0,
+        )
+        algo.mantidSnapper.MoveInstrumentComponent(
+            "",
+            Workspace=algo.inputWSdsp,
+            ComponentName="bank1",
+            X=5.0,
+            Y=-0.1,
+            Z=0.1,
+            RelativePosition=False,
+        )
 
+        # rebin and convert for DSP, TOF
+        algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWSdsp, "dSpacing")
+        algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWStof, "TOF")
+
+        # manually setup the grouping workspace
+        focusWSname = "_focusws_name_"
         inputFilePath = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
         algo.mantidSnapper.LoadGroupingDefinition(
             f"Loading grouping file {inputFilePath}...",
             GroupingFilename=inputFilePath,
-            InstrumentDonor="idf",
+            InstrumentDonor=algo.inputWSdsp,
             OutputWorkspace=focusWSname,
         )
         algo.mantidSnapper.executeQueue()
@@ -106,6 +123,13 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             groupDetectorIDs: List[int] = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
             algo.allDetectorIDs.extend(groupDetectorIDs)
             algo.subgroupWorkspaceIndices[groupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
+        algo.mantidSnapper.DeleteWorkspace(
+            "Delete temp",
+            Workspace=focusWSname,
+        )
+        print(algo.allDetectorIDs)
+        for groupID, ids in algo.subgroupWorkspaceIndices.items():
+            print(f"GROUP DETS {groupID}, {ids}")
         algo.mantidSnapper.executeQueue()
 
     def test_chop_ingredients(self):
@@ -128,10 +152,9 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
 
     @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
-    @mock.patch.object(ThisAlgo, "getRefID", lambda self, x: int(min(x)))  # noqa
+    # @mock.patch.object(ThisAlgo, "getRefID", lambda self, x: int(min(x)))  # noqa
     def test_execute(self):
         """Test that the algorithm executes"""
-
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
@@ -181,7 +204,8 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.initDIFCTable()
         difcTable = mtd[algo.difcWS]
         for i, row in enumerate(difcTable.column("detid")):
-            assert row == i + 4
+            assert row == i
+        print(difcTable.column("detid"))
         difc_refs = [
             0.0,
             6.0668,

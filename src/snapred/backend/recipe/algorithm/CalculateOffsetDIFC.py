@@ -42,17 +42,14 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # from the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
-        # the binning must be negative to signal logarithmic binning
         instrConfig = ingredients.instrumentState.instrumentConfig
-        self.TOFBin: float = -abs(instrConfig.delTOverT / instrConfig.NBins)
+        self.TOFBin: float = abs(instrConfig.delTOverT / instrConfig.NBins)
 
         # from grouping parameters, read the overall min/max d-spacings
         self.overallDMin: float = max(ingredients.focusGroup.dMin)
         self.overallDMax: float = min(ingredients.focusGroup.dMax)
-        self.dBin: float = -min(
-            [abs(x) for x in ingredients.focusGroup.dBin]
-        )  # ensure dBin is negative for log binning
-        self.maxDSpaceShifts: float = 2.5 * max(ingredients.focusGroup.FWHM)
+        self.dBin: float = min(ingredients.focusGroup.dBin)
+        self.maxDSpaceShifts: Dict[int, float] = {2.5 * instrConfig.delTOverT}
 
         # path to grouping file, specifying group IDs of pixels
         self.groupingFile: str = ingredients.focusGroup.definition
@@ -113,7 +110,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             InputWorkspace=self.inputWStof,
             OutputWorkspace="_tmp_difc_ws",
             OffsetMode="Signed",
-            BinWidth=abs(self.TOFBin),
+            BinWidth=self.TOFBin,
         )
         # convert the calibration workspace into a calibration table
         self.mantidSnapper.CreateEmptyTableWorkspace(
@@ -127,18 +124,20 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         DIFCtable.addColumn(type="double", name="difc", plottype=6)
         DIFCtable.addColumn(type="double", name="difa", plottype=6)
         DIFCtable.addColumn(type="double", name="tzero", plottype=6)
-        detids = [int(x) for x in tmpDifcWS.detectorInfo().detectorIDs()]
         difcs = [float(x) for x in tmpDifcWS.extractY()]
         # TODO why is detid always 1 in tests?
-        for detid, difc in zip(detids, difcs):
-            DIFCtable.addRow(
-                {
-                    "detid": detid,
-                    "difc": difc,
-                    "difa": 0,
-                    "tzero": 0,
-                }
-            )
+        for wkspIndx, difc in enumerate(difcs):
+            detids = tmpDifcWS.getSpectrum(wkspIndx).getDetectorIDs()
+            print(f"TABLE IDS {wkspIndx}, {detids}")
+            for detid in detids:
+                DIFCtable.addRow(
+                    {
+                        "detid": int(detid),
+                        "difc": float(difc),
+                        "difa": 0.0,
+                        "tzero": 0.0,
+                    }
+                )
         self.mantidSnapper.WashDishes(
             "Delete temp calibration workspace",
             Workspace="_tmp_difc_ws",
@@ -159,9 +158,9 @@ class CalculateOffsetDIFC(PythonAlgorithm):
 
         rebinParams: Tuple[float, float, float]
         if target == "dSpacing":
-            rebinParams = (self.overallDMin, -abs(self.dBin), self.overallDMax)
+            rebinParams = (self.overallDMin, self.dBin, self.overallDMax)
         elif target == "TOF":
-            rebinParams = (self.TOFMin, -abs(self.TOFBin), self.TOFMax)
+            rebinParams = (self.TOFMin, self.TOFBin, self.TOFMax)
 
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
@@ -199,8 +198,8 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         totalOffsetWS: str = f"offsets_{self.runNumber}"
         wsoff: str = f"_{self.runNumber}_tmp_subgroup_offset"
         wscc: str = f"_{self.runNumber}_tmp_subgroup_CC"
-
         for groupID, groupWorkspaceIndices in self.subgroupWorkspaceIndices.items():
+            groupWorkspaceIndices = list(groupWorkspaceIndices)
             refID: int = self.getRefID(groupWorkspaceIndices)
             self.mantidSnapper.CrossCorrelate(
                 f"Cross-Correlating spectra for {wscc}",
@@ -210,7 +209,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                 WorkspaceIndexList=groupWorkspaceIndices,
                 XMin=self.overallDMin,
                 XMax=self.overallDMax,
-                MaxDSpaceShift=self.maxDSpaceShifts,
+                MaxDSpaceShift=0.1,  # self.maxDSpaceShifts,
             )
             self.mantidSnapper.GetDetectorOffsets(
                 f"Calculate offset workspace {wsoff}",
@@ -223,12 +222,13 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                 MaxOffset=2,
             )
             # add in group offsets to total, or begin the sum if none
-            if groupID == self.groupIDs[0]:
+            if not self.mantidSnapper.mtd.doesExist(totalOffsetWS):
                 self.mantidSnapper.CloneWorkspace(
                     f"Starting summation with offset workspace {wsoff}",
                     InputWorkspace=wsoff,
                     OutputWorkspace=totalOffsetWS,
                 )
+                self.mantidSnapper.executeQueue()
             else:
                 self.mantidSnapper.Plus(
                     f"Adding in offset workspace {wsoff}",
@@ -293,13 +293,10 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # get the ingredients
         ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
         self.chopIngredients(ingredients)
-
         # load and process the input data for algorithm
         self.retrieveFromPantry()
-
         # prepare initial diffraction calibration workspace
         self.initDIFCTable()
-
         # now calculate and correct by offsets
         return self.reexecute()
 
