@@ -216,7 +216,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                 f"Calculate offset workspace {wsoff}",
                 InputWorkspace=wscc,
                 OutputWorkspace=wsoff,
-                Step=self.dBin,  # Step must be positive
                 XMin=-100,
                 XMax=100,
                 OffsetMode="Signed",
@@ -277,7 +276,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.setProperty("data", json.dumps(data))
         self.setProperty("OutputWorkspace", self.inputWStof)
         self.setProperty("CalibrationTable", self.difcWS)
-        return 1
+        return data["meadianOffset"]
 
     def PyExec(self) -> None:
         """
