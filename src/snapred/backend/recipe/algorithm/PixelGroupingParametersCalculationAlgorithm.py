@@ -50,7 +50,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.partial_resolution_group_ws_name = "pgpca_partial_resolution_group_ws"
         return
 
-    def retrieveFromPantry(self):
+    def raidPantry(self):
         # load grouping definition into a workspace
         self.mantidSnapper.LoadGroupingDefinition(
             "Loading grouping definition...",
@@ -68,7 +68,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.chopIngredients(InstrumentState.parse_raw(self.getProperty("InstrumentState").value))
 
         # create a grouping workspace and load an instrument into the workspace
-        self.retrieveFromPantry()
+        self.raidPantry()
 
         # create a dummy grouped-by-detector workspace from the grouping workspace
         self.mantidSnapper.GroupDetectors(
