@@ -33,6 +33,11 @@
   </component>
   <type name="sample-position" is="SamplePos"/>
 
+  <!--
+    the monitor was removed due to inconsistencies with
+    loading the instrument into a created sample workspace
+  -->
+
   <!--DETECTORS-->
   <component type="East">
     <location >

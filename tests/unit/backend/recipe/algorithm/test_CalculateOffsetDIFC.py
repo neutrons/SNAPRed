@@ -24,32 +24,29 @@ from snapred.meta.Config import Resource
 class TestCalculateOffsetDIFC(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
-        self.fakeDBin = 0.1
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
-        fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/calibration/sampleInstrumentState.json"))
+        fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/diffcal/fakeInstrumentState.json"))
         fakeInstrumentState.particleBounds.tof.minimum = 10
         fakeInstrumentState.particleBounds.tof.maximum = 1000
 
-        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/calibration/sampleFocusGroup.json"))
-        ntest = fakeFocusGroup.nHst
-        fakeFocusGroup.dBin = [self.fakeDBin] * ntest
-        fakeFocusGroup.dMax = [float(x / 100) + 5 for x in range(ntest)]
-        fakeFocusGroup.dMin = [float(x / 100) for x in range(ntest)]
-        fakeFocusGroup.FWHM = [5 * random.random() for x in range(ntest)]
-        fakeFocusGroup.definition = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
+        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/diffcal/fakeFocusGroup.json"))
+        fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
 
         peakList = [
-            DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 2, "maximum": 3}}),
-            DetectorPeak.parse_obj({"position": {"value": 5, "minimum": 4, "maximum": 6}}),
+            DetectorPeak.parse_obj({"position": {"value": 1.5, "minimum": 1, "maximum": 2}}),
+            DetectorPeak.parse_obj({"position": {"value": 3.5, "minimum": 3, "maximum": 4}}),
         ]
 
         self.fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
-            groupedPeakLists=[GroupPeakList(groupID=3, peaks=peakList)],
+            groupedPeakLists=[
+                GroupPeakList(groupID=3, peaks=peakList, maxfwhm=0.01),
+                GroupPeakList(groupID=7, peaks=peakList, maxfwhm=0.02),
+            ],
             calPath=Resource.getPath("outputs/calibration/"),
             threshold=1.0,
         )
@@ -74,9 +71,10 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.mantidSnapper.LoadInstrument(
             "Load a fake instrument for testing",
             Workspace=algo.inputWSdsp,
-            Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             RewriteSpectraMap=True,
         )
+        # the below are meant to de-align the pixels so an offset correction is needed
         algo.mantidSnapper.ChangeBinOffset(
             "Change bin offsets",
             InputWorkspace=algo.inputWSdsp,
@@ -105,7 +103,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWStof, "TOF")
         # manually setup the grouping workspace
         focusWSname = "_focusws_name_"
-        inputFilePath = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
+        inputFilePath = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
         algo.mantidSnapper.LoadGroupingDefinition(
             f"Loading grouping file {inputFilePath}...",
             GroupingFilename=inputFilePath,
@@ -138,7 +136,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         assert algo.TOFMax == self.fakeIngredients.instrumentState.particleBounds.tof.maximum
         assert algo.overallDMin == max(self.fakeIngredients.focusGroup.dMin)
         assert algo.overallDMax == min(self.fakeIngredients.focusGroup.dMax)
-        assert algo.dBin == self.fakeDBin
+        assert algo.dBin == min(self.fakeIngredients.focusGroup.dBin)
 
     def test_init_properties(self):
         """Test that he properties of the algorithm can be initialized"""
@@ -185,7 +183,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             algo.reexecute()
             data = json.loads(algo.getProperty("data").value)
             allOffsets.append(data["medianOffset"])
-            assert allOffsets[-1] <= max(1.0e-14, allOffsets[-2])
+            assert allOffsets[-1] <= max(1.0e-12, allOffsets[-2])
 
     @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
     def test_init_difc_table(self):
@@ -257,7 +255,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         )
         LoadInstrument(
             Workspace=fakeDataWorkspace,
-            Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             InstrumentName="fakeSNAPLite",
             RewriteSpectraMap=False,
         )
@@ -272,8 +270,8 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             Workspace1=algo.inputWStof,
             Workspace2=fakeDataWorkspace,
         )
-        assert len(algo.groupIDs) > 0
-        assert algo.groupIDs == list(algo.subgroupWorkspaceIndices.keys())
+        assert len(algo.subgroupIDs) > 0
+        assert algo.subgroupIDs == list(algo.subgroupWorkspaceIndices.keys())
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

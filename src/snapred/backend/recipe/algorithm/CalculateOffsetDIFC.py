@@ -49,7 +49,14 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.overallDMin: float = max(ingredients.focusGroup.dMin)
         self.overallDMax: float = min(ingredients.focusGroup.dMax)
         self.dBin: float = min(ingredients.focusGroup.dBin)
-        self.maxDSpaceShifts: float = 1.0
+        # TODO this needs to be specified per-grouping using the fwhm
+        # note that fwhm is NOT the same as FHWM in the focus group
+        # this should be determined from crystallography and peaks
+        # I think peak-list could help here...
+        self.maxDSpaceShifts: Dict[int, float] = {}
+        for peakList in ingredients.groupedPeakLists:
+            self.maxDSpaceShifts[peakList.groupID] = 2.5 * peakList.maxfwhm
+        # self.maxDSpaceShifts: float = 1.0
 
         # path to grouping file, specifying group IDs of pixels
         self.groupingFile: str = ingredients.focusGroup.definition
@@ -86,11 +93,11 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # get handle to group focusing workspace and retrieve all detector IDs
         self.mantidSnapper.executeQueue()
         focusWS = self.mantidSnapper.mtd[focusWSname]
-        self.groupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
+        self.subgroupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
         self.subgroupWorkspaceIndices: Dict[int, List[int]] = {}
-        for groupID in self.groupIDs:
-            groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
-            self.subgroupWorkspaceIndices[groupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
+        for subgroupID in self.subgroupIDs:
+            groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(subgroupID)]
+            self.subgroupWorkspaceIndices[subgroupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
         self.mantidSnapper.WashDishes(
             "Delete temp",
             Workspace=focusWSname,
@@ -175,7 +182,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         """
         Calculate a unique reference pixel for a pixel grouping, based in the pixel geometry.
         input:
-            subgroupIDs: List[int] -- a list of all of the detector IDs in that group
+            detectorIDs: List[int] -- a list of all of the detector IDs in that group
         output:
             the median pixel ID (to be replaced with angular COM pixel)
         """
@@ -196,18 +203,18 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         totalOffsetWS: str = f"offsets_{self.runNumber}"
         wsoff: str = f"_{self.runNumber}_tmp_subgroup_offset"
         wscc: str = f"_{self.runNumber}_tmp_subgroup_CC"
-        for groupID, groupWorkspaceIndices in self.subgroupWorkspaceIndices.items():
-            groupWorkspaceIndices = list(groupWorkspaceIndices)
-            refID: int = self.getRefID(groupWorkspaceIndices)
+        for subgroupID, workspaceIndices in self.subgroupWorkspaceIndices.items():
+            workspaceIndices = list(workspaceIndices)
+            refID: int = self.getRefID(workspaceIndices)
             self.mantidSnapper.CrossCorrelate(
                 f"Cross-Correlating spectra for {wscc}",
                 InputWorkspace=self.inputWSdsp,
                 OutputWorkspace=wscc,
                 ReferenceSpectra=refID,
-                WorkspaceIndexList=groupWorkspaceIndices,
+                WorkspaceIndexList=workspaceIndices,
                 XMin=self.overallDMin,
                 XMax=self.overallDMax,
-                MaxDSpaceShift=self.maxDSpaceShifts,
+                MaxDSpaceShift=self.maxDSpaceShifts[subgroupID],
             )
             self.mantidSnapper.GetDetectorOffsets(
                 f"Calculate offset workspace {wsoff}",
