@@ -1,7 +1,6 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from pytest_mock import mocker  # noqa: F811
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.ui.presenter.InitializeCalibrationPresenter import CalibrationCheck
