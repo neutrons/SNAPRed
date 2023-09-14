@@ -29,7 +29,7 @@ def test_handleButtonClicked(mocker, calibrationCheck):  # noqa: F811
 
     mock_view.getRunNumber.assert_called_once()
     mock_worker_pool.createWorker.assert_called_once_with(
-        target=mock_interfaceController.executeRequest, args=(stateCheckRequest,)
+        target=mock_interfaceController.executeRequest, args=(stateCheckRequest)
     )
     mock_submitWorker.assert_called_once()
 

@@ -53,7 +53,7 @@ class CalibrationCheck(QObject):
         stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload=runNumber_str)
 
         self.worker = self.worker_pool.createWorker(
-            target=self.interfaceController.executeRequest, args=(stateCheckRequest,)
+            target=self.interfaceController.executeRequest, args=(stateCheckRequest)
         )
         self.worker.result.connect(self.handleStateCheckResult)
 
@@ -83,7 +83,7 @@ class CalibrationCheck(QObject):
 
             request = SNAPRequest(path="/calibration/initializeState", payload=payload.json())
 
-            self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request,))
+            self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request))
 
             def handle_response(response: SNAPResponse):
                 self.stateInitialized.emit(response)
