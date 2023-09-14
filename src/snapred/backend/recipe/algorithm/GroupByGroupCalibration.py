@@ -127,6 +127,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.LoadGroupingDefinition(
             f"Loading grouping file {self.groupingFile}...",
             GroupingFilename=self.groupingFile,
+            InstrumentDonor=self.inputWStof,
             OutputWorkspace=focusWSname,
         )
 
