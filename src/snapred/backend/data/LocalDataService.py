@@ -304,7 +304,7 @@ class LocalDataService:
         return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId}/"
 
     def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
-        # lookup IPST number
+        # lookup IPTS number
         run: int = int(runId)
         stateId, _ = self._generateStateId(runId)
 

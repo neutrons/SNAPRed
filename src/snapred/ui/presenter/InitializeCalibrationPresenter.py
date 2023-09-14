@@ -1,7 +1,7 @@
 import json
 
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
-from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
@@ -41,39 +41,36 @@ class CalibrationCheck(QObject):
         self.message_widgets.append(win)
 
     def handleButtonClicked(self):
-        self.view.beginFlowButton.setEnabled(False)
-
         runNumber = self.view.getRunNumber()
+
+        if not runNumber.isdigit():
+            QMessageBox.warning(self.view, "Invalid Input", "Please enter a valid run number.")
+            return
+
+        self.view.beginFlowButton.setEnabled(False)
         runNumber_str = str(runNumber)
 
         stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload=runNumber_str)
 
         self.worker = self.worker_pool.createWorker(
-            target=self.interfaceController.executeRequest, args=(stateCheckRequest)
+            target=self.interfaceController.executeRequest, args=(stateCheckRequest,)
         )
         self.worker.result.connect(self.handleStateCheckResult)
 
         self.worker_pool.submitWorker(self.worker)
 
     def handleStateCheckResult(self, response: SNAPResponse):
+        self.view.beginFlowButton.setEnabled(True)
         try:
             self.stateInitialized.disconnect()
         except TypeError:
-            pass
+            self._labelView(str(response.message))
 
         if response.data is False:
             self._spawnStateCreationWorkflow()
-            self.stateInitialized.connect(self.handlePixelGroupingResult)
+            self.stateInitialized.connect(self.handleStateCheckResult)
         else:
-            runID = str(self.view.getRunNumber())
-            pixelGroupingParametersRequest = SNAPRequest(path="/calibration/retrievePixelGroupingParams", payload=runID)
-
-            self.worker = self.worker_pool.createWorker(
-                target=self.interfaceController.executeRequest, args=(pixelGroupingParametersRequest)
-            )
-            self.worker.result.connect(self.handlePixelGroupingResult)
-
-            self.worker_pool.submitWorker(self.worker)
+            self._labelView("Ready to Calibrate!")
 
     def _spawnStateCreationWorkflow(self):
         from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
@@ -86,33 +83,29 @@ class CalibrationCheck(QObject):
 
             request = SNAPRequest(path="/calibration/initializeState", payload=payload.json())
 
-            self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request))
+            self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request,))
 
             def handle_response(response: SNAPResponse):
                 self.stateInitialized.emit(response)
+                if response.code == 500:
+                    self._labelView(str(response.message))
+                else:
+                    promptView.close()
 
             self.worker.result.connect(handle_response)
 
             self.worker_pool.submitWorker(self.worker)
 
         promptView.dataEntered.connect(pushDataToInterfaceController)
-        promptView.show()
-        self.workflow = (
-            WorkflowBuilder(self.view)
-            .addNode(lambda workflow: None, promptView, "Calibration Input")  # noqa: ARG005
-            .addNode(pushDataToInterfaceController, promptView, "Initialize State")
-            .build()
-        )
-        self.workflow.show()
-        promptView.close()
+        promptView.exec_()
 
-    def handlePixelGroupingResult(self, response: SNAPResponse):
-        self.view.beginFlowButton.setEnabled(True)
-        if response.code == 200:
-            self._labelView("Ready to Calibrate!")
-            self.view.beginFlowButton.setEnabled(True)
-        else:
-            self._labelView(str(response.message))
+        # self.workflow = (
+        #     WorkflowBuilder(self.view)
+        #     .addNode(lambda workflow: None, promptView, "Calibration Input")  # noqa: ARG005
+        #     .addNode(pushDataToInterfaceController, promptView, "Initialize State")
+        #     .build()
+        # )
+        # self.workflow.show()
 
     @property
     def widget(self):
