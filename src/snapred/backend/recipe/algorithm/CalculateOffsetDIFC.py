@@ -27,9 +27,10 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
-        self.declareProperty("MaxOffset", 2, direction=Direction.Input)
+        self.declareProperty("MaxOffset", 2.0, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
+        self._has_been_executed = False
 
     # TODO: ensure all ingredients loaded elsewhere, no superfluous ingredients
     def chopIngredients(self, ingredients: Ingredients) -> None:
@@ -282,6 +283,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.setProperty("data", json.dumps(data))
         self.setProperty("OutputWorkspace", self.inputWStof)
         self.setProperty("CalibrationTable", self.difcWS)
+        self._has_been_executed = True
         return data["medianOffset"]
 
     def PyExec(self) -> None:
@@ -297,15 +299,16 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
             CalibrationTable: str -- the final table of DIFC values
         """
-        self.log().notice("Extraction of calibration constants START!")
+        if not self._has_been_executed:
+            self.log().notice("Extraction of calibration constants START!")
 
-        # get the ingredients
-        ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
-        self.chopIngredients(ingredients)
-        # load and process the input data for algorithm
-        self.raidPantry()
-        # prepare initial diffraction calibration workspace
-        self.initDIFCTable()
+            # get the ingredients
+            ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
+            self.chopIngredients(ingredients)
+            # load and process the input data for algorithm
+            self.raidPantry()
+            # prepare initial diffraction calibration workspace
+            self.initDIFCTable()
         # now calculate and correct by offsets
         return self.reexecute()
 
