@@ -6,6 +6,7 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
+from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.WashDishes import WashDishes
@@ -216,7 +217,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                 f"Calculate offset workspace {wsoff}",
                 InputWorkspace=wscc,
                 OutputWorkspace=wsoff,
-                Step=self.dBin,  # Step must be positive
                 XMin=-100,
                 XMax=100,
                 OffsetMode="Signed",
@@ -248,7 +248,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         data["maxOffset"] = abs(np.max(offsets))
 
         # get difcal corrected by offsets
-        self.mantidSnapper.ConvertDiffCal(
+        self.mantidSnapper.ConvertDiffCalLog(
             "Correct previous calibration constants by offsets",
             OffsetsWorkspace=totalOffsetWS,
             PreviousCalibration=self.difcWS,
@@ -277,7 +277,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.setProperty("data", json.dumps(data))
         self.setProperty("OutputWorkspace", self.inputWStof)
         self.setProperty("CalibrationTable", self.difcWS)
-        return 1
+        return data["medianOffset"]
 
     def PyExec(self) -> None:
         """

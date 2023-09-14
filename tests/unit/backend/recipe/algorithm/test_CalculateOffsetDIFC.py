@@ -200,26 +200,6 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             assert row == i
         for difc in difcTable.column("difc"):
             print(f"{difc},")
-        # difc_refs = [ # these come from past runs of tests
-        #     3277.315974986059,
-        #     3277.3053335708523,
-        #     3277.5727141552215,
-        #     3277.562072615724,
-        #     752.1782796557441,
-        #     752.178649745504,
-        #     752.9184419740511,
-        #     752.9188116767137,
-        #     752.1782796557441,
-        #     752.9184419740511,
-        #     752.178649745504,
-        #     752.9188116767137,
-        #     1055.4666684141987,
-        #     1055.9783785851703,
-        #     1055.9783785851703,
-        #     1056.4898104685458,
-        # ]
-        # for difc, difc_ref in zip(difcTable.column("difc"), difc_refs):
-        #     assert abs(difc - difc_ref) < 1.0e-3
 
     def test_retrieve_from_pantry(self):
         import os
