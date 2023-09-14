@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from snapred.backend.dao.SNAPRequest import SNAPRequest
@@ -12,34 +12,33 @@ def calibrationCheck():
     return CalibrationCheck(view=view)
 
 
-def test_handleButtonClicked(mocker, calibrationCheck):
+def test_handleButtonClicked(calibrationCheck):
     view = calibrationCheck.view
     view.getRunNumber.return_value = "12345"
 
-    worker_pool = mocker.patch.object(calibrationCheck, "worker_pool")
-    interfaceController = mocker.patch.object(calibrationCheck, "interfaceController")
-    stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload="12345")
+    with patch.object(calibrationCheck, "worker_pool") as worker_pool, patch.object(
+        calibrationCheck, "interfaceController"
+    ) as interfaceController:
+        stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload="12345")
 
-    submitWorker = worker_pool.submitWorker
+        calibrationCheck.handleButtonClicked()
 
-    calibrationCheck.handleButtonClicked()
-
-    view.getRunNumber.assert_called_once()
-    worker_pool.createWorker.assert_called_once_with(
-        target=interfaceController.executeRequest, args=(stateCheckRequest)
-    )
-    submitWorker.assert_called_once()
+        view.getRunNumber.assert_called_once()
+        worker_pool.createWorker.assert_called_once_with(
+            target=interfaceController.executeRequest, args=(stateCheckRequest)
+        )
+        worker_pool.submitWorker.assert_called_once()
 
 
-def test_handleStateCheckResult(mocker, calibrationCheck):
+def test_handleStateCheckResult(calibrationCheck):
     response = Mock(spec=SNAPResponse)
     response.data = False
     response.message = "Sample message"
 
-    labelView = mocker.patch.object(calibrationCheck, "_labelView")
-    spawnStateCreationWorkflow = mocker.patch.object(calibrationCheck, "_spawnStateCreationWorkflow")
+    with patch.object(calibrationCheck, "_labelView") as labelView, patch.object(
+        calibrationCheck, "_spawnStateCreationWorkflow"
+    ) as spawnStateCreationWorkflow:
+        calibrationCheck.handleStateCheckResult(response)
 
-    calibrationCheck.handleStateCheckResult(response)
-
-    labelView.assert_called_once_with("Sample message")
-    spawnStateCreationWorkflow.assert_called_once()
+        labelView.assert_called_once_with("Sample message")
+        spawnStateCreationWorkflow.assert_called_once()
