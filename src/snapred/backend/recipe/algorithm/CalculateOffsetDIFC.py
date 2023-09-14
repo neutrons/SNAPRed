@@ -49,10 +49,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.overallDMin: float = max(ingredients.focusGroup.dMin)
         self.overallDMax: float = min(ingredients.focusGroup.dMax)
         self.dBin: float = min(ingredients.focusGroup.dBin)
-        # TODO this needs to be specified per-grouping using the fwhm
-        # note that fwhm is NOT the same as FHWM in the focus group
-        # this should be determined from crystallography and peaks
-        # I think peak-list could help here...
         self.maxDSpaceShifts: Dict[int, float] = {}
         for peakList in ingredients.groupedPeakLists:
             self.maxDSpaceShifts[peakList.groupID] = 2.5 * peakList.maxfwhm
