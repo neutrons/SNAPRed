@@ -53,7 +53,9 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     # TODO: once recipe implemented, this should do something
     def test_chop_ingredients(self):
-        assert not self.recipe.chopIngredients(self.fakeIngredients)
+        self.recipe.chopIngredients(self.fakeIngredients)
+        assert self.recipe.runNumber == self.fakeIngredients.runConfig.runNumber
+        assert self.recipe.threshold == self.fakeIngredients.threshold
 
     @mock.patch(TheAlgorithmManager)
     def test_execute_successful(self, mock_AlgorithmManager):
