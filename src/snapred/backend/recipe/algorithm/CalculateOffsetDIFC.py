@@ -221,7 +221,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                 XMin=-100,
                 XMax=100,
                 OffsetMode="Signed",
-                MaxOffset=self.maxOffset,
+                MaxOffset=self.getProperty("MaxOffset").value,
             )
             # add in group offsets to total, or begin the sum if none
             if not self.mantidSnapper.mtd.doesExist(totalOffsetWS):
