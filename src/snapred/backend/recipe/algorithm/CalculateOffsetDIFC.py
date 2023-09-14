@@ -27,6 +27,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
+        self.declareProperty("MaxOffsets", 2, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
@@ -224,7 +225,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                 XMin=-100,
                 XMax=100,
                 OffsetMode="Signed",
-                MaxOffset=2,
+                MaxOffset=self.maxOffset,
             )
             # add in group offsets to total, or begin the sum if none
             if not self.mantidSnapper.mtd.doesExist(totalOffsetWS):
