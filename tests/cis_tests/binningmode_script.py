@@ -37,6 +37,95 @@ stateFolder = '/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/'
 
 #_/_/_/DON'T EDIT BELOW_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 
+def initGroupingParams(sPrm,gpWS,isLite):
+
+  import math
+
+  #grouping WS should be instantiate before calling this function (i.e. instrument is loaded
+  #corresponding to the specific state
+   
+  band = sPrm["instrumentState"]["instrumentConfig"]["bandwidth"]
+  L1 = sPrm["instrumentState"]["instrumentConfig"]["L1"]
+  L2 = sPrm["instrumentState"]["instrumentConfig"]["L2"]
+  L=L1+L2
+  delToT = sPrm["instrumentState"]["instrumentConfig"]["delTOverT"]
+  delLoL = sPrm["instrumentState"]["instrumentConfig"]["delLOverL"]
+  if sPrm["instrumentState"]["detectorState"]["guideStat"] == 1:
+     delTh = sPrm["instrumentState"]["instrumentConfig"]["delThWithGuide"]
+  else:
+     delTh = sPrm["instrumentState"]["instrumentConfig"]["delThNoGuide"]
+    
+  TOFMin = sPrm['instrumentState']['particleBounds']['tof']['minimum']
+  TOFMax = sPrm['instrumentState']['particleBounds']['tof']['maximum']
+
+  lamMin = sPrm['instrumentState']['particleBounds']['wavelength']['minimum']
+  lamMax = sPrm['instrumentState']['particleBounds']['wavelength']['maximum']
+
+  det_arc1 = sPrm["instrumentState"]["detectorState"]["arc"][0]
+  det_arc2 = sPrm["instrumentState"]["detectorState"]["arc"][1]
+  det_lin1 = sPrm["instrumentState"]["detectorState"]["lin"][0]
+  det_lin2 = sPrm["instrumentState"]["detectorState"]["lin"][0]
+  
+
+  GroupDetectors(InputWorkspace=gpWS,
+              OutputWorkspace='groupedWS',
+              Behaviour='Average',
+              CopyGroupingFromWorkspace=gpWS)
+  
+  #Generate a dictionary with important diffraction parameters
+  groupedws = mtd['groupedWS']
+  dMin = []
+  dMax = []
+  tTheta = []
+  delD = []
+  verb = False
+
+  ungroupedWS = gpWS
+  GroupIDs = ungroupedWS.getGroupIDs()
+  if verb:
+     print('InitGroupingParams Output...')
+
+
+  groupingws = gpWS
+  if True:
+    for groupID in GroupIDs:
+      #get limiting tthetas in group
+
+      group2Thetas = []
+      pixInGroup = ungroupedWS.getDetectorIDsOfGroup(int(groupID))
+      # print(f'group: {groupID}')
+      # print(pixInGroup)
+      for pix in pixInGroup:
+        group2Thetas.append(ungroupedWS.spectrumInfo().twoTheta(int(pix)))
+      
+      # print(f'min 2theta: {groupMin2Theta*180/np.pi:.2f} max 2theta: {groupMax2Theta*180/np.pi:.2f}')
+
+      specInfo = gpWS.spectrumInfo()
+      tTheta.append(specInfo.twoTheta(int(groupID)-1))
+      
+      
+      groupMin2Theta = min(group2Thetas)
+      groupMax2Theta = max(group2Thetas)
+      dMin.append(3.9561e-3*(1/(2*np.sin(groupMax2Theta/2)))*TOFMin/L)
+      dMax.append( 3.9561e-3*(1/(2*np.sin(groupMin2Theta/2)))*TOFMax/L)
+      delD.append(snp.delDoD(delToT,delLoL,delTh,specInfo.twoTheta(int(groupID)-1)))
+
+
+  FocGroupParm = {"lamMin":lamMin,
+                  "lamMax":lamMax,
+                  "TOFMin":TOFMin,
+                  "TOFMax":TOFMax,
+                  "twoTheta":tTheta,
+                  "groupMinTwoTheta":groupMin2Theta,
+                  "groupMaxTwoTheta":groupMax2Theta,
+                  "dMin":dMin,
+                  "dMax":dMax,
+                  "delDOverD":delD}
+
+  return FocGroupParm
+
+
+
 stateInitFilename = stateFolder + 'CalibrationParameters.json'
 #get useful parameters for instrument and state
 with open(stateInitFilename, "r") as json_file:
@@ -122,7 +211,7 @@ for group in groupingList:
     snp.instantiateGroupingWS(sPrm,ws,isLite)
     
     #get groupingspecific parameters
-    gPrm = snp.initGroupingParams(sPrm,ws,isLite)
+    gPrm = initGroupingParams(sPrm,ws,isLite)
 
     #not sure of effect of binning on cross-correlate, here truncate
     #to region of dsp that is common to all subGroups
@@ -249,8 +338,9 @@ for group in groupingList:
         OffsetMode = "Signed",
         BinWidth = TOFBin,
     )
+    
     ConvertDiffCal(
-        OffsetsWorkspace = f'_{run}_difcs',
+        OffsetsWorkspace = f'Off_{run}',
         OutputWorkspace = "tableWS",
         OffsetMode = "Signed",
         BinWidth = TOFBin,
@@ -522,4 +612,5 @@ for group in groupingList:
                 GroupingWorkspace=f'FocGrp_{group}',
                 OutputWorkspace=f'_DSP_{run}_cal_CC_PD_{group}',
             )
-                
+             
+   
