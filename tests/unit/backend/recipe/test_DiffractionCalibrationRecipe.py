@@ -20,7 +20,7 @@ TheAlgorithmManager: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.
 
 class TestDiffractionCalibtationRecipe(unittest.TestCase):
     def setUp(self):
-        self.fakeDBin = -abs(0.001)
+        self.fakeDBin = abs(0.001)
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
@@ -71,9 +71,9 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
                 self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
                 self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.Input)
                 self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
+                self.medianOffset: float = 4.0
 
             def PyExec(self):
-                self.medianOffset: float = 4.0
                 self.reexecute()
                 self.setProperty("PreviousCalibrationTable", self.getProperty("CalibrationTable").value)
                 self.setProperty("OutputWorkspace", self.getProperty("InputWorkspace").value)

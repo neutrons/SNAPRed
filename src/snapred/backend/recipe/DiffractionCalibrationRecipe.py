@@ -49,12 +49,11 @@ class DiffractionCalibrationRecipe:
             raise Exception(errorString.split("\n")[0])
 
         counter = 0
-        assert hasattr(offsetAlgo, "reexecute")
         while abs(medianOffsets[-1]) > self.threshold:
             counter = counter + 1
             logger.info(f"... converging to answer; step {counter}, {medianOffsets[-1]} > {self.threshold}")
             try:
-                offsetAlgo.reexecute()
+                offsetAlgo.execute()
                 dataSteps.append(json.loads(offsetAlgo.getProperty("data").value))
                 medianOffsets.append(dataSteps[-1]["medianOffset"])
             except RuntimeError as e:
