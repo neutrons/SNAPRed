@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from snapred.backend.dao.SNAPRequest import SNAPRequest
@@ -8,40 +8,38 @@ from snapred.ui.presenter.InitializeCalibrationPresenter import CalibrationCheck
 
 @pytest.fixture()
 def calibrationCheck():
-    mock_view = Mock()
-    calibrationCheck = CalibrationCheck(view=mock_view)
-    return calibrationCheck
+    view = Mock()
+    return CalibrationCheck(view=view)
 
 
-def test_handleButtonClicked(mocker, calibrationCheck):  # noqa: F811
-    mock_view = calibrationCheck.view
-    mock_view.getRunNumber.return_value = "12345"
+def test_handleButtonClicked(mocker, calibrationCheck):
+    view = calibrationCheck.view
+    view.getRunNumber.return_value = "12345"
 
-    mock_worker_pool = mocker.patch.object(calibrationCheck, "worker_pool")
-
-    mock_interfaceController = mocker.patch.object(calibrationCheck, "interfaceController")
+    worker_pool = mocker.patch.object(calibrationCheck, "worker_pool")
+    interfaceController = mocker.patch.object(calibrationCheck, "interfaceController")
     stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload="12345")
 
-    mock_submitWorker = mock_worker_pool.submitWorker
+    submitWorker = worker_pool.submitWorker
 
     calibrationCheck.handleButtonClicked()
 
-    mock_view.getRunNumber.assert_called_once()
-    mock_worker_pool.createWorker.assert_called_once_with(
-        target=mock_interfaceController.executeRequest, args=(stateCheckRequest)
+    view.getRunNumber.assert_called_once()
+    worker_pool.createWorker.assert_called_once_with(
+        target=interfaceController.executeRequest, args=(stateCheckRequest)
     )
-    mock_submitWorker.assert_called_once()
+    submitWorker.assert_called_once()
 
 
-def test_handleStateCheckResult(mocker, calibrationCheck):  # noqa: F811
-    mock_response = Mock(spec=SNAPResponse)
-    mock_response.data = False
-    mock_response.message = "Sample message"
+def test_handleStateCheckResult(mocker, calibrationCheck):
+    response = Mock(spec=SNAPResponse)
+    response.data = False
+    response.message = "Sample message"
 
-    mock__labelView = mocker.patch.object(calibrationCheck, "_labelView")
-    mock__spawnStateCreationWorkflow = mocker.patch.object(calibrationCheck, "_spawnStateCreationWorkflow")
+    labelView = mocker.patch.object(calibrationCheck, "_labelView")
+    spawnStateCreationWorkflow = mocker.patch.object(calibrationCheck, "_spawnStateCreationWorkflow")
 
-    calibrationCheck.handleStateCheckResult(mock_response)
+    calibrationCheck.handleStateCheckResult(response)
 
-    mock__labelView.assert_called_once_with("Sample message")
-    mock__spawnStateCreationWorkflow.assert_called_once()
+    labelView.assert_called_once_with("Sample message")
+    spawnStateCreationWorkflow.assert_called_once()
