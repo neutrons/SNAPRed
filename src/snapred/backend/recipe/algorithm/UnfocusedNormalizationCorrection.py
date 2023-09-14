@@ -18,16 +18,6 @@ name = "UnfocusedNormalizationCorrection"
 
 # TODO: Rename so it matches filename
 class UnfocusedNormalizationCorrection(PythonAlgorithm):
-    VANADIUM_CYLINDER = {
-        "attenuationXSection": 4.878,
-        "scatteringXSection": 5.159,
-        "sampleNumberDensity": 0.070,
-        "cylinderSampleHeight": 0.30,  # cm
-        "cylinderSampleRadius": 0.15,  # cm
-        "numberOfSlices": 10,
-        "numberOfAnnuli": 10,
-    }
-
     def PyInit(self):
         # declare properties
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
@@ -38,19 +28,19 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
         stateConfig = ingredients.reductionState.stateConfig
-        self.liteMode = stateConfig.isLiteMode
-        self.vanadiumRunNumber = ingredients.runConfig.runNumber
-        self.vanadiumBackgroundRunNumber = stateConfig.emptyInstrumentRunNumber
+        self.liteMode: bool = stateConfig.isLiteMode
+        self.vanadiumRunNumber: str = ingredients.runConfig.runNumber
+        self.vanadiumBackgroundRunNumber: str = stateConfig.emptyInstrumentRunNumber
         self.geomCalibFile: str = stateConfig.geometryCalibrationFileName
         # iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ f'RVMB{VRun}
-        self.rawVFile = stateConfig.rawVanadiumCorrectionFileName
+        self.rawVFile: str = stateConfig.rawVanadiumCorrectionFileName
         self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
 
     def chopCalibrantSample(self, sample: CalibrantSamples) -> Dict[str, Any]:
         self.sampleForm = sample.geometry.form
         geometry = {
             # SNAPRed specifies form as lowercase, mantid wants init cap
-            "Shape": f"{self.sampleForm[0].upper()}{self.sampleForm[1:]}",
+            "Shape": f"{self.sampleForm[0].upper()}{self.sampleForm[1:].lower()}",
             "Radius": sample.geometry.radius,
             "Center": [0, 0, 0],  # @mguthrime confirms this is always true
         }
@@ -82,9 +72,14 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
             "Load the indicated data",
             Filename=filename,
             OutputWorkspace=wsName,
-            FilterByTofMin=self.TOFPars[0],
-            FilterByTofMax=self.TOFPars[2],
             NumberOfBins=1,
+        )
+        self.mantidSnapper.CropWorkspace(
+            "Filter the workspace within bounds",
+            InputWorkspace=wsName,
+            OutputWorkspace=wsName,
+            XMin=self.TOFPars[0],
+            XMax=self.TOFPars[2],
         )
         self.mantidSnapper.NormaliseByCurrent(
             "Normalize by current",
