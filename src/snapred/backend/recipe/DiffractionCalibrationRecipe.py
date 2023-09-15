@@ -33,7 +33,7 @@ class DiffractionCalibrationRecipe:
         self.chopIngredients(ingredients)
 
         logger.info(f"Executing diffraction calibration for runId: {self.runNumber}")
-        data: Dict[str, Any] = {"results": False}
+        data: Dict[str, Any] = {"result": False}
         dataSteps: List[Dict[str, Any]] = []
         medianOffsets: List[float] = []
 
