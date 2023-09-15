@@ -31,6 +31,9 @@ class CalibrationCheck(QObject):
     def _labelView(self, text: str):
         self._removePreviousMessages()
 
+        if text == "None":
+            return
+
         win = QWidget()
         vbox = QVBoxLayout()
         label = QLabel(text)
@@ -70,8 +73,19 @@ class CalibrationCheck(QObject):
             self._labelView(str(response.message))
 
         if response.data is False:
-            self._spawnStateCreationWorkflow(runNumber)
-            self.checkState.connect(self.handleStateCheckResult)
+            reply = QMessageBox.question(
+                self.view,
+                "Initialize State",
+                "State doesn't exist. Would you like to initialize?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
+
+            if reply == QMessageBox.Yes:
+                self._spawnStateCreationWorkflow(runNumber)
+                self.checkState.connect(self.handleStateCheckResult)
+            else:
+                self._labelView("State was not initialized.")
         else:
             self._labelView("Ready to Calibrate!")
 
