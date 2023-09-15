@@ -50,17 +50,16 @@ class GroupByGroupCalibration(PythonAlgorithm):
         # from the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
-        # the binning must be negative to signal logarithmic binning
         instrConfig = ingredients.instrumentState.instrumentConfig
-        self.TOFBin: float = -abs(instrConfig.delTOverT / instrConfig.NBins)
+        self.TOFBin: float = abs(instrConfig.delTOverT / instrConfig.NBins)
+        self.TOFParams = (self.TOFMin, self.TOFBin, self.TOFMax)
 
         # from grouping parameters, read the overall min/max d-spacings
         self.overallDMin: float = max(ingredients.focusGroup.dMin)
         self.overallDMax: float = min(ingredients.focusGroup.dMax)
-        self.dBin: float = -min(
-            [abs(x) for x in ingredients.focusGroup.dBin]
-        )  # ensure dBin is negative for log binning
+        self.dBin: float = abs(min(ingredients.focusGroup.dBin))
         self.maxDSpaceShifts: float = 2.5 * max(ingredients.focusGroup.FWHM)
+        self.dSpaceParams = (self.overallDMin, self.dBin, self.overallDMax)
 
         # path to grouping file, specifying group IDs of pixels
         self.groupingFile: str = ingredients.focusGroup.definition
@@ -101,7 +100,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=self.inputWStof,
-            Params=(self.TOFMin, self.TOFBin, self.TOFMax),
+            Params=self.TOFParams,
             OutputWorkspace=self.inputWStof,
             BinningMode="Logarithmic",
         )
@@ -117,12 +116,12 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=inputWSdsp,
-            Params=(self.overallDMin, self.dBin, self.overallDMax),
+            Params=self.dSpaceParams,
             OutputWorkspace=inputWSdsp,
             BinningMode="Logarithmic",
         )
 
-        # now diffraction focus the d-spacing data and conver to TOF
+        # now diffraction focus the d-spacing data and convert to TOF
         focusWSname = f"_{self.runNumber}_focusGroup"
         self.mantidSnapper.LoadGroupingDefinition(
             f"Loading grouping file {self.groupingFile}...",
@@ -147,7 +146,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=self.diffractionfocusedWStof,
-            Params=(self.TOFMin, self.TOFBin, self.TOFMax),
+            Params=self.TOFParams,
             OutputWorkspace=self.diffractionfocusedWStof,
             BinningMode="Logarithmic",
         )
@@ -158,7 +157,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-    def storeInPantry(self) -> None:
+    def restockPantry(self) -> None:
         """
         Save the calculated diffraction calibration table to file.
         Will be saved inside the state folder, with name of form
@@ -206,7 +205,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
             self.mantidSnapper.PDCalibration(
                 f"Perform PDCalibration on subgroup {groupID}",
                 InputWorkspace=self.diffractionfocusedWStof,
-                TofBinning=f"{self.TOFMin},{self.TOFBin},{self.TOFMax}",
+                TofBinning=(self.TOFMin, self.TOFBin, self.TOFMax),
                 PeakFunction="Gaussian",
                 BackgroundType="Linear",
                 PeakPositions=self.groupedPeaks[groupID],
@@ -220,7 +219,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
                 StopWorkspaceIndex=index,
             )
             self.mantidSnapper.WashDishes(
-                "Cleanup needles diagnostic workspace",
+                "Cleanup needless diagnostic workspace",
                 Workspace=f"_PDCal_diag_{groupID}",
             )
             self.mantidSnapper.CombineDiffCal(
@@ -248,9 +247,9 @@ class GroupByGroupCalibration(PythonAlgorithm):
         # this will re-process diffraction focused WS with new calibrations
         self.raidPantry()
         # save the data
-        self.storeInPantry()
         self.setProperty("OutputWorkspace", self.diffractionfocusedWStof)
         self.setProperty("FinalCalibrationTable", self.calibrationTable)
+        self.restockPantry()
 
 
 # Register algorithm with Mantid

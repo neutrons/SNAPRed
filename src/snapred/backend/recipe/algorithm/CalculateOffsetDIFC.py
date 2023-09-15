@@ -18,7 +18,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
     """
     Calculate the offset-corrected DIFC associated with a given workspace.
     One part of diffraction calibration.
-    After being called by `execute`, may be called iteratively with `reexecute` to ensure convergence.
+    May be re-called iteratively with `execute` to ensure convergence.
     """
 
     def PyInit(self):
@@ -64,6 +64,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.inputWStof: str = f"_TOF_{self.runNumber}_raw"
         self.inputWSdsp: str = f"_DSP_{self.runNumber}_raw"
         self.difcWS: str = f"_DIFC_{self.runNumber}"
+        self.maxOffset = float(self.getProperty("MaxOffset").value)
 
     def raidPantry(self) -> None:
         """Initialize the input TOF data from the input filename in the ingredients"""
@@ -79,7 +80,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # rebin the TOF data logarithmically
         self.convertUnitsAndRebin(self.inputWStof, self.inputWStof, "TOF")
         # also find d-spacing data and rebin logarithmically
-        self.convertUnitsAndRebin(self.inputWStof, self.inputWSdsp)
+        self.convertUnitsAndRebin(self.inputWStof, self.inputWSdsp, "dSpacing")
 
         focusWSname: str = f"_{self.runNumber}_FocGroup"
         self.mantidSnapper.LoadGroupingDefinition(
@@ -103,7 +104,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-    def initDIFCTable(self):
+    def initDIFCTable(self) -> None:
         """
         Use the instrument definition to create an initial DIFC table
         Because the created DIFC is inside a matrix workspace, it must
@@ -245,9 +246,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.mantidSnapper.executeQueue()  # queue must run before ws in mantid data
         offsets = list(self.mantidSnapper.mtd[totalOffsetWS].extractY().ravel())
         data["medianOffset"] = abs(np.median(offsets))
-        data["meanOffset"] = abs(np.mean(offsets))
-        data["minOffset"] = abs(np.min(offsets))
-        data["maxOffset"] = abs(np.max(offsets))
 
         # get difcal corrected by offsets
         self.mantidSnapper.ConvertDiffCalLog(
@@ -279,8 +277,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.setProperty("data", json.dumps(data))
         self.setProperty("OutputWorkspace", self.inputWStof)
         self.setProperty("CalibrationTable", self.difcWS)
-        self._has_been_executed = True
-        return data["medianOffset"]
 
     def PyExec(self) -> None:
         """
@@ -302,8 +298,9 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             self.raidPantry()
             # prepare initial diffraction calibration workspace
             self.initDIFCTable()
+            self._has_been_executed = True
         # now calculate and correct by offsets
-        return self.reexecute()
+        self.reexecute()
 
 
 # Register algorithm with Mantid

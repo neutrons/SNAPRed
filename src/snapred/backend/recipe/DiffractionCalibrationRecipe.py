@@ -26,14 +26,14 @@ class DiffractionCalibrationRecipe:
 
     def chopIngredients(self, ingredients: Ingredients):
         self.runNumber = ingredients.runConfig.runNumber
-        self.threshold = ingredients.threshold
+        self.threshold = ingredients.convergenceThreshold
         pass
 
     def executeRecipe(self, ingredients: Ingredients) -> Dict[str, Any]:
         self.chopIngredients(ingredients)
 
         logger.info(f"Executing diffraction calibration for runId: {self.runNumber}")
-        data: Dict[str, Any] = {}
+        data: Dict[str, Any] = {"results": False}
         dataSteps: List[Dict[str, Any]] = []
         medianOffsets: List[float] = []
 
@@ -68,11 +68,12 @@ class DiffractionCalibrationRecipe:
         calibrateAlgo.setProperty("InputWorkspace", offsetAlgo.getProperty("OutputWorkspace").value)
         calibrateAlgo.setProperty("PreviousCalibrationTable", offsetAlgo.getProperty("CalibrationTable").value)
         try:
-            data["result"] = calibrateAlgo.execute()
+            calibrateAlgo.execute()
             data["calibrationTable"] = calibrateAlgo.getProperty("FinalCalibrationTable").value
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
 
         logger.info(f"Finished executing diffraction calibration for runId: {self.runNumber}")
+        data["result"] = True
         return data
