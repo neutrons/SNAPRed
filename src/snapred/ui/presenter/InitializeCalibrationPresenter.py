@@ -15,6 +15,7 @@ class CalibrationCheck(QObject):
     worker_pool = WorkerPool()
     interfaceController = InterfaceController()
     stateInitialized = pyqtSignal(SNAPResponse)
+    checkState = pyqtSignal(SNAPResponse)
 
     def __init__(self, view):
         super().__init__()
@@ -33,6 +34,7 @@ class CalibrationCheck(QObject):
         win = QWidget()
         vbox = QVBoxLayout()
         label = QLabel(text)
+        label.setWordWrap(True)
         label.setAlignment(Qt.AlignCenter)
         vbox.addWidget(label)
         vbox.addStretch()
@@ -69,7 +71,7 @@ class CalibrationCheck(QObject):
 
         if response.data is False:
             self._spawnStateCreationWorkflow(runNumber)
-            self.stateInitialized.connect(self.handleStateCheckResult)
+            self.checkState.connect(self.handleStateCheckResult)
         else:
             self._labelView("Ready to Calibrate!")
 
@@ -87,10 +89,10 @@ class CalibrationCheck(QObject):
             self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request))
 
             def handle_response(response: SNAPResponse):
-                self.stateInitialized.emit(response)
                 if response.code == 500:
                     self._labelView(str(response.message))
                 else:
+                    self.checkState.emit(response)
                     promptView.close()
 
             self.worker.result.connect(handle_response)
@@ -99,14 +101,6 @@ class CalibrationCheck(QObject):
 
         promptView.dataEntered.connect(pushDataToInterfaceController)
         promptView.exec_()
-
-        # self.workflow = (
-        #     WorkflowBuilder(self.view)
-        #     .addNode(lambda workflow: None, promptView, "Calibration Input")  # noqa: ARG005
-        #     .addNode(pushDataToInterfaceController, promptView, "Initialize State")
-        #     .build()
-        # )
-        # self.workflow.show()
 
     @property
     def widget(self):

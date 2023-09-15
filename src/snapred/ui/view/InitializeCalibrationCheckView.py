@@ -1,4 +1,14 @@
-from PyQt5.QtWidgets import QComboBox, QDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QWidget
+from PyQt5.QtWidgets import (
+    QDialog,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QWidget,
+)
 
 from snapred.ui.presenter.InitializeCalibrationPresenter import CalibrationCheck
 from snapred.ui.widget.Toggle import Toggle
@@ -8,8 +18,11 @@ class CalibrationMenu(QDialog):
     def __init__(self, parent=None):
         super(CalibrationMenu, self).__init__(parent)
         self.setWindowTitle("Calibration Menu")
+        self.setFixedSize(400, 200)
 
         layout = QGridLayout(self)
+
+        layout.addItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding), 0, 0)
 
         self.runNumberField = QLineEdit()
         self.runNumberField.setPlaceholderText("Enter Run Number")
@@ -17,6 +30,8 @@ class CalibrationMenu(QDialog):
 
         self.beginFlowButton = QPushButton("Check")
         layout.addWidget(self.beginFlowButton, 2, 0, 1, 2)
+
+        layout.addItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding), 3, 0)
 
         self.setLayout(layout)
 
