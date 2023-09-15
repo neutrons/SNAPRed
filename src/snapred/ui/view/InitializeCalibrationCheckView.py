@@ -15,22 +15,8 @@ class CalibrationMenu(QDialog):
         self.runNumberField.setPlaceholderText("Enter Run Number")
         layout.addWidget(self.runNumberField, 0, 0)
 
-        self.sampleDropdown = QComboBox()
-        self.sampleDropdown.setObjectName("sampleDropdown")
-        self.sampleDropdown.addItem("Select Sample")
-
-        self.groupingFileDropdown = QComboBox()
-        self.groupingFileDropdown.setObjectName("groupingFileDropdown")
-        self.groupingFileDropdown.addItem("Select Grouping File")
-
-        layout.addWidget(self.sampleDropdown, 1, 0)
-        layout.addWidget(self.groupingFileDropdown, 1, 1)
-
         self.beginFlowButton = QPushButton("Check")
         layout.addWidget(self.beginFlowButton, 2, 0, 1, 2)
-
-        self.liteModeToggle = self._labeledField("Lite Mode", Toggle(parent=self))
-        layout.addWidget(self.liteModeToggle, 0, 1)
 
         self.setLayout(layout)
 

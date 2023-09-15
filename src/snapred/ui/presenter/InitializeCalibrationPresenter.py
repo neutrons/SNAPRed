@@ -61,21 +61,22 @@ class CalibrationCheck(QObject):
 
     def handleStateCheckResult(self, response: SNAPResponse):
         self.view.beginFlowButton.setEnabled(True)
+        runNumber = self.view.getRunNumber()
         try:
             self.stateInitialized.disconnect()
         except TypeError:
             self._labelView(str(response.message))
 
         if response.data is False:
-            self._spawnStateCreationWorkflow()
+            self._spawnStateCreationWorkflow(runNumber)
             self.stateInitialized.connect(self.handleStateCheckResult)
         else:
             self._labelView("Ready to Calibrate!")
 
-    def _spawnStateCreationWorkflow(self):
+    def _spawnStateCreationWorkflow(self, runNumber):
         from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
-        promptView = PromptUserforCalibrationInputView()
+        promptView = PromptUserforCalibrationInputView(runNumber=runNumber)
         promptView.setWindowModality(Qt.WindowModal)
 
         def pushDataToInterfaceController(run_number, state_name):

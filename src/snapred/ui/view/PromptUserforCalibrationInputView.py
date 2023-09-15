@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout
 class PromptUserforCalibrationInputView(QDialog):
     dataEntered = pyqtSignal(str, str)
 
-    def __init__(self, parent=None):
+    def __init__(self, runNumber=None, parent=None):
         super(PromptUserforCalibrationInputView, self).__init__(parent)
         self.setStyleSheet("background-color: #F5E9E2;")
         layout = QVBoxLayout(self)
@@ -13,6 +13,8 @@ class PromptUserforCalibrationInputView(QDialog):
         label.setAlignment(Qt.AlignCenter)
         layout.addWidget(label)
         self.run_input = QLineEdit()
+        if runNumber:
+            self.run_input.setText(runNumber)
         self.run_input.setPlaceholderText("Enter run number")
         layout.addWidget(self.run_input)
         self.name_input = QLineEdit()
