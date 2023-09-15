@@ -16,6 +16,8 @@ class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
         # declare properties
         self.declareProperty("cifPath", defaultValue="", direction=Direction.Input)
         self.declareProperty("crystalInfo", defaultValue="", direction=Direction.Output)
+        self.declareProperty("dMin", defaultValue=0.1, direction=Direction.Input)
+        self.declareProperty("dMax", devaultValue=100.0, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
@@ -37,8 +39,8 @@ class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
         generator = ReflectionGenerator(xtal)
 
         # Create list of unique reflections between 0.1 and 100.0 Angstrom
-        dMin = 0.1
-        dMax = 100.0
+        dMin = self.getProperty("dMin").value
+        dMax = self.getProperty("dMin").value
         hkls = generator.getUniqueHKLsUsingFilter(dMin, dMax, ReflectionConditionFilter.StructureFactor)
 
         # Calculate d and F^2
