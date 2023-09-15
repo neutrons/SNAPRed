@@ -40,7 +40,7 @@ class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
 
         # Create list of unique reflections between 0.1 and 100.0 Angstrom
         dMin = self.getProperty("dMin").value
-        dMax = self.getProperty("dMin").value
+        dMax = self.getProperty("dMax").value
         hkls = generator.getUniqueHKLsUsingFilter(dMin, dMax, ReflectionConditionFilter.StructureFactor)
 
         # Calculate d and F^2
