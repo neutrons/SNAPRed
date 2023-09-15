@@ -136,7 +136,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
             OutputWorkspace=self.focusWSname,
         )
 
-        diffractionfocusedWSdsp: str = f"_DSP_{self.runNumber}_diffoc"
+        diffractionfocusedWSdsp: str = f"_DSP_{self.runNumber}_diffoc_before"
         self.mantidSnapper.DiffractionFocussing(
             "Refocus with offset-corrections",
             InputWorkspace=inputWSdsp,
@@ -240,7 +240,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
             "Clean up pd group calibration table",
             Workspace=pdcalibratedWorkspace,
         )
-        diffractionfocusedWSdsp: str = f"_DSP_{self.runNumber}_diffoc"
+        diffractionfocusedWSdsp: str = f"_DSP_{self.runNumber}_diffoc_after"
         self.convertUnitsAndRebin(self.inputWStof, diffractionfocusedWSdsp, "dSpacing")
         self.mantidSnapper.DiffractionFocussing(
             "Diffraction focus with final calibrated values",
