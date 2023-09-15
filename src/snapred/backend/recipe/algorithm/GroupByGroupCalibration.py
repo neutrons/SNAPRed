@@ -247,6 +247,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         diffractionfocusedWSdsp: str = f"_DSP_{self.runNumber}_diffoc"
         self.convertUnitsAndRebin(self.inputWStof, diffractionfocusedWSdsp, "dSpacing")
         self.mantidSnapper.DiffractionFocussing(
+            "Diffraction focus with final calibrated values",
             InputWorkspace=diffractionfocusedWSdsp,
             GroupingWorkspace=self.focusWSname,
             OutputWorkspace=diffractionfocusedWSdsp,
