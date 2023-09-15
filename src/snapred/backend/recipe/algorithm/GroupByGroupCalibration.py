@@ -204,12 +204,14 @@ class GroupByGroupCalibration(PythonAlgorithm):
         if nHist != len(self.groupIDs):
             raise RuntimeError("error, the number of spectra in focused workspace, and number of groups, do not match")
 
+        # remove overlapping peaks
+
         for index in range(nHist):
             groupID = self.groupIDs[index]
             self.mantidSnapper.PDCalibration(
                 f"Perform PDCalibration on subgroup {groupID}",
                 InputWorkspace=self.diffractionfocusedWStof,
-                TofBinning=(self.TOFMin, self.TOFBin, self.TOFMax),
+                TofBinning=(self.TOFMin, -abs(self.TOFBin), self.TOFMax),
                 PeakFunction="Gaussian",
                 BackgroundType="Linear",
                 PeakPositions=self.groupedPeaks[groupID],
