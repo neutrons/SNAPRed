@@ -10,14 +10,19 @@ class ConvertDiffCalLog(PythonAlgorithm):
     """
     This algo extends the functionality of the usual mantid ConvertDifCal algorithm, to work
     with the proper log-scale binning correction with offsets:
+
         DIFCnew = DIFCold * (1 + dBin)^{-offset}
+
     It is intended as a stop-gap, until that algorithm is patched with this behavior here
     Delete this algo once the new work has been completed in mantid
     inputs:
+
         OffsetsWorkspace: str -- name of an OffsetsWorkspace containing signed offsets
         PreviousCalibration: str -- name of a TableWorkspace of DIFCs which are to be corrected (cols 'detid', 'difc')
         BinWidth: float -- the binwidth, dBin, used in the update equations
+
     output:
+
         OutputWorkspace -- the corrected calibration workspace of DIFCs, as a TableWorkspace
     """
 
@@ -26,6 +31,7 @@ class ConvertDiffCalLog(PythonAlgorithm):
         self.declareProperty("OffsetsWorkspace", defaultValue="", direction=Direction.Input)
         self.declareProperty("PreviousCalibration", defaultValue="", direction=Direction.Input)  # a table workspace
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
+        self.declareProperty("OffsetMode", defaultValue="", direction=Direction.Input)  # does nothing
         self.declareProperty("BinWidth", defaultValue=-0.001, direction=Direction.Input)
         self.setRethrows(True)
 

@@ -4,8 +4,10 @@ from typing import Dict, List
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
+from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 
 name = "GroupByGroupCalibration"
 
@@ -21,7 +23,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
-    def chopIngredients(self, ingredients):
+    def chopIngredients(self, ingredients: Ingredients) -> None:
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         from datetime import date
 
@@ -83,7 +85,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.calibrationTable: str = self.getProperty("PreviousCalibrationTable").value
         self.diffractionfocusedWStof: str = f"_TOF_{self.runNumber}_diffoc"
 
-    def retrieveFromPantry(self):
+    def raidPantry(self):
         """Load required data, if not already loaded, and process it"""
 
         if not self.mantidSnapper.mtd.doesExist(self.inputWStof):
@@ -99,8 +101,9 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=self.inputWStof,
-            Params=f"{self.TOFMin},{-abs(self.TOFBin)},{self.TOFMax}",
+            Params=(self.TOFMin, self.TOFBin, self.TOFMax),
             OutputWorkspace=self.inputWStof,
+            BinningMode="Logarithmic",
         )
 
         # also find d-spacing data and rebin logarithmically
@@ -114,8 +117,9 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=inputWSdsp,
-            Params=f"{self.overallDMin},{-abs(self.dBin)},{self.overallDMax}",
+            Params=(self.overallDMin, self.dBin, self.overallDMax),
             OutputWorkspace=inputWSdsp,
+            BinningMode="Logarithmic",
         )
 
         # now diffraction focus the d-spacing data and conver to TOF
@@ -142,21 +146,14 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.mantidSnapper.Rebin(
             "Rebin the workspace logarithmically",
             InputWorkspace=self.diffractionfocusedWStof,
-            Params=f"{self.TOFMin},{-abs(self.TOFBin)},{self.TOFMax}",
+            Params=(self.TOFMin, self.TOFBin, self.TOFMax),
             OutputWorkspace=self.diffractionfocusedWStof,
+            BinningMode="Logarithmic",
         )
         # clean up d-spacing workspaces
-        self.mantidSnapper.DeleteWorkspace(
+        self.mantidSnapper.WashDishes(
             "Clean up d-spacing data",
-            Workspace=focusWSname,
-        )
-        self.mantidSnapper.DeleteWorkspace(
-            "Clean up d-spacing data",
-            Workspace=inputWSdsp,
-        )
-        self.mantidSnapper.Deleteworkspace(
-            "Clean up d-spaced diffraction focused data",
-            Workspace=diffractionfocusedWSdsp,
+            WorkspaceList=[focusWSname, inputWSdsp, diffractionfocusedWSdsp],
         )
         self.mantidSnapper.executeQueue()
 
@@ -164,6 +161,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         """
         Save the calculated diffraction calibration table to file.
         Will be saved inside the state folder, with name of form
+
             `/stateFolder/SNAP{run number}_calib_geom_{today's date}.h5`
         """
         self.mantidSnapper.SaveDiffCal(
@@ -181,10 +179,13 @@ class GroupByGroupCalibration(PythonAlgorithm):
         resulting DIFCs are combined with the previous table.
         The final calibration table is saved to disk for future use.
         input:
+
             Ingredients: DiffractionCalibrationIngredients -- the DAO holding data needed to run the algorithm
             InputWorkspace: str -- the name of workspace holding the initial TOF data
             PreviousCalibrationTable: str -- the name of the table workspace with previous DIFC values
+
         output:
+
             OutputWorkspace: str -- the name of the diffraction-focussed d-spacing data after the final calibration
             FinalCalibrationTable: str -- the name of the final table of DIFC values
         """
@@ -192,9 +193,9 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.log().notice("Execution of extraction of calibration constants START!")
 
         # get the ingredients
-        ingredients = DiffractionCalibrationIngredients.parse_raw(self.getProperty("Ingredients").value)
+        ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
-        self.retrieveFromPantry()
+        self.raidPantry()
 
         pdcalibratedWorkspace = "_tmp_PDCal_subgroup"
 
@@ -221,7 +222,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
                 StartWorkspaceIndex=index,
                 StopWorkspaceIndex=index,
             )
-            self.mantidSnapper.DeleteWorkspace(
+            self.mantidSnapper.WashDishes(
                 "Cleanup needles diagnostic workspace",
                 Workspace=f"_PDCal_diag_{groupID}",
             )
@@ -232,7 +233,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
                 CalibrationWorkspace=self.diffractionfocusedWStof,  # input WS to PDCalibrate, source for DIFCarb
                 OutputWorkspace=self.calibrationTable,  # resulting corrected calibration values, DIFCeff
             )
-            self.mantidSnapper.DeleteWorkspace(
+            self.mantidSnapper.WashDishes(
                 "Cleanup needless mask workspace",
                 Workspace=pdcalibratedWorkspace + "_mask",
             )
@@ -243,12 +244,12 @@ class GroupByGroupCalibration(PythonAlgorithm):
             InstrumentWorkspace=self.inputWStof,
             CalibrationWorkspace=self.calibrationTable,
         )
-        self.mantidSnapper.DeleteWorkspace(
+        self.mantidSnapper.WashDishes(
             "Clean up pd group calibration table",
             Workspace=pdcalibratedWorkspace,
         )
         # this will re-process diffraction focused WS with new calibrations
-        self.retrieveFromPantry()
+        self.raidPantry()
         # save the data
         self.storeInPantry()
         self.setProperty("OutputWorkspace", self.diffractionfocusedWStof)

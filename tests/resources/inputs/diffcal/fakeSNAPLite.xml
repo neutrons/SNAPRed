@@ -33,18 +33,10 @@
   </component>
   <type name="sample-position" is="SamplePos"/>
 
-  <!--MONITORS-->
-  <idlist idname="only-monitor">
-    <id val="-1"/>
-  </idlist>
-  <component type="only-monitor" idlist="only-monitor">
-    <location/>
-  </component>
-  <type is="monitor" name="only-monitor">
-    <component type="monitor">
-      <location x="0.0" y="0.0" z="15" name="monitor1"/>
-    </component>
-  </type>
+  <!--
+    the monitor was removed due to inconsistencies with
+    loading the instrument into a created sample workspace
+  -->
 
   <!--DETECTORS-->
   <component type="East">
@@ -68,22 +60,32 @@
   </type>
 
   <type name="Column1">
-    <component type="panel" idstart="0" idfillbyfirst="y" idstepbyrow="1" >
+    <component type="panel" idstart="0" idfillbyfirst="y" idstepbyrow="2" >
       <location name="bank1">  <!-- was bank4 - 655360 -->
+        <trans x="0.0" y="0.0" />
+      </location>
+    </component>
+    <component type="panel" idstart="4" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank2">  <!-- was bank4 - 655360 -->
+        <trans x="1.0" y="0.0" />
+      </location>
+    </component>
+    <component type="panel" idstart="8" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank3">  <!-- was bank4 - 655360 -->
         <trans x="0.0" y="1.0" />
       </location>
     </component>
-    <component type="panel" idstart="8" idfillbyfirst="y" idstepbyrow="1" >
-      <location name="bank2">  <!-- was bank4 - 655360 -->
-        <trans x="1.0" y="0.0" />
+    <component type="panel" idstart="12" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank4">  <!-- was bank4 - 655360 -->
+        <trans x="1.0" y="1.0" />
       </location>
     </component>
   </type>
 
 <!-- Rectangular Detector Panel -->
 <type name="panel" is="rectangular_detector" type="pixel"
-    xpixels="1" xstart="0.0" xstep="+0.001"
-    ypixels="8" ystart="0.0" ystep="+0.001" >
+    xpixels="2" xstart="0.0" xstep="+0.001"
+    ypixels="2" ystart="0.0" ystep="+0.001" >
   <properties/>
 </type>
 
