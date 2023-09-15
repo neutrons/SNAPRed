@@ -8,27 +8,33 @@ from mantid.kernel import Direction
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "IngestCrystallographicInfoAlgorithm"
-
 
 class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
+    # __name__ = "IngestCrystallographicInfoAlgorithm"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("cifPath", defaultValue="", direction=Direction.Input)
         self.declareProperty("crystalInfo", defaultValue="", direction=Direction.Output)
         self.declareProperty("dMin", defaultValue=0.1, direction=Direction.Input)
-        self.declareProperty("dMax", devaultValue=100.0, direction=Direction.Input)
+        self.declareProperty("dMax", defaultValue=100.0, direction=Direction.Input)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
         cifPath = self.getProperty("cifPath").value
         # run the algo
         self.log().notice("ingest crystallogtaphic info")
 
-        # Load the CIF file
+        # Load the CIF file into an empty workspace
 
-        ws = self.mantidSnapper.CreateSampleWorkspace("Creating sample workspace...", OutputWorkspace="xtal_data")
+        ws = "xtal_data"
+        self.mantidSnapper.CreateWorkspace(
+            "Creating sample workspace...",
+            OutputWorkspace=ws,
+            DataX=1,
+            DataY=1,
+        )
         self.mantidSnapper.LoadCIF("Loading crystal data...", Workspace=ws, InputFile=cifPath)
         self.mantidSnapper.executeQueue()
 
