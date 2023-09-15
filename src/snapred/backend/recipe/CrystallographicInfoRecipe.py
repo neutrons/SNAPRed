@@ -19,12 +19,14 @@ class CrystallographicInfoRecipe:
     def __init__(self):
         pass
 
-    def executeRecipe(self, cifPath: str) -> Dict[str, Any]:
+    def executeRecipe(self, cifPath: str, dMin: float = 0.1, dMax: float = 100.0) -> Dict[str, Any]:
         logger.info("Ingesting crystal info: %s" % cifPath)
         data: Dict[str, Any] = {}
 
         algo = AlgorithmManager.create(self.ingestionAlgorithmName)
         algo.setProperty("cifPath", cifPath)
+        algo.setProperty("dMin", dMin)
+        algo.setProperty("dMax", dMax)
 
         try:
             data["result"] = algo.execute()
