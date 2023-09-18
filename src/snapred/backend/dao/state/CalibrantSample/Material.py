@@ -7,7 +7,7 @@ class Material(BaseModel):
     packing-fraction: float, [0.,1.]
     mass density: float (g/cm^3)
     chemical composition: string following mantid
-            
+
             convention: https://docs.mantidproject.org/nightly/concepts/Materials.html#id3"""
 
     microstructure: str

@@ -183,7 +183,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             detectorIDs: List[int] -- a list of all of the detector IDs in that group
 
         output:
-            
+
             the median pixel ID (to be replaced with angular COM pixel)
         """
         return int(np.median(detectorIDs))
@@ -195,7 +195,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         the spectra are cross-correlated, the offsets calculated, and the original DIFC
         values are corrected by the offsets.
         outputs:
-            
+
             data: dict -- several statistics of the offsets, for testing convergence
             OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
             CalibrationTable: str -- the final table of DIFC values
@@ -287,11 +287,11 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         """
         Calculate pixel calibration DIFC values on each spectrum group.
         inputs:
-            
+
             Ingredients: DiffractionCalibrationIngredients -- the DAO holding data needed to run the algorithm
-        
+
         outputs:
-            
+
             data: dict -- several statistics of the offsets, for testing convergence
             OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
             CalibrationTable: str -- the final table of DIFC values
