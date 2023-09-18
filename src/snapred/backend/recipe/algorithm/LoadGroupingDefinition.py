@@ -12,6 +12,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
     """
     This algorithm creates a grouping workspace from a grouping definition file.
     inputs:
+        
         GroupingFilename: str -- path of an input grouping definition file (in NEXUS, XML, or HDF format)
         InstrumentName: str -- name of an associated instrument
         InstrumentFilename: str -- path of an associated instrument definition file

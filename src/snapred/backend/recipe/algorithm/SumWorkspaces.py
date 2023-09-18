@@ -11,8 +11,11 @@ class SumWorkspaces(PythonAlgorithm):
     Given a list of workspaces, will sum them all together.
     At each x-value, will add the corresponding y-values inside each workspace.
     input:
+        
         InputWorkspaces: List[str] -- a list of names of MatrixWorkspaces to be summed
+    
     output:
+        
         OutputWorkspace: str -- the name of the workspace containing the sum
         also returns pointer to the sum workspace
     """
