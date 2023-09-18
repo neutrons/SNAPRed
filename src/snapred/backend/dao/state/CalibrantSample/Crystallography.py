@@ -10,10 +10,10 @@ class Crystallography(BaseModel):
     space group: string, ITOC symbol for the space group
     lattice parameters: List of 6 floats: a, b, c, alpha, beta, gamma
     atomic parameters:
-        
+
         atom type: string of chemical symbol
         atom coordinates:
-            
+
             x coordinate: float in range [-1, 1]
             y coordinate: float in range [-1, 1]
             z coordinate: float in range [-1, 1]
