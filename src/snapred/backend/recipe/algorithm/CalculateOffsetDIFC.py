@@ -179,8 +179,9 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         """
         Calculate a unique reference pixel for a pixel grouping, based in the pixel geometry.
         input:
+        
             detectorIDs: List[int] -- a list of all of the detector IDs in that group
-            
+
         output:
             
             the median pixel ID (to be replaced with angular COM pixel)

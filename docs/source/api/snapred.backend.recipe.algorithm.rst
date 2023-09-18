@@ -164,14 +164,6 @@ snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.SumWorkspaces module
------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.algorithm.SumWorkspaces
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm module
 --------------------------------------------------------------------------
 
