@@ -11,6 +11,7 @@ snapred.ui.threading.worker\_pool module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: finished, result, progress, success
 
 Module contents
 ---------------

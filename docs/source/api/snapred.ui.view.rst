@@ -67,6 +67,7 @@ snapred.ui.view.PromptUserforCalibrationInputView module
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: dataEntered
 
 snapred.ui.view.TestPanelView module
 ------------------------------------
