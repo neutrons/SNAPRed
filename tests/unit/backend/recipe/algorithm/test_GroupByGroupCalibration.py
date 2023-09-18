@@ -13,12 +13,12 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.GroupByGroupCalibration import (
     GroupByGroupCalibration as ThisAlgo,  # noqa: E402
 )
+from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.meta.Config import Resource
 
 
@@ -29,17 +29,17 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
-        fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/calibration/sampleInstrumentState.json"))
+        fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
         fakeInstrumentState.particleBounds.tof.minimum = 10
         fakeInstrumentState.particleBounds.tof.maximum = 1000
 
-        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("inputs/calibration/sampleFocusGroup.json"))
+        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("inputs/diffcal/fakeFocusGroup.json"))
         ntest = fakeFocusGroup.nHst
         fakeFocusGroup.dBin = [-abs(self.fakeDBin)] * ntest
         fakeFocusGroup.dMax = [float(x) for x in range(100 * ntest, 101 * ntest)]
         fakeFocusGroup.dMin = [float(x) for x in range(ntest)]
         fakeFocusGroup.FWHM = [5 * random.random() for x in range(ntest)]
-        fakeFocusGroup.definition = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
+        fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
 
         peakList1 = [
             DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
@@ -61,7 +61,7 @@ class TestGroupByGroupCalibration(unittest.TestCase):
             threshold=1.0,
         )
 
-    def mockRetrieveFromPantry(algo):
+    def mockRaidPantry(algo):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
         # prepare with test data
         algo.mantidSnapper.CreateSampleWorkspace(
@@ -110,11 +110,11 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         algo.mantidSnapper.LoadInstrument(
             "Load a fake instrument for testing",
             Workspace="idf",
-            Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             RewriteSpectraMap=False,
         )
 
-        inputFilePath = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
+        inputFilePath = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
         algo.mantidSnapper.LoadGroupingDefinition(
             f"Loading a fake grouping  file {inputFilePath} for testing...",
             GroupingFilename=inputFilePath,
@@ -180,7 +180,7 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         )
         LoadInstrument(
             Workspace="idf",
-            Filename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             RewriteSpectraMap=False,
         )
         CalculateDIFC(
@@ -236,7 +236,7 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
         assert algo.getProperty("PreviousCalibrationTable").value == difcWS
 
-    @mock.patch.object(ThisAlgo, "retrieveFromPantry", mockRetrieveFromPantry)
+    @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
     @mock.patch.object(ThisAlgo, "storeInPantry", mock.Mock(return_value=None))
     def test_execute(self):
         """Test that the algorithm executes"""
@@ -299,7 +299,7 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         )
 
         LoadDiffCal(
-            InstrumentFilename=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+            InstrumentFilename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             Filename=algo.outputFilename,
             WorkspaceName="ReloadedCalibrationTable",
         )

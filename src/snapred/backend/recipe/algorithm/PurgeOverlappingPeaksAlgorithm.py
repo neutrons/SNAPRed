@@ -58,7 +58,11 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
                 outputPeakList.append(peakList[-1])
 
             self.log().notice(f" {nPks} peaks in and {len(outputPeakList)} peaks out")
-            outputGroupPeakList = GroupPeakList(groupID=groupPeakList.groupID, peaks=outputPeakList)
+            outputGroupPeakList = GroupPeakList(
+                groupID=groupPeakList.groupID,
+                peaks=outputPeakList,
+                maxfwhm=groupPeakList.maxfwhm,
+            )
             outputPeaks.append(outputGroupPeakList.dict())
 
         self.setProperty("OutputPeakMap", json.dumps(outputPeaks))

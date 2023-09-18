@@ -81,8 +81,9 @@ class DetectorPeakPredictor(PythonAlgorithm):
                 singleFocusGroupPeaks.append(
                     DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight))
                 )
+            maxFwhm = 2.35 * max(dList) * delDoD
 
-            singleFocusGroupPeakList = GroupPeakList(peaks=singleFocusGroupPeaks, groupID=groupID)
+            singleFocusGroupPeakList = GroupPeakList(peaks=singleFocusGroupPeaks, groupID=groupID, maxfwhm=maxFwhm)
             self.log().notice(f"Focus group {groupID} : {len(dList)} peaks out")
             allFocusGroupsPeaks.append(singleFocusGroupPeakList.dict())
 

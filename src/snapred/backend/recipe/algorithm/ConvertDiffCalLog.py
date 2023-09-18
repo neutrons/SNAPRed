@@ -31,6 +31,7 @@ class ConvertDiffCalLog(PythonAlgorithm):
         self.declareProperty("OffsetsWorkspace", defaultValue="", direction=Direction.Input)
         self.declareProperty("PreviousCalibration", defaultValue="", direction=Direction.Input)  # a table workspace
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
+        self.declareProperty("OffsetMode", defaultValue="", direction=Direction.Input)  # does nothing
         self.declareProperty("BinWidth", defaultValue=-0.001, direction=Direction.Input)
         self.setRethrows(True)
 

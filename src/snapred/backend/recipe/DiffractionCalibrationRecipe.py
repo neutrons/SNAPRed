@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 from mantid.api import AlgorithmManager
 
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import (
     name as CalculateOffsetDIFC,
@@ -24,12 +24,12 @@ class DiffractionCalibrationRecipe:
     def __init__(self):
         pass
 
-    def chopIngredients(self, ingredients: DiffractionCalibrationIngredients):
+    def chopIngredients(self, ingredients: Ingredients):
         self.runNumber = ingredients.runConfig.runNumber
         self.threshold = ingredients.threshold
         pass
 
-    def executeRecipe(self, ingredients: DiffractionCalibrationIngredients) -> Dict[str, Any]:
+    def executeRecipe(self, ingredients: Ingredients) -> Dict[str, Any]:
         self.chopIngredients(ingredients)
 
         logger.info(f"Executing diffraction calibration for runId: {self.runNumber}")
