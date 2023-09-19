@@ -28,3 +28,4 @@ dependencies:
 - pip:
   - check-wheel-contents
   - gofit==0.3
+  - quickBayes==1.0.0b14
