@@ -9,7 +9,6 @@ dependencies:
 - pydantic>=1.10,<2
 - mantidworkbench>=6.7
 - qtpy
-- qt-webengine
 - pre-commit
 - pytest
 - pytest-qt
@@ -28,3 +27,4 @@ dependencies:
 - pycifrw
 - pip:
   - check-wheel-contents
+  - gofit==0.3
