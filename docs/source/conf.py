@@ -13,6 +13,8 @@ except ImportError:
 
     sys.path.insert(0, os.path.abspath("../../src"))
 
+from snapred.ui.main import SNAPRedGUI
+
 project = "SNAPRed"
 project_copyright = "2021, ORNL"
 author = "ORNL"
