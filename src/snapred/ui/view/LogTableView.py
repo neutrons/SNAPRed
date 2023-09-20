@@ -8,20 +8,6 @@ class LogTableView(QtWidgets.QWidget):
         super(LogTableView, self).__init__(parent)
         self.grid = QtWidgets.QGridLayout(self)
         self.message = name
-        self.buttonAction = self._empty
-        self.button = QtWidgets.QPushButton(name, self)
-        self.button.clicked.connect(self.execButtonAction)
-        self.grid.addWidget(self.button)
-
-    def addRecipeConfig(self, reductionConfigs):
-        self.grid.addWidget(QtWidgets.QLabel(str(reductionConfigs)), self.position, 0)
-        self.position += 1
-
-    def execButtonAction(self):
-        self.buttonAction()
 
     def _empty(self):
         pass
-
-    def on_button_clicked(self, slot):
-        self.buttonAction = slot

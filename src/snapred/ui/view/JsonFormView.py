@@ -55,7 +55,7 @@ class FormBuilder:
             data = {}
             iterable = None
             if prop.get("items") is None:
-                breakpoint()
+                RuntimeError("Invalid JSON Schema")
             if isinstance(prop["items"], list):
                 iterable = [("type", p["type"]) for p in prop["items"]]
             if isinstance(prop["items"], dict):

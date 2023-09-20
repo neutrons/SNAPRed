@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QMainWindow
+from qtpy.QtWidgets import QMainWindow, QMessageBox
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
@@ -11,14 +11,19 @@ logger = snapredLogger.getLogger(__name__)
 class WorkflowPresenter(object):
     worker_pool = WorkerPool()
 
-    def __init__(self, model: WorkflowNodeModel, parent=None):
+    def __init__(self, model: WorkflowNodeModel, cancelLambda=None, parent=None):
         self.view = WorkflowView(model, parent)
         self.model = model
+        self._cancelLambda = cancelLambda
         self._hookupSignals()
 
     @property
     def widget(self):
         return self.view
+
+    @property
+    def nextView(self):
+        return self.view.nextTabView
 
     def show(self):
         # wrap view in QApplication
@@ -34,7 +39,10 @@ class WorkflowPresenter(object):
                     to continue button {widget.continueButton}"
             )
             widget.onContinueButtonClicked(self.handleContinueButtonClicked)
-            widget.onCancelButtonClicked(self.view.deleteLater)
+            if self._cancelLambda:
+                widget.onCancelButtonClicked(self._cancelLambda)
+            else:
+                self.view.cancelButton.setVisible(False)
 
     def handleContinueButtonClicked(self, model):
         self.view.continueButton.setEnabled(False)
@@ -44,6 +52,17 @@ class WorkflowPresenter(object):
         self.worker = self.worker_pool.createWorker(target=model.continueAction, args=(self))
         self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
         self.worker.finished.connect(lambda: self.view.cancelButton.setEnabled(True))
+        self.worker.result.connect(self._handleFailure)
         self.worker.success.connect(lambda success: self.view.advanceWorkflow() if success else None)
 
         self.worker_pool.submitWorker(self.worker)
+
+    def _handleFailure(self, result):
+        if result.code - 200 > 100:
+            QMessageBox.critical(
+                self.view,
+                "Error",
+                f"Error {result.code}: {result.message}",
+                QMessageBox.Ok,
+                QMessageBox.Ok,
+            )
