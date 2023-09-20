@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from qtpy.QtCore import QObject, QThread, pyqtSignal
 
 from snapred.meta.decorators.Singleton import Singleton
 

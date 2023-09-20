@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QEasingCurve, QPropertyAnimation, Qt, pyqtProperty
-from PyQt5.QtGui import QLinearGradient, QPainter
-from PyQt5.QtWidgets import QWidget
+from qtpy.QtCore import QEasingCurve, QPropertyAnimation, Qt, pyqtProperty
+from qtpy.QtGui import QLinearGradient, QPainter
+from qtpy.QtWidgets import QWidget
 
 
 class Toggle(QWidget):
