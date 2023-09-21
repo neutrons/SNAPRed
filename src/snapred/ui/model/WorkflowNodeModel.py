@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from PyQt5 import QtWidgets
+from qtpy import QtWidgets
 
 
 @dataclass
