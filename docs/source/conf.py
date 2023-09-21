@@ -42,7 +42,7 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
     from mantid.api import PythonAlgorithm  # noqa: F811
     from qtpy.QtCore import Property, QThread, Signal  # noqa: F811
 
-    MOCK_MODULES = [
+    autodoc_mock_imports = [
         "mantid",
         "mantid.kernel",
         "mantid.utils",
@@ -62,8 +62,6 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
         "mantid.plots.utility",
         "workbench.plugins.workspacewidget",
     ]
-    for mod_name in MOCK_MODULES:
-        sys.modules[mod_name] = mock.Mock()
 
     project = "SNAPRed"
     project_copyright = "2021, ORNL"
@@ -100,16 +98,3 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
 
     # -- Options for EPUB output
     epub_show_urls = "footnote"
-
-    # manually alter the config to point to the test resources
-    # from mantid.kernel import ConfigService  # noqa: E402
-    # from snapred.meta.Config import (  # noqa: E402
-    #    Config,  # noqa: E402
-    #    Resource,  # noqa: E402
-    # )
-
-    # Config._config["instrument"]["home"] = Resource.getPath(Config["instrument.home"])
-    # mantidConfig = config = ConfigService.Instance()
-    # mantidConfig["CheckMantidVersion.OnStartup"] = "0"
-    # mantidConfig["UpdateInstrumentDefinitions.OnStartup"] = "0"
-    # mantidConfig["usagereports.enabled"] = "0"
