@@ -27,5 +27,3 @@ dependencies:
 - pycifrw
 - pip:
   - check-wheel-contents
-  - gofit
-  - quickBayes
