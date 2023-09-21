@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QPalette
-from PyQt5.QtWidgets import QHBoxLayout, QLabel, QStyle, QToolButton, QWidget
+from qtpy.QtCore import QSize, Qt
+from qtpy.QtGui import QPalette
+from qtpy.QtWidgets import QHBoxLayout, QLabel, QStyle, QToolButton, QWidget
 
 
 class ToolBarView(QWidget):

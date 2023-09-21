@@ -1,8 +1,8 @@
 import sys
 
 from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Qt, QTimer
+from qtpy.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QMainWindow,
