@@ -1,6 +1,6 @@
 from time import sleep
 
-from qtpy.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.RunConfig import RunConfig

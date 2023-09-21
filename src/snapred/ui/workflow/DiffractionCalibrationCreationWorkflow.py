@@ -1,6 +1,6 @@
 import json
 
-from qtpy.QtWidgets import QLabel
+from PyQt5.QtWidgets import QLabel
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest

@@ -14,13 +14,10 @@ class SaveGroupingDefinition(PythonAlgorithm):
     """
     This algorithm takes in a grouping definition (file or object) and saves it in a diffraction calibration file format
     inputs:
-
         GroupingFilename: str -- path of an input grouping file (in NEXUS or XML format)
         GroupingWorkspace: str -- name of an input grouping workspace
         Note, either GroupingFilename or GroupingWorkspace must be specified, but not both.
-
     output:
-
         OutputFilename: str -- path of an output file. Supported file name extensions: "h5", "hd5", "hdf".
     """
 
