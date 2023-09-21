@@ -10,7 +10,6 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-
 from snapred.ui.presenter.InitializeCalibrationPresenter import CalibrationCheck
 from snapred.ui.widget.Toggle import Toggle
 
