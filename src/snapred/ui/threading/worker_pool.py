@@ -1,15 +1,15 @@
 from typing import Dict, List
 
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from qtpy.QtCore import QObject, QThread, Signal
 
 from snapred.meta.decorators.Singleton import Singleton
 
 
 class Worker(QObject):
-    finished = pyqtSignal()
-    success = pyqtSignal(bool)
-    result = pyqtSignal(object)
-    progress = pyqtSignal(int)
+    finished = Signal()
+    success = Signal(bool)
+    result = Signal(object)
+    progress = Signal(int)
 
     target = None
     args = None
@@ -36,8 +36,8 @@ class Worker(QObject):
 
 
 class InfiniteWorker(QObject):
-    result = pyqtSignal(object)
-    finished = pyqtSignal()
+    result = Signal(object)
+    finished = Signal()
 
     target = None
     args = None

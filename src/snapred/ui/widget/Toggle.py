@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QEasingCurve, QPropertyAnimation, Qt, pyqtProperty
-from PyQt5.QtGui import QLinearGradient, QPainter
-from PyQt5.QtWidgets import QWidget
+from qtpy.QtCore import Property, QEasingCurve, QPropertyAnimation, Qt
+from qtpy.QtGui import QLinearGradient, QPainter
+from qtpy.QtWidgets import QWidget
 
 
 class Toggle(QWidget):
@@ -15,7 +15,7 @@ class Toggle(QWidget):
         # self.update = self._doNothing
         self.toggleAnimation.finished.connect(self.update)
 
-    @pyqtProperty(float)
+    @Property(float)
     def ellipsePosition(self):
         return self._ellipsePosition
 

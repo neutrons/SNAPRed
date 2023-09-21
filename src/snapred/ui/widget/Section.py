@@ -20,10 +20,10 @@
     Modified by Michael Walsh (walshmm@ornl.gov)
 """
 
-# import PyQt5.QtGui as gui
+# import qtpy.QtGui as gui
 
-import PyQt5.QtCore as cr
-import PyQt5.QtWidgets as wd
+import qtpy.QtCore as cr
+import qtpy.QtWidgets as wd
 
 
 class Section(wd.QWidget):

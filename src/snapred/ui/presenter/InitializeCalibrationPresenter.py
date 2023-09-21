@@ -1,7 +1,7 @@
 import json
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
