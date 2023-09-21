@@ -31,9 +31,9 @@ def import_mock(name, *args):
         fromlist = args[2]
         if "QThread" in fromlist:
             imports.QThread = QThread
-        if "pyqtSignal" in fromlist:
+        if "Signal" in fromlist:
             imports.Signal = Signal
-        if "pyqtProperty" in fromlist:
+        if "Property" in fromlist:
             imports.Property = Property
     return imports
 
@@ -64,7 +64,7 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
     ]
 
     project = "SNAPRed"
-    project_copyright = "2021, ORNL"
+    project_copyright = "2023, ORNL"
     author = "ORNL"
 
     # The short X.Y version
