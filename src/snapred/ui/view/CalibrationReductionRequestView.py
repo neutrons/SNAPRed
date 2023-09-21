@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QComboBox
+from PyQt5.QtWidgets import QComboBox
 
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle

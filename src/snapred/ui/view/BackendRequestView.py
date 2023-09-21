@@ -1,6 +1,6 @@
 import json
 
-from qtpy.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushButton, QWidget
+from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushButton, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.SNAPRequest import SNAPRequest

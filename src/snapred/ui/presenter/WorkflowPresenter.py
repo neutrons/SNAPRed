@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QMainWindow
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel

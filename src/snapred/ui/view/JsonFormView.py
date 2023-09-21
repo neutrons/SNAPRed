@@ -1,6 +1,6 @@
-from qtpy.QtCore import QRegularExpression
-from qtpy.QtGui import QRegularExpressionValidator
-from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
+from PyQt5.QtCore import QRegularExpression
+from PyQt5.QtGui import QRegularExpressionValidator
+from PyQt5.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
 
 from snapred.ui.widget.Section import Section
 

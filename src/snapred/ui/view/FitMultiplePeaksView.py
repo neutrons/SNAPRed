@@ -1,7 +1,7 @@
 import os
 
 from mantid.simpleapi import LoadNexusProcessed
-from qtpy.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from snapred.backend.dao.ingredients import FitMultiplePeaksIngredients
 from snapred.backend.dao.SNAPRequest import SNAPRequest

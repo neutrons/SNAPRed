@@ -161,7 +161,6 @@ class GroupByGroupCalibration(PythonAlgorithm):
         """
         Save the calculated diffraction calibration table to file.
         Will be saved inside the state folder, with name of form
-
             `/stateFolder/SNAP{run number}_calib_geom_{today's date}.h5`
         """
         self.mantidSnapper.SaveDiffCal(
@@ -179,13 +178,10 @@ class GroupByGroupCalibration(PythonAlgorithm):
         resulting DIFCs are combined with the previous table.
         The final calibration table is saved to disk for future use.
         input:
-
             Ingredients: DiffractionCalibrationIngredients -- the DAO holding data needed to run the algorithm
             InputWorkspace: str -- the name of workspace holding the initial TOF data
             PreviousCalibrationTable: str -- the name of the table workspace with previous DIFC values
-
         output:
-
             OutputWorkspace: str -- the name of the diffraction-focussed d-spacing data after the final calibration
             FinalCalibrationTable: str -- the name of the final table of DIFC values
         """

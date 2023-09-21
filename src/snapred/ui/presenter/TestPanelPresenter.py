@@ -1,7 +1,7 @@
 import json
 
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QComboBox, QPushButton
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QComboBox, QPushButton
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.SNAPRequest import SNAPRequest

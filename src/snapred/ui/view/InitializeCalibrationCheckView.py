@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QComboBox, QDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QWidget
+from PyQt5.QtWidgets import QComboBox, QDialog, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QWidget
 
 from snapred.ui.presenter.InitializeCalibrationPresenter import CalibrationCheck
 from snapred.ui.widget.Toggle import Toggle
