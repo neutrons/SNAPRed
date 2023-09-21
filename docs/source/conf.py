@@ -13,7 +13,8 @@ except ImportError:
 
     sys.path.insert(0, os.path.abspath("../../src"))
 
-import mock
+import unittest.mock as mock
+
 from mantid.api import PythonAlgorithm
 from qtpy.QtCore import Property, QThread, Signal
 
