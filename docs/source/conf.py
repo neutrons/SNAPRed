@@ -15,7 +15,7 @@ except ImportError:
 
 import mock
 from mantid.api import PythonAlgorithm
-from PyQt5.QtCore import QThread, pyqtProperty, pyqtSignal
+from qtpy.QtCore import Property, QThread, Signal
 
 # Store original __import__
 orig_import = __import__
@@ -32,15 +32,15 @@ def import_mock(name, *args):
         if "QThread" in fromlist:
             imports.QThread = QThread
         if "pyqtSignal" in fromlist:
-            imports.pyqtSignal = pyqtSignal
+            imports.Signal = Signal
         if "pyqtProperty" in fromlist:
-            imports.pyqtProperty = pyqtProperty
+            imports.Property = Property
     return imports
 
 
 with mock.patch("builtins.__import__", side_effect=import_mock):
     from mantid.api import PythonAlgorithm  # noqa: F811
-    from qtpy.QtCore import QThread, pyqtProperty, pyqtSignal  # noqa: F811
+    from qtpy.QtCore import Property, QThread, Signal  # noqa: F811
 
     MOCK_MODULES = [
         "mantid",

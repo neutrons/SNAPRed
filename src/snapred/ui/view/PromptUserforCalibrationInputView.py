@@ -1,9 +1,9 @@
-from qtpy.QtCore import Qt, pyqtSignal
+from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout
 
 
 class PromptUserforCalibrationInputView(QDialog):
-    dataEntered = pyqtSignal(str, str)
+    dataEntered = Signal(str, str)
 
     def __init__(self, parent=None):
         super(PromptUserforCalibrationInputView, self).__init__(parent)
