@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QGridLayout, QMainWindow, QPushButton, QTabWidget, QWidget
+from qtpy.QtWidgets import QGridLayout, QMainWindow, QPushButton, QTabWidget, QWidget
 
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.view.WorkflowNodeView import WorkflowNodeView
