@@ -19,7 +19,7 @@ class CalibrationCheck(QObject):
     :param SNAPResponse: The response from initializing the state
     """
 
-    checkState = pyqtSignal(SNAPResponse) 
+    checkState = pyqtSignal(SNAPResponse)
     """Emit when a state check has completed.
 
     :param SNAPResponse: The response from checking the state
