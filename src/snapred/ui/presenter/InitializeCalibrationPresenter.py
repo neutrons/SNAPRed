@@ -12,8 +12,18 @@ from snapred.ui.view.PromptUserforCalibrationInputView import PromptUserforCalib
 class CalibrationCheck(QObject):
     worker_pool = WorkerPool()
     interfaceController = InterfaceController()
+
     stateInitialized = pyqtSignal(SNAPResponse)
-    checkState = pyqtSignal(SNAPResponse)
+    """Emit when a state has been initialized.
+
+    :param SNAPResponse: The response from initializing the state
+    """
+
+    checkState = pyqtSignal(SNAPResponse) 
+    """Emit when a state check has completed.
+
+    :param SNAPResponse: The response from checking the state
+    """
 
     def __init__(self, view):
         super().__init__()
