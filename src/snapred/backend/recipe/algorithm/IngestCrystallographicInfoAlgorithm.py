@@ -8,25 +8,33 @@ from mantid.kernel import Direction
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "IngestCrystallographicInfoAlgorithm"
-
 
 class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
+    # __name__ = "IngestCrystallographicInfoAlgorithm"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("cifPath", defaultValue="", direction=Direction.Input)
         self.declareProperty("crystalInfo", defaultValue="", direction=Direction.Output)
+        self.declareProperty("dMin", defaultValue=0.1, direction=Direction.Input)
+        self.declareProperty("dMax", defaultValue=100.0, direction=Direction.Input)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
         cifPath = self.getProperty("cifPath").value
         # run the algo
         self.log().notice("ingest crystallogtaphic info")
 
-        # Load the CIF file
+        # Load the CIF file into an empty workspace
 
-        ws = self.mantidSnapper.CreateSampleWorkspace("Creating sample workspace...", OutputWorkspace="xtal_data")
+        ws = "xtal_data"
+        self.mantidSnapper.CreateWorkspace(
+            "Creating sample workspace...",
+            OutputWorkspace=ws,
+            DataX=1,
+            DataY=1,
+        )
         self.mantidSnapper.LoadCIF("Loading crystal data...", Workspace=ws, InputFile=cifPath)
         self.mantidSnapper.executeQueue()
 
@@ -37,8 +45,8 @@ class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
         generator = ReflectionGenerator(xtal)
 
         # Create list of unique reflections between 0.1 and 100.0 Angstrom
-        dMin = 0.1
-        dMax = 100.0
+        dMin = self.getProperty("dMin").value
+        dMax = self.getProperty("dMax").value
         hkls = generator.getUniqueHKLsUsingFilter(dMin, dMax, ReflectionConditionFilter.StructureFactor)
 
         # Calculate d and F^2

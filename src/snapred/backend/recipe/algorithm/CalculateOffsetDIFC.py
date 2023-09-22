@@ -18,7 +18,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
     """
     Calculate the offset-corrected DIFC associated with a given workspace.
     One part of diffraction calibration.
-    After being called by `execute`, may be called iteratively with `reexecute` to ensure convergence.
+    May be re-called iteratively with `execute` to ensure convergence.
     """
 
     def PyInit(self):
@@ -27,8 +27,10 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
+        self.declareProperty("MaxOffset", 2.0, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
+        self._has_been_executed = False
 
     # TODO: ensure all ingredients loaded elsewhere, no superfluous ingredients
     def chopIngredients(self, ingredients: Ingredients) -> None:
@@ -62,6 +64,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.inputWStof: str = f"_TOF_{self.runNumber}_raw"
         self.inputWSdsp: str = f"_DSP_{self.runNumber}_raw"
         self.difcWS: str = f"_DIFC_{self.runNumber}"
+        self.maxOffset = float(self.getProperty("MaxOffset").value)
 
     def raidPantry(self) -> None:
         """Initialize the input TOF data from the input filename in the ingredients"""
@@ -77,7 +80,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # rebin the TOF data logarithmically
         self.convertUnitsAndRebin(self.inputWStof, self.inputWStof, "TOF")
         # also find d-spacing data and rebin logarithmically
-        self.convertUnitsAndRebin(self.inputWStof, self.inputWSdsp)
+        self.convertUnitsAndRebin(self.inputWStof, self.inputWSdsp, "dSpacing")
 
         focusWSname: str = f"_{self.runNumber}_FocGroup"
         self.mantidSnapper.LoadGroupingDefinition(
@@ -101,7 +104,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-    def initDIFCTable(self):
+    def initDIFCTable(self) -> None:
         """
         Use the instrument definition to create an initial DIFC table
         Because the created DIFC is inside a matrix workspace, it must
@@ -224,7 +227,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
                 XMin=-100,
                 XMax=100,
                 OffsetMode="Signed",
-                MaxOffset=2,
+                MaxOffset=self.getProperty("MaxOffset").value,
             )
             # add in group offsets to total, or begin the sum if none
             if not self.mantidSnapper.mtd.doesExist(totalOffsetWS):
@@ -247,9 +250,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.mantidSnapper.executeQueue()  # queue must run before ws in mantid data
         offsets = list(self.mantidSnapper.mtd[totalOffsetWS].extractY().ravel())
         data["medianOffset"] = abs(np.median(offsets))
-        data["meanOffset"] = abs(np.mean(offsets))
-        data["minOffset"] = abs(np.min(offsets))
-        data["maxOffset"] = abs(np.max(offsets))
 
         # get difcal corrected by offsets
         self.mantidSnapper.ConvertDiffCalLog(
@@ -281,7 +281,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.setProperty("data", json.dumps(data))
         self.setProperty("OutputWorkspace", self.inputWStof)
         self.setProperty("CalibrationTable", self.difcWS)
-        return data["medianOffset"]
 
     def PyExec(self) -> None:
         """
@@ -296,17 +295,19 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
             CalibrationTable: str -- the final table of DIFC values
         """
-        self.log().notice("Extraction of calibration constants START!")
+        if not self._has_been_executed:
+            self.log().notice("Extraction of calibration constants START!")
 
-        # get the ingredients
-        ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
-        self.chopIngredients(ingredients)
-        # load and process the input data for algorithm
-        self.raidPantry()
-        # prepare initial diffraction calibration workspace
-        self.initDIFCTable()
+            # get the ingredients
+            ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
+            self.chopIngredients(ingredients)
+            # load and process the input data for algorithm
+            self.raidPantry()
+            # prepare initial diffraction calibration workspace
+            self.initDIFCTable()
+            self._has_been_executed = True
         # now calculate and correct by offsets
-        return self.reexecute()
+        self.reexecute()
 
 
 # Register algorithm with Mantid

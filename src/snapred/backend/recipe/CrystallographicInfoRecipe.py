@@ -4,9 +4,7 @@ from mantid.api import AlgorithmManager
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import (
-    name as IngestCrystallographicInfoAlgorithm,
-)
+from snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm import IngestCrystallographicInfoAlgorithm
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -14,17 +12,18 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class CrystallographicInfoRecipe:
-    ingestionAlgorithmName: str = IngestCrystallographicInfoAlgorithm
+    ingestionAlgorithmName: str = IngestCrystallographicInfoAlgorithm.__name__
 
     def __init__(self):
         pass
 
-    def executeRecipe(self, cifPath: str) -> Dict[str, Any]:
+    def executeRecipe(self, cifPath: str, dMin: float = 0.1, dMax: float = 100.0) -> Dict[str, Any]:
         logger.info("Ingesting crystal info: %s" % cifPath)
         data: Dict[str, Any] = {}
-
-        algo = AlgorithmManager.create(self.ingestionAlgorithmName)
+        algo = AlgorithmManager.create("IngestCrystallographicInfoAlgorithm")
         algo.setProperty("cifPath", cifPath)
+        algo.setProperty("dMin", dMin)
+        algo.setProperty("dMax", dMax)
 
         try:
             data["result"] = algo.execute()
