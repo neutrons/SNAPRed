@@ -45,5 +45,15 @@ class CrystallographicInfoRecipe:
 
         # take lowest one percent
         numPeaks = len(xtal.fSquared)
-        lowest = max(1, round(numPeaks / 100)) - 1
-        return I0[int(lowest / 2)]
+        lowest = max(1, round(numPeaks / 100))
+
+        # get the subset of I0 corresponding to the lowest 1%
+        subset = I0[:lowest]
+
+        # compute the median of this subset
+        if len(subset) % 2 == 0:  # even length
+            median = (subset[len(subset)//2 - 1] + subset[len(subset)//2]) / 2.0
+        else:  # odd length
+            median = subset[len(subset)//2]
+        
+        return median
