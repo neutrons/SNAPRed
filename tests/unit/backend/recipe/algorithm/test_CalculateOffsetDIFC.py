@@ -48,48 +48,50 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
                 GroupPeakList(groupID=7, peaks=peakList, maxfwhm=0.02),
             ],
             calPath=Resource.getPath("outputs/calibration/"),
-            threshold=1.0,
+            convergenceThreshold=1.0,
         )
 
-    def mockRaidPantry(algo):
+    def makeFakeNeutronData(self, algo):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
+        from mantid.simpleapi import (
+            ChangeBinOffset,
+            CreateSampleWorkspace,
+            LoadInstrument,
+            MoveInstrumentComponent,
+            RotateInstrumentComponent,
+        )
+
         # prepare with test data
-        algo.mantidSnapper.CreateSampleWorkspace(
-            "Make fake data for testing",
+        CreateSampleWorkspace(
             OutputWorkspace=algo.inputWSdsp,
             # WorkspaceType="Histogram",
             Function="User Defined",
             UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=1.2,Sigma=0.2",
             Xmin=algo.overallDMin,
             Xmax=algo.overallDMax,
-            BinWidth=0.001,
+            BinWidth=algo.dBin,
             XUnit="dSpacing",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=True,
         )
-        algo.mantidSnapper.LoadInstrument(
-            "Load a fake instrument for testing",
+        LoadInstrument(
             Workspace=algo.inputWSdsp,
             Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             RewriteSpectraMap=True,
         )
         # the below are meant to de-align the pixels so an offset correction is needed
-        algo.mantidSnapper.ChangeBinOffset(
-            "Change bin offsets",
+        ChangeBinOffset(
             InputWorkspace=algo.inputWSdsp,
             OutputWorkspace=algo.inputWSdsp,
             Offset=-0.7 * algo.overallDMin,
         )
-        algo.mantidSnapper.RotateInstrumentComponent(
-            "",
+        RotateInstrumentComponent(
             Workspace=algo.inputWSdsp,
             ComponentName="bank1",
             Y=1.0,
             Angle=90.0,
         )
-        algo.mantidSnapper.MoveInstrumentComponent(
-            "",
+        MoveInstrumentComponent(
             Workspace=algo.inputWSdsp,
             ComponentName="bank1",
             X=5.0,
@@ -97,34 +99,9 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             Z=0.1,
             RelativePosition=False,
         )
-
-        # rebin and convert for DSP, TOF
+        # # rebin and convert for DSP, TOF
         algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWSdsp, "dSpacing")
         algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWStof, "TOF")
-        # manually setup the grouping workspace
-        focusWSname = "_focusws_name_"
-        inputFilePath = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
-        algo.mantidSnapper.LoadGroupingDefinition(
-            f"Loading grouping file {inputFilePath}...",
-            GroupingFilename=inputFilePath,
-            InstrumentDonor=algo.inputWSdsp,
-            OutputWorkspace=focusWSname,
-        )
-        algo.mantidSnapper.executeQueue()
-
-        focusWS = algo.mantidSnapper.mtd[focusWSname]
-        algo.groupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
-        algo.subgroupWorkspaceIndices: Dict[int, List[int]] = {}
-        algo.allDetectorIDs: List[int] = []
-        for groupID in algo.groupIDs:
-            groupDetectorIDs: List[int] = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
-            algo.allDetectorIDs.extend(groupDetectorIDs)
-            algo.subgroupWorkspaceIndices[groupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
-        algo.mantidSnapper.DeleteWorkspace(
-            "Delete temp",
-            Workspace=focusWSname,
-        )
-        algo.mantidSnapper.executeQueue()
 
     def test_chop_ingredients(self):
         """Test that ingredients for algo are properly processed"""
@@ -145,47 +122,47 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
 
-    @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
     def test_execute(self):
         """Test that the algorithm executes"""
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.chopIngredients(self.fakeIngredients)
+        self.makeFakeNeutronData(algo)
         assert algo.execute()
 
         data = json.loads(algo.getProperty("data").value)
-        assert data["meanOffset"] is not None
-        assert data["meanOffset"] != 0
-        assert data["meanOffset"] > 0
-        assert data["meanOffset"] <= 2
+        assert data["medianOffset"] is not None
+        assert data["medianOffset"] != 0
+        assert data["medianOffset"] > 0
+        assert data["medianOffset"] <= 2
 
     # patch to make the offsets of sample data non-zero
-    @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
-    # @mock.patch.object(ThisAlgo, "getRefID", lambda self, x: int(min(x)))  # noqa
     def test_reexecution_and_convergence(self):
         """Test that the algorithm can run, and that it will converge to an answer"""
 
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.chopIngredients(self.fakeIngredients)
+        self.makeFakeNeutronData(algo)
         assert algo.execute()
-        assert algo.reexecute()
 
         data = json.loads(algo.getProperty("data").value)
         assert data["medianOffset"] is not None
         assert data["medianOffset"] != 0
+        assert data["medianOffset"] > 0
         assert data["medianOffset"] <= 2
 
         # check that value converges
         numIter = 5
         allOffsets = [data["medianOffset"]]
         for i in range(numIter):
-            algo.reexecute()
+            algo.execute()
             data = json.loads(algo.getProperty("data").value)
             allOffsets.append(data["medianOffset"])
             assert allOffsets[-1] <= max(1.0e-12, allOffsets[-2])
 
-    @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
     def test_init_difc_table(self):
         from mantid.simpleapi import mtd
 
@@ -193,7 +170,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.chopIngredients(self.fakeIngredients)
-        algo.raidPantry()
+        self.makeFakeNeutronData(algo)
         algo.initDIFCTable()
         difcTable = mtd[algo.difcWS]
         for i, row in enumerate(difcTable.column("detid")):

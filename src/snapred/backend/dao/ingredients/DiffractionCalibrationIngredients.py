@@ -16,4 +16,4 @@ class DiffractionCalibrationIngredients(BaseModel):
     focusGroup: FocusGroup
     groupedPeakLists: List[GroupPeakList]
     calPath: str
-    threshold: float
+    convergenceThreshold: float
