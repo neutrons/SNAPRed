@@ -52,8 +52,8 @@ class CrystallographicInfoRecipe:
 
         # compute the median of this subset
         if len(subset) % 2 == 0:  # even length
-            median = (subset[len(subset)//2 - 1] + subset[len(subset)//2]) / 2.0
+            median = (subset[len(subset) // 2 - 1] + subset[len(subset) // 2]) / 2.0
         else:  # odd length
-            median = subset[len(subset)//2]
-        
+            median = subset[len(subset) // 2]
+
         return median
