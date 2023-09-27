@@ -7,6 +7,18 @@ orchestration:
 instrument:
   name: SNAP
   home: /SNS/SNAP/
+  calibration:
+    home: ${instrument.home}shared/Calibration
+    sample:
+      home: ${instrument.calibration.home}/CalibrantSamples
+    powder:
+      home: ${instrument.calibration.home}/Powder
+      grouping:
+        home: ${instrument.calibration.powder.home}/PixelGroupingDefinitions
+        extensions:
+          - xml
+          - nxs
+          - hdf
   config: shared/Calibration/SNAPInstPrm.json
   lite:
     definition:

@@ -394,3 +394,48 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             service.readInstrumentConfig()
 
         service.verifyPaths = False  # put the setting back
+
+    def test_readSamplePaths():
+        localDataService = LocalDataService()
+        localDataService._findMatchingFileList = mock.Mock()
+        localDataService._findMatchingFileList.return_value = [
+            "/sample1.json",
+            "/sample2.json",
+        ]
+        result = localDataService.readSamplePaths()
+        assert len(result) == 2
+        assert result[0] == "/sample1.json"
+        assert result[1] == "/sample2.json"
+
+    def test_readNoSamplePaths():
+        localDataService = LocalDataService()
+        localDataService._findMatchingFileList = mock.Mock()
+        localDataService._findMatchingFileList.return_value = []
+        try:
+            localDataService.readSamplePaths()
+            pytest.fail("Should have thrown an exception")
+        except RuntimeError:
+            assert True
+
+    def test_readGroupingFiles():
+        localDataService = LocalDataService()
+        localDataService._findMatchingFileList = mock.Mock()
+        localDataService._findMatchingFileList.return_value = [
+            "/group1.json",
+            "/group2.json",
+        ]
+        result = localDataService.readGroupingFiles()
+        # 6 because there are 3 file types and the mock returns 2 files per
+        assert len(result) == 6
+        assert result[0] == "/group1.json"
+        assert result[1] == "/group2.json"
+
+    def test_readNoGroupingFiles():
+        localDataService = LocalDataService()
+        localDataService._findMatchingFileList = mock.Mock()
+        localDataService._findMatchingFileList.return_value = []
+        try:
+            localDataService.readGroupingFiles()
+            pytest.fail("Should have thrown an exception")
+        except RuntimeError:
+            assert True
