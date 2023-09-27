@@ -24,4 +24,3 @@ class Geometry(BaseModel):
             v.set("total_height", None)
             raise Warning("Height is not used with a sphere")
         return v
-
