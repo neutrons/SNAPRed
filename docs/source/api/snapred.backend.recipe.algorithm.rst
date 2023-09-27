@@ -172,6 +172,14 @@ snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.recipe.algorithm.WashDishes module
+--------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.WashDishes
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
