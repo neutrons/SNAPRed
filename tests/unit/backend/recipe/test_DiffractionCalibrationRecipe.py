@@ -12,6 +12,7 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import CalculateOffsetDIFC
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as ThisRecipe
 from snapred.meta.Config import Resource
 
@@ -20,7 +21,6 @@ TheAlgorithmManager: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.
 
 class TestDiffractionCalibtationRecipe(unittest.TestCase):
     def setUp(self):
-        self.fakeDBin = -abs(0.001)
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
@@ -28,25 +28,23 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         fakeInstrumentState.particleBounds.tof.minimum = 10
         fakeInstrumentState.particleBounds.tof.maximum = 1000
 
-        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/calibration/sampleFocusGroup.json"))
-        ntest = fakeFocusGroup.nHst
-        fakeFocusGroup.dBin = [-abs(self.fakeDBin)] * ntest
-        fakeFocusGroup.dMax = [float(x) for x in range(100 * ntest, 101 * ntest)]
-        fakeFocusGroup.dMin = [float(x) for x in range(ntest)]
-        fakeFocusGroup.FWHM = [5 for x in range(ntest)]
-        fakeFocusGroup.definition = Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml")
+        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/diffcal/fakeFocusGroup.json"))
+        fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
 
         peakList = [
-            DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 2, "maximum": 3}}),
-            DetectorPeak.parse_obj({"position": {"value": 5, "minimum": 4, "maximum": 6}}),
+            DetectorPeak.parse_obj({"position": {"value": 1.5, "minimum": 1, "maximum": 2}}),
+            DetectorPeak.parse_obj({"position": {"value": 3.5, "minimum": 3, "maximum": 4}}),
         ]
 
         self.fakeIngredients = TheseIngredients(
             runConfig=fakeRunConfig,
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
-            groupedPeakLists=[GroupPeakList(groupID=3, peaks=peakList)],
-            threshold=0.5,
+            groupedPeakLists=[
+                GroupPeakList(groupID=3, peaks=peakList, maxfwhm=0.01),
+                GroupPeakList(groupID=7, peaks=peakList, maxfwhm=0.02),
+            ],
+            convergenceThreshold=0.5,
             calPath=Resource.getPath("outputs/calibration/"),
         )
         self.recipe = ThisRecipe()
@@ -55,7 +53,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
     def test_chop_ingredients(self):
         self.recipe.chopIngredients(self.fakeIngredients)
         assert self.recipe.runNumber == self.fakeIngredients.runConfig.runNumber
-        assert self.recipe.threshold == self.fakeIngredients.threshold
+        assert self.recipe.threshold == self.fakeIngredients.convergenceThreshold
 
     @mock.patch(TheAlgorithmManager)
     def test_execute_successful(self, mock_AlgorithmManager):
@@ -71,9 +69,9 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
                 self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
                 self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.Input)
                 self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
+                self.medianOffset: float = 4.0
 
             def PyExec(self):
-                self.medianOffset: float = 4.0
                 self.reexecute()
                 self.setProperty("PreviousCalibrationTable", self.getProperty("CalibrationTable").value)
                 self.setProperty("OutputWorkspace", self.getProperty("InputWorkspace").value)
@@ -154,6 +152,69 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             else:
                 # fail if execute did not raise an exception
                 pytest.fail("Test should have raised RuntimeError, but no error raised")
+
+    def makeFakeNeutronData(self, algo):
+        """Will cause algorithm to execute with sample data, instead of loading from file"""
+        from mantid.simpleapi import (
+            ChangeBinOffset,
+            CreateSampleWorkspace,
+            LoadInstrument,
+            MoveInstrumentComponent,
+            RotateInstrumentComponent,
+        )
+
+        # prepare with test data
+        CreateSampleWorkspace(
+            OutputWorkspace=algo.inputWSdsp,
+            # WorkspaceType="Histogram",
+            Function="User Defined",
+            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=1.2,Sigma=0.2",
+            Xmin=algo.overallDMin,
+            Xmax=algo.overallDMax,
+            BinWidth=algo.dBin,
+            XUnit="dSpacing",
+            NumBanks=4,  # must produce same number of pixels as fake instrument
+            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
+        )
+        LoadInstrument(
+            Workspace=algo.inputWSdsp,
+            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            RewriteSpectraMap=True,
+        )
+        # the below are meant to de-align the pixels so an offset correction is needed
+        ChangeBinOffset(
+            InputWorkspace=algo.inputWSdsp,
+            OutputWorkspace=algo.inputWSdsp,
+            Offset=-0.7 * algo.overallDMin,
+        )
+        RotateInstrumentComponent(
+            Workspace=algo.inputWSdsp,
+            ComponentName="bank1",
+            Y=1.0,
+            Angle=90.0,
+        )
+        MoveInstrumentComponent(
+            Workspace=algo.inputWSdsp,
+            ComponentName="bank1",
+            X=5.0,
+            Y=-0.1,
+            Z=0.1,
+            RelativePosition=False,
+        )
+        # # rebin and convert for DSP, TOF
+        algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWSdsp, "dSpacing")
+        algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWStof, "TOF")
+
+    def test_execute_with_algos(self):
+        # create sample data
+        offsetAlgo = CalculateOffsetDIFC()
+        offsetAlgo.initialize()
+        offsetAlgo.chopIngredients(self.fakeIngredients)
+        self.makeFakeNeutronData(offsetAlgo)
+        res = self.recipe.executeRecipe(self.fakeIngredients)
+        assert res["result"]
+        print(res["steps"])
+        assert res["steps"][-1]["medianOffset"] <= self.fakeIngredients.convergenceThreshold
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
