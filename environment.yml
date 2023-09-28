@@ -26,4 +26,4 @@ dependencies:
 - boa
 - pycifrw
 - pip:
-  - check-wheel-contents
+  - check-wheel-contents=0.4.0
