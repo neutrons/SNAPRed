@@ -69,3 +69,19 @@ with mock.patch.dict(
         actual = dataExportService.getCalibrationState(mock.Mock())
 
         assert actual == "expected"
+
+    def test_getSamplePaths():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readSamplePaths = mock.Mock()
+        dataExportService.lookupService.readSamplePaths.return_value = "expected"
+        actual = dataExportService.getSamplePaths()
+
+        assert actual == "expected"
+
+    def test_getGroupingFile():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readGroupingFiles = mock.Mock()
+        dataExportService.lookupService.readGroupingFiles.return_value = "expected"
+        actual = dataExportService.getGroupingFiles()
+
+        assert actual == "expected"

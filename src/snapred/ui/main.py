@@ -72,9 +72,21 @@ class SNAPRedGUI(QMainWindow):
         self.setStatusBar(self.statusBar)
 
     def openNewWindow(self):
-        self.newWindow = TestPanel(self)
-        self.newWindow.widget.setWindowTitle("Test Panel")
-        self.newWindow.widget.show()
+        try:
+            self.newWindow = TestPanel(self)
+            self.newWindow.widget.setWindowTitle("Test Panel")
+            self.newWindow.widget.show()
+        except Exception as e:  # noqa: BLE001
+            # show error message as popup
+            print(e)
+            from PyQt5.QtWidgets import QMessageBox
+
+            errorPopup = QMessageBox()
+            errorPopup.setIcon(QMessageBox.Critical)
+            errorPopup.setText("Sorry!\nError In TestPanel!\nPlease try again avoiding whatever you just did.")
+            errorPopup.setDetailedText(str(e))
+            errorPopup.setFixedSize(500, 200)
+            errorPopup.exec()
 
     def closeEvent(self, event):
         event.accept()

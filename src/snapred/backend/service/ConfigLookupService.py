@@ -18,11 +18,20 @@ class ConfigLookupService(Service):
         super().__init__()
         self.dataFactoryService = DataFactoryService()
         self.registerPath("", self.getConfigs)
+        self.registerPath("samplePaths", self.getSamplePaths)
+        self.registerPath("groupingFiles", self.getGroupingFiles)
+
         return
 
     @staticmethod
     def name():
         return "config"
+
+    def getSamplePaths(self):
+        return self.dataFactoryService.getSamplePaths()
+
+    def getGroupingFiles(self):
+        return self.dataFactoryService.getGroupingFiles()
 
     @FromString
     def getConfigs(self, runs: List[RunConfig]):

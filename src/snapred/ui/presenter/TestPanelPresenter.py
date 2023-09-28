@@ -1,7 +1,7 @@
 import json
 
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QComboBox, QPushButton
+from qtpy.QtWidgets import QComboBox, QGridLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.SNAPRequest import SNAPRequest
@@ -15,6 +15,7 @@ from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibration
 from snapred.ui.view.VanadiumFocussedReductionView import VanadiumFocussedReductionView
 from snapred.ui.widget.JsonForm import JsonForm
 from snapred.ui.workflow.DiffractionCalibrationCreationWorkflow import DiffractionCalibrationCreationWorkflow
+from snapred.ui.workflow.ReductionWorkflow import ReductionWorkflow
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class TestPanelPresenter(object):
         reductionRequest = SNAPRequest(path="api", payload=None)
         self.apiDict = self.interfaceController.executeRequest(reductionRequest).data
 
-        self.apiComboBox = self.setupApiComboBox(self.apiDict, view)
+        # self.apiComboBox = self.setupApiComboBox(self.apiDict, view)
 
         jsonSchema = json.loads(self.apiDict["config"][""]["runs"])
         self.view = view
@@ -35,12 +36,17 @@ class TestPanelPresenter(object):
         self._loadDefaultJsonInput("config//runs", self.jsonForm)
         self.comboSelectionView = BackendRequestView(self.jsonForm, "config//runs", parent=self.view)
         self.calibrationCheckView = InitializeCalibrationCheckView(parent=self.view)
-        self.view.centralWidget.layout().addWidget(self.apiComboBox)
-        self.view.centralWidget.layout().addWidget(self.comboSelectionView)
-        self.view.centralWidget.layout().setAlignment(self.comboSelectionView, Qt.AlignTop | Qt.AlignHCenter)
-        self.view.centralWidget.layout().addWidget(self.calibrationCheckView)
-        self.view.centralWidget.layout().setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
-        self.view.adjustSize()
+
+        self.diffractionCalibrationLayout = QGridLayout()
+        self.diffractionCalibrationWidget = QWidget()
+        self.diffractionCalibrationWidget.setLayout(self.diffractionCalibrationLayout)
+
+        self.diffractionCalibrationLayout.addWidget(self._createDiffractionCalibrationWorkflow())
+        self.diffractionCalibrationLayout.addWidget(self.calibrationCheckView)
+        self.diffractionCalibrationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
+
+        self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
+        self.view.tabWidget.addTab(ReductionWorkflow(self.view).widget, "Reduction")
 
     def _getPaths(self, apiDict):
         paths = []
@@ -83,6 +89,17 @@ class TestPanelPresenter(object):
             jsonForm.updateData(defaults)
         else:
             logger.warn("No default values for path: {}".format(defaultFilePath))
+
+    def _createDiffractionCalibrationWorkflow(self):
+        path = "calibration/reduction/runs"
+        logger.info("Creating workflow for path: {}".format(path))
+        jsonSchema = self._getSchemaForSelection(path)
+        logger.info("Schema for path: {}".format(jsonSchema))
+        newForm = JsonForm(path.split("/")[-1], jsonSchema=jsonSchema, parent=self.view)
+        logger.info("Created form for path: {}".format(newForm))
+        self._loadDefaultJsonInput(path, newForm)
+        logger.info("loaded default json input for path: {}".format(path))
+        return DiffractionCalibrationCreationWorkflow(newForm, parent=self.view).widget
 
     def handleApiComboSelected(self, index):  # noqa: ARG002
         selection = self.apiComboBox.currentText()
