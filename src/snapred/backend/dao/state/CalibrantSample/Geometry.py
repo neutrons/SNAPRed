@@ -5,22 +5,22 @@ from pydantic import BaseModel, root_validator
 
 class Geometry(BaseModel):
     """Class to hold Geometry data for Calibrant Samples
-    Shape: string must be 'Cylinder' or 'Sphere'
-    Radius: single float (cm)
-    Height: single float (cm) (not used for sphere)
-    Center: list of three floats (cm)"""
+    shape: string must be 'Cylinder' or 'Sphere'
+    radius: single float (cm)
+    height: single float (cm) (not used for sphere)
+    center: list of three floats (cm)"""
 
-    Shape: str
-    Radius: float
-    Height: Optional[float]
-    Center: List[float]
+    shape: str
+    radius: float
+    height: Optional[float]
+    center: List[float]
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_form(cls, v):
-        Shape, Height = v.get("Shape").strip(), v.get("Height")
-        if Shape != "Cylinder" and Shape != "Sphere":
-            raise ValueError('form must be "Cylinder" or "Sphere"')
-        if Shape == "Sphere" and Height is not None:
-            v.set("total_height", None)
-            raise Warning("Height is not used with a sphere")
+        shape, height = v.get("shape").strip(), v.get("height")
+        if shape != "Cylinder" and shape != "Sphere":
+            raise ValueError('shape must be "Cylinder" or "Sphere"')
+        if shape == "Sphere" and height is not None:
+            v.set("height", None)
+            raise Warning("height is not used with a sphere")
         return v
