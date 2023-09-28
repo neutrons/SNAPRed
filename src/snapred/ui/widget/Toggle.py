@@ -4,9 +4,9 @@ from qtpy.QtWidgets import QWidget
 
 
 class Toggle(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, state=False):
         super().__init__(parent=parent)
-        self._state = False
+        self._state = state
         self._ellipsePosition = 0.0
         self.toggleAnimation = QPropertyAnimation(self, b"ellipsePosition")
         # fixed height width ratio
@@ -14,6 +14,7 @@ class Toggle(QWidget):
         self.setFixedWidth(60)
         # self.update = self._doNothing
         self.toggleAnimation.finished.connect(self.update)
+        self.animateClick()
 
     @Property(float)
     def ellipsePosition(self):

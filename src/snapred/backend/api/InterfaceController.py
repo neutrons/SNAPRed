@@ -29,6 +29,7 @@ class InterfaceController:
             # handle exceptions, inform client if recoverable
             self.logger.exception("Failed to call service")
             response = SNAPResponse(code=500, message=str(e))
+            return response
 
         self.logger.debug(response.json())
         return response

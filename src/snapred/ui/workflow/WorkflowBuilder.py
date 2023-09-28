@@ -3,8 +3,9 @@ from snapred.ui.widget.Workflow import Workflow
 
 
 class WorkflowBuilder:
-    def __init__(self, parent=None):
+    def __init__(self, cancelLambda=None, parent=None):
         self.parent = parent
+        self._cancelLambda = cancelLambda
         self._workflow = None
 
     def addNode(self, continueAction, subview, name="Unnamed"):
@@ -20,4 +21,4 @@ class WorkflowBuilder:
         return self
 
     def build(self):
-        return Workflow(self._workflow, self.parent)
+        return Workflow(self._workflow, self._cancelLambda, self.parent)

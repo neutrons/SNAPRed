@@ -671,3 +671,22 @@ class LocalDataService:
             return True
         else:
             return False
+
+    def readSamplePaths(self):
+        sampleFolder = Config["instrument.calibration.sample.home"]
+        # collect list of all json in folder
+        samples = self._findMatchingFileList(f"{sampleFolder}/*.json", throws=False)
+        if len(samples) < 1:
+            raise RuntimeError(f"No samples found in {sampleFolder}")
+        return samples
+
+    def readGroupingFiles(self):
+        groupingFolder = Config["instrument.calibration.powder.grouping.home"]
+        extensions = Config["instrument.calibration.powder.grouping.extensions"]
+        # collect list of all files in folder that are applicable extensions
+        groupingFiles = []
+        for extension in extensions:
+            groupingFiles += self._findMatchingFileList(f"{groupingFolder}/*.{extension}", throws=False)
+        if len(groupingFiles) < 1:
+            raise RuntimeError(f"No grouping files found in {groupingFolder} for extensions {extensions}")
+        return groupingFiles
