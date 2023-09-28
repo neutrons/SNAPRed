@@ -69,3 +69,9 @@ class DataFactoryService:
 
     def checkCalibrationStateExists(self, runId: str):
         return self.lookupService.checkCalibrationFileExists(runId)
+
+    def getSamplePaths(self):
+        return self.lookupService.readSamplePaths()
+
+    def getGroupingFiles(self):
+        return self.lookupService.readGroupingFiles()

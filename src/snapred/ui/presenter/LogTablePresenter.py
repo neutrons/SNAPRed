@@ -9,18 +9,6 @@ from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.ui.threading.worker_pool import WorkerPool
 
 
-class Spinner:
-    i = 0
-    symbols = ["|", "/", "-", "\\"]
-
-    def getAndIterate(self):
-        symbol = self.symbols[self.i % 4]
-        self.i += 1
-        if self.i > 3:
-            self.i = 0
-        return symbol
-
-
 class LogTablePresenter(object):
     interfaceController = InterfaceController()
     worker_pool = WorkerPool()
@@ -28,8 +16,6 @@ class LogTablePresenter(object):
     def __init__(self, view, model):
         self.view = view
         self.model = model
-
-        self.view.on_button_clicked(self.handle_button_clicked)
 
     @property
     def widget(self):
@@ -49,41 +35,3 @@ class LogTablePresenter(object):
 
     def _responseOK(self, response: SNAPResponse):
         return response.code - 200 < 100
-
-    def update_reduction_config_element(self, response: SNAPResponse):
-        # import pdb; pdb.set_trace()
-        if not self._responseOK(response):
-            messageBox = QMessageBox()
-            messageBox.setIcon(QMessageBox.Critical)
-            messageBox.setText(response.message)
-            messageBox.setFixedSize(500, 200)
-            messageBox.exec()
-
-    def buttonSpinner(self, spinner):
-        sleep(0.25)
-        return "Loading " + spinner.getAndIterate()
-
-    def updateButton(self, text):
-        self.view.button.setText(text)
-
-    def handle_button_clicked(self):
-        self.view.button.setEnabled(False)
-
-        request = SNAPRequest(path="/reduction", payload=RunConfig(runNumber="48741").json())
-
-        # setup workers with work targets and args
-        self.worker = self.worker_pool.createWorker(target=self.interfaceController.executeRequest, args=(request))
-        self.infworker = self.worker_pool.createInfiniteWorker(target=self.buttonSpinner, args=(Spinner()))
-
-        # update according to results
-        self.infworker.result.connect(self.updateButton)
-        self.worker.result.connect(self.update_reduction_config_element)
-
-        # Final resets
-        self.worker.finished.connect(self.infworker.stop)
-        self.worker.finished.connect(lambda: self.view.button.setEnabled(True))
-        self.infworker.finished.connect(lambda: self.infworker.stop())
-        self.infworker.finished.connect(lambda: self.updateButton("load dummy"))
-
-        self.worker_pool.submitWorker(self.worker)
-        self.worker_pool.submitWorker(self.infworker)

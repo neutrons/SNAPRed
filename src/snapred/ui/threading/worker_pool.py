@@ -22,8 +22,10 @@ class Worker(QObject):
     def run(self):
         """Long-running task."""
         try:
-            self.result.emit(self.target(self.args))
-            self.success.emit(True)
+            results = self.target(self.args)
+            # results.code = 200 # set to 200 for testing
+            self.result.emit(results)
+            self.success.emit(results.code - 200 < 100)
         except Exception as e:  # noqa: BLE001
             # print stacktrace
             import traceback

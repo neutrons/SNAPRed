@@ -19,11 +19,10 @@ class JsonFormListView(QWidget):
         field = self.getField(fieldPath)
         if field is not None:
             return field.text()
-        return None
 
     def getField(self, fieldPath):
         for jsonForm in self._jsonForms:
             field = jsonForm.getField(fieldPath)
             if field is not None:
                 return field
-        return None
+        RuntimeError("Field not found in json form list: " + fieldPath)

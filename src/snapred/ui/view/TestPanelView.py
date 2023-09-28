@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QGridLayout, QMainWindow, QWidget
+from qtpy.QtWidgets import QGridLayout, QMainWindow, QTabWidget, QWidget
 
 
 class TestPanelView(QMainWindow):
@@ -13,4 +13,7 @@ class TestPanelView(QMainWindow):
         self.grid.columnStretch(1)
         self.grid.rowStretch(1)
         self.centralWidget.setLayout(self.grid)
+        self.tabWidget = QTabWidget()
+        self.tabWidget.setTabPosition(QTabWidget.West)
+        self.grid.addWidget(self.tabWidget)
         self.adjustSize()
