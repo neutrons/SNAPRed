@@ -88,7 +88,7 @@ class CalibrationCheck(QObject):
             reply = QMessageBox.question(
                 self.view,
                 "Initialize State",
-                "State for run " + runNumber + " doesn't exist. Would you like to initialize?",
+                "State for run doesn't exist. Would you like to initialize?",
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.Yes,
             )

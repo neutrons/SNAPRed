@@ -33,6 +33,7 @@ def test_handleButtonClicked(calibrationCheck):
 
 def test_handleStateCheckResult_no_state(calibrationCheck):
     response = Mock(spec=SNAPResponse)
+    response.code = 500
     response.data = False
     response.message = "Sample message"
 
@@ -48,6 +49,7 @@ def test_handleStateCheckResult_no_state(calibrationCheck):
 
 def test_handleStateCheckResult_no_state_user_declined(calibrationCheck):
     response = Mock(spec=SNAPResponse)
+    response.code = 500
     response.data = False
     response.message = "Sample message"
 
