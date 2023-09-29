@@ -9,6 +9,7 @@ class Crystallography(BaseModel):
     cif file: string, full path to .cif file containing crystallographic properties
     space group: string, ITOC symbol for the space group
     lattice parameters: List of 6 floats: a, b, c, alpha, beta, gamma
+    atoms: list of atomic parameters for each atom
     atomic parameters:
 
         atom type: string of chemical symbol
