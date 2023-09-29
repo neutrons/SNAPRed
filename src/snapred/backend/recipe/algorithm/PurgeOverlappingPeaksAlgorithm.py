@@ -31,6 +31,10 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
         predictedPeaks_json = json.loads(result.get())
 
+        allPeaks = [peak for group in predictedPeaks_json for peak in group]
+
+        uniquePeaks = list(set(allPeaks))
+
         # build lists of non-overlapping peaks for each focus group. Combine them into the total list.
         outputPeaks = []
         for focusGroupPeaks_json in predictedPeaks_json:
