@@ -83,6 +83,10 @@ class CalibrationCheck(QObject):
         if response.code == 500 and "does not exist" in response.message:
             self._labelView("This is an invalid entry, this run does not exist.")
             return
+        
+        elif response.code == 500 and "Could not find all required logs in file" in response.message:
+            self._labelView(str(response.message))
+            return
 
         elif response.code == 500:
             reply = QMessageBox.question(
