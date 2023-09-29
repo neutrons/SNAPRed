@@ -1,28 +1,26 @@
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, root_validator
 
 
 class Geometry(BaseModel):
     """Class to hold Geometry data for Calibrant Samples
-    form: string must be 'cylinder' or 'sphere'
+    shape: string must be 'Cylinder' or 'Sphere'
     radius: single float (cm)
-    illuminated height: single float (cm)
-    total height: single float (cm) (not used for sphere)"""
+    height: single float (cm) (not used for sphere)
+    center: list of three floats (cm)"""
 
-    form: str
+    shape: str
     radius: float
-    illuminated_height: float
-    total_height: Optional[float] = None
+    height: Optional[float]
+    center: List[float]
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_form(cls, v):
-        form, total_height = v.get("form").strip(), v.get("total_height")
-        if form != "cylinder" and form != "sphere":
-            raise ValueError('form must be "cylinder" or "sphere"')
-        if form == "sphere" and total_height is not None:
-            v.set("total_height", None)
-            raise Warning("total height is not used with a sphere")
-        if form == "cylinder" and total_height is None:
-            raise ValueError("cylinders must have a total height")
+        shape, height = v.get("shape").strip(), v.get("height")
+        if shape != "Cylinder" and shape != "Sphere":
+            raise ValueError('shape must be "Cylinder" or "Sphere"')
+        if shape == "Sphere" and height is not None:
+            v.set("height", None)
+            raise Warning("height is not used with a sphere")
         return v
