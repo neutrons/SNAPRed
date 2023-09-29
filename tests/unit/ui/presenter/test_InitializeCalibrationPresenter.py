@@ -1,53 +1,63 @@
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
-from qtpy import QtCore
+from PyQt5.QtWidgets import QMessageBox
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.ui.presenter.InitializeCalibrationPresenter import CalibrationCheck
 
 
 @pytest.fixture()
-def mock_View():
+def calibrationCheck():
     view = Mock()
-    view.beginFlowButton = Mock()
-    view.beginFlowButton.setEnabled = Mock()
-    view.getRunNumber = Mock(return_value=12345)
-    view.layout = Mock()
-    view.layout().addWidget = Mock()
-    return view
+    return CalibrationCheck(view=view)
 
 
-def test_labelView(mock_View, qtbot):  # noqa: ARG001
-    calibrationCheck = CalibrationCheck(mock_View)
-    test_text = "Test"
-    calibrationCheck._labelView(test_text)
+def test_handleButtonClicked(calibrationCheck):
+    view = calibrationCheck.view
+    view.getRunNumber.return_value = "12345"
 
-    mock_View.layout().addWidget.assert_called()
+    with patch.object(calibrationCheck, "worker_pool") as worker_pool, patch.object(
+        calibrationCheck, "interfaceController"
+    ) as interfaceController:
+        stateCheckRequest = SNAPRequest(path="/calibration/hasState", payload="12345")
 
-
-def test_handleButtonClicked(mock_View, qtbot):  # noqa: ARG001
-    with patch(
-        "snapred.ui.presenter.InitializeCalibrationPresenter.CalibrationCheck.worker_pool.createWorker",
-        return_value=Mock(),
-    ) as mock_createWorker:
-        calibrationCheck = CalibrationCheck(mock_View)
         calibrationCheck.handleButtonClicked()
 
-        mock_createWorker.assert_called_once_with(
-            target=calibrationCheck.interfaceController.executeRequest,
-            args=SNAPRequest(path="/calibration/hasState", payload="12345"),
+        view.getRunNumber.assert_called_once()
+        worker_pool.createWorker.assert_called_once_with(
+            target=interfaceController.executeRequest, args=(stateCheckRequest)
         )
+        worker_pool.submitWorker.assert_called_once()
 
 
-def test_handlePixelGroupingResult(mock_View, qtbot):  # noqa: ARG001
-    calibrationCheck = CalibrationCheck(mock_View)
-    mock_response = Mock()
-    mock_response.code = 200
+def test_handleStateCheckResult_no_state(calibrationCheck):
+    response = Mock(spec=SNAPResponse)
+    response.code = 500
+    response.data = False
+    response.message = "Sample message"
 
-    mock_labelView = Mock()
-    calibrationCheck._labelView = mock_labelView
+    with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes) as mock_question, patch.object(
+        calibrationCheck, "_labelView"
+    ) as labelView, patch.object(calibrationCheck, "_spawnStateCreationWorkflow") as spawnStateCreationWorkflow:
+        calibrationCheck.handleStateCheckResult(response)
 
-    calibrationCheck.handlePixelGroupingResult(mock_response)
+        labelView.assert_called_once_with("Sample message")
+        spawnStateCreationWorkflow.assert_called_once()
+        mock_question.assert_called_once()
 
-    calibrationCheck._labelView.assert_called_with("Ready to Calibrate!")
+
+def test_handleStateCheckResult_no_state_user_declined(calibrationCheck):
+    response = Mock(spec=SNAPResponse)
+    response.code = 500
+    response.data = False
+    response.message = "Sample message"
+
+    with patch.object(QMessageBox, "question", return_value=QMessageBox.No) as mock_question, patch.object(
+        calibrationCheck, "_labelView"
+    ) as labelView, patch.object(calibrationCheck, "_spawnStateCreationWorkflow") as spawnStateCreationWorkflow:
+        calibrationCheck.handleStateCheckResult(response)
+
+        labelView.assert_has_calls([call("Sample message"), call("State was not initialized.")])
+        spawnStateCreationWorkflow.assert_not_called()
+        mock_question.assert_called_once()
