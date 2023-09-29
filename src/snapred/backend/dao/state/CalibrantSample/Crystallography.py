@@ -24,10 +24,33 @@ class Crystallography(BaseModel):
     cif_file: str
     space_group: str
     lattice_parameters: List[float]
-    atom_type: str
-    atom_coordinates: List[float]
-    site_occupation_factor: float
-    adp: Optional[float]
+
+    class atom(BaseModel):
+        atom_type: str
+        atom_coordinates: List[float]
+        site_occupation_factor: float
+        adp: Optional[float]
+
+        @validator("atom_coordinates", allow_reuse=True)
+        def validate_atom_coordinates(cls, v):
+            if not all(-1 <= val <= 1 for val in v) and not len(v) == 3:
+                raise ValueError("atom coordinates must be 3 values (x, y, z) all in range [-1, 1]")
+            return v
+
+        @validator("site_occupation_factor", allow_reuse=True)
+        def validate_site_occupation_factor(cls, v):
+            if v < 0 or v > 1:
+                raise ValueError("Site occupation factor must be a value in range [0, 1]")
+            return v
+
+        @validator("adp", allow_reuse=True)
+        def validate_adp(cls, v):
+            if v is not None:
+                if v < 0:
+                    raise ValueError("adp must be a positive value")
+            return v or 0.1
+
+    atoms: List[atom]
 
     @validator("cif_file", allow_reuse=True)
     def validate_cif_file(cls, v):
@@ -42,22 +65,3 @@ class Crystallography(BaseModel):
         if len(v) != 6:
             raise ValueError("lattice parameters must be a list of 6 floats: a, b, c, alpha, beta, gamma")
         return v
-
-    @validator("atom_coordinates", allow_reuse=True)
-    def validate_atom_coordinates(cls, v):
-        if not all(-1 <= val <= 1 for val in v) and not len(v) == 3:
-            raise ValueError("atom coordinates must be 3 values (x, y, z) all in range [-1, 1]")
-        return v
-
-    @validator("site_occupation_factor", allow_reuse=True)
-    def validate_site_occupation_factor(cls, v):
-        if v < 0 or v > 1:
-            raise ValueError("Site occupation factor must be a value in range [0, 1]")
-        return v
-
-    @validator("adp", allow_reuse=True)
-    def validate_adp(cls, v):
-        if v is not None:
-            if v < 0:
-                raise ValueError("adp must be a positive value")
-        return v or 0.1
