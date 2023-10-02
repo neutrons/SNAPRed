@@ -1,3 +1,7 @@
+## This is for testing EWM 2357
+#   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=2357
+# Should verify that peaks are removed from the spetrum and there is a smooth fit over the removed parts
+
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,9 +18,9 @@ snapredLogger._level = 20
 from typing import List
 
 #User inputs ###########################
-runNumber = ‘58882’#58409'
-cifPath = ‘/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif’
-groupingFile = ‘/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml’
+runNumber = "58882" #58409
+cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
+groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
 #######################################
 
 
@@ -35,10 +39,10 @@ instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters[0]
 ws = "raw_data"
 LoadEventNexus(Filename=rawDataPath, OutputWorkspace=ws)
 
-ingredients = SmoothDataExcludingPeaksIngredients(instrumentState=instrumentState, crystalInfo=crystalInfoDict[‘crystalInfo’], smoothingParameter=0.05)
+ingredients = SmoothDataExcludingPeaksIngredients(instrumentState=instrumentState, crystalInfo=crystalInfoDict['crystalInfo'], smoothingParameter=0.05)
 
 algo = SmoothDataExcludingPeaks()
 algo.initialize()
-algo.setProperty(“Ingredients”, ingredients.json())
-algo.setProperty(“InputWorkspace”, ws)
+algo.setProperty("Ingredients", ingredients.json())
+algo.setProperty("InputWorkspace", ws)
 algo.execute()

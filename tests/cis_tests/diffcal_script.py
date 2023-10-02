@@ -1,3 +1,12 @@
+## This script is to test EWM 1126 and EWM 2166
+#   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=1126
+#   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=2166
+# This tests that 
+#  1. the algorithm will run,
+#  2. the algorithm will create a calibration table, 
+#  #. the algorithm will convergence to within a threshold.
+# Adjust the convergenceThreshold parameter below, and compare to the "medianOffset" in the calData dictionary
+
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,9 +27,9 @@ from pydantic import parse_raw_as
 from typing import List
 
 #User inputs ###########################
-runNumber = ‘58882’#58409'
-cifPath = ‘/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif’
-groupingFile = ‘/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml’
+runNumber = '58882' #58409
+cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif'
+groupingFile = '/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml'
 #######################################
 
 
@@ -36,12 +45,12 @@ instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters[0]
 
 detectorAlgo = DetectorPeakPredictor()
 detectorAlgo.initialize()
-detectorAlgo.setProperty(“InstrumentState”, instrumentState.json())
-detectorAlgo.setProperty(“CrystalInfo”, crystalInfoDict[‘crystalInfo’].json())
-detectorAlgo.setProperty(“PeakIntensityThreshold”, 0.01)
+detectorAlgo.setProperty("InstrumentState", instrumentState.json())
+detectorAlgo.setProperty("CrystalInfo", crystalInfoDict["crystalInfo"].json())
+detectorAlgo.setProperty("PeakIntensityThreshold", 0.01)
 detectorAlgo.execute()
 
-peakList = detectorAlgo.getProperty(“DetectorPeaks”).value
+peakList = detectorAlgo.getProperty("DetectorPeaks").value
 peakList = parse_raw_as(List[GroupPeakList], peakList)
 
 runConfig = dataFactoryService.getRunConfig(runNumber)
@@ -63,8 +72,8 @@ diffractionCalibrationIngredients = DiffractionCalibrationIngredients(
 
 algo = CalculateOffsetDIFC()
 algo.initialize()
-algo.setProperty(‘Ingredients’,diffractionCalibrationIngredients.json())
+algo.setProperty('Ingredients',diffractionCalibrationIngredients.json())
 algo.execute()
-calTable = algo.getProperty(‘CalibrationTable’)
-wsOut = algo.getProperty(‘OutputWorkspace’)
-calData = algo.getProperty(‘data’)
+calTable = algo.getProperty('CalibrationTable')
+wsOut = algo.getProperty('OutputWorkspace')
+calData = algo.getProperty('data')

@@ -1,3 +1,5 @@
+## This is an example script, showing how some simple ingredients can be initialized using SNAPRed as a library
+
 import sys
 
 sys.path.append("/home/4rx/SNAPRed/src")

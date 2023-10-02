@@ -1,3 +1,10 @@
+## This script is for EWM 2128
+#   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=2128
+# This is testing that:
+#  1. the widths of peaks are treated larger on right side than left side
+#  2. changing the peak tail coefficient property will change this width
+
+
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
