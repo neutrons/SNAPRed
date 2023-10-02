@@ -43,7 +43,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             # do the overlap rejection logic on unique peaks
             peakList = list(uniquePeaks)
             nPks = len(peakList)
-            keep = [True for _ in range(nPks)]
+            keep = [True for i in range(nPks)]
             outputPeakList = []
             for i in range(nPks - 1):
                 if keep[i]:
@@ -58,7 +58,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             if nPks > 0 and keep[-1]:
                 outputPeakList.append(peakList[-1])
 
-            self.log().notice(f"{nPks} peaks in and {len(outputPeakList)} peaks out")
+            self.log().notice(f" {nPks} peaks in and {len(outputPeakList)} peaks out")
             outputGroupPeakList = GroupPeakList(
                 groupID=groupPeakList.groupID,
                 peaks=outputPeakList,
