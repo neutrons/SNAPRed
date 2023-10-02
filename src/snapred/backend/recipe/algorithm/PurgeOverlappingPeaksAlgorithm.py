@@ -38,10 +38,10 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             groupPeakList = GroupPeakList.parse_obj(focusGroupPeaks_json)
 
             # ensure peaks are unique
-            unique_peaks = {peak.position.value: peak for peak in groupPeakList.peaks}.values()
+            uniquePeaks = {peak.position.value: peak for peak in groupPeakList.peaks}.values()
 
             # do the overlap rejection logic on unique peaks
-            peakList = list(unique_peaks)
+            peakList = list(uniquePeaks)
             nPks = len(peakList)
             keep = [True for _ in range(nPks)]
             outputPeakList = []
