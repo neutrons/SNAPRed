@@ -20,7 +20,7 @@ class Atom(BaseModel):
     atom_type: str
     atom_coordinates: List[float]
     site_occupation_factor: float
-    adp: Optional[float]
+    adp: float = 0.1
 
     @validator("atom_coordinates", allow_reuse=True)
     def validate_atom_coordinates(cls, v):
@@ -36,7 +36,16 @@ class Atom(BaseModel):
 
     @validator("adp", allow_reuse=True)
     def validate_adp(cls, v):
-        if v is not None:
-            if v < 0:
-                raise ValueError("adp must be a positive value")
-        return v or 0.1
+        if v < 0:
+            raise ValueError("adp must be a positive value")
+        return v
+
+    @property
+    def getString(self) -> str:
+        atomicString = self.atom_type
+        atomicString += f" {self.atom_coordinates[0]}"
+        atomicString += f" {self.atom_coordinates[1]}"
+        atomicString += f" {self.atom_coordinates[2]}"
+        atomicString += f" {self.site_occupation_factor}"
+        atomicString += f" {self.adp}"
+        return atomicString

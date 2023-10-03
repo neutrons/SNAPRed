@@ -18,6 +18,10 @@ class Crystallography(BaseModel):
     lattice_parameters: List[float]
     atoms: List[Atom]
 
+    @property
+    def spaceGroupString(self) -> str:
+        return ";".join([f"{atom.getString}" for atom in self.atoms])
+
     @validator("cif_file", allow_reuse=True)
     def validate_cif_file(cls, v):
         if not os.path.exists(v):
