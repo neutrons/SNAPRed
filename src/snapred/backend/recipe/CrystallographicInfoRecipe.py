@@ -1,4 +1,5 @@
 from typing import Any, Dict
+import math
 
 from mantid.api import AlgorithmManager
 
@@ -45,7 +46,7 @@ class CrystallographicInfoRecipe:
 
         # take lowest one percent
         numPeaks = len(xtal.fSquared)
-        lowest = max(1, round(numPeaks / 100))
+        lowest = max(1, math.ceil(numPeaks / 100))
 
         # get the subset of I0 corresponding to the lowest 1%
         subset = I0[:lowest]
