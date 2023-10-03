@@ -1,5 +1,5 @@
-from typing import Any, Dict
 import math
+from typing import Any, Dict
 
 from mantid.api import AlgorithmManager
 
