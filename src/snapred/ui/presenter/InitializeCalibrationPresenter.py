@@ -88,7 +88,7 @@ class CalibrationCheck(QObject):
             self._labelView(str(response.message))
             return
 
-        elif response.code == 500:
+        elif response.code == 500 or (response.code == 200 and response.data is False):
             reply = QMessageBox.question(
                 self.view,
                 "Initialize State",
