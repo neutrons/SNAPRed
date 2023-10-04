@@ -1,32 +1,79 @@
-import sys
-
-sys.path.append("/home/4rx/SNAPRed/src")
+## This script is to test EWM 1126 and EWM 2166
+#   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=1126
+#   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=2166
+# This tests that 
+#  1. the algorithm will run,
+#  2. the algorithm will create a calibration table, 
+#  #. the algorithm will convergence to within a threshold.
+# Adjust the convergenceThreshold parameter below, and compare to the "medianOffset" in the calData dictionary
 
 from mantid.simpleapi import *
-from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
-from snapred.backend.dao.SNAPRequest import SNAPRequest
+import matplotlib.pyplot as plt
+import numpy as np
+import json
+from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
+from snapred.backend.data.DataFactoryService import DataFactoryService
+from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
+from snapred.backend.service.CalibrationService import CalibrationService
+from snapred.backend.log.logger import snapredLogger
+from snapred.meta.redantic import list_to_raw_pretty
+snapredLogger._level = 20
 
-# this will run a request to initialize a calibration state
-initializeStateRequest = InitializeStateRequest(runId="58882", humanReadableName="DAC setting 2.4 Ang")
-print(initializeStateRequest)
-request = SNAPRequest(path="calibration/initializeState", payload=initializeStateRequest.json())
-print(request)
-interfaceController = InterfaceController()
-res = interfaceController.executeRequest(request)
+#diffraction calibration imports
+from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import CalculateOffsetDIFC
+from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
+from snapred.backend.dao import RunConfig, DetectorPeak, GroupPeakList
+from pydantic import parse_raw_as
+from typing import List
 
-# the quantity res is a SNAPResponse object
-# it has three members:
-#   code: ResponseCode
-#   message: string
-#   data: dictionary
-# the data dictionary correspond to the object requested
-# in this case, it corresponds to a calibration object
-print(f"code: {res.code}\nmessage: {res.message}")
-print(f"data: {res.data}")
+#User inputs ###########################
+runNumber = '58882' #58409
+cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif'
+groupingFile = '/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml'
+#######################################
 
-from snapred.backend.dao.calibration.Calibration import Calibration
 
-calibration = Calibration.parse_obj(res.data)
-print("success initialize calibration state")
-assert False
+dataFactoryService=DataFactoryService()
+calibrationService = CalibrationService()
+pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
+calibration = dataFactoryService.getCalibrationState(runNumber)
+# focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
+
+instrumentState = calibration.instrumentState
+crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
+instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters[0]
+
+detectorAlgo = DetectorPeakPredictor()
+detectorAlgo.initialize()
+detectorAlgo.setProperty("InstrumentState", instrumentState.json())
+detectorAlgo.setProperty("CrystalInfo", crystalInfoDict["crystalInfo"].json())
+detectorAlgo.setProperty("PeakIntensityThreshold", 0.01)
+detectorAlgo.execute()
+
+peakList = detectorAlgo.getProperty("DetectorPeaks").value
+peakList = parse_raw_as(List[GroupPeakList], peakList)
+
+runConfig = dataFactoryService.getRunConfig(runNumber)
+
+focusGroup=dataFactoryService.getFocusGroups(runNumber)[0] #column
+
+convergenceThreshold = 0.1
+
+calPath = instrumentState.instrumentConfig.calibrationDirectory
+
+diffractionCalibrationIngredients = DiffractionCalibrationIngredients(
+        runConfig=runConfig,
+        instrumentState=instrumentState,
+        focusGroup=focusGroup,
+        groupedPeakLists=peakList,
+        calPath=calPath,
+        threshold=convergenceThreshold)
+
+
+algo = CalculateOffsetDIFC()
+algo.initialize()
+algo.setProperty('Ingredients',diffractionCalibrationIngredients.json())
+algo.execute()
+calTable = algo.getProperty('CalibrationTable')
+wsOut = algo.getProperty('OutputWorkspace')
+calData = algo.getProperty('data')
