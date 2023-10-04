@@ -10,6 +10,7 @@ from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
+
 @Singleton
 class CrystallographicInfoRecipe:
     ingestionAlgorithmName: str = IngestCrystallographicInfoAlgorithm.__name__
@@ -43,5 +44,5 @@ class CrystallographicInfoRecipe:
 
         # calculate the threshold as 0.05 * max(I0) or a user-specified multiplier
         threshold = self.threshold_multiplier * max(I0)
-        
+
         return threshold
