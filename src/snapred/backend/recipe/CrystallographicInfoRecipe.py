@@ -10,13 +10,12 @@ from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
-
 @Singleton
 class CrystallographicInfoRecipe:
     ingestionAlgorithmName: str = IngestCrystallographicInfoAlgorithm.__name__
 
-    def __init__(self):
-        pass
+    def __init__(self, threshold_multiplier: float = 0.05):
+        self.threshold_multiplier = threshold_multiplier
 
     def executeRecipe(self, cifPath: str, dMin: float = 0.1, dMax: float = 100.0) -> Dict[str, Any]:
         logger.info("Ingesting crystal info: %s" % cifPath)
@@ -38,23 +37,11 @@ class CrystallographicInfoRecipe:
 
     def findFSquaredThreshold(self, xtal: CrystallographicInfo):
         # set a threshold for weak peaks in the spectrum
-        # this uses the median of lowest 1% of intensities
 
         # intensity is fsq times multiplicities
         I0 = [ff * mm * (dd**4) for ff, mm, dd in zip(xtal.fSquared, xtal.multiplicities, xtal.dSpacing)]
-        I0.sort()
 
-        # take lowest one percent
-        numPeaks = len(xtal.fSquared)
-        lowest = max(1, math.ceil(numPeaks / 100))
-
-        # get the subset of I0 corresponding to the lowest 1%
-        subset = I0[:lowest]
-
-        # compute the median of this subset
-        if len(subset) % 2 == 0:  # even length
-            median = (subset[len(subset) // 2 - 1] + subset[len(subset) // 2]) / 2.0
-        else:  # odd length
-            median = subset[len(subset) // 2]
-
-        return median
+        # calculate the threshold as 0.05 * max(I0) or a user-specified multiplier
+        threshold = self.threshold_multiplier * max(I0)
+        
+        return threshold
