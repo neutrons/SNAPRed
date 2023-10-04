@@ -120,7 +120,8 @@ class CalibrationService(Service):
         # need to calculate these using DetectorPeakPredictor
         # 4a. InstrumentState
         # 4b. CrystalInfo
-        crystalInfo = CrystallographicInfoService().ingest(request.cifPath)
+        calibrantSample = self.dataFactoryService.getCalibrantSample(request.cifPath.split("/")[-1])
+        crystalInfo = CrystallographicInfoService().ingest(calibrantSample.crystallography.cif_file)
         # 4c. PeakIntensityThreshold
         peakIntensityThreshold = request.peakIntensityThreshold
         detectorPeaks = DetectorPeakPredictorRecipe().executeRecipe(

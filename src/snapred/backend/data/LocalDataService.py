@@ -545,6 +545,15 @@ class LocalDataService:
             raise ValueError(f"the file '{filePath}' already exists")
         write_model_pretty(sample, filePath)
 
+    def readCalibrantSample(self, sampleId: str):
+        samplePath: str = Config["samples.home"]
+        fileName: str = sampleId + ".json"
+        filePath = os.path.join(samplePath, fileName)
+        if not os.path.exists(filePath):
+            raise ValueError(f"the file '{filePath}' does not exist")
+        sample = parse_file_as(CalibrantSamples, filePath)
+        return sample
+
     def _getCurrentCalibrationRecord(self, runId: str):
         version = self._getVersionFromCalibrationIndex(runId)
         return self.readCalibrationRecord(runId, version)
