@@ -15,8 +15,8 @@ logger = snapredLogger.getLogger(__name__)
 class CrystallographicInfoRecipe:
     ingestionAlgorithmName: str = IngestCrystallographicInfoAlgorithm.__name__
 
-    def __init__(self, threshold_multiplier: float = 0.05):
-        self.threshold_multiplier = threshold_multiplier
+    def __init__(self, thresholdMultiplier: float = 0.05):
+        self.thresholdMultiplier = thresholdMultiplier
 
     def executeRecipe(self, cifPath: str, dMin: float = 0.1, dMax: float = 100.0) -> Dict[str, Any]:
         logger.info("Ingesting crystal info: %s" % cifPath)
@@ -43,6 +43,6 @@ class CrystallographicInfoRecipe:
         I0 = [ff * mm * (dd**4) for ff, mm, dd in zip(xtal.fSquared, xtal.multiplicities, xtal.dSpacing)]
 
         # calculate the threshold as 0.05 * max(I0) or a user-specified multiplier
-        threshold = self.threshold_multiplier * max(I0)
-
+        threshold = self.thresholdMultiplier * max(I0)
+        
         return threshold
