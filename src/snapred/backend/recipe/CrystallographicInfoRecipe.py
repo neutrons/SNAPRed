@@ -44,5 +44,5 @@ class CrystallographicInfoRecipe:
 
         # calculate the threshold as 0.05 * max(I0) or a user-specified multiplier
         threshold = self.thresholdMultiplier * max(I0)
-        
+
         return threshold
