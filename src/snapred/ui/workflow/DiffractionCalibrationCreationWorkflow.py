@@ -5,7 +5,11 @@ from qtpy.QtWidgets import QLabel
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest
 from snapred.backend.dao.calibration import CalibrationIndexEntry, CalibrationRecord
-from snapred.backend.dao.request import CalibrationAssessmentRequest, CalibrationExportRequest
+from snapred.backend.dao.request import (
+    CalibrationAssessmentRequest,
+    CalibrationExportRequest,
+    DiffractionCalibrationRequest,
+)
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.CalibrationAssessmentView import CalibrationAssessmentView
 from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
@@ -70,8 +74,8 @@ class DiffractionCalibrationCreationWorkflow:
     def _triggerCalibrationReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration reduction
+        view.verify()
 
-        # TODO: prepopulate next run number
         self.runNumber = view.getFieldText("runNumber")
         sampleIndex = view.sampleDropdown.currentIndex()
 
@@ -79,8 +83,16 @@ class DiffractionCalibrationCreationWorkflow:
         self._calibrationAssessmentView.updateRunNumber(self.runNumber)
         self._saveCalibrationView.updateRunNumber(self.runNumber)
 
-        payload = RunConfig(runNumber=self.runNumber)
-        request = SNAPRequest(path="calibration/reduction", payload=payload.json())
+        payload = DiffractionCalibrationRequest(
+            runNumber=self.runNumber,
+            cifPath=view.sampleDropdown.currentText(),
+            focusGroupPath=view.groupDropdown.currentText(),
+            convergenceThreshold=float(view.getFieldText("convergenceThreshold")),
+            peakIntensityThreshold=float(view.getFieldText("peakIntensityThreshold")),
+            nBinsAcrossPeakWidth=int(view.getFieldText("nBinsAcrossPeakWidth")),
+        )
+
+        request = SNAPRequest(path="calibration/diffraction", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
         return response
@@ -91,7 +103,9 @@ class DiffractionCalibrationCreationWorkflow:
         # pull fields from view for calibration assessment
         runNumber = view.fieldRunNumber.text()
         payload = CalibrationAssessmentRequest(
-            run=RunConfig(runNumber=runNumber), cifPath=view.sampleDropdown.currentText()
+            run=RunConfig(runNumber=runNumber),
+            workspace=self.responses[-1]["outputWorkspace"],
+            focusGroupPath=view.groupDropdown.currentText(),
         )
         request = SNAPRequest(path="calibration/assessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
@@ -102,6 +116,7 @@ class DiffractionCalibrationCreationWorkflow:
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration save
         calibrationRecord = CalibrationRecord(**self.responses[-1].data)
+        calibrationRecord.workspaceNames.append(self.responses[-2]["calibrationTable"])
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=view.getFieldText("calibrationIndexEntry.runNumber"),
             comments=view.getFieldText("calibrationIndexEntry.comments"),

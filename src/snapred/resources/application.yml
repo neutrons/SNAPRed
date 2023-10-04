@@ -38,6 +38,10 @@ calibration:
     output:
       extension: .nxs
       format: "{}_calibration_reduction_result"
+  diffraction:
+    convergenceThreshold: 0.05
+    peakIntensityThreshold: 0.05
+    nBinsAcrossPeakWidth: 10
   parameters:
     default:
       # degrees

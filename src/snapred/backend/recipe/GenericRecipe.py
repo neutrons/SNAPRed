@@ -4,7 +4,9 @@ from typing import Generic, TypeVar, get_args
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import CalibrationReductionAlgorithm
+from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
+from snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict import GenerateTableWorkspaceFromListOfDict
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
@@ -86,4 +88,12 @@ class LiteDataRecipe(GenericRecipe[LiteDataCreationAlgo]):
 
 
 class VanadiumFocussedReductionRecipe(GenericRecipe[VanadiumFocussedReductionAlgorithm]):
+    pass
+
+
+class DetectorPeakPredictorRecipe(GenericRecipe[DetectorPeakPredictor]):
+    pass
+
+
+class GenerateTableWorkspaceFromListOfDictRecipe(GenericRecipe[GenerateTableWorkspaceFromListOfDict]):
     pass

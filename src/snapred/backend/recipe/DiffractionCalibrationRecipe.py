@@ -70,6 +70,7 @@ class DiffractionCalibrationRecipe:
         try:
             calibrateAlgo.execute()
             data["calibrationTable"] = calibrateAlgo.getProperty("FinalCalibrationTable").value
+            data["outputWorkspace"] = calibrateAlgo.getProperty("OutputWorkspace").value
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
