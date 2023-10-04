@@ -29,7 +29,7 @@ with mock.patch.dict(
             assert xtal.hkl[5] == (4, 0, 0)
             assert xtal.dSpacing[0] == 3.13592994862768
             assert xtal.dSpacing[4] == 1.0453099828758932
-            assert data["fSquaredThreshold"] == 65.53023494434723
+            assert data["fSquaredThreshold"] == 385466.98735179077
 
     def test_failed_path():
         """Test failure of crystal ingestion recipe with a bad path name"""
@@ -46,7 +46,7 @@ with mock.patch.dict(
         mock_xtal.multiplicities = [1, 2, 3, 4, 5] * 20
         mock_xtal.dSpacing = [1] * 100
 
-        assert ingestRecipe.findFSquaredThreshold(mock_xtal) == 36
+        assert ingestRecipe.findFSquaredThreshold(mock_xtal) == 33.75
 
     def test_weak_f_squared_median():
         """Test weak fSquared method finds median of lowest 1%"""
@@ -58,7 +58,7 @@ with mock.patch.dict(
 
         lowFsq = ingestRecipe.findFSquaredThreshold(mock_xtal)
         assert lowFsq != 36
-        assert lowFsq == 41
+        assert lowFsq == 83.75
 
     def test_weak_f_squared_small():
         """Test weak fSquared method finds an answer with small number of options"""
@@ -67,7 +67,7 @@ with mock.patch.dict(
         mock_xtal.fSquared = [2, 3, 4, 5]
         mock_xtal.multiplicities = [1, 1, 1, 1]
         mock_xtal.dSpacing = [1, 1, 1, 1]
-        assert ingestRecipe.findFSquaredThreshold(mock_xtal) == 2
+        assert ingestRecipe.findFSquaredThreshold(mock_xtal) == 0.25
 
     def test_weak_f_squared_one():
         """Test weak fSquared method finds an answer with only one option"""
@@ -77,7 +77,7 @@ with mock.patch.dict(
         mock_xtal.multiplicities = [1]
         mock_xtal.dSpacing = [1]
 
-        assert ingestRecipe.findFSquaredThreshold(mock_xtal) == 2
+        assert ingestRecipe.findFSquaredThreshold(mock_xtal) == 0.1
 
     ## from silicon calibrant, courtesy of Malcolm
     example_xtal_info = [
@@ -133,9 +133,10 @@ with mock.patch.dict(
 
         ingestRecipe = CrystallographicInfoRecipe()
 
-        lowF = example_xtal_info[22][2]
-        lowM = example_xtal_info[22][3]
-        lowD = example_xtal_info[22][1]
-        lowFsq = lowF * lowM * (lowD**4)
+        # Calculate I0 for each entry
+        I0 = [ff * mm * (dd**4) for ff, mm, dd in zip(fsq, mul, d)]
 
-        assert ingestRecipe.findFSquaredThreshold(xtalInfo) == lowFsq
+        # Calculate the expected threshold based on the new definition
+        expected_threshold = 0.05 * max(I0)
+
+        assert ingestRecipe.findFSquaredThreshold(xtalInfo) == expected_threshold
