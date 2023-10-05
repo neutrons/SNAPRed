@@ -86,7 +86,7 @@ class LocalDataService:
         except KeyError as e:
             raise KeyError(f"{e}: while reading instrument configuration '{self.instrumentConfigPath}'") from e
         if self.dataPath:
-            instrumentConfig.calibrationDirectory = self.dataPath / "shared/Calibration/"
+            instrumentConfig.calibrationDirectory = Path(Config["instrument.calibration.home"])
             if self.verifyPaths and not instrumentConfig.calibrationDirectory.exists():
                 raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
 

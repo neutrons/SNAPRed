@@ -36,11 +36,12 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         for focusGroupPeaks_json in predictedPeaks_json:
             # build a list of DetectorPeak objects for this focus group
             groupPeakList = GroupPeakList.parse_obj(focusGroupPeaks_json)
-            peakList = []
-            for peak in groupPeakList.peaks:
-                peakList.append(peak)
 
-            # do the overlap rejection logic
+            # ensure peaks are unique
+            uniquePeaks = {peak.position.value: peak for peak in groupPeakList.peaks}.values()
+
+            # do the overlap rejection logic on unique peaks
+            peakList = list(uniquePeaks)
             nPks = len(peakList)
             keep = [True for i in range(nPks)]
             outputPeakList = []
