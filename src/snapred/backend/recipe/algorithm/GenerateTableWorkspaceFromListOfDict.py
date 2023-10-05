@@ -14,11 +14,11 @@ class GenerateTableWorkspaceFromListOfDict(PythonAlgorithm):
         self.declareProperty("ListOfDict", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="outputTable", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, self.__name__)
+        self.mantidSnapper = MantidSnapper(self, self.__class__.__name__)
 
     def PyExec(self):
-        listOfDict = json.loads(self.getProperty("ListOfDict"))
-        outputWorkspace = self.getProperty("OutputWorkspace")
+        listOfDict = json.loads(self.getProperty("ListOfDict").value)
+        outputWorkspace = self.getProperty("OutputWorkspace").value
         self.mantidSnapper.CreateEmptyTableWorkspace(
             "Initializing empty table workspace...", OutputWorkspace=outputWorkspace
         )

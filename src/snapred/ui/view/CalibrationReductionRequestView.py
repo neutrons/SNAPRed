@@ -42,7 +42,7 @@ class CalibrationReductionRequestView(BackendRequestView):
 
     def verify(self):
         if self.sampleDropdown.currentIndex() == 0:
-            raise Exception("Please select a sample")
+            raise ValueError("Please select a sample")
         if self.groupingFileDropdown.currentIndex() == 0:
-            raise Exception("Please select a grouping file")
+            raise ValueError("Please select a grouping file")
         return True

@@ -31,6 +31,11 @@ class LabeledField(QWidget):
     def field(self):
         return self._field
 
+    def get(self, default=None):
+        if "" == self._field.text():
+            return default
+        return self.text()
+
     def text(self):
         return self._field.text()
 

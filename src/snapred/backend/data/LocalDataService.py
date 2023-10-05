@@ -554,6 +554,16 @@ class LocalDataService:
         sample = parse_file_as(CalibrantSamples, filePath)
         return sample
 
+    def readCifFilePath(self, sampleId: str):
+        samplePath: str = Config["samples.home"]
+        fileName: str = sampleId + ".json"
+        filePath = os.path.join(samplePath, fileName)
+        if not os.path.exists(filePath):
+            raise ValueError(f"the file '{filePath}' does not exist")
+        with open(filePath, "r") as f:
+            calibrantSampleDict = json.load(f)
+        return calibrantSampleDict["crystallography"]["cif_file"]
+
     def _getCurrentCalibrationRecord(self, runId: str):
         version = self._getVersionFromCalibrationIndex(runId)
         return self.readCalibrationRecord(runId, version)

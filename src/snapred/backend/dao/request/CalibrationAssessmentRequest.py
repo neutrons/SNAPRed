@@ -15,4 +15,5 @@ class CalibrationAssessmentRequest(BaseModel):
     run: RunConfig
     workspace: str
     focusGroupPath: str
+    cifPath: str
     nBinsAcrossPeakWidth: Optional[int] = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

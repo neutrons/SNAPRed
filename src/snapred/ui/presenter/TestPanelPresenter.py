@@ -91,7 +91,7 @@ class TestPanelPresenter(object):
             logger.warn("No default values for path: {}".format(defaultFilePath))
 
     def _createDiffractionCalibrationWorkflow(self):
-        path = "calibration/reduction/runs"
+        path = "calibration/diffraction/request"
         logger.info("Creating workflow for path: {}".format(path))
         jsonSchema = self._getSchemaForSelection(path)
         logger.info("Schema for path: {}".format(jsonSchema))

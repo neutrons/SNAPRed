@@ -10,6 +10,7 @@ from snapred.backend.dao.request import (
     CalibrationExportRequest,
     DiffractionCalibrationRequest,
 )
+from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.CalibrationAssessmentView import CalibrationAssessmentView
 from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
@@ -74,7 +75,10 @@ class DiffractionCalibrationCreationWorkflow:
     def _triggerCalibrationReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration reduction
-        view.verify()
+        try:
+            view.verify()
+        except ValueError as e:
+            return SNAPResponse(code=500, message=f"Missing Fields!{e}")
 
         self.runNumber = view.getFieldText("runNumber")
         sampleIndex = view.sampleDropdown.currentIndex()
@@ -82,30 +86,31 @@ class DiffractionCalibrationCreationWorkflow:
         self._calibrationAssessmentView.updateSample(sampleIndex)
         self._calibrationAssessmentView.updateRunNumber(self.runNumber)
         self._saveCalibrationView.updateRunNumber(self.runNumber)
+        self.focusGroupPath = view.groupingFileDropdown.currentText()
+        self.cifPath = view.sampleDropdown.currentText()
 
         payload = DiffractionCalibrationRequest(
-            runNumber=self.runNumber,
-            cifPath=view.sampleDropdown.currentText(),
-            focusGroupPath=view.groupDropdown.currentText(),
-            convergenceThreshold=float(view.getFieldText("convergenceThreshold")),
-            peakIntensityThreshold=float(view.getFieldText("peakIntensityThreshold")),
-            nBinsAcrossPeakWidth=int(view.getFieldText("nBinsAcrossPeakWidth")),
+            runNumber=self.runNumber, cifPath=self.cifPath, focusGroupPath=self.focusGroupPath
         )
+        payload.convergenceThreshold = view.fieldConvergnceThreshold.get(payload.convergenceThreshold)
+        payload.peakIntensityThreshold = view.fieldPeakIntensityThreshold.get(payload.peakIntensityThreshold)
+        payload.nBinsAcrossPeakWidth = view.fieldNBinsAcrossPeakWidth.get(payload.nBinsAcrossPeakWidth)
+        self.nBinsAcrossPeakWidth = payload.nBinsAcrossPeakWidth
 
         request = SNAPRequest(path="calibration/diffraction", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
         return response
 
-    def _assessCalibration(self, workflowPresenter):
+    def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
         # TODO Load Previous ->
-        view = workflowPresenter.widget.tabView
         # pull fields from view for calibration assessment
-        runNumber = view.fieldRunNumber.text()
         payload = CalibrationAssessmentRequest(
-            run=RunConfig(runNumber=runNumber),
-            workspace=self.responses[-1]["outputWorkspace"],
-            focusGroupPath=view.groupDropdown.currentText(),
+            run=RunConfig(runNumber=self.runNumber),
+            workspace=self.responses[-1].data["outputWorkspace"],
+            focusGroupPath=self.focusGroupPath,
+            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            cifPath=self.cifPath,
         )
         request = SNAPRequest(path="calibration/assessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
@@ -115,8 +120,8 @@ class DiffractionCalibrationCreationWorkflow:
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration save
-        calibrationRecord = CalibrationRecord(**self.responses[-1].data)
-        calibrationRecord.workspaceNames.append(self.responses[-2]["calibrationTable"])
+        calibrationRecord = self.responses[-1].data
+        calibrationRecord.workspaceNames.append(self.responses[-2].data["calibrationTable"])
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=view.getFieldText("calibrationIndexEntry.runNumber"),
             comments=view.getFieldText("calibrationIndexEntry.comments"),
