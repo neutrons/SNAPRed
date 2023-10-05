@@ -88,6 +88,10 @@ class SaveGroupingDefinition(PythonAlgorithm):
             GroupingWorkspace=grouping_ws_name,
             Filename=outputFilename,
         )
+        self.mantidSnapper.WashDishes(
+            f"Cleanup the zero calibration workspace {cal_ws_name}",
+            Workspace=cal_ws_name,
+        )
         self.mantidSnapper.executeQueue()
 
     def CreateZeroCalibrationWorkspace(self, cal_ws_name) -> None:

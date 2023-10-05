@@ -9,7 +9,6 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 
 name = "CalculateOffsetDIFC"
 

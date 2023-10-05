@@ -100,7 +100,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             for output in outputNames:
                 ws_group.add(output)
 
-        self.mantidSnapper.DeleteWorkspace(
+        self.mantidSnapper.WashDishes(
             "Deleting fitting workspace...",
             Workspace="ws2fit",
         )

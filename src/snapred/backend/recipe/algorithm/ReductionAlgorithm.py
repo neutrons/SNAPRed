@@ -91,8 +91,10 @@ class ReductionAlgorithm(PythonAlgorithm):
             "Applying Diffcal...", InstrumentWorkspace=raw_data, CalibrationWorkspace=diffCalPrefix + "_cal"
         )
 
-        self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Mask", Workspace=diffCalPrefix + "_mask")
-        self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Calibration", Workspace=diffCalPrefix + "_cal")
+        self.mantidSnapper.WashDishes(
+            "Deleting DiffCal Mask",
+            WorkspaceList=[diffCalPrefix + "_mask", diffCalPrefix + "_cal"],
+        )
 
         # 9 Does it have a container? Apply Container Attenuation Correction
         data = self.mantidSnapper.ConvertUnits(
@@ -140,7 +142,10 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.mantidSnapper.NormaliseByCurrent("Normalizing Current ...", InputWorkspace=data, OutputWorkspace=data)
 
         # self.deleteWorkspace(Workspace=rebinned_data_before_focus)
-        self.mantidSnapper.DeleteWorkspace("Deleting Rebinned Data Before Focus...", Workspace="CommonRed")
+        self.mantidSnapper.WashDishes(
+            "Deleting Rebinned Data Before Focus...",
+            Workspace="CommonRed",
+        )
 
         # compress data
         # data = self.compressEvents(InputWorkspace=data, OutputWorkspace='event_compressed_data')
@@ -190,7 +195,7 @@ class ReductionAlgorithm(PythonAlgorithm):
                 Delta=focusGroups[workspaceIndex].dBin,
                 OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[workspaceIndex].name),
             )
-        self.DeleteWorkspace(
+        self.mantidSnapper.WashDishes(
             "Freeing workspace...",
             Workspace="data_minus_vanadium",
         )
