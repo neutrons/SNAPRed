@@ -26,6 +26,7 @@ with mock.patch.dict(
         purgeAlgo.initialize()
         purgeAlgo.setProperty("InstrumentState", instrumentState.json())
         purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
+        purgeAlgo.setProperty("PeakIntensityThreshold", 0.045)
         assert purgeAlgo.getProperty("InstrumentState").value == instrumentState.json()
         assert CrystallographicInfo.parse_raw(purgeAlgo.getProperty("CrystalInfo").value) == crystalInfo
 
@@ -40,6 +41,7 @@ with mock.patch.dict(
         purgeAlgo.initialize()
         purgeAlgo.setProperty("InstrumentState", instrumentState.json())
         purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
+        purgeAlgo.setProperty("PeakIntensityThreshold", 0.05)
         purgeAlgo.execute()
 
         actual_pos_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
@@ -47,3 +49,10 @@ with mock.patch.dict(
         expected_pos_json = json.loads(Resource.read("/outputs/predict_peaks/peaks.json"))
 
         assert expected_pos_json == actual_pos_json
+
+        # test the threshold -- set to over-1 value and verify no peaks are found
+        purgeAlgo.setProperty("PeakIntensityThreshold", 1.2)
+        purgeAlgo.execute()
+        no_pos_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
+        for x in no_pos_json:
+            assert len(x["peaks"]) == 0
