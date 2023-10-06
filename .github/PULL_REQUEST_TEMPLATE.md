@@ -1,4 +1,4 @@
-### Description of work
+## Description of work
 
 <!-- ANSWER
  - What is this for?
@@ -7,7 +7,7 @@
  - How is it supposed to work?
 -->
 
-### Explanation of work
+## Explanation of work
 
 <!-- EXPLAIN, as it seems necessary
  - the techniques used
@@ -21,9 +21,9 @@ As needed, use
 to paste code blocks.
 -->
 
-### To test
+## To test
 
-#### Dev testing
+### Dev testing
 
 <!-- ANSWER
  - What unit tests were added to cover this work?
@@ -31,7 +31,7 @@ to paste code blocks.
  - What parts are you uncertain about? E.g. language features used, new functions defined, etc.
 -->
 
-#### CIS testing
+### CIS testing
 
 <!-- SCRIPT
 Include enough of a script that could be called from workbench to allow the CIS to ensure this works as intended.
@@ -51,7 +51,7 @@ If testing should instead be done from the GUI, explain
  - what will the CIS see?  link to screenshots of both success and failure, if possible
 -->
 
-### Link to EWM item
+## Link to EWM item
 <!-- LINK TO THE EWM HERE -->
 
 <!--
