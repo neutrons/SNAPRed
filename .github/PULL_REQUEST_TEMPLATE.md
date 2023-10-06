@@ -1,11 +1,60 @@
-**Description of work**
+### Description of work
 
-**To test:**
-
-<!--
-There should be sufficient instructions for someone unfamiliar with the application to test
-- unless a specific reviewer is requested.
-If instructions for replicating the fault are contained in the linked issue then it is OK to refer back to these.
+<!-- ANSWER
+ - What is this for?
+ - What purpose does it serve within data reduction?
+ - How does it relate to other parts of the code, or improve the code?
+ - How is it supposed to work?
 -->
 
-Link to EWM item
+### Explanation of work
+
+<!-- EXPLAIN, as it seems necessary
+ - the techniques used
+ - new algos/classes/variables and how were they implemented
+ - the particular coding choices you made, especially where others were possible
+
+As needed, use
+  ``` python
+    x
+  ```
+to paste code blocks.
+-->
+
+### To test
+
+#### Dev testing
+
+<!-- ANSWER
+ - What unit tests were added to cover this work?
+ - Where are they, how do they work, and how do they cover the work done?
+ - What parts are you uncertain about? E.g. language features used, new functions defined, etc.
+-->
+
+#### CIS testing
+
+<!-- SCRIPT
+Include enough of a script that could be called from workbench to allow the CIS to ensure this works as intended.
+See the existent scripts in tests/cis_tests/ for examples to get started.
+Your PR is not complete until this section is filled in.
+-->
+
+``` python
+# replace with your test script below
+```
+
+<!-- GUI
+If testing should instead be done from the GUI, explain
+ - how to access the feature in the GUI
+ - what buttons to click
+ - what output should be generated in both test and fail.  state the SPECIFIC text
+ - what will the CIS see?  link to screenshots of both success and failure, if possible
+-->
+
+### Link to EWM item
+<!-- LINK TO THE EWM HERE -->
+
+<!--
+Inside the EWM, paste a link to this PR in a comment there
+Link to any other relevant context, such as related mantid PRs, related SNAPRed PRs, related issues, etc.
+-->
