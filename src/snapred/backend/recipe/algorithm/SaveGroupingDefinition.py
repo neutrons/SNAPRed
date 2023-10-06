@@ -69,8 +69,8 @@ class SaveGroupingDefinition(PythonAlgorithm):
         if grouping_file_name != "":  # create grouping workspace from file
             grouping_ws_name = "gr_ws_name"
             self.mantidSnapper.LoadGroupingDefinition(
-                "Loading grouping definition...", 
-                GroupingFilename=grouping_file_name, 
+                "Loading grouping definition...",
+                GroupingFilename=grouping_file_name,
                 OutputWorkspace=grouping_ws_name,
             )
             self.mantidSnapper.executeQueue()
