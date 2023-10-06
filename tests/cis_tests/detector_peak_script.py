@@ -73,7 +73,7 @@ for i,group in enumerate(peakList):
 #do the plotting
 tableName = 'peakProperties1'
 fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
-ax.plot(mtd['_DSP_58882_final'], wkspIndex=0)# plot the initial guess with black line
+ax.plot(mtd['_DSP_58882_raw'], wkspIndex=0)# plot the initial guess with black line
 ax.vlines(mtd[tableName].column(1), ymin=1e6, ymax=1e8, color='red')
 ax.vlines(mtd[tableName].column(2), ymin=1e6, ymax=1e8, color='orange')
 ax.vlines(mtd[tableName].column(3), ymin=1e6, ymax=1e8, color='orange')
@@ -117,7 +117,7 @@ for i,group in enumerate(peakList):
 #do the plotting
 tableName = 'peakProperties1_after'
 fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
-ax.plot(mtd['_DSP_58882_final'], wkspIndex=0)# plot the initial guess with black line
+ax.plot(mtd['_DSP_58882_raw'], wkspIndex=0)# plot the initial guess with black line
 ax.vlines(mtd[tableName].column(1), ymin=1e6, ymax=1e8, color='red')
 ax.vlines(mtd[tableName].column(2), ymin=1e6, ymax=1e8, color='orange')
 ax.vlines(mtd[tableName].column(3), ymin=1e6, ymax=1e8, color='orange')

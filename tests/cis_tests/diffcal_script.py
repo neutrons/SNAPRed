@@ -67,7 +67,7 @@ diffractionCalibrationIngredients = DiffractionCalibrationIngredients(
         focusGroup=focusGroup,
         groupedPeakLists=peakList,
         calPath=calPath,
-        threshold=convergenceThreshold)
+        convergenceThreshold=convergenceThreshold)
 
 
 algo = CalculateOffsetDIFC()
