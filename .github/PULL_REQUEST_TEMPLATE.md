@@ -54,6 +54,8 @@ If testing should instead be done from the GUI, explain
 ## Link to EWM item
 <!-- LINK TO THE EWM HERE -->
 
+[EWM#<ticket_number>](https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20(Change%20Management)#action=com.ibm.team.workitem.viewWorkItem&id=<ticket_number>)
+
 <!--
 Inside the EWM, paste a link to this PR in a comment there
 Link to any other relevant context, such as related mantid PRs, related SNAPRed PRs, related issues, etc.
