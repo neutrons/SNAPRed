@@ -1,5 +1,6 @@
 import unittest
 import unittest.mock as mock
+from typing import List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,12 +19,13 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
+    from snapred.backend.dao import GroupPeakList, Limit
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric  # noqa: E402
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
-    from snapred.backend.dao.Limit import Limit
+    from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest  # noqa: E402
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters  # noqa: E402
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
@@ -248,3 +250,75 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Assert the result is as expected
         expected_record = "mock_calibration_record"
         assert result == expected_record
+
+    # patch FocusGroup
+    @patch("snapred.backend.service.CalibrationService.FocusGroup", return_value=MagicMock())
+    def test__generateFocusGroupAndInstrumentState(self, mockFocusGroup):
+        # mock datafactoryservice.getCalibrationState
+        self.instance.dataFactoryService.getCalibrationState = MagicMock()
+        # mock self._calculatePixelGroupingParameters
+        self.instance._calculatePixelGroupingParameters = MagicMock()
+        # mock calibration.instrumentState from getCalibrationState
+        mockInstrumentState = MagicMock()
+        self.instance.dataFactoryService.getCalibrationState.return_value.instrumentState = mockInstrumentState
+
+        actualFocusGroup, actualInstrumentState = self.instance._generateFocusGroupAndInstrumentState(
+            MagicMock(), MagicMock()
+        )
+        assert mockFocusGroup.called
+        assert actualFocusGroup == mockFocusGroup.return_value
+        assert actualInstrumentState == mockInstrumentState
+
+    @patch("snapred.backend.service.CalibrationService.CrystallographicInfoService")
+    @patch("snapred.backend.service.CalibrationService.DetectorPeakPredictorRecipe")
+    @patch("snapred.backend.service.CalibrationService.parse_raw_as")
+    @patch("snapred.backend.service.CalibrationService.DiffractionCalibrationRecipe")
+    @patch("snapred.backend.service.CalibrationService.DiffractionCalibrationIngredients")
+    def test_diffractionCalibration(
+        self,
+        mockDiffractionCalibrationIngredients,
+        mockDiffractionCalibrationRecipe,
+        mockParseRawAs,
+        mockDetectorPeakPredictorRecipe,
+        mockCrystallographicInfoService,
+    ):
+        runNumber = "123"
+        focusGroupPath = "focus/group/path"
+        nBinsAcrossPeakWidth = 10
+        self.instance.dataFactoryService = MagicMock()
+        # Mocking dependencies and their return values
+        self.instance.dataFactoryService.getRunConfig.return_value = MagicMock()
+        mockParseRawAs.return_value = [MagicMock()]
+        mockDetectorPeakPredictorRecipe().executeRecipe.return_value = [MagicMock()]
+        mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
+
+        mockFocusGroupInstrumentState = (MagicMock(), MagicMock())
+        self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=mockFocusGroupInstrumentState)
+
+        # Call the method with the provided parameters
+        request = DiffractionCalibrationRequest(
+            runNumber=runNumber,
+            focusGroupPath=focusGroupPath,
+            nBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
+            cifPath="path/to/cif",
+        )
+        self.instance.diffractionCalibration(request)
+
+        # Perform assertions to check the result and method calls
+        self.instance.dataFactoryService.getRunConfig.assert_called_once_with(runNumber)
+        mockDetectorPeakPredictorRecipe().executeRecipe.assert_called_once_with(
+            InstrumentState=mockFocusGroupInstrumentState[1],
+            CrystalInfo=mockCrystallographicInfoService().ingest.return_value["crystalInfo"],
+            PeakIntensityThreshold=request.peakIntensityThreshold,
+        )
+        mockDiffractionCalibrationIngredients.assert_called_once_with(
+            runConfig=self.instance.dataFactoryService.getRunConfig.return_value,
+            instrumentState=mockFocusGroupInstrumentState[1],
+            focusGroup=mockFocusGroupInstrumentState[0],
+            groupedPeakLists=mockParseRawAs.return_value,
+            calPath="~/tmp/",
+            convergenceThreshold=request.convergenceThreshold,
+        )
+        mockDiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
+            mockDiffractionCalibrationIngredients.return_value
+        )

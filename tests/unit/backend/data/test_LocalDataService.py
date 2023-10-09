@@ -8,6 +8,7 @@ from typing import List
 
 import pytest
 from pydantic import parse_raw_as
+from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.meta.Config import Resource
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
@@ -445,3 +446,20 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             pytest.fail("Should have thrown an exception")
         except RuntimeError:
             assert True
+
+    @mock.patch("os.path.exists", return_value=True)
+    def test_readCalibrantSample(mock1):  # noqa: ARG001
+        with mock.patch("os.path.exists", return_value=True):
+            localDataService = LocalDataService()
+
+            result = localDataService.readCalibrantSample("testid")
+            assert type(result) == CalibrantSamples
+            assert result.name == "La11B6_NIST_660c"
+
+    @mock.patch("os.path.exists", return_value=True)
+    def test_readCifFilePath(mock1):  # noqa: ARG001
+        with mock.patch("os.path.exists", return_value=True):
+            localDataService = LocalDataService()
+
+            result = localDataService.readCifFilePath("testid")
+            assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif"

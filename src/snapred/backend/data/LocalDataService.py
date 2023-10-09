@@ -562,7 +562,7 @@ class LocalDataService:
             raise ValueError(f"the file '{filePath}' does not exist")
         with open(filePath, "r") as f:
             calibrantSampleDict = json.load(f)
-        return calibrantSampleDict["crystallography"]["cif_file"]
+        return calibrantSampleDict["crystallography"]["cifFile"]
 
     def _getCurrentCalibrationRecord(self, runId: str):
         version = self._getVersionFromCalibrationIndex(runId)
