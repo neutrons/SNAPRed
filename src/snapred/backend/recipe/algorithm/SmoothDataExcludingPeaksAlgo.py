@@ -98,7 +98,10 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
             outputWorkspace.setY(index, smoothing_results)
 
-        self.mantidSnapper.DeleteWorkspace("Cleaning up weight workspace...", Workspace=weight_ws_name)
+        self.mantidSnapper.WashDishes(
+            "Cleaning up weight workspace...",
+            Workspace=weight_ws_name,
+        )
         self.mantidSnapper.executeQueue()
 
         self.setProperty("OutputWorkspace", outputWorkspaceName)

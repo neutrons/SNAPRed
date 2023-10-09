@@ -133,11 +133,14 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
 
         outputParams = json.dumps(allGroupingParams_json)
         self.setProperty("OutputParameters", outputParams)
-        self.mantidSnapper.DeleteWorkspace("Cleaning up grouping workspace.", Workspace=self.grouping_ws_name)
-        self.mantidSnapper.DeleteWorkspace("Cleaning up grouped workspace.", Workspace=self.grouped_ws_name)
-        self.mantidSnapper.DeleteWorkspace("Cleaning up resolution workspace.", Workspace=self.resolution_ws_name)
-        self.mantidSnapper.DeleteWorkspace(
-            "Cleaning up partial resolution group workspace.", Workspace=self.partial_resolution_group_ws_name
+        self.mantidSnapper.WashDishes(
+            "Cleaning up grouping, grouped, resolution workspace.",
+            WorkspaceList=[
+                self.grouping_ws_name,
+                self.grouped_ws_name,
+                self.resolution_ws_name,
+                self.partial_resolution_group_ws_name,
+            ],
         )
         self.mantidSnapper.executeQueue()
 

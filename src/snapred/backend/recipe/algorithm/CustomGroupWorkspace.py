@@ -60,7 +60,10 @@ class CustomGroupWorkspace(PythonAlgorithm):
 
         # cleanup temporary workspace
         if loadEmptyInstrument:
-            self.mantidSnapper.DeleteWorkspace("Deleting empty instrument...", Workspace=donorWorkspace)
+            self.mantidSnapper.WashDishes(
+                "Deleting empty instrument...",
+                Workspace=donorWorkspace,
+            )
             self.mantidSnapper.executeQueue()
 
         # create a workspace group of GroupWorkspaces

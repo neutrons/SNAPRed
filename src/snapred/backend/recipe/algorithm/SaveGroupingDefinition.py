@@ -69,7 +69,9 @@ class SaveGroupingDefinition(PythonAlgorithm):
         if grouping_file_name != "":  # create grouping workspace from file
             grouping_ws_name = "gr_ws_name"
             self.mantidSnapper.LoadGroupingDefinition(
-                "Loading grouping definition...", GroupingFilename=grouping_file_name, OutputWorkspace=grouping_ws_name
+                "Loading grouping definition...",
+                GroupingFilename=grouping_file_name,
+                OutputWorkspace=grouping_ws_name,
             )
             self.mantidSnapper.executeQueue()
         else:  # retrieve grouping workspace from analysis data service
@@ -87,6 +89,10 @@ class SaveGroupingDefinition(PythonAlgorithm):
             CalibrationWorkspace=cal_ws_name,
             GroupingWorkspace=grouping_ws_name,
             Filename=outputFilename,
+        )
+        self.mantidSnapper.WashDishes(
+            f"Cleanup the zero calibration workspace {cal_ws_name}",
+            Workspace=cal_ws_name,
         )
         self.mantidSnapper.executeQueue()
 

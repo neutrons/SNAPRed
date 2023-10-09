@@ -64,7 +64,10 @@ class IngestCrystallographicInfoAlgorithm(PythonAlgorithm):
         xtal = CrystallographicInfo(hkl=hkls, dSpacing=dValues, fSquared=fSquared, multiplicities=multiplicities)
         self.setProperty("crystalInfo", xtal.json())
         # ws
-        self.mantidSnapper.DeleteWorkspace("Cleaning up xtal workspace.", Workspace="xtal_data")
+        self.mantidSnapper.WashDishes(
+            "Cleaning up xtal workspace.",
+            Workspace="xtal_data",
+        )
         self.mantidSnapper.executeQueue()
 
 
