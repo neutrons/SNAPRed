@@ -25,6 +25,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("FitMultiplePeaksIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("PeakIntensityFractionThreshold", defaultValue=0.05, direction=Direction.Input)
         self.declareProperty("OutputWorkspaceGroup", defaultValue="fitPeaksWSGroup", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
@@ -42,12 +43,14 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         )
         wsName = fitPeakIngredients.InputWorkspace
         outputWorkspaceName = self.getProperty("OutputWorkspaceGroup").value
+        peakIntensityThreshold = self.getProperty("PeakIntensityFractionThreshold").value
         instrumentState = fitPeakIngredients.InstrumentState
         crystalInfo = fitPeakIngredients.CrystalInfo
         peakType = fitPeakIngredients.PeakType
 
         result = self.mantidSnapper.PurgeOverlappingPeaksAlgorithm(
-            "Purging overlapping peaks...", InstrumentState=instrumentState.json(), CrystalInfo=crystalInfo.json()
+            "Purging overlapping peaks...", InstrumentState=instrumentState.json(), CrystalInfo=crystalInfo.json(),
+            PeakIntensityThreshold=peakIntensityThreshold
         )
         self.mantidSnapper.executeQueue()
         reducedList_json = json.loads(result.get())
