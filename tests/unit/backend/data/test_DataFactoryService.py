@@ -90,7 +90,7 @@ with mock.patch.dict(
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrantSample = mock.Mock()
         dataExportService.lookupService.readCalibrantSample.return_value = "expected"
-        actual = dataExportService.getCalibrantSample()
+        actual = dataExportService.getCalibrantSample("testId")
 
         assert actual == "expected"
 
@@ -98,6 +98,6 @@ with mock.patch.dict(
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCifFilePath = mock.Mock()
         dataExportService.lookupService.readCifFilePath.return_value = "expected"
-        actual = dataExportService.getCifFilePath()
+        actual = dataExportService.getCifFilePath("testId")
 
         assert actual == "expected"
