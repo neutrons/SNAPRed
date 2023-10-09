@@ -1,3 +1,12 @@
+## This script is to test EWM 1126 and EWM 2166
+#   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=1126
+#   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=2166
+# This tests that 
+#  1. the algorithm will run,
+#  2. the algorithm will create a calibration table, 
+#  #. the algorithm will convergence to within a threshold.
+# Adjust the convergenceThreshold parameter below, and compare to the "medianOffset" in the calData dictionary
+
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
