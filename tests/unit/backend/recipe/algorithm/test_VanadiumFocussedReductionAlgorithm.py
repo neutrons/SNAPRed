@@ -61,11 +61,7 @@ with mock.patch.dict(
                 call().ConvertUnits,
                 call().DiffractionFocussing,
                 call().executeQueue,
-                call().DeleteWorkspace,
-                call().DeleteWorkspace,
-                call().DeleteWorkspace,
-                call().DeleteWorkspace,
-                call().DeleteWorkspace,
+                call().WashDishes,
                 call().executeQueue,
             ]
 

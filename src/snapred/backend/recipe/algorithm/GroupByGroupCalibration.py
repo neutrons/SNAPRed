@@ -7,7 +7,6 @@ from mantid.kernel import Direction
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 
 name = "GroupByGroupCalibration"
 

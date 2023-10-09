@@ -65,7 +65,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             Filename=Resource.getPath("/inputs/pixel_grouping/SNAPLite_Definition.xml"),
             RewriteSpectraMap=False,
         )
-        # self.mantidSnapper.DeleteWorkspace("Cleaning up input workspace...", Workspace=ws)
         self.mantidSnapper.executeQueue()
 
         self.setProperty("OutputWorkspace", outputWorkspaceName)

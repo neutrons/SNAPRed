@@ -120,8 +120,9 @@ class LoadGroupingDefinition(PythonAlgorithm):
                 OutputWorkspace=output_ws_name,
             )
             if not preserve_donor:
-                self.mantidSnapper.DeleteWorkspace(
-                    "Deleting instrument definition workspace...", Workspace=instrument_donor
+                self.mantidSnapper.WashDishes(
+                    "Deleting instrument definition workspace...",
+                    Workspace=instrument_donor,
                 )
         else:  # must be a NEXUS file
             self.mantidSnapper.LoadNexusProcessed(
