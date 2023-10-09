@@ -88,9 +88,14 @@ class CalibrationService(Service):
         return {}
 
     def _generateFocusGroupAndInstrumentState(
-        self, runNumber, definition, nBinsAcrossPeakWidth=Config["calibration.diffraction.nBinsAcrossPeakWidth"]
+        self,
+        runNumber,
+        definition,
+        nBinsAcrossPeakWidth=Config["calibration.diffraction.nBinsAcrossPeakWidth"],
+        calibration=None,
     ):
-        calibration = self.dataFactoryService.getCalibrationState(runNumber)
+        if calibration is None:
+            calibration = self.dataFactoryService.getCalibrationState(runNumber)
         instrumentState = calibration.instrumentState
         pixelGroupingParams = self._calculatePixelGroupingParameters(instrumentState, definition)["parameters"]
         instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams
@@ -259,11 +264,11 @@ class CalibrationService(Service):
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
         run = request.run
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
 
         focussedData = request.workspace
+        calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            run.runNumber, request.focusGroupPath, request.nBinsAcrossPeakWidth
+            run.runNumber, request.focusGroupPath, request.nBinsAcrossPeakWidth, calibration
         )
         pixelGroupingParam = self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition)[
             "parameters"
@@ -272,7 +277,7 @@ class CalibrationService(Service):
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # TODO: We Need to Fitt the Data
         fitIngredients = FitMultiplePeaksIngredients(
-            InstrumentState=instrumentState, CrystalInfo=crystalInfo, InputWorkspace=focussedData
+            instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=focussedData
         )
         fitResults = FitMultiplePeaksRecipe().executeRecipe(FitMultiplePeaksIngredients=fitIngredients)
         metrics = self._collectMetrics(fitResults, focusGroup, pixelGroupingParam)
@@ -290,8 +295,9 @@ class CalibrationService(Service):
         outputWorkspaces = [focussedData]
         focusGroupParameters = self.collectFocusGroupParameters([focusGroup], [pixelGroupingParam])
         record = CalibrationRecord(
-            reductionIngredients=reductionIngredients,
-            calibrationFittingIngredients=fitIngredients,
+            runNumber=run.runNumber,
+            crystalInfo=crystalInfo,
+            calibrationFittingIngredients=calibration,
             focusGroupParameters=focusGroupParameters,
             focusGroupCalibrationMetrics=metrics,
             workspaceNames=outputWorkspaces,

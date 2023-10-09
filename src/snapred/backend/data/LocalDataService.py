@@ -488,14 +488,14 @@ class LocalDataService:
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
         """
-        runNumber = record.reductionIngredients.runConfig.runNumber
-        stateId, _ = self._generateStateId(record.reductionIngredients.runConfig.runNumber)
+        runNumber = record.runNumber
+        stateId, _ = self._generateStateId(runNumber)
         previousVersion = self._getLatestCalibrationVersion(stateId)
         if not version:
             version = previousVersion + 1
-        recordPath: str = self.getCalibrationRecordPath(record.reductionIngredients.runConfig.runNumber, version)
+        recordPath: str = self.getCalibrationRecordPath(runNumber, version)
         record.version = version
-        calibrationPath = self._constructCalibrationDataPath(record.reductionIngredients.runConfig.runNumber, version)
+        calibrationPath = self._constructCalibrationDataPath(runNumber, version)
         # check if directory exists for runId
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)

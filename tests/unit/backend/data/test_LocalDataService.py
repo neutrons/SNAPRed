@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import socket
 import unittest.mock as mock
 from pathlib import Path
 from typing import List
@@ -8,6 +9,8 @@ from typing import List
 import pytest
 from pydantic import parse_raw_as
 from snapred.meta.Config import Resource
+
+IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
 # Mock out of scope modules before importing DataExportService
 with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Mock()}):
@@ -225,7 +228,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         # remove directory
         shutil.rmtree(Resource.getPath("outputs/v_1"))
 
-        assert actualRecord.reductionIngredients.runConfig.runNumber == "57514"
+        assert actualRecord.runNumber == "57514"
 
     def test_readWriteCalibrationRecordV2():
         localDataService = LocalDataService()
@@ -245,7 +248,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         shutil.rmtree(Resource.getPath("outputs/v_1"))
         shutil.rmtree(Resource.getPath("outputs/v_2"))
 
-        assert actualRecord.reductionIngredients.runConfig.runNumber == "57514"
+        assert actualRecord.runNumber == "57514"
 
     def test_getCalibrationRecordPath():
         localDataService = LocalDataService()
@@ -385,6 +388,9 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert actual == testCalibrationData
 
     # NOTE: This test fails on analysis because the instrument home actually does exist!
+    @pytest.mark.skipif(
+        IS_ON_ANALYSIS_MACHINE, reason="This test fails on analysis because the instrument home actually does exist!"
+    )
     def test_badPaths():
         """This verifies that a broken configuration (from production) can't find all of the files"""
         # get a handle on the service
