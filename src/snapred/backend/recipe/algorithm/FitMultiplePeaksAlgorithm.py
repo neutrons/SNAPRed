@@ -49,8 +49,10 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         peakType = fitPeakIngredients.PeakType
 
         result = self.mantidSnapper.PurgeOverlappingPeaksAlgorithm(
-            "Purging overlapping peaks...", InstrumentState=instrumentState.json(), CrystalInfo=crystalInfo.json(),
-            PeakIntensityThreshold=peakIntensityThreshold
+            "Purging overlapping peaks...",
+            InstrumentState=instrumentState.json(),
+            CrystalInfo=crystalInfo.json(),
+            PeakIntensityThreshold=peakIntensityThreshold,
         )
         self.mantidSnapper.executeQueue()
         reducedList_json = json.loads(result.get())
