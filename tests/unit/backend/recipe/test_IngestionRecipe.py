@@ -29,6 +29,7 @@ with mock.patch.dict(
             assert xtal.hkl[5] == (4, 0, 0)
             assert xtal.dSpacing[0] == 3.13592994862768
             assert xtal.dSpacing[4] == 1.0453099828758932
+
     #         assert data["fSquaredThreshold"] == 65.53023494434723
 
     # def test_failed_path():
