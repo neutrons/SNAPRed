@@ -56,11 +56,6 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             InputWorkspace=input_ws_name,
             OutputWorkspace=weight_ws_name,
         )
-        self.mantidSnapper.ConvertToMatrixWorkspace(
-            f"Converting {weight_ws_name} to MatrixWorkspace...",
-            InputWorkspace=weight_ws_name,
-            OutputWorkspace=weight_ws_name,
-        )
         self.mantidSnapper.executeQueue()
         weight_ws = self.mantidSnapper.mtd[weight_ws_name]
 
