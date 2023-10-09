@@ -69,8 +69,10 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
             "Applying DiffCal...", InstrumentWorkspace=raw_data, CalibrationWorkspace=diffCalPrefix + "_cal"
         )
 
-        self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Mask", Workspace=diffCalPrefix + "_mask")
-        self.mantidSnapper.DeleteWorkspace("Deleting DiffCal Calibration", Workspace=diffCalPrefix + "_cal")
+        self.mantidSnapper.WashDishes(
+            "Deleting DiffCal Mask",
+            WorkspaceList=[diffCalPrefix + "_mask", diffCalPrefix + "_cal"],
+        )
 
         data = self.mantidSnapper.ConvertUnits(
             "Converting to Units of dSpacing ...",
@@ -80,7 +82,7 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
             OutputWorkspace="data",
             ConvertFromPointData=True,
         )
-        self.mantidSnapper.DeleteWorkspace("Deleting Raw Data", Workspace=raw_data)
+        self.mantidSnapper.WashDishes("Deleting Raw Data", Workspace=raw_data)
 
         focused_data = self.mantidSnapper.DiffractionFocussing(
             "Performing Diffraction Focusing ...",
@@ -93,8 +95,10 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
             "Normalizing Current ...", InputWorkspace=focused_data, OutputWorkspace=focused_data
         )
         self.mantidSnapper.RemoveLogs("Removing Logs...", Workspace=focused_data)
-        self.mantidSnapper.DeleteWorkspace("Deleting Intermediate Data", Workspace=data)
-        self.mantidSnapper.DeleteWorkspace("Deleting Grouping Workspace", Workspace=groupingworkspace)
+        self.mantidSnapper.WashDishes(
+            "Deleting Intermediate Data and Grouping Workspace",
+            WorkspaceList=[data, groupingworkspace],
+        )
 
         # Rename focused_data to runid_calibration_reduction_result
         outputNameFormat = Config["calibration.reduction.output.format"]

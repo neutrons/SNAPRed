@@ -87,11 +87,10 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
                 OutputWorkspace="smooth_ws",
             )
 
-        self.mantidSnapper.DeleteWorkspace("Clean up workspace...", workspace="idf")
-        self.mantidSnapper.DeleteWorkspace("Clean up workspace...", workspace="weight_ws")
-        self.mantidSnapper.DeleteWorkspace("Clean up workspace...", workspace="vanadium")
-        self.mantidSnapper.DeleteWorkspace("Clean up workspace...", workspace="vanadium_dspacing")
-        self.mantidSnapper.DeleteWorkspace("Clean up workspace...", workspace="CommonRed")
+        self.mantidSnapper.WashDishes(
+            "Clean up workspaces...",
+            WorkspaceList=["idf", "weight_ws", "vanadium", "vanadium_dspacing", "CommonRed"],
+        )
         self.mantidSnapper.executeQueue()
 
         self.log().notice("Execution of VanadiumFocussedReduction COMPLETE!")
