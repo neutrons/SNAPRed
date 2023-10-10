@@ -38,6 +38,10 @@ calibration:
     output:
       extension: .nxs
       format: "{}_calibration_reduction_result"
+  diffraction:
+    convergenceThreshold: 0.05
+    peakIntensityThreshold: 0.05
+    nBinsAcrossPeakWidth: 10
   parameters:
     default:
       # degrees
@@ -61,5 +65,9 @@ logging:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
   mantid:
     format: '%Y-%m-%d %H:%M:%S,%i - %p - %s - %t'
+
+samples:
+  home: /SNS/SNAP/shared/Calibration/CalibrantSamples
+
 
 cis_mode: true

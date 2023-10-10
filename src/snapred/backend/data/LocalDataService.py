@@ -488,14 +488,14 @@ class LocalDataService:
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
         """
-        runNumber = record.reductionIngredients.runConfig.runNumber
-        stateId, _ = self._generateStateId(record.reductionIngredients.runConfig.runNumber)
+        runNumber = record.runNumber
+        stateId, _ = self._generateStateId(runNumber)
         previousVersion = self._getLatestCalibrationVersion(stateId)
         if not version:
             version = previousVersion + 1
-        recordPath: str = self.getCalibrationRecordPath(record.reductionIngredients.runConfig.runNumber, version)
+        recordPath: str = self.getCalibrationRecordPath(runNumber, version)
         record.version = version
-        calibrationPath = self._constructCalibrationDataPath(record.reductionIngredients.runConfig.runNumber, version)
+        calibrationPath = self._constructCalibrationDataPath(runNumber, version)
         # check if directory exists for runId
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
@@ -544,6 +544,25 @@ class LocalDataService:
         if os.path.exists(filePath):
             raise ValueError(f"the file '{filePath}' already exists")
         write_model_pretty(sample, filePath)
+
+    def readCalibrantSample(self, sampleId: str):
+        samplePath: str = Config["samples.home"]
+        fileName: str = sampleId + ".json"
+        filePath = os.path.join(samplePath, fileName)
+        if not os.path.exists(filePath):
+            raise ValueError(f"the file '{filePath}' does not exist")
+        sample = parse_file_as(CalibrantSamples, filePath)
+        return sample
+
+    def readCifFilePath(self, sampleId: str):
+        samplePath: str = Config["samples.home"]
+        fileName: str = sampleId + ".json"
+        filePath = os.path.join(samplePath, fileName)
+        if not os.path.exists(filePath):
+            raise ValueError(f"the file '{filePath}' does not exist")
+        with open(filePath, "r") as f:
+            calibrantSampleDict = json.load(f)
+        return calibrantSampleDict["crystallography"]["cifFile"]
 
     def _getCurrentCalibrationRecord(self, runId: str):
         version = self._getVersionFromCalibrationIndex(runId)

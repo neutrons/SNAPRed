@@ -5,6 +5,7 @@ from qtpy.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushB
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.ui.threading.worker_pool import WorkerPool
+from snapred.ui.widget.LabeledField import LabeledField
 
 
 class BackendRequestView(QWidget):
@@ -27,12 +28,4 @@ class BackendRequestView(QWidget):
         return self.jsonForm.getField(key)
 
     def _labeledField(self, label, field):
-        widget = QWidget()
-        widget.setStyleSheet("background-color: #F5E9E2;")
-        layout = QHBoxLayout()
-        widget.setLayout(layout)
-
-        label = QLabel(label)
-        layout.addWidget(label)
-        layout.addWidget(field)
-        return widget
+        return LabeledField(label, field, self)

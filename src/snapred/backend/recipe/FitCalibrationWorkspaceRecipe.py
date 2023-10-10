@@ -45,9 +45,9 @@ class FitCalibrationWorkspaceRecipe:
             smoothingParameter=self.smoothingParameter,
         )
         self.fitIngredients = FitMultiplePeaksIngredients(
-            InstrumentState=self.instrumentState,
-            CrystalInfo=self.crystalInfo,
-            InputWorkspace=f"{self.workspaceName}(smooth+stripped)",
+            instrumentState=self.instrumentState,
+            crystalInfo=self.crystalInfo,
+            inputWorkspace=f"{self.workspaceName}(smooth+stripped)",
         )
 
     # would be nice to have a from kwarg decorator...

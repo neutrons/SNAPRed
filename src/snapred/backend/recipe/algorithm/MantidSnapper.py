@@ -155,6 +155,7 @@ class MantidSnapper:
                     returnVal = getattr(algorithm.getProperty(prop), "valueAsStr", None)
                 val.update(returnVal)
         except RuntimeError as e:
+            logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             raise AlgorithmException(name, str(e))
 
     def executeQueue(self):

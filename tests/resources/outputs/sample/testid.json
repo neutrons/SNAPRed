@@ -1,0 +1,54 @@
+{
+    "name": "La11B6_NIST_660c",
+    "unique_id": "001",
+    "date": "2023-10-05 15:13:29.016611",
+    "geometry": {
+        "shape": "Cylinder",
+        "radius": 0.1,
+        "height": 1.5,
+        "center": [
+            0.0,
+            0.0,
+            0.0
+        ]
+    },
+    "material": {
+        "packingFraction": 0.7,
+        "massDensity": 4.72,
+        "chemicalFormula": "La-11B6"
+    },
+    "crystallography": {
+        "cifFile": "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif",
+        "spaceGroup": "P m -3 m",
+        "latticeParameters": [
+            4.15682,
+            4.15682,
+            4.15682,
+            90.0,
+            90.0,
+            90.0
+        ],
+        "atoms": [
+            {
+                "atom_type": "La",
+                "atom_coordinates": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "site_occupation_factor": 1.0,
+                "adp": 0.0052
+            },
+            {
+                "atom_type": "11B",
+                "atom_coordinates": [
+                    0.1975,
+                    0.1975,
+                    0.1975
+                ],
+                "site_occupation_factor": 0.5,
+                "adp": 0.0041
+            }
+        ]
+    }
+}

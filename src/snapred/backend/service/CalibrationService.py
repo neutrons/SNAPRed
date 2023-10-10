@@ -5,7 +5,7 @@ from typing import List
 
 from pydantic import parse_raw_as
 
-from snapred.backend.dao import RunConfig
+from snapred.backend.dao import GroupPeakList, RunConfig
 from snapred.backend.dao.calibration import (
     CalibrationIndexEntry,
     CalibrationMetric,
@@ -13,19 +13,31 @@ from snapred.backend.dao.calibration import (
     FocusGroupMetric,
 )
 from snapred.backend.dao.ingredients import (
+    DiffractionCalibrationIngredients,
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
-from snapred.backend.dao.request import CalibrationAssessmentRequest, CalibrationExportRequest, InitializeStateRequest
-from snapred.backend.dao.state.FocusGroupParameters import FocusGroupParameters
+from snapred.backend.dao.request import (
+    CalibrationAssessmentRequest,
+    CalibrationExportRequest,
+    DiffractionCalibrationRequest,
+    InitializeStateRequest,
+)
+from snapred.backend.dao.state import FocusGroup, FocusGroupParameters
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.FitCalibrationWorkspaceRecipe import FitCalibrationWorkspaceRecipe
-from snapred.backend.recipe.GenericRecipe import CalibrationMetricExtractionRecipe, CalibrationReductionRecipe
+from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
+from snapred.backend.recipe.GenericRecipe import (
+    CalibrationMetricExtractionRecipe,
+    CalibrationReductionRecipe,
+    DetectorPeakPredictorRecipe,
+    FitMultiplePeaksRecipe,
+    GenerateTableWorkspaceFromListOfDictRecipe,
+)
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
@@ -57,6 +69,7 @@ class CalibrationService(Service):
         self.registerPath("checkDataExists", self.calculatePixelGroupingParameters)
         self.registerPath("assessment", self.assessQuality)
         self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
+        self.registerPath("diffraction", self.diffractionCalibration)
         return
 
     @staticmethod
@@ -73,6 +86,76 @@ class CalibrationService(Service):
             except:
                 raise
         return {}
+
+    def _generateFocusGroupAndInstrumentState(
+        self,
+        runNumber,
+        definition,
+        nBinsAcrossPeakWidth=Config["calibration.diffraction.nBinsAcrossPeakWidth"],
+        calibration=None,
+    ):
+        if calibration is None:
+            calibration = self.dataFactoryService.getCalibrationState(runNumber)
+        instrumentState = calibration.instrumentState
+        pixelGroupingParams = self._calculatePixelGroupingParameters(instrumentState, definition)["parameters"]
+        instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams
+        return (
+            FocusGroup(
+                FWHM=[pgp.twoTheta for pgp in pixelGroupingParams],  # TODO: Remove or extract out a level up
+                name=definition.split("/")[-1],
+                definition=definition,
+                nHst=len(pixelGroupingParams),
+                dMin=[pgp.dResolution.minimum for pgp in pixelGroupingParams],
+                dMax=[pgp.dResolution.maximum for pgp in pixelGroupingParams],
+                dBin=[pgp.dRelativeResolution / nBinsAcrossPeakWidth for pgp in pixelGroupingParams],
+            ),
+            instrumentState,
+        )
+
+    @FromString
+    def diffractionCalibration(self, request: DiffractionCalibrationRequest):
+        # shopping list
+        # 1. full runconfig
+        runConfig = self.dataFactoryService.getRunConfig(request.runNumber)
+        # 2. instrument state
+        # 3. focus group
+        # get the pixel grouping parameters and load them into the focus group
+        nBinsAcrossPeakWidth = request.nBinsAcrossPeakWidth
+        # TODO: This may be pending a refactor and a closer look,
+        # based on my convos it should be a correct translation
+        focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
+            request.runNumber, request.focusGroupPath, nBinsAcrossPeakWidth
+        )
+        # 4. grouped peak list
+        # need to calculate these using DetectorPeakPredictor
+        # 4a. InstrumentState
+        # 4b. CrystalInfo
+        cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
+        crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
+        # 4c. PeakIntensityThreshold
+        peakIntensityThreshold = request.peakIntensityThreshold
+        detectorPeaks = DetectorPeakPredictorRecipe().executeRecipe(
+            InstrumentState=instrumentState, CrystalInfo=crystalInfo, PeakIntensityThreshold=peakIntensityThreshold
+        )
+        detectorPeaks = parse_raw_as(List[GroupPeakList], detectorPeaks)
+        # 5. cal path
+        # this is just the state folder/calibration folder used solely for saving the calibration
+        # set it to tmp because we dont know if we want to keep it yet
+        # TODO: The algo really shouldnt be saving data unless it has to
+        calpath = "~/tmp/"
+        # 6. convergence threshold
+
+        convergenceThreshold = request.convergenceThreshold
+        ingredients = DiffractionCalibrationIngredients(
+            runConfig=runConfig,
+            instrumentState=instrumentState,
+            focusGroup=focusGroup,
+            groupedPeakLists=detectorPeaks,
+            calPath=calpath,
+            convergenceThreshold=convergenceThreshold,
+        )
+
+        return DiffractionCalibrationRecipe().executeRecipe(ingredients)
 
     @FromString
     def save(self, request: CalibrationExportRequest):
@@ -168,64 +251,52 @@ class CalibrationService(Service):
             )
         return pixelGroupingParams
 
-    def _fitAndCollectMetrics(
-        self, instrumentState, focussedData, focusGroups, pixelGroupingParams, crystalInfo, lam=None
-    ):
-        groupedWorkspaceNames = [ws for ws in GroupWorkspaceIterator(focussedData)]
-        metrics = []
-        fittedWorkspaceNames = []
-        for workspace, focusGroup, index in zip(groupedWorkspaceNames, focusGroups, range(len(focusGroups))):
-            instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams[index]
-            ingredients = FitCalibrationWorkspaceIngredients(
-                instrumentState=instrumentState,
-                crystalInfo=crystalInfo,
-                workspaceName=workspace,
-                pixelGroupingParameters=pixelGroupingParams[index],
-                smoothingParameter=lam,
-            )
-            fitPeaksResult = FitCalibrationWorkspaceRecipe().executeRecipe(ingredients)
-
-            pixelGroupingInput = list_to_raw(pixelGroupingParams[index])
-            metric = parse_raw_as(
-                List[CalibrationMetric],
-                CalibrationMetricExtractionRecipe().executeRecipe(
-                    InputWorkspace=fitPeaksResult,
-                    PixelGroupingParameter=pixelGroupingInput,
-                ),
-            )
-            fittedWorkspaceNames.append(fitPeaksResult)
-            metrics.append(FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric))
-        return fittedWorkspaceNames, metrics
+    def _collectMetrics(self, focussedData, focusGroup, pixelGroupingParam):
+        metric = parse_raw_as(
+            List[CalibrationMetric],
+            CalibrationMetricExtractionRecipe().executeRecipe(
+                InputWorkspace=focussedData,
+                PixelGroupingParameter=json.dumps([pgp.dict() for pgp in pixelGroupingParam]),
+            ),
+        )
+        return FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric)
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
         run = request.run
-        cifPath = request.cifPath
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
+
+        focussedData = request.workspace
         calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
-        focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
-        instrumentState = calibration.instrumentState
-        crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
-        crystalInfo = crystalInfoDict["crystalInfo"]
-        focussedData = self._loadFocusedData(run.runNumber)
-        lam = request.smoothingParameter
-        pixelGroupingParams = self._getPixelGroupingParams(instrumentState, focusGroups)
-
-        fittedWorkspaceNames, metrics = self._fitAndCollectMetrics(
-            instrumentState,
-            focussedData,
-            focusGroups,
-            pixelGroupingParams,
-            crystalInfo,
-            lam,
+        focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
+            run.runNumber, request.focusGroupPath, request.nBinsAcrossPeakWidth, calibration
         )
-
-        outputWorkspaces = []
-        outputWorkspaces.extend(fittedWorkspaceNames)
-        outputWorkspaces.append(focussedData)
-        focusGroupParameters = self.collectFocusGroupParameters(focusGroups, pixelGroupingParams)
+        pixelGroupingParam = self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition)[
+            "parameters"
+        ]
+        cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
+        crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
+        # TODO: We Need to Fitt the Data
+        fitIngredients = FitMultiplePeaksIngredients(
+            instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=focussedData
+        )
+        fitResults = FitMultiplePeaksRecipe().executeRecipe(FitMultiplePeaksIngredients=fitIngredients)
+        metrics = self._collectMetrics(fitResults, focusGroup, pixelGroupingParam)
+        prevCalibration = self.dataFactoryService.getCalibrationRecord(run.runNumber)
+        timestamp = int(round(time.time() * 1000))
+        GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
+            ListOfDict=list_to_raw(metrics.calibrationMetric),
+            OutputWorkspace=f"{run.runNumber}_calibrationMetrics_ts{timestamp}",
+        )
+        if prevCalibration is not None:
+            GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
+                ListOfDict=list_to_raw(prevCalibration.focusGroupCalibrationMetrics[0].calibrationMetric),
+                OutputWorkspace=f"{run.runNumber}_calibrationMetrics_v{prevCalibration.version}",
+            )
+        outputWorkspaces = [focussedData]
+        focusGroupParameters = self.collectFocusGroupParameters([focusGroup], [pixelGroupingParam])
         record = CalibrationRecord(
-            reductionIngredients=reductionIngredients,
+            runNumber=run.runNumber,
+            crystalInfo=crystalInfo,
             calibrationFittingIngredients=calibration,
             focusGroupParameters=focusGroupParameters,
             focusGroupCalibrationMetrics=metrics,
