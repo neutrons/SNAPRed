@@ -55,23 +55,14 @@ detectorAlgo.execute()
 peakList = json.loads(detectorAlgo.getProperty("DetectorPeaks").value)
 print(peakList)
 
-for i,group in enumerate(peakList):
-    tableName = f'peakProperties{i+1}'
-    CreateEmptyTableWorkspace(OutputWorkspace=tableName)
-    tableWS = mtd[tableName]
-    tableWS.addColumn(type='int', name='peak number')
-    tableWS.addColumn(type='float', name='value')
-    tableWS.addColumn(type='float', name='min')
-    tableWS.addColumn(type='float', name='max')
-    for j,peak in enumerate(group['peaks']):
-        tableWS.addRow({
-            'peak number': j,
-            'value': peak['position']['value'],
-            'min': peak['position']['minimum'],
-            'max': peak['position']['maximum'],
-        })
-
-
+peakCenter = []
+peakMin = []
+peakMax = []
+for group in peakList:
+    peakCenter.append([peak['position']['value'] for peak in group['peaks']])
+    peakMin.append([peak['position']['minimum'] for peak in group['peaks']])
+    peakMax.append([peak['position']['maximum'] for peak in group['peaks']])
+    
 ################################################################
 # Plot the found peaks on focused data
 ################################################################
@@ -105,16 +96,16 @@ for i,group in enumerate(peakList):
     tableName = f'peakProperties{i+1}'
     fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
     ax.plot(mtd[f'_DSP_{runNumber}_diffoc'], wkspIndex=i)# plot the initial guess with black line
-    ax.vlines(mtd[tableName].column(1), ymin=1e6, ymax=1e8, color='red')
-    ax.vlines(mtd[tableName].column(2), ymin=1e6, ymax=1e8, color='orange')
-    ax.vlines(mtd[tableName].column(3), ymin=1e6, ymax=1e8, color='orange')
+    ax.vlines(peakCenter[i], ymin=1e6, ymax=1e8, color='red')
+    ax.vlines(peakMin[i], ymin=1e6, ymax=1e8, color='orange')
+    ax.vlines(peakMax[i], ymin=1e6, ymax=1e8, color='orange')
     ax.legend() # show the legend
     fig.show()
 
 #########################################################
 # TRY CHANGING PEAK TAIL MAX AND RE_RUN FOR COMPARISON
 #########################################################
-assert False
+
 # using previously found ingredients, change the peakTailCoefficient within instrumentstate
 instrumentState.peakTailCoefficient = 10
 
@@ -149,8 +140,8 @@ for i,group in enumerate(peakList):
     tableName = f'peakProperties{i+1}_after'
     fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
     ax.plot(mtd[f'_DSP_{runNumber}_diffoc'], wkspIndex=i)# plot the initial guess with black line
-    ax.vlines(mtd[tableName].column(1), ymin=1e6, ymax=1e8, color='red')
-    ax.vlines(mtd[tableName].column(2), ymin=1e6, ymax=1e8, color='orange')
-    ax.vlines(mtd[tableName].column(3), ymin=1e6, ymax=1e8, color='orange')
+    ax.vlines(peakCenter[i], ymin=1e6, ymax=1e8, color='red')
+    ax.vlines(peakMin[i], ymin=1e6, ymax=1e8, color='orange')
+    ax.vlines(peakMax[i], ymin=1e6, ymax=1e8, color='orange')
     ax.legend() # show the legend
     fig.show()
