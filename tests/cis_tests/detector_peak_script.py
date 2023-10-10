@@ -105,7 +105,7 @@ for i,group in enumerate(peakList):
 #########################################################
 # TRY CHANGING PEAK TAIL MAX AND RE_RUN FOR COMPARISON
 #########################################################
-
+assert False
 # using previously found ingredients, change the peakTailCoefficient within instrumentstate
 instrumentState.peakTailCoefficient = 10
 
@@ -119,21 +119,13 @@ detectorAlgo.execute()
 peakList = json.loads(detectorAlgo.getProperty("DetectorPeaks").value)
 print(peakList)
 
-for i,group in enumerate(peakList):
-    tableName = f'peakProperties{i+1}_after'
-    CreateEmptyTableWorkspace(OutputWorkspace=tableName)
-    tableWS = mtd[tableName]
-    tableWS.addColumn(type='int', name='peak number')
-    tableWS.addColumn(type='float', name='value')
-    tableWS.addColumn(type='float', name='min')
-    tableWS.addColumn(type='float', name='max')
-    for j,peak in enumerate(group['peaks']):
-        tableWS.addRow({
-            'peak number': j,
-            'value': peak['position']['value'],
-            'min': peak['position']['minimum'],
-            'max': peak['position']['maximum'],
-        })
+peakCenter = []
+peakMin = []
+peakMax = []
+for group in peakList:
+    peakCenter.append([peak['position']['value'] for peak in group['peaks']])
+    peakMin.append([peak['position']['minimum'] for peak in group['peaks']])
+    peakMax.append([peak['position']['maximum'] for peak in group['peaks']])
 
 #do the plotting
 for i,group in enumerate(peakList):
