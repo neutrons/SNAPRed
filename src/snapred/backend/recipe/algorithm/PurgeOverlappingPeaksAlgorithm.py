@@ -33,7 +33,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             "Predicting peaks...",
             InstrumentState=self.getProperty("InstrumentState").value,
             CrystalInfo=self.getProperty("CrystalInfo").value,
-            PeakIntensityThreshold=self.getProperty("PeakIntensityFractionThreshold").value,
+            PeakIntensityFractionThreshold=self.getProperty("PeakIntensityFractionThreshold").value,
         )
         self.mantidSnapper.executeQueue()
         predictedPeaks_json = json.loads(result.get())

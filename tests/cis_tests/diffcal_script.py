@@ -66,7 +66,7 @@ detectorAlgo = PurgeOverlappingPeaksAlgorithm()
 detectorAlgo.initialize()
 detectorAlgo.setProperty("InstrumentState", instrumentState.json())
 detectorAlgo.setProperty("CrystalInfo", crystalInfoDict["crystalInfo"].json())
-detectorAlgo.setProperty("PeakIntensityThreshold", peakThreshold)
+detectorAlgo.setProperty("PeakIntensityFractionThreshold", peakThreshold)
 detectorAlgo.execute()
 peakList = detectorAlgo.getProperty("OutputPeakMap").value
 peakList = parse_raw_as(List[GroupPeakList], peakList)
