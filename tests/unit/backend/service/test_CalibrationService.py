@@ -170,8 +170,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         parse_raw_as_mock,  # noqa: ARG002
         metricTypeMock,  # noqa: ARG002
     ):
-        # Mock input data
-        MagicMock()
         fakeFocussedData = "mock_focussed_data"
         fakeFocusGroups = MagicMock(name="group1")
         fakePixelGroupingParams = [
