@@ -43,7 +43,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         )
         wsName = fitPeakIngredients.InputWorkspace
         outputWorkspaceName = self.getProperty("OutputWorkspaceGroup").value
-        peakIntensityThreshold = self.getProperty("PeakIntensityFractionThreshold").value
+        peakIntensityFractionThreshold = self.getProperty("PeakIntensityFractionThreshold").value
         instrumentState = fitPeakIngredients.InstrumentState
         crystalInfo = fitPeakIngredients.CrystalInfo
         peakType = fitPeakIngredients.PeakType
@@ -52,7 +52,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             "Purging overlapping peaks...",
             InstrumentState=instrumentState.json(),
             CrystalInfo=crystalInfo.json(),
-            PeakIntensityThreshold=peakIntensityThreshold,
+            PeakIntensityFractionThreshold=peakIntensityFractionThreshold,
         )
         self.mantidSnapper.executeQueue()
         reducedList_json = json.loads(result.get())
