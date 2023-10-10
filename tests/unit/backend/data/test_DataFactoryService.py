@@ -85,3 +85,19 @@ with mock.patch.dict(
         actual = dataExportService.getGroupingFiles()
 
         assert actual == "expected"
+
+    def test_getCalibrantSample():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readCalibrantSample = mock.Mock()
+        dataExportService.lookupService.readCalibrantSample.return_value = "expected"
+        actual = dataExportService.getCalibrantSample("testId")
+
+        assert actual == "expected"
+
+    def test_getCifFilePath():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readCifFilePath = mock.Mock()
+        dataExportService.lookupService.readCifFilePath.return_value = "expected"
+        actual = dataExportService.getCifFilePath("testId")
+
+        assert actual == "expected"

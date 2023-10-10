@@ -55,6 +55,12 @@ class DataFactoryService:
     def constructStateId(self, runId):
         return self.lookupService._generateStateId(runId)
 
+    def getCalibrantSample(self, sampleId):
+        return self.lookupService.readCalibrantSample(sampleId)
+
+    def getCifFilePath(self, sampleId):
+        return self.lookupService.readCifFilePath(sampleId)
+
     def getCalibrationState(self, runId):
         return self.lookupService.readCalibrationState(runId)
 

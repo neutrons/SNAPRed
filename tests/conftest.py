@@ -26,6 +26,7 @@ mock.patch.dict("sys.modules", {"snapred.meta.decorators.Singleton": mockSinglet
 
 # manually alter the config to point to the test resources
 Config._config["instrument"]["home"] = Resource.getPath(Config["instrument.home"])
+Config._config["samples"]["home"] = Resource.getPath("outputs/sample/")
 mantidConfig = config = ConfigService.Instance()
 mantidConfig["CheckMantidVersion.OnStartup"] = "0"
 mantidConfig["UpdateInstrumentDefinitions.OnStartup"] = "0"

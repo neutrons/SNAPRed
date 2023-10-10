@@ -25,7 +25,7 @@ with mock.patch.dict(
         crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
         wsName = "testWS"
         fitIngredients = FitMultiplePeaksIngredients(
-            InstrumentState=instrumentState, CrystalInfo=crystalInfo, InputWorkspace=wsName
+            instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=wsName
         )
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
@@ -41,7 +41,7 @@ with mock.patch.dict(
         crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
         wsName = "testWS"
         fitIngredients = FitMultiplePeaksIngredients(
-            InstrumentState=instrumentState, CrystalInfo=crystalInfo, InputWorkspace=wsName
+            instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=wsName
         )
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()

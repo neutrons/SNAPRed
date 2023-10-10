@@ -41,7 +41,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         fitPeakIngredients = FitMultiplePeaksIngredients(
             **json.loads(self.getProperty("FitMultiplePeaksIngredients").value)
         )
-        wsName = fitPeakIngredients.InputWorkspace
+        wsName = fitPeakIngredients.inputWorkspace
         outputWorkspaceName = self.getProperty("OutputWorkspaceGroup").value
         peakIntensityFractionThreshold = self.getProperty("PeakIntensityFractionThreshold").value
         instrumentState = fitPeakIngredients.InstrumentState
