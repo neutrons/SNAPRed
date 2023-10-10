@@ -251,7 +251,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
             GroupingWorkspace=self.focusWSname,
             OutputWorkspace=diffractionfocusedWSdsp,
         )
-        self.convertUnitsAndRebin(diffractionfocusedWSdsp, self.diffractionfocusedWStof, "TOF")
+        self.convertUnitsAndRebin(diffractionfocusedWSdsp, self.diffractionfocusedWStof, "dSpacing")
         self.mantidSnapper.WashDishes(
             "Clean up d-spacing diffraction focused ws",
             WorkspaceList=[self.focusWSname, diffractionfocusedWSdsp],

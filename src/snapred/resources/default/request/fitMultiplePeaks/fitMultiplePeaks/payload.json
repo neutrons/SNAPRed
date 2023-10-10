@@ -1,5 +1,5 @@
 {
-  "InstrumentState": {
+  "instrumentState": {
     "instrumentConfig": {
       "version": "1.4",
       "facility": "SNS",
@@ -110,7 +110,7 @@
     },
     "peakTailCoefficient": 2.0
   },
-  "CrystalInfo": {
+  "crystalInfo": {
     "peaks": [
       {
         "hkl": [
@@ -494,7 +494,7 @@
       }
     ]
   },
-  "PeakType": "Gaussian",
-  "InputWorkspace": "testWS",
-  "ShowResult": false
+  "peakType": "Gaussian",
+  "inputWorkspace": "testWS",
+  "showResult": false
 }

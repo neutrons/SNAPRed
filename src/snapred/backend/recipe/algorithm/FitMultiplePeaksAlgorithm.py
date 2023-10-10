@@ -40,11 +40,11 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         fitPeakIngredients = FitMultiplePeaksIngredients(
             **json.loads(self.getProperty("FitMultiplePeaksIngredients").value)
         )
-        wsName = fitPeakIngredients.InputWorkspace
+        wsName = fitPeakIngredients.inputWorkspace
         outputWorkspaceName = self.getProperty("OutputWorkspaceGroup").value
-        instrumentState = fitPeakIngredients.InstrumentState
-        crystalInfo = fitPeakIngredients.CrystalInfo
-        peakType = fitPeakIngredients.PeakType
+        instrumentState = fitPeakIngredients.instrumentState
+        crystalInfo = fitPeakIngredients.crystalInfo
+        peakType = fitPeakIngredients.peakType
 
         result = self.mantidSnapper.PurgeOverlappingPeaksAlgorithm(
             "Purging overlapping peaks...", InstrumentState=instrumentState.json(), CrystalInfo=crystalInfo.json()

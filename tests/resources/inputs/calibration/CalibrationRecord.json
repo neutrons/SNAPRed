@@ -1,184 +1,389 @@
 {
-    "reductionIngredients": {
-      "runConfig": {
-        "runNumber": "57514",
-        "IPTS": "/SNS/SNAP/IPTS-28913/",
-        "maskFileName": "",
-        "maskFileDirectory": "/SNS/SNAP/IPTS-28913/shared/",
-        "gsasFileDirectory": "/SNS/SNAP/IPTS-28913/shared/manualReduced/",
-        "calibrationState": null
-      },
-      "reductionState": {
-        "instrumentConfig": {
-          "version": "1.4",
-          "facility": "SNS",
-          "name": "SNAP",
-          "nexusFileExtension": ".nxs.h5",
-          "nexusFilePrefix": "SNAP_",
-          "calibrationFileExtension": "json",
-          "calibrationFilePrefix": "SNAPcalibLog",
-          "calibrationDirectory": "/SNS/users/wqp/SNAP/shared/Calibration/",
-          "pixelGroupingDirectory": "PixelGroupingDefinitions/",
-          "sharedDirectory": "shared/",
-          "nexusDirectory": "nexus/",
-          "reducedDataDirectory": "shared/manualReduced/",
-          "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
-          "bandwidth": 3,
-          "maxBandwidth": 3.2,
-          "L1": 15,
-          "L2": 0.5,
-          "delTOverT": 0.002,
-          "delLOverL": 0.00006452,
-          "delThNoGuide": 0.0006667,
-          "delThWithGuide": 0.0032
-        },
-        "stateConfig": {
-          "diffractionCalibrant": {
-            "runNumber": "57514",
-            "filename": "SNAP057514_calib_geom_20230324.lite.h5",
-            "diffCalPath": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/SNAP057514_calib_geom_20230324.lite.h5",
-            "name": null,
-            "latticeParameters": null,
-            "reference": null,
-            "crystallographicInfo": null,
-            "fSquaredThreshold": null
-          },
-          "emptyInstrumentRunNumber": 57472,
-          "normalizationCalibrant": {
-            "numAnnuli": 10,
-            "numSlices": null,
-            "attenuationCrossSection": 5.08,
-            "attenuationHeight": 0.3,
-            "geometry": null,
-            "FWHM": [
-              [
-                5,
-                5,
-                5,
-                5,
-                5,
-                5
-              ],
-              [
-                5,
-                5
-              ],
-              [
-                5
-              ],
-              [
-                5,
-                5
-              ]
+  "runNumber": 57514,
+  "crystalInfo": {
+    "peaks": [
+        {
+            "hkl": [
+                1,
+                1,
+                1
             ],
-            "mask": "",
-            "material": null,
-            "peaks": [
-              1.2356,
-              1.5133,
-              2.1401
-            ],
-            "radius": 0.15,
-            "sampleNumberDensity": 0.07188,
-            "scatteringCrossSection": 5.1,
-            "smoothPoints": 40,
-            "calibrationState": null
-          },
-          "geometryCalibrationFileName": null,
-          "calibrationAuthor": "Malcolm",
-          "calibrationDate": "20230324",
-          "focusGroups": [
-            {
-              "name": "Column",
-              "FWHM": [
-                5,
-                5,
-                5,
-                5,
-                5,
-                5
-              ],
-              "nHst": 6,
-              "dBin": [
-                -0.00086,
-                -0.00096,
-                -0.0013,
-                -0.00117,
-                -0.00147,
-                -0.00186
-              ],
-              "dMax": [
-                2.15,
-                2.43,
-                2.77,
-                2.95,
-                3.74,
-                4.9
-              ],
-              "dMin": [
-                0.65,
-                0.65,
-                0.65,
-                0.65,
-                0.65,
-                0.65
-              ],
-              "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
-            },
-            {
-              "name": "Bank",
-              "FWHM": [
-                5,
-                5
-              ],
-              "nHst": 2,
-              "dBin": [
-                -0.001,
-                -0.001
-              ],
-              "dMax": [
-                2.74,
-                4.9
-              ],
-              "dMin": [
-                0.65,
-                0.65
-              ],
-              "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Bank.lite.xml"
-            },
-            {
-              "name": "All",
-              "FWHM": [
-                5
-              ],
-              "nHst": 1,
-              "dBin": [
-                -0.0008
-              ],
-              "dMax": [
-                4.9
-              ],
-              "dMin": [
-                0.65
-              ],
-              "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_All.lite.xml"
-            }
-          ],
-          "isLiteMode": true,
-          "rawVanadiumCorrectionFileName": "RVMB57473.lite.nxs",
-          "vanadiumFilePath": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/RVMB57473.lite.nxs",
-          "calibrationMaskFileName": null,
-          "stateId": "04bd2c53f6bf6754",
-          "tofBin": 10,
-          "tofMax": 14600,
-          "tofMin": 2300,
-          "version": "1.4",
-          "wallclockTof": 60,
-          "temporalProximity": null
+            "dSpacing": 3.13592994862768,
+            "fSquared": 535.9619564273586,
+            "multiplicity": 8
         },
-        "overrides": null
-      }
-    },
+        {
+            "hkl": [
+                2,
+                2,
+                0
+            ],
+            "dSpacing": 1.9203570608125202,
+            "fSquared": 1023.9787120274582,
+            "multiplicity": 12
+        },
+        {
+            "hkl": [
+                3,
+                1,
+                1
+            ],
+            "dSpacing": 1.6376860040951353,
+            "fSquared": 498.1235946287523,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                3,
+                3,
+                1
+            ],
+            "dSpacing": 1.2460922059340045,
+            "fSquared": 462.95658217953996,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                3,
+                3,
+                3
+            ],
+            "dSpacing": 1.0453099828758932,
+            "fSquared": 430.2723245685628,
+            "multiplicity": 8
+        },
+        {
+            "hkl": [
+                4,
+                0,
+                0
+            ],
+            "dSpacing": 1.3578975000000002,
+            "fSquared": 951.6868701996577,
+            "multiplicity": 6
+        },
+        {
+            "hkl": [
+                4,
+                2,
+                2
+            ],
+            "dSpacing": 1.108718666000307,
+            "fSquared": 884.4987579059488,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                4,
+                4,
+                0
+            ],
+            "dSpacing": 0.9601785304062601,
+            "fSquared": 822.0540571007734,
+            "multiplicity": 12
+        },
+        {
+            "hkl": [
+                4,
+                4,
+                4
+            ],
+            "dSpacing": 0.78398248715692,
+            "fSquared": 710.0790122848589,
+            "multiplicity": 8
+        },
+        {
+            "hkl": [
+                5,
+                1,
+                1
+            ],
+            "dSpacing": 1.0453099828758932,
+            "fSquared": 430.27232456856234,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                5,
+                3,
+                1
+            ],
+            "dSpacing": 0.9181062796881728,
+            "fSquared": 399.8955418627943,
+            "multiplicity": 48
+        },
+        {
+            "hkl": [
+                5,
+                3,
+                3
+            ],
+            "dSpacing": 0.8283097096328722,
+            "fSquared": 371.6633287118501,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                5,
+                5,
+                1
+            ],
+            "dSpacing": 0.7605747301605699,
+            "fSquared": 345.42428071520527,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                5,
+                5,
+                3
+            ],
+            "dSpacing": 0.7071327869943331,
+            "fSquared": 321.0376824669837,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                5,
+                5,
+                5
+            ],
+            "dSpacing": 0.627185989725536,
+            "fSquared": 277.3079440497553,
+            "multiplicity": 8
+        },
+        {
+            "hkl": [
+                6,
+                2,
+                0
+            ],
+            "dSpacing": 0.8588097858096985,
+            "fSquared": 764.0178878212722,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                6,
+                4,
+                2
+            ],
+            "dSpacing": 0.7258267444795525,
+            "fSquared": 659.9481657756581,
+            "multiplicity": 48
+        },
+        {
+            "hkl": [
+                6,
+                6,
+                0
+            ],
+            "dSpacing": 0.64011902027084,
+            "fSquared": 570.054168172224,
+            "multiplicity": 12
+        },
+        {
+            "hkl": [
+                6,
+                6,
+                4
+            ],
+            "dSpacing": 0.5790094394749851,
+            "fSquared": 492.4049667879426,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                7,
+                1,
+                1
+            ],
+            "dSpacing": 0.7605747301605699,
+            "fSquared": 345.4242807152059,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                7,
+                3,
+                1
+            ],
+            "dSpacing": 0.7071327869943332,
+            "fSquared": 321.03768246698314,
+            "multiplicity": 48
+        },
+        {
+            "hkl": [
+                7,
+                3,
+                3
+            ],
+            "dSpacing": 0.663574332271264,
+            "fSquared": 298.37275292395174,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                7,
+                5,
+                1
+            ],
+            "dSpacing": 0.627185989725536,
+            "fSquared": 277.30794404975575,
+            "multiplicity": 48
+        },
+        {
+            "hkl": [
+                7,
+                5,
+                3
+            ],
+            "dSpacing": 0.5961944569174021,
+            "fSquared": 257.73028897414855,
+            "multiplicity": 48
+        },
+        {
+            "hkl": [
+                7,
+                5,
+                5
+            ],
+            "dSpacing": 0.5458953346983784,
+            "fSquared": 222.6238864097245,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                7,
+                7,
+                1
+            ],
+            "dSpacing": 0.5458953346983784,
+            "fSquared": 222.62388640972324,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                7,
+                7,
+                3
+            ],
+            "dSpacing": 0.5250916246535536,
+            "fSquared": 206.90686944991165,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                8,
+                0,
+                0
+            ],
+            "dSpacing": 0.6789487500000001,
+            "fSquared": 613.3565053686378,
+            "multiplicity": 6
+        },
+        {
+            "hkl": [
+                8,
+                2,
+                2
+            ],
+            "dSpacing": 0.64011902027084,
+            "fSquared": 570.054168172224,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                8,
+                4,
+                0
+            ],
+            "dSpacing": 0.6072702232954043,
+            "fSquared": 529.8089313574962,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                8,
+                4,
+                4
+            ],
+            "dSpacing": 0.5543593330001535,
+            "fSquared": 457.64168357107144,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                8,
+                6,
+                2
+            ],
+            "dSpacing": 0.5326112192276046,
+            "fSquared": 425.33265232468636,
+            "multiplicity": 48
+        },
+        {
+            "hkl": [
+                9,
+                1,
+                1
+            ],
+            "dSpacing": 0.5961944569174022,
+            "fSquared": 257.7302889741486,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                9,
+                3,
+                1
+            ],
+            "dSpacing": 0.5693853436290405,
+            "fSquared": 239.53479617150862,
+            "multiplicity": 48
+        },
+        {
+            "hkl": [
+                9,
+                3,
+                3
+            ],
+            "dSpacing": 0.5458953346983784,
+            "fSquared": 222.62388640972318,
+            "multiplicity": 24
+        },
+        {
+            "hkl": [
+                9,
+                5,
+                1
+            ],
+            "dSpacing": 0.5250916246535536,
+            "fSquared": 206.90686944991126,
+            "multiplicity": 48
+        },
+        {
+            "hkl": [
+                9,
+                5,
+                3
+            ],
+            "dSpacing": 0.5064983791390006,
+            "fSquared": 192.29945769059668,
+            "multiplicity": 48
+        },
+        {
+            "hkl": [
+                10,
+                2,
+                0
+            ],
+            "dSpacing": 0.5326112192276046,
+            "fSquared": 425.33265232468636,
+            "multiplicity": 24
+        }
+    ]
+},
     "calibrationFittingIngredients": {
       "instrumentState": {
         "peakTailCoefficient": 1.1,
@@ -400,7 +605,7 @@
         ]
       }
     ],
-    "focusGroupCalibrationMetrics": [
+    "focusGroupCalibrationMetrics":
       {
         "focusGroupName": "Column",
         "calibrationMetric": [
@@ -448,38 +653,6 @@
           }
         ]
       },
-      {
-        "focusGroupName": "Bank",
-        "calibrationMetric": [
-          {
-            "sigmaAverage": 0.003110970834333842,
-            "sigmaStandardDeviation": 0.000047454307941197224,
-            "strainAverage": 0.1278456180017428,
-            "strainStandardDeviation": 0.01493115626477206,
-            "twoThetaAverage": 1.8230747785850556
-          },
-          {
-            "sigmaAverage": 0.0035095023448424452,
-            "sigmaStandardDeviation": 0.0019214750924501987,
-            "strainAverage": 1.4801619897864198,
-            "strainStandardDeviation": 1.385417497382044,
-            "twoThetaAverage": 1.1545587655200669
-          }
-        ]
-      },
-      {
-        "focusGroupName": "All",
-        "calibrationMetric": [
-          {
-            "sigmaAverage": 0.003508660096338432,
-            "sigmaStandardDeviation": 0.00007183841531968561,
-            "strainAverage": 0.11734266600947885,
-            "strainStandardDeviation": 0.01353544200863787,
-            "twoThetaAverage": 1.4888167720525662
-          }
-        ]
-      }
-    ],
     "workspaceNames": [
       "fitted_strippedFocussedData_stripped_0",
       "fitted_strippedFocussedData_stripped_1",
