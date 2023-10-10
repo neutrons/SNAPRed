@@ -36,7 +36,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
                 "Predicting peaks...",
                 InstrumentState=self.getProperty("InstrumentState").value,
                 CrystalInfo=self.getProperty("CrystalInfo").value,
-                PeakIntensityThreshold=0.0,
+                PeakIntensityFractionThreshold=0.0,
             )
             self.mantidSnapper.executeQueue()
             predictedPeaks_json = json.loads(result.get())

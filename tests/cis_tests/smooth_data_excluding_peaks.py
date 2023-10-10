@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
-from snapred.backend.recipe.algorithm.DetectorPeakPredictor import SmoothDataExcludingPeaks
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.CalibrationService import CalibrationService

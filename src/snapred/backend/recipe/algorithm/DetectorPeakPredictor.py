@@ -29,7 +29,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
             doc="The input value that holds crystal info.",
         )
         self.declareProperty(
-            "PeakIntensityThreshold",
+            "PeakIntensityFractionThreshold",
             defaultValue=0.05,
             direction=Direction.Input,
             doc="The input value for setting the threshold for peak intensity",
@@ -52,7 +52,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         multiplicity = np.array(crystalInfo.multiplicities)
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
-        thresholdA = np.max(A) * self.getProperty("PeakIntensityThreshold").value
+        thresholdA = np.max(A) * self.getProperty("PeakIntensityFractionThreshold").value
 
         allFocusGroupsPeaks = []
         allGroupIDs = [x.groupID for x in instrumentState.pixelGroupingInstrumentParameters]

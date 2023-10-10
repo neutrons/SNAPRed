@@ -82,11 +82,11 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
         # extract x & y data for csaps
         for index in range(numSpec):
-            weightX = weights_ws.readX(index)  # len of 1794
+            weightX = weights_ws.readX(index)
             x = ws.readX(index)
-            w = weights_ws.readY(index)  # len of 1793
+            w = weights_ws.readY(index)
             y = ws.readY(index)
-            weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2  # len of 1793
+            weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2
             xMidpoints = (x[:-1] + x[1:]) / 2
 
             weightXMidpoints = weightXMidpoints[w != 0]

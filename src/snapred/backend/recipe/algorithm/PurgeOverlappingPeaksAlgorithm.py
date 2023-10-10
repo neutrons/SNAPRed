@@ -18,7 +18,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputPeakMap", defaultValue="", direction=Direction.Output)
         self.declareProperty(
-            "PeakIntensityThreshold",
+            "PeakIntensityFractionThreshold",
             defaultValue=0.05,
             direction=Direction.Input,
             doc="Fraction of max for threshold peak intensity",
@@ -33,7 +33,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             "Predicting peaks...",
             InstrumentState=self.getProperty("InstrumentState").value,
             CrystalInfo=self.getProperty("CrystalInfo").value,
-            PeakIntensityThreshold=self.getProperty("PeakIntensityThreshold").value,
+            PeakIntensityFractionThreshold=self.getProperty("PeakIntensityFractionThreshold").value,
         )
         self.mantidSnapper.executeQueue()
         predictedPeaks_json = json.loads(result.get())
