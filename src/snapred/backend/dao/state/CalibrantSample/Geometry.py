@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from pydantic import BaseModel, root_validator
 
@@ -13,14 +13,29 @@ class Geometry(BaseModel):
     shape: str
     radius: float
     height: Optional[float]
-    center: List[float]
+    center: Tuple[float, float, float] = (0, 0, 0)
+    axis: Tuple[float, float, float] = (0, 1, 0)
+
+    @property
+    def geometryDictionary(self) -> Dict[str, Any]:
+        ans = {
+            "Shape": self.shape,
+            "Radius": self.radius,
+            "Center": list(self.center),
+        }
+        if self.shape == "Cylinder":
+            ans["Height"] = self.height
+            ans["Axis"] = list(self.axis)
+        return ans
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_form(cls, v):
         shape, height = v.get("shape").strip(), v.get("height")
         if shape != "Cylinder" and shape != "Sphere":
             raise ValueError('shape must be "Cylinder" or "Sphere"')
-        if shape == "Sphere" and height is not None:
+        elif shape == "Cylinder" and height is None:
+            raise RuntimeError("height must be set in cylinder")
+        elif shape == "Sphere" and height is not None:
             v.set("height", None)
             raise Warning("height is not used with a sphere")
         return v
