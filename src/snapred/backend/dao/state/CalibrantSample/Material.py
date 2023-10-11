@@ -13,6 +13,14 @@ class Material(BaseModel):
     massDensity: float
     chemicalFormula: str
 
+    @property
+    def materialDictionary(self) -> str:
+        return {
+            "ChemicalFormula": self.chemicalFormula,
+            "PackingFraction": self.packingFraction,
+            "MassDensity": self.massDensity,
+        }
+
     @validator("packingFraction", allow_reuse=True)
     def validate_packingFraction(cls, v):
         if v < 0 or v > 1:
