@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from pydantic import BaseModel, validator
 
 
@@ -14,7 +16,7 @@ class Material(BaseModel):
     chemicalFormula: str
 
     @property
-    def materialDictionary(self) -> str:
+    def materialDictionary(self) -> Dict[str, Any]:
         return {
             "ChemicalFormula": self.chemicalFormula,
             "PackingFraction": self.packingFraction,
