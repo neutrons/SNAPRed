@@ -30,23 +30,23 @@
         ],
         "atoms": [
             {
-                "atom_type": "La",
-                "atom_coordinates": [
+                "symbol": "La",
+                "coordinates": [
                     0.0,
                     0.0,
                     0.0
                 ],
-                "site_occupation_factor": 1.0,
+                "siteOccupationFactor": 1.0,
                 "adp": 0.0052
             },
             {
-                "atom_type": "11B",
-                "atom_coordinates": [
+                "symbol": "11B",
+                "coordinates": [
                     0.1975,
                     0.1975,
                     0.1975
                 ],
-                "site_occupation_factor": 0.5,
+                "siteOccupationFactor": 0.5,
                 "adp": 0.0041
             }
         ]
