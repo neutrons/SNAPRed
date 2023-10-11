@@ -79,17 +79,11 @@ class SaveGroupingDefinition(PythonAlgorithm):
         if file_extension not in self.supported_calib_file_extensions:
             raise Exception(f"OutputFilename has an unsupported file name extension {file_extension}")
 
-        instrumentName = self.getProperty("InstrumentName").value
-        instrumentFileName = self.getProperty("InstrumentFileName").value
-        instrumentDonor = self.getProperty("InstrumentDonor").value
-        instrumentPropertiesCount = sum(not prop for prop in [instrumentName, instrumentFileName])
-        if instrumentDonor:
-            instrumentPropertiesCount += 1
+        instrumentName = bool(self.getProperty("InstrumentName").value)
+        instrumentFileName = bool(self.getProperty("InstrumentFileName").value)
+        instrumentDonor = bool(self.getProperty("InstrumentDonor").value)
+        instrumentPropertiesCount = sum(prop for prop in [instrumentName, instrumentFileName, instrumentDonor])
         if instrumentPropertiesCount == 0 or instrumentPropertiesCount > 1:
-            print(instrumentPropertiesCount)
-            print(instrumentName)
-            print(instrumentFileName)
-            print(instrumentDonor)
             raise Exception(
                 "Either InstrumentName, InstrumentFileName, or InstrumentDonor must be specified, but not all three."
             )
