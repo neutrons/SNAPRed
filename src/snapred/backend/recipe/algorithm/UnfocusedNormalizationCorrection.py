@@ -32,34 +32,14 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
         self.vanadiumRunNumber: str = ingredients.runConfig.runNumber
         self.vanadiumBackgroundRunNumber: str = stateConfig.emptyInstrumentRunNumber
         self.geomCalibFile: str = stateConfig.geometryCalibrationFileName
-        # iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ f'RVMB{VRun}
         self.rawVFile: str = stateConfig.rawVanadiumCorrectionFileName
         self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
 
     def chopCalibrantSample(self, sample: CalibrantSamples) -> Dict[str, Any]:
-        self.sampleForm = sample.geometry.form
-        geometry = {
-            # SNAPRed specifies form as lowercase, mantid wants init cap
-            "Shape": f"{self.sampleForm[0].upper()}{self.sampleForm[1:].lower()}",
-            "Radius": sample.geometry.radius,
-            "Center": [0, 0, 0],  # @mguthrime confirms this is always true
-        }
-
-        # make the geometry dictionary
-        if geometry["Shape"] == "Cylinder":
-            geometry["Height"] = sample.geometry.total_height
-            geometry["Axis"] = [0, 1, 0]  # @mguthriem confirms this is always true
-        elif geometry["Shape"] != "Sphere":
-            raise RuntimeError(f"Calibrant sample has shape {geometry['Shape']}: must be Cylinder or Sphere\n")
-
-        # make the material dictionary
-        material = {
-            "ChemicalFormula": sample.material.chemical_composition,
-        }
-
+        self.sampleShape = sample.geometry.shape
         return {
-            "geometry": geometry,
-            "material": material,
+            "geometry": sample.geometry.geometryDictionary,
+            "material": sample.material.materialDictionary,
         }
 
     def raidPantry(self, wsName: str, filename: str) -> None:
@@ -110,13 +90,13 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
         )
 
     def shapedAbsorption(self, outputWS: str, wsName_cylinder: str):
-        if self.sampleForm == "cylinder":
+        if self.sampleShape == "Cylinder":
             self.mantidSnapper.CylinderAbsorption(
                 "Create cylinder absorption data",
                 InputWorkspace=outputWS,
                 OutputWorkspace=wsName_cylinder,
             )
-        elif self.sampleForm == "sphere":
+        elif self.sampleShape == "Sphere":
             self.mantidSnapper.SphericalAbsorption(
                 "Create spherical absorption data",
                 InputWorkspace=outputWS,
@@ -174,12 +154,12 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
         )
         # set the workspace's sample
         sample = CalibrantSamples.parse_raw(self.getProperty("CalibrantSample").value)
-        toSet = self.chopCalibrantSample(sample)
+        self.sampleShape = sample.geometry.shape
         self.mantidSnapper.SetSample(
             "Setting workspace with calibrant sample",
             InputWorkspace=outputWS,
-            Geometry=toSet["geometry"],
-            Material=toSet["material"],
+            Geometry=sample.geometry.geometryDictionary,
+            Material=sample.material.materialDictionary,
         )
         self.shapedAbsorption(outputWS, wsName_cylinder)
         self.mantidSnapper.Divide(
@@ -201,8 +181,10 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
         # save results
-
-        self.restockPantry(outputWS, self.rawVFile)
+        try:
+            self.restockPantry(outputWS, self.rawVFile)
+        except:  # noqa: E722
+            raise Warning("Unable to save output to file")
 
 
 # Register algorithm with Mantid

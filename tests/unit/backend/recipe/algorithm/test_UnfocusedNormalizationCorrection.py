@@ -13,6 +13,7 @@ from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.CalibrantSample.Atom import Atom
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
@@ -91,30 +92,35 @@ class TestUnfocusedNormalizationCorrection(unittest.TestCase):
     def test_chop_calibrant_sample(self):
         # create some nonsense material and crystallography
         fakeMaterial = Material(
-            microstructure="single-crystal",
-            packing_fraction=0.3,
-            mass_density=2.0,
-            chemical_composition="V",
+            packingFraction=0.3,
+            massDensity=1.0,
+            chemicalFormula="V B",
+        )
+        vanadiumAtom = Atom(
+            symbol="V",
+            coordinates=[0, 0, 0],
+            siteOccupationFactor=0.5,
+        )
+        boronAtom = Atom(
+            symbol="B",
+            coordinates=[0, 1, 0],
+            siteOccupationFactor=1.0,
         )
         fakeXtal = Crystallography(
-            cif_file=Resource.getPath("inputs/crystalInfo/example.cif"),
-            space_group="BCC",
-            lattice_parameters=[1, 2, 3, 4, 5, 6],
-            atom_type="V",
-            atom_coordinates=[0, 0, 0],
-            site_occupation_factor=0.5,
+            cifFile=Resource.getPath("inputs/crystalInfo/example.cif"),
+            spaceGroup="I m -3 m",
+            latticeParameters=[1, 2, 3, 4, 5, 6],
+            atoms=[vanadiumAtom, boronAtom],
         )
         # create two mock geometries for calibrant samples
         sphere = Geometry(
-            form="sphere",
+            shape="Sphere",
             radius=1.0,
-            illuminated_height=0.7,
         )
         cylinder = Geometry(
-            form="cylinder",
+            shape="Cylinder",
             radius=1.5,
-            illuminated_height=0.7,
-            total_height=2.0,
+            height=5.0,
         )
         # not create two differently shaped calibrant sample entries
         sphereSample = CalibrantSamples(
@@ -141,17 +147,17 @@ class TestUnfocusedNormalizationCorrection(unittest.TestCase):
         assert sample["geometry"]["Shape"] == "Sphere"
         assert sample["geometry"]["Radius"] == sphere.radius
         assert sample["geometry"]["Center"] == [0, 0, 0]
-        assert sample["material"]["ChemicalFormula"] == fakeMaterial.chemical_composition
+        assert sample["material"]["ChemicalFormula"] == fakeMaterial.chemicalFormula
 
         # chop and verify the cylindrical sample
         sample = {}  # clear the sample
         sample = algo.chopCalibrantSample(cylinderSample)
         assert sample["geometry"]["Shape"] == "Cylinder"
         assert sample["geometry"]["Radius"] == cylinder.radius
-        assert sample["geometry"]["Height"] == cylinder.total_height
+        assert sample["geometry"]["Height"] == cylinder.height
         assert sample["geometry"]["Center"] == [0, 0, 0]
         assert sample["geometry"]["Axis"] == [0, 1, 0]
-        assert sample["material"]["ChemicalFormula"] == fakeMaterial.chemical_composition
+        assert sample["material"]["ChemicalFormula"] == fakeMaterial.chemicalFormula
 
         self.calibrantSample = cylinderSample
 
