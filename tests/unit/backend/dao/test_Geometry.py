@@ -1,5 +1,6 @@
 import unittest
 
+import pytest
 from mantid.simpleapi import CreateWorkspace, SetSample
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 
@@ -37,6 +38,29 @@ class TestGeometry(unittest.TestCase):
             "Center": [0, 0, 0],
         }
         assert self.sphere.geometryDictionary == ref
+
+    def test_invalidSphere(self):
+        with pytest.raises(Warning):
+            Geometry(
+                shape="Sphere",
+                radius=3,
+                height=3,
+            )
+
+    def test_invalidCylinder(self):
+        with pytest.raises(RuntimeError):
+            Geometry(
+                shape="Cylinder",
+                radius=3,
+            )
+
+    def test_invalidShape(self):
+        with pytest.raises(ValueError):  # noqa: PT011
+            Geometry(
+                shape="Duckface",
+                radius=3,
+                height=3,
+            )
 
     def test_settableInMantid(self):
         # test that these can be used to set the sample in mantid

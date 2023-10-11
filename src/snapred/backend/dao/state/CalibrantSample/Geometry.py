@@ -36,6 +36,6 @@ class Geometry(BaseModel):
         elif shape == "Cylinder" and height is None:
             raise RuntimeError("height must be set in cylinder")
         elif shape == "Sphere" and height is not None:
-            v.set("height", None)
+            v["height"] = None
             raise Warning("height is not used with a sphere")
         return v

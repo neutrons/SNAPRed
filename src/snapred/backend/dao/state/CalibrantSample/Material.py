@@ -11,7 +11,7 @@ class Material(BaseModel):
 
             convention: https://docs.mantidproject.org/nightly/concepts/Materials.html#id3"""
 
-    packingFraction: float
+    packingFraction: Optional[float]
     massDensity: Optional[float]
     chemicalFormula: str
 
@@ -19,9 +19,10 @@ class Material(BaseModel):
     def materialDictionary(self) -> Dict[str, Any]:
         ans = {
             "ChemicalFormula": self.chemicalFormula,
-            "PackingFraction": self.packingFraction,
         }
-        if len(self.chemicalFormula.split()) > 1:
+        if self.packingFraction is not None:
+            ans["PackingFraction"] = self.packingFraction
+        if self.massDensity is not None:
             ans["MassDensity"] = self.massDensity
         return ans
 
@@ -32,11 +33,14 @@ class Material(BaseModel):
         return v
 
     @root_validator(pre=True, allow_reuse=True)
-    def validate_singleElement(cls, v):
-        symbols, md = v.get("chemicalFormula").split(), v.get("massDensity")
-        if (len(symbols) > 1) and md is None:
-            raise ValueError("for multi-element materials, must include mass density")
-        elif (len(symbols) == 1) and md is not None:
-            v.set("massDensity", 0)
-            raise Warning("can't specify mass density for single-element materials; ignored")
+    def validate_massDensity(cls, v):
+        symbols = v.get("chemicalFormula").replace("-", " ").split()
+        md, pf = v.get("massDensity"), v.get("packingFraction")
+        if len(symbols) > 1:
+            if md is None or pf is None:
+                raise ValueError("for multi-element materials, must include both mass density and packing fraction")
+        elif len(symbols) == 1:
+            if md is not None and pf is not None:
+                del v["massDensity"]
+                raise Warning("can't specify both mass-density and packing fraction for single-element materials")
         return v
