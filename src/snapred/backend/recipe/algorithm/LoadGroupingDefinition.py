@@ -111,6 +111,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
                 instrument_donor = self.mantidSnapper.LoadEmptyInstrument(
                     "Loading instrument definition file...",
                     Filename=self.getProperty("InstrumentFilename").value,
+                    InstrumentName=self.getProperty("InstrumentName").value,
                     OutputWorkspace="idf",
                 )
             self.mantidSnapper.LoadDetectorsGroupingFile(

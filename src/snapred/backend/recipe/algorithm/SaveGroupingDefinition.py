@@ -1,6 +1,6 @@
 import pathlib
 
-from mantid.api import AlgorithmFactory, PythonAlgorithm
+from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 from mantid.simpleapi import mtd
 
@@ -34,6 +34,23 @@ class SaveGroupingDefinition(PythonAlgorithm):
         )
         self.declareProperty("OutputFilename", defaultValue="", direction=Direction.Input, doc="Path of an output file")
 
+        self.declareProperty(
+            "InstrumentName",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="Name of an associated instrument",
+        )
+        self.declareProperty(
+            "InstrumentFilename",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="Path of an associated instrument definition file",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("InstrumentDonor", "", Direction.Input, PropertyMode.Optional),
+            doc="Workspace to optionally take the instrument from, when GroupingFilename is in XML format",
+        )
+
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
@@ -62,6 +79,15 @@ class SaveGroupingDefinition(PythonAlgorithm):
         if file_extension not in self.supported_calib_file_extensions:
             raise Exception(f"OutputFilename has an unsupported file name extension {file_extension}")
 
+        instrumentName = bool(self.getProperty("InstrumentName").value)
+        instrumentFileName = bool(self.getProperty("InstrumentFileName").value)
+        instrumentDonor = bool(self.getProperty("InstrumentDonor").value)
+        instrumentPropertiesCount = sum(prop for prop in [instrumentName, instrumentFileName, instrumentDonor])
+        if instrumentPropertiesCount == 0 or instrumentPropertiesCount > 1:
+            raise Exception(
+                "Either InstrumentName, InstrumentFileName, or InstrumentDonor must be specified, but not all three."
+            )
+
     def PyExec(self) -> None:
         self.validateInput()
 
@@ -72,6 +98,9 @@ class SaveGroupingDefinition(PythonAlgorithm):
                 "Loading grouping definition...",
                 GroupingFilename=grouping_file_name,
                 OutputWorkspace=grouping_ws_name,
+                InstrumentFileName=self.getProperty("InstrumentFileName").value,
+                InstrumentName=self.getProperty("InstrumentName").value,
+                InstrumentDonor=self.getProperty("InstrumentDonor").value,
             )
             self.mantidSnapper.executeQueue()
         else:  # retrieve grouping workspace from analysis data service
