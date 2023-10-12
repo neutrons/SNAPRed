@@ -14,8 +14,8 @@ from snapred.ui.view.FitMultiplePeaksView import FitMultiplePeaksView
 from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibrationCheckView
 from snapred.ui.view.VanadiumFocussedReductionView import VanadiumFocussedReductionView
 from snapred.ui.widget.JsonForm import JsonForm
-from snapred.ui.workflow.NormalizationCalibrationWorkflow import NormalizationCalibrationWorkflow
 from snapred.ui.workflow.DiffractionCalibrationCreationWorkflow import DiffractionCalibrationCreationWorkflow
+from snapred.ui.workflow.NormalizationCalibrationWorkflow import NormalizationCalibrationWorkflow
 from snapred.ui.workflow.ReductionWorkflow import ReductionWorkflow
 
 logger = snapredLogger.getLogger(__name__)
@@ -28,7 +28,7 @@ class TestPanelPresenter(object):
     def __init__(self, view):
         reductionRequest = SNAPRequest(path="api", payload=None)
         self.apiDict = self.interfaceController.executeRequest(reductionRequest).data
-       
+
         self.view = view
         self.calibrationCheckView = InitializeCalibrationCheckView(parent=self.view)
 

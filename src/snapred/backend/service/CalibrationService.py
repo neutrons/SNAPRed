@@ -306,10 +306,9 @@ class CalibrationService(Service):
         )
 
         return record
-    
+
     # @FromString
     # def normalization(self, request: CalibrationNormalizationRequest):
-
 
     @FromString
     def retrievePixelGroupingParams(self, runID: str):

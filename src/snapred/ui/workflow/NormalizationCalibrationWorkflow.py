@@ -43,7 +43,7 @@ class NormalizationCalibrationWorkflow:
         cancelLambda = None
         if parent is not None and hasattr(parent, "close"):
             cancelLambda = parent.close
-        
+
         request = SNAPRequest(path="config/calibrantSamples")
         self.calibrantSamples = self.interfaceController.executeRequest(request).data
 
@@ -84,7 +84,7 @@ class NormalizationCalibrationWorkflow:
             view.verify()
         except ValueError as e:
             return SNAPResponse(code=500, message=f"Missing Fields!{e}")
-        
+
         self.runNumber = view.getFieldText("runNumber")
         self.emptyRunNumber = view.getFieldText("emptyRunNumber")
         calibrantIndex = view.calibrantIndex.currentIndex()
@@ -99,12 +99,12 @@ class NormalizationCalibrationWorkflow:
             runNumber=self.runNumber, emptyRunNumber=self.emptyRunNumber, calibrantPath=self._calibrantPath
         )
         payload.convergenceThreshold = view.fieldConvergenceThreshold.get(payload.convergenceThreshold)
-        
+
         request = SNAPRequest(path="calibration/normalization", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
         return response
-    
+
     def _specifyCalibration(self, workflowPresenter):
         payload = SpecifyCalibrationRequest(
             run=RunConfig(runNumber=self.runNumber),
@@ -115,14 +115,14 @@ class NormalizationCalibrationWorkflow:
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
         return response
-    
+
     def _saveNormalizationCalibration(self, workflowPresenter):
 
         #symlink?
-    
+
     @property
     def widget(self):
         return self.workflow.presenter.widget
-    
+
     def show(self):
         pass
