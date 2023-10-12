@@ -20,7 +20,8 @@ from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest, SNAPResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.dao.request import(
-    
+    NormalizationCalibrationRequest,
+    SpecifyCalibrationRequest,
 )
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
 from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
@@ -76,7 +77,7 @@ class NormalizationCalibrationWorkflow:
             .build()
         )
 
-    def triggerNormalizationCalibration(self, workflowPresenter):
+    def _triggerNormalizationCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabview
 
         try:
@@ -85,7 +86,39 @@ class NormalizationCalibrationWorkflow:
             return SNAPResponse(code=500, message=f"Missing Fields!{e}")
         
         self.runNumber = view.getFieldText("runNumber")
+        self.emptyRunNumber = view.getFieldText("emptyRunNumber")
+        calibrantIndex = view.calibrantIndex.currentIndex()
 
+        self._specifyCalibrationView.updateCalibrantSample(calibrantIndex)
+        self._specifyCalibrationView.updateRunNumber(self.runNumber)
+        self._specifyCalibrationView.updateEmptyRunNumber(self.emptyRunNumber)
+        self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
+        self._calibrantPath = view.calibrantPath.currentText()
+
+        payload = NormalizationCalibrationRequest(
+            runNumber=self.runNumber, emptyRunNumber=self.emptyRunNumber, calibrantPath=self._calibrantPath
+        )
+        payload.convergenceThreshold = view.fieldConvergenceThreshold.get(payload.convergenceThreshold)
+        
+        request = SNAPRequest(path="calibration/normalization", payload=payload.json())
+        response = self.interfaceController.executeRequest(request)
+        self.responses.append(response)
+        return response
+    
+    def _specifyCalibration(self, workflowPresenter):
+        payload = SpecifyCalibrationRequest(
+            run=RunConfig(runNumber=self.runNumber),
+            workspace=self.responses[-1].data["outputWorkspace"]
+            smoothWorkspace=self.responses[-2].data["smoothOutputWorkspace"]
+        )
+        request = SNAPRequest(path="calibration/specifyNormalization", payload=payload.json())
+        response = self.interfaceController.executeRequest(request)
+        self.responses.append(response)
+        return response
+    
+
+    #symlink?
+    
     @property
     def widget(self):
         return self.workflow.presenter.widget
