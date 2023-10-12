@@ -68,6 +68,7 @@ class CalibrationService(Service):
         self.registerPath("hasState", self.hasState)
         self.registerPath("checkDataExists", self.calculatePixelGroupingParameters)
         self.registerPath("assessment", self.assessQuality)
+        # self.registerPath("normalization", self.normalization)
         self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
@@ -304,6 +305,10 @@ class CalibrationService(Service):
         )
 
         return record
+    
+    # @FromString
+    # def normalization(self, request: CalibrationNormalizationRequest):
+
 
     @FromString
     def retrievePixelGroupingParams(self, runID: str):

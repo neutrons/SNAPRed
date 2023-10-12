@@ -6,6 +6,7 @@ from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.widget.LabeledField import LabeledField
+from snapred.ui.widget.SampleDropDown import SampleDropDown
 
 
 class BackendRequestView(QWidget):
@@ -29,3 +30,6 @@ class BackendRequestView(QWidget):
 
     def _labeledField(self, label, field):
         return LabeledField(label, field, self)
+
+    def _sampleDropDown(self, label, items = []):
+        return SampleDropDown(label, items, self)
