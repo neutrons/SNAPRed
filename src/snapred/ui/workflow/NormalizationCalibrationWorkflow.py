@@ -116,8 +116,9 @@ class NormalizationCalibrationWorkflow:
         self.responses.append(response)
         return response
     
+    def _saveNormalizationCalibration(self, workflowPresenter):
 
-    #symlink?
+        #symlink?
     
     @property
     def widget(self):
