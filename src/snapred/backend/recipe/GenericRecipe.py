@@ -3,7 +3,7 @@ from typing import Generic, TypeVar, get_args
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
-from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import CalibrationNormalizationAlgo
+from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import CalibrationNormalization
 from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import CalibrationReductionAlgorithm
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
@@ -64,7 +64,7 @@ class CalibrationMetricExtractionRecipe(GenericRecipe[CalibrationMetricExtractio
     pass
 
 
-class CalibrationNormalizationRecipe(GenericRecipe[CalibrationNormalizationAlgo]):
+class CalibrationNormalizationRecipe(GenericRecipe[CalibrationNormalization]):
     pass
 
 

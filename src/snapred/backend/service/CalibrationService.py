@@ -309,12 +309,21 @@ class CalibrationService(Service):
 
         return record
 
-    # @FromString
-    # def normalization(self, request: CalibrationNormalizationRequest):
-    #     try:
-    #         CalibrationNormalizationRecipe().executeRecipe(ReductionIngredients=reductionIngredients)
-    #     except:
-    #         raise
+    @FromString
+    def normalization(self, request: CalibrationNormalizationRequest):
+        reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber)
+        calibration = self.dataFactoryService.getCalibrationState(request.runNumber)
+        instrumentState = calibration.instrumentState
+        cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
+        crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
+
+        smoothingIngredients = SmoothDataExcludingPeaksIngredients(
+            crystalInfo=crystalInfo,
+            instrumentState=instrumentState,
+            smoothingParameter=request.smoothingParameter,
+        )
+
+        return CalibrationNormalizationRecipe().executeRecipe(reductionIngredients, smoothingIngredients)
 
     @FromString
     def retrievePixelGroupingParams(self, runID: str):
