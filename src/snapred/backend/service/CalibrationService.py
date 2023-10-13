@@ -22,6 +22,7 @@ from snapred.backend.dao.ingredients import (
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
+    CalibrationNormalizationRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
 )
@@ -33,6 +34,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
+    CalibrationNormalizationRecipe,
     CalibrationReductionRecipe,
     DetectorPeakPredictorRecipe,
     FitMultiplePeaksRecipe,
@@ -68,7 +70,7 @@ class CalibrationService(Service):
         self.registerPath("hasState", self.hasState)
         self.registerPath("checkDataExists", self.calculatePixelGroupingParameters)
         self.registerPath("assessment", self.assessQuality)
-        # self.registerPath("normalization", self.normalization)
+        self.registerPath("normalization", self.normalization)
         self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
@@ -305,10 +307,13 @@ class CalibrationService(Service):
         )
 
         return record
-    
+
     # @FromString
     # def normalization(self, request: CalibrationNormalizationRequest):
-
+    #     try:
+    #         CalibrationNormalizationRecipe().executeRecipe(ReductionIngredients=reductionIngredients)
+    #     except:
+    #         raise
 
     @FromString
     def retrievePixelGroupingParams(self, runID: str):
