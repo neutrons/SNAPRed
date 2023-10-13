@@ -22,9 +22,10 @@ class CalculateOffsetDIFC(PythonAlgorithm):
 
     def PyInit(self):
         # declare properties
+        self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
+        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
-        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
         self.declareProperty("MaxOffset", 2.0, direction=Direction.Input)
         self.setRethrows(True)
