@@ -13,13 +13,15 @@ from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "UnfocusedNormalizationCorrection"
+name = "RawVanadiumCorrection"
 
 
 # TODO: Rename so it matches filename
-class UnfocusedNormalizationCorrection(PythonAlgorithm):
+class RawVanadiumCorrection(PythonAlgorithm):
     def PyInit(self):
         # declare properties
+        self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
+        self.declareProperty("BackgroundWorkspace", defaultValue="", direction=Direction.Input)
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="vanadiumrawcorr_out", direction=Direction.Output)
@@ -35,6 +37,7 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
         self.rawVFile: str = stateConfig.rawVanadiumCorrectionFileName
         self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
 
+    # TODO: do we even need this?
     def chopCalibrantSample(self, sample: CalibrantSamples) -> Dict[str, Any]:
         self.sampleShape = sample.geometry.shape
         return {
@@ -42,18 +45,18 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
             "material": sample.material.materialDictionary,
         }
 
-    def raidPantry(self, wsName: str, filename: str) -> None:
+    def chopNeutronData(self, wsName: str) -> None:
         if self.liteMode:
             pass
         else:
             pass
 
-        self.mantidSnapper.LoadEventNexus(
-            "Load the indicated data",
-            Filename=filename,
-            OutputWorkspace=wsName,
-            NumberOfBins=1,
-        )
+        # self.mantidSnapper.LoadEventNexus(
+        #     "Load the indicated data",
+        #     Filename=filename,
+        #     OutputWorkspace=wsName,
+        #     NumberOfBins=1,
+        # )
         self.mantidSnapper.CropWorkspace(
             "Filter the workspace within bounds",
             InputWorkspace=wsName,
@@ -82,13 +85,6 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-    def restockPantry(self, wsName: str, filename: str) -> None:
-        self.mantidSnapper.SaveNexus(
-            "Saving results",
-            InputWorkspace=wsName,
-            Filename=filename,
-        )
-
     def shapedAbsorption(self, outputWS: str, wsName_cylinder: str):
         if self.sampleShape == "Cylinder":
             self.mantidSnapper.CylinderAbsorption(
@@ -106,10 +102,29 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
             raise RuntimeError("Must use cylindrical or spherical calibrant samples\n")
 
     def PyExec(self):
-        wsNameV = "TOF_V"
-        wsNameVB = "TOF_VB"
+        wsNameV = self.getProperty("InputWorkspace").value
+        wsNameVB = self.getProperty("BackgroundWorkspace").value
         wsName_cylinder = "cylAbsCalc"
         outputWS = self.getProperty("OutputWorkspace").value
+        outputWSVB = wsNameVB + "_out"
+
+        # if output is same as input, overwrite it
+        # if output is not the same, clone copy of input and continue
+        # else set the name so the workspace is overwritten
+        if wsNameV != outputWS:
+            self.mantidSnapper.CloneWorkspace(
+                InputWorkspace=wsNameV,
+                OutputWorkspace=outputWS,
+            )
+        elif outputWS == "":
+            outputWS = wsNameV
+
+        # do not mutate the background workspace
+        # instead clone it, then delete later
+        self.mantidSnapper.CloneWorkspace(
+            InputWorkspace=wsNameVB,
+            OutputWorkspace=outputWSVB,
+        )
 
         # Load and pre-process vanadium and empty datasets
         ingredients: Ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
@@ -121,19 +136,19 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-        self.raidPantry(wsNameV, self.rawVFile)
-        self.raidPantry(wsNameVB, self.vanadiumBackgroundRunNumber)
+        self.chopNeutronData(outputWS)
+        self.chopNeutronData(outputWSVB)
 
         # take difference
         self.mantidSnapper.Minus(
             "Subtract off empty background",
-            LHSWorkspace=wsNameV,
-            RHSWorkspace=wsNameVB,
+            LHSWorkspace=outputWS,
+            RHSWorkspace=outputWSVB,
             OutputWorkspace=outputWS,
         )
-        self.mantidSnapper.DeleteWorkspaces(
-            "Remove cluttering workspaces",
-            WorkspaceList=[wsNameV, wsNameVB],
+        self.mantidSnapper.WashDishes(
+            "Remove local vanadium background copy",
+            Workspace=outputWSVB,
         )
 
         if not self.liteMode:
@@ -188,4 +203,4 @@ class UnfocusedNormalizationCorrection(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(UnfocusedNormalizationCorrection)
+AlgorithmFactory.subscribe(RawVanadiumCorrection)

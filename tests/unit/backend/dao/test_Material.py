@@ -5,7 +5,7 @@ from mantid.simpleapi import CreateWorkspace, SetSample
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 
 
-class TestGeometry(unittest.TestCase):
+class TestMaterial(unittest.TestCase):
     def setUp(self):
         self.vanadium = Material(
             packingFraction=0.3,
