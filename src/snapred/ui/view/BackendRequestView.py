@@ -31,5 +31,5 @@ class BackendRequestView(QWidget):
     def _labeledField(self, label, field):
         return LabeledField(label, field, self)
 
-    def _sampleDropDown(self, label, items = []):
+    def _sampleDropDown(self, label, items=[]):
         return SampleDropDown(label, items, self)

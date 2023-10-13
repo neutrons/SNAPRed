@@ -33,7 +33,7 @@ class ConfigLookupService(Service):
 
     def getGroupingFiles(self):
         return self.dataFactoryService.getGroupingFiles()
-    
+
     def getCalibrantSamples(self):
         return self.dataFactoryService.getCalibrantSample()
 

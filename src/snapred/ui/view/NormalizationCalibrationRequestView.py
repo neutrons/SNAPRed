@@ -6,4 +6,4 @@ from snapred.ui.widget.LabeledField import LabeledField
 
 class NormalizationCalibrationRequestView(BackendRequestView):
     def __init__(self, jsonForm, calibrantsamples=[], parent=None):
-        
+

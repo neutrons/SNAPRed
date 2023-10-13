@@ -71,6 +71,7 @@ class CalibrationService(Service):
         self.registerPath("checkDataExists", self.calculatePixelGroupingParameters)
         self.registerPath("assessment", self.assessQuality)
         self.registerPath("normalization", self.normalization)
+        # self.registerPath("specifyNormalization", self.specifyNormalization)
         self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
         self.registerPath("diffraction", self.diffractionCalibration)
         return

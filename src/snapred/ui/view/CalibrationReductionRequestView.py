@@ -30,7 +30,7 @@ class CalibrationReductionRequestView(BackendRequestView):
         self.layout.addWidget(self.fieldNBinsAcrossPeakWidth, 1, 2)
         self.layout.addWidget(self.sampleDropdown, 2, 0)
         self.layout.addWidget(self.groupingFileDropdown, 2, 1)
-        
+
     def verify(self):
         if self.sampleDropdown.currentIndex() == 0:
             raise ValueError("Please select a sample")
