@@ -22,6 +22,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.dao.request import(
     NormalizationCalibrationRequest,
     SpecifyCalibrationRequest,
+    CalibrationExportRequest,
 )
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
 from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
