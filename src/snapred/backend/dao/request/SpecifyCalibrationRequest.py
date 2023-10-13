@@ -7,4 +7,3 @@ class SpecifyCalibrationRequest(BaseModel):
     runNumber: RunConfig
     preSmoothedWorkpace: str
     smoothedWorkspace: str
-    
