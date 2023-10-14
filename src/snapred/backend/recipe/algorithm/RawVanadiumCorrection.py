@@ -54,17 +54,12 @@ class RawVanadiumCorrection(PythonAlgorithm):
         self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
 
     def chopNeutronData(self, wsName: str) -> None:
+        # TODO: handle lite mode
         if self.liteMode:
             pass
         else:
             pass
 
-        # self.mantidSnapper.LoadEventNexus(
-        #     "Load the indicated data",
-        #     Filename=filename,
-        #     OutputWorkspace=wsName,
-        #     NumberOfBins=1,
-        # )
         self.mantidSnapper.CropWorkspace(
             "Filter the workspace within bounds",
             InputWorkspace=wsName,

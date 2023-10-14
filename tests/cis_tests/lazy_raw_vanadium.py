@@ -1,4 +1,9 @@
-# TODO: figure out how to run snapred algos like python functions
+# this is a test of the raw vanadium correction algorithm
+# this in a very lazy test, which copy/pastes over the unit test then runs it
+
+from mantid.simpleapi import *
+import matplotlib.pyplot as plt
+import numpy as np
 
 import json
 import random
@@ -6,25 +11,17 @@ import unittest
 import unittest.mock as mock
 from typing import Dict, List
 
+import os
+os.environ["env"] = "test"
+
 import pytest
 from mantid.api import PythonAlgorithm
 from mantid.kernel import Direction
-from mantid.simpleapi import (
-    AddSampleLog,
-    CalculateDIFC,
-    CloneWorkspace,
-    CreateEmptyTableWorkspace,
-    CreateSampleWorkspace,
-    CreateWorkspace,
-    DeleteWorkspace,
-    LoadInstrument,
-    Plus,
-    Rebin,
-    mtd,
-)
+
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
+from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
@@ -40,8 +37,9 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.RawVanadiumCorrection import RawVanadiumCorrection as Algo  # noqa: E402
-from snapred.backend.recipe.algorithm.WashDishes import WashDishes
-from snapred.meta.Config import Resource
+from snapred.meta.Config import Config, Resource
+Config._config['cis_mode'] = True
+Resource._resourcesPath = "/home/4rx/SNAPRed/tests/resources/"
 
 TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
 
@@ -52,9 +50,13 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
-        self.fakeIngredients = Ingredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
+        print("/home/4rx/SNAPRed/tests/resources/inputs/reduction")
+        print(Resource.getPath("inputs/reduction/fake_file.json"))
+        print(Resource.exists("inputs/reduction/fake_file.json"))
+
+        self.fakeIngredients = Ingredients.parse_raw(Resource.read("inputs/reduction/fake_file.json"))
         self.fakeIngredients.runConfig = fakeRunConfig
-        TOFBinParams = (1, 1, 100)
+        TOFBinParams = (1, 0.01, 100)
         self.fakeIngredients.reductionState.stateConfig.tofMin = TOFBinParams[0]
         self.fakeIngredients.reductionState.stateConfig.tofBin = TOFBinParams[1]
         self.fakeIngredients.reductionState.stateConfig.tofMax = TOFBinParams[2]
@@ -145,11 +147,11 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             Random=True,
         )
         Plus(
-            LHSWorkspace="_tmp_raw_vanadium",
-            RHSWorkspace=self.sampleWS,
+            LHSWorkspace="_tmp_raw_vanadium", 
+            RHSWorkspace=self.sampleWS, 
             OutputWorkspace=self.sampleWS,
         )
-        WashDishes(Workspace="_tmp_raw_vanadium")
+        # WashDishes(Workspace="_tmp_raw_vanadium")
 
         self.difcWS = "_difc_table_raw_vanadium"
         ws = CalculateDIFC(
@@ -165,7 +167,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         difc.addColumn("double", "difa")
         for i in range(ws.getNumberHistograms()):
             difc.addRow([i + 1, ws.readY(i)[0], 0.0, 0.0])
-        WashDishes(Workspace=self.difcWS)
+        # WashDishes(Workspace=self.difcWS)
         self.difcWS = difc.name()
 
         Rebin(
@@ -184,101 +186,8 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         )
 
     def tearDown(self) -> None:
-        for ws in mtd.keys():
-            DeleteWorkspace(ws)
+        WashDishes(self.sampleWS)
         return super().tearDown()
-
-    def test_chop_ingredients(self):
-        """Test that ingredients for algo are properly processed"""
-        algo = Algo()
-        algo.initialize()
-        algo.chopIngredients(self.fakeIngredients)
-        assert algo.liteMode == self.fakeIngredients.reductionState.stateConfig.isLiteMode
-        assert algo.vanadiumRunNumber == self.fakeIngredients.runConfig.runNumber
-        assert (
-            algo.vanadiumBackgroundRunNumber == self.fakeIngredients.reductionState.stateConfig.emptyInstrumentRunNumber
-        )
-        assert algo.TOFPars[0] == self.fakeIngredients.reductionState.stateConfig.tofMin
-        assert algo.TOFPars[1] == self.fakeIngredients.reductionState.stateConfig.tofBin
-        assert algo.TOFPars[2] == self.fakeIngredients.reductionState.stateConfig.tofMax
-        assert algo.geomCalibFile == self.fakeIngredients.reductionState.stateConfig.geometryCalibrationFileName
-        assert algo.rawVFile == self.fakeIngredients.reductionState.stateConfig.rawVanadiumCorrectionFileName
-
-    def test_init_properties(self):
-        """Test that the properties of the algorithm can be initialized"""
-        algo = Algo()
-        algo.initialize()
-
-        # set the input workspaces
-        algo.setProperty("InputWorkspace", self.sampleWS)
-        print(algo.getPropertyValue("InputWorkspace"), self.sampleWS)
-        assert algo.getPropertyValue("InputWorkspace") == self.sampleWS
-        algo.setPropertyValue("BackgroundWorkspace", self.backgroundWS)
-        assert algo.getPropertyValue("BackgroundWorkspace") == self.backgroundWS
-
-        # set the ingredients
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
-
-        # set the calibrant sample
-        algo.setProperty("CalibrantSample", self.calibrantSample.json())
-        assert algo.getProperty("CalibrantSample").value == self.calibrantSample.json()
-
-        # set the output workspace
-        goodOutputWSName = "_test_raw_vanadium_corr"
-        algo.setProperty("OutputWorkspace", goodOutputWSName)
-        assert algo.getPropertyValue("OutputWorkspace") == goodOutputWSName
-
-    def test_chop_neutron_data(self):
-        # make an incredibly simple workspace, with incredibly simple data
-        dataX = [1, 2, 3, 4, 5]
-        dataY = [10, 110, 200, 110, 10]
-        testWS = "_test_chop_neutron_data_raw_vanadium"
-        ws = CreateWorkspace(
-            OutputWorkspace=testWS,
-            DataX=dataX,
-            DataY=dataY,
-            UnitX="TOF",
-        )
-        AddSampleLog(
-            Workspace=testWS,
-            LogName="gd_prtn_chrg",
-            LogText=f"{self.sample_proton_charge}",
-            LogType="Number",
-        )
-
-        difc = CreateEmptyTableWorkspace()
-        difc.addColumn("int", "detid")
-        difc.addColumn("double", "difc")
-        difc.addColumn("double", "tzero")
-        difc.addColumn("double", "difa")
-        difc.addRow([0, 7000, 0, 0])
-        difc = difc.name()
-
-        algo = Algo()
-        algo.initialize()
-        algo.setProperty("CalibrationWorkspace", difc)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.chopIngredients(self.fakeIngredients)
-        algo.TOFPars = (2, 2, 4)
-        algo.chopNeutronData(testWS)
-
-        dataXnorm = []
-        dataYnorm = []
-        for x, y in zip(dataX, dataY):
-            if x >= algo.TOFPars[0] and x <= algo.TOFPars[2]:
-                dataXnorm.append(x)
-                dataYnorm.append(y / self.sample_proton_charge)
-
-        print(dataXnorm, dataYnorm)
-        dataXrebin = [sum(dataXnorm) / len(dataXnorm)]
-        dataYrebin = [sum(dataYnorm[:-1])]
-
-        ws = mtd[testWS]
-        assert ws.readX(0) == dataXrebin
-        assert ws.readY(0) == dataYrebin
-
-        WashDishes(WorkspaceList=[testWS, difc])
 
     @mock.patch(TheAlgorithmManager)
     def test_execute(self, mockAlgorithmManager):
@@ -313,19 +222,10 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo.setProperty("CalibrationWorkspace", self.difcWS)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("CalibrantSample", self.calibrantSample.json())
-        algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")
+        algo.setProperty("OutputWorkspace", "_test_raw_vanadium_final_output")
         assert algo.execute()
 
 
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)
+test = TestRawVanadiumCorrection()
+test.setUp()
+test.test_execute()
