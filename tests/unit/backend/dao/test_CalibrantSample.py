@@ -85,3 +85,72 @@ class TestCalibrantSamples(unittest.TestCase):
             assert atomstring[0] == xtalstring[0]
             for a, x in zip(atomstring[1:], xtalstring[1:]):
                 assert float(a) == float(x)
+
+    def test_chop_calibrant_sample(self):
+        # removed from test of Raw Vanadium Correction
+
+        # create some nonsense material and crystallography
+        fakeMaterial = Material(
+            packingFraction=0.3,
+            massDensity=1.0,
+            chemicalFormula="V B",
+        )
+        vanadiumAtom = Atom(
+            symbol="V",
+            coordinates=[0, 0, 0],
+            siteOccupationFactor=0.5,
+        )
+        boronAtom = Atom(
+            symbol="B",
+            coordinates=[0, 1, 0],
+            siteOccupationFactor=1.0,
+        )
+        fakeXtal = Crystallography(
+            cifFile=Resource.getPath("inputs/crystalInfo/example.cif"),
+            spaceGroup="I m -3 m",
+            latticeParameters=[1, 2, 3, 4, 5, 6],
+            atoms=[vanadiumAtom, boronAtom],
+        )
+        # create two mock geometries for calibrant samples
+        sphere = Geometry(
+            shape="Sphere",
+            radius=1.0,
+        )
+        cylinder = Geometry(
+            shape="Cylinder",
+            radius=1.5,
+            height=5.0,
+        )
+        # not create two differently shaped calibrant sample entries
+        sphereSample = CalibrantSamples(
+            name="fake sphere sample",
+            unique_id="123fakest",
+            geometry=sphere,
+            material=fakeMaterial,
+            crystallography=fakeXtal,
+        )
+        cylinderSample = CalibrantSamples(
+            name="fake cylinder sample",
+            unique_id="435elmst",
+            geometry=cylinder,
+            material=fakeMaterial,
+            crystallography=fakeXtal,
+        )
+
+        # chop and verify the spherical sample
+        sampleGeometry = sphereSample.geometry.dict()
+        sampleMaterial = sphereSample.material.dict()
+        assert sampleGeometry["shape"] == "Sphere"
+        assert sampleGeometry["radius"] == sphere.radius
+        assert sampleGeometry["center"] == (0, 0, 0)
+        assert sampleMaterial["chemicalFormula"] == fakeMaterial.chemicalFormula
+
+        # chop and verify the cylindrical sample
+        sampleGeometry = cylinderSample.geometry.dict()
+        sampleMaterial = cylinderSample.material.dict()
+        assert sampleGeometry["shape"] == "Cylinder"
+        assert sampleGeometry["radius"] == cylinder.radius
+        assert sampleGeometry["height"] == cylinder.height
+        assert sampleGeometry["center"] == (0, 0, 0)
+        assert sampleGeometry["axis"] == (0, 1, 0)
+        assert sampleMaterial["chemicalFormula"] == fakeMaterial.chemicalFormula
