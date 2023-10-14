@@ -4,6 +4,9 @@ from typing import Any, Dict, Tuple
 import numpy as np
 from mantid.api import (
     AlgorithmFactory,
+    ITableWorkspaceProperty,
+    MatrixWorkspaceProperty,
+    PropertyMode,
     PythonAlgorithm,
 )
 from mantid.kernel import Direction
@@ -20,11 +23,24 @@ name = "RawVanadiumCorrection"
 class RawVanadiumCorrection(PythonAlgorithm):
     def PyInit(self):
         # declare properties
-        self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-        self.declareProperty("BackgroundWorkspace", defaultValue="", direction=Direction.Input)
+        self.declareProperty(
+            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace containing the raw vanadium data",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("BackgroundWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace containing the raw vanadium background data",
+        )
+        self.declareProperty(
+            ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Table workspace with calibration data: cols detid, difc, difa, tzero",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="Workspace containing corrected data; if none given, the InputWorkspace will be overwritten",
+        )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="vanadiumrawcorr_out", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
@@ -36,14 +52,6 @@ class RawVanadiumCorrection(PythonAlgorithm):
         self.geomCalibFile: str = stateConfig.geometryCalibrationFileName
         self.rawVFile: str = stateConfig.rawVanadiumCorrectionFileName
         self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
-
-    # TODO: do we even need this?
-    def chopCalibrantSample(self, sample: CalibrantSamples) -> Dict[str, Any]:
-        self.sampleShape = sample.geometry.shape
-        return {
-            "geometry": sample.geometry.geometryDictionary,
-            "material": sample.material.materialDictionary,
-        }
 
     def chopNeutronData(self, wsName: str) -> None:
         if self.liteMode:
@@ -72,7 +80,7 @@ class RawVanadiumCorrection(PythonAlgorithm):
         self.mantidSnapper.ApplyDiffCal(
             "Apply diffraction calibration from geometry file",
             InstrumentWorkspace=wsName,
-            CalibrationFile=self.geomCalibFile,
+            CalibrationWorkspace=self.getProperty("CalibrationWorkspace").value,
         )
 
         self.mantidSnapper.Rebin(
@@ -102,10 +110,10 @@ class RawVanadiumCorrection(PythonAlgorithm):
             raise RuntimeError("Must use cylindrical or spherical calibrant samples\n")
 
     def PyExec(self):
-        wsNameV = self.getProperty("InputWorkspace").value
-        wsNameVB = self.getProperty("BackgroundWorkspace").value
+        wsNameV = self.getPropertyValue("InputWorkspace")
+        wsNameVB = self.getPropertyValue("BackgroundWorkspace")
         wsName_cylinder = "cylAbsCalc"
-        outputWS = self.getProperty("OutputWorkspace").value
+        outputWS = self.getPropertyValue("OutputWorkspace")
         outputWSVB = wsNameVB + "_out"
 
         # if output is same as input, overwrite it
@@ -113,6 +121,7 @@ class RawVanadiumCorrection(PythonAlgorithm):
         # else set the name so the workspace is overwritten
         if wsNameV != outputWS:
             self.mantidSnapper.CloneWorkspace(
+                "Copying over input data for output",
                 InputWorkspace=wsNameV,
                 OutputWorkspace=outputWS,
             )
@@ -122,6 +131,7 @@ class RawVanadiumCorrection(PythonAlgorithm):
         # do not mutate the background workspace
         # instead clone it, then delete later
         self.mantidSnapper.CloneWorkspace(
+            "Copying over background data",
             InputWorkspace=wsNameVB,
             OutputWorkspace=outputWSVB,
         )
@@ -183,7 +193,7 @@ class RawVanadiumCorrection(PythonAlgorithm):
             RHSWorkspace=wsName_cylinder,
             OutputWorkspace=outputWS,
         )
-        self.mantidSnapper.DeleteWorkspace(
+        self.mantidSnapper.WashDishes(
             "Delete cluttering workspace",
             Workspace=wsName_cylinder,
         )
@@ -195,11 +205,11 @@ class RawVanadiumCorrection(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-        # save results
-        try:
-            self.restockPantry(outputWS, self.rawVFile)
-        except:  # noqa: E722
-            raise Warning("Unable to save output to file")
+        # # save results
+        # try:
+        #     self.restockPantry(outputWS, self.rawVFile)
+        # except:  # noqa: E722
+        #     raise Warning("Unable to save output to file")
 
 
 # Register algorithm with Mantid

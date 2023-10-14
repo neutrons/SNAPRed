@@ -7,6 +7,20 @@ from typing import Dict, List
 import pytest
 from mantid.api import PythonAlgorithm
 from mantid.kernel import Direction
+from mantid.simpleapi import (
+    AddSampleLog,
+    CalculateDIFC,
+    CloneWorkspace,
+    CreateEmptyTableWorkspace,
+    CreateSampleWorkspace,
+    CreateWorkspace,
+    DeleteWorkspace,
+    DeleteWorkspaces,
+    LoadInstrument,
+    Plus,
+    Rebin,
+    mtd,
+)
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
@@ -38,61 +52,16 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
         self.fakeIngredients = Ingredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
         self.fakeIngredients.runConfig = fakeRunConfig
-        self.fakeIngredients.reductionState.stateConfig.tofMin = 1
-        self.fakeIngredients.reductionState.stateConfig.tofBin = 1
-        self.fakeIngredients.reductionState.stateConfig.tofMax = 100
-        pass
+        TOFBinParams = (1, 1, 100)
+        self.fakeIngredients.reductionState.stateConfig.tofMin = TOFBinParams[0]
+        self.fakeIngredients.reductionState.stateConfig.tofBin = TOFBinParams[1]
+        self.fakeIngredients.reductionState.stateConfig.tofMax = TOFBinParams[2]
 
-    def mockRaidPantry(algo, wsName, filename):  # noqa
-        """Will cause algorithm to execute with sample data, instead of loading from file"""
-        # prepare with test data
-        algo.mantidSnapper.CreateSampleWorkspace(
-            "Make fake data for testing",
-            OutputWorkspace=wsName,
-            # WorkspaceType="Histogram",
-            Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=algo.TOFPars[0],
-            Xmax=algo.TOFPars[2],
-            BinWidth=algo.TOFPars[1],
-            XUnit="TOF",
-            NumBanks=4,  # must produce same number of pixels as fake instrument
-            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=True,
-        )
-        algo.mantidSnapper.Rebin(
-            "Rebin in log TOF",
-            InputWorkspace=wsName,
-            Params=algo.TOFPars,
-            PreserveEvents=False,
-            OutputWorkspace=wsName,
-            BinningMode="Logarithmic",
-        )
-        algo.mantidSnapper.executeQueue()
-        pass
-
-    def test_chop_ingredients(self):
-        """Test that ingredients for algo are properly processed"""
-        algo = Algo()
-        algo.initialize()
-        algo.chopIngredients(self.fakeIngredients)
-        assert algo.liteMode == self.fakeIngredients.reductionState.stateConfig.isLiteMode
-        assert algo.vanadiumRunNumber == self.fakeIngredients.runConfig.runNumber
-        assert (
-            algo.vanadiumBackgroundRunNumber == self.fakeIngredients.reductionState.stateConfig.emptyInstrumentRunNumber
-        )
-        assert algo.TOFPars[0] == self.fakeIngredients.reductionState.stateConfig.tofMin
-        assert algo.TOFPars[1] == self.fakeIngredients.reductionState.stateConfig.tofBin
-        assert algo.TOFPars[2] == self.fakeIngredients.reductionState.stateConfig.tofMax
-        assert algo.geomCalibFile == self.fakeIngredients.reductionState.stateConfig.geometryCalibrationFileName
-        assert algo.rawVFile == self.fakeIngredients.reductionState.stateConfig.rawVanadiumCorrectionFileName
-
-    def test_chop_calibrant_sample(self):
         # create some nonsense material and crystallography
         fakeMaterial = Material(
             packingFraction=0.3,
             massDensity=1.0,
-            chemicalFormula="V B",
+            chemicalFormula="V-B",
         )
         vanadiumAtom = Atom(
             symbol="V",
@@ -110,25 +79,12 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             latticeParameters=[1, 2, 3, 4, 5, 6],
             atoms=[vanadiumAtom, boronAtom],
         )
-        # create two mock geometries for calibrant samples
-        sphere = Geometry(
-            shape="Sphere",
-            radius=1.0,
-        )
         cylinder = Geometry(
             shape="Cylinder",
             radius=1.5,
             height=5.0,
         )
-        # not create two differently shaped calibrant sample entries
-        sphereSample = CalibrantSamples(
-            name="fake sphere sample",
-            unique_id="123fakest",
-            geometry=sphere,
-            material=fakeMaterial,
-            crystallography=fakeXtal,
-        )
-        cylinderSample = CalibrantSamples(
+        self.calibrantSample = CalibrantSamples(
             name="fake cylinder sample",
             unique_id="435elmst",
             geometry=cylinder,
@@ -136,47 +92,187 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             crystallography=fakeXtal,
         )
 
-        # start the algorithm
+        self.sample_proton_charge = 10.0
+
+        # create some sample data
+        self.backgroundWS = "_test_data_raw_vanadium_background"
+        self.sampleWS = "_test_data_raw_vanadium"
+        CreateSampleWorkspace(
+            OutputWorkspace=self.backgroundWS,
+            # WorkspaceType="Histogram",
+            Function="User Defined",
+            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
+            Xmin=TOFBinParams[0],
+            Xmax=TOFBinParams[2],
+            BinWidth=TOFBinParams[1],
+            XUnit="TOF",
+            NumBanks=4,  # must produce same number of pixels as fake instrument
+            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
+            Random=True,
+        )
+        # add proton charge for current normalization
+        AddSampleLog(
+            Workspace=self.backgroundWS,
+            LogName="gd_prtn_chrg",
+            LogText=f"{self.sample_proton_charge}",
+            LogType="Number",
+        )
+        # load an instrument into sample data
+        LoadInstrument(
+            Workspace=self.backgroundWS,
+            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            InstrumentName="fakeSNAPLite",
+            RewriteSpectraMap=False,
+        )
+
+        CloneWorkspace(
+            InputWorkspace=self.backgroundWS,
+            OutputWorkspace=self.sampleWS,
+        )
+        CreateSampleWorkspace(
+            OutputWorkspace="_tmp_raw_vanadium",
+            # WorkspaceType="Histogram",
+            Function="User Defined",
+            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=70,Sigma=1",
+            Xmin=TOFBinParams[0],
+            Xmax=TOFBinParams[2],
+            BinWidth=TOFBinParams[1],
+            XUnit="TOF",
+            NumBanks=4,  # must produce same number of pixels as fake instrument
+            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
+            Random=True,
+        )
+        Plus(LHSWorkspace="_tmp_raw_vanadium", RHSWorkspace=self.sampleWS, OutputWorkspace=self.sampleWS)
+        DeleteWorkspace("_tmp_raw_vanadium")
+
+        self.difcWS = "_difc_table_raw_vanadium"
+        ws = CalculateDIFC(
+            InputWorkspace=self.sampleWS,
+            OutputWorkspace=self.difcWS,
+            OffsetMode="Signed",
+            BinWidth=TOFBinParams[1],
+        )
+        difc = CreateEmptyTableWorkspace()
+        difc.addColumn("int", "detid")
+        difc.addColumn("double", "difc")
+        difc.addColumn("double", "tzero")
+        difc.addColumn("double", "difa")
+        for i in range(ws.getNumberHistograms()):
+            difc.addRow([i + 1, ws.readY(i)[0], 0.0, 0.0])
+        DeleteWorkspace(self.difcWS)
+        self.difcWS = difc.name()
+
+        Rebin(
+            InputWorkspace=self.sampleWS,
+            Params=TOFBinParams,
+            PreserveEvents=False,
+            OutputWorkspace=self.sampleWS,
+            BinningMode="Logarithmic",
+        )
+        Rebin(
+            InputWorkspace=self.backgroundWS,
+            Params=TOFBinParams,
+            PreserveEvents=False,
+            OutputWorkspace=self.backgroundWS,
+            BinningMode="Logarithmic",
+        )
+
+    def tearDown(self) -> None:
+        DeleteWorkspace(self.sampleWS)
+        return super().tearDown()
+
+    def test_chop_ingredients(self):
+        """Test that ingredients for algo are properly processed"""
         algo = Algo()
         algo.initialize()
-
-        # chop and verify the spherical sample
-        sample = algo.chopCalibrantSample(sphereSample)
-        assert sample["geometry"]["Shape"] == "Sphere"
-        assert sample["geometry"]["Radius"] == sphere.radius
-        assert sample["geometry"]["Center"] == [0, 0, 0]
-        assert sample["material"]["ChemicalFormula"] == fakeMaterial.chemicalFormula
-
-        # chop and verify the cylindrical sample
-        sample = {}  # clear the sample
-        sample = algo.chopCalibrantSample(cylinderSample)
-        assert sample["geometry"]["Shape"] == "Cylinder"
-        assert sample["geometry"]["Radius"] == cylinder.radius
-        assert sample["geometry"]["Height"] == cylinder.height
-        assert sample["geometry"]["Center"] == [0, 0, 0]
-        assert sample["geometry"]["Axis"] == [0, 1, 0]
-        assert sample["material"]["ChemicalFormula"] == fakeMaterial.chemicalFormula
-
-        self.calibrantSample = cylinderSample
+        algo.chopIngredients(self.fakeIngredients)
+        assert algo.liteMode == self.fakeIngredients.reductionState.stateConfig.isLiteMode
+        assert algo.vanadiumRunNumber == self.fakeIngredients.runConfig.runNumber
+        assert (
+            algo.vanadiumBackgroundRunNumber == self.fakeIngredients.reductionState.stateConfig.emptyInstrumentRunNumber
+        )
+        assert algo.TOFPars[0] == self.fakeIngredients.reductionState.stateConfig.tofMin
+        assert algo.TOFPars[1] == self.fakeIngredients.reductionState.stateConfig.tofBin
+        assert algo.TOFPars[2] == self.fakeIngredients.reductionState.stateConfig.tofMax
+        assert algo.geomCalibFile == self.fakeIngredients.reductionState.stateConfig.geometryCalibrationFileName
+        assert algo.rawVFile == self.fakeIngredients.reductionState.stateConfig.rawVanadiumCorrectionFileName
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""
+        algo = Algo()
+        algo.initialize()
+
+        # set the input workspaces
+        algo.setProperty("InputWorkspace", self.sampleWS)
+        print(algo.getPropertyValue("InputWorkspace"), self.sampleWS)
+        assert algo.getPropertyValue("InputWorkspace") == self.sampleWS
+        algo.setPropertyValue("BackgroundWorkspace", self.backgroundWS)
+        assert algo.getPropertyValue("BackgroundWorkspace") == self.backgroundWS
+
+        # set the ingredients
+        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
+
+        # set the calibrant sample
+        algo.setProperty("CalibrantSample", self.calibrantSample.json())
+        assert algo.getProperty("CalibrantSample").value == self.calibrantSample.json()
+
+        # set the output workspace
         goodOutputWSName = "_test_raw_vanadium_corr"
+        algo.setProperty("OutputWorkspace", goodOutputWSName)
+        assert algo.getPropertyValue("OutputWorkspace") == goodOutputWSName
+
+    def test_chop_neutron_data(self):
+        # make an incredibly simple workspace, with incredibly simple data
+        dataX = [1, 2, 3, 4, 5]
+        dataY = [10, 110, 200, 110, 10]
+        testWS = "_test_chop_neutron_data_raw_vanadium"
+        ws = CreateWorkspace(
+            OutputWorkspace=testWS,
+            DataX=dataX,
+            DataY=dataY,
+            UnitX="TOF",
+        )
+        AddSampleLog(
+            Workspace=testWS,
+            LogName="gd_prtn_chrg",
+            LogText=f"{self.sample_proton_charge}",
+            LogType="Number",
+        )
+
+        difc = CreateEmptyTableWorkspace()
+        difc.addColumn("int", "detid")
+        difc.addColumn("double", "difc")
+        difc.addColumn("double", "tzero")
+        difc.addColumn("double", "difa")
+        difc.addRow([0, 7000, 0, 0])
+        difc = difc.name()
 
         algo = Algo()
         algo.initialize()
+        algo.setProperty("CalibrationWorkspace", difc)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
-        if not hasattr(self, "calibrantSample"):
-            self.test_chop_calibrant_sample()
-        algo.setProperty("CalibrantSample", self.calibrantSample.json())
-        assert algo.getProperty("CalibrantSample").value == self.calibrantSample.json()
-        assert algo.getProperty("OutputWorkspace").value == "vanadiumrawcorr_out"
-        algo.setProperty("OutputWorkspace", goodOutputWSName)
-        assert algo.getProperty("OutputWorkspace").value == goodOutputWSName
+        algo.chopIngredients(self.fakeIngredients)
+        algo.TOFPars = (2, 2, 4)
+        algo.chopNeutronData(testWS)
 
-    @mock.patch.object(Algo, "raidPantry", mockRaidPantry)
-    @mock.patch.object(Algo, "restockPantry", mock.Mock(return_value=None))
+        dataXnorm = []
+        dataYnorm = []
+        for x, y in zip(dataX, dataY):
+            if x >= algo.TOFPars[0] and x <= algo.TOFPars[2]:
+                dataXnorm.append(x)
+                dataYnorm.append(y / self.sample_proton_charge)
+
+        print(dataXnorm, dataYnorm)
+        dataXrebin = [sum(dataXnorm) / len(dataXnorm)]
+        dataYrebin = [sum(dataYnorm[:-1])]
+
+        ws = mtd[testWS]
+        assert ws.readX(0) == dataXrebin
+        assert ws.readY(0) == dataYrebin
+
+        DeleteWorkspaces([testWS, difc])
+
     @mock.patch(TheAlgorithmManager)
     def test_execute(self, mockAlgorithmManager):
         """Test that the algorithm executes"""
@@ -205,9 +301,10 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
         algo = Algo()
         algo.initialize()
+        algo.setProperty("InputWorkspace", self.sampleWS)
+        algo.setProperty("BackgroundWorkspace", self.backgroundWS)
+        algo.setProperty("CalibrationWorkspace", self.difcWS)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        if not hasattr(self, "calibrantSample"):
-            self.test_chop_calibrant_sample()
         algo.setProperty("CalibrantSample", self.calibrantSample.json())
         algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")
         assert algo.execute()
