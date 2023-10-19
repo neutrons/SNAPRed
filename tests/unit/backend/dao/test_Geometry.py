@@ -1,3 +1,4 @@
+import json
 import unittest
 
 import pytest
@@ -18,26 +19,26 @@ class TestGeometry(unittest.TestCase):
         )
 
     def test_cylinderGeometry(self):
-        # ensure that the geometryDictionary object
+        # ensure that the geometry json object
         # returns correct dictionary for cylinder
         ref = {
             "Shape": self.cylinder.shape,
             "Radius": self.cylinder.radius,
-            "Height": self.cylinder.height,
             "Center": [0, 0, 0],
+            "Height": self.cylinder.height,
             "Axis": [0, 1, 0],
         }
-        assert self.cylinder.geometryDictionary == ref
+        assert json.loads(self.cylinder.json()) == ref
 
     def test_sphereGeometry(self):
-        # ensure that the geometryDictionary object
+        # ensure that the geometry json object
         # returns correct dictionary for sphere
         ref = {
             "Shape": self.sphere.shape,
             "Radius": self.sphere.radius,
             "Center": [0, 0, 0],
         }
-        assert self.sphere.geometryDictionary == ref
+        assert json.loads(self.sphere.json()) == ref
 
     def test_invalidSphere(self):
         with pytest.raises(Warning):
@@ -73,7 +74,10 @@ class TestGeometry(unittest.TestCase):
         )
         # test setting with a cylinder, compare output XML
         # will have center-of-bottom-base, axis, height, and radius
-        SetSample(InputWorkspace=sampleWS, Geometry=self.cylinder.geometryDictionary)
+        SetSample(
+            InputWorkspace=sampleWS,
+            Geometry=self.cylinder.json(),
+        )
         ref = f"""
         <type name="userShape">
             <{self.cylinder.shape.lower()} id="sample-shape">
@@ -92,7 +96,7 @@ class TestGeometry(unittest.TestCase):
         # will have center and radius
         SetSample(
             InputWorkspace=sampleWS,
-            Geometry=self.sphere.geometryDictionary,
+            Geometry=self.sphere.json(),
         )
         ref = f"""
         <type name="userShape">
