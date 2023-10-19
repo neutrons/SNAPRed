@@ -17,6 +17,7 @@ from mantid.simpleapi import (
     CreateSampleWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
+    DeleteWorkspaces,
     LoadInstrument,
     Plus,
     Rebin,
@@ -40,7 +41,6 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.RawVanadiumCorrection import RawVanadiumCorrection as Algo  # noqa: E402
-from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 from snapred.meta.Config import Resource
 
 TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
@@ -149,7 +149,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             RHSWorkspace=self.sampleWS,
             OutputWorkspace=self.sampleWS,
         )
-        WashDishes(Workspace="_tmp_raw_vanadium")
+        DeleteWorkspace("_tmp_raw_vanadium")
 
         self.difcWS = "_difc_table_raw_vanadium"
         ws = CalculateDIFC(
@@ -165,7 +165,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         difc.addColumn("double", "difa")
         for i in range(ws.getNumberHistograms()):
             difc.addRow([i + 1, ws.readY(i)[0], 0.0, 0.0])
-        WashDishes(Workspace=self.difcWS)
+        DeleteWorkspace(self.difcWS)
         self.difcWS = difc.name()
 
         Rebin(
@@ -184,7 +184,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         )
 
     def tearDown(self) -> None:
-        for ws in mtd.keys():
+        for ws in mtd.getObjectNames():
             DeleteWorkspace(ws)
         return super().tearDown()
 
@@ -194,15 +194,9 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo.initialize()
         algo.chopIngredients(self.fakeIngredients)
         assert algo.liteMode == self.fakeIngredients.reductionState.stateConfig.isLiteMode
-        assert algo.vanadiumRunNumber == self.fakeIngredients.runConfig.runNumber
-        assert (
-            algo.vanadiumBackgroundRunNumber == self.fakeIngredients.reductionState.stateConfig.emptyInstrumentRunNumber
-        )
         assert algo.TOFPars[0] == self.fakeIngredients.reductionState.stateConfig.tofMin
         assert algo.TOFPars[1] == self.fakeIngredients.reductionState.stateConfig.tofBin
         assert algo.TOFPars[2] == self.fakeIngredients.reductionState.stateConfig.tofMax
-        assert algo.geomCalibFile == self.fakeIngredients.reductionState.stateConfig.geometryCalibrationFileName
-        assert algo.rawVFile == self.fakeIngredients.reductionState.stateConfig.rawVanadiumCorrectionFileName
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""
@@ -278,34 +272,10 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         assert ws.readX(0) == dataXrebin
         assert ws.readY(0) == dataYrebin
 
-        WashDishes(WorkspaceList=[testWS, difc])
+        DeleteWorkspaces([testWS, difc])
 
-    @mock.patch(TheAlgorithmManager)
-    def test_execute(self, mockAlgorithmManager):
+    def test_execute(self):
         """Test that the algorithm executes"""
-
-        class mockGetIPTS(PythonAlgorithm):
-            def PyInit(self):
-                self.declareProperty("RunNumber", defaultValue="", direction=Direction.Input)
-                self.declareProperty("Instrument", defaultValue="", direction=Direction.Input)
-                self.declareProperty("Directory", defaultValue="nope!", direction=Direction.Output)
-                self.setRethrows(True)
-
-            def PyExec(self):
-                self.setProperty("Directory", "nope!")
-
-        def mockAlgorithmCreate(algoName: str):
-            from mantid.api import AlgorithmManager
-
-            if algoName == "GetIPTS":
-                algo = mockGetIPTS()
-                algo.initialize()
-                return algo
-            else:
-                return AlgorithmManager.create(algoName)
-
-        mockAlgorithmManager.create = mockAlgorithmCreate
-
         algo = Algo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.sampleWS)

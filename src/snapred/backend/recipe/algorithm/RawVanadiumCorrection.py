@@ -47,10 +47,6 @@ class RawVanadiumCorrection(PythonAlgorithm):
     def chopIngredients(self, ingredients: Ingredients) -> None:
         stateConfig = ingredients.reductionState.stateConfig
         self.liteMode: bool = stateConfig.isLiteMode
-        self.vanadiumRunNumber: str = ingredients.runConfig.runNumber
-        self.vanadiumBackgroundRunNumber: str = stateConfig.emptyInstrumentRunNumber
-        self.geomCalibFile: str = stateConfig.geometryCalibrationFileName
-        self.rawVFile: str = stateConfig.rawVanadiumCorrectionFileName
         self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
 
     def chopNeutronData(self, wsName: str) -> None:
@@ -134,13 +130,8 @@ class RawVanadiumCorrection(PythonAlgorithm):
         # Load and pre-process vanadium and empty datasets
         ingredients: Ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
-        self.IPTSLoc = self.mantidSnapper.GetIPTS(
-            "Retrieve IPTS location",
-            RunNumber=self.vanadiumRunNumber,
-            Instrument="SNAP",
-        )
-        self.mantidSnapper.executeQueue()
 
+        # Process the raw vanadium and background data
         self.chopNeutronData(outputWS)
         self.chopNeutronData(outputWSVB)
 
