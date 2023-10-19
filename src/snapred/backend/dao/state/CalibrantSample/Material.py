@@ -35,7 +35,7 @@ class Material(BaseModel):
         return v
 
     @validator("massDensity", allow_reuse=True)
-    def validate_packingFraction(cls, v):
+    def validate_massDensity(cls, v):
         if v is None:
             return v
         if v < 0:
@@ -43,7 +43,7 @@ class Material(BaseModel):
         return v
 
     @root_validator(pre=True, allow_reuse=True)
-    def validate_massDensity(cls, v):
+    def validate_correctPropertiesToFindDensity(cls, v):
         symbols = v.get("chemicalFormula").replace("-", " ").split()
         md, pf = v.get("massDensity"), v.get("packingFraction")
         # multi-element material must include at minimum the mass density
