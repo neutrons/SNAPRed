@@ -16,28 +16,35 @@ class Material(BaseModel):
     massDensity: Optional[float]
     chemicalFormula: str
 
-    def json(self) -> str:
+    def dict(  # noqa: A003
+        self,
+        include=[],
+        exclude=[],
+        by_alias=False,
+        exclude_unset=False,
+        exclude_defaults=False,
+        exclude_none=False,
+    ) -> Dict[str, Any]:
         ans = {
-            "ChemicalFormula": self.chemicalFormula,
+            "chemicalFormula": self.chemicalFormula,
         }
         if self.packingFraction is not None:
-            ans["PackingFraction"] = self.packingFraction
+            ans["packingFraction"] = self.packingFraction
         if self.massDensity is not None:
-            ans["MassDensity"] = self.massDensity
-        return json.dumps(ans)
+            ans["massDensity"] = self.massDensity
+        return ans
+
+    def json(self) -> str:
+        return json.dumps(self.dict())
 
     @validator("packingFraction", allow_reuse=True)
     def validate_packingFraction(cls, v):
-        if v is None:
-            return v
         if v < 0 or v > 1:
             raise ValueError("packingFraction must be a value in the range [0, 1]")
         return v
 
     @validator("massDensity", allow_reuse=True)
     def validate_massDensity(cls, v):
-        if v is None:
-            return v
         if v < 0:
             raise ValueError("massDensity must be positive")
         return v

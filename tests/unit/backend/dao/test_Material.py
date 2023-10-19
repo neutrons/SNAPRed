@@ -34,28 +34,46 @@ class TestMaterial(unittest.TestCase):
             chemicalFormula="C-Si",
         )
 
+    def test_isShapedLikeItself(self):
+        assert Material.parse_obj(self.vanadium.dict())
+        assert Material.parse_raw(self.vanadium.json())
+        assert Material.parse_obj(self.vanadiumMD.dict())
+        assert Material.parse_raw(self.vanadiumMD.json())
+        assert Material.parse_obj(self.vanadiumPF.dict())
+        assert Material.parse_raw(self.vanadiumPF.json())
+        #
+        assert Material.parse_obj(self.vanadiumBoron.dict())
+        assert Material.parse_raw(self.vanadiumBoron.json())
+        assert Material.parse_obj(self.vanadiumBoronDash.dict())
+        assert Material.parse_raw(self.vanadiumBoronDash.json())
+        assert Material.parse_obj(self.vanadiumBoronMD.dict())
+        assert Material.parse_raw(self.vanadiumBoronMD.json())
+
     def test_singleElementMaterial(self):
         # ensure that the material json object
         # returns correct json for single element
 
         # single element with formula only
         ref = {
-            "ChemicalFormula": self.vanadium.chemicalFormula,
+            "chemicalFormula": self.vanadium.chemicalFormula,
         }
-        assert json.loads(self.vanadium.json()) == ref
+        assert self.vanadium.dict() == ref
+        assert self.vanadium.json() == json.dumps(ref)
 
         # single element with packing fraction
         ref = {
-            "ChemicalFormula": self.vanadiumPF.chemicalFormula,
-            "PackingFraction": self.vanadiumPF.packingFraction,
+            "chemicalFormula": self.vanadiumPF.chemicalFormula,
+            "packingFraction": self.vanadiumPF.packingFraction,
         }
-        assert json.loads(self.vanadiumPF.json()) == ref
+        assert self.vanadiumPF.dict() == ref
+        assert self.vanadiumPF.json() == json.dumps(ref)
         # single element with mass density
         ref = {
-            "ChemicalFormula": self.vanadiumMD.chemicalFormula,
-            "MassDensity": self.vanadiumMD.massDensity,
+            "chemicalFormula": self.vanadiumMD.chemicalFormula,
+            "massDensity": self.vanadiumMD.massDensity,
         }
-        assert json.loads(self.vanadiumMD.json()) == ref
+        assert self.vanadiumMD.dict() == ref
+        assert self.vanadiumMD.json() == json.dumps(ref)
 
     def test_invalidSingleElementMaterial(self):
         with pytest.raises(Warning):
@@ -69,23 +87,26 @@ class TestMaterial(unittest.TestCase):
         # ensure that the material json object
         # returns correct dictionary for two elements
         ref = {
-            "ChemicalFormula": self.vanadiumBoron.chemicalFormula,
-            "MassDensity": self.vanadiumBoron.massDensity,
-            "PackingFraction": self.vanadiumBoron.packingFraction,
+            "chemicalFormula": self.vanadiumBoron.chemicalFormula,
+            "packingFraction": self.vanadiumBoron.packingFraction,
+            "massDensity": self.vanadiumBoron.massDensity,
         }
-        assert json.loads(self.vanadiumBoron.json()) == ref
+        assert self.vanadiumBoron.dict() == ref
+        assert self.vanadiumBoron.json() == json.dumps(ref)
         ref = {
-            "ChemicalFormula": self.vanadiumBoronDash.chemicalFormula,
-            "MassDensity": self.vanadiumBoronDash.massDensity,
-            "PackingFraction": self.vanadiumBoronDash.packingFraction,
+            "chemicalFormula": self.vanadiumBoronDash.chemicalFormula,
+            "packingFraction": self.vanadiumBoronDash.packingFraction,
+            "massDensity": self.vanadiumBoronDash.massDensity,
         }
-        assert json.loads(self.vanadiumBoronDash.json()) == ref
+        assert self.vanadiumBoronDash.dict() == ref
+        assert self.vanadiumBoronDash.json() == json.dumps(ref)
 
         ref = {
-            "ChemicalFormula": self.vanadiumBoronMD.chemicalFormula,
-            "MassDensity": self.vanadiumBoronMD.massDensity,
+            "chemicalFormula": self.vanadiumBoronMD.chemicalFormula,
+            "massDensity": self.vanadiumBoronMD.massDensity,
         }
-        assert json.loads(self.vanadiumBoronMD.json()) == ref
+        assert self.vanadiumBoronMD.dict() == ref
+        assert self.vanadiumBoronMD.json() == json.dumps(ref)
 
     def test_invalidTwoElementMaterial(self):
         # cannot set a multi-element material with only a chemical formula
@@ -100,7 +121,7 @@ class TestMaterial(unittest.TestCase):
                 packingFraction=0.57,
             )
 
-    def test_settableInMantid(self):
+    def test_settableInMantidJSON(self):
         # test that these can be used to set the sample in mantid
         # run SetSample with the json to set shape
         # then get output XML of the sample shape
@@ -156,6 +177,69 @@ class TestMaterial(unittest.TestCase):
         SetSample(
             InputWorkspace=sampleWS,
             Material=self.vanadiumBoronMD.json(),
+        )
+        material = sampleWS.sample().getMaterial()
+        assert material.chemicalFormula()[0][0].symbol == "C"
+        assert material.chemicalFormula()[0][1].symbol == "Si"
+        assert material.packingFraction != self.vanadiumBoronDash.packingFraction
+        DeleteWorkspace(sampleWS)
+
+    def test_settableInMantidDict(self):
+        # test that these can be used to set the sample in mantid
+        # run SetSample with the json to set shape
+        # then get output XML of the sample shape
+        # note that the XML converts from cm to m
+        sampleWS = CreateWorkspace(
+            DataX=1,
+            DataY=1,
+        )
+        # test setting with a single-element crystal
+        SetSample(
+            InputWorkspace=sampleWS,
+            Material=self.vanadium.dict(),
+        )
+        material = sampleWS.sample().getMaterial()
+        assert material.chemicalFormula()[0][0].symbol == "V"
+        assert material.packingFraction == 1.0
+
+        #   with packing fraction
+        SetSample(
+            InputWorkspace=sampleWS,
+            Material=self.vanadiumPF.dict(),
+        )
+        material = sampleWS.sample().getMaterial()
+        assert material.chemicalFormula()[0][0].symbol == "V"
+        assert material.packingFraction == self.vanadiumPF.packingFraction
+
+        #   with mass density
+        SetSample(
+            InputWorkspace=sampleWS,
+            Material=self.vanadiumMD.dict(),
+        )
+        material = sampleWS.sample().getMaterial()
+        assert material.chemicalFormula()[0][0].symbol == "V"
+        assert material.packingFraction == 0.11456628477905073
+
+        # test setting with a mutli-element crystal
+        SetSample(
+            InputWorkspace=sampleWS,
+            Material=self.vanadiumBoron.dict(),
+        )
+        material = sampleWS.sample().getMaterial()
+        assert material.chemicalFormula()[0][0].symbol == "V"
+        assert material.chemicalFormula()[0][1].symbol == "B"
+        assert material.packingFraction == self.vanadiumBoron.packingFraction
+        SetSample(
+            InputWorkspace=sampleWS,
+            Material=self.vanadiumBoronDash.dict(),
+        )
+        material = sampleWS.sample().getMaterial()
+        assert material.chemicalFormula()[0][0].symbol == "B"
+        assert material.chemicalFormula()[0][1].symbol == "C"
+        assert material.packingFraction == self.vanadiumBoronDash.packingFraction
+        SetSample(
+            InputWorkspace=sampleWS,
+            Material=self.vanadiumBoronMD.dict(),
         )
         material = sampleWS.sample().getMaterial()
         assert material.chemicalFormula()[0][0].symbol == "C"

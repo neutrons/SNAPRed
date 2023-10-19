@@ -169,8 +169,8 @@ class RawVanadiumCorrection(PythonAlgorithm):
         self.mantidSnapper.SetSample(
             "Setting workspace with calibrant sample",
             InputWorkspace=outputWS,
-            Geometry=sample.geometry.json(),
-            Material=sample.material.json(),
+            Geometry=sample.geometry.dict(),
+            Material=sample.material.dict(),
         )
         self.shapedAbsorption(outputWS, wsName_cylinder)
         self.mantidSnapper.Divide(
@@ -190,12 +190,6 @@ class RawVanadiumCorrection(PythonAlgorithm):
             Target="TOF",
         )
         self.mantidSnapper.executeQueue()
-
-        # # save results
-        # try:
-        #     self.restockPantry(outputWS, self.rawVFile)
-        # except:  # noqa: E722
-        #     raise Warning("Unable to save output to file")
 
 
 # Register algorithm with Mantid
