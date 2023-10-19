@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, root_validator, validator
@@ -23,7 +24,7 @@ class Material(BaseModel):
             ans["PackingFraction"] = self.packingFraction
         if self.massDensity is not None:
             ans["MassDensity"] = self.massDensity
-        return str(ans).replace("'", '"')
+        return json.dumps(ans)
 
     @validator("packingFraction", allow_reuse=True)
     def validate_packingFraction(cls, v):

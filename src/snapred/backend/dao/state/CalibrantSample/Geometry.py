@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, Optional, Tuple
 
 from pydantic import BaseModel, root_validator
@@ -25,7 +26,7 @@ class Geometry(BaseModel):
         if self.shape == "Cylinder":
             ans["Height"] = self.height
             ans["Axis"] = list(self.axis)
-        return str(ans).replace("'", '"')
+        return json.dumps(ans)
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_form(cls, v):
