@@ -16,8 +16,7 @@ class Geometry(BaseModel):
     center: Tuple[float, float, float] = (0, 0, 0)
     axis: Tuple[float, float, float] = (0, 1, 0)
 
-    @property
-    def geometryDictionary(self) -> Dict[str, Any]:
+    def json(self) -> str:
         ans = {
             "Shape": self.shape,
             "Radius": self.radius,
@@ -26,7 +25,7 @@ class Geometry(BaseModel):
         if self.shape == "Cylinder":
             ans["Height"] = self.height
             ans["Axis"] = list(self.axis)
-        return ans
+        return str(ans).replace("'", '"')
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_form(cls, v):

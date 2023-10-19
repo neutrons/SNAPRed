@@ -15,8 +15,7 @@ class Material(BaseModel):
     massDensity: Optional[float]
     chemicalFormula: str
 
-    @property
-    def materialDictionary(self) -> Dict[str, Any]:
+    def json(self) -> str:
         ans = {
             "ChemicalFormula": self.chemicalFormula,
         }
@@ -24,7 +23,7 @@ class Material(BaseModel):
             ans["PackingFraction"] = self.packingFraction
         if self.massDensity is not None:
             ans["MassDensity"] = self.massDensity
-        return ans
+        return str(ans).replace("'", '"')
 
     @validator("packingFraction", allow_reuse=True)
     def validate_packingFraction(cls, v):

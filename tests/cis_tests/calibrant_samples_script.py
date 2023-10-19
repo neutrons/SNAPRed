@@ -1,3 +1,5 @@
+# note: this runs the same checks as the unit test of CalibrantSample
+
 from mantid.simpleapi import CreateWorkspace, SetSample
 from mantid.geometry import CrystalStructure
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -5,7 +7,6 @@ from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallog
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
-from snapred.meta.redantic import list_to_raw_pretty
 
 mat = Material(chemicalFormula="(Li7)2-C-H4-N-Cl6", massDensity=4.4, packingFraction=0.9)
 geo = Geometry(shape="Cylinder", radius=0.1, height=3.6, center=[0.0, 0.0, 0.0])

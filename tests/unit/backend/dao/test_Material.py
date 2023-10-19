@@ -1,3 +1,4 @@
+import json
 import unittest
 
 import pytest
@@ -5,7 +6,7 @@ from mantid.simpleapi import CreateWorkspace, SetSample
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 
 
-class TestGeometry(unittest.TestCase):
+class TestMaterial(unittest.TestCase):
     def setUp(self):
         self.vanadium = Material(
             packingFraction=0.3,
@@ -27,21 +28,21 @@ class TestGeometry(unittest.TestCase):
         )
 
     def test_singleElementMaterial(self):
-        # ensure that the materialDictionary object
-        # returns correct dictionary for single element
+        # ensure that the material json object
+        # returns correct json for single element
 
         # single element with packing fraction
         ref = {
             "ChemicalFormula": self.vanadium.chemicalFormula,
             "PackingFraction": self.vanadium.packingFraction,
         }
-        assert self.vanadium.materialDictionary == ref
+        assert json.loads(self.vanadium.json()) == ref
         # try single element with mass density
         ref = {
             "ChemicalFormula": self.vanadiumMD.chemicalFormula,
             "MassDensity": self.vanadiumMD.massDensity,
         }
-        assert self.vanadiumMD.materialDictionary == ref
+        assert json.loads(self.vanadiumMD.json()) == ref
 
     def test_invalidSingleElementMaterial(self):
         with pytest.raises(Warning):
@@ -59,18 +60,18 @@ class TestGeometry(unittest.TestCase):
             )
 
     def test_twoElementMaterial(self):
-        # ensure that the materialDictionary object
+        # ensure that the material json object
         # returns correct dictionary for two elements
         ref = {
             "ChemicalFormula": self.vanadiumBoron.chemicalFormula,
             "MassDensity": self.vanadiumBoron.massDensity,
             "PackingFraction": self.vanadiumBoron.packingFraction,
         }
-        assert self.vanadiumBoron.materialDictionary == ref
+        assert json.loads(self.vanadiumBoron.json()) == ref
 
     def test_settableInMantid(self):
         # test that these can be used to set the sample in mantid
-        # run SetSample with the dictionary to set shape
+        # run SetSample with the json to set shape
         # then get output XML of the sample shape
         # note that the XML converts from cm to m
         sampleWS = CreateWorkspace(
@@ -80,7 +81,7 @@ class TestGeometry(unittest.TestCase):
         # test setting with a single-element crystal
         SetSample(
             InputWorkspace=sampleWS,
-            Material=self.vanadium.materialDictionary,
+            Material=self.vanadium.json(),
         )
         material = sampleWS.sample().getMaterial()
         assert material.chemicalFormula()[0][0].symbol == "V"
@@ -89,7 +90,7 @@ class TestGeometry(unittest.TestCase):
         # test setting with a single-element crystal with mass density
         SetSample(
             InputWorkspace=sampleWS,
-            Material=self.vanadiumMD.materialDictionary,
+            Material=self.vanadiumMD.json(),
         )
         material = sampleWS.sample().getMaterial()
         assert material.chemicalFormula()[0][0].symbol == "V"
@@ -97,7 +98,7 @@ class TestGeometry(unittest.TestCase):
         # test setting with a mutli-element crystal
         SetSample(
             InputWorkspace=sampleWS,
-            Material=self.vanadiumBoron.materialDictionary,
+            Material=self.vanadiumBoron.json(),
         )
         material = sampleWS.sample().getMaterial()
         assert material.chemicalFormula()[0][0].symbol == "V"
@@ -106,7 +107,7 @@ class TestGeometry(unittest.TestCase):
 
         SetSample(
             InputWorkspace=sampleWS,
-            Material=self.vanadiumBoronDash.materialDictionary,
+            Material=self.vanadiumBoronDash.json(),
         )
         material = sampleWS.sample().getMaterial()
         assert material.chemicalFormula()[0][0].symbol == "V"
