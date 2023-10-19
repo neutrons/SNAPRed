@@ -11,8 +11,8 @@ import unittest
 import unittest.mock as mock
 from typing import Dict, List
 
-import os
-os.environ["env"] = "test"
+# import os
+# os.environ["env"] = "test"
 
 import pytest
 from mantid.api import PythonAlgorithm
@@ -20,6 +20,9 @@ from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.data.DataFactoryService import DataFactoryService
+from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.CalibrantSample.Material import Material
+from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.RawVanadiumCorrection import RawVanadiumCorrection as Algo  # noqa: E402
@@ -73,13 +76,16 @@ def loadFromRunNumber(runNo, wsName):
         filename = f'{IPTSLoc}shared/lite/SNAP_{runNo}.lite.nxs.h5'
     else:
         filename = f'{IPTSLoc}nexus/SNAP_{runNo}.nxs.h5'  
-    LoadEventNexus(
-        Filename=filename, 
-        OutputWorkspace=wsName, 
-        FilterByTofMin=TOFBinParams[0], 
-        FilterByTofMax=TOFBinParams[2], 
-        NumberOfBins=1,
-    )
+    if mtd.doesExist(wsName):
+        print("ALREADY EXISTS!")
+    else:
+        LoadEventNexus(
+            Filename=filename, 
+            OutputWorkspace=wsName, 
+            FilterByTofMin=TOFBinParams[0], 
+            FilterByTofMax=TOFBinParams[2], 
+            NumberOfBins=1,
+        )
 
 rawVanadiumWS = 'TOF_V'
 backgroundWS = 'TOF_VB'
@@ -102,11 +108,15 @@ calibrantSample = CalibrantSamples(
     material=material,
 )
 
+Resource._resourcesPath = "~/SNAPRed/tests/resources/"
+print(Resource.getPath("inputs/diffcal/SNAPLite_Definition.xml"))
+
 difcWS = "_difc_cal"
 LoadDiffCal(
     Filename = geomCalibFile,
     MakeCalWorkspace = True,
-    WorkspaceName = "_difc"
+    WorkspaceName = "_difc",
+    InstrumentFilename = Resource.getPath("/inputs/pixel_grouping/SNAPLite_Definition.xml"),
 )
 
 algo = Algo()
@@ -118,6 +128,8 @@ algo.setProperty("Ingredients", ingredients.json())
 algo.setProperty("CalibrantSample", calibrantSample.json())
 algo.setProperty("OutputWorkspace", "_test_raw_vanadium_final_output")
 assert algo.execute()
+
+CalibrantSamples.parse_raw(algo.getProperty("CalibrantSample").value)
 
 assert False
 # SaveNexus(InputWorkspace="_test_raw_vanadium_final_output", Filename=rawVFile)

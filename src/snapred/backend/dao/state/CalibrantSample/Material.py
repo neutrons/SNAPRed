@@ -28,8 +28,18 @@ class Material(BaseModel):
 
     @validator("packingFraction", allow_reuse=True)
     def validate_packingFraction(cls, v):
+        if v is None:
+            return v
         if v < 0 or v > 1:
             raise ValueError("packingFraction must be a value in the range [0, 1]")
+        return v
+
+    @validator("massDensity", allow_reuse=True)
+    def validate_packingFraction(cls, v):
+        if v is None:
+            return v
+        if v < 0:
+            raise ValueError("massDensity must be positive")
         return v
 
     @root_validator(pre=True, allow_reuse=True)
