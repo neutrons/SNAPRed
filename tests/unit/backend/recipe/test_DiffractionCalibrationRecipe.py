@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 from mantid.api import PythonAlgorithm
 from mantid.kernel import Direction
+from mantid.simpleapi import DeleteWorkspace, mtd
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as TheseIngredients
@@ -13,6 +14,7 @@ from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import CalculateOffsetDIFC
+from snapred.backend.recipe.algorithm.GroupByGroupCalibration import GroupByGroupCalibration
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as ThisRecipe
 from snapred.meta.Config import Resource
 
@@ -48,6 +50,16 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             calPath=Resource.getPath("outputs/calibration/"),
         )
         self.recipe = ThisRecipe()
+
+    def tearDown(self) -> None:
+        workspaces = mtd.getObjectNames()
+        # remove all workspaces
+        for workspace in workspaces:
+            try:
+                DeleteWorkspace(workspace)
+            except ValueError:
+                print(f"Workspace {workspace} doesn't exist!")
+        return super().tearDown
 
     # TODO: once recipe implemented, this should do something
     def test_chop_ingredients(self):
@@ -206,15 +218,22 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWStof, "TOF")
 
     def test_execute_with_algos(self):
+        import os
+
         # create sample data
         offsetAlgo = CalculateOffsetDIFC()
         offsetAlgo.initialize()
         offsetAlgo.chopIngredients(self.fakeIngredients)
         self.makeFakeNeutronData(offsetAlgo)
+        pdcalAlgo = GroupByGroupCalibration()
+        pdcalAlgo.initialize()
+        pdcalAlgo.chopIngredients(self.fakeIngredients)
+        fakeFile = pdcalAlgo.outputFilename
         res = self.recipe.executeRecipe(self.fakeIngredients)
         assert res["result"]
         print(res["steps"])
         assert res["steps"][-1]["medianOffset"] <= self.fakeIngredients.convergenceThreshold
+        os.remove(fakeFile)
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
