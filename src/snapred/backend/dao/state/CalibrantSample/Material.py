@@ -36,11 +36,10 @@ class Material(BaseModel):
     def validate_massDensity(cls, v):
         symbols = v.get("chemicalFormula").replace("-", " ").split()
         md, pf = v.get("massDensity"), v.get("packingFraction")
-        if len(symbols) > 1:
-            if md is None or pf is None:
-                raise ValueError("for multi-element materials, must include both mass density and packing fraction")
-        elif len(symbols) == 1:
-            if md is not None and pf is not None:
-                del v["massDensity"]
-                raise Warning("can't specify both mass-density and packing fraction for single-element materials")
+        # multi-element material must include at minimum the mass density
+        if len(symbols) > 1 and md is None:
+            raise ValueError("for multi-element materials, must include mass density")
+        if len(symbols) == 1 and md is not None and pf is not None:
+            del v["packingFraction"]
+            raise Warning("can't specify both mass-density and packing fraction for single-element materials")
         return v

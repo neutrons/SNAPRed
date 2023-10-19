@@ -185,7 +185,10 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
     def tearDown(self) -> None:
         for ws in mtd.getObjectNames():
-            DeleteWorkspace(ws)
+            try:
+                DeleteWorkspace(ws)
+            except:  # noqa: E722
+                pass
         return super().tearDown()
 
     def test_chop_ingredients(self):

@@ -169,8 +169,8 @@ class RawVanadiumCorrection(PythonAlgorithm):
         self.mantidSnapper.SetSample(
             "Setting workspace with calibrant sample",
             InputWorkspace=outputWS,
-            Geometry=sample.geometry.geometryDictionary,
-            Material=sample.material.materialDictionary,
+            Geometry=sample.geometry.json(),
+            Material=sample.material.json(),
         )
         self.shapedAbsorption(outputWS, wsName_cylinder)
         self.mantidSnapper.Divide(
