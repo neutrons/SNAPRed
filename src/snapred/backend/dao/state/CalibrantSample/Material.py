@@ -3,6 +3,8 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, root_validator, validator
 
+# ruff: noqa: ARG002
+
 
 class Material(BaseModel):
     """Class to hold Material information relevant to Calibrant Samples

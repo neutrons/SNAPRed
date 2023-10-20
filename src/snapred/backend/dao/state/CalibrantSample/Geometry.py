@@ -3,6 +3,8 @@ from typing import Any, Dict, Optional, Tuple
 
 from pydantic import BaseModel, root_validator
 
+# ruff: noqa: ARG002
+
 
 class Geometry(BaseModel):
     """Class to hold Geometry data for Calibrant Samples
