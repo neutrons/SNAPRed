@@ -56,6 +56,12 @@ class RawVanadiumCorrection(PythonAlgorithm):
         else:
             pass
 
+        self.mantidSnapper.ConvertUnits(
+            "Ensure workspace is in TOF units",
+            InputWorkspace=wsName,
+            Outputworkspace=wsName,
+            Target="TOF",
+        )
         self.mantidSnapper.CropWorkspace(
             "Filter the workspace within bounds",
             InputWorkspace=wsName,
