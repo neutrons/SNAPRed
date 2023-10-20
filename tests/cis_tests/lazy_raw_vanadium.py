@@ -30,10 +30,6 @@ from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import Calibrant
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.RawVanadiumCorrection import RawVanadiumCorrection as Algo  # noqa: E402
