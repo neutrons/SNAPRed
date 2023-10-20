@@ -25,6 +25,9 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric  # noqa: E402
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
+    from snapred.backend.dao.request.CalibrationNormalizationRequest import (
+        CalibrationNormalizationRequest,  # noqa: E402
+    )
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest  # noqa: E402
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters  # noqa: E402
@@ -319,4 +322,44 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         mockDiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
             mockDiffractionCalibrationIngredients.return_value
+        )
+
+    @patch("snapred.backend.service.CalibrationService.CrystallographicInfoService")
+    @patch("snapred.backend.service.CalibrationService.SmoothDataExcludingPeaksIngredients")
+    @patch("snapred.backend.service.CalibrationService.CalibrationNormalizationRecipe")
+    def test_calibrationNormalization(
+        self,
+        mockCalibrationNormalizationRecipe,
+        mockSmoothDataExcludingPeaksIngredients,
+        mockCrystallographicInfoService,
+    ):
+        # Mock the necessary method calls
+        mockCalibration = MagicMock()
+        mockInstrumentState = MagicMock()
+        self.instance.dataFactoryService = MagicMock()
+        self.instance.dataFactoryService.getReductionIngredients.return_value = MagicMock()
+        self.instance.dataFactoryService.getCalibrationState = MagicMock(return_value=mockCalibration)
+        mockCalibration.instrumentState = mockInstrumentState
+        mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
+        mockCalibrationNormalizationRecipe().executeRecipe.return_value = [MagicMock()]
+        runNumber = "1"
+
+        request = CalibrationNormalizationRequest(
+            runNumber=runNumber,
+            cifPath="mock_cif_path",
+            smoothingParameter=0.5,
+        )
+
+        # Call the method to test
+        self.instance.normalization(request)
+
+        # Perform assertions to check the result and method calls
+        mockSmoothDataExcludingPeaksIngredients.assert_called_once_with(
+            crystalInfo=mockCrystallographicInfoService().ingest.return_value["crystalInfo"],
+            instrumentState=mockInstrumentState,
+            smoothingParameter=request.smoothingParameter,
+        )
+        mockCalibrationNormalizationRecipe().executeRecipe.assert_called_once_with(
+            self.instance.dataFactoryService.getReductionIngredients.return_value,
+            mockSmoothDataExcludingPeaksIngredients.return_value,
         )
