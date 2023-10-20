@@ -15,13 +15,13 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import (
-    CalculateOffsetDIFC as ThisAlgo,  # noqa: E402
+from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import (
+    PixelDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
 from snapred.meta.Config import Resource
 
 
-class TestCalculateOffsetDIFC(unittest.TestCase):
+class TestPixelDiffractionCalibration(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         self.fakeRunNumber = "555"

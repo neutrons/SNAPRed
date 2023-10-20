@@ -8,8 +8,6 @@ from mantid.simpleapi import DeleteWorkspace, DeleteWorkspaces, mtd
 
 from snapred.meta.Config import Config
 
-name = "CalculateOffsetDIFC"
-
 
 class WashDishes(PythonAlgorithm):
     """
@@ -22,7 +20,7 @@ class WashDishes(PythonAlgorithm):
         self.declareProperty("Workspace", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty(StringArrayProperty(name="WorkspaceList", values=[], direction=Direction.Input))
         self.setRethrows(True)
-        self._CISmode: bool = Config["cis_mode"]
+        self._CISmode: bool = Config.get("cis_mode", False)
 
     def PyExec(self) -> None:
         self.log().notice("Washing the dishes...")

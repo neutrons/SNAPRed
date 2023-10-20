@@ -1,26 +1,47 @@
 import json
 from typing import Dict, List, Tuple
 
-from mantid.api import AlgorithmFactory, PythonAlgorithm
+from mantid.api import (
+    AlgorithmFactory,
+    CalibrationWorkspaceProperty,
+    GroupingWorkspaceProperty,
+    MatrixWorkspaceProperty,
+    PropertyMode,
+    PythonAlgorithm,
+)
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "GroupByGroupCalibration"
 
-
-class GroupByGroupCalibration(PythonAlgorithm):
+class GroupDiffractionCalibration(PythonAlgorithm):
     def PyInit(self):
         # declare properties
+        self.declareProperty(
+            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace containing neutron data that has been pixel calibrated",
+        )
+        self.declareProperty(
+            GroupingWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace containing the grouping information",
+        )
+        self.declareProperty(
+            CalibrationWorkspaceProperty("PreviousCalibrationTable", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Table workspace with previous pixel-calibrated DIFC values",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace containing the final diffraction calibration data",
+        )
+        self.declareProperty(
+            CalibrationWorkspaceProperty("FinalCalibrationTable", "", Direction.Output, PropertyMode.Mandatory),
+            doc="Table workspace with group-corrected DIFC values",
+        )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
-        self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-        self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
-        self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
@@ -263,4 +284,4 @@ class GroupByGroupCalibration(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(GroupByGroupCalibration)
+AlgorithmFactory.subscribe(GroupDiffractionCalibration)

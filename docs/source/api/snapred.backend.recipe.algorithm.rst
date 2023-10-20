@@ -12,10 +12,10 @@ snapred.backend.recipe.algorithm.AlignAndFocusReductionAlgorithm module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.CalculateOffsetDIFC module
+snapred.backend.recipe.algorithm.PixelDiffractionCalibration module
 -----------------------------------------------------------
 
-.. automodule:: snapred.backend.recipe.algorithm.CalculateOffsetDIFC
+.. automodule:: snapred.backend.recipe.algorithm.PixelDiffractionCalibration
    :members:
    :undoc-members:
    :show-inheritance:
@@ -84,10 +84,10 @@ snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.GroupByGroupCalibration module
+snapred.backend.recipe.algorithm.GroupDiffractionCalibration module
 ---------------------------------------------------------------
 
-.. automodule:: snapred.backend.recipe.algorithm.GroupByGroupCalibration
+.. automodule:: snapred.backend.recipe.algorithm.GroupDiffractionCalibration
    :members:
    :undoc-members:
    :show-inheritance:
