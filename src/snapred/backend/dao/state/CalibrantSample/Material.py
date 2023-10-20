@@ -3,8 +3,6 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, root_validator, validator
 
-# ruff: noqa: ARG002
-
 
 class Material(BaseModel):
     """Class to hold Material information relevant to Calibrant Samples
@@ -18,15 +16,7 @@ class Material(BaseModel):
     massDensity: Optional[float]
     chemicalFormula: str
 
-    def dict(  # noqa: A003
-        self,
-        include=[],
-        exclude=[],
-        by_alias=False,
-        exclude_unset=False,
-        exclude_defaults=False,
-        exclude_none=False,
-    ) -> Dict[str, Any]:
+    def dict(self, **kwargs) -> Dict[str, Any]:  # noqa: A003, ARG002
         ans = {
             "chemicalFormula": self.chemicalFormula,
         }

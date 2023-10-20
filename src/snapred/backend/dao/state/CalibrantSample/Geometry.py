@@ -3,8 +3,6 @@ from typing import Any, Dict, Optional, Tuple
 
 from pydantic import BaseModel, root_validator
 
-# ruff: noqa: ARG002
-
 
 class Geometry(BaseModel):
     """Class to hold Geometry data for Calibrant Samples
@@ -19,15 +17,7 @@ class Geometry(BaseModel):
     center: Tuple[float, float, float] = (0, 0, 0)
     axis: Tuple[float, float, float] = (0, 1, 0)
 
-    def dict(  # noqa: A003
-        self,
-        include=[],
-        exclude=[],
-        by_alias=False,
-        exclude_unset=False,
-        exclude_defaults=False,
-        exclude_none=False,
-    ) -> Dict[str, Any]:
+    def dict(self, **kwargs) -> Dict[str, Any]:  # noqa: A003, ARG002
         ans = {
             "shape": self.shape,
             "radius": self.radius,
