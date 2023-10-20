@@ -5,12 +5,8 @@ from mantid.api import AlgorithmManager
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import (
-    name as GroupDiffractionCalibration,
-)
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import (
-    name as PixelDiffractionCalibration,
-)
+from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
+from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -18,9 +14,6 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class DiffractionCalibrationRecipe:
-    offsetDIFCAlgorithmName: str = PixelDiffractionCalibration
-    pdcalibrateAlgorithmName: str = GroupDiffractionCalibration
-
     def __init__(self):
         pass
 
@@ -38,7 +31,8 @@ class DiffractionCalibrationRecipe:
         medianOffsets: List[float] = []
 
         logger.info("Calibrating by cross-correlation and adjusting offsets...")
-        offsetAlgo = AlgorithmManager.create(self.offsetDIFCAlgorithmName)
+        offsetAlgo = PixelDiffractionCalibration()
+        offsetAlgo.initialize()
         offsetAlgo.setProperty("Ingredients", ingredients.json())
         try:
             offsetAlgo.execute()
@@ -63,7 +57,8 @@ class DiffractionCalibrationRecipe:
         logger.info(f"Initial calibration converged.  Offsets: {medianOffsets}")
 
         logger.info("Beginning group-by-group fitting calibration")
-        calibrateAlgo = AlgorithmManager.create(self.pdcalibrateAlgorithmName)
+        calibrateAlgo = GroupDiffractionCalibration()
+        calibrateAlgo.initialize()
         calibrateAlgo.setProperty("Ingredients", ingredients.json())
         calibrateAlgo.setProperty("InputWorkspace", offsetAlgo.getProperty("OutputWorkspace").value)
         calibrateAlgo.setProperty("PreviousCalibrationTable", offsetAlgo.getProperty("CalibrationTable").value)

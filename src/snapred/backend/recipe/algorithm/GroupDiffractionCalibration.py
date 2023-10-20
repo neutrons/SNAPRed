@@ -3,8 +3,7 @@ from typing import Dict, List, Tuple
 
 from mantid.api import (
     AlgorithmFactory,
-    CalibrationWorkspaceProperty,
-    GroupingWorkspaceProperty,
+    ITableWorkspaceProperty,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
@@ -17,6 +16,14 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 class GroupDiffractionCalibration(PythonAlgorithm):
+    """
+    Calculuate the group-aligned DIFC associated with a given workspace.
+    One part of diffraction calibration.
+    """
+
+    def category(self):
+        return "SNAPRed Diffraction Calibration"
+
     def PyInit(self):
         # declare properties
         self.declareProperty(
@@ -24,19 +31,19 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             doc="Workspace containing neutron data that has been pixel calibrated",
         )
         self.declareProperty(
-            GroupingWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the grouping information",
         )
         self.declareProperty(
-            CalibrationWorkspaceProperty("PreviousCalibrationTable", "", Direction.Input, PropertyMode.Mandatory),
+            ITableWorkspaceProperty("PreviousCalibrationTable", "", Direction.Input, PropertyMode.Mandatory),
             doc="Table workspace with previous pixel-calibrated DIFC values",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Input, PropertyMode.Optional),
             doc="Workspace containing the final diffraction calibration data",
         )
         self.declareProperty(
-            CalibrationWorkspaceProperty("FinalCalibrationTable", "", Direction.Output, PropertyMode.Mandatory),
+            ITableWorkspaceProperty("FinalCalibrationTable", "", Direction.Output, PropertyMode.Optional),
             doc="Table workspace with group-corrected DIFC values",
         )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
@@ -133,16 +140,16 @@ class GroupDiffractionCalibration(PythonAlgorithm):
     def raidPantry(self):
         """Load required data, if not already loaded, and process it"""
 
-        if not self.mantidSnapper.mtd.doesExist(self.inputWStof):
-            # TODO allow for loading alternate file types
-            self.mantidSnapper.LoadEventNexus(
-                "Loading Event Nexus for {} ...".format(self.rawDataPath),
-                Filename=self.rawDataPath,
-                OutputWorkspace=self.inputWStof,
-                FilterByTofMin=self.TOFMin,
-                FilterByTofMax=self.TOFMax,
-                BlockList="Phase*,Speed*,BL*:Chop:*,chopper*TDC",
-            )
+        # if not self.mantidSnapper.mtd.doesExist(self.inputWStof):
+        #     # TODO allow for loading alternate file types
+        #     self.mantidSnapper.LoadEventNexus(
+        #         "Loading Event Nexus for {} ...".format(self.rawDataPath),
+        #         Filename=self.rawDataPath,
+        #         OutputWorkspace=self.inputWStof,
+        #         FilterByTofMin=self.TOFMin,
+        #         FilterByTofMax=self.TOFMax,
+        #         BlockList="Phase*,Speed*,BL*:Chop:*,chopper*TDC",
+        #     )
         # also find d-spacing data and rebin logarithmically
         inputWSdsp: str = f"_DSP_{self.runNumber}"
         self.convertUnitsAndRebin(self.inputWStof, inputWSdsp, "dSpacing")
@@ -168,20 +175,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.mantidSnapper.WashDishes(
             "Clean up d-spacing data",
             WorkspaceList=[inputWSdsp, diffractionfocusedWSdsp],
-        )
-        self.mantidSnapper.executeQueue()
-
-    def restockPantry(self) -> None:
-        """
-        Save the calculated diffraction calibration table to file.
-        Will be saved inside the state folder, with name of form
-
-            `/stateFolder/SNAP{run number}_calib_geom_{today's date}.h5`
-        """
-        self.mantidSnapper.SaveDiffCal(
-            f"Saving the Diffraction Calibration table to {self.outputFilename}",
-            CalibrationWorkspace=self.getProperty("FinalCalibrationTable").value,
-            Filename=self.outputFilename,
         )
         self.mantidSnapper.executeQueue()
 

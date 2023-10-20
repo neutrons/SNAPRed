@@ -4,8 +4,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 from mantid.api import (
     AlgorithmFactory,
-    CalibrationWorkspaceProperty,
-    GroupingWorkspaceProperty,
+    ITableWorkspaceProperty,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
@@ -25,6 +24,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
     May be re-called iteratively with `execute` to ensure convergence.
     """
 
+    def category(self):
+        return "SNAPRed Diffraction Calibration"
+
     def PyInit(self):
         # declare properties
         self.declareProperty(
@@ -32,15 +34,15 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             doc="Workspace containing the raw neutron data",
         )
         self.declareProperty(
-            GroupingWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the grouping information",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="Workspace containing the rebinned and pixel-calibrated data",
         )
         self.declareProperty(
-            CalibrationWorkspaceProperty("CalibrationTable", "", Direction.Output, PropertyMode.Mandatory),
+            ITableWorkspaceProperty("CalibrationTable", "", Direction.Output, PropertyMode.Optional),
             doc="Workspace containing the rebinned and pixel-calibrated data",
         )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
@@ -75,50 +77,70 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             self.maxDSpaceShifts[peakList.groupID] = 2.5 * peakList.maxfwhm
 
         # create string names of workspaces that will be used by algorithm
-        self.outputWStof: str = f"_TOF_{self.runNumber}_output"
-        self.outputWSdsp: str = f"_DSP_{self.runNumber}_output"
+        if self.getProperty("OutputWorkspace").isDefault:
+            self.outputWStof: str = f"_TOF_{self.runNumber}_output"
+            self.outputWSdsp: str = f"_DSP_{self.runNumber}_output"
+        else:
+            self.outputWStof: str = self.getPropertyValue("OutputWorkspace")
+            self.outputWSdsp: str = self.outputWStof + "_dsp"
+        # if CIS is testing, want to save data before processing for inspection
         if Config._config.get("cis_mode", False):
             self.inputWStof: str = f"_TOF_{self.runNumber}_input"
             self.inputWSdsp: str = f"_DSP_{self.runNumber}_input"
+        # otherwise set in/out equal to same string, so same operation
         else:
             self.inputWStof: str = self.outputWStof
             self.inputWSdsp: str = self.outputWSdsp
-        self.difcWS: str = f"_DIFC_{self.runNumber}"
+
+        # create string name for output calibration table
+        if self.getProperty("CalibrationTable").isDefault:
+            self.difcWS: str = f"_DIFC_{self.runNumber}"
+        else:
+            self.difcWS: str = self.getPropertyValue("CalibrationTable")
+
+        # set the max offset
         self.maxOffset: float = float(self.getProperty("MaxOffset").value)
 
-    def raidPantry(self) -> None:
+    def chopNeutronData(self) -> None:
         """Initialize the input TOF data from the input filename in the ingredients"""
 
         self.wsRawTOF = self.getPropertyValue("InputWorkspace")
         # clone anf crop the raw input data
         self.mantidSnapper.CropWorkspace(
+            "Clone and crop the raw data",
             InputWorkspace=self.wsRawTOF,
-            OutputWorkspace=self.outputWStof,
+            OutputWorkspace=self.inputWStof,
             XMin=self.TOFMin,
             Xmax=self.TOFMax,
         )
         # rebin the TOF data logarithmically
-        self.convertUnitsAndRebin(self.outputWStof, self.outputWStof, "TOF")
+        self.convertUnitsAndRebin(self.inputWStof, self.inputWStof, "TOF")
         # also find d-spacing data and rebin logarithmically
-        self.convertUnitsAndRebin(self.outputWStof, self.outputWSdsp, "dSpacing")
+        self.convertUnitsAndRebin(self.inputWStof, self.inputWSdsp, "dSpacing")
 
         # prepare output data
         if self.inputWStof != self.outputWStof:
             self.mantidSnapper.CloneWorkspace(
                 "Creating output copy of TOF data",
-                InputWorkspace=self.outputWStof,
-                OutputWorkspace=self.inputWStof,
+                InputWorkspace=self.inputWStof,
+                OutputWorkspace=self.outputWStof,
             )
-        if self.inputWSdsp != self.outputWSdsp:
             self.mantidSnapper.CloneWorkspace(
                 "Creating output copy of d-spacing data",
-                InputWorkspace=self.outputWSdsp,
-                OutputWorkspace=self.inputWSdsp,
+                InputWorkspace=self.inputWSdsp,
+                OutputWorkspace=self.outputWSdsp,
             )
-        self.mantidSnapper.executeQueue()
 
         # get handle to group focusing workspace and retrieve all detector IDs
-        focusWS = self.getProperty("GroupingWorkspace")
+        # focusWS = self.getPropertyValue("GroupingWorkspace")
+        # self.mantidSnapper.CreateGroupingWorkspace(
+        #     "message",
+        #     InputWorkspace = focusWS,
+        #     OutputWorkspace = focusWS,
+        # )
+        # self.mantidSnapper.executeQueue()
+        focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
+        focusWS = self.mantidSnapper.mtd[focusWSname]
         self.subgroupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
         self.subgroupWorkspaceIndices: Dict[int, List[int]] = {}
         for subgroupID in self.subgroupIDs:
@@ -216,14 +238,14 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         the spectra are cross-correlated, the offsets calculated, and the original DIFC
         values are corrected by the offsets.
         outputs:
-            data: dict -- several statistics of the offsets, for testing convergence
+            data: dict -- statistics of the offsets, for testing convergence
             OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
             CalibrationTable: str -- the final table of DIFC values
         """
         data: Dict[str, float] = {}
         totalOffsetWS: str = f"offsets_{self.runNumber}_{self._counts}"
-        wsoff: str = f"_{self.runNumber}_tmp_subgroup_offset"
-        wscc: str = f"_{self.runNumber}_tmp_subgroup_CC"
+        wsoff: str = f"_{self.runNumber}_tmp_subgroup_offset_{self._counts}"
+        wscc: str = f"_{self.runNumber}_tmp_subgroup_CC_{self._counts}"
         for subgroupID, workspaceIndices in self.subgroupWorkspaceIndices.items():
             workspaceIndices = list(workspaceIndices)
             refID: int = self.getRefID(workspaceIndices)
@@ -266,6 +288,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # use the median, to avoid issues with possible pathologic pixels
         self.mantidSnapper.executeQueue()  # queue must run before ws in mantid data
         offsets = list(self.mantidSnapper.mtd[totalOffsetWS].extractY().ravel())
+        print(offsets)
         data["medianOffset"] = abs(np.median(offsets))
 
         # get difcal corrected by offsets
@@ -309,13 +332,13 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
             CalibrationTable: str -- the final table of DIFC values
         """
-        if not self._counts == 0:
+        if self._counts == 0:
             self.log().notice("Extraction of calibration constants START!")
             # get the ingredients
-            ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
+            ingredients = Ingredients.parse_raw(self.getPropertyValue("Ingredients"))
             self.chopIngredients(ingredients)
             # load and process the input data for algorithm
-            self.raidPantry()
+            self.chopNeutronData()
             # prepare initial diffraction calibration workspace
             self.initDIFCTable()
         # now calculate and correct by offsets
