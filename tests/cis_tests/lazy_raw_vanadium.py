@@ -187,32 +187,8 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         WashDishes(self.sampleWS)
         return super().tearDown()
 
-    @mock.patch(TheAlgorithmManager)
-    def test_execute(self, mockAlgorithmManager):
+    def test_execute(self):
         """Test that the algorithm executes"""
-
-        class mockGetIPTS(PythonAlgorithm):
-            def PyInit(self):
-                self.declareProperty("RunNumber", defaultValue="", direction=Direction.Input)
-                self.declareProperty("Instrument", defaultValue="", direction=Direction.Input)
-                self.declareProperty("Directory", defaultValue="nope!", direction=Direction.Output)
-                self.setRethrows(True)
-
-            def PyExec(self):
-                self.setProperty("Directory", "nope!")
-
-        def mockAlgorithmCreate(algoName: str):
-            from mantid.api import AlgorithmManager
-
-            if algoName == "GetIPTS":
-                algo = mockGetIPTS()
-                algo.initialize()
-                return algo
-            else:
-                return AlgorithmManager.create(algoName)
-
-        mockAlgorithmManager.create = mockAlgorithmCreate
-
         algo = Algo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.sampleWS)
