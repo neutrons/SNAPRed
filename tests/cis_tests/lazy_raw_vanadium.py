@@ -35,7 +35,7 @@ from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.recipe.algorithm.RawVanadiumCorrection import RawVanadiumCorrection as Algo  # noqa: E402
 from snapred.meta.Config import Config, Resource
 Config._config['cis_mode'] = True
-Resource._resourcesPath = "/home/4rx/SNAPRed/tests/resources/"
+Resource._resourcesPath = "/SNS/users/4rx/SNAPRed/tests/resources/"
 
 TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
 
@@ -95,8 +95,10 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         self.sample_proton_charge = 10.0
 
         # create some sample data
-        self.backgroundWS = "_test_data_raw_vanadium_background"
-        self.sampleWS = "_test_data_raw_vanadium"
+        self.backgroundWS = "_lazy_data_raw_vanadium_background"
+        self.sampleWS = "_lazy_data_raw_vanadium"
+        self.outputWS = "_lazy_raw_vanadium_final_output"
+        self.signalWS = "_lazy_raw_vanadium_signal"
         CreateSampleWorkspace(
             OutputWorkspace=self.backgroundWS,
             # WorkspaceType="Histogram",
@@ -130,7 +132,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             OutputWorkspace=self.sampleWS,
         )
         CreateSampleWorkspace(
-            OutputWorkspace="_tmp_raw_vanadium",
+            OutputWorkspace=self.signalWS,
             # WorkspaceType="Histogram",
             Function="User Defined",
             UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=70,Sigma=1",
@@ -140,10 +142,10 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             XUnit="TOF",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=True,
+            Random=False,
         )
         Plus(
-            LHSWorkspace="_tmp_raw_vanadium", 
+            LHSWorkspace=self.signalWS, 
             RHSWorkspace=self.sampleWS, 
             OutputWorkspace=self.sampleWS,
         )
@@ -218,10 +220,18 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo.setProperty("CalibrationWorkspace", self.difcWS)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("CalibrantSample", self.calibrantSample.json())
-        algo.setProperty("OutputWorkspace", "_test_raw_vanadium_final_output")
+        algo.setProperty("OutputWorkspace", self.outputWS)
         assert algo.execute()
 
 
 test = TestRawVanadiumCorrection()
 test.setUp()
 test.test_execute()
+
+fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
+ax.plot(mtd[test.backgroundWS], wkspIndex=2, label="background")
+ax.plot(mtd[test.signalWS], wkspIndex=2, label="signal")
+ax.plot(mtd[test.sampleWS], wkspIndex=2, label="raw data")
+ax.plot(mtd[test.outputWS], wkspIndex=2, label="corrected data")
+ax.legend() # show the legend
+fig.show()

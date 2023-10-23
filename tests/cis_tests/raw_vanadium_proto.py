@@ -50,18 +50,13 @@ with open(sPrmFile, "r") as json_file:
 
 geomCalibFile= iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ sPrm['calFileName']
 
-rawVFile = iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'
-if liteMode:
-    rawVFile = rawVFile + f'RVMB{VRun}.lite.nxs'
-else:
-    rawVFile = rawVFile + f'RVMB{VRun}.nxs'
-
 xmin = sPrm['tofMin']
 xmax = sPrm['tofMax']
 xbin = (xmax-xmin)/xmin/1000
 TOFBinParams = (xmin, xbin, xmax)
 print(TOFBinParams)
-
+print(geomCalibFile)
+print('/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/057514/SNAP057514_calib_geom_20230324.lite.h5')
 
 # LOAD ALL NEEDED DATA  ########################################################
 dataFactoryService=DataFactoryService()
@@ -102,17 +97,14 @@ CloneWorkspace(
     OutputWorkspace = backgroundWS,
 )
 
-# Resource._resourcesPath = "~/SNAPRed/tests/resources/"
-# print(Resource.getPath("inputs/diffcal/SNAPLite_Definition.xml"))
-# idf = Resource.getPath("inputs/diffcal/SNAPLite_Definition.xml")
-
-difcWS = "_difc_cal"
+difcWS = "_difc"
 LoadDiffCal(
     Filename = geomCalibFile,
     MakeCalWorkspace = True,
-    WorkspaceName = "_difc",
+    WorkspaceName = difWS,
     InstrumentFilename = idf,
 )
+difcWS = difcWS + "_cal"
 
 
 # CREATE MATERIAL ########################################################
@@ -131,28 +123,22 @@ calibrantSample = CalibrantSamples(
     material=material,
 )
 
-
 # RUN ALGO ########################################################
+outputWS = "_test_raw_vanadium_final_output"
 algo = Algo()
 algo.initialize()
 algo.setProperty("InputWorkspace", vanadiumWS)
 algo.setProperty("BackgroundWorkspace", backgroundWS)
-algo.setProperty("CalibrationWorkspace", "_difc_cal")
+algo.setProperty("CalibrationWorkspace", difcWS)
 algo.setProperty("Ingredients", ingredients.json())
 algo.setProperty("CalibrantSample", calibrantSample.json())
-algo.setProperty("OutputWorkspace", "_test_raw_vanadium_final_output")
+algo.setProperty("OutputWorkspace", outputWS)
 assert algo.execute()
 
-print(algo.liteMode)
-
 DiffractionFocussing(
-    InputWorkspace = "_test_raw_vanadium_final_output",
+    InputWorkspace = outputWS,
     OutputWorkspace = '_test_focussed',
     GroupingFilename = '/SNS/SNAP/shared/Calibration_old/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.cal',
 )
 
 
-
-
-
-# SaveNexus(InputWorkspace="_test_raw_vanadium_final_output", Filename=rawVFile)
