@@ -39,8 +39,8 @@ class TestCalibrantSamples(unittest.TestCase):
         return super().tearDown()
 
     def test_isShapedLikeItself(self):
-        assert CalibrantSamples.parse_obj(self.sample.dict())
-        assert CalibrantSamples.parse_raw(self.sample.json())
+        assert self.sample == CalibrantSamples.parse_obj(self.sample.dict())
+        assert self.sample == CalibrantSamples.parse_raw(self.sample.json())
 
     def test_setCalibrantSample(self):
         SetSample(

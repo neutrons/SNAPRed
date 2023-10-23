@@ -35,19 +35,19 @@ class TestMaterial(unittest.TestCase):
         )
 
     def test_isShapedLikeItself(self):
-        assert Material.parse_obj(self.vanadium.dict())
-        assert Material.parse_raw(self.vanadium.json())
-        assert Material.parse_obj(self.vanadiumMD.dict())
-        assert Material.parse_raw(self.vanadiumMD.json())
-        assert Material.parse_obj(self.vanadiumPF.dict())
-        assert Material.parse_raw(self.vanadiumPF.json())
+        assert self.vanadium == Material.parse_obj(self.vanadium.dict())
+        assert self.vanadium == Material.parse_raw(self.vanadium.json())
+        assert self.vanadiumMD == Material.parse_obj(self.vanadiumMD.dict())
+        assert self.vanadiumMD == Material.parse_raw(self.vanadiumMD.json())
+        assert self.vanadiumPF == Material.parse_obj(self.vanadiumPF.dict())
+        assert self.vanadiumPF == Material.parse_raw(self.vanadiumPF.json())
         #
-        assert Material.parse_obj(self.vanadiumBoron.dict())
-        assert Material.parse_raw(self.vanadiumBoron.json())
-        assert Material.parse_obj(self.vanadiumBoronDash.dict())
-        assert Material.parse_raw(self.vanadiumBoronDash.json())
-        assert Material.parse_obj(self.vanadiumBoronMD.dict())
-        assert Material.parse_raw(self.vanadiumBoronMD.json())
+        assert self.vanadiumBoron == Material.parse_obj(self.vanadiumBoron.dict())
+        assert self.vanadiumBoron == Material.parse_raw(self.vanadiumBoron.json())
+        assert self.vanadiumBoronDash == Material.parse_obj(self.vanadiumBoronDash.dict())
+        assert self.vanadiumBoronDash == Material.parse_raw(self.vanadiumBoronDash.json())
+        assert self.vanadiumBoronMD == Material.parse_obj(self.vanadiumBoronMD.dict())
+        assert self.vanadiumBoronMD == Material.parse_raw(self.vanadiumBoronMD.json())
 
     def test_singleElementMaterial(self):
         # ensure that the material json object
