@@ -14,8 +14,8 @@ from scipy.interpolate import make_smoothing_spline, splev
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "RawVanadiumCorrection"
 
@@ -60,7 +60,7 @@ class RawVanadiumCorrection(PythonAlgorithm):
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data before chop",
             InputWorkspace=wsName,
-            Outputworkspace=wsName+"_beforeChop",   
+            Outputworkspace=wsName + "_beforeChop",
         )
 
         self.mantidSnapper.ConvertUnits(
@@ -98,7 +98,7 @@ class RawVanadiumCorrection(PythonAlgorithm):
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data before chop",
             InputWorkspace=wsName,
-            Outputworkspace=wsName+"_afterChop",    
+            Outputworkspace=wsName + "_afterChop",
         )
         self.mantidSnapper.executeQueue()
 
@@ -162,8 +162,8 @@ class RawVanadiumCorrection(PythonAlgorithm):
         )
         self.mantidSnapper.MakeDirtyDish(
             "create record of state after subtraction",
-            InputWorkspace = outputWS,
-            OutputWorkspace = outputWS + "_minusBackground",
+            InputWorkspace=outputWS,
+            OutputWorkspace=outputWS + "_minusBackground",
         )
         self.mantidSnapper.WashDishes(
             "Remove local vanadium background copy",
