@@ -16,7 +16,6 @@ from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
-from snapred.meta.Config import Config
 
 name = "RawVanadiumCorrection"
 
@@ -103,7 +102,6 @@ class RawVanadiumCorrection(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-
     def shapedAbsorption(self, outputWS: str, wsName_cylinder: str):
         if self.sampleShape == "Cylinder":
             self.mantidSnapper.CylinderAbsorption(
@@ -173,7 +171,6 @@ class RawVanadiumCorrection(PythonAlgorithm):
         )
 
         if not self.liteMode:
-            print("USING LITE MODE!!!")
             self.mantidSnapper.SumNeighbours(
                 "Add neighboring pixels",
                 InputWorkspace=outputWS,
