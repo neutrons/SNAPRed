@@ -15,6 +15,8 @@ from scipy.interpolate import make_smoothing_spline, splev
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
+from snapred.meta.Config import Config
 
 name = "RawVanadiumCorrection"
 
@@ -56,6 +58,12 @@ class RawVanadiumCorrection(PythonAlgorithm):
         else:
             pass
 
+        self.mantidSnapper.MakeDirtyDish(
+            "make a copy of data before chop",
+            InputWorkspace=wsName,
+            Outputworkspace=wsName+"_beforeChop",   
+        )
+
         self.mantidSnapper.ConvertUnits(
             "Ensure workspace is in TOF units",
             InputWorkspace=wsName,
@@ -88,7 +96,13 @@ class RawVanadiumCorrection(PythonAlgorithm):
             OutputWorkspace=wsName,
             BinningMode="Logarithmic",
         )
+        self.mantidSnapper.MakeDirtyDish(
+            "make a copy of data before chop",
+            InputWorkspace=wsName,
+            Outputworkspace=wsName+"_afterChop",    
+        )
         self.mantidSnapper.executeQueue()
+
 
     def shapedAbsorption(self, outputWS: str, wsName_cylinder: str):
         if self.sampleShape == "Cylinder":
@@ -148,12 +162,18 @@ class RawVanadiumCorrection(PythonAlgorithm):
             RHSWorkspace=outputWSVB,
             OutputWorkspace=outputWS,
         )
+        self.mantidSnapper.MakeDirtyDish(
+            "create record of state after subtraction",
+            InputWorkspace = outputWS,
+            OutputWorkspace = outputWS + "_minusBackground",
+        )
         self.mantidSnapper.WashDishes(
             "Remove local vanadium background copy",
             Workspace=outputWSVB,
         )
 
         if not self.liteMode:
+            print("USING LITE MODE!!!")
             self.mantidSnapper.SumNeighbours(
                 "Add neighboring pixels",
                 InputWorkspace=outputWS,

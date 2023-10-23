@@ -36,10 +36,9 @@ VBRun = 57472
 liteMode=True
 # File defining reduction parameters for this instrument state (Manually spec'ed for now)
 sPrmFile = '/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/057514/SNAPcalibLog57514.lite.json' 
-
-#############################Don't edit below here#########################
-
 iPrmFile = '/SNS/SNAP/shared/Calibration/SNAPInstPrm.json'
+idf = '/SNS/SNAP/shared/Calibration_old/SNAPLite.xml'
+#############################Don't edit below here#########################
 
 #instrument parameters
 with open(iPrmFile, "r") as json_file:
@@ -57,13 +56,14 @@ if liteMode:
 else:
     rawVFile = rawVFile + f'RVMB{VRun}.nxs'
 
-TOFBinParams = (
-    sPrm['tofMin'],
-    sPrm['tofBin'],
-    sPrm['tofMax'],
-)
+xmin = sPrm['tofMin']
+xmax = sPrm['tofMax']
+xbin = (xmax-xmin)/xmin/1000
+TOFBinParams = (xmin, xbin, xmax)
+print(TOFBinParams)
 
-# CREATE NEEDED INGREDIENTS ########################################################
+
+# LOAD ALL NEEDED DATA  ########################################################
 dataFactoryService=DataFactoryService()
 ingredients = dataFactoryService.getReductionIngredients(VRun)
 ingredients.reductionState.stateConfig.tofMin = TOFBinParams[0]
@@ -87,12 +87,35 @@ def loadFromRunNumber(runNo, wsName):
             NumberOfBins=1,
         )
 
-rawVanadiumWS = 'TOF_V'
-backgroundWS = 'TOF_VB'
+rawVanadiumWS = 'z_TOF_V'
+rawBackgroundWS = 'z_TOF_VB'
+vanadiumWS = '_TOF_V'
+backgroundWS = '_TOF_VB'
 loadFromRunNumber(VRun, rawVanadiumWS)
-loadFromRunNumber(VBRun, backgroundWS)
+loadFromRunNumber(VBRun, rawBackgroundWS)
+CloneWorkspace(
+    InputWorkspace = rawVanadiumWS,
+    OutputWorkspace = vanadiumWS,
+)
+CloneWorkspace(
+    Inputworkspace = rawBackgroundWS,
+    OutputWorkspace = backgroundWS,
+)
 
-# create some nonsense material and crystallography
+# Resource._resourcesPath = "~/SNAPRed/tests/resources/"
+# print(Resource.getPath("inputs/diffcal/SNAPLite_Definition.xml"))
+# idf = Resource.getPath("inputs/diffcal/SNAPLite_Definition.xml")
+
+difcWS = "_difc_cal"
+LoadDiffCal(
+    Filename = geomCalibFile,
+    MakeCalWorkspace = True,
+    WorkspaceName = "_difc",
+    InstrumentFilename = idf,
+)
+
+
+# CREATE MATERIAL ########################################################
 material = Material(
     chemicalFormula="V",
 )
@@ -108,20 +131,11 @@ calibrantSample = CalibrantSamples(
     material=material,
 )
 
-Resource._resourcesPath = "~/SNAPRed/tests/resources/"
-print(Resource.getPath("inputs/diffcal/SNAPLite_Definition.xml"))
 
-difcWS = "_difc_cal"
-LoadDiffCal(
-    Filename = geomCalibFile,
-    MakeCalWorkspace = True,
-    WorkspaceName = "_difc",
-    InstrumentFilename = Resource.getPath("/inputs/pixel_grouping/SNAPLite_Definition.xml"),
-)
-
+# RUN ALGO ########################################################
 algo = Algo()
 algo.initialize()
-algo.setProperty("InputWorkspace", rawVanadiumWS)
+algo.setProperty("InputWorkspace", vanadiumWS)
 algo.setProperty("BackgroundWorkspace", backgroundWS)
 algo.setProperty("CalibrationWorkspace", "_difc_cal")
 algo.setProperty("Ingredients", ingredients.json())
@@ -129,7 +143,16 @@ algo.setProperty("CalibrantSample", calibrantSample.json())
 algo.setProperty("OutputWorkspace", "_test_raw_vanadium_final_output")
 assert algo.execute()
 
-CalibrantSamples.parse_raw(algo.getProperty("CalibrantSample").value)
+print(algo.liteMode)
 
-assert False
+DiffractionFocussing(
+    InputWorkspace = "_test_raw_vanadium_final_output",
+    OutputWorkspace = '_test_focussed',
+    GroupingFilename = '/SNS/SNAP/shared/Calibration_old/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.cal',
+)
+
+
+
+
+
 # SaveNexus(InputWorkspace="_test_raw_vanadium_final_output", Filename=rawVFile)
