@@ -16,7 +16,7 @@ class CalibrantSamples(BaseModel):
     date: Optional[str] = None
     geometry: Geometry
     material: Material
-    crystallography: Crystallography
+    crystallography: Optional[Crystallography]
 
     @validator("date", pre=True, always=True, allow_reuse=True)
     def set_datetime(cls, v):
