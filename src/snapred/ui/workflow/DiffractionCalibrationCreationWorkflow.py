@@ -123,9 +123,9 @@ class DiffractionCalibrationCreationWorkflow:
         calibrationRecord = self.responses[-1].data
         calibrationRecord.workspaceNames.append(self.responses[-2].data["calibrationTable"])
         calibrationIndexEntry = CalibrationIndexEntry(
-            runNumber=view.getFieldText("calibrationIndexEntry.runNumber"),
-            comments=view.getFieldText("calibrationIndexEntry.comments"),
-            author=view.getFieldText("calibrationIndexEntry.author"),
+            runNumber=view.fieldRunNumber.get(),
+            comments=view.fieldComments.get(),
+            author=view.fieldAuthor.get(),
         )
         payload = CalibrationExportRequest(
             calibrationRecord=calibrationRecord, calibrationIndexEntry=calibrationIndexEntry
