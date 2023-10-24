@@ -38,6 +38,10 @@ class TestCalibrantSamples(unittest.TestCase):
         DeleteWorkspace(self.ws)
         return super().tearDown()
 
+    def test_isShapedLikeItself(self):
+        assert self.sample == CalibrantSamples.parse_obj(self.sample.dict())
+        assert self.sample == CalibrantSamples.parse_raw(self.sample.json())
+
     def test_setCalibrantSample(self):
         SetSample(
             self.ws,
@@ -142,7 +146,7 @@ class TestCalibrantSamples(unittest.TestCase):
         sampleMaterial = sphereSample.material.dict()
         assert sampleGeometry["shape"] == "Sphere"
         assert sampleGeometry["radius"] == sphere.radius
-        assert sampleGeometry["center"] == (0, 0, 0)
+        assert sampleGeometry["center"] == [0, 0, 0]
         assert sampleMaterial["chemicalFormula"] == fakeMaterial.chemicalFormula
 
         # chop and verify the cylindrical sample
@@ -151,6 +155,6 @@ class TestCalibrantSamples(unittest.TestCase):
         assert sampleGeometry["shape"] == "Cylinder"
         assert sampleGeometry["radius"] == cylinder.radius
         assert sampleGeometry["height"] == cylinder.height
-        assert sampleGeometry["center"] == (0, 0, 0)
-        assert sampleGeometry["axis"] == (0, 1, 0)
+        assert sampleGeometry["center"] == [0, 0, 0]
+        assert sampleGeometry["axis"] == [0, 1, 0]
         assert sampleMaterial["chemicalFormula"] == fakeMaterial.chemicalFormula
