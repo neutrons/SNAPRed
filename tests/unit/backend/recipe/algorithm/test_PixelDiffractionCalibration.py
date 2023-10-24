@@ -56,7 +56,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         )
 
         self.fakeRawData = f"_test_pixelcal_{self.fakeRunNumber}"
-        self.fakeGroupingWorkspace = f"_test_difc_{self.fakeRunNumber}"
+        self.fakeGroupingWorkspace = f"_test_pixelcal_difc_{self.fakeRunNumber}"
         self.makeFakeNeutronData(self.fakeRawData, self.fakeGroupingWorkspace)
 
     def tearDown(self) -> None:

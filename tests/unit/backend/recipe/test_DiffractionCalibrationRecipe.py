@@ -61,7 +61,6 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
                 print(f"Workspace {workspace} doesn't exist!")
         return super().tearDown
 
-    # TODO: once recipe implemented, this should do something
     def test_chop_ingredients(self):
         self.recipe.chopIngredients(self.fakeIngredients)
         assert self.recipe.runNumber == self.fakeIngredients.runConfig.runNumber

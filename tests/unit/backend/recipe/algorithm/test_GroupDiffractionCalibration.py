@@ -61,41 +61,57 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             convergenceThreshold=1.0,
         )
 
-    def makeFakeNeutronData(self, algo):
+        self.fakeRawData = f"_test_groupcal_{self.fakeRunNumber}"
+        self.fakeGroupingWorkspace = f"_test_groupcal_difc_{self.fakeRunNumber}"
+        self.makeFakeNeutronData(self.fakeRawData, self.fakeGroupingWorkspace)
+
+    def makeFakeNeutronData(self, rawWSname, focusWSname):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
         from mantid.simpleapi import (
-            ConvertUnits,
             CreateSampleWorkspace,
+            LoadDetectorsGroupingFile,
             LoadInstrument,
             Rebin,
         )
 
-        # prepare with test data, made in d-spacing
-        midpoint = (algo.TOFMax + algo.TOFMin) / 2.0
+        TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
+        TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
+        instrConfig = self.fakeIngredients.instrumentState.instrumentConfig
+        TOFBin = abs(instrConfig.delTOverT / instrConfig.NBins)
+        TOFParams = (TOFMin, TOFBin, TOFMax)
+
+        # prepare with test data in TOF
+        midpoint = (TOFMax + TOFMin) / 2.0
         CreateSampleWorkspace(
-            OutputWorkspace=algo.inputWStof,
+            OutputWorkspace=rawWSname,
             # WorkspaceType="Histogram",
             Function="User Defined",
-            UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={midpoint},Sigma={3*algo.TOFBin}",
-            Xmin=algo.TOFMin,
-            Xmax=algo.TOFMax,
-            BinWidth=algo.TOFBin,
+            UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={midpoint},Sigma={3*TOFBin}",
+            Xmin=TOFMin,
+            Xmax=TOFMax,
+            BinWidth=TOFBin,
             XUnit="TOF",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
             Random=True,
         )
         Rebin(
-            InputWorkspace=algo.inputWStof,
-            Params=algo.TOFParams,
+            InputWorkspace=rawWSname,
+            Params=TOFParams,
             BinningMode="Logarithmic",
-            OutputWorkspace=algo.inputWStof,
+            OutputWorkspace=rawWSname,
         )
         # load the instrument and focus group
         LoadInstrument(
-            Workspace=algo.inputWStof,
+            Workspace=rawWSname,
             Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             RewriteSpectraMap=True,
+        )
+        # also load the focus grouping workspace
+        LoadDetectorsGroupingFile(
+            InputFile=self.fakeIngredients.focusGroup.definition,
+            InputWorkspace=rawWSname,
+            OutputWorkspace=focusWSname,
         )
 
     def initDIFCTable(self, difcws: str):
@@ -126,6 +142,8 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         CalculateDIFC(
             InputWorkspace="idf",
             OutputWorkspace="_tmp_difc_ws",
+            OffsetMode="Signed",
+            BinWidth=self.fakeDBin,
         )
 
         # convert the calibration workspace into a calibration table
@@ -182,11 +200,11 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
+        algo.setProperty("InputWorkspace", self.fakeRawData)
+        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
+        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
         algo.setProperty("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
         algo.setProperty("PreviousCalibrationTable", difcWS)
-        algo.chopIngredients(self.fakeIngredients)
-        self.makeFakeNeutronData(algo)
         assert algo.execute()
 
     def test_save_load(self):
