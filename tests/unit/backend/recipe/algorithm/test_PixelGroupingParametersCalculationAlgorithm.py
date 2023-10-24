@@ -342,7 +342,7 @@ with mock.patch.dict(
                 referenceParametersFile=referenceParametersFile,
             )
         assert 'Instrument file name "junk" has an invalid extension' in str(excinfo.value)
-        
+
     def test_local_wrong_grouping_file():
         isLocalTest = True
         isLiteInstrument = True
