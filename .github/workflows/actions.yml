@@ -16,21 +16,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up Miniconda
-      uses: conda-incubator/setup-miniconda@v2
+      uses: mamba-org/setup-micromamba@v1
       with:
-        channels: conda-forge
-        mamba-version: "*"
-        activate-environment: SNAPRed
-    - name: Restore cached conda environment
-      id: cache-load
-      uses: actions/cache/restore@v3
-      with:
-        path: /usr/share/miniconda/envs/SNAPRed
-        key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml') }}
-    - name: Load Environment
-      if: steps.cache-load.outputs.cache-hit != 'true'
-      run: |
-        mamba env update --file environment.yml  --prune
+        environment-file: environment.yml
+        condarc: |
+          channels:
+            - conda-forge
+        # persist on the same day.
+        cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
+        cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
     - name: Apt install deps
       run: |
         sudo apt update
@@ -63,21 +57,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up Miniconda
-      uses: conda-incubator/setup-miniconda@v2
+      uses: mamba-org/setup-micromamba@v1
       with:
-        channels: conda-forge,mantid/label/nightly
-        mamba-version: "*"
-        activate-environment: SNAPRed
-    - name: Restore cached conda environment
-      id: cache-load
-      uses: actions/cache/restore@v3
-      with:
-        path: /usr/share/miniconda/envs/SNAPRed
-        key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml') }}
-    - name: Load Environment
-      if: steps.cache-load.outputs.cache-hit != 'true'
-      run: |
-        mamba env update --file environment.yml  --prune
+        environment-file: environment.yml
+        condarc: |
+          channels:
+            - conda-forge
+        # persist on the same day.
+        cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
+        cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
     - name: Build python wheel
       shell: bash -l {0}
       run: |
