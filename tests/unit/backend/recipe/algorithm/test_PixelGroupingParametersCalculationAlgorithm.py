@@ -341,7 +341,7 @@ with mock.patch.dict(
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,
             )
-        assert "File 'junk' does not exist" in str(excinfo.value)
+        assert 'Instrument file name "junk" has an invalid extension' in str(excinfo.value)
 
     def test_local_wrong_grouping_file():
         isLocalTest = True
