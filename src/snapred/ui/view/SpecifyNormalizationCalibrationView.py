@@ -16,7 +16,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
-        self.interactionText = QLabel("Normalization Calibration Complete! Would you like to assess the calibration now?")
+        self.interactionText = QLabel(
+            "Normalization Calibration Complete! Would you like to assess the calibration now?"
+        )
 
         self.fieldRunNumber = LabeledField("Run Number :", self._jsonFormList.getField("run.runNumber"), self)
         self.fieldRunNumber.setEnabled(False)
