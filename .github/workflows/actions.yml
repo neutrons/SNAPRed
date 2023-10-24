@@ -22,7 +22,8 @@ jobs:
         condarc: |
           channels:
             - conda-forge
-        # persist on the same day.
+            - default
+            - mantid/label/nightly
         cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
     - name: Apt install deps
@@ -63,7 +64,8 @@ jobs:
         condarc: |
           channels:
             - conda-forge
-        # persist on the same day.
+            - default
+            - mantid/label/nightly
         cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
     - name: Build python wheel
