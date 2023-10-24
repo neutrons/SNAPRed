@@ -17,11 +17,8 @@ from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import Calibrant
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "RawVanadiumCorrection"
 
-
-# TODO: Rename so it matches filename
-class RawVanadiumCorrection(PythonAlgorithm):
+class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
@@ -43,7 +40,7 @@ class RawVanadiumCorrection(PythonAlgorithm):
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.Input)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
         stateConfig = ingredients.reductionState.stateConfig
@@ -216,4 +213,4 @@ class RawVanadiumCorrection(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(RawVanadiumCorrection)
+AlgorithmFactory.subscribe(RawVanadiumCorrectionAlgorithm)

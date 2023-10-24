@@ -40,7 +40,9 @@ from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.RawVanadiumCorrection import RawVanadiumCorrection as Algo  # noqa: E402
+from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import (
+    RawVanadiumCorrectionAlgorithm as Algo,  # noqa: E402
+)
 from snapred.meta.Config import Resource
 
 TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"

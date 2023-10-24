@@ -25,7 +25,7 @@ from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.RawVanadiumCorrection import RawVanadiumCorrection as Algo  # noqa: E402
+from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm as Algo  # noqa: E402
 from snapred.meta.Config import Config, Resource
 Config._config['cis_mode'] = True
 
