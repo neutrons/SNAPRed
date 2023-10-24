@@ -18,8 +18,9 @@ jobs:
     - name: Set up Miniconda
       uses: conda-incubator/setup-miniconda@v2
       with:
-        channels: conda-forge,nodefaults
-        mamba-version: "*"
+        miniforge-version: latest
+        use-mamba: true
+        channels: conda-forge
         activate-environment: SNAPRed
     - name: Restore cached conda environment
       id: cache-load
@@ -65,8 +66,9 @@ jobs:
     - name: Set up Miniconda
       uses: conda-incubator/setup-miniconda@v2
       with:
-        channels: conda-forge,mantid/label/nightly,nodefaults
-        mamba-version: "*"
+        miniforge-version: latest
+        use-mamba: true
+        channels: conda-forge,mantid/label/nightly
         activate-environment: SNAPRed
     - name: Restore cached conda environment
       id: cache-load
