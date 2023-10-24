@@ -11,7 +11,6 @@ from mantid.api import (
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -36,7 +35,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             doc="Workspace containing the grouping information",
         )
         self.declareProperty(
-            ITableWorkspaceProperty("PreviousCalibrationTable", "", Direction.Input, PropertyMode.Mandatory),
+            ITableWorkspaceProperty("PreviousCalibrationTable", "", Direction.Input, PropertyMode.Optional),
             doc="Table workspace with previous pixel-calibrated DIFC values",
         )
         self.declareProperty(
@@ -57,8 +56,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         self.runNumber: str = ingredients.runConfig.runNumber
-        self.ipts: str = ingredients.runConfig.IPTS
-        self.rawDataPath: str = self.ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(ingredients.runConfig.runNumber)
 
         # TODO setup for SNAPLite
         self.isLite: bool = False
@@ -96,31 +93,40 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         """
         Process input neutron data
         """
-
-        # if not self.mantidSnapper.mtd.doesExist(self.inputWStof):
-        #     # TODO allow for loading alternate file types
-        #     self.mantidSnapper.LoadEventNexus(
-        #         "Loading Event Nexus for {} ...".format(self.rawDataPath),
-        #         Filename=self.rawDataPath,
-        #         OutputWorkspace=self.inputWStof,
-        #         FilterByTofMin=self.TOFMin,
-        #         FilterByTofMax=self.TOFMax,
-        #         BlockList="Phase*,Speed*,BL*:Chop:*,chopper*TDC",
-        #     )
-        # also find d-spacing data and rebin logarithmically
-
         # create string names of workspaces that will be used by algorithm
         self.wsRawTOF: str = self.getPropertyValue("InputWorkspace")
         self.inputWStof: str = self.wsRawTOF + "_TOF_in"
         self.inputWSdsp: str = self.wsRawTOF + "_DSP_in"
 
         if self.getProperty("OutputWorkspace").isDefault:
-            self.outputWStof: str = self.getPropertyValue("InputWorkspace")
+            self.outputWStof: str = self.inputWStof
         else:
             self.outputWStof: str = self.getPropertyValue("OutputWorkspace")
         self.outputWSdsp: str = self.outputWStof + "_dsp"
 
-        self.calibrationTable: str = str(self.getPropertyValue("PreviousCalibrationTable"))
+        # set the previous calibration table, or create if none given
+        if self.getProperty("PreviousCalibrationTable").isDefault:
+            self.calibrationTable: str = f"difc_{self.runNumber}"
+            self.mantidSnapper.CalculateDiffCalTable(
+                "Initialize the DIFC table from input",
+                InputWorkspace=self.wsRawTOF,
+                CalibrationTable=self.calibrationTable,
+                OffsetMode="Signed",
+                BinWidth=self.TOFBin,
+            )
+        else:
+            self.calibrationTable: str = str(self.getPropertyValue("PreviousCalibrationTable"))
+
+        if self.getProperty("FinalCalibrationTable").isDefault:
+            self.outputCalibrationTable: str = self.calibrationTable
+        else:
+            self.outputCalibrationTable: str = str(self.getPropertyValue("PreviousCalibrationTable"))
+            self.mantidSnapper.CloneWorkspace(
+                "Make copy of calibration table, to not deform",
+                InputWorkspace=self.calibrationTable,
+                OutputWorkspace=self.outputCalibrationTable,
+            )
+
         self.focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
 
         # process and diffraction focus the input data
@@ -244,7 +250,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 PixelCalibration=self.calibrationTable,  # previous calibration values, DIFCprev
                 GroupedCalibration=pdcalibratedWorkspace,  # values from PDCalibrate, DIFCpd
                 CalibrationWorkspace=self.outputWStof,  # input WS to PDCalibrate, source for DIFCarb
-                OutputWorkspace=self.calibrationTable,  # resulting corrected calibration values, DIFCeff
+                OutputWorkspace=self.outputCalibrationTable,  # resulting corrected calibration values, DIFCeff
             )
             self.mantidSnapper.executeQueue()
 
@@ -257,10 +263,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.mantidSnapper.ApplyDiffCal(
             "Apply the new calibration constants",
             InstrumentWorkspace=self.inputWStof,
-            CalibrationWorkspace=self.calibrationTable,
+            CalibrationWorkspace=self.outputCalibrationTable,
         )
         self.convertUnitsAndRebin(self.inputWStof, self.outputWSdsp, "dSpacing")
-        self.mantidSnapper.WashDishes("Remove the ")
         self.mantidSnapper.DiffractionFocussing(
             "Diffraction focus with final calibrated values",
             InputWorkspace=self.outputWSdsp,
@@ -268,7 +273,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             OutputWorkspace=self.outputWSdsp,
         )
         self.convertUnitsAndRebin(self.outputWSdsp, self.outputWStof, "TOF")
-        self.setProperty("FinalCalibrationTable", self.calibrationTable)
 
 
 # Register algorithm with Mantid

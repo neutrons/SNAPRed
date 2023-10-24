@@ -12,10 +12,9 @@ from mantid.api import (
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
+from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.meta.Config import Config
 
 
 class PixelDiffractionCalibration(PythonAlgorithm):
@@ -48,7 +47,6 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
-        self.declareProperty("MaxOffset", 2.0, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
         self._counts = 0
@@ -57,8 +55,6 @@ class PixelDiffractionCalibration(PythonAlgorithm):
     def chopIngredients(self, ingredients: Ingredients) -> None:
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         self.runNumber: str = ingredients.runConfig.runNumber
-        self.ipts: str = ingredients.runConfig.IPTS
-        self.rawDataPath: str = self.ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(ingredients.runConfig.runNumber)
 
         # TODO setup for SNAPLite
         self.isLite: bool = False
@@ -82,8 +78,11 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # create string names of workspaces that will be used by algorithm
         if self.getProperty("OutputWorkspace").isDefault:
             self.outputWStof: str = self.getPropertyValue("InputWorkspace")
+            self.setProperty("OutputWorkspace", self.outputWStof)
         else:
             self.outputWStof: str = self.getPropertyValue("OutputWorkspace")
+        print(self.outputWStof)
+        print(self.getPropertyValue("OutputWorkspace"))
         self.outputWSdsp: str = self.outputWStof + "_dsp"
 
         # create string name for output calibration table
@@ -93,7 +92,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             self.difcWS: str = self.getPropertyValue("CalibrationTable")
 
         # set the max offset
-        self.maxOffset: float = float(self.getProperty("MaxOffset").value)
+        self.maxOffset: float = ingredients.maxOffset
 
     def chopNeutronData(self) -> None:
         """
@@ -128,7 +127,6 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             InputWorkspace=self.outputWSdsp,
             OutputWorkspace=inputWSdsp,
         )
-        self.mantidSnapper.executeQueue()
 
         # get handle to group focusing workspace and retrieve all detector IDs
         focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
@@ -139,49 +137,12 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(subgroupID)]
             self.subgroupWorkspaceIndices[subgroupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
 
-    def initDIFCTable(self) -> None:
-        """
-        Use the instrument definition to create an initial DIFC table
-        Because the created DIFC is inside a matrix workspace, it must
-        be manually loaded into a table workspace
-        """
-
-        # prepare initial diffraction calibration workspace
-        self.mantidSnapper.CalculateDIFC(
-            "Calculating initial DIFC values",
-            InputWorkspace=self.outputWStof,
-            OutputWorkspace="_tmp_difc_ws",
+        self.mantidSnapper.CalculateDiffCalTable(
+            "Calculate initial table of DIFC values",
+            InputWorkspace=self.wsRawTOF,
+            CalibrationTable=self.difcWS,
             OffsetMode="Signed",
             BinWidth=self.TOFBin,
-        )
-        # convert the calibration workspace into a calibration table
-        self.mantidSnapper.CreateEmptyTableWorkspace(
-            "Creating table to hold DIFC values",
-            OutputWorkspace=self.difcWS,
-        )
-        self.mantidSnapper.executeQueue()
-        tmpDifcWS = self.mantidSnapper.mtd["_tmp_difc_ws"]
-        DIFCtable = self.mantidSnapper.mtd[self.difcWS]
-        DIFCtable.addColumn(type="int", name="detid", plottype=6)
-        DIFCtable.addColumn(type="double", name="difc", plottype=6)
-        DIFCtable.addColumn(type="double", name="difa", plottype=6)
-        DIFCtable.addColumn(type="double", name="tzero", plottype=6)
-        difcs = [float(x) for x in tmpDifcWS.extractY()]
-        # TODO why is detid always 1 in tests?
-        for wkspIndx, difc in enumerate(difcs):
-            detids = tmpDifcWS.getSpectrum(wkspIndx).getDetectorIDs()
-            for detid in detids:
-                DIFCtable.addRow(
-                    {
-                        "detid": int(detid),
-                        "difc": float(difc),
-                        "difa": 0.0,
-                        "tzero": 0.0,
-                    }
-                )
-        self.mantidSnapper.WashDishes(
-            "Delete temp calibration workspace",
-            Workspace="_tmp_difc_ws",
         )
         self.mantidSnapper.executeQueue()
 
@@ -261,7 +222,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 XMin=-100,
                 XMax=100,
                 OffsetMode="Signed",
-                MaxOffset=self.getProperty("MaxOffset").value,
+                MaxOffset=self.maxOffset,
             )
             # add in group offsets to total, or begin the sum if none
             if not self.mantidSnapper.mtd.doesExist(totalOffsetWS):
@@ -283,7 +244,6 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # use the median, to avoid issues with possible pathologic pixels
         self.mantidSnapper.executeQueue()  # queue must run before ws in mantid data
         offsets = list(self.mantidSnapper.mtd[totalOffsetWS].extractY().ravel())
-        print(offsets)
         data["medianOffset"] = abs(np.median(offsets))
 
         # get difcal corrected by offsets
@@ -303,7 +263,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             CalibrationWorkspace=self.difcWS,
         )
         # convert to d-spacing and rebin logarithmically
-        self.convertUnitsAndRebin(self.outputWStof, self.outputWSdsp)
+        self.convertUnitsAndRebin(self.outputWStof, self.outputWSdsp, "dSpacing")
         self.mantidSnapper.MakeDirtyDish(
             f"Store d-spacing data at {self._counts} iterations",
             InputWorkspace=self.outputWSdsp,
@@ -313,14 +273,16 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # cleanup memory usage
         self.mantidSnapper.WashDishes(
             "Deleting temporary workspaces",
-            WorkspaceList=[wscc, wsoff, totalOffsetWS],
+            WorkspaceList=[wscc, wsoff, totalOffsetWS, self.outputWSdsp],
         )
         # now execute the queue
         self.mantidSnapper.executeQueue()
         # data["calibrationTable"] = self.difcWS
         self.setProperty("data", json.dumps(data))
-        self.setProperty("OutputWorkspace", self.outputWStof)
-        self.setProperty("CalibrationTable", self.difcWS)
+        self.setPropertyValue("OutputWorkspace", self.outputWStof)
+        print(self.outputWStof)
+        print(self.getPropertyValue("OutputWorkspace"))
+        # self.setProperty("CalibrationTable", self.difcWS)
 
     def PyExec(self) -> None:
         """
@@ -342,8 +304,6 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             self.chopIngredients(ingredients)
             # load and process the input data for algorithm
             self.chopNeutronData()
-            # prepare initial diffraction calibration workspace
-            self.initDIFCTable()
         # now calculate and correct by offsets
         self.reexecute()
         self._counts += 1

@@ -106,7 +106,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         )
         # also load the focus grouping workspace
         LoadDetectorsGroupingFile(
-            InputFile=self.fakeIngredients.focusGroup.definition,
+            InputFile=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
             InputWorkspace=rawWsName,
             OutputWorkspace=focusWSname,
         )
@@ -166,9 +166,6 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
-        assert algo.getProperty("MaxOffset").value == 2.0
-        algo.setProperty("MaxOffset", 10.0)
-        assert algo.getProperty("MaxOffset").value == 10.0
 
     def test_execute(self):
         """Test that the algorithm executes"""
@@ -210,23 +207,6 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             data = json.loads(algo.getProperty("data").value)
             allOffsets.append(data["medianOffset"])
             assert allOffsets[-1] <= max(1.0e-12, allOffsets[-2])
-
-    def test_init_difc_table(self):
-        from mantid.simpleapi import mtd
-
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.chopIngredients(self.fakeIngredients)
-        algo.chopNeutronData()
-        algo.initDIFCTable()
-        difcTable = mtd[algo.difcWS]
-        for i, row in enumerate(difcTable.column("detid")):
-            assert row == i
-        for difc in difcTable.column("difc"):
-            print(f"{difc},")
 
     def test_chop_neutron_data(self):
         # TODO: test it

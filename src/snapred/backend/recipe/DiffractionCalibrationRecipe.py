@@ -17,13 +17,15 @@ class DiffractionCalibrationRecipe:
     def __init__(self):
         pass
 
-    def chopIngredients(self, ingredients: Ingredients):
+    def chopIngredients(self, ingredients: Ingredients, data: Dict[str, Any]):
         self.runNumber = ingredients.runConfig.runNumber
         self.threshold = ingredients.convergenceThreshold
+        self.rawInput = data["inputWorkspace"]
+        self.groupingWS = data["groupingWorkspace"]
         pass
 
-    def executeRecipe(self, ingredients: Ingredients) -> Dict[str, Any]:
-        self.chopIngredients(ingredients)
+    def executeRecipe(self, ingredients: Ingredients, data: Dict[str, Any]) -> Dict[str, Any]:
+        self.chopIngredients(ingredients, data)
 
         logger.info(f"Executing diffraction calibration for runId: {self.runNumber}")
         data: Dict[str, Any] = {"result": False}
@@ -31,24 +33,25 @@ class DiffractionCalibrationRecipe:
         medianOffsets: List[float] = []
 
         logger.info("Calibrating by cross-correlation and adjusting offsets...")
-        offsetAlgo = PixelDiffractionCalibration()
-        offsetAlgo.initialize()
-        offsetAlgo.setProperty("Ingredients", ingredients.json())
+        pixelAlgo = PixelDiffractionCalibration()
+        pixelAlgo.initialize()
+        pixelAlgo.setProperty("InputWorkspace", self.rawInput)
+        pixelAlgo.setProperty("GroupingWorkspace", self.groupingWS)
+        pixelAlgo.setProperty("Ingredients", ingredients.json())
         try:
-            offsetAlgo.execute()
-            dataSteps.append(json.loads(offsetAlgo.getProperty("data").value))
+            pixelAlgo.execute()
+            dataSteps.append(json.loads(pixelAlgo.getProperty("data").value))
             medianOffsets.append(dataSteps[-1]["medianOffset"])
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
-
         counter = 0
         while abs(medianOffsets[-1]) > self.threshold:
             counter = counter + 1
             logger.info(f"... converging to answer; step {counter}, {medianOffsets[-1]} > {self.threshold}")
             try:
-                offsetAlgo.execute()
-                dataSteps.append(json.loads(offsetAlgo.getProperty("data").value))
+                pixelAlgo.execute()
+                dataSteps.append(json.loads(pixelAlgo.getProperty("data").value))
                 medianOffsets.append(dataSteps[-1]["medianOffset"])
             except RuntimeError as e:
                 errorString = str(e)
@@ -57,15 +60,17 @@ class DiffractionCalibrationRecipe:
         logger.info(f"Initial calibration converged.  Offsets: {medianOffsets}")
 
         logger.info("Beginning group-by-group fitting calibration")
-        calibrateAlgo = GroupDiffractionCalibration()
-        calibrateAlgo.initialize()
-        calibrateAlgo.setProperty("Ingredients", ingredients.json())
-        calibrateAlgo.setProperty("InputWorkspace", offsetAlgo.getProperty("OutputWorkspace").value)
-        calibrateAlgo.setProperty("PreviousCalibrationTable", offsetAlgo.getProperty("CalibrationTable").value)
+        groupedAlgo = GroupDiffractionCalibration()
+        groupedAlgo.initialize()
+        groupedAlgo.setProperty("Ingredients", ingredients.json())
+        print(pixelAlgo.getProperty("OutputWorkspace").value)
+        groupedAlgo.setProperty("InputWorkspace", pixelAlgo.getPropertyValue("OutputWorkspace"))
+        groupedAlgo.setProperty("GroupingWorkspace", self.groupingWS)
+        groupedAlgo.setProperty("PreviousCalibrationTable", pixelAlgo.getPropertyValue("CalibrationTable"))
         try:
-            calibrateAlgo.execute()
-            data["calibrationTable"] = calibrateAlgo.getProperty("FinalCalibrationTable").value
-            data["outputWorkspace"] = calibrateAlgo.getProperty("OutputWorkspace").value
+            groupedAlgo.execute()
+            data["calibrationTable"] = groupedAlgo.getProperty("FinalCalibrationTable").value
+            data["outputWorkspace"] = groupedAlgo.getProperty("OutputWorkspace").value
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
