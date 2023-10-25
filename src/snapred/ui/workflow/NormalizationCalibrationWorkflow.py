@@ -18,16 +18,17 @@ from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest, SNAPResponse
-from snapred.backend.log.logger import snapredLogger
-from snapred.backend.dao.request import(
+from snapred.backend.dao.request import (
     NormalizationCalibrationRequest,
-    SpecifyCalibrationRequest,
     NormalizationExportRequest,
+    SpecifyCalibrationRequest,
 )
+from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
-from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
 from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
+from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
+
 
 class NormalizationCalibrationWorkflow:
     def __init__(self, jsonForm, parent=None):
@@ -56,7 +57,9 @@ class NormalizationCalibrationWorkflow:
             "Specifying Calibration", self.assessmentSchema, parent=parent
         )
 
-        self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView("Saving Normalization Calibration", self.saveSchema, parent)
+        self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
+            "Saving Normalization Calibration", self.saveSchema, parent
+        )
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=cancelLambda, parent=parent)
@@ -65,16 +68,8 @@ class NormalizationCalibrationWorkflow:
                 self._normalizationCalibrationView,
                 "Normalization Calibration",
             )
-            .addNode(
-                self._specifyCalibration,
-                self._specifyCalibrationView,
-                "Specify Calibration"
-            )
-            .addNode(
-                self._saveNormalizationCalibration,
-                self._saveNormalizationCalibrationView,
-                "Saving"
-            )
+            .addNode(self._specifyCalibration, self._specifyCalibrationView, "Specify Calibration")
+            .addNode(self._saveNormalizationCalibration, self._saveNormalizationCalibrationView, "Saving")
             .build()
         )
 
@@ -119,7 +114,7 @@ class NormalizationCalibrationWorkflow:
 
     def _saveNormalizationCalibration(self, workflowPresenter):
         pass
-        #symlink?
+        # symlink?
 
     @property
     def widget(self):

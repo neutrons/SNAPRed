@@ -328,13 +328,13 @@ class CalibrationService(Service):
         )
         CalibrationNormalizationRecipe().executeRecipe(
             ReductionIngredients=reductionIngredients,
-            SmoothDataIngredients=smoothingIngredients, 
-            InputWorkspace= , 
+            SmoothDataIngredients=smoothingIngredients,
+            InputWorkspace= ,
             BackgroundWorkspace= ,
-            CalibrationWorkspace= calibrationWorkspace, 
+            CalibrationWorkspace= calibrationWorkspace,
             CalibrantSample=calibrantSample,
         )
-    
+
     @FromString
     def normalizationAssessment(self, request: SpecifyCalibrationRequest):
 
