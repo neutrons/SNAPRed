@@ -1,8 +1,6 @@
 import json
 import random
 import unittest
-import unittest.mock as mock
-from typing import Dict, List
 
 import pytest
 from snapred.backend.dao.DetectorPeak import DetectorPeak
@@ -18,7 +16,6 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import (
     GroupDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.meta.Config import Resource
 
 

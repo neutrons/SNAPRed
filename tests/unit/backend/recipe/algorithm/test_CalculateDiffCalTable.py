@@ -4,14 +4,6 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
-from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
-
-# needed to make mocked ingredients
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import (

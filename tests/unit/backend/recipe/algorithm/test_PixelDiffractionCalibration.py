@@ -1,8 +1,5 @@
 import json
-import random
 import unittest
-import unittest.mock as mock
-from typing import Dict, List
 
 import pytest
 from mantid.simpleapi import (
