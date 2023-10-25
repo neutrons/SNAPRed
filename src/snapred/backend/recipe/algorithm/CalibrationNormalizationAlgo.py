@@ -1,6 +1,13 @@
 import json
 
-from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
+from mantid.api import (
+    AlgorithmFactory,
+    ITableWorkspaceProperty,
+    MatrixWorkspaceProperty,
+    PropertyMode,
+    PythonAlgorithm,
+    mtd,
+)
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import (
@@ -8,6 +15,7 @@ from snapred.backend.dao.ingredients import (
     SmoothDataExcludingPeaksIngredients,
 )
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks  # noqa F401
 
 name = "CalibrationNormalizationAlgo"
@@ -17,9 +25,26 @@ class CalibrationNormalization(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("SmoothDataIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty(
+            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace containing the raw vanadium data",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("BackgroundWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace containing the raw vanadium background data",
+        )
+        self.declareProperty(
+            ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Table workspace with calibration data: cols detid, difc, difa, tzero",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="Workspace containing corrected data; if none given, the InputWorkspace will be overwritten",
+        )
         self.declareProperty("FocusWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("SmoothWorkspace", defaultValue="", direction=Direction.Output)
-        self.declareProperty("SmoothDataIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
@@ -29,12 +54,22 @@ class CalibrationNormalization(PythonAlgorithm):
             **json.loads(self.getProperty("SmoothDataIngredients").value)
         )
         focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
+        inputWS = self.getProperty("InputWorkspace").value
+        backgroundWS = self.getProperty("BackgroundWorkspace").value
+        calibrationWS = self.getProperty("CalibrationWorkspace").value
+        calibrantSample = self.getProperty("CalibrantSample")
         # run the algo
         self.log().notice("Execution of CalibrationNormalizationAlgo START!")
 
-        ipts = reductionIngredients.runConfig.IPTS
-        rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
-        raw_data = self.mantidSnapper.loadEventNexus(Filename=rawDataPath, OutputWorkspace="raw_data")
+        raw_data = self.mantidSnapper.RawVanadiumCorrectionAlgorithm(
+            "Correcting Vanadium Data...",
+            InputWorkspace=inputWS,
+            BackgroundWorkspace=backgroundWS,
+            CalibrationWorkspace=calibrationWS,
+            Ingredients=reductionIngredients.json(),
+            CalibrantSample=calibrantSample,
+            OutputWorkspace="raw_data",
+        )
 
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",

@@ -316,6 +316,7 @@ class CalibrationService(Service):
         instrumentState = calibration.instrumentState
         cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
+        calibrantSample = request.calibrantSample
 
         smoothingIngredients = SmoothDataExcludingPeaksIngredients(
             crystalInfo=crystalInfo,
@@ -323,7 +324,9 @@ class CalibrationService(Service):
             smoothingParameter=request.smoothingParameter,
         )
 
-        return CalibrationNormalizationRecipe().executeRecipe(reductionIngredients, smoothingIngredients)
+        return CalibrationNormalizationRecipe().executeRecipe(
+            reductionIngredients, smoothingIngredients, calibrantSample
+        )
 
     @FromString
     def retrievePixelGroupingParams(self, runID: str):

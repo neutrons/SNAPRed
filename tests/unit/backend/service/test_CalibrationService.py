@@ -30,6 +30,9 @@ with mock.patch.dict(
     )
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest  # noqa: E402
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
+    from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples  # noqa: E402
+    from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry  # noqa: E402
+    from snapred.backend.dao.state.CalibrantSample.Material import Material  # noqa: E402
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters  # noqa: E402
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,  # noqa: E402
@@ -344,10 +347,27 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockCalibrationNormalizationRecipe().executeRecipe.return_value = [MagicMock()]
         runNumber = "1"
 
+        material = Material(
+            chemicalFormula="V",
+        )
+        cylinder = Geometry(
+            shape="Cylinder",
+            radius=0.15,
+            height=0.3,
+        )
+
+        calibrantSample = CalibrantSamples(
+            name="vanadium cylinder",
+            unique_id="435elmst",
+            geometry=cylinder,
+            material=material,
+        )
+
         request = CalibrationNormalizationRequest(
             runNumber=runNumber,
             cifPath="mock_cif_path",
             smoothingParameter=0.5,
+            calibrantSample=calibrantSample,
         )
 
         # Call the method to test
@@ -362,4 +382,5 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockCalibrationNormalizationRecipe().executeRecipe.assert_called_once_with(
             self.instance.dataFactoryService.getReductionIngredients.return_value,
             mockSmoothDataExcludingPeaksIngredients.return_value,
+            calibrantSample,
         )
