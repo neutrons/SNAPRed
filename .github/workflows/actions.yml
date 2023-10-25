@@ -15,7 +15,7 @@ jobs:
         shell: bash -l {0}
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Miniconda
+    - name: Set up MicroMamaba
       uses: mamba-org/setup-micromamba@v1
       with:
         environment-file: environment.yml
@@ -57,7 +57,7 @@ jobs:
         shell: bash -l {0}
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Miniconda
+    - name: Set up MicroMamaba
       uses: mamba-org/setup-micromamba@v1
       with:
         environment-file: environment.yml
