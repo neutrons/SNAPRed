@@ -18,6 +18,7 @@ from snapred.backend.dao.ingredients import (
     FitMultiplePeaksIngredients,
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
+    NormalizationCalibrationIngredients,
 )
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
@@ -326,14 +327,16 @@ class CalibrationService(Service):
             instrumentState=instrumentState,
             smoothingParameter=request.smoothingParameter,
         )
-        CalibrationNormalizationRecipe().executeRecipe(
-            ReductionIngredients=reductionIngredients,
-            SmoothDataIngredients=smoothingIngredients,
-            InputWorkspace= ,
-            BackgroundWorkspace= ,
-            CalibrationWorkspace= calibrationWorkspace,
-            CalibrantSample=calibrantSample,
+
+        normalizationIngredients = NormalizationCalibrationIngredients(
+            reductionIngredients = reductionIngredients,
+            smoothingIngredients = smoothingIngredients,
+            calibrationRecord = calibrationRecord,
+            calibrantSample = calibrantSample,
+            calibrationWorkspace = calibrationWorkspace,
         )
+
+        return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients)
 
     @FromString
     def normalizationAssessment(self, request: SpecifyCalibrationRequest):

@@ -17,6 +17,7 @@ from snapred.backend.dao.ingredients import (
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks  # noqa F401
+from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import NormalizationCalibrationIngredients as ingredients
 
 name = "CalibrationNormalizationAlgo"
 
@@ -24,8 +25,8 @@ name = "CalibrationNormalizationAlgo"
 class CalibrationNormalization(PythonAlgorithm):
     def PyInit(self):
         # declare properties
-        self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("SmoothDataIngredients", defaultValue="", direction=Direction.Input)
+        # self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
+        # self.declareProperty("SmoothDataIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty(
             MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the raw vanadium data",
@@ -34,17 +35,17 @@ class CalibrationNormalization(PythonAlgorithm):
             MatrixWorkspaceProperty("BackgroundWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the raw vanadium background data",
         )
-        self.declareProperty(
-            ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Input, PropertyMode.Mandatory),
-            doc="Table workspace with calibration data: cols detid, difc, difa, tzero",
-        )
+        # self.declareProperty(
+        #     ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+        #     doc="Table workspace with calibration data: cols detid, difc, difa, tzero",
+        # )
         self.declareProperty(
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="Workspace containing corrected data; if none given, the InputWorkspace will be overwritten",
         )
         self.declareProperty("FocusWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("SmoothWorkspace", defaultValue="", direction=Direction.Output)
-        self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.Input)
+        # self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
