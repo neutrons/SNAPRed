@@ -326,7 +326,7 @@ class CalibrationService(Service):
         )
 
         return CalibrationNormalizationRecipe().executeRecipe(reductionIngredients, smoothingIngredients)
-    
+
     @FromString
     def normalizationAssessment(self, request: SpecifyCalibrationRequest):
 
