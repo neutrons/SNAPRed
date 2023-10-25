@@ -29,7 +29,10 @@ class CalculateDiffCalTable(PythonAlgorithm):
             MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the instrument definition",
         )
-        self.declareProperty("CalibrationTable", "", direction=Direction.Input)
+        self.declareProperty(
+            ITableWorkspaceProperty("CalibrationTable", "", Direction.Output, PropertyMode.Optional),
+            doc="test doc",
+        )
         validOffsetModes = ["Signed", "Relative", "Absolute"]
         self.declareProperty("OffsetMode", "Signed", StringListValidator(validOffsetModes), direction=Direction.Input)
         self.declareProperty("BinWidth", 0.0, direction=Direction.Input)

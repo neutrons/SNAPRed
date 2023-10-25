@@ -36,14 +36,6 @@ snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.ConvertDiffCalLog module
----------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.algorithm.ConvertDiffCalLog
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.recipe.algorithm.CustomGroupWorkspace module
 ------------------------------------------------------------
 
