@@ -318,15 +318,23 @@ class CalibrationService(Service):
         cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         calibrantSample = request.calibrantSample
+        calibrationRecord = self.load(request.run)
+        calibrationWorkspace = calibrationRecord.workspaceNames[0]
 
         smoothingIngredients = SmoothDataExcludingPeaksIngredients(
             crystalInfo=crystalInfo,
             instrumentState=instrumentState,
             smoothingParameter=request.smoothingParameter,
         )
-
-        return CalibrationNormalizationRecipe().executeRecipe(reductionIngredients, smoothingIngredients)
-
+        CalibrationNormalizationRecipe().executeRecipe(
+            ReductionIngredients=reductionIngredients,
+            SmoothDataIngredients=smoothingIngredients, 
+            InputWorkspace= , 
+            BackgroundWorkspace= ,
+            CalibrationWorkspace= calibrationWorkspace, 
+            CalibrantSample=calibrantSample,
+        )
+    
     @FromString
     def normalizationAssessment(self, request: SpecifyCalibrationRequest):
 

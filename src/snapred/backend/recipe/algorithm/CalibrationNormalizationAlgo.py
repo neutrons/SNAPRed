@@ -54,7 +54,13 @@ class CalibrationNormalization(PythonAlgorithm):
             **json.loads(self.getProperty("SmoothDataIngredients").value)
         )
         focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
+        runNumber = reductionIngredients.runConfig.runNumber
         inputWS = self.getProperty("InputWorkspace").value
+        if (inputWS is None):
+            self.mantidSnapper.LoadEventNexus(
+                "Loading Event Nexus for Normalization InputWs...",
+                Filename=
+            )
         backgroundWS = self.getProperty("BackgroundWorkspace").value
         calibrationWS = self.getProperty("CalibrationWorkspace").value
         calibrantSample = self.getProperty("CalibrantSample")

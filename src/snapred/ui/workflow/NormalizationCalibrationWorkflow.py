@@ -1,7 +1,7 @@
 """
 User Input:
 
-    Run number of normization data set
+    Run number of normalization data set
     Corresponding calibrant sample (vanadium or V-Nb)
     Run number of empty instrument data set
     Input parameters for absorption correction algo
@@ -118,7 +118,7 @@ class NormalizationCalibrationWorkflow:
         return response
 
     def _saveNormalizationCalibration(self, workflowPresenter):
-
+        pass
         #symlink?
 
     @property
