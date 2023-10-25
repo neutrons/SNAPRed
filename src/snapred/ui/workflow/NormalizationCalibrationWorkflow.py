@@ -34,7 +34,7 @@ class NormalizationCalibrationWorkflow:
         self.requests = []
         self.responses = []
         self.interfaceController = InterfaceController()
-        request = SNAPRequest(path="api/parameters", payload="calibration/normalization")
+        request = SNAPRequest(path="api/parameters", payload="calibration/normalizationAssessment")
         self.assessmentSchema = self.interfaceController.executeRequest(request).data
         self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema}
 

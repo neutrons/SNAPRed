@@ -25,6 +25,7 @@ from snapred.backend.dao.request import (
     CalibrationNormalizationRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
+    SpecifyCalibrationRequest,
 )
 from snapred.backend.dao.state import FocusGroup, FocusGroupParameters
 from snapred.backend.data.DataExportService import DataExportService
@@ -71,7 +72,7 @@ class CalibrationService(Service):
         self.registerPath("checkDataExists", self.calculatePixelGroupingParameters)
         self.registerPath("assessment", self.assessQuality)
         self.registerPath("normalization", self.normalization)
-        # self.registerPath("specifyNormalization", self.specifyNormalization)
+        self.registerPath("normalizationAssessment", self.normalizationAssessment)
         self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
@@ -324,9 +325,10 @@ class CalibrationService(Service):
             smoothingParameter=request.smoothingParameter,
         )
 
-        return CalibrationNormalizationRecipe().executeRecipe(
-            reductionIngredients, smoothingIngredients, calibrantSample
-        )
+        return CalibrationNormalizationRecipe().executeRecipe(reductionIngredients, smoothingIngredients)
+    
+    @FromString
+    def normalizationAssessment(self, request: SpecifyCalibrationRequest):
 
     @FromString
     def retrievePixelGroupingParams(self, runID: str):
