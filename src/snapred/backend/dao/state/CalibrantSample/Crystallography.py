@@ -1,7 +1,7 @@
 import os
 from typing import List, Tuple
 
-from mantid.geometry import SpaceGroupFactory
+from mantid.geometry import CrystalStructure, SpaceGroupFactory
 from pydantic import BaseModel, validator
 
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
@@ -18,6 +18,20 @@ class Crystallography(BaseModel):
     spaceGroup: str
     latticeParameters: Tuple[float, float, float, float, float, float]
     atoms: List[Atom]
+
+    def __init__(self, *args, **kwargs):
+        if args:
+            cifFile: str = args[0]
+            xtal: CrystalStructure = args[1]
+            unitCell = xtal.getUnitCell()
+            super().__init__(
+                cifFile=cifFile,
+                spaceGroup=str(xtal.getSpaceGroup().getHMSymbol()),
+                latticeParameters=[getattr(unitCell, x)() for x in ("a", "b", "c", "alpha", "beta", "gamma")],
+                atoms=[Atom(scatterer) for scatterer in xtal.getScatterers()],
+            )
+        else:
+            super().__init__(**kwargs)
 
     @property
     def scattererString(self) -> str:

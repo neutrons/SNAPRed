@@ -7,6 +7,12 @@ def testGetString():
     assert atom.getString == "Si 0.125 0.125 0.125 1.0 0.1"
 
 
+def testInitFromString():
+    atom1 = Atom(symbol="Si", coordinates=[0.125, 0.125, 0.125], siteOccupationFactor=1.0)
+    atom2 = Atom(atom1.getString)
+    assert atom1 == atom2
+
+
 def testThreeCoordinates():
     with pytest.raises(Exception):  # noqa: PT011
         Atom(symbol="V", coordinates=[1.0], siteOccupationFactor=1.0)

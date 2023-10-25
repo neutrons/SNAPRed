@@ -22,6 +22,18 @@ class Atom(BaseModel):
     siteOccupationFactor: float
     adp: float = 0.1
 
+    def __init__(self, *args, **kwargs):
+        if args:
+            scatter = args[0].split()
+            super().__init__(
+                symbol=scatter[0],
+                coordinates=[float(x) for x in scatter[1:4]],
+                siteOccupationFactor=float(scatter[4]),
+                adp=float(scatter[5]),
+            )
+        else:
+            super().__init__(**kwargs)
+
     @validator("coordinates", allow_reuse=True)
     def validate_atom_coordinates(cls, v):
         if not all(-1 <= val <= 1 for val in v):
