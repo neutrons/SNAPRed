@@ -3,33 +3,27 @@ import unittest
 import pytest
 
 # mantid imports
-from mantid.simpleapi import CreateSampleWorkspace, mtd
-from snapred.backend.recipe.algorithm.WashDishes import WashDishes
+from mantid.simpleapi import CreateWorkspace, mtd
 
 # the algorithm to test
+from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 from snapred.meta.Config import Config
 
 
 class TestWashDishes(unittest.TestCase):
     def test_wash_one_dish(self):
         wsname = "_test_wash_one_dish"
-        CreateSampleWorkspace(
-            OutputWorkspace=wsname,
-            Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=10,
-            Xmax=100,
-            BinWidth=1,
-            XUnit="TOF",
-            NumBanks=14,
-            BankPixelWidth=2,
-            Random=True,
-        )
+        CreateWorkspace(OutputWorkspace=wsname, DataX=1, DataY=1)
         assert wsname in mtd
         algo = WashDishes()
         algo.initialize()
-        algo._CISmode = False
         algo.setProperty("Workspace", wsname)
+        # verify workspace not deleted when in CIS mode
+        algo._CISmode = True
+        algo.execute()
+        assert wsname in mtd
+        # verify workspace deleted when not in CIS mode
+        algo._CISmode = False
         algo.execute()
         assert wsname not in mtd
 
@@ -39,91 +33,27 @@ class TestWashDishes(unittest.TestCase):
             wsnames.append(f"_test_wash_dish_{i}")
 
         for wsname in wsnames:
-            CreateSampleWorkspace(
-                OutputWorkspace=wsname,
-                Function="User Defined",
-                UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-                Xmin=10,
-                Xmax=100,
-                BinWidth=1,
-                XUnit="TOF",
-                NumBanks=14,
-                BankPixelWidth=2,
-                Random=True,
-            )
+            CreateWorkspace(OutputWorkspace=wsname, DataX=1, DataY=1)
             assert wsname in mtd
         algo = WashDishes()
         algo.initialize()
-        algo._CISmode = False
         algo.setProperty("WorkspaceList", wsnames)
+        # verify no workapces deleted when in CIS mode
+        algo._CISmode = True
+        algo.execute()
+        for wsname in wsnames:
+            assert wsname in mtd
+        # verify all workspaces deleted when not in CIS mode
+        algo._CISmode = False
         algo.execute()
         for wsname in wsnames:
             assert wsname not in mtd
 
-    def test_wash_dish_in_cis_mode(self):
-        wsname = "_test_wash_one_dish"
-        CreateSampleWorkspace(
-            OutputWorkspace=wsname,
-            Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=10,
-            Xmax=100,
-            BinWidth=1,
-            XUnit="TOF",
-            NumBanks=14,
-            BankPixelWidth=2,
-            Random=True,
-        )
-        assert wsname in mtd
-        algo = WashDishes()
-        algo.initialize()
-        algo._CISmode = True
-        algo.setProperty("Workspace", wsname)
-        algo.execute()
-        assert wsname in mtd
-
-    def test_wash_some_dishes_in_cis_mode(self):
-        wsnames = []
-        for i in range(10):
-            wsnames.append(f"_test_wash_dish_{i}")
-
-        for wsname in wsnames:
-            CreateSampleWorkspace(
-                OutputWorkspace=wsname,
-                Function="User Defined",
-                UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-                Xmin=10,
-                Xmax=100,
-                BinWidth=1,
-                XUnit="TOF",
-                NumBanks=14,
-                BankPixelWidth=2,
-                Random=True,
-            )
-            assert wsname in mtd
-        algo = WashDishes()
-        algo.initialize()
-        algo._CISmode = True
-        algo.setProperty("WorkspaceList", wsnames)
-        algo.execute()
-        for wsname in wsnames:
-            assert wsname in mtd
-
     def test_wash_dish_using_yaml(self):
+        # verify that the algorithm will behave as expected with the config key
         wsname = "_test_wash_one_dish"
         cismode = Config["cis_mode"]
-        CreateSampleWorkspace(
-            OutputWorkspace=wsname,
-            Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=10,
-            Xmax=100,
-            BinWidth=1,
-            XUnit="TOF",
-            NumBanks=14,
-            BankPixelWidth=2,
-            Random=True,
-        )
+        CreateWorkspace(OutputWorkspace=wsname, DataX=1, DataY=1)
         assert wsname in mtd
         algo = WashDishes()
         algo.initialize()
