@@ -11,15 +11,15 @@ with mock.patch.dict(
     },
 ):
     from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo  # noqa : E402
-    from snapred.backend.recipe.CrystallographicInfoRecipe import CrystallographicInfoRecipe  # noqa: E402
+    from snapred.backend.recipe.CrystallographicInfoRecipe import CrystallographicInfoRecipe as Recipe  # noqa: E402
     from snapred.meta.Config import Resource
 
     def test_good_path():
         """Test success of crystal ingestion recipe with a good path name"""
         goodCIF = Resource.getPath("/inputs/crystalInfo/example.cif")
         try:
-            ingestRecipe = CrystallographicInfoRecipe()
-            data = ingestRecipe.executeRecipe(goodCIF, 0.4, 10.0)
+            xtalRecipe = Recipe()
+            data = xtalRecipe.executeRecipe(goodCIF, 1.0, 10.0)
             xtal = data["crystalInfo"]
         except:  # noqa: BLE011 E722
             pytest.fail("valid file failed to open")
@@ -33,6 +33,6 @@ with mock.patch.dict(
     def test_failed_path():
         """Test failure of crystal ingestion recipe with a bad path name"""
         fakeCIF = "fake_file.cif"
-        ingestRecipe = CrystallographicInfoRecipe()
+        xtalRecipe = Recipe()
         with pytest.raises(Exception):  # noqa: PT011
-            ingestRecipe.executeRecipe(fakeCIF)
+            xtalRecipe.executeRecipe(fakeCIF)

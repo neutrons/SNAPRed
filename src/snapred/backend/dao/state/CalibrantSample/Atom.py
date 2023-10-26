@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, StrictStr, validate_arguments, validator
 
 
 class Atom(BaseModel):
@@ -21,6 +21,19 @@ class Atom(BaseModel):
     coordinates: Tuple[float, float, float]
     siteOccupationFactor: float
     adp: float = 0.1
+
+    @validate_arguments
+    def __init__(self, *args: StrictStr, **kwargs):
+        if args:
+            scatter = args[0].split()
+            super().__init__(
+                symbol=scatter[0],
+                coordinates=[float(x) for x in scatter[1:4]],
+                siteOccupationFactor=float(scatter[4]),
+                adp=float(scatter[5]),
+            )
+        else:
+            super().__init__(**kwargs)
 
     @validator("coordinates", allow_reuse=True)
     def validate_atom_coordinates(cls, v):

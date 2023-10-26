@@ -92,10 +92,10 @@ snapred.backend.recipe.algorithm.GroupByGroupCalibration module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm module
+snapred.backend.recipe.algorithm.CrystallographicInfoAlgorithm module
 ---------------------------------------------------------------------------
 
-.. automodule:: snapred.backend.recipe.algorithm.IngestCrystallographicInfoAlgorithm
+.. automodule:: snapred.backend.recipe.algorithm.CrystallographicInfoAlgorithm
    :members:
    :undoc-members:
    :show-inheritance:
