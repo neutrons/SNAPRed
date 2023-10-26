@@ -135,7 +135,9 @@ class CalibrationService(Service):
         # 4c. PeakIntensityThreshold
         peakIntensityThreshold = request.peakIntensityThreshold
         detectorPeaks = DetectorPeakPredictorRecipe().executeRecipe(
-            InstrumentState=instrumentState, CrystalInfo=crystalInfo, PeakIntensityThreshold=peakIntensityThreshold
+            InstrumentState=instrumentState,
+            CrystalInfo=crystalInfo,
+            PeakIntensityFractionThreshold=peakIntensityThreshold,
         )
         detectorPeaks = parse_raw_as(List[GroupPeakList], detectorPeaks)
         # 5. cal path
@@ -289,7 +291,7 @@ class CalibrationService(Service):
         )
         if prevCalibration is not None:
             GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
-                ListOfDict=list_to_raw(prevCalibration.focusGroupCalibrationMetrics[0].calibrationMetric),
+                ListOfDict=list_to_raw(prevCalibration.focusGroupCalibrationMetrics.calibrationMetric),
                 OutputWorkspace=f"{run.runNumber}_calibrationMetrics_v{prevCalibration.version}",
             )
         outputWorkspaces = [focussedData]
