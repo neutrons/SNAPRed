@@ -1,12 +1,11 @@
 import json
 from typing import Any, Dict, List
 
-from mantid.api import AlgorithmManager
-
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
+from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -22,6 +21,8 @@ class DiffractionCalibrationRecipe:
         self.threshold = ingredients.convergenceThreshold
         self.rawInput = data["inputWorkspace"]
         self.groupingWS = data["groupingWorkspace"]
+        self.outputWS = data.get("outputWorkspace", "")
+        self.calTable = data.get("calibrationTable", "")
         pass
 
     def executeRecipe(self, ingredients: Ingredients, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -38,6 +39,9 @@ class DiffractionCalibrationRecipe:
         pixelAlgo.setProperty("InputWorkspace", self.rawInput)
         pixelAlgo.setProperty("GroupingWorkspace", self.groupingWS)
         pixelAlgo.setProperty("Ingredients", ingredients.json())
+        tmpPixelAlgoOut = "_tmp_pixel_out"
+        pixelAlgo.setProperty("OutputWorkspace", tmpPixelAlgoOut)
+        pixelAlgo.setProperty("CalibrationTable", self.calTable)
         try:
             pixelAlgo.execute()
             dataSteps.append(json.loads(pixelAlgo.getProperty("data").value))
@@ -64,9 +68,11 @@ class DiffractionCalibrationRecipe:
         groupedAlgo.initialize()
         groupedAlgo.setProperty("Ingredients", ingredients.json())
         print(pixelAlgo.getProperty("OutputWorkspace").value)
-        groupedAlgo.setProperty("InputWorkspace", pixelAlgo.getPropertyValue("OutputWorkspace"))
+        groupedAlgo.setProperty("InputWorkspace", tmpPixelAlgoOut)
+        groupedAlgo.setProperty("OutputWorkspace", self.outputWS)
         groupedAlgo.setProperty("GroupingWorkspace", self.groupingWS)
-        groupedAlgo.setProperty("PreviousCalibrationTable", pixelAlgo.getPropertyValue("CalibrationTable"))
+        groupedAlgo.setProperty("PreviousCalibrationTable", self.calTable)
+        groupedAlgo.setProperty("FinalCalibrationTable", self.calTable)
         try:
             groupedAlgo.execute()
             data["calibrationTable"] = groupedAlgo.getProperty("FinalCalibrationTable").value
@@ -74,6 +80,11 @@ class DiffractionCalibrationRecipe:
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
+
+        wd = WashDishes()
+        wd.initialize()
+        wd.setProperty("Workspace", tmpPixelAlgoOut)
+        wd.execute()
 
         logger.info(f"Finished executing diffraction calibration for runId: {self.runNumber}")
         data["result"] = True

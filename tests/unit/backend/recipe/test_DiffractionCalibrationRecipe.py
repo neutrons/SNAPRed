@@ -172,6 +172,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             self.declareProperty("GroupingWorkspace", defaultValue="", direction=Direction.Input)
             # declare properties of offset algo
             self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.Input)
+            self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
 
         def PyExec(self):
             raise RuntimeError("passed")
@@ -224,7 +225,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
                 # fail if execute did not raise an exception
                 pytest.fail(f"Test should have raised RuntimeError, but no error raised: {len(result['steps'])} - {i}")
 
-    def makeFakeNeutronData(self, rawWS):
+    def makeFakeNeutronData(self, rawWS, groupingWS):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
         from mantid.simpleapi import (
             ChangeBinOffset,
@@ -256,7 +257,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         LoadDetectorsGroupingFile(
             InputFile=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
             InputWorkspace=rawWS,
-            OutputWorkspace=self.fakeGroupingWorkspace,
+            OutputWorkspace=groupingWS,
         )
         # the below are meant to de-align the pixels so an offset correction is needed
         ChangeBinOffset(
@@ -287,14 +288,14 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
     def test_execute_with_algos(self):
         # create sample data
         rawWS = "_test_diffcal_rx_data"
-        self.makeFakeNeutronData(rawWS)
+        groupingWS = "_test_diffcal_grouping"
+        self.makeFakeNeutronData(rawWS, groupingWS)
         self.data["inputWorkspace"] = rawWS
+        self.data["groupingWorkspace"] = groupingWS
         try:
             res = self.recipe.executeRecipe(self.fakeIngredients, self.data)
         except ValueError:
-            print("WHAT IS WRONG")
             print(res)
-            assert pytest.fail("WHAT THE FUCL IS WRONG")
         assert res["result"]
         assert res["steps"][-1]["medianOffset"] <= self.fakeIngredients.convergenceThreshold
 
