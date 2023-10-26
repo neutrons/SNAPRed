@@ -25,7 +25,6 @@ class Atom(BaseModel):
     @validate_arguments
     def __init__(self, *args: StrictStr, **kwargs):
         if args:
-            print(args)
             scatter = args[0].split()
             super().__init__(
                 symbol=scatter[0],
