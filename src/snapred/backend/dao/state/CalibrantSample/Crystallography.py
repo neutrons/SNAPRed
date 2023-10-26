@@ -2,7 +2,7 @@ import os
 from typing import List, Tuple
 
 from mantid.geometry import CrystalStructure, SpaceGroupFactory
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validate_arguments, validator
 
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
 
@@ -19,7 +19,8 @@ class Crystallography(BaseModel):
     latticeParameters: Tuple[float, float, float, float, float, float]
     atoms: List[Atom]
 
-    def __init__(self, *args, **kwargs):
+    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    def __init__(self, *args: str | CrystalStructure, **kwargs):
         if args:
             cifFile: str = args[0]
             xtal: CrystalStructure = args[1]

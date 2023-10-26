@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
 
 
@@ -18,3 +19,8 @@ def testThreeCoordinates():
         Atom(symbol="V", coordinates=[1.0], siteOccupationFactor=1.0)
     with pytest.raises(Exception):  # noqa: PT011
         Atom(symbol="V", coordinates=[1.0, 2.0, 3.0, 4.0], siteOccupationFactor=1.0)
+
+
+def testInvalidString():
+    with pytest.raises(ValidationError):
+        Atom(1)

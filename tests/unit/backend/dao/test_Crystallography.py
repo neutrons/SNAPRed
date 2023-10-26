@@ -74,3 +74,11 @@ class TestCrystallography(unittest.TestCase):
             crystalStruct,
         )
         assert xtal == self.crystal
+
+    def test_invalid(self):
+        with pytest.raises(AttributeError):
+            Crystallography(1, 2)
+        with pytest.raises(AttributeError):
+            Crystallography(2, "string")
+        with pytest.raises(AttributeError):
+            Crystallography("string", 2)

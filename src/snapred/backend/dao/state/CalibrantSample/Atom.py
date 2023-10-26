@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, StrictStr, validate_arguments, validator
 
 
 class Atom(BaseModel):
@@ -22,8 +22,10 @@ class Atom(BaseModel):
     siteOccupationFactor: float
     adp: float = 0.1
 
-    def __init__(self, *args, **kwargs):
+    @validate_arguments
+    def __init__(self, *args: StrictStr, **kwargs):
         if args:
+            print(args)
             scatter = args[0].split()
             super().__init__(
                 symbol=scatter[0],
