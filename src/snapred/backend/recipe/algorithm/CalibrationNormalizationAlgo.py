@@ -25,8 +25,6 @@ name = "CalibrationNormalizationAlgo"
 class CalibrationNormalization(PythonAlgorithm):
     def PyInit(self):
         # declare properties
-        # self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
-        # self.declareProperty("SmoothDataIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty(
             MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the raw vanadium data",
@@ -35,36 +33,51 @@ class CalibrationNormalization(PythonAlgorithm):
             MatrixWorkspaceProperty("BackgroundWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the raw vanadium background data",
         )
-        # self.declareProperty(
-        #     ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Input, PropertyMode.Mandatory),
-        #     doc="Table workspace with calibration data: cols detid, difc, difa, tzero",
-        # )
         self.declareProperty(
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="Workspace containing corrected data; if none given, the InputWorkspace will be overwritten",
         )
+        self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("FocusWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("SmoothWorkspace", defaultValue="", direction=Direction.Output)
-        # self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
+    def chopIngredients(self, ingredients: ingredients):
+        self.run = ingredients.run
+        self.backgroundRun = ingredients.backgroundRun
+        self.reductionIngredients = ingredients.reductionIngredients
+        self.smoothDataIngredients = ingredients.smoothDataIngredients
+        self.calibrationRecord = ingredients.calibrationRecord
+        self.calibrantSample = ingredients.calibrantSample
+        self.calibrationWorkspace = ingredients.calibrationWorkspace
+
     def PyExec(self):
-        reductionIngredients = ReductionIngredients.parse_raw(self.getProperty("ReductionIngredients").value)
-        smoothIngredients = SmoothDataExcludingPeaksIngredients(
-            **json.loads(self.getProperty("SmoothDataIngredients").value)
-        )
-        focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
-        runNumber = reductionIngredients.runConfig.runNumber
+        ingredients = ingredients(**json.loads(self.getProperty("Ingredients").value))
+        self.chopIngredients(ingredients)
+
+        focusGroups = self.reductionIngredients.reductionState.stateConfig.focusGroups.json()
+        runNumber: str = self.run.runNumber
+        ipts: str = self.run.IPTS
+        rawDataPath: str = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(runNumber)
+        backgroundRunNum: str = self.backgroundRun.runNumber
+        backgroundIpts: str = self.backgroundRun.IPTS
+        backgroundRawDataPath: str = backgroundIpts + "shared/lite/SNAP_{}.lite.nxs.h5".format(backgroundRunNum)
+        
         inputWS = self.getProperty("InputWorkspace").value
         if (inputWS is None):
-            self.mantidSnapper.LoadEventNexus(
-                "Loading Event Nexus for Normalization InputWs...",
-                Filename=
+            self.mantidSnapper.Load(
+                "Loading file for Normalization InputWS...",
+                Filename=rawDataPath,
+                OutputWorkspace=inputWS,
             )
         backgroundWS = self.getProperty("BackgroundWorkspace").value
-        calibrationWS = self.getProperty("CalibrationWorkspace").value
-        calibrantSample = self.getProperty("CalibrantSample")
+        if (backgroundWS is None):
+            self.mantidSnapper.Load(
+                "Loading file for Normalization BackgroundWS...",
+                Filename=backgroundRawDataPath,
+                OutputWorkspace=backgroundWS,
+            )
         # run the algo
         self.log().notice("Execution of CalibrationNormalizationAlgo START!")
 
@@ -72,15 +85,15 @@ class CalibrationNormalization(PythonAlgorithm):
             "Correcting Vanadium Data...",
             InputWorkspace=inputWS,
             BackgroundWorkspace=backgroundWS,
-            CalibrationWorkspace=calibrationWS,
-            Ingredients=reductionIngredients.json(),
-            CalibrantSample=calibrantSample,
+            CalibrationWorkspace=self.calibrationWorkspace.json(),
+            Ingredients=self.reductionIngredients.json(),
+            CalibrantSample=self.calibrantSample.json(),
             OutputWorkspace="raw_data",
         )
 
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",
-            StateConfig=reductionIngredients.reductionState.stateConfig.json(),
+            StateConfig=self.reductionIngredients.reductionState.stateConfig.json(),
             InputWorkspace=raw_data,
             OutputWorkspace="CommonRed",
         )
@@ -117,7 +130,7 @@ class CalibrationNormalization(PythonAlgorithm):
         smooth_ws = self.mantidSnapper.SmoothDataExcludingPeaks(
             "Fit and Smooth Peaks...",
             InputWorkspace=focused_data,
-            SmoothDataExcludingPeaksIngredients=smoothIngredients.json(),
+            SmoothDataExcludingPeaksIngredients=self.smoothDataIngredients.json(),
             OutputWorkspace="smooth_ws",
         )
 
