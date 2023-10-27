@@ -1,5 +1,5 @@
-import os
 import json
+import os
 
 from mantid.api import *
 from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
@@ -39,7 +39,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
         outputWorkspace = self.mantidSnapper.mtd[outputWorkspaceName]
-        liteWorkspacename = f'{runNumber}_lite'
+        liteWorkspacename = f"{runNumber}_lite"
         # use group detector with specific grouping file to create lite data
         self.mantidSnapper.GroupDetectors(
             "Creating lite version...",
@@ -54,9 +54,10 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             RewriteSpectraMap=False,
         )
         self.mantidSnapper.executeQueue()
-        liteWorkspace = self.mantidSnapper.mtd[liteWorkspacename]
+        self.mantidSnapper.mtd[liteWorkspacename]
         self.setProperty("OutputWorkspace", liteWorkspacename)
         return liteWorkspacename
+
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(LiteDataCreationAlgo)

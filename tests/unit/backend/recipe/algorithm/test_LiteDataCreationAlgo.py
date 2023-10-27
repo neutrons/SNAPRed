@@ -28,6 +28,7 @@ def _setup_teardown():
         except ValueError:
             print(f"Workspace {workspace} doesn't exist!")
 
+
 @pytest.mark.mount_snap()
 @pytest.mark.skipif(not HAVE_MOUNT_SNAP, reason="Mount SNAP not available")
 def test_LiteDataCreationAlgo_invalid_input():
