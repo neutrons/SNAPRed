@@ -14,10 +14,12 @@ from snapred.backend.dao.ingredients import (
     ReductionIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
+from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import (
+    NormalizationCalibrationIngredients as ingredients,
+)
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks  # noqa F401
-from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import NormalizationCalibrationIngredients as ingredients
 
 name = "CalibrationNormalizationAlgo"
 
@@ -63,16 +65,16 @@ class CalibrationNormalization(PythonAlgorithm):
         backgroundRunNum: str = self.backgroundRun.runNumber
         backgroundIpts: str = self.backgroundRun.IPTS
         backgroundRawDataPath: str = backgroundIpts + "shared/lite/SNAP_{}.lite.nxs.h5".format(backgroundRunNum)
-        
+
         inputWS = self.getProperty("InputWorkspace").value
-        if (inputWS is None):
+        if inputWS is None:
             self.mantidSnapper.Load(
                 "Loading file for Normalization InputWS...",
                 Filename=rawDataPath,
                 OutputWorkspace=inputWS,
             )
         backgroundWS = self.getProperty("BackgroundWorkspace").value
-        if (backgroundWS is None):
+        if backgroundWS is None:
             self.mantidSnapper.Load(
                 "Loading file for Normalization BackgroundWS...",
                 Filename=backgroundRawDataPath,
