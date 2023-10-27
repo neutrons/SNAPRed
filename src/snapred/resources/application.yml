@@ -23,6 +23,7 @@ instrument:
   lite:
     definition:
       file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
+      grouping: ${instrument.home}shared/Calibration_dynamic/Powder/PixelGroupingDefinitions/SNAPFocGroup_AllPixels_LiteGrouping.xml
 
 nexus:
   home: nexus/
