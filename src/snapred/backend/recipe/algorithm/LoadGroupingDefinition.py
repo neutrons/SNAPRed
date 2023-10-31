@@ -3,9 +3,13 @@ import pathlib
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 
 name = "LoadGroupingDefinition"
+
+logger = snapredLogger.getLogger(__name__)
 
 
 class LoadGroupingDefinition(PythonAlgorithm):
@@ -73,19 +77,25 @@ class LoadGroupingDefinition(PythonAlgorithm):
         if file_extension in self.supported_calib_file_extensions:
             instrument_name = self.getProperty("InstrumentName").value
             instrument_file_name = self.getProperty("InstrumentFilename").value
-            absent_input_properties_count = sum(not prop for prop in [instrument_name, instrument_file_name])
-            if absent_input_properties_count == 0 or absent_input_properties_count == 2:
-                raise Exception("Either InstrumentName or InstrumentFilename must be specified, but not both.")
+            if instrument_name + instrument_file_name != "":
+                if not (instrument_name == "" or instrument_file_name == ""):
+                    raise Exception("Either InstrumentName or InstrumentFilename must be specified, but not both.")
+
         if file_extension not in self.supported_xml_file_extensions:
             instrument_donor = self.getProperty("InstrumentDonor").value
             if instrument_donor:
-                raise Exception("InstrumentDonor only to be specified when GroupingFilename is in XML format.")
+                logger.warn("InstrumentDonor will only be used if GroupingFilename is in XML format.")
 
     def PyExec(self) -> None:
         self.validateInput()
         grouping_file_name = self.getProperty("GroupingFilename").value
         output_ws_name = self.getProperty("OutputWorkspace").value
         file_extension = pathlib.Path(grouping_file_name).suffix.upper()[1:]
+        isLite = False
+        if ".lite" in grouping_file_name:
+            isLite = True
+        if isLite and self.getProperty("InstrumentFilename").value == "":
+            self.setProperty("InstrumentFilename", Config["instrument.lite.definition.file"])
         if file_extension in self.supported_calib_file_extensions:
             self.mantidSnapper.LoadDiffCal(
                 "Loading grouping definition from calibration file...",
