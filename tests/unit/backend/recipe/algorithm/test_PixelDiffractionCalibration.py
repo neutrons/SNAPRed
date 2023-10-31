@@ -47,6 +47,8 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             groupedPeakLists=[
                 GroupPeakList(groupID=3, peaks=peakList, maxfwhm=0.01),
                 GroupPeakList(groupID=7, peaks=peakList, maxfwhm=0.02),
+                GroupPeakList(groupID=2, peaks=peakList, maxfwhm=0.03),
+                GroupPeakList(groupID=11, peaks=peakList, maxfwhm=0.04),
             ],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
@@ -79,9 +81,10 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
 
         TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
         TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
-        overallDMin = max(self.fakeIngredients.focusGroup.dMin)
-        overallDMax = min(self.fakeIngredients.focusGroup.dMax)
-        dBin = min(self.fakeIngredients.focusGroup.dBin)
+        dParams = [dp.params for dp in self.fakeIngredients.focusGroup.dSpaceParams.values()]
+        overallDMax = max([d[2] for d in dParams])
+        overallDMin = min([d[0] for d in dParams])
+        dBin = min([d[1] for d in dParams])
 
         # prepare with test data
         CreateSampleWorkspace(
@@ -108,6 +111,11 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             OutputWorkspace=focusWSname,
         )
         # the below are meant to de-align the pixels so an offset correction is needed
+        ChangeBinOffset(
+            InputWorkspace=rawWsName,
+            OutputWorkspace=rawWsName,
+            Offset=-0.7 * TOFMin,
+        )
         RotateInstrumentComponent(
             Workspace=rawWsName,
             ComponentName="bank1",
@@ -139,11 +147,6 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             Params=(TOFMin, dBin, TOFMax),
             BinningMode="Logarithmic",
         )
-        ChangeBinOffset(
-            InputWorkspace=rawWsName,
-            OutputWorkspace=rawWsName,
-            Offset=-0.7 * TOFMin,
-        )
 
     def test_chop_ingredients(self):
         """Test that ingredients for algo are properly processed"""
@@ -153,9 +156,12 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         assert algo.runNumber == self.fakeRunNumber
         assert algo.TOFMin == self.fakeIngredients.instrumentState.particleBounds.tof.minimum
         assert algo.TOFMax == self.fakeIngredients.instrumentState.particleBounds.tof.maximum
-        assert algo.overallDMin == max(self.fakeIngredients.focusGroup.dMin)
-        assert algo.overallDMax == min(self.fakeIngredients.focusGroup.dMax)
-        assert algo.dBin == min(self.fakeIngredients.focusGroup.dBin)
+        # instrConfig = self.fakeIngredients.instrumentState.instrumentConfig
+        # assert algo.TOFBin == instrConfig.delTOverT / instrConfig.NBins
+        dsp = list(self.fakeIngredients.focusGroup.dSpaceParams.values())
+        assert algo.overallDMin == max([d.minimum for d in dsp])
+        assert algo.overallDMax == min([d.maximum for d in dsp])
+        assert algo.dBin == min([abs(d.binWidth) for d in dsp])
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""
@@ -174,10 +180,11 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         assert algo.execute()
 
         data = json.loads(algo.getProperty("data").value)
-        assert data["medianOffset"] is not None
-        assert data["medianOffset"] != 0.0
-        assert data["medianOffset"] > 0.0
-        assert data["medianOffset"] <= 2.0
+        x = data["medianOffset"]
+        assert x is not None
+        assert x != 0.0
+        assert x > 0.0
+        assert x <= 2.0
 
     # patch to make the offsets of sample data non-zero
     def test_reexecution_and_convergence(self):

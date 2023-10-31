@@ -59,18 +59,21 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # TODO setup for SNAPLite
         self.isLite: bool = False
 
+        # from grouping parameters, read the overall min/max d-spacings
+        dsp = list(ingredients.focusGroup.dSpaceParams.values())
+        self.overallDMin: float = max([d.minimum for d in dsp])
+        self.overallDMax: float = min([d.maximum for d in dsp])
+        self.dBin: float = min([abs(d.binWidth) for d in dsp])
+        self.dSpaceParams = (self.overallDMin, self.dBin, self.overallDMax)
+
         # from the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
-        instrConfig = ingredients.instrumentState.instrumentConfig
-        self.TOFBin: float = instrConfig.delTOverT / instrConfig.NBins
+        # instrConfig = ingredients.instrumentState.instrumentConfig
+        self.TOFBin: float = self.dBin  # instrConfig.delTOverT / instrConfig.NBins
         self.TOFParams = (self.TOFMin, self.TOFBin, self.TOFMax)
 
-        # from grouping parameters, read the overall min/max d-spacings
-        self.overallDMin: float = max(ingredients.focusGroup.dMin)
-        self.overallDMax: float = min(ingredients.focusGroup.dMax)
-        self.dBin: float = abs(min(ingredients.focusGroup.dBin))
-        self.dSpaceParams = (self.overallDMin, self.dBin, self.overallDMax)
+        # from the grouped peak lists, find the maximum shift in d-spacing
         self.maxDSpaceShifts: Dict[int, float] = {}
         for peakList in ingredients.groupedPeakLists:
             self.maxDSpaceShifts[peakList.groupID] = 2.5 * peakList.maxfwhm
@@ -81,15 +84,15 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             self.setProperty("OutputWorkspace", self.outputWStof)
         else:
             self.outputWStof: str = self.getPropertyValue("OutputWorkspace")
-        print(self.outputWStof)
-        print(self.getPropertyValue("OutputWorkspace"))
         self.outputWSdsp: str = self.outputWStof + "_dsp"
 
         # create string name for output calibration table
+        self.DIFCpixel: str = ""
         if self.getProperty("CalibrationTable").isDefault:
-            self.difcWS: str = f"_DIFC_{self.runNumber}"
+            self.DIFCpixel = f"_DIFC_{self.runNumber}"
+            self.setProperty("CalibrationTable", self.DIFCpixel)
         else:
-            self.difcWS: str = self.getPropertyValue("CalibrationTable")
+            self.DIFCpixel = self.getPropertyValue("CalibrationTable")
 
         # set the max offset
         self.maxOffset: float = ingredients.maxOffset
@@ -131,16 +134,16 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # get handle to group focusing workspace and retrieve all detector IDs
         focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
         focusWS = self.mantidSnapper.mtd[focusWSname]
-        self.subgroupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
-        self.subgroupWorkspaceIndices: Dict[int, List[int]] = {}
-        for subgroupID in self.subgroupIDs:
-            groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(subgroupID)]
-            self.subgroupWorkspaceIndices[subgroupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
+        self.groupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
+        self.groupWorkspaceIndices: Dict[int, List[int]] = {}
+        for groupID in self.groupIDs:
+            groupDetectorIDs = [int(x) for x in focusWS.getDetectorIDsOfGroup(groupID)]
+            self.groupWorkspaceIndices[groupID] = focusWS.getIndicesFromDetectorIDs(groupDetectorIDs)
 
         self.mantidSnapper.CalculateDiffCalTable(
             "Calculate initial table of DIFC values",
             InputWorkspace=self.wsRawTOF,
-            CalibrationTable=self.difcWS,
+            CalibrationTable=self.DIFCpixel,
             OffsetMode="Signed",
             BinWidth=self.TOFBin,
         )
@@ -200,9 +203,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
 
         data: Dict[str, float] = {}
         totalOffsetWS: str = f"offsets_{self.runNumber}_{self._counts}"
-        wsoff: str = f"_{self.runNumber}_tmp_subgroup_offset_{self._counts}"
-        wscc: str = f"_{self.runNumber}_tmp_subgroup_CC_{self._counts}"
-        for subgroupID, workspaceIndices in self.subgroupWorkspaceIndices.items():
+        wsoff: str = f"_{self.runNumber}_tmp_group_offset_{self._counts}"
+        wscc: str = f"_{self.runNumber}_tmp_group_CC_{self._counts}"
+        for groupID, workspaceIndices in self.groupWorkspaceIndices.items():
             workspaceIndices = list(workspaceIndices)
             refID: int = self.getRefID(workspaceIndices)
             self.mantidSnapper.CrossCorrelate(
@@ -213,7 +216,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 WorkspaceIndexList=workspaceIndices,
                 XMin=self.overallDMin,
                 XMax=self.overallDMax,
-                MaxDSpaceShift=self.maxDSpaceShifts[subgroupID],
+                MaxDSpaceShift=self.maxDSpaceShifts[groupID],
             )
             self.mantidSnapper.GetDetectorOffsets(
                 f"Calculate offset workspace {wsoff}",
@@ -250,8 +253,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.mantidSnapper.ConvertDiffCal(
             "Correct previous calibration constants by offsets",
             OffsetsWorkspace=totalOffsetWS,
-            PreviousCalibration=self.difcWS,
-            OutputWorkspace=self.difcWS,
+            PreviousCalibration=self.DIFCpixel,
+            OutputWorkspace=self.DIFCpixel,
             OffsetMode="Signed",
             BinWidth=self.dBin,
         )
@@ -260,7 +263,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.mantidSnapper.ApplyDiffCal(
             "Apply the diffraction calibration to the input TOF workspace",
             InstrumentWorkspace=self.outputWStof,
-            CalibrationWorkspace=self.difcWS,
+            CalibrationWorkspace=self.DIFCpixel,
         )
         # convert to d-spacing and rebin logarithmically
         self.convertUnitsAndRebin(self.outputWStof, self.outputWSdsp, "dSpacing")
@@ -277,12 +280,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         )
         # now execute the queue
         self.mantidSnapper.executeQueue()
-        # data["calibrationTable"] = self.difcWS
         self.setProperty("data", json.dumps(data))
         self.setPropertyValue("OutputWorkspace", self.outputWStof)
-        print(self.outputWStof)
-        print(self.getPropertyValue("OutputWorkspace"))
-        # self.setProperty("CalibrationTable", self.difcWS)
 
     def PyExec(self) -> None:
         """

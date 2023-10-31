@@ -155,7 +155,7 @@ class LocalDataService:
             attenuationCrossSection=reductionParameters["VAttenuationXSection"],
             attenuationHeight=reductionParameters["VHeight"],
             geometry=None,  # TODO: missing, reductionParameters['VGeometry'],
-            FWHM=reductionParameters["VFWHM"],
+            FWHM=[list(FWHMdict.values()) for FWHMdict in reductionParameters["VFWHM"]],
             mask=reductionParameters["VMsk"],
             material=None,  # TODO: missing,
             peaks=reductionParameters["VPeaks"].split(","),
@@ -178,9 +178,7 @@ class LocalDataService:
                     name=name,
                     nHst=reductionParameters["focGroupNHst"][i],
                     FWHM=reductionParameters["VFWHM"][i],
-                    dBin=reductionParameters["focGroupDBin"][i],
-                    dMax=reductionParameters["focGroupDMax"][i],
-                    dMin=reductionParameters["focGroupDMin"][i],
+                    dSpaceParams=reductionParameters["focGroupDSpaceParams"][i],
                     definition=str(
                         self.instrumentConfig.calibrationDirectory
                         / "Powder"
