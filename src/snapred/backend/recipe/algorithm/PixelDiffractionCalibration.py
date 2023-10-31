@@ -55,14 +55,6 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
         self.TOFBin: float = self.dBin
 
-        # from grouping parameters, read the overall min/max d-spacings
-        self.overallDMin: float = max(ingredients.focusGroup.dMin)
-        self.overallDMax: float = min(ingredients.focusGroup.dMax)
-        self.dBin: float = min(ingredients.focusGroup.dBin)
-        self.maxDSpaceShifts: Dict[int, float] = {}
-        for peakList in ingredients.groupedPeakLists:
-            self.maxDSpaceShifts[peakList.groupID] = 2.5 * peakList.maxfwhm
-
         # path to grouping file, specifying group IDs of pixels
         self.groupingFile: str = ingredients.focusGroup.definition
 
