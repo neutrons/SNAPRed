@@ -6,19 +6,20 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
-from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog
+from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "CalculateOffsetDIFC"
 
-
-class CalculateOffsetDIFC(PythonAlgorithm):
+class PixelDiffractionCalibration(PythonAlgorithm):
     """
     Calculate the offset-corrected DIFC associated with a given workspace.
     One part of diffraction calibration.
     May be re-called iteratively with `execute` to ensure convergence.
     """
+
+    def category(self):
+        return "SNAPRed Diffraction Calibration"
 
     def PyInit(self):
         # declare properties
@@ -28,7 +29,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
         self.declareProperty("MaxOffset", 2.0, direction=Direction.Input)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
         self._has_been_executed = False
 
     # TODO: ensure all ingredients loaded elsewhere, no superfluous ingredients
@@ -41,11 +42,18 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         # TODO setup for SNAPLite
         self.isLite: bool = False
 
+        # from grouping parameters, read the overall min/max d-spacings
+        self.overallDMin: float = max(ingredients.focusGroup.dMin)
+        self.overallDMax: float = min(ingredients.focusGroup.dMax)
+        self.dBin: float = min([abs(dbin) for dbin in ingredients.focusGroup.dBin])
+        self.maxDSpaceShifts: Dict[int, float] = {}
+        for peakList in ingredients.groupedPeakLists:
+            self.maxDSpaceShifts[peakList.groupID] = 2.5 * peakList.maxfwhm
+
         # from the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
-        instrConfig = ingredients.instrumentState.instrumentConfig
-        self.TOFBin: float = instrConfig.delTOverT / instrConfig.NBins
+        self.TOFBin: float = self.dBin
 
         # from grouping parameters, read the overall min/max d-spacings
         self.overallDMin: float = max(ingredients.focusGroup.dMin)
@@ -54,7 +62,6 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         self.maxDSpaceShifts: Dict[int, float] = {}
         for peakList in ingredients.groupedPeakLists:
             self.maxDSpaceShifts[peakList.groupID] = 2.5 * peakList.maxfwhm
-        # self.maxDSpaceShifts: float = 1.0
 
         # path to grouping file, specifying group IDs of pixels
         self.groupingFile: str = ingredients.focusGroup.definition
@@ -101,51 +108,13 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             "Delete temp",
             Workspace=focusWSname,
         )
-        self.mantidSnapper.executeQueue()
 
-    def initDIFCTable(self) -> None:
-        """
-        Use the instrument definition to create an initial DIFC table
-        Because the created DIFC is inside a matrix workspace, it must
-        be manually loaded into a table workspace
-        """
-
-        # prepare initial diffraction calibration workspace
-        self.mantidSnapper.CalculateDIFC(
-            "Calculating initial DIFC values",
+        self.mantidSnapper.CalculateDiffCalTable(
+            "Calculate initial table of DIFC values",
             InputWorkspace=self.inputWStof,
-            OutputWorkspace="_tmp_difc_ws",
+            CalibrationTable=self.difcWS,
             OffsetMode="Signed",
             BinWidth=self.TOFBin,
-        )
-        # convert the calibration workspace into a calibration table
-        self.mantidSnapper.CreateEmptyTableWorkspace(
-            "Creating table to hold DIFC values",
-            OutputWorkspace=self.difcWS,
-        )
-        self.mantidSnapper.executeQueue()
-        tmpDifcWS = self.mantidSnapper.mtd["_tmp_difc_ws"]
-        DIFCtable = self.mantidSnapper.mtd[self.difcWS]
-        DIFCtable.addColumn(type="int", name="detid", plottype=6)
-        DIFCtable.addColumn(type="double", name="difc", plottype=6)
-        DIFCtable.addColumn(type="double", name="difa", plottype=6)
-        DIFCtable.addColumn(type="double", name="tzero", plottype=6)
-        difcs = [float(x) for x in tmpDifcWS.extractY()]
-        # TODO why is detid always 1 in tests?
-        for wkspIndx, difc in enumerate(difcs):
-            detids = tmpDifcWS.getSpectrum(wkspIndx).getDetectorIDs()
-            for detid in detids:
-                DIFCtable.addRow(
-                    {
-                        "detid": int(detid),
-                        "difc": float(difc),
-                        "difa": 0.0,
-                        "tzero": 0.0,
-                    }
-                )
-        self.mantidSnapper.WashDishes(
-            "Delete temp calibration workspace",
-            Workspace="_tmp_difc_ws",
         )
         self.mantidSnapper.executeQueue()
 
@@ -251,7 +220,7 @@ class CalculateOffsetDIFC(PythonAlgorithm):
         data["medianOffset"] = abs(np.median(offsets))
 
         # get difcal corrected by offsets
-        self.mantidSnapper.ConvertDiffCalLog(
+        self.mantidSnapper.ConvertDiffCal(
             "Correct previous calibration constants by offsets",
             OffsetsWorkspace=totalOffsetWS,
             PreviousCalibration=self.difcWS,
@@ -302,12 +271,10 @@ class CalculateOffsetDIFC(PythonAlgorithm):
             self.chopIngredients(ingredients)
             # load and process the input data for algorithm
             self.raidPantry()
-            # prepare initial diffraction calibration workspace
-            self.initDIFCTable()
             self._has_been_executed = True
         # now calculate and correct by offsets
         self.reexecute()
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(CalculateOffsetDIFC)
+AlgorithmFactory.subscribe(PixelDiffractionCalibration)
