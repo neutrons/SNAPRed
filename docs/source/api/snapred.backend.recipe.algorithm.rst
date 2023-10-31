@@ -77,7 +77,7 @@ snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm module
    :show-inheritance:
 
 snapred.backend.recipe.algorithm.GroupDiffractionCalibration module
----------------------------------------------------------------
+--------------------------------------------------------------------
 
 .. automodule:: snapred.backend.recipe.algorithm.GroupDiffractionCalibration
    :members:
