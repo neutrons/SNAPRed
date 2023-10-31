@@ -52,6 +52,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             ],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
+            maxOffset=10.0,
         )
 
         self.fakeRawData = f"_test_pixelcal_{self.fakeRunNumber}"
@@ -82,8 +83,8 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
         TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
         dParams = [dp.params for dp in self.fakeIngredients.focusGroup.dSpaceParams.values()]
-        overallDMax = max([d[2] for d in dParams])
-        overallDMin = min([d[0] for d in dParams])
+        overallDMax = min([d[2] for d in dParams])
+        overallDMin = max([d[0] for d in dParams])
         dBin = min([d[1] for d in dParams])
 
         # prepare with test data
@@ -111,11 +112,6 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             OutputWorkspace=focusWSname,
         )
         # the below are meant to de-align the pixels so an offset correction is needed
-        ChangeBinOffset(
-            InputWorkspace=rawWsName,
-            OutputWorkspace=rawWsName,
-            Offset=-0.7 * TOFMin,
-        )
         RotateInstrumentComponent(
             Workspace=rawWsName,
             ComponentName="bank1",
@@ -140,6 +136,11 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             InputWorkspace=rawWsName,
             OutputWorkspace=rawWsName,
             Target="TOF",
+        )
+        ChangeBinOffset(
+            InputWorkspace=rawWsName,
+            OutputWorkspace=rawWsName,
+            Offset=-0.7 * TOFMin,
         )
         Rebin(
             Inputworkspace=rawWsName,
@@ -198,10 +199,11 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         assert algo.execute()
 
         data = json.loads(algo.getProperty("data").value)
-        assert data["medianOffset"] is not None
-        assert data["medianOffset"] != 0
-        assert data["medianOffset"] > 0
-        assert data["medianOffset"] <= 2
+        x = data["medianOffset"]
+        assert x is not None
+        assert x != 0.0
+        assert x > 0.0
+        assert x <= 2.0
 
         # check that value converges
         numIter = 5

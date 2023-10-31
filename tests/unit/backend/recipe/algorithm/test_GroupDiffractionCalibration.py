@@ -32,11 +32,6 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         fakeInstrumentState.particleBounds.tof.maximum = 1000
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("inputs/diffcal/fakeFocusGroup.json"))
-        # ntest = fakeFocusGroup.nHst
-        # fakeFocusGroup.dBin = [abs(self.fakeDBin)] * ntest
-        # fakeFocusGroup.dMax = [float(x) for x in range(100 * ntest, 101 * ntest)]
-        # fakeFocusGroup.dMin = [float(x) for x in range(ntest)]
-        # fakeFocusGroup.FWHM = [5 * random.random() for x in range(ntest)]
         fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
 
         peakList3 = [

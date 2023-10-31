@@ -247,6 +247,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # use the median, to avoid issues with possible pathologic pixels
         self.mantidSnapper.executeQueue()  # queue must run before ws in mantid data
         offsets = list(self.mantidSnapper.mtd[totalOffsetWS].extractY().ravel())
+        offsets = [abs(x) for x in offsets]  # ignore negative
         data["medianOffset"] = abs(np.median(offsets))
 
         # get difcal corrected by offsets

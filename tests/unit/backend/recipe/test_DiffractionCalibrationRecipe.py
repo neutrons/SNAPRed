@@ -47,6 +47,8 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             groupedPeakLists=[
                 GroupPeakList(groupID=3, peaks=peakList, maxfwhm=0.01),
                 GroupPeakList(groupID=7, peaks=peakList, maxfwhm=0.02),
+                GroupPeakList(groupID=2, peaks=peakList, maxfwhm=0.02),
+                GroupPeakList(groupID=11, peaks=peakList, maxfwhm=0.02),
             ],
             convergenceThreshold=0.5,
             calPath=Resource.getPath("outputs/calibration/"),
@@ -72,7 +74,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             OutputWorkspace=self.fakeGroupingWorkspace,
         )
 
-        self.data = {
+        self.groceryList = {
             "inputWorkspace": self.fakeRawData,
             "groupingWorkspace": self.fakeGroupingWorkspace,
         }
@@ -89,9 +91,10 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         return super().tearDown
 
     def test_chop_ingredients(self):
-        self.recipe.chopIngredients(self.fakeIngredients, self.data)
+        self.recipe.chopIngredients(self.fakeIngredients)
         assert self.recipe.runNumber == self.fakeIngredients.runConfig.runNumber
         assert self.recipe.threshold == self.fakeIngredients.convergenceThreshold
+        self.recipe.fetchGroceries(self.groceryList)
         assert self.recipe.rawInput == self.fakeRawData
         assert self.recipe.groupingWS == self.fakeGroupingWorkspace
 
@@ -128,7 +131,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
     @mock.patch(PixelCalAlgo, DummyCalibrationAlgorithm)
     @mock.patch(GroupCalAlgo, DummyCalibrationAlgorithm)
     def test_execute_successful(self):
-        result = self.recipe.executeRecipe(self.fakeIngredients, self.data)
+        result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         assert result["result"]
         assert len(result["steps"]) == 3
 
@@ -154,7 +157,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
     @mock.patch(PixelCalAlgo, DummyPixelCalAlgo)
     def test_execute_unsuccessful_pixel_cal(self):
         try:
-            self.recipe.executeRecipe(self.fakeIngredients, self.data)
+            self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         except Exception as e:  # noqa: E722 BLE001
             assert str(e) == "passed"  # noqa: PT017
         else:
@@ -181,7 +184,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
     @mock.patch(GroupCalAlgo, DummyGroupCalAlgo)
     def test_execute_unsuccessful_group_cal(self):
         try:
-            self.recipe.executeRecipe(self.fakeIngredients, self.data)
+            self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         except Exception as e:  # noqa: E722 BLE001
             assert str(e) == "passed"  # noqa: PT017
         else:
@@ -218,7 +221,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         for i in range(1, 4):
             self.DummyFailingAlgo.fails = i
             try:
-                result = self.recipe.executeRecipe(self.fakeIngredients, self.data)
+                result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
             except Exception as e:  # noqa: E722 BLE001
                 assert str(e) == f"passed {i} - {i}"  # noqa: PT017
             else:
@@ -290,10 +293,10 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"
         self.makeFakeNeutronData(rawWS, groupingWS)
-        self.data["inputWorkspace"] = rawWS
-        self.data["groupingWorkspace"] = groupingWS
+        self.groceryList["inputWorkspace"] = rawWS
+        self.groceryList["groupingWorkspace"] = groupingWS
         try:
-            res = self.recipe.executeRecipe(self.fakeIngredients, self.data)
+            res = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         except ValueError:
             print(res)
         assert res["result"]

@@ -16,17 +16,31 @@ class DiffractionCalibrationRecipe:
     def __init__(self):
         pass
 
-    def chopIngredients(self, ingredients: Ingredients, data: Dict[str, Any]):
+    def chopIngredients(self, ingredients: Ingredients):
+        """
+        Chops off the needed elements of the diffraction calibration ingredients.
+        """
         self.runNumber = ingredients.runConfig.runNumber
         self.threshold = ingredients.convergenceThreshold
-        self.rawInput = data["inputWorkspace"]
-        self.groupingWS = data["groupingWorkspace"]
-        self.outputWS = data.get("outputWorkspace", "")
-        self.calTable = data.get("calibrationTable", "")
-        pass
 
-    def executeRecipe(self, ingredients: Ingredients, data: Dict[str, Any]) -> Dict[str, Any]:
-        self.chopIngredients(ingredients, data)
+    def fetchGroceries(self, groceryList: Dict[str, Any]):
+        """
+        Checkout the workspace names needed for this recipe.
+        It is necessary to provide the followign keys:
+         - "inputWorkspace": the raw neutron data
+         - "groupingWorkspace": a grouping workspace for focusing the data
+        It is optional to provide the following keys:
+         - "outputWorkspace": a name for the final output workspace; otherwise default is used
+         - "calibrationTable": a name for the fully caliibrated DIFC table; otherwise a default is used
+        """
+        self.rawInput = groceryList["inputWorkspace"]
+        self.groupingWS = groceryList["groupingWorkspace"]
+        self.outputWS = groceryList.get("outputWorkspace", "")
+        self.calTable = groceryList.get("calibrationTable", "")
+
+    def executeRecipe(self, ingredients: Ingredients, groceryList: Dict[str, Any]) -> Dict[str, Any]:
+        self.chopIngredients(ingredients)
+        self.fetchGroceries(groceryList)
 
         logger.info(f"Executing diffraction calibration for runId: {self.runNumber}")
         data: Dict[str, Any] = {"result": False}
