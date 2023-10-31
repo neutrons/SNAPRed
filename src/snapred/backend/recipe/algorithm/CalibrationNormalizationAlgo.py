@@ -28,15 +28,15 @@ class CalibrationNormalization(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty("InputWorkspace", "ws_in_normalization", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the raw vanadium data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("BackgroundWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty("BackgroundWorkspace", "ws_background", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the raw vanadium background data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            MatrixWorkspaceProperty("OutputWorkspace", "ws_out_normalization", Direction.Output, PropertyMode.Optional),
             doc="Workspace containing corrected data; if none given, the InputWorkspace will be overwritten",
         )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
@@ -67,6 +67,7 @@ class CalibrationNormalization(PythonAlgorithm):
         backgroundRawDataPath: str = backgroundIpts + "shared/lite/SNAP_{}.lite.nxs.h5".format(backgroundRunNum)
 
         inputWS = self.getProperty("InputWorkspace").value
+        inputWSName = str(inputWS)
         if inputWS is None:
             self.mantidSnapper.Load(
                 "Loading file for Normalization InputWS...",
@@ -90,7 +91,7 @@ class CalibrationNormalization(PythonAlgorithm):
             CalibrationWorkspace=self.calibrationWorkspace.json(),
             Ingredients=self.reductionIngredients.json(),
             CalibrantSample=self.calibrantSample.json(),
-            OutputWorkspace="raw_data",
+            OutputWorkspace=f"{inputWSName}_raw_data",
         )
 
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
@@ -115,11 +116,11 @@ class CalibrationNormalization(PythonAlgorithm):
             "Performing Diffraction Focusing ...",
             InputWorkspace=data,
             GroupingWorkspace=groupingworkspace,
-            OutputWorkspace="focused_data",
+            OutputWorkspace=f"{inputWSName}focused_data",
             PreserveEvents=True,
         )
 
-        ws = "cloneFocusDataWS"
+        ws = f"{inputWSName}_clone_focused_data"
         # clone the workspace
         self.mantidSnapper.CloneWorkspace(
             "Cloning input workspace for lite data creation...",
@@ -133,13 +134,13 @@ class CalibrationNormalization(PythonAlgorithm):
             "Fit and Smooth Peaks...",
             InputWorkspace=focused_data,
             SmoothDataExcludingPeaksIngredients=self.smoothDataIngredients.json(),
-            OutputWorkspace="smooth_ws",
+            OutputWorkspace=f"{inputWS}_smooth_ws",
         )
 
         self.mantidSnapper.executeQueue()
 
-        self.setProperty("FocusWorkspace", "ws")
-        self.setProperty("SmoothWorkspace", "smooth_ws")
+        self.setProperty("FocusWorkspace", ws)
+        self.setProperty("SmoothWorkspace", smooth_ws)
 
         return ws, smooth_ws
 

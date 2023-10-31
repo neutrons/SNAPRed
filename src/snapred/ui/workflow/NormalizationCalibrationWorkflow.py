@@ -20,12 +20,12 @@ from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest, SNAPResponse
 from snapred.backend.dao.request import (
     NormalizationCalibrationRequest,
-    NormalizationExportRequest,
-    SpecifyCalibrationRequest,
+    # NormalizationExportRequest,
+    SpecifyNormalizationRequest,
 )
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
-from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
+# from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
 from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
@@ -46,20 +46,20 @@ class NormalizationCalibrationWorkflow:
         if parent is not None and hasattr(parent, "close"):
             cancelLambda = parent.close
 
-        request = SNAPRequest(path="config/calibrantSamples")
-        self.calibrantSamples = self.interfaceController.executeRequest(request).data
+        request = SNAPRequest(path="config/samplePaths")
+        self.samplePaths = self.interfaceController.executeRequest(request).data
 
         self._normalizationCalibrationView = NormalizationCalibrationRequestView(
-            jsonForm, self.calibrantSamples, parent=parent
+            jsonForm, self.samplePaths, parent=parent,
         )
 
         self._specifyCalibrationView = SpecifyNormalizationCalibrationView(
-            "Specifying Calibration", self.assessmentSchema, parent=parent
+            "Specifying Calibration", self.assessmentSchema, samples=self.samplePaths, parent=parent,
         )
 
-        self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
-            "Saving Normalization Calibration", self.saveSchema, parent
-        )
+        # self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
+        #     "Saving Normalization Calibration", self.saveSchema, parent
+        # )
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=cancelLambda, parent=parent)
@@ -68,8 +68,12 @@ class NormalizationCalibrationWorkflow:
                 self._normalizationCalibrationView,
                 "Normalization Calibration",
             )
-            .addNode(self._specifyCalibration, self._specifyCalibrationView, "Specify Calibration")
-            .addNode(self._saveNormalizationCalibration, self._saveNormalizationCalibrationView, "Saving")
+            .addNode(
+                self._specifyCalibration, 
+                self._specifyCalibrationView, 
+                "Specify Calibration",
+            )
+            # .addNode(self._saveNormalizationCalibration, self._saveNormalizationCalibrationView, "Saving")
             .build()
         )
 
@@ -83,18 +87,21 @@ class NormalizationCalibrationWorkflow:
 
         self.runNumber = view.getFieldText("runNumber")
         self.emptyRunNumber = view.getFieldText("emptyRunNumber")
-        calibrantIndex = view.calibrantIndex.currentIndex()
+        self.smoothingParmameter = view.getFieldText("smoothingParameter")
+        sampleIndex = view.sampleDropDown.currentIndex()
 
-        self._specifyCalibrationView.updateCalibrantSample(calibrantIndex)
+        self._specifyCalibrationView.updateSample(sampleIndex)
         self._specifyCalibrationView.updateRunNumber(self.runNumber)
         self._specifyCalibrationView.updateEmptyRunNumber(self.emptyRunNumber)
         self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
-        self._calibrantPath = view.calibrantPath.currentText()
+        self.samplePath = view.sampleDropDown.currentText()
 
         payload = NormalizationCalibrationRequest(
-            runNumber=self.runNumber, emptyRunNumber=self.emptyRunNumber, calibrantPath=self._calibrantPath
+            runNumber=self.runNumber,
+            emptyRunNumber=self.emptyRunNumber, 
+            samplePath=self.samplePath,
+            smoothingParameter = self.smoothingParmameter,
         )
-        payload.convergenceThreshold = view.fieldConvergenceThreshold.get(payload.convergenceThreshold)
 
         request = SNAPRequest(path="calibration/normalization", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
@@ -102,20 +109,23 @@ class NormalizationCalibrationWorkflow:
         return response
 
     def _specifyCalibration(self, workflowPresenter):
-        payload = SpecifyCalibrationRequest(
+        payload = SpecifyNormalizationRequest(
             run=RunConfig(runNumber=self.runNumber),
-            workspace=self.responses[-1].data["outputWorkspace"],
-            smoothWorkspace=self.responses[-2].data["smoothOutputWorkspace"],
+            workspace=self.responses[-1].data["ws"],
+            smoothWorkspace=self.responses[-2].data["smooth_ws"],
+            samplePath=self.samplePath,
         )
-        request = SNAPRequest(path="calibration/specifyNormalization", payload=payload.json())
+        request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
         return response
 
-    def _saveNormalizationCalibration(self, workflowPresenter):
-        pass
-        # symlink?
+    # def _saveNormalizationCalibration(self, workflowPresenter):
+    #     view = workflowPresenter.widget.tabview
 
+    #     normalizationRecord = self.responses[-1].data
+    #     normalizationRecord.workspaceNames.append(self.responses[-2].data)
+    #     pass
     @property
     def widget(self):
         return self.workflow.presenter.widget

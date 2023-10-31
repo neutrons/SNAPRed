@@ -7,7 +7,7 @@ from snapred.ui.widget.LabeledField import LabeledField
 
 class SpecifyNormalizationCalibrationView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
-    signalCalibrantUpdate = pyqtSignal(int)
+    signalSampleUpdate = pyqtSignal(int)
 
     def __init__(self, name, jsonSchemaMap, samples=[], parent=None):
         super().__init__(parent)
@@ -24,16 +24,16 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.fieldRunNumber.setEnabled(False)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
 
-        self.calibrantDropDown = QComboBox()
-        self.calibrantDropDown.setEnabled(False)
-        self.calibrantDropDown.addItem("Select Calibrant")
-        self.calibrantDropDown.addItems(samples)
-        self.calibrantDropDown.model().item(0).setEnabled(False)
-        self.signalCalibrantUpdate.connect(self._updateCalibrant)
+        self.sampleDropDown = QComboBox()
+        self.sampleDropDown.setEnabled(False)
+        self.sampleDropDown.addItem("Select Sample")
+        self.sampleDropDown.addItems(samples)
+        self.sampleDropDown.model().item(0).setEnabled(False)
+        self.signalSampleUpdate.connect(self._updateSample)
 
         self.layout.addWidget(self.interactionText)
         self.layout.addWidget(self.fieldRunNumber)
-        self.layout.addWidget(LabeledField("Sample :", self.calibrantDropDown, self))
+        self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self))
 
     def _updateRunNumber(self, runNumber):
         self.fieldRunNumber.setText(runNumber)
@@ -41,8 +41,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
 
-    def _updateCalibrant(self, calibrantIndex):
-        self.calibrantDropDown.setCurrentIndex(calibrantIndex)
+    def _updateSample(self, sampleIndex):
+        self.sampleDropDown.setCurrentIndex(sampleIndex)
 
-    def updateCalibrant(self, calibrantIndex):
-        self.signalCalibrantUpdate.emit(calibrantIndex)
+    def updateSample(self, sampleIndex):
+        self.signalSampleUpdate.emit(sampleIndex)

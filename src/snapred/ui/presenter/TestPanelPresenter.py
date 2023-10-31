@@ -40,9 +40,17 @@ class TestPanelPresenter(object):
         self.diffractionCalibrationLayout.addWidget(self.calibrationCheckView)
         self.diffractionCalibrationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
 
+        self.calibrationNormalizationLayout = QGridLayout()
+        self.calibrationNormalizationWidget = QWidget()
+        self.calibrationNormalizationWidget.setLayout(self.calibrationNormalizationLayout)
+
+        self.calibrationNormalizationLayout.addWidget(self._createcalibrationNormalizationWorkflow())
+        self.calibrationNormalizationLayout.addWidget(self.calibrationCheckView)
+        self.calibrationNormalizationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
+
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
         self.view.tabWidget.addTab(ReductionWorkflow(self.view).widget, "Reduction")
-        self.view.tabWidget.addTab(NormalizationCalibrationWorkflow(self.view).widget, "Normalization Calibration")
+        self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization Calibration")
 
     def _findSchemaForPath(self, path):
         currentVal = self.apiDict
@@ -78,6 +86,17 @@ class TestPanelPresenter(object):
         self._loadDefaultJsonInput(path, newForm)
         logger.info("loaded default json input for path: {}".format(path))
         return DiffractionCalibrationCreationWorkflow(newForm, parent=self.view).widget
+    
+    def _createDiffractionCalibrationWorkflow(self):
+        path = "calibration/normalization/request"
+        logger.info("Creating workflow for path: {}".format(path))
+        jsonSchema = self._getSchemaForSelection(path)
+        logger.info("Schema for path: {}".format(jsonSchema))
+        newForm = JsonForm(path.split("/")[-1], jsonSchema=jsonSchema, parent=self.view)
+        logger.info("Created form for path: {}".format(newForm))
+        self._loadDefaultJsonInput(path, newForm)
+        logger.info("loaded default json input for path: {}".format(path))
+        return NormalizationCalibrationWorkflow(newForm, parent=self.view).widget
 
     @property
     def widget(self):

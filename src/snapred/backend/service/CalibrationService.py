@@ -12,6 +12,9 @@ from snapred.backend.dao.calibration import (
     CalibrationRecord,
     FocusGroupMetric,
 )
+from snapred.backend.dao.normalization import(
+    NormalizationRecord,
+)
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
     FitCalibrationWorkspaceIngredients,
@@ -26,7 +29,7 @@ from snapred.backend.dao.request import (
     CalibrationNormalizationRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
-    SpecifyCalibrationRequest,
+    SpecifyNormalizationRequest,
 )
 from snapred.backend.dao.state import FocusGroup, FocusGroupParameters
 from snapred.backend.data.DataExportService import DataExportService
@@ -281,7 +284,7 @@ class CalibrationService(Service):
         ]
         cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
-        # TODO: We Need to Fitt the Data
+        # TODO: We Need to Fit the Data
         fitIngredients = FitMultiplePeaksIngredients(
             instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=focussedData
         )
@@ -329,6 +332,8 @@ class CalibrationService(Service):
         )
 
         normalizationIngredients = NormalizationCalibrationIngredients(
+            run = request.run,
+            backgroundRun = request.backgroundRun,
             reductionIngredients = reductionIngredients,
             smoothingIngredients = smoothingIngredients,
             calibrationRecord = calibrationRecord,
@@ -339,7 +344,34 @@ class CalibrationService(Service):
         return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients)
 
     @FromString
-    def normalizationAssessment(self, request: SpecifyCalibrationRequest):
+    def normalizationAssessment(self, request: SpecifyNormalizationRequest):
+        runNumber = request.runNumber
+        preSmoothedWorkspace = request.preSmoothedWorkpace
+        smoothedWorkspace = request.smoothedWorkspace
+        samplePath = request.samplePath
+        
+        # sampleFilePath = self.dataFactoryService.getCifFilePath(request.samplePath.split("/")[-1].split(".")[0])
+        # crystalInfo = CrystallographicInfoService().ingest(sampleFilePath)["crystalInfo"]
+        # # TODO: We Need to Fit the Data
+        # fitIngredients = FitMultiplePeaksIngredients(
+        #     instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=focussedData
+        # )
+        # fitResults = FitMultiplePeaksRecipe().executeRecipe(FitMultiplePeaksIngredients=fitIngredients)
+        # metrics = self._collectMetrics(fitResults, focusGroup, pixelGroupingParam)
+        # prevCalibration = self.dataFactoryService.getCalibrationRecord(run.runNumber)
+        # timestamp = int(round(time.time() * 1000))
+
+        # record = NormalizationRecord(
+        #     runNumber=runNumber,
+        #     crystalInfo=crystalInfo,
+        #     calibrationFittingIngredients=calibration,
+        #     focusGroupParameters=focusGroupParameters,
+        #     focusGroupCalibrationMetrics=metrics,
+        #     workspaceNames=outputWorkspaces,
+        # )
+
+        # return record
+        pass
 
     @FromString
     def retrievePixelGroupingParams(self, runID: str):
