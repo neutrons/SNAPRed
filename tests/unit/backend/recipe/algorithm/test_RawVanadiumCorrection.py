@@ -1,14 +1,8 @@
 # TODO: figure out how to run snapred algos like python functions
 
-import json
-import random
 import unittest
-import unittest.mock as mock
-from typing import Dict, List
 
 import pytest
-from mantid.api import PythonAlgorithm
-from mantid.kernel import Direction
 from mantid.simpleapi import (
     AddSampleLog,
     CalculateDIFC,
@@ -23,8 +17,6 @@ from mantid.simpleapi import (
     Rebin,
     mtd,
 )
-from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 
 # needed to make mocked ingredients
@@ -34,10 +26,6 @@ from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import Calibrant
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 from snapred.backend.dao.state.CalibrantSample.Material import Material
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.recipe.algorithm.ConvertDiffCalLog import ConvertDiffCalLog  # noqa
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import (

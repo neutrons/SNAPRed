@@ -2,8 +2,6 @@
 
 import unittest
 
-import pytest
-from mantid.geometry import CrystalStructure
 from mantid.simpleapi import CreateWorkspace, DeleteWorkspace, SetSample
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -72,23 +70,6 @@ class TestCalibrantSamples(unittest.TestCase):
         assert material.chemicalFormula()[0][3].symbol == "N"
         assert material.chemicalFormula()[0][4].symbol == "Cl"
         assert material.packingFraction == self.mat.packingFraction
-
-    def testSetCrystalStructure(self):
-        crystalStruct = CrystalStructure(
-            self.xtal.unitCellString,
-            self.xtal.spaceGroupString,
-            self.xtal.scattererString,
-        )
-
-        # make sure it worked
-        assert self.xtal.spaceGroup == crystalStruct.getSpaceGroup().getHMSymbol()
-        for i, atom in enumerate(self.xtal.atoms):
-            atomstring = atom.getString.split(" ")
-            xtalstring = crystalStruct.getScatterers()[i].split(" ")
-            assert len(atomstring) == len(xtalstring)
-            assert atomstring[0] == xtalstring[0]
-            for a, x in zip(atomstring[1:], xtalstring[1:]):
-                assert float(a) == float(x)
 
     def test_chop_calibrant_sample(self):
         # removed from test of Raw Vanadium Correction

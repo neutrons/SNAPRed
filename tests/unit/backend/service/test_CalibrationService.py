@@ -313,7 +313,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockDetectorPeakPredictorRecipe().executeRecipe.assert_called_once_with(
             InstrumentState=mockFocusGroupInstrumentState[1],
             CrystalInfo=mockCrystallographicInfoService().ingest.return_value["crystalInfo"],
-            PeakIntensityThreshold=request.peakIntensityThreshold,
+            PeakIntensityFractionThreshold=request.peakIntensityThreshold,
         )
         mockDiffractionCalibrationIngredients.assert_called_once_with(
             runConfig=self.instance.dataFactoryService.getRunConfig.return_value,
