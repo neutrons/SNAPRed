@@ -86,7 +86,7 @@ class TestPanelPresenter(object):
         self._loadDefaultJsonInput(path, newForm)
         logger.info("loaded default json input for path: {}".format(path))
         return DiffractionCalibrationCreationWorkflow(newForm, parent=self.view).widget
-    
+
     def _createDiffractionCalibrationWorkflow(self):
         path = "calibration/normalization/request"
         logger.info("Creating workflow for path: {}".format(path))

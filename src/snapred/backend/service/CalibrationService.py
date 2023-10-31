@@ -12,16 +12,16 @@ from snapred.backend.dao.calibration import (
     CalibrationRecord,
     FocusGroupMetric,
 )
-from snapred.backend.dao.normalization import(
-    NormalizationRecord,
-)
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
+    NormalizationCalibrationIngredients,
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
-    NormalizationCalibrationIngredients,
+)
+from snapred.backend.dao.normalization import (
+    NormalizationRecord,
 )
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
@@ -332,24 +332,19 @@ class CalibrationService(Service):
         )
 
         normalizationIngredients = NormalizationCalibrationIngredients(
-            run = request.run,
-            backgroundRun = request.backgroundRun,
-            reductionIngredients = reductionIngredients,
-            smoothingIngredients = smoothingIngredients,
-            calibrationRecord = calibrationRecord,
-            calibrantSample = calibrantSample,
-            calibrationWorkspace = calibrationWorkspace,
+            run=request.run,
+            backgroundRun=request.backgroundRun,
+            reductionIngredients=reductionIngredients,
+            smoothingIngredients=smoothingIngredients,
+            calibrationRecord=calibrationRecord,
+            calibrantSample=calibrantSample,
+            calibrationWorkspace=calibrationWorkspace,
         )
 
         return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients)
 
     @FromString
     def normalizationAssessment(self, request: SpecifyNormalizationRequest):
-        runNumber = request.runNumber
-        preSmoothedWorkspace = request.preSmoothedWorkpace
-        smoothedWorkspace = request.smoothedWorkspace
-        samplePath = request.samplePath
-        
         # sampleFilePath = self.dataFactoryService.getCifFilePath(request.samplePath.split("/")[-1].split(".")[0])
         # crystalInfo = CrystallographicInfoService().ingest(sampleFilePath)["crystalInfo"]
         # # TODO: We Need to Fit the Data

@@ -9,9 +9,7 @@ class NormalizationCalibrationRequestView(BackendRequestView):
         super(NormalizationCalibrationRequestView, self).__init__(jsonForm, selection, parent=parent)
         self.runNumberField = self._labeledField("Run Number", jsonForm.getField("runNumber"))
         self.emptyRunNumberField = self._labeledField("Empty Run Number", jsonForm.getField("emptyRunNumber"))
-        self.smoothingParameter = self._labeledField(
-            "Smoothing Parameter", jsonForm.getField("smoothingParameter")
-        )
+        self.smoothingParameter = self._labeledField("Smoothing Parameter", jsonForm.getField("smoothingParameter"))
         # might need to add inputs for absorption correciton here
         self.sampleDropDown = self._sampleDropDown("Sample", samplePaths)
 

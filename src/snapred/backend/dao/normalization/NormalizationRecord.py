@@ -1,7 +1,7 @@
 from typing import List, Optional
-from pydantic import BaseModel
 
-from snapred.backend.dao import CrystallographicInfo 
+from pydantic import BaseModel
+from snapred.backend.dao import CrystallographicInfo
 from snapred.backend.dao.normalization.Normalization import Normalization
 
 

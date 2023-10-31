@@ -25,6 +25,7 @@ from snapred.backend.dao.request import (
 )
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
+
 # from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
 from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
@@ -50,11 +51,16 @@ class NormalizationCalibrationWorkflow:
         self.samplePaths = self.interfaceController.executeRequest(request).data
 
         self._normalizationCalibrationView = NormalizationCalibrationRequestView(
-            jsonForm, self.samplePaths, parent=parent,
+            jsonForm,
+            self.samplePaths,
+            parent=parent,
         )
 
         self._specifyCalibrationView = SpecifyNormalizationCalibrationView(
-            "Specifying Calibration", self.assessmentSchema, samples=self.samplePaths, parent=parent,
+            "Specifying Calibration",
+            self.assessmentSchema,
+            samples=self.samplePaths,
+            parent=parent,
         )
 
         # self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
@@ -69,8 +75,8 @@ class NormalizationCalibrationWorkflow:
                 "Normalization Calibration",
             )
             .addNode(
-                self._specifyCalibration, 
-                self._specifyCalibrationView, 
+                self._specifyCalibration,
+                self._specifyCalibrationView,
                 "Specify Calibration",
             )
             # .addNode(self._saveNormalizationCalibration, self._saveNormalizationCalibrationView, "Saving")
@@ -98,9 +104,9 @@ class NormalizationCalibrationWorkflow:
 
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
-            emptyRunNumber=self.emptyRunNumber, 
+            emptyRunNumber=self.emptyRunNumber,
             samplePath=self.samplePath,
-            smoothingParameter = self.smoothingParmameter,
+            smoothingParameter=self.smoothingParmameter,
         )
 
         request = SNAPRequest(path="calibration/normalization", payload=payload.json())
