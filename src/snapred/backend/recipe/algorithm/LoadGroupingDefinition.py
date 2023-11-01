@@ -7,8 +7,6 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 
-name = "LoadGroupingDefinition"
-
 logger = snapredLogger.getLogger(__name__)
 
 
@@ -56,7 +54,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
         )
 
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
         # define supported file name extensions
         self.supported_calib_file_extensions = ["H5", "HD5", "HDF"]
@@ -91,9 +89,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
         grouping_file_name = self.getProperty("GroupingFilename").value
         output_ws_name = self.getProperty("OutputWorkspace").value
         file_extension = pathlib.Path(grouping_file_name).suffix.upper()[1:]
-        isLite = False
-        if ".lite" in grouping_file_name:
-            isLite = True
+        isLite: bool = ".lite" in grouping_file_name
         if isLite and self.getProperty("InstrumentFilename").value == "":
             self.setProperty("InstrumentFilename", Config["instrument.lite.definition.file"])
         if file_extension in self.supported_calib_file_extensions:
