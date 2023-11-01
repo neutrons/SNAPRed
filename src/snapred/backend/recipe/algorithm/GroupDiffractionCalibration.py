@@ -8,8 +8,6 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "GroupDiffractionCalibration"
-
 
 class GroupDiffractionCalibration(PythonAlgorithm):
     def PyInit(self):
@@ -20,7 +18,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
