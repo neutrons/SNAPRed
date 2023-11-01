@@ -1,4 +1,5 @@
 import pathlib
+from datetime import datetime
 
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
@@ -114,11 +115,12 @@ class LoadGroupingDefinition(PythonAlgorithm):
             preserve_donor = True if instrument_donor else False
             if not instrument_donor:
                 # create one from the instrument definition file
-                instrument_donor = self.mantidSnapper.LoadEmptyInstrument(
+                instrument_donor = datetime.now().ctime() + "_idf"
+                self.mantidSnapper.LoadEmptyInstrument(
                     "Loading instrument definition file...",
                     Filename=self.getProperty("InstrumentFilename").value,
                     InstrumentName=self.getProperty("InstrumentName").value,
-                    OutputWorkspace="idf",
+                    OutputWorkspace=instrument_donor,
                 )
             self.mantidSnapper.LoadDetectorsGroupingFile(
                 "Loading grouping definition from detectors grouping file...",
