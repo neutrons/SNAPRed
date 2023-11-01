@@ -45,6 +45,8 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             groupedPeakLists=[
                 GroupPeakList(groupID=3, peaks=peakList, maxfwhm=0.01),
                 GroupPeakList(groupID=7, peaks=peakList, maxfwhm=0.02),
+                GroupPeakList(groupID=2, peaks=peakList, maxfwhm=0.02),
+                GroupPeakList(groupID=11, peaks=peakList, maxfwhm=0.02),
             ],
             convergenceThreshold=0.5,
             calPath=Resource.getPath("outputs/calibration/"),

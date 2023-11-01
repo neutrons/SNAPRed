@@ -87,77 +87,35 @@
         "focusGroups": [
           {
             "name": "Column",
-            "FWHM": [
-              5,
-              5,
-              5,
-              5,
-              5,
-              5
-            ],
+            "FWHM": {"1": 5, "2": 5, "3": 5, "4": 5, "5": 5, "6": 5},
             "nHst": 6,
-            "dBin": [
-              -0.00086,
-              -0.00096,
-              -0.0013,
-              -0.00117,
-              -0.00147,
-              -0.00186
-            ],
-            "dMax": [
-              2.1261415013281812,
-              2.340420726130363,
-              2.6640996245053588,
-              2.8052040400631646,
-              3.3902702046709625,
-              4.39474422286145
-            ],
-            "dMin": [
-              0.2873164190984029,
-              0.31627307109869773,
-              0.36001346277099444,
-              0.3790816270355628,
-              0.4581446222528327,
-              0.5938843544407365
-            ],
+            "dSpaceParams": {
+              "1": {"minimum": 0.2873164190984029, "binWidth": 0.00086, "maximum": 2.1261415013281812, "binMode": "Logarithmic"},
+              "2": {"minimum": 0.31627307109869773, "binWidth": 0.00096, "maximum": 2.340420726130363, "binMode": "Logarithmic"},
+              "3": {"minimum": 0.36001346277099444, "binWidth": 0.0013, "maximum": 2.6640996245053588, "binMode": "Logarithmic"},
+              "4": {"minimum": 0.3790816270355628, "binWidth": 0.00117, "maximum": 2.8052040400631646, "binMode": "Logarithmic"},
+              "5": {"minimum": 0.4581446222528327, "binWidth": 0.00147, "maximum": 3.3902702046709625, "binMode": "Logarithmic"},
+              "6": {"minimum": 0.5938843544407365, "binWidth": 0.00186, "maximum": 4.39474422286145, "binMode": "Logarithmic"}
+            },
             "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
           },
           {
             "name": "Bank",
-            "FWHM": [
-              5,
-              5
-            ],
+            "FWHM": {"1": 5, "2": 5},
             "nHst": 2,
-            "dBin": [
-              -0.001,
-              -0.001
-            ],
-            "dMax": [
-              2.74,
-              4.9
-            ],
-            "dMin": [
-              0.65,
-              0.65
-            ],
+            "dSpaceParams": {
+              "1": {"minimum": 0.65, "binWidth": 0.00086, "maximum": 2.74, "binMode": "Logarithmic"},
+              "2": {"minimum": 0.65, "binWidth": 0.00096, "maximum": 4.9, "binMode": "Logarithmic"}
+            },
             "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Bank.lite.xml"
           },
           {
             "name": "All",
-            "FWHM": [
-              5
-            ],
+            "FWHM": {"1": 5},
             "nHst": 1,
-            "dBin": [
-              -0.0008
-            ],
-            "dMax": [
-              4.9
-            ],
-            "dMin": [
-              0.65
-            ],
+            "dSpaceParams": {
+              "1": {"minimum":0.65, "binWidth": 0.0008, "maximum": 4.9, "binMode": "Logarithmic"}
+            },
             "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_All.lite.xml"
           }
         ],

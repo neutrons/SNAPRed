@@ -20,6 +20,38 @@
     "focGroupLst": ["Column", "Bank", "All", "Mid", "10deg"],
     "focGroupDefinition": ["SNAPFocGrp_Column.lite.xml", "SNAPFocGrp_Bank.lite.xml", "SNAPFocGrp_All.lite.xml", "SNAPFocGrp_Mid.lite.xml", "SNAPFocGrp_10deg.lite.xml"],
     "focGroupNHst": [6, 2, 1, 2, 9],
+    "focGroupDSpaceParams": [
+        {
+            "1":{"minimum": 0.65, "binWidth": 0.00086, "maximum": 2.15, "binMode": "Logarithmic"},
+            "2":{"minimum": 0.65, "binWidth": 0.00096, "maximum": 2.43, "binMode": "Logarithmic"},
+            "3":{"minimum": 0.65, "binWidth": 0.0013, "maximum": 2.77, "binMode": "Logarithmic"},
+            "4":{"minimum": 0.65, "binWidth": 0.00117, "maximum": 2.95, "binMode": "Logarithmic"},
+            "5":{"minimum": 0.65, "binWidth": 0.00147, "maximum": 3.74, "binMode": "Logarithmic"},
+            "6":{"minimum": 0.65, "binWidth": 0.00186, "maximum": 4.9, "binMode": "Logarithmic"}
+        },
+        {
+            "1":{"minimum": 0.65, "binWidth": 0.001, "maximum": 2.74, "binMode": "Logarithmic"},
+            "2":{"minimum": 0.65, "binWidth": 0.001, "maximum": 4.9, "binMode": "Logarithmic"}
+        },
+        {
+            "1":{"minimum": 0.65, "binWidth": 0.0008, "maximum": 4.9, "binMode": "Logarithmic"}
+        },
+        {
+            "1":{"minimum": 0.65, "binWidth": 0.001, "maximum": 2.75, "binMode": "Logarithmic"},
+            "2":{"minimum": 0.65, "binWidth": 0.001, "maximum": 3.73, "binMode": "Logarithmic"}
+        },
+        {
+            "1":{"minimum": 0.65, "binWidth": 0.001, "maximum": 2.5, "binMode": "Logarithmic"},
+            "2":{"minimum": 0.65, "binWidth": 0.001, "maximum": 2.5, "binMode": "Logarithmic"},
+            "3":{"minimum": 0.65, "binWidth": 0.001, "maximum": 2.5, "binMode": "Logarithmic"},
+            "4":{"minimum": 0.65, "binWidth": 0.001, "maximum": 2.5, "binMode": "Logarithmic"},
+            "5":{"minimum": 0.65, "binWidth": 0.001, "maximum": 2.5, "binMode": "Logarithmic"},
+            "6":{"minimum": 0.65, "binWidth": 0.001, "maximum": 2.5, "binMode": "Logarithmic"},
+            "7":{"minimum": 0.65, "binWidth": 0.001, "maximum": 3.5, "binMode": "Logarithmic"},
+            "8":{"minimum": 0.65, "binWidth": 0.001, "maximum": 4.0, "binMode": "Logarithmic"},
+            "9":{"minimum": 0.65, "binWidth": 0.001, "maximum": 4.0, "binMode": "Logarithmic"}
+        }
+    ],
     "focGroupDMin": [[0.65, 0.65, 0.65, 0.65, 0.65, 0.65], [0.65, 0.65], [0.65], [0.65, 0.65], [0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65]],
     "focGroupDMax": [[2.15, 2.43, 2.77, 2.95, 3.74, 4.9], [2.74, 4.9], [4.9], [2.75, 3.73], [2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 3.5, 4.0, 4.0]],
     "focGroupDBin": [[-0.00086, -0.00096, -0.0013, -0.00117, -0.00147, -0.00186], [-0.001, -0.001], [-0.0008], [-0.001, -0.001], [-0.001, -0.001, -0.001, -0.001, -0.001, -0.001, -0.001, -0.001, -0.001]],
@@ -32,7 +64,12 @@
     "NAnnul": "10",
     "VMsk": "",
     "VPeaks": "1.2356,1.5133,2.1401",
-    "VFWHM": [[5, 5, 5, 5, 5, 5], [5, 5], [5], [5, 5]],
+    "VFWHM": [
+        {"1":5, "2": 5, "3": 5, "4": 5, "5": 5, "6": 5},
+        {"1":5, "2": 5},
+        {"1":5},
+        {"1":5, "2": 5}
+    ],
     "VSmoothPoints": "40",
     "VAttenuationXSection": 5.08,
     "VScatteringXSection": 5.1,

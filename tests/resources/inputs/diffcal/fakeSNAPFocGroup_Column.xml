@@ -1,9 +1,15 @@
 <?xml version="1.0"?>
 <detector-grouping idf-date="2018-05-01T00:00:01" instrument="fakeSNAPLite">
 	<group ID="3">
-		<detids>0-8</detids>
+		<detids>0-4</detids>
 	</group>
 	<group ID="7">
-		<detids>9-15</detids>
+		<detids>5-8</detids>
+	</group>
+	<group ID="2">
+		<detids>9-12</detids>
+	</group>
+	<group ID="11">
+		<detids>13-15</detids>
 	</group>
 </detector-grouping>

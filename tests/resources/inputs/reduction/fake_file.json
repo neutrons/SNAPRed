@@ -47,7 +47,7 @@
           "attenuationCrossSection": 0,
           "attenuationHeight": 0,
           "geometry": null,
-          "FWHM": [[0]],
+          "FWHM": [[5]],
           "mask": "",
           "material": null,
           "peaks": [0.0],
@@ -63,11 +63,23 @@
         "focusGroups": [
           {
             "name": "Column",
-            "FWHM": [0],
+            "FWHM": {
+              "1":0,
+              "2":0,
+              "3":0,
+              "4":0,
+              "5":0,
+              "6":0
+            },
             "nHst": 6,
-            "dBin": [0],
-            "dMax": [0],
-            "dMin": [0],
+            "dSpaceParams": {
+              "1": {"minimum": 0, "binWidth": 0, "maximum": 1, "binMode": "Logarithmic"},
+              "2": {"minimum": 0, "binWidth": 0, "maximum": 1, "binMode": "Logarithmic"},
+              "3": {"minimum": 0, "binWidth": 0, "maximum": 1, "binMode": "Logarithmic"},
+              "4": {"minimum": 0, "binWidth": 0, "maximum": 1, "binMode": "Logarithmic"},
+              "5": {"minimum": 0, "binWidth": 0, "maximum": 1, "binMode": "Logarithmic"},
+              "6": {"minimum": 0, "binWidth": 0, "maximum": 1, "binMode": "Logarithmic"}
+            },
             "definition": "nope"
           }
         ],
