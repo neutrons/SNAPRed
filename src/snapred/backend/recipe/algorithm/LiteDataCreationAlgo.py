@@ -1,13 +1,13 @@
-import os
 import json
-import numpy as np
+import os
 
+import numpy as np
 from mantid.api import *
 from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
 from mantid.kernel import Direction
 
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 
 name = "LiteDataCreationAlgo"
@@ -50,13 +50,13 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             LoadMonitors=True,
         )
 
-        groupingWorkspaceName = f'{self.runNumber}_lite_grouping_ws'
+        groupingWorkspaceName = f"{self.runNumber}_lite_grouping_ws"
 
         # create the lite grouping workspace using input as template
         self.mantidSnapper.CreateGroupingWorkspace(
             f"Creating {groupingWorkspaceName}...",
             InputWorkspace=inputWorkspaceName,
-            GroupDetectorsBy='All',
+            GroupDetectorsBy="All",
             OutputWorkspace=groupingWorkspaceName,
         )
 
@@ -66,7 +66,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         # create mapping for grouping workspace
         nHst = groupingWorkspace.getNumberHistograms()
         for spec in range(nHst):
-            groupingWorkspace.setY(spec,[self.superID(spec, 8, 8)])
+            groupingWorkspace.setY(spec, [self.superID(spec, 8, 8)])
 
         # use group detector with specific grouping file to create lite data
         self.mantidSnapper.GroupDetectors(
@@ -95,36 +95,36 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         )
 
         self.mantidSnapper.executeQueue()
-        outputWorkspace = self.mantidSnapper.mtd[outputWorkspaceName]
+        self.mantidSnapper.mtd[outputWorkspaceName]
         self.setProperty("OutputWorkspace", outputWorkspaceName)
-    
+
     def superID(self, nativeID, xdim, ydim):
-        
         # native number of pixels per panel
         Nx = int(Config["instrument.lite.resolution.Nx"])
         Ny = int(Config["instrument.lite.resolution.Ny"])
-        NNat = Nx*Ny 
-        
+        NNat = Nx * Ny
+
         # reduced ID beginning at zero in each panel
-        firstPix = (nativeID // NNat)*NNat
-        redID = nativeID % NNat 
-        
+        firstPix = (nativeID // NNat) * NNat
+        redID = nativeID % NNat
+
         # native (reduced) coordinates on pixel face
-        (i,j) = divmod(redID,Ny) 
-        superi = divmod(i,xdim)[0]
-        superj = divmod(j,ydim)[0]
+        (i, j) = divmod(redID, Ny)
+        superi = divmod(i, xdim)[0]
+        superj = divmod(j, ydim)[0]
 
         # some basics of the super panel
-        # 32 running from 0 to 31   
-        superNx = Nx/xdim 
-        superNy = Ny/ydim
-        superN = superNx*superNy
+        # 32 running from 0 to 31
+        superNx = Nx / xdim
+        superNy = Ny / ydim
+        superN = superNx * superNy
 
-        superFirstPix = (firstPix/NNat)*superN
-        
-        super = superi*superNy+superj+superFirstPix
-        
+        superFirstPix = (firstPix / NNat) * superN
+
+        super = superi * superNy + superj + superFirstPix
+
         return super
+
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(LiteDataCreationAlgo)

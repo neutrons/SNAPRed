@@ -20,4 +20,4 @@ class TestLiteDataService(unittest.TestCase):
 
         liteDataService.reduceLiteData([mock_runConfig])
 
-        mock_executeRecipe.assert_called_with(inputWorkspace="SNAP_12345.nxs", Run = mock_runConfig )
+        mock_executeRecipe.assert_called_with(inputWorkspace="SNAP_12345.nxs", Run=mock_runConfig)
