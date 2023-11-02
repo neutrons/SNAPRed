@@ -119,11 +119,11 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         superNy = Ny / ydim
         superN = superNx * superNy
 
-        superFirstPix = (firstPix / NNat) * superN
-
-        super = superi * superNy + superj + superFirstPix
-
-        return super
+        superFirstPix = (firstPix/NNat)*superN
+        
+        supergrouping = superi*superNy+superj+superFirstPix
+        
+        return supergrouping
 
 
 # Register algorithm with Mantid
