@@ -49,9 +49,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             )
 
         # from grouping parameters, read the overall min/max d-spacings
-        self.dMax = ingredients.focusGroup.dMin
-        self.dMin = ingredients.focusGroup.dMax
-        self.dBin = ingredients.focusGroup.dBin
+        self.dMax: List[float] = ingredients.focusGroup.dMin
+        self.dMin: List[float] = ingredients.focusGroup.dMax
+        self.dBin: List[float] = ingredients.focusGroup.dBin
 
         # from the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
@@ -160,7 +160,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             self.mantidSnapper.PDCalibration(
                 f"Perform PDCalibration on subgroup {groupID}",
                 InputWorkspace=self.diffractionfocusedWStof,
-                TofBinning=(self.TOFMin, -abs(self.TOFBin), self.TOFMax),
+                TofBinning=self.TOFParams,
                 PeakFunction="Gaussian",
                 BackgroundType="Linear",
                 PeakPositions=self.groupedPeaks[groupID],

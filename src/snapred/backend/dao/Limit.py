@@ -49,7 +49,7 @@ class BinnedValue(GenericModel, Generic[T]):
 
     @property
     def params(self) -> Tuple[float, float, float]:
-        return (self.minimum, self.binWidth, self.maximum)
+        return (self.minimum, (abs(self.binWidth) if self.binMode == "Linear" else -abs(self.binWidth)), self.maximum)
 
     @root_validator(allow_reuse=True)
     def validate_scalar_fields(cls, values):
