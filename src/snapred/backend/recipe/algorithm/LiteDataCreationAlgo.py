@@ -119,10 +119,10 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         superNy = Ny / ydim
         superN = superNx * superNy
 
-        superFirstPix = (firstPix/NNat)*superN
-        
-        supergrouping = superi*superNy+superj+superFirstPix
-        
+        superFirstPix = (firstPix / NNat) * superN
+
+        supergrouping = superi * superNy + superj + superFirstPix
+
         return supergrouping
 
 
