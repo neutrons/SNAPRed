@@ -1,11 +1,14 @@
+import os
 import json
+import numpy as np
 
 from mantid.api import *
 from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
 from mantid.kernel import Direction
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.meta.Config import Resource
+from snapred.backend.dao.RunConfig import RunConfig
+from snapred.meta.Config import Config
 
 name = "LiteDataCreationAlgo"
 
@@ -13,86 +16,115 @@ name = "LiteDataCreationAlgo"
 class LiteDataCreationAlgo(PythonAlgorithm):
     def PyInit(self):
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
+        self.declareProperty("Run", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
+    def chopIngredients(self, run: RunConfig):
+        self.runNumber = run.runNumber
+        self.IPTS = run.IPTS
+        print(self.IPTS)
+        self.rawDataPath: str = self.IPTS + "nexus/SNAP_{}.nxs.h5".format(self.runNumber)
+        pass
+
     def PyExec(self):
         self.log().notice("Lite Data Creation START!")
-        # define super pixel dimensions
-        superPixel = [8, 8]
-
-        # get output workspace name
-        outputWorkspaceName = self.getProperty("OutputWorkspace").value
 
         # load input workspace
-        inputWorkspace = self.getProperty("InputWorkspace").value
+        inputWorkspaceName = self.getProperty("InputWorkspace").value
 
-        # clone the workspace
-        self.mantidSnapper.CloneWorkspace(
-            "Cloning input workspace for lite data creation...",
-            InputWorkspace=inputWorkspace,
-            OutputWorkspace=outputWorkspaceName,
+        # load run number
+        run = RunConfig(**json.loads(self.getProperty("Run").value))
+        self.chopIngredients(run)
+
+        # create outputworkspace
+        outputWorkspaceName = self.getProperty("OutputWorkspace").value
+
+        # load file
+        self.mantidSnapper.LoadEventNexus(
+            "Loading Event Nexus for {}...".format(self.rawDataPath),
+            Filename=self.rawDataPath,
+            OutputWorkspace=inputWorkspaceName,
+            NumberOfBins=1,
+            LoadMonitors=True,
         )
+
+        groupingWorkspaceName = f'{self.runNumber}_lite_grouping_ws'
+
+        # create the lite grouping workspace using input as template
+        self.mantidSnapper.CreateGroupingWorkspace(
+            f"Creating {groupingWorkspaceName}...",
+            InputWorkspace=inputWorkspaceName,
+            GroupDetectorsBy='All',
+            OutputWorkspace=groupingWorkspaceName,
+        )
+
+        self.mantidSnapper.executeQueue()
+        groupingWorkspace = self.mantidSnapper.mtd[groupingWorkspaceName]
+
+        # create mapping for grouping workspace
+        nHst = groupingWorkspace.getNumberHistograms()
+        for spec in range(nHst):
+            groupingWorkspace.setY(spec,[self.superID(spec, 8, 8)])
+
+        # use group detector with specific grouping file to create lite data
+        self.mantidSnapper.GroupDetectors(
+            "Creating lite version...",
+            InputWorkspace=inputWorkspaceName,
+            OutputWorkspace=outputWorkspaceName,
+            CopyGroupingFromWorkspace=groupingWorkspaceName,
+        )
+
+        self.mantidSnapper.CompressEvents(
+            f"Compressing events in {outputWorkspaceName}...",
+            InputWorkspace=outputWorkspaceName,
+            OutputWorkspace=outputWorkspaceName,
+            Tolerance=1,
+        )
+
+        self.mantidSnapper.executeQueue()
+
+        self.mantidSnapper.DeleteWorkspace(
+            f"Deleting {groupingWorkspaceName}...",
+            Workspace=groupingWorkspaceName,
+        )
+        self.mantidSnapper.DeleteWorkspace(
+            f"Deleting {self.runNumber}_raw_monitors...",
+            Workspace=str(self.runNumber) + "_raw_monitors",
+        )
+
         self.mantidSnapper.executeQueue()
         outputWorkspace = self.mantidSnapper.mtd[outputWorkspaceName]
-
-        # IEventWorkspace ID is equivalent to spec ID
-        numSpec = outputWorkspace.getNumberHistograms()
-
-        # array to hold spectrum data
-        spectrumData = []
-
-        # iterate over IEventWorkspace IDs
-        for spec in range(numSpec):
-            # get event list per workspace
-            spectrum = outputWorkspace.getSpectrum(workspaceIndex=spec)
-            spectrumData.append(spectrum)
-
-        # allocate array of event IDs
-        for spectrum in spectrumData:
-            eventIDs = spectrum.getDetectorIDs()
-            for event in eventIDs:
-                superID = self.getSuperID(nativeID=event, xdim=superPixel[0], ydim=superPixel[1])
-
-                # clear detector IDs and then add the new modified super ID
-                spectrum.clearDetectorIDs()
-                spectrum.addDetectorID(superID)
-
-        self.mantidSnapper.LoadInstrument(
-            "Loading instrument...",
-            Workspace=outputWorkspace,
-            Filename=Resource.getPath("/inputs/pixel_grouping/SNAPLite_Definition.xml"),
-            RewriteSpectraMap=False,
-        )
-        self.mantidSnapper.executeQueue()
-
         self.setProperty("OutputWorkspace", outputWorkspaceName)
-        return outputWorkspaceName
+    
+    def superID(self, nativeID, xdim, ydim):
+        
+        # native number of pixels per panel
+        Nx = int(Config["instrument.lite.resolution.Nx"])
+        Ny = int(Config["instrument.lite.resolution.Ny"])
+        NNat = Nx*Ny 
+        
+        # reduced ID beginning at zero in each panel
+        firstPix = (nativeID // NNat)*NNat
+        redID = nativeID % NNat 
+        
+        # native (reduced) coordinates on pixel face
+        (i,j) = divmod(redID,Ny) 
+        superi = divmod(i,xdim)[0]
+        superj = divmod(j,ydim)[0]
 
-    def getSuperID(self, nativeID, xdim, ydim):
-        # Constants
-        Nx, Ny = 256, 256  # Native number of horizontal and vertical pixels
-        NNat = Nx * Ny  # Native number of pixels per panel
+        # some basics of the super panel
+        # 32 running from 0 to 31   
+        superNx = Nx/xdim 
+        superNy = Ny/ydim
+        superN = superNx*superNy
 
-        # Calculate super panel basics
-        superNx = Nx // xdim
-        superNy = Ny // ydim
-        superN = superNx * superNy
-
-        # Calculate reduced ID and native (reduced) coordinates on pixel face
-        firstPix = nativeID // NNat * NNat
-        redID = nativeID % NNat
-        i, j = divmod(redID, Ny)
-
-        # Calculate super pixel IDs
-        superi = i // xdim
-        superj = j // ydim
-        superFirstPix = firstPix // NNat * superN
-        superIDs = superi * superNy + superj + superFirstPix
-
-        return superIDs
-
+        superFirstPix = (firstPix/NNat)*superN
+        
+        super = superi*superNy+superj+superFirstPix
+        
+        return super
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(LiteDataCreationAlgo)

@@ -23,6 +23,9 @@ instrument:
   lite:
     definition:
       file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
+    resolution:
+      Nx: 256
+      Ny: 256
 
 nexus:
   home: nexus/
