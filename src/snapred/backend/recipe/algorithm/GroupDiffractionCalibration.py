@@ -11,6 +11,9 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 class GroupDiffractionCalibration(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Diffraction Calibration"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
