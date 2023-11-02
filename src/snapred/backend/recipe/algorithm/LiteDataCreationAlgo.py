@@ -1,13 +1,12 @@
 import json
-import os
 
-import numpy as np
 from mantid.api import *
 from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
 from mantid.kernel import Direction
 
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.meta.Config import Config
 
 name = "LiteDataCreationAlgo"
@@ -47,26 +46,21 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             Filename=self.rawDataPath,
             OutputWorkspace=inputWorkspaceName,
             NumberOfBins=1,
-            LoadMonitors=True,
+            LoadMonitors=False,
         )
 
         groupingWorkspaceName = f"{self.runNumber}_lite_grouping_ws"
 
-        # create the lite grouping workspace using input as template
-        self.mantidSnapper.CreateGroupingWorkspace(
-            f"Creating {groupingWorkspaceName}...",
-            InputWorkspace=inputWorkspaceName,
-            GroupDetectorsBy="All",
+        # load grouping map
+        self.mantidSnapper.LoadGroupingDefinition(
+            "Loading lite grouping information...",
+            GroupingFilename=str(Config["instrument.lite.map.file"]),
+            InstrumentFilename=str(Config["instrument.native.definition.file"]),
             OutputWorkspace=groupingWorkspaceName,
         )
 
         self.mantidSnapper.executeQueue()
         groupingWorkspace = self.mantidSnapper.mtd[groupingWorkspaceName]
-
-        # create mapping for grouping workspace
-        nHst = groupingWorkspace.getNumberHistograms()
-        for spec in range(nHst):
-            groupingWorkspace.setY(spec, [self.superID(spec, 8, 8)])
 
         # use group detector with specific grouping file to create lite data
         self.mantidSnapper.GroupDetectors(
@@ -89,42 +83,10 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             f"Deleting {groupingWorkspaceName}...",
             Workspace=groupingWorkspaceName,
         )
-        self.mantidSnapper.DeleteWorkspace(
-            f"Deleting {self.runNumber}_raw_monitors...",
-            Workspace=str(self.runNumber) + "_raw_monitors",
-        )
 
         self.mantidSnapper.executeQueue()
         self.mantidSnapper.mtd[outputWorkspaceName]
         self.setProperty("OutputWorkspace", outputWorkspaceName)
-
-    def superID(self, nativeID, xdim, ydim):
-        # native number of pixels per panel
-        Nx = int(Config["instrument.lite.resolution.Nx"])
-        Ny = int(Config["instrument.lite.resolution.Ny"])
-        NNat = Nx * Ny
-
-        # reduced ID beginning at zero in each panel
-        firstPix = (nativeID // NNat) * NNat
-        redID = nativeID % NNat
-
-        # native (reduced) coordinates on pixel face
-        (i, j) = divmod(redID, Ny)
-        superi = divmod(i, xdim)[0]
-        superj = divmod(j, ydim)[0]
-
-        # some basics of the super panel
-        # 32 running from 0 to 31
-        superNx = Nx / xdim
-        superNy = Ny / ydim
-        superN = superNx * superNy
-
-        superFirstPix = (firstPix / NNat) * superN
-
-        supergrouping = superi * superNy + superj + superFirstPix
-
-        return supergrouping
-
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(LiteDataCreationAlgo)
