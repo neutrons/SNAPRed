@@ -8,10 +8,8 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "GroupByGroupCalibration"
 
-
-class GroupByGroupCalibration(PythonAlgorithm):
+class GroupDiffractionCalibration(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
@@ -20,7 +18,7 @@ class GroupByGroupCalibration(PythonAlgorithm):
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
@@ -46,19 +44,18 @@ class GroupByGroupCalibration(PythonAlgorithm):
                 f'{self.stateFolder}SNAP{self.runNumber}_calib_geom_{date.today().strftime("%Y%m%d")}.h5'
             )
 
-        # from the instrument state, read the overall min/max TOF
-        self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
-        self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
-        instrConfig = ingredients.instrumentState.instrumentConfig
-        self.TOFBin: float = abs(instrConfig.delTOverT / instrConfig.NBins)
-        self.TOFParams = (self.TOFMin, self.TOFBin, self.TOFMax)
-
         # from grouping parameters, read the overall min/max d-spacings
         self.overallDMin: float = max(ingredients.focusGroup.dMin)
         self.overallDMax: float = min(ingredients.focusGroup.dMax)
-        self.dBin: float = abs(min(ingredients.focusGroup.dBin))
+        self.dBin: float = min([abs(dbin) for dbin in ingredients.focusGroup.dBin])
         self.maxDSpaceShifts: float = 2.5 * max(ingredients.focusGroup.FWHM)
         self.dSpaceParams = (self.overallDMin, self.dBin, self.overallDMax)
+
+        # from the instrument state, read the overall min/max TOF
+        self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
+        self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
+        self.TOFBin: float = self.dBin
+        self.TOFParams = (self.TOFMin, self.TOFBin, self.TOFMax)
 
         # path to grouping file, specifying group IDs of pixels
         self.groupingFile: str = ingredients.focusGroup.definition
@@ -263,4 +260,4 @@ class GroupByGroupCalibration(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(GroupByGroupCalibration)
+AlgorithmFactory.subscribe(GroupDiffractionCalibration)

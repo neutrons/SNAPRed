@@ -15,13 +15,13 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import (
-    CalculateOffsetDIFC as ThisAlgo,  # noqa: E402
+from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import (
+    PixelDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
 from snapred.meta.Config import Resource
 
 
-class TestCalculateOffsetDIFC(unittest.TestCase):
+class TestPixelDiffractionCalibration(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         self.fakeRunNumber = "555"
@@ -114,6 +114,7 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
         assert algo.overallDMin == max(self.fakeIngredients.focusGroup.dMin)
         assert algo.overallDMax == min(self.fakeIngredients.focusGroup.dMax)
         assert algo.dBin == min(self.fakeIngredients.focusGroup.dBin)
+        assert algo.TOFBin == algo.dBin
 
     def test_init_properties(self):
         """Test that he properties of the algorithm can be initialized"""
@@ -162,21 +163,6 @@ class TestCalculateOffsetDIFC(unittest.TestCase):
             data = json.loads(algo.getProperty("data").value)
             allOffsets.append(data["medianOffset"])
             assert allOffsets[-1] <= max(1.0e-12, allOffsets[-2])
-
-    def test_init_difc_table(self):
-        from mantid.simpleapi import mtd
-
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.chopIngredients(self.fakeIngredients)
-        self.makeFakeNeutronData(algo)
-        algo.initDIFCTable()
-        difcTable = mtd[algo.difcWS]
-        for i, row in enumerate(difcTable.column("detid")):
-            assert row == i
-        for difc in difcTable.column("difc"):
-            print(f"{difc},")
 
     def test_retrieve_from_pantry(self):
         import os
