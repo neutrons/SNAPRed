@@ -1,4 +1,4 @@
-environment: test
+# environment: dev
 
 orchestration:
   path:
@@ -20,9 +20,14 @@ instrument:
           - nxs
           - hdf
   config: shared/Calibration/SNAPInstPrm.json
+  native:
+    definition:
+      file: ${instrument.home}shared/Malcolm/dataFiles/SNAP_Definition.xml
   lite:
     definition:
       file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
+    map:
+      file: ${instrument.home}shared/Calibration/Powder/LiteGroupMap.hdf
 
 nexus:
   home: nexus/
@@ -46,13 +51,13 @@ calibration:
     default:
       # degrees
       groupSliceValue: 5
-      alpha: 1.1
+      alpha: 0.1
       beta:
-        - 1
-        - 2
+        - 0.02
+        - 0.05
       FWHMMultiplier:
-        - -2
-        - 2
+        - 2.0
+        - 2.0
       peakTailCoefficient: 2.0
 
 localdataservice:
@@ -63,11 +68,8 @@ logging:
   level: 10
   SNAP:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
-  mantid:
-    format: '%Y-%m-%d %H:%M:%S,%i - %p - %s - %t'
 
 samples:
   home: /SNS/SNAP/shared/Calibration/CalibrantSamples
-
 
 cis_mode: true
