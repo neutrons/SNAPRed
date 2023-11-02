@@ -3,10 +3,6 @@ import unittest
 import unittest.mock as mock
 
 import pytest
-from mantid.simpleapi import (
-    DeleteWorkspace,
-    mtd,
-)
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
@@ -53,7 +49,6 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             ],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
-            maxOffset=10.0,
         )
 
     def makeFakeNeutronData(self, algo):
@@ -116,10 +111,10 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         assert algo.runNumber == self.fakeRunNumber
         assert algo.TOFMin == self.fakeIngredients.instrumentState.particleBounds.tof.minimum
         assert algo.TOFMax == self.fakeIngredients.instrumentState.particleBounds.tof.maximum
-        dsp = list(self.fakeIngredients.focusGroup.dSpaceParams.values())
-        assert algo.overallDMin == max([d.minimum for d in dsp])
-        assert algo.overallDMax == min([d.maximum for d in dsp])
-        assert algo.dBin == min([abs(d.binWidth) for d in dsp])
+        assert algo.overallDMin == max(self.fakeIngredients.focusGroup.dMin)
+        assert algo.overallDMax == min(self.fakeIngredients.focusGroup.dMax)
+        assert algo.dBin == min([abs(db) for db in self.fakeIngredients.focusGroup.dBin])
+        assert algo.TOFBin == algo.dBin
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""
