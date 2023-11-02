@@ -13,8 +13,8 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import CalculateOffsetDIFC
-from snapred.backend.recipe.algorithm.GroupByGroupCalibration import GroupByGroupCalibration
+from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
+from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as ThisRecipe
 from snapred.meta.Config import Resource
 
@@ -121,7 +121,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             pytest.fail("Test should have raised RuntimeError, but no error raised")
 
         mock_algo.setProperty.assert_called_once_with("Ingredients", self.fakeIngredients.json())
-        mock_AlgorithmManager.create.assert_called_once_with("CalculateOffsetDIFC")
+        mock_AlgorithmManager.create.assert_called_once_with("PixelDiffractionCalibration")
 
     @mock.patch(TheAlgorithmManager)
     def test_execute_unsuccessful_later_calls(self, mock_AlgorithmManager):
@@ -221,11 +221,11 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         import os
 
         # create sample data
-        offsetAlgo = CalculateOffsetDIFC()
+        offsetAlgo = PixelDiffractionCalibration()
         offsetAlgo.initialize()
         offsetAlgo.chopIngredients(self.fakeIngredients)
         self.makeFakeNeutronData(offsetAlgo)
-        pdcalAlgo = GroupByGroupCalibration()
+        pdcalAlgo = GroupDiffractionCalibration()
         pdcalAlgo.initialize()
         pdcalAlgo.chopIngredients(self.fakeIngredients)
         fakeFile = pdcalAlgo.outputFilename

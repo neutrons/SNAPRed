@@ -5,12 +5,8 @@ from mantid.api import AlgorithmManager
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import (
-    name as CalculateOffsetDIFC,
-)
-from snapred.backend.recipe.algorithm.GroupByGroupCalibration import (
-    name as GroupByGroupCalibration,
-)
+from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
+from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -18,8 +14,8 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class DiffractionCalibrationRecipe:
-    offsetDIFCAlgorithmName: str = CalculateOffsetDIFC
-    pdcalibrateAlgorithmName: str = GroupByGroupCalibration
+    offsetDIFCAlgorithmName: str = PixelDiffractionCalibration.__name__
+    pdcalibrateAlgorithmName: str = GroupDiffractionCalibration.__name__
 
     def __init__(self):
         pass
