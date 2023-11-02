@@ -99,6 +99,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
                 Filename=grouping_file_name,
                 InstrumentName=self.getProperty("InstrumentName").value,
                 InstrumentFilename=self.getProperty("InstrumentFilename").value,
+                InputWorkspace=self.getPropertyValue("InstrumentDonor"),
                 MakeGroupingWorkspace=True,
                 MakeCalWorkspace=False,
                 MakeMaskWorkspace=False,
