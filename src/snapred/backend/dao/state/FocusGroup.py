@@ -13,6 +13,23 @@ class FocusGroup(BaseModel):
     dSpaceParams: Dict[int, BinnedValue]
     definition: str
 
+    # emulate prior list behavior, for ease of integration
+    # these are sorted by group ID first, smallest ID to largest ID
+    @property
+    def dMin(self) -> List[float]:
+        return [dsp[1].minimum for dsp in sorted(self.dSpaceParams.items())]
+
+    @property
+    def dMax(self) -> List[float]:
+        return [dsp[1].maximum for dsp in sorted(self.dSpaceParams.items())]
+
+    @property
+    def dBin(self) -> List[float]:
+        return [
+            abs(dsp[1].binWidth) if dsp[1].binMode == "Linear" else -abs(dsp[1].binWidth)
+            for dsp in sorted(self.dSpaceParams.items())
+        ]
+
     @root_validator(allow_reuse=True)
     def validate_keys(cls, values):
         if values.get("FWHM").keys() != values.get("dSpaceParams").keys():

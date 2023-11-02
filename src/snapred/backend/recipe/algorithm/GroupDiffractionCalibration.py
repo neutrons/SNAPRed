@@ -49,12 +49,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             )
 
         # from grouping parameters, read the overall min/max d-spacings
-        self.dMax = [d.maximum for d in ingredients.focusGroup.dSpaceParams.values()]
-        self.dMin = [d.minimum for d in ingredients.focusGroup.dSpaceParams.values()]
-        self.dBin = [
-            (-abs(d.binWidth) if d.binMode == "Logarithmic" else abs(d.binWidth))
-            for d in ingredients.focusGroup.dSpaceParams.values()
-        ]
+        self.dMax = ingredients.focusGroup.dMin
+        self.dMin = ingredients.focusGroup.dMax
+        self.dBin = ingredients.focusGroup.dBin
 
         # from the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum

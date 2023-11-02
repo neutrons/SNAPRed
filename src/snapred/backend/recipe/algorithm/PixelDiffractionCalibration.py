@@ -43,10 +43,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.isLite: bool = False
 
         # from grouping parameters, read the overall min/max d-spacings
-        dsp = list(ingredients.focusGroup.dSpaceParams.values())
-        self.overallDMin: float = max([d.minimum for d in dsp])
-        self.overallDMax: float = min([d.maximum for d in dsp])
-        self.dBin: float = min([abs(d.binWidth) for d in dsp])
+        self.overallDMin: float = max(ingredients.focusGroup.dMin)
+        self.overallDMax: float = min(ingredients.focusGroup.dMax)
+        self.dBin: float = min([abs(dbin) for dbin in ingredients.focusGroup.dBin])
         self.dSpaceParams = (self.overallDMin, self.dBin, self.overallDMax)
 
         # from the instrument state, read the overall min/max TOF
