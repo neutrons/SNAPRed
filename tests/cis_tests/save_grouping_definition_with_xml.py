@@ -13,7 +13,7 @@ from snapred.meta.Config import Config, Resource
 from snapred.backend.log.logger import snapredLogger
 snapredLogger._level = 40
 
-localDir = '~/tmp/'
+localDir = os.path.expanduser('~/tmp/')
 PGDDir = '/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/'
 groupingFileXML = PGDDir + "SNAPFocGroup_Column.xml"
 groupingFileHDF = localDir + pathlib.Path(groupingFileXML).stem + ".hdf"
@@ -27,14 +27,13 @@ LoadEmptyInstrument(
 )
 assert mtd.doesExist(instrumentDonor)
 
-Config._config["cis_mode"] = False
+Config._config["cis_mode"] = True
 
 grwsXML = "gr_ws_from_XML"
 grwsHDF = "gr_ws_from_HDF"
 
 loads = {}
 saves = {}
-
 
 ###### TESTS OF LOAD #######################################
 

@@ -1,4 +1,5 @@
 import pathlib
+import h5py
 
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
@@ -112,22 +113,24 @@ class SaveGroupingDefinition(PythonAlgorithm):
             grouping_ws_name = self.getProperty("GroupingWorkspace").value
         self.grouping_ws = mtd[grouping_ws_name]
 
-        # To save the grouping workspace using Mantid SaveDiffCal algorithm
-        # we need to supply it with a calibration workspace
-        cal_ws_name = "cal_ws"
-        self.CreateZeroCalibrationWorkspace(cal_ws_name)
-
         outputFilename = self.getProperty("OutputFilename").value
-        self.mantidSnapper.SaveDiffCal(
-            f"Saving grouping workspace to {outputFilename}",
-            CalibrationWorkspace=cal_ws_name,
-            GroupingWorkspace=grouping_ws_name,
-            Filename=outputFilename,
-        )
-        self.mantidSnapper.WashDishes(
-            f"Cleanup the zero calibration workspace {cal_ws_name}",
-            Workspace=cal_ws_name,
-        )
+        groupIDs = self.grouping_ws.extractY()[:,0]
+        nothing = [0] * len(groupIDs) #np.zeros_like(detIDs)
+        instrument = self.grouping_ws.getInstrument()
+        detIDs = []
+        for groupID in self.grouping_ws.getGroupIDs():
+            detIDs.extend(self.grouping_ws.getDetectorIDsOfGroup(int(groupID)))
+
+        with h5py.File(outputFilename, 'w') as f:
+            f.create_dataset("calibration/group", data=groupIDs)
+            f.create_dataset("calibration/detid", data=detIDs)
+            f.create_dataset("calibration/difa", data=nothing)
+            f.create_dataset("calibration/difc", data=nothing)
+            f.create_dataset("calibration/instrument/name", data=instrument.getName())
+            # f.create_dataset("calibration/instrument/instrument_source", data=grouping_file_name) # TODO
+            f.create_dataset("calibration/zero", data=nothing)
+            f.create_dataset("calibration/use", data=nothing)
+
         if grouping_file_name != "":
             self.mantidSnapper.WashDishes(
                 f"Cleanup the grouping workspace {grouping_ws_name}",
@@ -135,26 +138,6 @@ class SaveGroupingDefinition(PythonAlgorithm):
             )
         self.mantidSnapper.executeQueue()
 
-    def CreateZeroCalibrationWorkspace(self, cal_ws_name) -> None:
-        self.mantidSnapper.CreateEmptyTableWorkspace(
-            "Creating empty table workspace...",
-            OutputWorkspace=cal_ws_name,
-        )
-        self.mantidSnapper.executeQueue()
-        cal_ws = mtd[cal_ws_name]
-
-        cal_ws.addColumn(type="int", name="detid", plottype=6)
-        cal_ws.addColumn(type="float", name="difc", plottype=6)
-        cal_ws.addColumn(type="float", name="difa", plottype=6)
-        cal_ws.addColumn(type="float", name="tzero", plottype=6)
-        cal_ws.addColumn(type="float", name="tofmin", plottype=6)
-
-        groupIDs = self.grouping_ws.getGroupIDs()
-        for groupID in groupIDs:
-            detIDs = self.grouping_ws.getDetectorIDsOfGroup(int(groupID))
-            for detID in detIDs:
-                nextRow = {"detid": int(detID), "difc": 0, "difa": 0, "tzero": 0, "tofmin": 0}
-                cal_ws.addRow(nextRow)
 
 
 # Register algorithm with Mantid
