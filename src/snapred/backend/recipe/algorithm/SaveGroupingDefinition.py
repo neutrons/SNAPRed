@@ -1,6 +1,6 @@
 import pathlib
-import h5py
 
+import h5py
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 from mantid.simpleapi import mtd
@@ -114,14 +114,14 @@ class SaveGroupingDefinition(PythonAlgorithm):
         self.grouping_ws = mtd[grouping_ws_name]
 
         outputFilename = self.getProperty("OutputFilename").value
-        groupIDs = self.grouping_ws.extractY()[:,0]
-        nothing = [0] * len(groupIDs) #np.zeros_like(detIDs)
+        groupIDs = self.grouping_ws.extractY()[:, 0]
+        nothing = [0] * len(groupIDs)  # np.zeros_like(detIDs)
         instrument = self.grouping_ws.getInstrument()
         detIDs = []
         for groupID in self.grouping_ws.getGroupIDs():
             detIDs.extend(self.grouping_ws.getDetectorIDsOfGroup(int(groupID)))
 
-        with h5py.File(outputFilename, 'w') as f:
+        with h5py.File(outputFilename, "w") as f:
             f.create_dataset("calibration/group", data=groupIDs)
             f.create_dataset("calibration/detid", data=detIDs)
             f.create_dataset("calibration/difa", data=nothing)
@@ -137,7 +137,6 @@ class SaveGroupingDefinition(PythonAlgorithm):
                 Workspace=grouping_ws_name,
             )
         self.mantidSnapper.executeQueue()
-
 
 
 # Register algorithm with Mantid
