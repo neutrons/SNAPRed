@@ -5,8 +5,8 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
 from mantid.kernel import Direction
 
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 
 name = "LiteDataCreationAlgo"
@@ -60,7 +60,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         )
 
         self.mantidSnapper.executeQueue()
-        groupingWorkspace = self.mantidSnapper.mtd[groupingWorkspaceName]
+        self.mantidSnapper.mtd[groupingWorkspaceName]
 
         # use group detector with specific grouping file to create lite data
         self.mantidSnapper.GroupDetectors(
@@ -87,6 +87,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
         self.mantidSnapper.mtd[outputWorkspaceName]
         self.setProperty("OutputWorkspace", outputWorkspaceName)
+
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(LiteDataCreationAlgo)
