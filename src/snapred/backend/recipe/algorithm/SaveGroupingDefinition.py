@@ -1,5 +1,6 @@
 import pathlib
 
+import h5py
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 from mantid.simpleapi import mtd
@@ -70,7 +71,12 @@ class SaveGroupingDefinition(PythonAlgorithm):
         # check that the input file name has a supported extension
         if grouping_file_name != "":
             file_extension = pathlib.Path(grouping_file_name).suffix.upper()[1:]
-            if file_extension not in self.supported_nexus_file_extensions + self.supported_xml_file_extensions:
+            supported_extensions = (
+                self.supported_nexus_file_extensions
+                + self.supported_xml_file_extensions
+                + self.supported_calib_file_extensions
+            )
+            if file_extension not in supported_extensions:
                 raise Exception(f"GroupingFilename has an unsupported file name extension {file_extension}")
 
         # check that the output file name has a supported extension
@@ -123,6 +129,11 @@ class SaveGroupingDefinition(PythonAlgorithm):
             f"Cleanup the zero calibration workspace {cal_ws_name}",
             Workspace=cal_ws_name,
         )
+        if grouping_file_name != "":
+            self.mantidSnapper.WashDishes(
+                f"Cleanup the grouping workspace {grouping_ws_name}",
+                Workspace=grouping_ws_name,
+            )
         self.mantidSnapper.executeQueue()
 
     def CreateZeroCalibrationWorkspace(self, cal_ws_name) -> None:
