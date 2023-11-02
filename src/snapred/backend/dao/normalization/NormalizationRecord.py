@@ -8,6 +8,8 @@ from snapred.backend.dao.normalization.Normalization import Normalization
 class NormalizationRecord(BaseModel):
     runNumber: str
     crystalInfo: CrystallographicInfo
+    #smoothing parameter
+    #absorption correction 
     normalization: Normalization
     workspaceNames: List[str]
     version: Optional[int]

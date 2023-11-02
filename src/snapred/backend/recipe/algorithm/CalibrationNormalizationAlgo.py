@@ -112,7 +112,7 @@ class CalibrationNormalization(PythonAlgorithm):
                 PreserveEvents=False,
             )
 
-        focused_data = self.mantidSnapper.DiffractionFocussing(
+        focused_data = self.mantidSnapper.DiffractionFocussing( #GroupDetectors instead
             "Performing Diffraction Focusing ...",
             InputWorkspace=data,
             GroupingWorkspace=groupingworkspace,
