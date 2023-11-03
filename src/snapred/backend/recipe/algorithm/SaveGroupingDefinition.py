@@ -5,6 +5,7 @@ from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, 
 from mantid.kernel import Direction
 from mantid.simpleapi import mtd
 
+from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -120,22 +121,34 @@ class SaveGroupingDefinition(PythonAlgorithm):
             grouping_ws_name = self.getProperty("GroupingWorkspace").value
         self.grouping_ws = mtd[grouping_ws_name]
 
-        # To save the grouping workspace using Mantid SaveDiffCal algorithm
-        # we need to supply it with a calibration workspace
-        cal_ws_name = "cal_ws"
-        self.CreateZeroCalibrationWorkspace(cal_ws_name)
-
         outputFilename = self.getProperty("OutputFilename").value
-        self.mantidSnapper.SaveDiffCal(
-            f"Saving grouping workspace to {outputFilename}",
-            CalibrationWorkspace=cal_ws_name,
-            GroupingWorkspace=grouping_ws_name,
-            Filename=outputFilename,
-        )
-        self.mantidSnapper.WashDishes(
-            f"Cleanup the zero calibration workspace {cal_ws_name}",
-            Workspace=cal_ws_name,
-        )
+
+        try:
+            self.mantidSnapper.SaveDiffCal(
+                f"Saving grouping workspace to {outputFilename}",
+                GroupingWorkspace=grouping_ws_name,
+                Filename=outputFilename,
+            )
+            self.mantidSnapper.executeQueue()
+        except AlgorithmException:
+            # In mantid without https://github.com/mantidproject/mantid/pull/36361
+            # a fake calibration table must be created
+            # this can be removed once mantid is new enough
+            self.log().information("Creating temporary calibration in order to use legacy SaveDiffCal")
+            cal_ws_name = "cal_ws"
+            self.CreateZeroCalibrationWorkspace(cal_ws_name)
+
+            self.mantidSnapper.SaveDiffCal(
+                f"Saving grouping workspace to {outputFilename}",
+                CalibrationWorkspace=cal_ws_name,
+                GroupingWorkspace=grouping_ws_name,
+                Filename=outputFilename,
+            )
+            self.mantidSnapper.WashDishes(
+                f"Cleanup the zero calibration workspace {cal_ws_name}",
+                Workspace=cal_ws_name,
+            )
+            self.mantidSnapper.executeQueue()
         if grouping_file_name != "":
             self.mantidSnapper.WashDishes(
                 f"Cleanup the grouping workspace {grouping_ws_name}",
@@ -144,6 +157,8 @@ class SaveGroupingDefinition(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
     def CreateZeroCalibrationWorkspace(self, cal_ws_name) -> None:
+        # TODO this can be removed once mantid has
+        # https://github.com/mantidproject/mantid/pull/36361
         self.mantidSnapper.CreateEmptyTableWorkspace(
             "Creating empty table workspace...",
             OutputWorkspace=cal_ws_name,
