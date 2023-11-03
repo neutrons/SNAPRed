@@ -60,13 +60,18 @@ class SaveGroupingDefinition(PythonAlgorithm):
         self.supported_nexus_file_extensions = ["NXS", "NXS5"]
         self.supported_xml_file_extensions = ["XML"]
 
-    def validateInput(self) -> None:
+    def validateInputs(self) -> None:
+        errors = {}
+
         # either file name or workspace name must be specified
         grouping_file_name = self.getProperty("GroupingFilename").value
         grouping_ws_name = self.getProperty("GroupingWorkspace").value
         absent_input_properties_count = sum(not prop for prop in [grouping_file_name, grouping_ws_name])
         if absent_input_properties_count == 0 or absent_input_properties_count == 2:
-            raise Exception("Either GroupingFilename or GroupingWorkspace must be specified, but not both.")
+            msg = "Either GroupingFilename or GroupingWorkspace must be specified, but not both."
+            errors["GroupingFilename"] = msg
+            errors["GroupingWorkspace"] = msg
+            return errors
 
         # check that the input file name has a supported extension
         if grouping_file_name != "":
@@ -77,26 +82,28 @@ class SaveGroupingDefinition(PythonAlgorithm):
                 + self.supported_calib_file_extensions
             )
             if file_extension not in supported_extensions:
-                raise Exception(f"GroupingFilename has an unsupported file name extension {file_extension}")
+                errors["GroupingFilename"] = f"GroupingFilename has an unsupported file name extension {file_extension}"
 
         # check that the output file name has a supported extension
         outputFilename = self.getProperty("OutputFilename").value
         file_extension = pathlib.Path(outputFilename).suffix.upper()[1:]
         if file_extension not in self.supported_calib_file_extensions:
-            raise Exception(f"OutputFilename has an unsupported file name extension {file_extension}")
+            errors["OutputFilename"] = f"OutputFilename has an unsupported file name extension {file_extension}"
 
         instrumentName = bool(self.getProperty("InstrumentName").value)
         instrumentFileName = bool(self.getProperty("InstrumentFileName").value)
         instrumentDonor = bool(self.getProperty("InstrumentDonor").value)
         instrumentPropertiesCount = sum(prop for prop in [instrumentName, instrumentFileName, instrumentDonor])
         if instrumentPropertiesCount == 0 or instrumentPropertiesCount > 1:
-            raise Exception(
-                "Either InstrumentName, InstrumentFileName, or InstrumentDonor must be specified, but not all three."
-            )
+            msg = "Either InstrumentName, InstrumentFileName, or InstrumentDonor must be specified, but not all three."
+            errors["InstrumentName"] = msg
+            errors["InstrumentFileName"] = msg
+            errors["InstrumentDonor"] = msg
+
+        # return results of checks
+        return errors
 
     def PyExec(self) -> None:
-        self.validateInput()
-
         grouping_file_name = self.getProperty("GroupingFilename").value
         if grouping_file_name != "":  # create grouping workspace from file
             grouping_ws_name = "gr_ws_name"
