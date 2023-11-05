@@ -31,34 +31,34 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         fakeInstrumentState.particleBounds.tof.maximum = 1000
 
         fakeFocusGroup = FocusGroup(
-            name = "natural",
-            nHst = 4,
-            FWHM = {3:5, 7:5, 2:5, 11:5},
-            dSpaceParams = {
+            name="natural",
+            nHst=4,
+            FWHM={3: 5, 7: 5, 2: 5, 11: 5},
+            dSpaceParams={
                 3: {"minimum": 0.05, "binWidth": 0.00086, "maximum": 0.35, "binMode": "Logarithmic"},
                 7: {"minimum": 0.10, "binWidth": 0.00096, "maximum": 0.50, "binMode": "Logarithmic"},
                 2: {"minimum": 0.05, "binWidth": 0.00130, "maximum": 0.30, "binMode": "Logarithmic"},
                 11: {"minimum": 0.10, "binWidth": 0.00117, "maximum": 0.40, "binMode": "Logarithmic"},
             },
-            definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
+            definition=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
         )
 
         peakList3 = [
             DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum": 0.15, "maximum": 0.25}}),
         ]
-        group3 = GroupPeakList(groupID=3, peaks=peakList3, maxfwhm = 5)
+        group3 = GroupPeakList(groupID=3, peaks=peakList3, maxfwhm=5)
         peakList7 = [
             DetectorPeak.parse_obj({"position": {"value": 0.3, "minimum": 0.20, "maximum": 0.40}}),
         ]
-        group7 = GroupPeakList(groupID=7, peaks=peakList7, maxfwhm = 5)
+        group7 = GroupPeakList(groupID=7, peaks=peakList7, maxfwhm=5)
         peakList2 = [
             DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0.10, "maximum": 0.25}}),
         ]
-        group2 = GroupPeakList(groupID=2, peaks=peakList2, maxfwhm = 5)
+        group2 = GroupPeakList(groupID=2, peaks=peakList2, maxfwhm=5)
         peakList11 = [
             DetectorPeak.parse_obj({"position": {"value": 0.24, "minimum": 0.18, "maximum": 0.30}}),
         ]
-        group11 = GroupPeakList(groupID=11, peaks=peakList11, maxfwhm = 5)
+        group11 = GroupPeakList(groupID=11, peaks=peakList11, maxfwhm=5)
 
         self.fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,

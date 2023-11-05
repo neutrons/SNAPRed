@@ -55,7 +55,7 @@
       </location>
     </component>
   </type>
-  
+
   <type name="Column2">
     <component type="panel" idstart="8" idfillbyfirst="y" idstepbyrow="2" >
       <location name="bank3">
