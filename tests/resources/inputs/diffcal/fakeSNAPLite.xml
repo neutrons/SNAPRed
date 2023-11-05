@@ -4,10 +4,7 @@
 <instrument xmlns="http://www.mantidproject.org/IDF/1.0"
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             xsi:schemaLocation="http://www.mantidproject.org/IDF/1.0 http://schema.mantidproject.org/IDF/1.0/IDFSchema.xsd"
-            name="SNAP" valid-from   ="2018-05-01 00:00:01"
-                        valid-to     ="2100-01-31 23:59:59"
-		        last-modified="2019-05-03 11:30:00">
-  <!--Data taken from /SNS/SNAP/2010_2_3_CAL/calibrations/SNAP_geom_2010_03_22.xml-->
+            name="fakeSNAP" valid-from="1970-01-01 00:00:00">
   <!--THIS IS A FAKE INSTRUMENT DEFINITION FOR TESTING ONLY-->
   <!--DEFAULTS-->
   <defaults>
@@ -22,14 +19,14 @@
   </defaults>
 
   <!--SOURCE-->
-  <component type="moderator">
-    <location z="-15.0"/>
+  <component type="source">
+    <location z="15.0"/>
   </component>
-  <type name="moderator" is="Source"/>
+  <type name="source" is="Source"/>
 
   <!--SAMPLE-->
   <component type="sample-position">
-    <location y="0.0" x="0.0" z="-5.0"/>
+    <location y="0.0" x="0.0" z="0.0"/>
   </component>
   <type name="sample-position" is="SamplePos"/>
 
@@ -39,77 +36,54 @@
   -->
 
   <!--DETECTORS-->
-  <component type="East">
-    <location >
-      <parameter name="roty">
-        <logfile id="det_arc2" eq="180.0+value"/>
-      </parameter>
-      <parameter name="r-position">
-        <logfile id="det_lin2" eq="0.5+value" />
-      </parameter>
-      <parameter name="t-position">
-        <logfile id="det_arc2" />
-      </parameter>
-    </location>
+  <component type="Column1">
+    <location x="-2.0+value" z="-5.0+value"/>
+  </component>
+  <component type="Column2">
+    <location x="+2.0+value" z="-5.0+value"/>
   </component>
 
-  <type name="East">
-    <component type="Column1">
-      <location/>
-    </component>
-  </type>
-
   <type name="Column1">
-    <component type="panel" idstart="0" idfillbyfirst="y" idstepbyrow="2" >
-      <location name="bank1">  <!-- was bank4 - 655360 -->
-        <trans x="0.0" y="0.0" />
+    <component type="panel" idstart="0" idfillbyfirst="x" idstepbyrow="2" >
+      <location name="bank1">
+        <trans x="0.0" y="+1" />
       </location>
     </component>
     <component type="panel" idstart="4" idfillbyfirst="y" idstepbyrow="2" >
-      <location name="bank2">  <!-- was bank4 - 655360 -->
-        <trans x="1.0" y="0.0" />
+      <location name="bank2">
+        <trans x="0.0" y="-1" />
       </location>
     </component>
+  </type>
+  
+  <type name="Column2">
     <component type="panel" idstart="8" idfillbyfirst="y" idstepbyrow="2" >
-      <location name="bank3">  <!-- was bank4 - 655360 -->
-        <trans x="0.0" y="1.0" />
+      <location name="bank3">
+        <trans x="0.0" y="+1" />
       </location>
     </component>
     <component type="panel" idstart="12" idfillbyfirst="y" idstepbyrow="2" >
-      <location name="bank4">  <!-- was bank4 - 655360 -->
-        <trans x="1.0" y="1.0" />
+      <location name="bank4">
+        <trans x="0.0" y="-1" />
       </location>
     </component>
   </type>
 
 <!-- Rectangular Detector Panel -->
 <type name="panel" is="rectangular_detector" type="pixel"
-    xpixels="2" xstart="0.0" xstep="+0.001"
-    ypixels="2" ystart="0.0" ystep="+0.001" >
+    xpixels="2" xstart="-0.5" xstep="+1"
+    ypixels="2" ystart="-0.5" ystep="+1" >
   <properties/>
 </type>
 
 <!-- Pixel for Detectors-->
-<type is="detector" name="pixel">
+<type name="pixel" is="detector">
   <cuboid id="pixel-shape">
-    <left-front-bottom-point  y="0.0" x="0.0" z="0.0"/>
-    <left-front-top-point     y="1.0" x="0.0" z="0.0"/>
-    <left-back-bottom-point   y="0.0" x="0.0" z="-0.0001"/>
-    <right-front-bottom-point y="0.0" x="1.0" z="0.0"/>
+    <left-front-bottom-point  y="-0.25" x="-0.25" z="0.0"/>
+    <left-front-top-point     y="+0.25" x="-0.25" z="0.0"/>
+    <left-back-bottom-point   y="-0.25" x="-0.25" z="0.01"/>
+    <right-front-bottom-point y="-0.25" x="+0.25" z="0.0"/>
   </cuboid>
   <algebra val="pixel-shape"/>
 </type>
-
-<!-- Shape for Monitors-->
-<!-- TODO: Update to real shape -->
-<type is="monitor" name="monitor">
-  <cylinder id="some-shape">
-    <centre-of-bottom-base p="0.0" r="0.0" t="0.0"/>
-    <axis y="0.0" x="0.0" z="1.0"/>
-    <radius val="1.00"/>
-    <height val="1.00"/>
-  </cylinder>
-  <algebra val="some-shape"/>
-</type>
-
 </instrument>
