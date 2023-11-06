@@ -137,9 +137,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         assert algo.runNumber == self.fakeRunNumber
         assert algo.TOFMin == self.fakeIngredients.instrumentState.particleBounds.tof.minimum
         assert algo.TOFMax == self.fakeIngredients.instrumentState.particleBounds.tof.maximum
-        assert algo.overallDMin == max(self.fakeIngredients.focusGroup.dMin)
-        assert algo.overallDMax == min(self.fakeIngredients.focusGroup.dMax)
-        assert algo.TOFBin == algo.dBin
+        assert algo.TOFBin == min([abs(db) for db in algo.dBin])
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""
