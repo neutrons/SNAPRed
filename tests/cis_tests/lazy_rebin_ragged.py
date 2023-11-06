@@ -47,11 +47,11 @@ peakList3 = [
 ]
 group3 = GroupPeakList(groupID=3, peaks=peakList3)
 peakList7 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.3, "minimum": 0.20, "maximum": 0.40}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.33, "minimum": 0.25, "maximum": 0.40}}),
 ]
 group7 = GroupPeakList(groupID=7, peaks=peakList7)
 peakList2 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0.10, "maximum": 0.25}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0.15, "maximum": 0.25}}),
 ]
 group2 = GroupPeakList(groupID=2, peaks=peakList2)
 peakList11 = [

@@ -44,7 +44,7 @@ peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 
 # SET TO TRUE TO STOP WASHING DISHES
-Config._config['cis_mode'] = False
+Config._config['cis_mode'] = True
 ####################################################################################
 
 # CREATE NEEDED INGREDIENTS ########################################################
