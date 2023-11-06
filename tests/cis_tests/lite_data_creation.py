@@ -15,11 +15,12 @@ dataFactoryService = DataFactoryService()
 
 runConfig = dataFactoryService.getRunConfig(runNumber)
 ipts = runConfig.IPTS
-run = RunConfig(runNumber=runNumber,IPTS=ipts)
+run = RunConfig(runNumber=runNumber,IPTS=ipts, isLite=True)
 
 LDCA = LiteDataCreationAlgo()
 LDCA.initialize()
 LDCA.setProperty("InputWorkspace", f"{runNumber}_raw")
-LDCA.setProperty("Run", run.json())
+LDCA.setProperty("RunConfig", run.json())
+LDCA.setProperty("AutoDeleteNonLiteWS", True)
 LDCA.setProperty("OutputWorkspace", f"{runNumber}_lite")
 LDCA.execute()

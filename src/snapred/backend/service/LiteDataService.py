@@ -16,7 +16,7 @@ class LiteDataService(Service):
     def __init__(self):
         super().__init__()
         self.dataFactoryService = DataFactoryService
-        self.registerPath("", self.reduceLiteData)
+        self.registerPath("createLiteData", self.reduceLiteData)
         return
 
     @staticmethod

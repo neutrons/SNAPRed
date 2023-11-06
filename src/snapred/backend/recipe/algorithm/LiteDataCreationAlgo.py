@@ -14,8 +14,12 @@ name = "LiteDataCreationAlgo"
 
 class LiteDataCreationAlgo(PythonAlgorithm):
     def PyInit(self):
-        self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-        self.declareProperty("Run", defaultValue="", direction=Direction.Input)
+        self.declareProperty(
+            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace containing full resolution the data set to be converted to lite",
+        )    
+        self.declareProperty("RunConfig", defaultValue="", direction=Direction.Input)
+        self.declareProperty("AutoDeleteNonLiteWS", defaultValue=False, direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
@@ -23,31 +27,34 @@ class LiteDataCreationAlgo(PythonAlgorithm):
     def chopIngredients(self, run: RunConfig):
         self.runNumber = run.runNumber
         self.IPTS = run.IPTS
-        print(self.IPTS)
         self.rawDataPath: str = self.IPTS + "nexus/SNAP_{}.nxs.h5".format(self.runNumber)
+        self.isLite = run.isLite
         pass
 
     def PyExec(self):
         self.log().notice("Lite Data Creation START!")
 
         # load input workspace
-        inputWorkspaceName = self.getProperty("InputWorkspace").value
+        inputWorkspaceName = self.getPropertyValue("InputWorkspace")
+
+        # flag for auto deletion of non-lite data
+        autoDelete = self.getProperty("AutoDeleteNonLiteWS").value
 
         # load run number
-        run = RunConfig(**json.loads(self.getProperty("Run").value))
+        run = RunConfig.parse_raw(self.getPropertyValue("RunConfig"))
         self.chopIngredients(run)
 
         # create outputworkspace
-        outputWorkspaceName = self.getProperty("OutputWorkspace").value
+        outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
 
-        # load file
-        self.mantidSnapper.LoadEventNexus(
-            "Loading Event Nexus for {}...".format(self.rawDataPath),
-            Filename=self.rawDataPath,
-            OutputWorkspace=inputWorkspaceName,
-            NumberOfBins=1,
-            LoadMonitors=False,
-        )
+        # # load file - NOTE: Algo doesn't need to load its own data.
+        # self.mantidSnapper.LoadEventNexus(
+        #     "Loading Event Nexus for {}...".format(self.rawDataPath),
+        #     Filename=self.rawDataPath,
+        #     OutputWorkspace=inputWorkspaceName,
+        #     NumberOfBins=1,
+        #     LoadMonitors=False,
+        # )
 
         groupingWorkspaceName = f"{self.runNumber}_lite_grouping_ws"
 
@@ -60,7 +67,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         )
 
         self.mantidSnapper.executeQueue()
-        self.mantidSnapper.mtd[groupingWorkspaceName]
 
         # use group detector with specific grouping file to create lite data
         self.mantidSnapper.GroupDetectors(
@@ -78,6 +84,12 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         )
 
         self.mantidSnapper.executeQueue()
+
+        if autoDelete == True:
+            self.mantidSnapper.DeleteWorkspace(
+                f"Deleting {inputWorkspaceName}...",
+                Workspace=f"{self.runNumber}_raw",
+            )
 
         self.mantidSnapper.DeleteWorkspace(
             f"Deleting {groupingWorkspaceName}...",
