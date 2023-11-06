@@ -118,7 +118,7 @@ class NormalizationCalibrationWorkflow:
         payload = SpecifyNormalizationRequest(
             run=RunConfig(runNumber=self.runNumber),
             workspace=self.responses[-2].data["ws"],
-            smoothWorkspace=self.responses[-1].data[f"smooth_ws"],
+            smoothWorkspace=self.responses[-1].data["smooth_ws"],
             samplePath=self.samplePath,
         )
         request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
