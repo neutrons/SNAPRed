@@ -37,9 +37,9 @@ fakeInstrumentState.particleBounds.tof.minimum = TOFMin
 fakeInstrumentState.particleBounds.tof.maximum = TOFMax
 
 # fake focus group
-fakeFocusGroupFile = Resource.getPath("inpouts/diffcal.fakeFocusGroup.json")
+fakeFocusGroupFile = "inputs/diffcal/fakeFocusGroup.json"
 fakeFocusGroup = FocusGroup.parse_raw(Resource.read(fakeFocusGroupFile))
-fakeFocusGroup.definition = fakeFocusGroupFile
+fakeFocusGroup.definition = Resource.getPath(fakeFocusGroupFile)
 print(fakeFocusGroup.json(indent=2))
 
 peakList3 = [
