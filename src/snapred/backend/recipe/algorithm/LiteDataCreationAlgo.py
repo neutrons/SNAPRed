@@ -17,7 +17,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         self.declareProperty(
             MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing full resolution the data set to be converted to lite",
-        )    
+        )
         self.declareProperty("RunConfig", defaultValue="", direction=Direction.Input)
         self.declareProperty("AutoDeleteNonLiteWS", defaultValue=False, direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
@@ -85,7 +85,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
 
         self.mantidSnapper.executeQueue()
 
-        if autoDelete == True:
+        if autoDelete is True:
             self.mantidSnapper.DeleteWorkspace(
                 f"Deleting {inputWorkspaceName}...",
                 Workspace=f"{self.runNumber}_raw",
