@@ -26,6 +26,6 @@ def test_LiteDataCreationAlgo_invalid_input():
     """Test how the algorithm handles an invalid input workspace."""
     liteDataCreationAlgo = LiteDataCreationAlgo()
     liteDataCreationAlgo.initialize()
-    liteDataCreationAlgo.setPropertyValue("InputWorkspace", "non_existent_ws")
+    liteDataCreationAlgo.setPropertyValue("AutoDeleteNonLiteWS", "1")
     with pytest.raises(RuntimeError):
         liteDataCreationAlgo.execute()
