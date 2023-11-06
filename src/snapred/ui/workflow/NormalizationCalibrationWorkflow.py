@@ -20,7 +20,7 @@ from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest, SNAPResponse
 from snapred.backend.dao.request import (
     NormalizationCalibrationRequest,
-    # NormalizationExportRequest,
+    #  NormalizationExportRequest,
     SpecifyNormalizationRequest,
 )
 from snapred.backend.log.logger import snapredLogger
@@ -99,7 +99,7 @@ class NormalizationCalibrationWorkflow:
         self._specifyCalibrationView.updateSample(sampleIndex)
         self._specifyCalibrationView.updateRunNumber(self.runNumber)
         self._specifyCalibrationView.updateEmptyRunNumber(self.emptyRunNumber)
-        self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
+        # self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
         self.samplePath = view.sampleDropDown.currentText()
 
         payload = NormalizationCalibrationRequest(
@@ -117,8 +117,8 @@ class NormalizationCalibrationWorkflow:
     def _specifyCalibration(self, workflowPresenter):
         payload = SpecifyNormalizationRequest(
             run=RunConfig(runNumber=self.runNumber),
-            workspace=self.responses[-1].data["ws"],
-            smoothWorkspace=self.responses[-2].data["smooth_ws"],
+            workspace=self.responses[-2].data["ws"],
+            smoothWorkspace=self.responses[-1].data[f"smooth_ws"],
             samplePath=self.samplePath,
         )
         request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
