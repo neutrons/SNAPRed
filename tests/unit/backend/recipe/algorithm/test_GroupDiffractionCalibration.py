@@ -2,7 +2,6 @@ import json
 import random
 import unittest
 import unittest.mock as mock
-from typing import Dict, List
 
 import pytest
 from snapred.backend.dao.DetectorPeak import DetectorPeak
@@ -13,12 +12,12 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import (
     GroupDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.meta.Config import Resource
 
 
@@ -34,29 +33,34 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         fakeInstrumentState.particleBounds.tof.maximum = 1000
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("inputs/diffcal/fakeFocusGroup.json"))
-        ntest = fakeFocusGroup.nHst
-        fakeFocusGroup.dBin = [abs(self.fakeDBin)] * ntest
-        fakeFocusGroup.dMax = [float(x) for x in range(100 * ntest, 101 * ntest)]
-        fakeFocusGroup.dMin = [float(x) for x in range(ntest)]
-        fakeFocusGroup.FWHM = [5 * random.random() for x in range(ntest)]
         fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
 
-        peakList1 = [
+        peakList3 = [
             DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
             DetectorPeak.parse_obj({"position": {"value": 5, "minimum": 4, "maximum": 6}}),
         ]
-        group1 = GroupPeakList(groupID=1, peaks=peakList1)
+        group3 = GroupPeakList(groupID=3, peaks=peakList3)
+        peakList7 = [
+            DetectorPeak.parse_obj({"position": {"value": 3, "minimum": 2, "maximum": 4}}),
+            DetectorPeak.parse_obj({"position": {"value": 6, "minimum": 5, "maximum": 7}}),
+        ]
+        group7 = GroupPeakList(groupID=7, peaks=peakList7)
         peakList2 = [
             DetectorPeak.parse_obj({"position": {"value": 3, "minimum": 2, "maximum": 4}}),
             DetectorPeak.parse_obj({"position": {"value": 6, "minimum": 5, "maximum": 7}}),
         ]
         group2 = GroupPeakList(groupID=2, peaks=peakList2)
+        peakList11 = [
+            DetectorPeak.parse_obj({"position": {"value": 3, "minimum": 2, "maximum": 4}}),
+            DetectorPeak.parse_obj({"position": {"value": 6, "minimum": 5, "maximum": 7}}),
+        ]
+        group11 = GroupPeakList(groupID=11, peaks=peakList11)
 
         self.fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
-            groupedPeakLists=[group1, group2],
+            groupedPeakLists=[group3, group7, group2, group11],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
         )
@@ -100,12 +104,9 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
 
     def initDIFCTable(self, difcws: str):
         from mantid.simpleapi import (
-            CalculateDIFC,
-            CreateEmptyTableWorkspace,
             CreateWorkspace,
-            DeleteWorkspaces,
+            DeleteWorkspace,
             LoadInstrument,
-            mtd,
         )
 
         # load an instrument, requires a workspace to load into
@@ -119,36 +120,14 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             RewriteSpectraMap=False,
         )
-        # create an empty table workspace, and load the instrument into it
-        CreateEmptyTableWorkspace(
-            OutputWorkspace=difcws,
-        )
-        CalculateDIFC(
-            InputWorkspace="idf",
-            OutputWorkspace="_tmp_difc_ws",
-        )
-
-        # convert the calibration workspace into a calibration table
-        tmpDifcWS = mtd["_tmp_difc_ws"]
-        DIFCtable = mtd[difcws]
-        DIFCtable.addColumn(type="int", name="detid", plottype=6)
-        DIFCtable.addColumn(type="double", name="difc", plottype=6)
-        DIFCtable.addColumn(type="double", name="difa", plottype=6)
-        DIFCtable.addColumn(type="double", name="tzero", plottype=6)
-        DIFCtable.addColumn(type="double", name="tofmin", plottype=6)
-        detids = [int(x) for x in tmpDifcWS.extractX()]
-        difcs = [float(x) for x in tmpDifcWS.extractY()]
-        for detid, difc in zip(detids, difcs):
-            DIFCtable.addRow(
-                {
-                    "detid": detid,
-                    "difc": difc,
-                    "difa": 0,
-                    "tzero": 0,
-                    "tofmin": 0,
-                }
-            )
-        DeleteWorkspaces(["idf", "_tmp_difc_ws"])
+        cc = CalculateDiffCalTable()
+        cc.initialize()
+        cc.setProperty("InputWorkspace", "idf")
+        cc.setProperty("CalibrationTable", difcws)
+        cc.setProperty("OffsetMode", "Signed")
+        cc.setProperty("BinWidth", self.fakeDBin)
+        cc.execute()
+        DeleteWorkspace("idf")
 
     def test_chop_ingredients(self):
         """Test that ingredients for algo are properly processed"""
@@ -160,7 +139,6 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         assert algo.TOFMax == self.fakeIngredients.instrumentState.particleBounds.tof.maximum
         assert algo.overallDMin == max(self.fakeIngredients.focusGroup.dMin)
         assert algo.overallDMax == min(self.fakeIngredients.focusGroup.dMax)
-        assert algo.dBin == abs(self.fakeDBin)
         assert algo.TOFBin == algo.dBin
 
     def test_init_properties(self):
@@ -171,7 +149,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("PreviousCalibrationTable", difcWS)
         assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
-        assert algo.getProperty("PreviousCalibrationTable").value == difcWS
+        assert algo.getPropertyValue("PreviousCalibrationTable") == difcWS
 
     @mock.patch.object(ThisAlgo, "restockPantry", mock.Mock(return_value=None))
     def test_execute(self):

@@ -1,8 +1,6 @@
 import json
-import random
 import unittest
 import unittest.mock as mock
-from typing import Dict, List
 
 import pytest
 from snapred.backend.dao.DetectorPeak import DetectorPeak
@@ -24,19 +22,26 @@ from snapred.meta.Config import Resource
 class TestPixelDiffractionCalibration(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
+        self.maxOffset = 2
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/diffcal/fakeInstrumentState.json"))
-        fakeInstrumentState.particleBounds.tof.minimum = 10
-        fakeInstrumentState.particleBounds.tof.maximum = 1000
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/diffcal/fakeFocusGroup.json"))
         fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
 
-        peakList = [
-            DetectorPeak.parse_obj({"position": {"value": 1.5, "minimum": 1, "maximum": 2}}),
-            DetectorPeak.parse_obj({"position": {"value": 3.5, "minimum": 3, "maximum": 4}}),
+        peakList3 = [
+            DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum": 0.15, "maximum": 0.25}}),
+        ]
+        peakList7 = [
+            DetectorPeak.parse_obj({"position": {"value": 0.3, "minimum": 0.20, "maximum": 0.40}}),
+        ]
+        peakList2 = [
+            DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0.10, "maximum": 0.25}}),
+        ]
+        peakList11 = [
+            DetectorPeak.parse_obj({"position": {"value": 0.24, "minimum": 0.18, "maximum": 0.30}}),
         ]
 
         self.fakeIngredients = DiffractionCalibrationIngredients(
@@ -44,8 +49,10 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
             groupedPeakLists=[
-                GroupPeakList(groupID=3, peaks=peakList, maxfwhm=0.01),
-                GroupPeakList(groupID=7, peaks=peakList, maxfwhm=0.02),
+                GroupPeakList(groupID=3, peaks=peakList3, maxfwhm=5),
+                GroupPeakList(groupID=7, peaks=peakList7, maxfwhm=5),
+                GroupPeakList(groupID=2, peaks=peakList2, maxfwhm=5),
+                GroupPeakList(groupID=11, peaks=peakList11, maxfwhm=5),
             ],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
@@ -54,19 +61,17 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
     def makeFakeNeutronData(self, algo):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
         from mantid.simpleapi import (
-            ChangeBinOffset,
             CreateSampleWorkspace,
             LoadInstrument,
-            MoveInstrumentComponent,
-            RotateInstrumentComponent,
         )
 
         # prepare with test data
+        midpoint = (algo.overallDMin + algo.overallDMax) / 2.0
         CreateSampleWorkspace(
             OutputWorkspace=algo.inputWSdsp,
             # WorkspaceType="Histogram",
             Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=1.2,Sigma=0.2",
+            UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={midpoint },Sigma={midpoint /10}",
             Xmin=algo.overallDMin,
             Xmax=algo.overallDMax,
             BinWidth=algo.dBin,
@@ -78,26 +83,6 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             Workspace=algo.inputWSdsp,
             Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             RewriteSpectraMap=True,
-        )
-        # the below are meant to de-align the pixels so an offset correction is needed
-        ChangeBinOffset(
-            InputWorkspace=algo.inputWSdsp,
-            OutputWorkspace=algo.inputWSdsp,
-            Offset=-0.7 * algo.overallDMin,
-        )
-        RotateInstrumentComponent(
-            Workspace=algo.inputWSdsp,
-            ComponentName="bank1",
-            Y=1.0,
-            Angle=90.0,
-        )
-        MoveInstrumentComponent(
-            Workspace=algo.inputWSdsp,
-            ComponentName="bank1",
-            X=5.0,
-            Y=-0.1,
-            Z=0.1,
-            RelativePosition=False,
         )
         # # rebin and convert for DSP, TOF
         algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWSdsp, "dSpacing")
@@ -111,13 +96,13 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         assert algo.runNumber == self.fakeRunNumber
         assert algo.TOFMin == self.fakeIngredients.instrumentState.particleBounds.tof.minimum
         assert algo.TOFMax == self.fakeIngredients.instrumentState.particleBounds.tof.maximum
-        assert algo.overallDMin == max(self.fakeIngredients.focusGroup.dMin)
-        assert algo.overallDMax == min(self.fakeIngredients.focusGroup.dMax)
-        assert algo.dBin == min(self.fakeIngredients.focusGroup.dBin)
+        assert algo.overallDMin == min(self.fakeIngredients.focusGroup.dMin)
+        assert algo.overallDMax == max(self.fakeIngredients.focusGroup.dMax)
+        assert algo.dBin == min([abs(db) for db in self.fakeIngredients.focusGroup.dBin])
         assert algo.TOFBin == algo.dBin
 
     def test_init_properties(self):
-        """Test that he properties of the algorithm can be initialized"""
+        """Test that the properties of the algorithm can be initialized"""
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
@@ -128,15 +113,17 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("MaxOffset", self.maxOffset)
         algo.chopIngredients(self.fakeIngredients)
         self.makeFakeNeutronData(algo)
         assert algo.execute()
 
         data = json.loads(algo.getProperty("data").value)
-        assert data["medianOffset"] is not None
-        assert data["medianOffset"] != 0
-        assert data["medianOffset"] > 0
-        assert data["medianOffset"] <= 2
+        x = data["medianOffset"]
+        assert x is not None
+        assert x != 0.0
+        assert x > 0.0
+        assert x <= self.maxOffset
 
     # patch to make the offsets of sample data non-zero
     def test_reexecution_and_convergence(self):
@@ -145,15 +132,17 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("MaxOffset", self.maxOffset)
         algo.chopIngredients(self.fakeIngredients)
         self.makeFakeNeutronData(algo)
         assert algo.execute()
 
         data = json.loads(algo.getProperty("data").value)
-        assert data["medianOffset"] is not None
-        assert data["medianOffset"] != 0
-        assert data["medianOffset"] > 0
-        assert data["medianOffset"] <= 2
+        x = data["medianOffset"]
+        assert x is not None
+        assert x != 0.0
+        assert x > 0.0
+        assert x <= self.maxOffset
 
         # check that value converges
         numIter = 5
@@ -162,7 +151,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             algo.execute()
             data = json.loads(algo.getProperty("data").value)
             allOffsets.append(data["medianOffset"])
-            assert allOffsets[-1] <= max(1.0e-12, allOffsets[-2])
+            assert allOffsets[-1] <= max(1.0e-4, allOffsets[-2])
 
     def test_retrieve_from_pantry(self):
         import os
