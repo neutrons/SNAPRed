@@ -77,7 +77,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 allPeakBoundaries.append(peak.maximum)
             self.groupedPeaks[peakList.groupID] = allPeaks
             self.groupedPeakBoundaries[peakList.groupID] = allPeakBoundaries
-        self.groupIDs = sorted(self.groupIDs)
+        # self.groupIDs = sorted(self.groupIDs)
 
         self.inputWStof: str = self.getProperty("InputWorkspace").value
         self.calibrationTable: str = self.getProperty("PreviousCalibrationTable").value
