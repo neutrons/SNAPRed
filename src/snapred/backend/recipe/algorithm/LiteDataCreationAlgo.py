@@ -47,15 +47,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         # create outputworkspace
         outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
 
-        # # load file - NOTE: Algo doesn't need to load its own data.
-        # self.mantidSnapper.LoadEventNexus(
-        #     "Loading Event Nexus for {}...".format(self.rawDataPath),
-        #     Filename=self.rawDataPath,
-        #     OutputWorkspace=inputWorkspaceName,
-        #     NumberOfBins=1,
-        #     LoadMonitors=False,
-        # )
-
         groupingWorkspaceName = f"{self.runNumber}_lite_grouping_ws"
 
         # load grouping map
