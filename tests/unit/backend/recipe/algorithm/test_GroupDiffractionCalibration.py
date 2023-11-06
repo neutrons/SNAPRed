@@ -15,14 +15,14 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.GroupByGroupCalibration import (
-    GroupByGroupCalibration as ThisAlgo,  # noqa: E402
+from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import (
+    GroupDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.meta.Config import Resource
 
 
-class TestGroupByGroupCalibration(unittest.TestCase):
+class TestGroupDiffractionCalibration(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         self.fakeDBin = abs(0.001)
@@ -161,6 +161,7 @@ class TestGroupByGroupCalibration(unittest.TestCase):
         assert algo.overallDMin == max(self.fakeIngredients.focusGroup.dMin)
         assert algo.overallDMax == min(self.fakeIngredients.focusGroup.dMax)
         assert algo.dBin == abs(self.fakeDBin)
+        assert algo.TOFBin == algo.dBin
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""

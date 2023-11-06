@@ -144,7 +144,7 @@ class MantidSnapper:
                     val = val.get()
                 algorithm.setProperty(prop, val)
             if not algorithm.execute():
-                raise RuntimeError("")
+                raise RuntimeError(f"{name} failed to execute")
             for prop, val in outputs.items():
                 # TODO: Special cases are bad
                 if name == "LoadDiffCal":
@@ -156,7 +156,8 @@ class MantidSnapper:
                 val.update(returnVal)
         except RuntimeError as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
-            raise AlgorithmException(name, str(e))
+            self.cleanup()
+            raise AlgorithmException(name, str(e)) from e
 
     def executeQueue(self):
         if self.parentAlgorithm:
