@@ -37,18 +37,9 @@ fakeInstrumentState.particleBounds.tof.minimum = TOFMin
 fakeInstrumentState.particleBounds.tof.maximum = TOFMax
 
 # fake focus group
-fakeFocusGroup = FocusGroup(
-    name = "natural",
-    nHst = 4,
-    FWHM = {3:5, 7:5, 2:5, 11:5},
-    dSpaceParams = {
-        3: {"minimum": 0.05, "binWidth": 0.00086, "maximum": 0.35, "binMode": "Logarithmic"},
-        7: {"minimum": 0.10, "binWidth": 0.00096, "maximum": 0.50, "binMode": "Logarithmic"},
-        2: {"minimum": 0.05, "binWidth": 0.00130, "maximum": 0.30, "binMode": "Logarithmic"},
-        11: {"minimum": 0.10, "binWidth": 0.00117, "maximum": 0.40, "binMode": "Logarithmic"},
-    },
-    definition = Resource.getPath("inputs/diffcal/fakeFocusGroup.json"),
-)
+fakeFocusGroupFile = Resource.getPath("inpouts/diffcal.fakeFocusGroup.json")
+fakeFocusGroup = FocusGroup.parse_raw(Resource.read(fakeFocusGroupFile))
+fakeFocusGroup.definition = fakeFocusGroupFile
 print(fakeFocusGroup.json(indent=2))
 
 peakList3 = [

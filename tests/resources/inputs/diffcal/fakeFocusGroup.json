@@ -1,12 +1,12 @@
 {
-  "name": "Column",
+  "name": "natural",
   "FWHM": {"3": 5, "7": 5, "2": 5, "11": 5},
   "nHst": 4,
   "dSpaceParams": {
-    "3": {"minimum": 0.65, "binWidth": 0.00086, "maximum": 5.15, "binMode": "Logarithmic"},
-    "7": {"minimum": 0.65, "binWidth": 0.00096, "maximum": 5.43, "binMode": "Logarithmic"},
-    "2": {"minimum": 0.65, "binWidth": 0.0013, "maximum": 5.77, "binMode": "Logarithmic"},
-    "11": {"minimum": 0.65, "binWidth": 0.00117, "maximum": 5.95, "binMode": "Logarithmic"}
+    "3": {"minimum": 0.05, "binWidth": 0.00086, "maximum": 0.35, "binMode": "Logarithmic"},
+    "7": {"minimum": 0.10, "binWidth": 0.00096, "maximum": 0.50, "binMode": "Logarithmic"},
+    "2": {"minimum": 0.05, "binWidth": 0.0013, "maximum": 0.30, "binMode": "Logarithmic"},
+    "11": {"minimum": 0.15, "binWidth": 0.00117, "maximum": 0.40, "binMode": "Logarithmic"}
   },
-  "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
+  "definition": ""
 }
