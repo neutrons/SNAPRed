@@ -77,11 +77,12 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         )
 
         # prepare with test data
+        midpoint = (algo.overallDMin + algo.overallDMax) / 2.0
         CreateSampleWorkspace(
             OutputWorkspace=algo.inputWSdsp,
             # WorkspaceType="Histogram",
             Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=1.2,Sigma=0.2",
+            UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={midpoint },Sigma={midpoint /10}",
             Xmin=algo.overallDMin,
             Xmax=algo.overallDMax,
             BinWidth=algo.dBin,
