@@ -12,6 +12,7 @@ class RunConfig(BaseModel):
     maskFileDirectory: Optional[str] = None
     gsasFileDirectory: Optional[str] = None
     calibrationState: Optional[str] = None
+    isLite: Optional[bool] = None
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

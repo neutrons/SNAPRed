@@ -1,26 +1,37 @@
-from typing import Dict, List
+from typing import List
 
 from pydantic import BaseModel, root_validator
-
-from snapred.backend.dao.Limit import BinnedValue
 
 
 class FocusGroup(BaseModel):
     name: str
-    nHst: int
-    FWHM: Dict[int, int]
+    FWHM: List[int]
     # these props apply to allgroups? TODO: Move up a level?
-    dSpaceParams: Dict[int, BinnedValue]
+    nHst: int
+    dBin: List[float]
+    dMax: List[float]
+    dMin: List[float]
     definition: str
 
-    @root_validator(allow_reuse=True)
-    def validate_keys(cls, values):
-        if values.get("FWHM").keys() != values.get("dSpaceParams").keys():
-            raise ValueError("Inconsident group IDs in FWHM, d-space parameters")
-        return values
+    @root_validator(pre=True, allow_reuse=True)
+    def validate_all_lists_equal(cls, v):
+        nHst = v["nHst"]
+        if len(v["FWHM"]) != nHst:
+            raise ValueError("Mismatch in focus group size and length of FWHM list")
+        if len(v["dMin"]) != nHst:
+            raise ValueError("Mismatch in focus group size and length of dMin list")
+        if len(v["dMax"]) != nHst:
+            raise ValueError("Mismatch in focus group size and length of dMax list")
+        if len(v["dBin"]) != nHst:
+            raise ValueError("Mismatch in focus group size and length of dBin list")
+        return v
 
-    @root_validator(allow_reuse=True)
-    def validateNHist(cls, values):
-        if values.get("nHst") != len(values.get("FWHM")):
-            raise ValueError("Number of histograms does not match number of groups")
-        return values
+    @root_validator(pre=True, allow_reuse=True)
+    def validate_correct_limits(cls, v):
+        nHst = v["nHst"]
+        dMin = v["dMin"]
+        dMax = v["dMax"]
+        for i in range(nHst):
+            if dMin[i] >= dMax[i]:
+                raise ValueError("Within focus group, all dMins must be strictly less than dMax")
+        return v

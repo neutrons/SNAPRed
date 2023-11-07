@@ -61,12 +61,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.isLite: bool = True
 
         # from grouping parameters, read the overall min/max d-spacings
-        self.dMax = [d.maximum for d in ingredients.focusGroup.dSpaceParams.values()]
-        self.dMin = [d.minimum for d in ingredients.focusGroup.dSpaceParams.values()]
-        self.dBin = [
-            (-abs(d.binWidth) if d.binMode == "Logarithmic" else abs(d.binWidth))
-            for d in ingredients.focusGroup.dSpaceParams.values()
-        ]
+        self.dMax = ingredients.focusGroup.dMax
+        self.dMin = ingredients.focusGroup.dMin
+        self.dBin = [-abs(db) for db in ingredients.focusGroup.dBin]
 
         # from the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
@@ -90,9 +87,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             self.groupedPeaks[peakList.groupID] = allPeaks
             self.groupedPeakBoundaries[peakList.groupID] = allPeakBoundaries
 
-        if self.groupIDs != list(ingredients.focusGroup.dSpaceParams.keys()):
+        if len(self.groupIDs) != len(ingredients.focusGroup.nHst):
             raise RuntimeError(
-                f"Group IDs do not match between peak list and focus group: {self.groupIDs} vs {ingredients.focusGroup.dSpaceParams.keys()}"  # noqa: E501
+                f"Group IDs do not match between peak list and focus group: {self.groupIDs} vs {ingredients.focusGroup.nHst}"  # noqa: E501
             )
 
     def chopNeutronData(self):

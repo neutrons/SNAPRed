@@ -49,8 +49,8 @@
       "maximum": 2.6
     },
     "tof": {
-      "minimum": 0,
-      "maximum": 10186.800131442584
+      "minimum": 10,
+      "maximum": 1000
     }
   },
   "pixelGroupingInstrumentParameters": null,

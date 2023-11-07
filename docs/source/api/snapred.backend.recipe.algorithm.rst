@@ -13,7 +13,7 @@ snapred.backend.recipe.algorithm.AlignAndFocusReductionAlgorithm module
    :show-inheritance:
 
 snapred.backend.recipe.algorithm.PixelDiffractionCalibration module
---------------------------------------------------------------------
+---------------------------------------------------------------------
 
 .. automodule:: snapred.backend.recipe.algorithm.PixelDiffractionCalibration
    :members:
@@ -77,7 +77,7 @@ snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm module
    :show-inheritance:
 
 snapred.backend.recipe.algorithm.GroupDiffractionCalibration module
----------------------------------------------------------------
+--------------------------------------------------------------------
 
 .. automodule:: snapred.backend.recipe.algorithm.GroupDiffractionCalibration
    :members:
