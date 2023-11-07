@@ -9,6 +9,7 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
 class PixelDiffractionCalibration(PythonAlgorithm):
@@ -59,9 +60,10 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.groupingFile: str = ingredients.focusGroup.definition
 
         # create string names of workspaces that will be used by algorithm
-        self.inputWStof: str = f"_TOF_{self.runNumber}_raw"
-        self.inputWSdsp: str = f"_DSP_{self.runNumber}_raw"
-        self.difcWS: str = f"_DIFC_{self.runNumber}"
+
+        self.inputWStof: str = wng.diffCalInput(self.runNumber)
+        self.inputWSdsp: str = wng.diffCalInput(self.runNumber, unit=wng.Units.DSP)
+        self.difcWS: str = wng.diffCalTable(self.runNumber)
         self.maxOffset = float(self.getProperty("MaxOffset").value)
 
     def raidPantry(self) -> None:
