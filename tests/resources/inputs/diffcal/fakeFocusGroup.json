@@ -8,22 +8,22 @@
   ],
   "nHst": 6,
   "dBin": [
-    0.00086,
-    0.00096,
-    0.0013,
-    0.00117
+    -0.00086,
+    -0.00096,
+    -0.0013,
+    -0.00117
   ],
   "dMax": [
-    5.15,
-    5.43,
-    5.77,
-    5.95
+    0.35,
+    0.50,
+    0.30,
+    0.40
   ],
   "dMin": [
-    0.65,
-    0.65,
-    0.65,
-    0.65
+    0.05,
+    0.10,
+    0.05,
+    0.10
   ],
   "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
 }

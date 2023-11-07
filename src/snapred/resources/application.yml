@@ -20,9 +20,14 @@ instrument:
           - nxs
           - hdf
   config: shared/Calibration/SNAPInstPrm.json
+  native:
+    definition:
+      file: ${instrument.home}shared/Malcolm/dataFiles/SNAP_Definition.xml
   lite:
     definition:
       file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
+    map:
+      file: ${instrument.home}shared/Calibration/Powder/LiteGroupMap.hdf
 
 nexus:
   home: nexus/

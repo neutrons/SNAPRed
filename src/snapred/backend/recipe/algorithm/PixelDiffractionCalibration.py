@@ -43,8 +43,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.isLite: bool = False
 
         # from grouping parameters, read the overall min/max d-spacings
-        self.overallDMin: float = max(ingredients.focusGroup.dMin)
-        self.overallDMax: float = min(ingredients.focusGroup.dMax)
+        self.overallDMin: float = min(ingredients.focusGroup.dMin)
+        self.overallDMax: float = max(ingredients.focusGroup.dMax)
         self.dBin: float = min([abs(dbin) for dbin in ingredients.focusGroup.dBin])
         self.maxDSpaceShifts: Dict[int, float] = {}
         for peakList in ingredients.groupedPeakLists:
