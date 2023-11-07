@@ -19,7 +19,6 @@ from snapred.backend.dao.ingredients import (
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
-from snapred.backend.dao.Limit import BinnedValue
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
@@ -102,25 +101,17 @@ class CalibrationService(Service):
         instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams
         return (
             FocusGroup(
+                FWHM=[pgp.twoTheta for pgp in pixelGroupingParams],  # TODO: Remove or extract out a level up
                 name=definition.split("/")[-1],
                 definition=definition,
                 nHst=len(pixelGroupingParams),
-                # TODO: Remove or extract out a level up
-                FWHM={pgp.groupID: pgp.twoTheta for pgp in pixelGroupingParams},
-                dSpaceParams={
-                    pgp.groupID: BinnedValue(
-                        minimum=pgp.dResolution.minimum,
-                        binWidth=pgp.dRelativeResolution / nBinsAcrossPeakWidth,
-                        maximum=pgp.dResolution.maximum,
-                        binMode="Logarithmic",
-                    )
-                    for pgp in pixelGroupingParams
-                },
+                dMin=[pgp.dResolution.minimum for pgp in pixelGroupingParams],
+                dMax=[pgp.dResolution.maximum for pgp in pixelGroupingParams],
+                dBin=[pgp.dRelativeResolution / nBinsAcrossPeakWidth for pgp in pixelGroupingParams],
             ),
             instrumentState,
         )
 
-    # TODO: this needs to get the data to pass to the recipe
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
         # shopping list
