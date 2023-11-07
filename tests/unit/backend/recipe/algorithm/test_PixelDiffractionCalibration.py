@@ -22,13 +22,11 @@ from snapred.meta.Config import Resource
 class TestPixelDiffractionCalibration(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
-        self.maxOffset = 200
+        self.maxOffset = 2
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/diffcal/fakeInstrumentState.json"))
-        fakeInstrumentState.particleBounds.tof.minimum = 10
-        fakeInstrumentState.particleBounds.tof.maximum = 1000
 
         fakeFocusGroup = FocusGroup(
             name="natural",
@@ -46,25 +44,25 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         peakList3 = [
             DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum": 0.15, "maximum": 0.25}}),
         ]
-        group3 = GroupPeakList(groupID=3, peaks=peakList3, maxfwhm=5)
         peakList7 = [
             DetectorPeak.parse_obj({"position": {"value": 0.3, "minimum": 0.20, "maximum": 0.40}}),
         ]
-        group7 = GroupPeakList(groupID=7, peaks=peakList7, maxfwhm=5)
         peakList2 = [
             DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0.10, "maximum": 0.25}}),
         ]
-        group2 = GroupPeakList(groupID=2, peaks=peakList2, maxfwhm=5)
         peakList11 = [
             DetectorPeak.parse_obj({"position": {"value": 0.24, "minimum": 0.18, "maximum": 0.30}}),
         ]
-        group11 = GroupPeakList(groupID=11, peaks=peakList11, maxfwhm=5)
-
         self.fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
-            groupedPeakLists=[group3, group7, group2, group11],
+            groupedPeakLists=[
+                GroupPeakList(groupID=3, peaks=peakList3, maxfwhm=5),
+                GroupPeakList(groupID=7, peaks=peakList7, maxfwhm=5),
+                GroupPeakList(groupID=2, peaks=peakList2, maxfwhm=5),
+                GroupPeakList(groupID=11, peaks=peakList11, maxfwhm=5),
+            ],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
         )
@@ -107,8 +105,8 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         assert algo.runNumber == self.fakeRunNumber
         assert algo.TOFMin == self.fakeIngredients.instrumentState.particleBounds.tof.minimum
         assert algo.TOFMax == self.fakeIngredients.instrumentState.particleBounds.tof.maximum
-        assert algo.overallDMin == max(self.fakeIngredients.focusGroup.dMin)
-        assert algo.overallDMax == min(self.fakeIngredients.focusGroup.dMax)
+        assert algo.overallDMin == min(self.fakeIngredients.focusGroup.dMin)
+        assert algo.overallDMax == max(self.fakeIngredients.focusGroup.dMax)
         assert algo.dBin == min([abs(db) for db in self.fakeIngredients.focusGroup.dBin])
         assert algo.TOFBin == algo.dBin
 
@@ -124,7 +122,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("MaxOFfset", self.maxOffset)
+        algo.setProperty("MaxOffset", self.maxOffset)
         algo.chopIngredients(self.fakeIngredients)
         self.makeFakeNeutronData(algo)
         assert algo.execute()
@@ -143,7 +141,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("MaxOFfset", self.maxOffset)
+        algo.setProperty("MaxOffset", self.maxOffset)
         algo.chopIngredients(self.fakeIngredients)
         self.makeFakeNeutronData(algo)
         assert algo.execute()

@@ -42,28 +42,17 @@ fakeFocusGroup = FocusGroup.parse_raw(Resource.read(fakeFocusGroupFile))
 fakeFocusGroup.definition = Resource.getPath(fakeFocusGroupFile)
 print(fakeFocusGroup.json(indent=2))
 
-peakList3 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum": 0.15, "maximum": 0.25}}),
-]
-group3 = GroupPeakList(groupID=3, peaks=peakList3)
-peakList7 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.3, "minimum": 0.20, "maximum": 0.40}}),
-]
-group7 = GroupPeakList(groupID=7, peaks=peakList7)
-peakList2 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0.10, "maximum": 0.25}}),
-]
-group2 = GroupPeakList(groupID=2, peaks=peakList2)
-peakList11 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.24, "minimum": 0.18, "maximum": 0.30}}),
-]
-group11 = GroupPeakList(groupID=11, peaks=peakList11)
-
+peakLists = {
+    3: [DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum": 0.15, "maximum": 0.25}})],
+    7: [DetectorPeak.parse_obj({"position": {"value": 0.33, "minimum": 0.25, "maximum": 0.40}})],
+    2: [DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0.15, "maximum": 0.25}})],
+    11: [DetectorPeak.parse_obj({"position": {"value": 0.24, "minimum": 0.18, "maximum": 0.30}})],
+}
 fakeIngredients = DiffractionCalibrationIngredients(
     runConfig=fakeRunConfig,
     focusGroup=fakeFocusGroup,
     instrumentState=fakeInstrumentState,
-    groupedPeakLists=[group3, group7, group2, group11],
+    groupedPeakLists=[GroupPeakList(groupID=id, peaks=peakLists[id]) for id in peakLists.keys()],
     calPath=Resource.getPath("outputs/calibration/"),
     convergenceThreshold=1.0,
 )
