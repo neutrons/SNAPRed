@@ -172,7 +172,7 @@ class CalibrationService(Service):
                 isLite=True,
             ),
         ]
-        workspaceList = FetchGroceriesRecipe(groceryList)["workspaces"]
+        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
         groceries = {
             "InputWorkspace": workspaceList[0],
             "GroupingWorkspace": workspaceList[1],
