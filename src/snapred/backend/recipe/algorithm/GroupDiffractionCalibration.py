@@ -87,7 +87,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             self.groupedPeaks[peakList.groupID] = allPeaks
             self.groupedPeakBoundaries[peakList.groupID] = allPeakBoundaries
 
-        if len(self.groupIDs) != len(ingredients.focusGroup.nHst):
+        if len(self.groupIDs) != ingredients.focusGroup.nHst:
             raise RuntimeError(
                 f"Group IDs do not match between peak list and focus group: {self.groupIDs} vs {ingredients.focusGroup.nHst}"  # noqa: E501
             )

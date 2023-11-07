@@ -44,7 +44,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             runConfig=fakeRunConfig,
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
-            groupedPeakLists=[GroupPeakList(groupID=id, peaks=[peakLists[gid]], maxfwhm=5) for gid in peakLists.keys()],
+            groupedPeakLists=[
+                GroupPeakList(groupID=gid, peaks=[peakLists[gid]], maxfwhm=5) for gid in peakLists.keys()
+            ],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
             maxOffset=self.maxOffset,

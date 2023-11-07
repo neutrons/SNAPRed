@@ -49,7 +49,7 @@ class CustomGroupWorkspace(PythonAlgorithm):
             # convert workspace to string to avoid dangling pointers
             donorWorkspace = str(donorWorkspace)
 
-        for focusGroup in focusGroups:
+        for grpIndx, focusGroup in enumerate(focusGroups):
             self.mantidSnapper.LoadGroupingDefinition(
                 f"Loading grouping file for focus group {focusGroup.name}...",
                 GroupingFilename=focusGroup.definition,

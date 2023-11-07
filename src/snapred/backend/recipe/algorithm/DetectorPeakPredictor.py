@@ -55,12 +55,15 @@ class DetectorPeakPredictor(PythonAlgorithm):
         thresholdA = np.max(A) * self.getProperty("PeakIntensityFractionThreshold").value
 
         allFocusGroupsPeaks = []
-        for groupID, pgp in instrumentState.pixelGroupingInstrumentParameters.items():
-            delDoD = pgp.dRelativeResolution
-            tTheta = pgp.twoTheta
+        allGroupIDs = [x.groupID for x in instrumentState.pixelGroupingInstrumentParameters]
+        # numFocusGroups = len(instrumentState.pixelGroupingInstrumentParameters)
+        # for index in range(numFocusGroups):
+        for index, groupID in enumerate(allGroupIDs):
+            delDoD = instrumentState.pixelGroupingInstrumentParameters[index].dRelativeResolution
+            tTheta = instrumentState.pixelGroupingInstrumentParameters[index].twoTheta
 
-            dMin = pgp.dResolution.minimum
-            dMax = pgp.dResolution.maximum
+            dMin = instrumentState.pixelGroupingInstrumentParameters[index].dResolution.minimum
+            dMax = instrumentState.pixelGroupingInstrumentParameters[index].dResolution.maximum
 
             dList = [peak.dSpacing for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
             dList = [d for d in dList if dMin <= d <= dMax]

@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -15,7 +15,7 @@ class InstrumentState(BaseModel):
     detectorState: DetectorState
     gsasParameters: GSASParameters
     particleBounds: ParticleBounds
-    pixelGroupingInstrumentParameters: Optional[Dict[int, PixelGroupingParameters]]
+    pixelGroupingInstrumentParameters: Optional[List[PixelGroupingParameters]]
     defaultGroupingSliceValue: float
     fwhmMultiplierLimit: Limit[float]
     peakTailCoefficient: float
