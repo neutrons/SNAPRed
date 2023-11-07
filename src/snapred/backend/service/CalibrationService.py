@@ -170,6 +170,8 @@ class CalibrationService(Service):
                 workspaceType="grouping",
                 groupingScheme="Column",
                 isLite=True,
+                instrumentPropertySource="InstrumentDonor",
+                instrumentSource="prev",
             ),
         ]
         workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]

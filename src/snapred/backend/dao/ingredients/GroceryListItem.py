@@ -6,20 +6,27 @@ from snapred.backend.dao import RunConfig
 
 
 class GroceryListItem(BaseModel):
-    """Class to hold the ingredients necessary for pixel grouping parameter calculation."""
+    """Holds necessary information for a single item in grocery list"""
 
     workspaceType: Literal["nexus", "grouping"]
     runConfig: Optional[RunConfig]
     loader: str = ""
     isLite: Optional[bool]
     groupingScheme: Optional[str]
+    instrumentPropertySource: Optional[Literal["InstrumentName", "InstrumentFilename", "InstrumentDonor"]]
+    instrumentSource: Optional[str]
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_ingredients_for_gorceries(cls, v):
         if v["workspaceType"] == "nexus" and v.get("runConfig") is None:
             raise ValueError("you must set the run config to load nexus data")
-        if v["workspaceType"] == "grouping" and v.get("isLite") is None:
-            raise ValueError("you must specify whether to use Lite mode for grouping workspace")
-        if v["workspaceType"] == "grouping" and v.get("groupingScheme") is None:
-            raise ValueError("you must specify the grouping scheme to use")
+        if v["workspaceType"] == "grouping":
+            if v.get("isLite") is None:
+                raise ValueError("you must specify whether to use Lite mode for grouping workspace")
+            if v.get("groupingScheme") is None:
+                raise ValueError("you must specify the grouping scheme to use")
+            if v["instrumentPropertySource"] is None:
+                raise ValueError("a grouping workspace requires an instrument source")
+            if v["instrumentSource"] is None:
+                raise ValueError("a grouping workspace requries an instrument source")
         return v
