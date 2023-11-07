@@ -33,6 +33,7 @@ class DiffractionCalibrationRecipe:
          - "outputWorkspace": a name for the final output workspace; otherwise default is used
          - "calibrationTable": a name for the fully caliibrated DIFC table; otherwise a default is used
         """
+
         self.rawInput = groceryList["inputWorkspace"]
         self.groupingWS = groceryList["groupingWorkspace"]
         self.outputWS = groceryList.get("outputWorkspace", "")

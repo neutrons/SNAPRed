@@ -43,6 +43,7 @@ class FetchGroceriesRecipe:
            - "loader": the loader that was used by the algorithm, use it next time
            - "workspace": the name of the workspace created in the ADS
         """
+
         workspaceName = self._createNexusWorkspaceName(runConfig)
         fileName = self._createFilenameFromRunConfig(runConfig)
         data: Dict[str, Any] = {
@@ -94,6 +95,7 @@ class FetchGroceriesRecipe:
            - "loader", just "LoadGroupingDefinition" with no apologies
            - "workspaceName", the name of the new grouping workspace in the ADS
         """
+
         workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.isLite)
         fileName = self._createGroupingFilename(item.groupingScheme, item.isLite)
         logger.info("Fetching grouping definition: %s" % item.groupingScheme)
@@ -124,6 +126,7 @@ class FetchGroceriesRecipe:
            - "result" (True if everything good, otherwise False)
            - "workspaces" a list of strings with all workspace names created in the ADS
         """
+
         data: Dict[str, Any] = {
             "result": True,
             "workspaces": [],
