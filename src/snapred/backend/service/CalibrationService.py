@@ -16,6 +16,7 @@ from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
+    GroceryListItem,
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
@@ -31,6 +32,7 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
+from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
     CalibrationReductionRecipe,
@@ -157,7 +159,25 @@ class CalibrationService(Service):
             convergenceThreshold=convergenceThreshold,
         )
 
-        return DiffractionCalibrationRecipe().executeRecipe(ingredients)
+        # get the needed input data
+        groceryList = [
+            GroceryListItem(
+                workspaceType="nexus",
+                runConfig=runConfig,
+                loader="LoadEventNexus",
+            ),
+            GroceryListItem(
+                workspaceType="grouping",
+                groupingScheme="Column",
+                isLite=True,
+            ),
+        ]
+        workspaceList = FetchGroceriesRecipe(groceryList)["workspaces"]
+        groceries = {
+            "InputWorkspace": workspaceList[0],
+            "GroupingWorkspace": workspaceList[1],
+        }
+        return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
 
     @FromString
     def save(self, request: CalibrationExportRequest):
