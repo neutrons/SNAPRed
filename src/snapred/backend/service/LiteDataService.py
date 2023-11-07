@@ -16,7 +16,7 @@ class LiteDataService(Service):
     def __init__(self):
         super().__init__()
         self.dataFactoryService = DataFactoryService
-        self.registerPath("", self.reduceLiteData)
+        self.registerPath("createLiteData", self.reduceLiteData)
         return
 
     @staticmethod
@@ -29,7 +29,7 @@ class LiteDataService(Service):
         for run in runs:
             inputWorkspace = "SNAP_" + str(run.runNumber) + ".nxs"
             try:
-                data[str(run.runNumber)] = Recipe().executeRecipe(inputWorkspace=inputWorkspace)
+                data[str(run.runNumber)] = Recipe().executeRecipe(inputWorkspace=inputWorkspace, Run=run, isLite=True)
             except Exception as e:
                 raise e
         return data
