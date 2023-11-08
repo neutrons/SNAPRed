@@ -44,7 +44,7 @@ class TestPanelPresenter(object):
         self.calibrationNormalizationWidget = QWidget()
         self.calibrationNormalizationWidget.setLayout(self.calibrationNormalizationLayout)
 
-        self.calibrationNormalizationLayout.addWidget(self._createcalibrationNormalizationWorkflow())
+        self.calibrationNormalizationLayout.addWidget(self._createCalibrationNormalizationWorkflow())
         self.calibrationNormalizationLayout.addWidget(self.calibrationCheckView)
         self.calibrationNormalizationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
 
@@ -87,7 +87,7 @@ class TestPanelPresenter(object):
         logger.info("loaded default json input for path: {}".format(path))
         return DiffractionCalibrationCreationWorkflow(newForm, parent=self.view).widget
 
-    def _createDiffractionCalibrationWorkflow(self):
+    def _createCalibrationNormalizationWorkflow(self):
         path = "calibration/normalization/request"
         logger.info("Creating workflow for path: {}".format(path))
         jsonSchema = self._getSchemaForSelection(path)

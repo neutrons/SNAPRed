@@ -114,15 +114,19 @@ class NormalizationCalibrationWorkflow:
         self.responses.append(response)
         return response
 
-    def _specifyCalibration(self, workflowPresenter):
+    def _specifyCalibration(self, workflowPresenter):  # noqa: ARG002
         payload = SpecifyNormalizationRequest(
             run=RunConfig(runNumber=self.runNumber),
             workspace=self.responses[-2].data["ws"],
             smoothWorkspace=self.responses[-1].data["smooth_ws"],
+            smoothingParameter=self.smoothingParmameter,
             samplePath=self.samplePath,
         )
         request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
+
+        # TODO: use data in response to update view
+
         self.responses.append(response)
         return response
 

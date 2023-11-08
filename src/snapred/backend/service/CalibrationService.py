@@ -20,9 +20,7 @@ from snapred.backend.dao.ingredients import (
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
-from snapred.backend.dao.normalization import (
-    NormalizationRecord,
-)
+from snapred.backend.dao.normalization import Normalization, NormalizationRecord
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
@@ -347,28 +345,27 @@ class CalibrationService(Service):
 
     @FromString
     def normalizationAssessment(self, request: SpecifyNormalizationRequest):
-        # sampleFilePath = self.dataFactoryService.getCifFilePath(request.samplePath.split("/")[-1].split(".")[0])
-        # crystalInfo = CrystallographicInfoService().ingest(sampleFilePath)["crystalInfo"]
-        # # TODO: We Need to Fit the Data
-        # fitIngredients = FitMultiplePeaksIngredients(
-        #     instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=focussedData
-        # )
-        # fitResults = FitMultiplePeaksRecipe().executeRecipe(FitMultiplePeaksIngredients=fitIngredients)
-        # metrics = self._collectMetrics(fitResults, focusGroup, pixelGroupingParam)
-        # prevCalibration = self.dataFactoryService.getCalibrationRecord(run.runNumber)
-        # timestamp = int(round(time.time() * 1000))
+        sampleFilePath = self.dataFactoryService.getCifFilePath(request.samplePath.split("/")[-1].split(".")[0])
+        crystalInfo = CrystallographicInfoService().ingest(sampleFilePath)["crystalInfo"]
+        runNumber = request.runNumber.runNumber
+        normalization = self.dataFactoryService.getNormalizationState(runNumber)
+        preSmoothedWorkspace = request.preSmoothedWorkpace
+        smoothedWorkspace = request.smoothedWorkspace
+        smoothingParameter = request.smoothingParameter
+        workspaces = [preSmoothedWorkspace, smoothedWorkspace]
 
-        # record = NormalizationRecord(
-        #     runNumber=runNumber,
-        #     crystalInfo=crystalInfo,
-        #     calibrationFittingIngredients=calibration,
-        #     focusGroupParameters=focusGroupParameters,
-        #     focusGroupCalibrationMetrics=metrics,
-        #     workspaceNames=outputWorkspaces,
-        # )
+        self.dataFactoryService.getNormalizationRecord(runNumber)
+        int(round(time.time() * 1000))
 
-        # return record
-        pass
+        record = NormalizationRecord(
+            runNumber=runNumber,
+            crystalInfo=crystalInfo,
+            smoothingParameter=smoothingParameter,
+            normalization=normalization,
+            workspaceNames=workspaces,
+        )
+
+        return record
 
     @FromString
     def retrievePixelGroupingParams(self, runID: str):

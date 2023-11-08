@@ -15,11 +15,13 @@ from snapred.backend.dao.ingredients import (
     SmoothDataExcludingPeaksIngredients,
 )
 from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import (
-    NormalizationCalibrationIngredients as ingredients,
+    NormalizationCalibrationIngredients as Ingredients,
 )
+from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks  # noqa F401
+from snapred.meta.Config import Config
 
 name = "CalibrationNormalizationAlgo"
 
@@ -45,7 +47,7 @@ class CalibrationNormalization(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
-    def chopIngredients(self, ingredients: ingredients):
+    def chopIngredients(self, ingredients: Ingredients):
         self.run = ingredients.run
         self.backgroundRun = ingredients.backgroundRun
         self.reductionIngredients = ingredients.reductionIngredients
@@ -53,78 +55,114 @@ class CalibrationNormalization(PythonAlgorithm):
         self.calibrationRecord = ingredients.calibrationRecord
         self.calibrantSample = ingredients.calibrantSample
         self.calibrationWorkspace = ingredients.calibrationWorkspace
+        self.isLiteRun = ingredients.run.isLite
+        self.isLiteBackground = ingredients.backgroundRun.isLite
+        yield
 
     def PyExec(self):
-        ingredients = ingredients(**json.loads(self.getProperty("Ingredients").value))
+        ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
         self.chopIngredients(ingredients)
 
-        focusGroups = self.reductionIngredients.reductionState.stateConfig.focusGroups.json()
+        self.reductionIngredients.reductionState.stateConfig.focusGroups.json()
         runNumber: str = self.run.runNumber
         ipts: str = self.run.IPTS
-        rawDataPath: str = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(runNumber)
+        rawDataPath: str = ipts + "shared/SNAP_{}.nxs.h5".format(runNumber)
         backgroundRunNum: str = self.backgroundRun.runNumber
         backgroundIpts: str = self.backgroundRun.IPTS
-        backgroundRawDataPath: str = backgroundIpts + "shared/lite/SNAP_{}.lite.nxs.h5".format(backgroundRunNum)
+        backgroundIpts + "shared/lite/SNAP_{}.nxs.h5".format(backgroundRunNum)
 
         inputWS = self.getProperty("InputWorkspace").value
         inputWSName = str(inputWS)
-        if inputWS is None:
-            self.mantidSnapper.Load(
-                "Loading file for Normalization InputWS...",
-                Filename=rawDataPath,
-                OutputWorkspace=inputWS,
-            )
+
         backgroundWS = self.getProperty("BackgroundWorkspace").value
-        if backgroundWS is None:
-            self.mantidSnapper.Load(
-                "Loading file for Normalization BackgroundWS...",
-                Filename=backgroundRawDataPath,
-                OutputWorkspace=backgroundWS,
+        backgroundWSName = str(backgroundWS)
+
+        if self.isLiteRun is False:
+            self.mantidSnapper.LoadEventNexus(
+                f"Loading Nexus file for {inputWSName}...",
+                Filename=rawDataPath,
+                OutputWorkspace=inputWSName,
+                NumberOfBins=1,
+                LoadMonitors=False,
             )
+            self.mantidSnapper.LiteDataCreationAlgo(
+                f"Creating lite version of {inputWSName}...",
+                InputWorkspace=inputWSName,
+                AutoDeleteNonLiteWS=True,
+                OutputWorkspace=inputWSName,
+            )
+
+        if self.isLiteBackground is False:
+            self.mantidSnapper.LoadEventNexus(
+                f"Loading Nexus file for {backgroundWSName}...",
+                Filename=rawDataPath,
+                OutputWorkspace=backgroundWSName,
+                NumberOfBins=1,
+                LoadMonitors=False,
+            )
+            self.mantidSnapper.LiteDataCreationAlgo(
+                f"Creating lite version of {backgroundWSName}...",
+                InputWorkspace=backgroundWSName,
+                AutoDeleteNonLiteWS=True,
+                OutputWorkspace=backgroundWSName,
+            )
+
+        else:
+            pass
+
+        self.mantidSnapper.executeQueue()
+
+        self.mantidSnapper.mtd[inputWSName]
+        self.mantidSnapper.mtd[backgroundWSName]
+
         # run the algo
         self.log().notice("Execution of CalibrationNormalizationAlgo START!")
 
-        raw_data = self.mantidSnapper.RawVanadiumCorrectionAlgorithm(
+        self.mantidSnapper.RawVanadiumCorrectionAlgorithm(
             "Correcting Vanadium Data...",
-            InputWorkspace=inputWS,
-            BackgroundWorkspace=backgroundWS,
+            InputWorkspace=inputWSName,
+            BackgroundWorkspace=backgroundWSName,
             CalibrationWorkspace=self.calibrationWorkspace.json(),
             Ingredients=self.reductionIngredients.json(),
             CalibrantSample=self.calibrantSample.json(),
-            OutputWorkspace=f"{inputWSName}_raw_data",
+            OutputWorkspace=f"{inputWSName}_raw_vanadium_data",
         )
 
-        groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
+        # TODO: Looping over grouping for customGroupWorkspace?
+
+        self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",
             StateConfig=self.reductionIngredients.reductionState.stateConfig.json(),
-            InputWorkspace=raw_data,
+            # InputWorkspace=raw_data,
             OutputWorkspace="CommonRed",
         )
 
-        for workspaceIndex in range(len(focusGroups)):
-            data = self.mantidSnapper.RebinRagged(
-                "Rebinning ragged bins...",
-                InputWorkspace=mtd[raw_data].getItem(workspaceIndex),
-                XMin=focusGroups[workspaceIndex].dMin,
-                XMax=focusGroups[workspaceIndex].dMax,
-                Delta=focusGroups[workspaceIndex].dBin,
-                OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[workspaceIndex].name),
-                PreserveEvents=False,
-            )
+        # for workspaceIndex in range(len(focusGroups)):
 
-        focused_data = self.mantidSnapper.DiffractionFocussing(  # GroupDetectors instead
-            "Performing Diffraction Focusing ...",
-            InputWorkspace=data,
-            GroupingWorkspace=groupingworkspace,
-            OutputWorkspace=f"{inputWSName}focused_data",
-            PreserveEvents=True,
+        # focused_data = self.mantidSnapper.DiffractionFocussing(  # GroupDetectors instead
+        #     "Performing Diffraction Focusing ...",
+        #     InputWorkspace= #NOTE: Will be the output of CustomGroupWorkspace,
+        #     GroupingWorkspace=groupingworkspace,
+        #     OutputWorkspace=f"{inputWSName}focused_data",
+        #     PreserveEvents=True,
+        # )
+
+        self.mantidSnapper.RebinRagged(
+            "Rebinning ragged bins...",
+            # InputWorkspace=mtd[raw_data].getItem(workspaceIndex), #NOTE: Accepts single workspace (for a given group)
+            # XMin=,
+            # XMax=, #NOTE: XMin, XMax, etx should be lists containing all the values for the group
+            #               (i.e. for column group: len(XMin) = 6)
+            # Delta=focusGroups[workspaceIndex].dBin,
+            # OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[workspaceIndex].name),
+            # PreserveEvents=True,
         )
 
         ws = f"{inputWSName}_clone_focused_data"
         # clone the workspace
         self.mantidSnapper.CloneWorkspace(
             "Cloning input workspace for lite data creation...",
-            InputWorkspace=focused_data,
+            # InputWorkspace=focused_data,
             OutputWorkspace=ws,
         )
 
@@ -132,7 +170,7 @@ class CalibrationNormalization(PythonAlgorithm):
 
         smooth_ws = self.mantidSnapper.SmoothDataExcludingPeaks(
             "Fit and Smooth Peaks...",
-            InputWorkspace=focused_data,
+            # InputWorkspace=focused_data,
             SmoothDataExcludingPeaksIngredients=self.smoothDataIngredients.json(),
             OutputWorkspace=f"{inputWS}_smooth_ws",
         )

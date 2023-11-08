@@ -64,11 +64,17 @@ class DataFactoryService:
     def getCalibrationState(self, runId):
         return self.lookupService.readCalibrationState(runId)
 
+    def getNormalizationState(self, runId):
+        return self.lookupService.readNormalizationState(runId)
+
     def getWorkspaceForName(self, name):
         return self.lookupService.getWorkspaceForName(name)
 
     def getCalibrationRecord(self, runId):
         return self.lookupService.readCalibrationRecord(runId)
+
+    def getNormalizationRecord(self, runId):
+        return self.lookupService.readNormalizationRecord(runId)
 
     def getFocusGroups(self, runId: str):
         return self.lookupService._readFocusGroups(runId)

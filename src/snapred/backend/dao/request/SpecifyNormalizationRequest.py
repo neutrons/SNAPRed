@@ -9,4 +9,5 @@ class SpecifyNormalizationRequest(BaseModel):
     runNumber: RunConfig
     preSmoothedWorkpace: str
     smoothedWorkspace: str
+    smoothingParameter: float
     samplePath: Optional[str]
