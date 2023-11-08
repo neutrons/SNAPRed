@@ -45,6 +45,7 @@ from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
@@ -114,6 +115,10 @@ class CalibrationService(Service):
 
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
+        # preload the data and copy it to cacheworkspace
+
+        diffCalInputWsName = wng.diffCalInput(request.runNumber)
+        self.dataFactoryService.getWorkspaceCached(request.runNumber, diffCalInputWsName)
         # shopping list
         # 1. full runconfig
         runConfig = self.dataFactoryService.getRunConfig(request.runNumber)

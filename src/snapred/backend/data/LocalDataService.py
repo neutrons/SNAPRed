@@ -11,24 +11,20 @@ import h5py
 from mantid.api import AlgorithmManager, mtd
 from pydantic import parse_file_as
 
-from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
-from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-from snapred.backend.dao.GSASParameters import GSASParameters
-from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.Limit import Limit
-from snapred.backend.dao.ParticleBounds import ParticleBounds
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.dao.state.DetectorState import DetectorState
-from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
-from snapred.backend.dao.StateConfig import StateConfig
-from snapred.backend.dao.StateId import StateId
+from snapred.backend.dao import GSASParameters, InstrumentConfig, Limit, ParticleBounds, RunConfig, StateConfig, StateId
+from snapred.backend.dao.calibration import Calibration, CalibrationIndexEntry, CalibrationRecord
+from snapred.backend.dao.state import (
+    DetectorState,
+    DiffractionCalibrant,
+    FocusGroup,
+    InstrumentState,
+    NormalizationCalibrant,
+)
+from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
+from snapred.backend.data.LocalWorkspaceDataService import LocalWorkspaceDataService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.redantic import (
     list_to_raw,
     list_to_raw_pretty,
@@ -56,6 +52,7 @@ class LocalDataService:
     stateIdCache: Dict[str, str] = {}
     instrumentConfig: "InstrumentConfig"  # Optional[InstrumentConfig]
     verifyPaths: bool = True
+    localWorkspaceDataService: LocalWorkspaceDataService = LocalWorkspaceDataService()
 
     def __init__(self) -> None:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
@@ -102,91 +99,41 @@ class LocalDataService:
             raise _createFileNotFoundError("Instrument configuration file", self.instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str) -> StateConfig:
-        reductionParameters = self._readReductionParameters(runId)
+        diffCalRecord = self.readCalibrationRecord(runId)
+        if diffCalRecord is None:
+            diffCalRecord = self.readCalibrationState(runId)
+            particleBounds = diffCalRecord.instrumentState.particleBounds
+        else:
+            diffCalRecord = diffCalRecord.calibrationFittingIngredients
+            particleBounds = diffCalRecord.calibrationFittingIngredients.instrumentState.particleBounds
+        stateId, _ = self._generateStateId(runId)
 
         return StateConfig(
-            diffractionCalibrant=self._readDiffractionCalibrant(runId),
-            emptyInstrumentRunNumber=reductionParameters["VBRun"][0],
-            normalizationCalibrant=self._readNormalizationCalibrant(runId),
-            geometryCalibrationFileName=None,  # TODO: missing, reductionParameters['GeomCalFileName'],
-            calibrationAuthor=reductionParameters.get("calibBy"),
-            calibrationDate=reductionParameters.get("calibDate"),
+            calibration=diffCalRecord,
             focusGroups=self._readFocusGroups(runId),
             isLiteMode=True,  # TODO: Support non lite mode
-            rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=str(
-                self.instrumentConfig.calibrationDirectory
-                / "Powder"
-                / reductionParameters["stateId"]
-                / reductionParameters["rawVCorrFileName"]
-            ),
-            calibrationMaskFileName=reductionParameters.get("CalibrationMaskFilename"),
-            stateId=reductionParameters["stateId"],
-            tofBin=reductionParameters["tofBin"],
-            tofMax=reductionParameters["tofMax"],
-            tofMin=reductionParameters["tofMin"],
-            version=reductionParameters["version"],
-            wallclockTof=reductionParameters["wallClockTol"],
-            temporalProximity=None,
+            stateId=stateId,
+            tofBin=self.instrumentConfig.delTOverT / self.instrumentConfig.NBins,
+            tofMax=particleBounds.tof.maximum,
+            tofMin=particleBounds.tof.minimum,
         )  # TODO: fill with real value
 
-    def _readDiffractionCalibrant(self, runId: str) -> DiffractionCalibrant:
-        reductionParameters = self._readReductionParameters(runId)
-
-        return DiffractionCalibrant(
-            filename=reductionParameters["calFileName"],
-            runNumber=reductionParameters["CRun"][0],
-            name=reductionParameters.get("CalibrantName"),
-            diffCalPath=str(
-                self.instrumentConfig.calibrationDirectory
-                / "Powder"
-                / reductionParameters["stateId"]
-                / reductionParameters["calFileName"]
-            ),
-            latticeParameters=None,  # TODO: missing, reductionParameters['CalibrantLatticeParameters'],
-            reference=None,
-        )  # TODO: missing, reductionParameters['CalibrantReference'])
-
-    def _readNormalizationCalibrant(self, runId: str) -> NormalizationCalibrant:
-        reductionParameters = self._readReductionParameters(runId)
-        return NormalizationCalibrant(
-            numAnnuli=reductionParameters["NAnnul"],
-            numSlices=None,  # TODO: missing, reductionParameters['Nslice'],
-            attenuationCrossSection=reductionParameters["VAttenuationXSection"],
-            attenuationHeight=reductionParameters["VHeight"],
-            geometry=None,  # TODO: missing, reductionParameters['VGeometry'],
-            FWHM=reductionParameters["VFWHM"],
-            mask=reductionParameters["VMsk"],
-            material=None,  # TODO: missing,
-            peaks=reductionParameters["VPeaks"].split(","),
-            radius=reductionParameters["VRad"],
-            sampleNumberDensity=reductionParameters["VSampleNumberDensity"],
-            scatteringCrossSection=reductionParameters["VScatteringXSection"],
-            smoothPoints=reductionParameters["VSmoothPoints"],
-            calibrationState=None,
-        )  # TODO: missing, reductionParameters['VCalibState'])
-
-    def _readFocusGroups(self, runId: str) -> List[FocusGroup]:
-        reductionParameters = self._readReductionParameters(runId)
+    def _readFocusGroups(self, runId: str) -> List[FocusGroup]:  # noqa: ARG002
         # TODO: fix hardcode reductionParameters["focGroupLst"]
         # dont have time to figure out why its reading the wrong data
         focusGroupNames = ["Column", "Bank", "All"]
         focusGroups = []
+        groupDefinitionFolder = Config["instrument.calibration.powder.grouping.home"]
+
+        # find all files in this folder associated with the given group name
+
         for i, name in enumerate(focusGroupNames):
+            pattern = groupDefinitionFolder + f"/*{name}*"
+            files = self._findMatchingFileList(pattern)
             focusGroups.append(
                 FocusGroup(
                     name=name,
-                    nHst=reductionParameters["focGroupNHst"][i],
-                    FWHM=reductionParameters["VFWHM"][i],
-                    dBin=reductionParameters["focGroupDBin"][i],
-                    dMax=reductionParameters["focGroupDMax"][i],
-                    dMin=reductionParameters["focGroupDMin"][i],
-                    definition=str(
-                        self.instrumentConfig.calibrationDirectory
-                        / "Powder"
-                        / self.instrumentConfig.pixelGroupingDirectory
-                        / reductionParameters["focGroupDefinition"][i]
-                    ),
+                    definition=str(files[0]),
                 )
             )
         return focusGroups
@@ -302,56 +249,6 @@ class LocalDataService:
     def _constructCalibrationStatePath(self, stateId):
         # TODO: Propogate pathlib through codebase
         return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId}/"
-
-    def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
-        # lookup IPTS number
-        run: int = int(runId)
-        stateId, _ = self._generateStateId(runId)
-
-        calibrationPath: str = self._constructCalibrationStatePath(stateId)
-        calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"  # noqa: E501
-
-        foundFiles = self._findMatchingFileList(calibSearchPattern)
-
-        calibFileList = []
-
-        # TODO: Allow non lite files
-        for file in foundFiles:
-            if "lite" in file:
-                calibFileList.append(file)
-
-        calibRunList = []
-        # TODO: Why are we overwriting dictIn every iteration?
-        for string in calibFileList:
-            runStr = string[
-                string.find(self.instrumentConfig.calibrationFilePrefix)
-                + len(self.instrumentConfig.calibrationFilePrefix) :
-            ].split(".")[0]
-            if not runStr.isnumeric():
-                continue
-            calibRunList.append(int(runStr))
-
-            relRuns = [x - run != 0 for x in calibRunList]
-
-            pos = [i for i, val in enumerate(relRuns) if val >= 0]
-            [i for i, val in enumerate(relRuns) if val <= 0]
-
-            # TODO: Account for errors
-            closestAfter = min([calibRunList[i] for i in pos])
-            calIndx = calibRunList.index(closestAfter)
-
-            with open(calibFileList[calIndx], "r") as json_file:
-                dictIn = json.load(json_file)
-
-            # useful to also path location of calibration directory
-            fullCalPath = calibFileList[calIndx]
-            fSlash = [pos for pos, char in enumerate(fullCalPath) if char == "/"]
-            dictIn["calPath"] = fullCalPath[0 : fSlash[-1] + 1]
-
-        # Now push data into DAO object
-        self.reductionParameterCache[runId] = dictIn
-        dictIn["stateId"] = stateId
-        return dictIn
 
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
@@ -469,8 +366,6 @@ class LocalDataService:
         return latestVersion
 
     def readCalibrationRecord(self, runId: str, version: str = None):
-        # Need to run this because of its side effect, TODO: Remove side effect
-        self._readReductionParameters(runId)
         recordPath: str = self.getCalibrationRecordPath(runId, "*")
         # find the latest version
         latestFile = ""
@@ -504,19 +399,10 @@ class LocalDataService:
 
         self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
         for workspace in record.workspaceNames:
-            self.writeWorkspace(calibrationPath, workspace)
+            self.localWorkspaceDataService.writeWorkspace(calibrationPath, workspace)
         return record
 
-    def writeWorkspace(self, path: str, workspaceName: str):
-        """
-        Writes a Mantid Workspace to disk.
-        """
-        saveAlgo = AlgorithmManager.create("SaveNexus")
-        saveAlgo.setProperty("InputWorkspace", workspaceName)
-        saveAlgo.setProperty("Filename", path + workspaceName)
-        saveAlgo.execute()
-
-    def writeCalibrationReductionResult(self, runId: str, workspaceName: str, dryrun: bool = False):
+    def writeCalibrationReductionResult(self, runId: str, workspaceName: WorkspaceName, dryrun: bool = False):
         # use mantid to write workspace to file
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationStatePath(stateId)
@@ -527,10 +413,7 @@ class LocalDataService:
 
         filename = filenameFormat.format(version)
         if not dryrun:
-            saveAlgo = AlgorithmManager.create("SaveNexus")
-            saveAlgo.setProperty("InputWorkspace", workspaceName)
-            saveAlgo.setProperty("Filename", filename)
-            saveAlgo.execute()
+            self.localWorkspaceDataService.writeWorkspace(filename, workspaceName)
         return filename
 
     def writeCalibrantSample(self, sample: CalibrantSamples):
@@ -659,28 +542,6 @@ class LocalDataService:
 
         self.writeCalibrationState(runId, calibration)
         return calibration
-
-    def getWorkspaceForName(self, name):
-        """
-        Returns a workspace from Mantid if it exists.
-        Abstraction for the Service layer to interact with mantid data.
-        Usually we only deal in references as its quicker,
-        but sometimes its already in memory due to some previous step.
-        """
-        try:
-            return mtd[name]
-        except ValueError:
-            return None
-
-    def deleteWorkspace(self, workspaceName: str):
-        """
-        Deletes a workspace from Mantid.
-        Mostly for cleanup at the Service Layer.
-        """
-        if self.getWorkspaceForName(workspaceName) is not None:
-            deleteWorkspaceAlgo = AlgorithmManager.create("DeleteWorkspace")
-            deleteWorkspaceAlgo.setProperty("Workspace", workspaceName)
-            deleteWorkspaceAlgo.execute()
 
     def checkCalibrationFileExists(self, runId: str):
         stateID, _ = self._generateStateId(runId)
