@@ -5,6 +5,7 @@ from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngred
 from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 
 
 class NormalizationCalibrationIngredients(BaseModel):
@@ -16,4 +17,5 @@ class NormalizationCalibrationIngredients(BaseModel):
     smoothDataIngredients: SmoothDataExcludingPeaksIngredients
     calibrationRecord: CalibrationRecord
     calibrantSample: CalibrantSamples
+    focusGroup: FocusGroup
     calibrationWorkspace: str

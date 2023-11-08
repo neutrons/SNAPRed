@@ -11,3 +11,4 @@ class SpecifyNormalizationRequest(BaseModel):
     smoothedWorkspace: str
     smoothingParameter: float
     samplePath: Optional[str]
+    focusGroupPath: Optional[str]

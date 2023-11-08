@@ -50,9 +50,13 @@ class NormalizationCalibrationWorkflow:
         request = SNAPRequest(path="config/samplePaths")
         self.samplePaths = self.interfaceController.executeRequest(request).data
 
+        request = SNAPRequest(path="config/groupingFiles")
+        self.groupingFiles = self.interfaceController.executeRequest(request).data
+
         self._normalizationCalibrationView = NormalizationCalibrationRequestView(
             jsonForm,
             self.samplePaths,
+            self.groupingFiles,
             parent=parent,
         )
 
@@ -94,6 +98,7 @@ class NormalizationCalibrationWorkflow:
         self.runNumber = view.getFieldText("runNumber")
         self.emptyRunNumber = view.getFieldText("emptyRunNumber")
         self.smoothingParmameter = view.getFieldText("smoothingParameter")
+        self.focusGroupPath = view.groupingFileDropDown.currentText()
         sampleIndex = view.sampleDropDown.currentIndex()
 
         self._specifyCalibrationView.updateSample(sampleIndex)
@@ -106,6 +111,7 @@ class NormalizationCalibrationWorkflow:
             runNumber=self.runNumber,
             emptyRunNumber=self.emptyRunNumber,
             samplePath=self.samplePath,
+            focusGroupPath=self.focusGroupPath,
             smoothingParameter=self.smoothingParmameter,
         )
 
@@ -121,11 +127,14 @@ class NormalizationCalibrationWorkflow:
             smoothWorkspace=self.responses[-1].data["smooth_ws"],
             smoothingParameter=self.smoothingParmameter,
             samplePath=self.samplePath,
+            focusGroupPath=self.focusGroupPath,
         )
         request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
 
-        # TODO: use data in response to update view
+        # TODO: use data in response to update view with graphs
+        # response will return a Normalization record, this contains the workspaces and other information
+        # this wil need to be passed to a function defined here to update the view with the appropriate number of graphs
 
         self.responses.append(response)
         return response
@@ -136,6 +145,7 @@ class NormalizationCalibrationWorkflow:
     #     normalizationRecord = self.responses[-1].data
     #     normalizationRecord.workspaceNames.append(self.responses[-2].data)
     #     pass
+
     @property
     def widget(self):
         return self.workflow.presenter.widget

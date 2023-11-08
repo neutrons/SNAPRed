@@ -11,4 +11,5 @@ class NormalizationCalibrationRequest(BaseModel):
     runNumber: RunConfig
     emptyRunNumber: RunConfig
     samplePath: str
+    focusGroupPath: str
     smoothingParameter: Optional[float]

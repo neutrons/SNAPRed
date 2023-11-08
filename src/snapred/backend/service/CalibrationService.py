@@ -325,6 +325,11 @@ class CalibrationService(Service):
         calibrationRecord = self.load(request.run)
         calibrationWorkspace = calibrationRecord.workspaceNames[0]
 
+        focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
+            request.runNumber,
+            request.focusGroupPath,
+        )
+
         smoothingIngredients = SmoothDataExcludingPeaksIngredients(
             crystalInfo=crystalInfo,
             instrumentState=instrumentState,
@@ -338,6 +343,7 @@ class CalibrationService(Service):
             smoothingIngredients=smoothingIngredients,
             calibrationRecord=calibrationRecord,
             calibrantSample=calibrantSample,
+            focusGroup=focusGroup,
             calibrationWorkspace=calibrationWorkspace,
         )
 
@@ -364,7 +370,6 @@ class CalibrationService(Service):
             normalization=normalization,
             workspaceNames=workspaces,
         )
-
         return record
 
     @FromString

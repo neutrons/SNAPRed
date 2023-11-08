@@ -57,6 +57,7 @@ class CalibrationNormalization(PythonAlgorithm):
         self.calibrationWorkspace = ingredients.calibrationWorkspace
         self.isLiteRun = ingredients.run.isLite
         self.isLiteBackground = ingredients.backgroundRun.isLite
+        self.focusGroup = ingredients.focusGroup
         yield
 
     def PyExec(self):
