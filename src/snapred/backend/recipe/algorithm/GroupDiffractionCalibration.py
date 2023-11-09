@@ -152,15 +152,12 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         resulting DIFCs are combined with the previous table.
         The final calibration table is saved to disk for future use.
         input:
-
-            Ingredients: DiffractionCalibrationIngredients -- the DAO holding data needed to run the algorithm
-            InputWorkspace: str -- the name of workspace holding the initial TOF data
-            PreviousCalibrationTable: str -- the name of the table workspace with previous DIFC values
-
+        - Ingredients: DiffractionCalibrationIngredients -- the DAO holding data needed to run the algorithm
+        - InputWorkspace: str -- the name of workspace holding the initial TOF data
+        - PreviousCalibrationTable: str -- the name of the table workspace with previous DIFC values
         output:
-
-            OutputWorkspace: str -- the name of the diffraction-focussed d-spacing data after the final calibration
-            FinalCalibrationTable: str -- the name of the final table of DIFC values
+        - OutputWorkspace: str -- the name of the diffraction-focussed d-spacing data after the final calibration
+        - FinalCalibrationTable: str -- the name of the final table of DIFC values
         """
         # run the algo
         self.log().notice("Execution of group diffraction calibration START!")

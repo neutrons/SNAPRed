@@ -30,18 +30,19 @@ class FetchGroceriesRecipe:
         name: str = f"_TOF_RAW_{runConfig.runNumber}"
         if runConfig.isLite:
             name = name + "_lite"
+        return name
 
     def fetchNexusData(self, runConfig: RunConfig, loader: str = "") -> Dict[str, Any]:
         """
         Fetch just a nexus data file
         inputs:
-         - runConfig, a RunConfig object corresponf to the data desired
-         - loader, the loading algorithm to use, if you think you already know
+        - runConfig, a RunConfig object corresponf to the data desired
+        - loader, the loading algorithm to use, if you think you already know
         outputs:
-         - data, a dictionary with
-           - "result": true if everything ran correctly
-           - "loader": the loader that was used by the algorithm, use it next time
-           - "workspace": the name of the workspace created in the ADS
+        - data, a dictionary with
+          - "result": true if everything ran correctly
+          - "loader": the loader that was used by the algorithm, use it next time
+          - "workspace": the name of the workspace created in the ADS
         """
 
         workspaceName = self._createNexusWorkspaceName(runConfig)
@@ -54,16 +55,17 @@ class FetchGroceriesRecipe:
         if runConfig in self._loadedRuns:
             logger.info("Data already loaded... continuing")
             data["result"] = True
+            data["alreadyLoaded"] = True
         else:
-            logger.info("Fetching nexus data for run: %s at %s" % runConfig.runNumber, fileName)
-            algo = AlgorithmManager.create(FetchAlgo.__name__)
+            logger.info(f"Fetching nexus data for run {runConfig.runNumber} at {fileName}")
+            algo = FetchAlgo()
+            algo.initialize()
             algo.setProperty("Filename", fileName)
             algo.setProperty("Workspace", workspaceName)
             algo.setProperty("LoaderType", loader)
             try:
                 data["result"] = algo.execute()
-                data["loader"] = algo.getProperty("LoaderType")
-                data["workspace"] = workspaceName
+                data["loader"] = algo.getPropertyValue("LoaderType")
             except RuntimeError as e:
                 errorString = str(e)
                 raise Exception(errorString.split("\n")[0])
@@ -88,12 +90,12 @@ class FetchGroceriesRecipe:
         """
         Fetch just a grouping definition.
         inputs:
-         - item, a GroceryListItem
+        - item, a GroceryListItem
         outputs:
-         - data, a dictionayr with
-           - "result", true if everything ran correctly
-           - "loader", just "LoadGroupingDefinition" with no apologies
-           - "workspaceName", the name of the new grouping workspace in the ADS
+        - data, a dictionayr with
+          - "result", true if everything ran correctly
+          - "loader", just "LoadGroupingDefinition" with no apologies
+          - "workspaceName", the name of the new grouping workspace in the ADS
         """
 
         workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.isLite)
@@ -102,14 +104,16 @@ class FetchGroceriesRecipe:
         data: Dict[str, Any] = {
             "result": False,
             "loader": "LoadGroupingDefinition",
-            "workspaceName": workspaceName,
+            "workspace": workspaceName,
         }
-        algo = AlgorithmManager.create(FetchAlgo.__name__)
+        algo = FetchAlgo()
+        algo.initialize()
         algo.setProperty("Filename", fileName)
         algo.setProperty("Workspace", workspaceName)
         algo.setProperty("LoaderType", "LoadGroupingDefinition")
         algo.setProperty(item.instrumentPropertySource, item.instrumentSource)
         try:
+            print(algo.execute())
             data["result"] = algo.execute()
         except RuntimeError as e:
             errorString = str(e)
@@ -120,11 +124,11 @@ class FetchGroceriesRecipe:
     def executeRecipe(self, groceries: List[GroceryListItem]) -> Dict[str, Any]:
         """
         inputs:
-         - groceries, a list of data files to create
+        - groceries, a list of data files to create
         outputs:
-         - data, a dictionary with:
-           - "result" (True if everything good, otherwise False)
-           - "workspaces" a list of strings with all workspace names created in the ADS
+        - data, a dictionary with:
+          - "result" (True if everything good, otherwise False)
+          - "workspaces" a list of strings with all workspace names created in the ADS
         """
 
         data: Dict[str, Any] = {
@@ -135,7 +139,7 @@ class FetchGroceriesRecipe:
             if item.workspaceType == "nexus":
                 res = self.fetchNexusData(item.runConfig, item.loader)
                 data["result"] &= res["result"]
-                data["workspaces"].append(res["workspaceName"])
+                data["workspaces"].append(res["workspace"])
             elif item.workspaceType == "grouping":
                 # if we intend to use the previously loaded workspace as the donor
                 if item.instrumentSource == "prev":
@@ -143,5 +147,5 @@ class FetchGroceriesRecipe:
                     item.instrumentSource = data["workspaces"][-1]
                 res = self.fetchGroupingDefinition(item)
                 data["result"] &= res["result"]
-                data["workspaces"].append(res["workspaceName"])
-            return data
+                data["workspaces"].append(res["workspace"])
+        return data

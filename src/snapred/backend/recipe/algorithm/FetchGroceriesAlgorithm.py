@@ -21,7 +21,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 class FetchGroceriesAlgorithm(PythonAlgorithm):
     """
-    For general-purpose loading rof nexus data, or grouping workspaces
+    For general-purpose loading of nexus data, or grouping workspaces
     """
 
     def category(self):
@@ -33,14 +33,13 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             FileProperty(
                 "Filename",
                 defaultValue="",
-                # action=FileAction.OptionalLoad,
+                action=FileAction.Load,
                 extensions=["xml", "h5", "nxs", "hd5"],
+                direction=Direction.Input,
             ),
-            direction=Direction.Input,
-            propertyMode=PropertyMode.Mandatory,
+            # propertyMode=PropertyMode.Mandatory,
             doc="Path to file to be loaded",
         )
-        # self.declareProperty("Filename", "", direction=Direction.Input)
         self.declareProperty(
             MatrixWorkspaceProperty("Workspace", "", Direction.Output, PropertyMode.Optional),
             doc="Workspace containing the loaded data",
@@ -48,8 +47,8 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         self.declareProperty(
             "LoaderType",
             "",
-            StringListValidator(["LoadGroupingDefinition", "LoadNexus", "LoadEventNexus", "LoadNexuxProcessed"]),
-            Direction.InOut,
+            StringListValidator(["", "LoadGroupingDefinition", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed"]),
+            direction=Direction.InOut,
         )
         self.declareProperty(
             "InstrumentName",
@@ -67,6 +66,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             MatrixWorkspaceProperty("InstrumentDonor", "", Direction.Input, PropertyMode.Optional),
             doc="Workspace to optionally take the instrument from",
         )
+        self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def validateInputs(self) -> Dict[str, str]:
@@ -79,7 +79,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             self.getPropertyValue("InstrumentFilename"),
             self.getPropertyValue("InstrumentDonor"),
         ]
-        if sum([1 for s in instrumentSources if s != ""]) != 1:
+        if sum([1 for s in instrumentSources if s != ""]) > 1:
             issue = "Only one of InstrumentName, InstrumentFilename, or InstrumentDonor can be set"
             issues["InstrumentName"] = issue
             issues["InstrumentFilename"] = issue
@@ -92,7 +92,8 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         loaderType = self.getPropertyValue("LoaderType")
         if not self.mantidSnapper.mtd.doesExist(outWS):
             if loaderType == "":
-                self.mantidSnapper.Load(
+                _, loaderType, _ = self.mantidSnapper.Load(
+                    "Loading with unspecified loader",
                     Filename=filename,
                     OutputWorkspace=outWS,
                     LoaderName=loaderType,
@@ -101,19 +102,21 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                 for x in ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]:
                     if not self.getProperty(x).isDefault:
                         instrumentPropertySource = x
-                        instrumentSource = self.getPropertValue(x)
+                        instrumentSource = self.getPropertyValue(x)
                 self.mantidSnapper.LoadGroupingDefinition(
+                    "Loading grouping definition",
                     GroupingFilename=filename,
                     OutputWorkspace=outWS,
                     **{instrumentPropertySource: instrumentSource},
                 )
             else:
                 getattr(self.mantidSnapper, loaderType)(
+                    f"Loading data using {loaderType}",
                     Filename=filename,
                     OutputWorkspace=outWS,
                 )
         self.mantidSnapper.executeQueue()
-        self.setProperty("LoaderType", self.getPropertyValue(loaderType))
+        self.setPropertyValue("LoaderType", str(loaderType))
 
 
 # Register algorithm with Mantid

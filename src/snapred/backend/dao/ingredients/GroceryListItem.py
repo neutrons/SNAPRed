@@ -10,7 +10,7 @@ class GroceryListItem(BaseModel):
 
     workspaceType: Literal["nexus", "grouping"]
     runConfig: Optional[RunConfig]
-    loader: str = ""
+    loader: Optional[Literal["LoadGroupingDefinition", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed"]]
     isLite: Optional[bool]
     groupingScheme: Optional[str]
     instrumentPropertySource: Optional[Literal["InstrumentName", "InstrumentFilename", "InstrumentDonor"]]
@@ -25,8 +25,8 @@ class GroceryListItem(BaseModel):
                 raise ValueError("you must specify whether to use Lite mode for grouping workspace")
             if v.get("groupingScheme") is None:
                 raise ValueError("you must specify the grouping scheme to use")
-            if v["instrumentPropertySource"] is None:
+            if v.get("instrumentPropertySource") is None:
                 raise ValueError("a grouping workspace requires an instrument source")
-            if v["instrumentSource"] is None:
+            if v.get("instrumentSource") is None:
                 raise ValueError("a grouping workspace requries an instrument source")
         return v

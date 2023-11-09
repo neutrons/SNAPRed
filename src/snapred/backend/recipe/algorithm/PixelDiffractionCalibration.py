@@ -180,9 +180,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         """
         Calculate a unique reference pixel for a pixel grouping, based in the pixel geometry.
         input:
-            detectorIDs: List[int] -- a list of all of the detector IDs in that group
+        - detectorIDs: List[int] -- a list of all of the detector IDs in that group
         output:
-            the median pixel ID (to be replaced with angular COM pixel)
+        - the median pixel ID (to be replaced with angular COM pixel)
         """
         return int(np.median(detectorIDs))
 
@@ -193,9 +193,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         the spectra are cross-correlated, the offsets calculated, and the original DIFC
         values are corrected by the offsets.
         outputs:
-            data: dict -- statistics of the offsets, for testing convergence
-            OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
-            CalibrationTable: str -- the final table of DIFC values
+        - data: dict -- statistics of the offsets, for testing convergence
+        - OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
+        - CalibrationTable: str -- the final table of DIFC values
         """
 
         self.log().notice(f"Executing pixel calibration iteration {self._counts}")
@@ -287,11 +287,13 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         """
         Calculate pixel calibration DIFC values on each spectrum group.
         inputs:
-            Ingredients: DiffractionCalibrationIngredients -- the DAO holding data needed to run the algorithm
+        - Ingredients: DiffractionCalibrationIngredients -- the DAO holding data needed to run the algorithm
+        - InputWorkspace: str -- the raw neutron data to be processed
+        - GroupingWorkspace: str -- a pixel grouping workspace
         outputs:
-            data: dict -- several statistics of the offsets, for testing convergence
-            OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
-            CalibrationTable: str -- the final table of DIFC values
+        - data: dict -- several statistics of the offsets, for testing convergence
+        - OuputWorkspace: str -- the name of the TOF data with new DIFCs applied
+        - CalibrationTable: str -- the final table of DIFC values
         """
         # run the algo
         self.log().notice("Execution of pixel diffraction calibration START!")
