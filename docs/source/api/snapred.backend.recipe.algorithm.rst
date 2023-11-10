@@ -68,6 +68,14 @@ snapred.backend.recipe.algorithm.DummyAlgo module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm module
+---------------------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm module
 -----------------------------------------------------------------
 
