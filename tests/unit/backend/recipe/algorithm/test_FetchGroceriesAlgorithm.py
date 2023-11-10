@@ -36,6 +36,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         )
         cls.filepath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesalgo.nxs")
         cls.instrumentFilepath = Resource.getPath("inputs/diffcal/fakeSNAPLite.xml")
+        cls.fetchedWS = f"_{cls.runNumber}_fetched"
         # create some sample data
         cls.sampleWS = f"_{cls.runNumber}_grocery_to_fetch"
         CreateSampleWorkspace(
@@ -66,7 +67,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
 
     def tearDown(self) -> None:
         try:
-            DeleteWorkspace(f"_{self.runNumber}_fetched")
+            DeleteWorkspace(self.fetchedWS)
         except:  # noqa: E722
             pass
         return super().tearDown()
@@ -92,7 +93,6 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
             assert "FileProperty" in e.msg()
         algo.setPropertyValue("Filename", self.filepath)
         assert self.filepath == algo.getPropertyValue("Filename")
-        print(algo.getPropertyValue("Filename"))
 
         # chek failure if no workspace property given
         fetched_groceries = f"_fetched_groceries_{self.runNumber}"
@@ -150,10 +150,10 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
         algo.setPropertyValue("LoaderType", "")
-        algo.setPropertyValue("Workspace", f"_{self.runNumber}_fetched")
+        algo.setPropertyValue("Workspace", self.fetchedWS)
         assert algo.execute()
         assert CompareWorkspaces(
-            Workspace1=f"_{self.runNumber}_fetched",
+            Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
         )
         assert "LoadNexusProcessed" == algo.getPropertyValue("LoaderType")
@@ -163,10 +163,10 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
         algo.setPropertyValue("LoaderType", "LoadNexus")
-        algo.setPropertyValue("Workspace", f"_{self.runNumber}_fetched")
+        algo.setPropertyValue("Workspace", self.fetchedWS)
         assert algo.execute()
         assert CompareWorkspaces(
-            Workspace1=f"_{self.runNumber}_fetched",
+            Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
         )
         assert "LoadNexus" == algo.getPropertyValue("LoaderType")
@@ -180,10 +180,10 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
         algo.setPropertyValue("LoaderType", "LoadNexusProcessed")
-        algo.setPropertyValue("Workspace", f"_{self.runNumber}_fetched")
+        algo.setPropertyValue("Workspace", self.fetchedWS)
         assert algo.execute()
         assert CompareWorkspaces(
-            Workspace1=f"_{self.runNumber}_fetched",
+            Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
         )
         assert "LoadNexusProcessed" == algo.getPropertyValue("LoaderType")
@@ -214,6 +214,18 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
             Workspace1=f"_{self.runNumber}_grouping_file",
             Workspace2=f"_{self.runNumber}_grouping_donor",
         )
+
+    def test_loadGroupingTwice(self):
+        algo = Algo()
+        algo.initialize()
+        algo.setPropertyValue("Filename", self.filepath)
+        algo.setPropertyValue("LoaderType", "LoadGroupingDefinition")
+        algo.setPropertyValue("Workspace", self.fetchedWS)
+        algo.setPropertyValue("InstrumentFilename", self.instrumentFilepath)
+        assert algo.execute()
+        assert algo.getPropertyValue("LoaderType") == "LoadGroupingDefinition"
+        assert algo.execute()
+        assert algo.getPropertyValue("LoaderType") == ""
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

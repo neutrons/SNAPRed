@@ -67,18 +67,17 @@ class FetchGroceriesRecipe:
                 data["result"] = algo.execute()
                 data["loader"] = algo.getPropertyValue("LoaderType")
             except RuntimeError as e:
-                errorString = str(e)
-                raise Exception(errorString.split("\n")[0])
+                raise RuntimeError(str(e).split("\n")[0]) from e
             logger.info("Finished loading nexus data")
             self._loadedRuns.append(runConfig)
         return data
 
     def _createGroupingFilename(self, groupingScheme: str, isLite: bool = True):
-        filepath = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/"
+        location = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/"
         if isLite:
-            return f"{filepath}SNAPFocGroup_{groupingScheme}.lite.nxs"
+            return f"{location}SNAPFocGroup_{groupingScheme}.lite.nxs"
         else:
-            return f"{filepath}SNAPFocGroup_{groupingScheme}.xml"
+            return f"{location}SNAPFocGroup_{groupingScheme}.xml"
 
     def _createGroupingWorkspaceName(self, groupingScheme: str, isLite: bool = True):
         if isLite:
@@ -113,11 +112,9 @@ class FetchGroceriesRecipe:
         algo.setProperty("LoaderType", "LoadGroupingDefinition")
         algo.setProperty(item.instrumentPropertySource, item.instrumentSource)
         try:
-            print(algo.execute())
             data["result"] = algo.execute()
         except RuntimeError as e:
-            errorString = str(e)
-            raise Exception(errorString.split("\n")[0])
+            raise RuntimeError(str(e).split("\n")[0]) from e
         logger.info("Finished loading grouping")
         return data
 
