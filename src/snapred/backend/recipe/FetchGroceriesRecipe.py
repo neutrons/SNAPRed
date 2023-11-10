@@ -38,11 +38,10 @@ class FetchGroceriesRecipe:
         inputs:
         - runConfig, a RunConfig object corresponf to the data desired
         - loader, the loading algorithm to use, if you think you already know
-        outputs:
-        - data, a dictionary with
-          - "result": true if everything ran correctly
-          - "loader": the loader that was used by the algorithm, use it next time
-          - "workspace": the name of the workspace created in the ADS
+        outputsa dictionary with
+        - "result": true if everything ran correctly
+        - "loader": the loader that was used by the algorithm, use it next time
+        - "workspace": the name of the workspace created in the ADS
         """
 
         workspaceName = self._createNexusWorkspaceName(runConfig)
@@ -90,11 +89,10 @@ class FetchGroceriesRecipe:
         Fetch just a grouping definition.
         inputs:
         - item, a GroceryListItem
-        outputs:
-        - data, a dictionayr with
-          - "result", true if everything ran correctly
-          - "loader", just "LoadGroupingDefinition" with no apologies
-          - "workspaceName", the name of the new grouping workspace in the ADS
+        outputs a dictionayr with
+        - "result", true if everything ran correctly
+        - "loader", just "LoadGroupingDefinition" with no apologies
+        - "workspaceName", the name of the new grouping workspace in the ADS
         """
 
         workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.isLite)
@@ -122,10 +120,9 @@ class FetchGroceriesRecipe:
         """
         inputs:
         - groceries, a list of data files to create
-        outputs:
-        - data, a dictionary with:
-          - "result" (True if everything good, otherwise False)
-          - "workspaces" a list of strings with all workspace names created in the ADS
+        outputs a dictionary with:
+        - "result" (True if everything good, otherwise False)
+        - "workspaces" a list of strings with all workspace names created in the ADS
         """
 
         data: Dict[str, Any] = {
