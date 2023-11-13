@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
+    CompareWorkspaces,
     CreateSampleWorkspace,
     DeleteWorkspace,
     LoadInstrument,
@@ -31,23 +32,23 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         Create a mock data file which will be loaded in tests.
         This is created at the start of this test suite, then deleted at the end.
         """
-        cls.runNumber = "555"
+        cls.runNumber = 555
         cls.runConfigLite = RunConfig(
             runNumber=str(cls.runNumber),
             IPTS=Resource.getPath("inputs/"),
             isLite=True,
         )
         cls.runConfigNonlite = RunConfig(
-            runNumber=str(cls.runNumber),
+            runNumber=str(cls.runNumber + 1),
             IPTS=Resource.getPath("inputs/"),
             isLite=False,
         )
         cls.filepath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesrx.nxs")
         cls.instrumentFilepath = Resource.getPath("inputs/diffcal/fakeSNAPLite.xml")
-        cls.fetchedWSname = f"_{cls.runNumber}_fetched"
+        cls.fetchedWSname = "_fetched_grocery"
         cls.groupingScheme = "Column"
         # create some sample data
-        cls.sampleWS = f"_{cls.runNumber}_grocery_to_fetch"
+        cls.sampleWS = "_grocery_to_fetch"
         CreateSampleWorkspace(
             OutputWorkspace=cls.sampleWS,
             # WorkspaceType="Histogram",
@@ -93,19 +94,12 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
 
     def clearoutWorkspaces(self) -> None:
         """Delete the workspaces created by loading"""
-        rx = Recipe()
-        names = [
-            self.fetchedWSname,
-            rx._createNexusWorkspaceName(self.runConfigLite),
-            rx._createNexusWorkspaceName(self.runConfigNonlite),
-            rx._createGroupingWorkspaceName(self.groupingScheme, True),
-            rx._createGroupingWorkspaceName(self.groupingScheme, False),
-        ]
-        for ws in names:
-            try:
-                DeleteWorkspace(ws)
-            except:  # noqa: E722
-                pass
+        for ws in mtd.getObjectNames():
+            if ws != self.sampleWS:
+                try:
+                    DeleteWorkspace(ws)
+                except:  # noqa: E722
+                    pass
 
     def tearDown(self) -> None:
         """At the end of each test, clear out the workspaces"""
@@ -126,6 +120,19 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         os.remove(cls.filepath)
         return super().tearDownClass()
 
+    def test_runkey(self):
+        rx = Recipe()
+        assert rx._runKey(self.runConfigLite) == (
+            self.runConfigLite.runNumber,
+            self.runConfigLite.IPTS,
+            self.runConfigLite.isLite,
+        )
+        assert rx._runKey(self.runConfigNonlite) == (
+            self.runConfigNonlite.runNumber,
+            self.runConfigNonlite.IPTS,
+            self.runConfigNonlite.isLite,
+        )
+
     def test_nexus_filename(self):
         """Test the creation of the nexus filename"""
         rx = Recipe()
@@ -134,13 +141,30 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         res = rx._createFilenameFromRunConfig(self.runConfigNonlite)
         assert res == f"{Config['nexus.native.home']}SNAP_{self.runConfigNonlite.runNumber}.nxs.h5"
 
-    def test_nexus_workspacename(self):
+    def test_nexus_workspacename_raw(self):
         """Test the creation of the nexus workspace name"""
         rx = Recipe()
-        res = rx._createNexusWorkspaceName(self.runConfigLite)
-        assert res == f"_TOF_RAW_{self.runConfigLite.runNumber}_lite"
-        res = rx._createNexusWorkspaceName(self.runConfigNonlite)
-        assert res == f"_TOF_RAW_{self.runConfigNonlite.runNumber}"
+        res = rx._createRawNexusWorkspaceName(self.runConfigLite)
+        assert res == f"_TOF_{self.runConfigLite.runNumber}_RAW_lite"
+        res = rx._createRawNexusWorkspaceName(self.runConfigNonlite)
+        assert res == f"_TOF_{self.runConfigNonlite.runNumber}_RAW"
+
+    def test_nexus_workspacename_copy(self):
+        """Test the creation of the nexus workspace name"""
+        rx = Recipe()
+        fakeCopies = 117
+        res = rx._createNexusWorkspaceName(self.runConfigLite, fakeCopies)
+        assert self.runConfigLite.runNumber in res
+        assert "copy" in res.lower()
+        assert "lite" in res.lower()
+        assert str(fakeCopies) in res
+
+        fakeCopies = 112
+        res = rx._createNexusWorkspaceName(self.runConfigNonlite, fakeCopies)
+        assert self.runConfigNonlite.runNumber in res
+        assert "copy" in res.lower()
+        assert "lite" not in res.lower()
+        assert str(fakeCopies) in res
 
     def test_grouping_filename(self):
         """Test the creation of the grouping filename"""
@@ -164,41 +188,63 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert uniqueGroupingScheme in res
         assert "lite" not in res.lower()
 
-    @mock.patch.object(Recipe, "_createNexusWorkspaceName")
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
-    def test_fetch_nexus(self, mockFilename, mockWorkspaceName):
+    def test_fetch_nexus(self, mockFilename):
         """Test the correct behavior when fetching nexus data"""
         mockFilename.return_value = self.filepath
-        mockWorkspaceName.return_value = f"_{self.runNumber}_lite_fetched"
-        testKeyLite = (self.runConfigLite.runNumber, self.runConfigLite.IPTS, self.runConfigLite.isLite)
-        testKeyNonlite = (self.runConfigNonlite.runNumber, self.runConfigNonlite.IPTS, self.runConfigNonlite.isLite)
+
+        # make sure the workspace is clean
+        self.clearoutWorkspaces()
+        assert not mtd.doesExist(Recipe()._createRawNexusWorkspaceName(self.runConfigLite))
+        assert not mtd.doesExist(Recipe()._createNexusWorkspaceName(self.runConfigLite, 1))
+        assert not mtd.doesExist(Recipe()._createNexusWorkspaceName(self.runConfigLite, 2))
+        assert not mtd.doesExist(Recipe()._createRawNexusWorkspaceName(self.runConfigNonlite))
+        assert not mtd.doesExist(Recipe()._createNexusWorkspaceName(self.runConfigNonlite, 1))
+
         rx = Recipe()
         assert len(rx._loadedRuns) == 0
+        testKeyLite = rx._runKey(self.runConfigLite)
+        testKeyNonlite = rx._runKey(self.runConfigNonlite)
 
         # test that a nexus workspace can be loaded
         res = rx.fetchNexusData(self.runConfigLite)
-        assert len(rx._loadedRuns) == 1
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
-        assert res["workspace"] == mockWorkspaceName.return_value
-        assert rx._loadedRuns == {testKeyLite: 1}
-
-        # test that trying to load data twice does nothing
-        res = rx.fetchNexusData(self.runConfigLite)
+        assert res["workspace"] == rx._createNexusWorkspaceName(self.runConfigLite, 1)
         assert len(rx._loadedRuns) == 1
-        assert res["workspace"] == f"{mockWorkspaceName.return_value}_1"
-        assert rx._loadedRuns == {testKeyLite: 2}
+        assert rx._loadedRuns == {testKeyLite: 1}
+        # assert the correct workspaces exist: a raw and a copy
+        assert mtd.doesExist(rx._createRawNexusWorkspaceName(self.runConfigLite))
+        assert mtd.doesExist(rx._createNexusWorkspaceName(self.runConfigLite, 1))
+        # test the workspace is correct
+        assert CompareWorkspaces(
+            Workspace1=self.sampleWS,
+            Workspace2=res["workspace"],
+        )
 
-        # test nonlike data can be loaded
-        mockWorkspaceName.return_value = f"_{self.runNumber}_fetched"
+        # test that trying to load data twicce only makes a new copy
+        res = rx.fetchNexusData(self.runConfigLite)
+        assert len(res) > 0
+        assert res["result"]
+        assert res["workspace"] == rx._createNexusWorkspaceName(self.runConfigLite, 2)
+        assert len(rx._loadedRuns) == 1
+        assert rx._loadedRuns == {testKeyLite: 2}
+        # assert the correct workspaces exist: a raw and a copy
+        assert mtd.doesExist(rx._createRawNexusWorkspaceName(self.runConfigLite))
+        assert mtd.doesExist(rx._createNexusWorkspaceName(self.runConfigLite, 1))
+        assert mtd.doesExist(rx._createNexusWorkspaceName(self.runConfigLite, 2))
+        assert CompareWorkspaces(Workspace1=self.sampleWS, Workspace2=res["workspace"])
+
+        # test nonlite data can be loaded
         res = rx.fetchNexusData(self.runConfigNonlite)
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
-        assert res["workspace"] == mockWorkspaceName.return_value
+        assert res["workspace"] == rx._createNexusWorkspaceName(self.runConfigNonlite, 1)
         assert len(rx._loadedRuns) == 2
         assert rx._loadedRuns == {testKeyLite: 2, testKeyNonlite: 1}
+        assert CompareWorkspaces(Workspace1=self.sampleWS, Workspace2=res["workspace"])
 
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
     def test_failed_fetch_nexus(self, mockFilename):
@@ -241,11 +287,15 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["result"]
         assert res.get("workspaces") is not None
         assert len(res["workspaces"]) == len(self.groceryList)
-        assert res["workspaces"][0] == rx._createNexusWorkspaceName(self.runConfigLite)
+        assert res["workspaces"][0] == rx._createNexusWorkspaceName(self.runConfigLite, 1)
         assert res["workspaces"][1] == rx._createGroupingWorkspaceName(
             self.groceryListItemGrouping.groupingScheme,
             self.groceryListItemGrouping.isLite,
         )
+        # test the correct workspaces exist
+        assert mtd.doesExist(rx._createRawNexusWorkspaceName(self.runConfigLite))
+        assert mtd.doesExist(res["workspaces"][0])
+        assert mtd.doesExist(res["workspaces"][1])
 
     @mock.patch.object(Recipe, "_createGroupingFilename")
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
