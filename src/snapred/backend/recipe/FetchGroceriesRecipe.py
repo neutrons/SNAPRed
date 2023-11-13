@@ -116,7 +116,7 @@ class FetchGroceriesRecipe:
         home = "instrument.calibration.powder.grouping.home"
         pre = "grouping.filename.prefix"
         ext = "grouping.filename." + instr + ".extension"
-        return Config[home] + Config[pre] + groupingScheme + Config[ext]
+        return Config[home] + "/" + Config[pre] + groupingScheme + Config[ext]
 
     def _createGroupingWorkspaceName(self, groupingScheme: str, isLite: bool = True):
         instr = "lite" if isLite else "native"
