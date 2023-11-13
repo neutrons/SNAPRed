@@ -19,7 +19,7 @@ from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.recipe.FetchGroceriesRecipe import (
     FetchGroceriesRecipe as Recipe,  # noqa: E402
 )
-from snapred.meta.Config import Resource
+from snapred.meta.Config import Config, Resource
 
 TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
 
@@ -130,9 +130,9 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         """Test the creation of the nexus filename"""
         rx = Recipe()
         res = rx._createFilenameFromRunConfig(self.runConfigLite)
-        assert res == f"{self.runConfigLite.IPTS}shared/lite/SNAP_{self.runConfigLite.runNumber}.lite.nxs.h5"
+        assert res == f"{Config['nexus.lite.home']}SNAP_{self.runConfigLite.runNumber}.lite.nxs.h5"
         res = rx._createFilenameFromRunConfig(self.runConfigNonlite)
-        assert res == f"{self.runConfigNonlite.IPTS}nexus/SNAP_{self.runConfigNonlite.runNumber}.nxs.h5"
+        assert res == f"{Config['nexus.native.home']}SNAP_{self.runConfigNonlite.runNumber}.nxs.h5"
 
     def test_nexus_workspacename(self):
         """Test the creation of the nexus workspace name"""

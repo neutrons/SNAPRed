@@ -25,10 +25,30 @@ instrument:
       file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
 
 nexus:
+  lite:
+    home: ${instrument.home}shared/lite/
+    prefix: SNAP_
+    extension: .lite.nxs.h5
+  native:
+    home: ${instrument.home}nexus/
+    prefix: SNAP_
+    extension: .nxs.h5
   home: nexus/
   file:
     extension: .nxs.h5
     prefix: SNAP_
+
+grouping:
+  filename:
+    prefix: SNAPFocGroup_
+    lite:
+      extension: .lite.nxs
+    native:
+      extension: .xml
+  workspacename:
+    lite: SNAPLite_grouping_
+    native: SNAP_grouping_
+
 
 calibration:
   file:
@@ -60,7 +80,7 @@ localdataservice:
     verifypaths: true
 
 logging:
-  level: 10
+  level: 40
   SNAP:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
   mantid:

@@ -6,6 +6,7 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm as FetchAlgo
+from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -21,10 +22,11 @@ class FetchGroceriesRecipe:
         self._loadedRuns: Dict[(str, str, bool), int] = {}
 
     def _createFilenameFromRunConfig(self, runConfig: RunConfig) -> str:
-        if runConfig.isLite:
-            return f"{runConfig.IPTS}shared/lite/SNAP_{runConfig.runNumber}.lite.nxs.h5"
-        else:
-            return f"{runConfig.IPTS}nexus/SNAP_{runConfig.runNumber}.nxs.h5"
+        instr = "nexus.lite" if runConfig.isLite else "nexus.native"
+        home = instr + ".home"
+        pre = instr + ".prefix"
+        ext = instr + ".extension"
+        return Config[home] + Config[pre] + str(runConfig.runNumber) + Config[ext]
 
     def _createNexusWorkspaceName(self, runConfig) -> str:
         name: str = f"_TOF_RAW_{runConfig.runNumber}"
@@ -56,6 +58,7 @@ class FetchGroceriesRecipe:
             newWorkspaceName = f"{workspaceName}_{self._loadedRuns[thisKey]}"
             self._loadedRuns[thisKey] += 1
             logger.info("Data already loaded... continuing")
+            # TODO: does this really need to be cloned?  If algo's always clone, not necessary here
             CloneWorkspace(
                 InputWorkspace=workspaceName,
                 OutputWorkspace=newWorkspaceName,
@@ -79,17 +82,15 @@ class FetchGroceriesRecipe:
         return data
 
     def _createGroupingFilename(self, groupingScheme: str, isLite: bool = True):
-        location = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/"
-        if isLite:
-            return f"{location}SNAPFocGroup_{groupingScheme}.lite.nxs"
-        else:
-            return f"{location}SNAPFocGroup_{groupingScheme}.xml"
+        instr = "lite" if isLite else "native"
+        home = "instrument.calibration.powder.grouping.home"
+        pre = "grouping.filename.prefix"
+        ext = "grouping.filename." + instr + ".extension"
+        return Config[home] + Config[pre] + groupingScheme + Config[ext]
 
     def _createGroupingWorkspaceName(self, groupingScheme: str, isLite: bool = True):
-        if isLite:
-            return f"SNAPLite_grouping_{groupingScheme}"
-        else:
-            return f"SNAP_grouping_{groupingScheme}"
+        instr = "lite" if isLite else "native"
+        return Config["grouping.workspacename." + instr] + groupingScheme
 
     def fetchGroupingDefinition(self, item: GroceryListItem) -> str:
         """
