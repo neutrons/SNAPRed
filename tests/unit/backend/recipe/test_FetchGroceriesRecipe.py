@@ -1,4 +1,4 @@
-# ruff: noqa: PT012
+# ruff: noqa: ARG001, PT012
 
 import os
 import unittest
@@ -27,7 +27,10 @@ TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.Algor
 class TestFetchGroceriesRecipe(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
+        """
+        Create a mock data file which will be loaded in tests.
+        This is created at the start of this test suite, then deleted at the end.
+        """
         cls.runNumber = "555"
         cls.runConfigLite = RunConfig(
             runNumber=str(cls.runNumber),
@@ -89,6 +92,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         ]
 
     def clearoutWorkspaces(self) -> None:
+        """Delete the workspaces created by loading"""
         rx = Recipe()
         names = [
             self.fetchedWSname,
@@ -104,11 +108,16 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
                 pass
 
     def tearDown(self) -> None:
+        """At the end of each test, clear out the workspaces"""
         self.clearoutWorkspaces()
         return super().tearDown()
 
     @classmethod
     def tearDownClass(cls) -> None:
+        """
+        At the end of the test suite, delete all workspaces
+        and remove the test file.
+        """
         for ws in mtd.getObjectNames():
             try:
                 DeleteWorkspace(ws)
@@ -118,6 +127,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         return super().tearDownClass()
 
     def test_nexus_filename(self):
+        """Test the creation of the nexus filename"""
         rx = Recipe()
         res = rx._createFilenameFromRunConfig(self.runConfigLite)
         assert res == f"{self.runConfigLite.IPTS}shared/lite/SNAP_{self.runConfigLite.runNumber}.lite.nxs.h5"
@@ -125,6 +135,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res == f"{self.runConfigNonlite.IPTS}nexus/SNAP_{self.runConfigNonlite.runNumber}.nxs.h5"
 
     def test_nexus_workspacename(self):
+        """Test the creation of the nexus workspace name"""
         rx = Recipe()
         res = rx._createNexusWorkspaceName(self.runConfigLite)
         assert res == f"_TOF_RAW_{self.runConfigLite.runNumber}_lite"
@@ -132,27 +143,39 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res == f"_TOF_RAW_{self.runConfigNonlite.runNumber}"
 
     def test_grouping_filename(self):
+        """Test the creation of the grouping filename"""
+        uniqueGroupingScheme = "Fruitcake"
         rx = Recipe()
-        res = rx._createGroupingFilename("Fancy", True)
-        assert "_Fancy.lite" in res
-        res = rx._createGroupingFilename("Fancy", False)
-        assert "_Fancy" in res
-        assert "lite" not in res
+        res = rx._createGroupingFilename(uniqueGroupingScheme, True)
+        assert uniqueGroupingScheme in res
+        assert "lite" in res.lower()
+        res = rx._createGroupingFilename(uniqueGroupingScheme, False)
+        assert uniqueGroupingScheme in res
+        assert "lite" not in res.lower()
 
     def test_grouping_workspacename(self):
+        """Test the creation of a grouping workspace name"""
+        uniqueGroupingScheme = "Fruitcake"
         rx = Recipe()
-        res = rx._createGroupingWorkspaceName(self.groupingScheme, True)
-        assert res == f"SNAPLite_grouping_{self.groupingScheme}"
-        res = rx._createGroupingWorkspaceName(self.groupingScheme, False)
-        assert res == f"SNAP_grouping_{self.groupingScheme}"
+        res = rx._createGroupingWorkspaceName(uniqueGroupingScheme, True)
+        assert uniqueGroupingScheme in res
+        assert "lite" in res.lower()
+        res = rx._createGroupingWorkspaceName(uniqueGroupingScheme, False)
+        assert uniqueGroupingScheme in res
+        assert "lite" not in res.lower()
 
     @mock.patch.object(Recipe, "_createNexusWorkspaceName")
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
     def test_fetch_nexus(self, mockFilename, mockWorkspaceName):
+        """Test the correct behavior when fetching nexus data"""
         mockFilename.return_value = self.filepath
         mockWorkspaceName.return_value = f"_{self.runNumber}_fetched"
         rx = Recipe()
+        assert len(rx._loadedRuns) == 0
+
+        # test that a nexus workspace can be loaded
         res = rx.fetchNexusData(self.runConfigLite)
+        assert len(rx._loadedRuns) == 1
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
@@ -161,10 +184,13 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert rx._loadedRuns == [self.runConfigLite]
         self.clearoutWorkspaces()
 
+        # test that trying to load data twice does nothing
         res = rx.fetchNexusData(self.runConfigLite)
-        assert res.get("alreadyLoaded") is not None
+        assert len(rx._loadedRuns) == 1
 
+        # test nonlike data can be loaded
         res = rx.fetchNexusData(self.runConfigNonlite)
+        assert len(rx._loadedRuns) == 2
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"

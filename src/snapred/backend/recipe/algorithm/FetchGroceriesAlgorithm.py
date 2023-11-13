@@ -122,7 +122,6 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         else:
             # TODO: should this throw a warning?  Or warn in logger?
             logger.warning(f"A workspace with name {outWS} already exists in the ADS, and so will not be loaded")
-            loaderType = ""
         self.mantidSnapper.executeQueue()
         self.setPropertyValue("LoaderType", str(loaderType))
 

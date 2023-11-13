@@ -54,7 +54,6 @@ class FetchGroceriesRecipe:
         if runConfig in self._loadedRuns:
             logger.info("Data already loaded... continuing")
             data["result"] = True
-            data["alreadyLoaded"] = True
         else:
             logger.info(f"Fetching nexus data for run {runConfig.runNumber} at {fileName}")
             algo = FetchAlgo()

@@ -1,12 +1,14 @@
-# ruff: noqa: PT012
+# ruff: noqa: ARG001, PT012
 
 import os
 import unittest
+from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
     CompareWorkspaces,
     CreateSampleWorkspace,
+    CreateWorkspace,
     DeleteWorkspace,
     LoadInstrument,
     SaveNexusProcessed,
@@ -28,7 +30,10 @@ TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.Algor
 class TestFetchGroceriesAlgorithm(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
+        """
+        Create a mock data file which will be loaded in tests.
+        This is created at the start of this test suite, then deleted at the end.
+        """
         cls.runNumber = "555"
         cls.runConfig = RunConfig(
             runNumber=str(cls.runNumber),
@@ -66,6 +71,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert os.path.exists(cls.filepath)
 
     def tearDown(self) -> None:
+        """At the end of each test, delete the loaded workspace to avoid pollution"""
         try:
             DeleteWorkspace(self.fetchedWS)
         except:  # noqa: E722
@@ -74,6 +80,10 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
+        """
+        Delete all workspaces created by this test, and remove the ceated filed.
+        This is run once at the end of this test suite.
+        """
         for ws in mtd.getObjectNames():
             try:
                 DeleteWorkspace(ws)
@@ -146,6 +156,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert len(algo.validateInputs()) == 0
 
     def test_loadNexusNoLoader(self):
+        """Test that loading works if no loader specified"""
         algo = Algo()
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
@@ -159,6 +170,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert "LoadNexusProcessed" == algo.getPropertyValue("LoaderType")
 
     def test_loadNexusLoader(self):
+        """Test that loading works using Nexus loader"""
         algo = Algo()
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
@@ -172,10 +184,16 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert "LoadNexus" == algo.getPropertyValue("LoaderType")
 
     def test_loadNexusEventLoader(self):
+        """
+        Test that loading works using the EventNexus loader.
+        Note, it is very difficult to generate a correct event Nexus file,
+        so this test is currently incomplete.
+        """
         # TODO save data in a way that can be loaded by LoadEventNexus
         pass
 
     def test_loadNexusProcessedLoader(self):
+        """Test that loading works using NexusProcessed loader"""
         algo = Algo()
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
@@ -189,6 +207,10 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert "LoadNexusProcessed" == algo.getPropertyValue("LoaderType")
 
     def test_loadGroupings(self):
+        """
+        Test that a grouping file can be loaded.
+        Checked using all three methods of specifying an instrument.
+        """
         algo = Algo()
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
@@ -216,16 +238,49 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         )
 
     def test_loadGroupingTwice(self):
+        """
+        The algorithm will skip the load process if the output workspace
+        already exists.  This checks that the skip occurs.
+        """
+        # ensure the workspace does not already exist
+        assert not mtd.doesExist(self.fetchedWS)
+
+        # mock mantid snapper to ensure number of times called
+        def mockLoad(*args, **kwargs):
+            CreateWorkspace(
+                OutputWorkspace=self.fetchedWS,
+                DataX=1,
+                DataY=1,
+            )
+            assert mtd.doesExist(self.fetchedWS)
+
+        def mockDoesExist(val):
+            return mtd.doesExist(val)
+
+        mockSnapper = mock.MagicMock()
+        mockSnapper.LoadGroupingDefinition = mock.MagicMock(side_effect=mockLoad)
+        mockSnapper.mtd = mock.MagicMock()
+        mockSnapper.mtd.doesExist = mock.MagicMock(side_effect=mockDoesExist)
+
+        # call once
         algo = Algo()
         algo.initialize()
+        algo.mantidSnapper = mockSnapper
         algo.setPropertyValue("Filename", self.filepath)
         algo.setPropertyValue("LoaderType", "LoadGroupingDefinition")
         algo.setPropertyValue("Workspace", self.fetchedWS)
         algo.setPropertyValue("InstrumentFilename", self.instrumentFilepath)
         assert algo.execute()
-        assert algo.getPropertyValue("LoaderType") == "LoadGroupingDefinition"
+        algo.mantidSnapper.mtd.doesExist.assert_called_once()
+        algo.mantidSnapper.LoadGroupingDefinition.assert_called_once()
+        algo.mantidSnapper.executeQueue.assert_called_once()
+        assert mtd.doesExist(self.fetchedWS)
+
+        # call again and make sure not executed again
         assert algo.execute()
-        assert algo.getPropertyValue("LoaderType") == ""
+        algo.mantidSnapper.LoadGroupingDefinition.assert_called_once()
+        assert algo.mantidSnapper.mtd.doesExist.call_count == 2
+        assert algo.mantidSnapper.executeQueue.call_count == 2
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
