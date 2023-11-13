@@ -1,4 +1,4 @@
-# ruff: noqa: ARG001, PT012
+# ruff: noqa: ARG001, E501, PT012
 
 import os
 import unittest
@@ -137,9 +137,14 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         """Test the creation of the nexus filename"""
         rx = Recipe()
         res = rx._createFilenameFromRunConfig(self.runConfigLite)
-        assert res == f"{Config['nexus.lite.home']}SNAP_{self.runConfigLite.runNumber}.lite.nxs.h5"
+        assert (
+            res == f"{self.runConfigLite.IPTS}{Config['nexus.lite.prefix']}{self.runConfigLite.runNumber}.lite.nxs.h5"
+        )
         res = rx._createFilenameFromRunConfig(self.runConfigNonlite)
-        assert res == f"{Config['nexus.native.home']}SNAP_{self.runConfigNonlite.runNumber}.nxs.h5"
+        assert (
+            res
+            == f"{self.runConfigNonlite.IPTS}{Config['nexus.native.prefix']}{self.runConfigNonlite.runNumber}.nxs.h5"
+        )
 
     def test_nexus_workspacename_raw(self):
         """Test the creation of the nexus workspace name"""
@@ -189,7 +194,60 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert "lite" not in res.lower()
 
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
-    def test_fetch_nexus(self, mockFilename):
+    def test_fetch_raw_nexus(self, mockFilename):
+        """Test the correct behavior when fetching raw nexus data"""
+        mockFilename.return_value = self.filepath
+
+        # make sure the workspace is clean
+        self.clearoutWorkspaces()
+
+        rx = Recipe()
+        assert len(rx._loadedRuns) == 0
+        testKeyLite = rx._runKey(self.runConfigLite)
+        testKeyNonlite = rx._runKey(self.runConfigNonlite)
+
+        # test that a nexus workspace can be loaded
+        res = rx.fetchRawNexusData(self.runConfigLite)
+        assert len(res) > 0
+        assert res["result"]
+        assert res["loader"] == "LoadNexusProcessed"
+        assert res["workspace"] == rx._createRawNexusWorkspaceName(self.runConfigLite)
+        assert len(rx._loadedRuns) == 1
+        assert rx._loadedRuns == {testKeyLite: 0}
+        # assert the correct workspaces exist: a raw and a copy
+        assert mtd.doesExist(rx._createRawNexusWorkspaceName(self.runConfigLite))
+        # test the workspace is correct
+        assert CompareWorkspaces(
+            Workspace1=self.sampleWS,
+            Workspace2=res["workspace"],
+        )
+
+        # test that on a second call, it returns the same workspace name
+        res = rx.fetchRawNexusData(self.runConfigLite)
+        assert len(res) > 0
+        assert res["result"]
+        assert res["workspace"] == rx._createRawNexusWorkspaceName(self.runConfigLite)
+        assert len(rx._loadedRuns) == 1
+        assert rx._loadedRuns == {testKeyLite: 0}
+        # assert the correct workspaces exist: a raw and a copy
+        assert mtd.doesExist(rx._createRawNexusWorkspaceName(self.runConfigLite))
+        assert CompareWorkspaces(Workspace1=self.sampleWS, Workspace2=res["workspace"])
+
+        # test nonlite data can be loaded
+        res = rx.fetchRawNexusData(self.runConfigNonlite)
+        assert len(res) > 0
+        assert res["result"]
+        assert res["loader"] == "LoadNexusProcessed"
+        assert res["workspace"] == rx._createRawNexusWorkspaceName(self.runConfigNonlite)
+        assert len(rx._loadedRuns) == 2
+        assert rx._loadedRuns == {testKeyLite: 0, testKeyNonlite: 0}
+        assert CompareWorkspaces(
+            Workspace1=self.sampleWS,
+            Workspace2=res["workspace"],
+        )
+
+    @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
+    def test_fetch_clean_nexus(self, mockFilename):
         """Test the correct behavior when fetching nexus data"""
         mockFilename.return_value = self.filepath
 
@@ -207,7 +265,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         testKeyNonlite = rx._runKey(self.runConfigNonlite)
 
         # test that a nexus workspace can be loaded
-        res = rx.fetchNexusData(self.runConfigLite)
+        res = rx.fetchCleanNexusData(self.runConfigLite)
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
@@ -224,7 +282,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         )
 
         # test that trying to load data twicce only makes a new copy
-        res = rx.fetchNexusData(self.runConfigLite)
+        res = rx.fetchCleanNexusData(self.runConfigLite)
         assert len(res) > 0
         assert res["result"]
         assert res["workspace"] == rx._createNexusWorkspaceName(self.runConfigLite, 2)
@@ -237,7 +295,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert CompareWorkspaces(Workspace1=self.sampleWS, Workspace2=res["workspace"])
 
         # test nonlite data can be loaded
-        res = rx.fetchNexusData(self.runConfigNonlite)
+        res = rx.fetchCleanNexusData(self.runConfigNonlite)
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
@@ -247,12 +305,37 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert CompareWorkspaces(Workspace1=self.sampleWS, Workspace2=res["workspace"])
 
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
+    def test_fetch_clean_after_raw(self, mockFilename):
+        """Test that clean will pull from previously loaded raw files"""
+        mockFilename.return_value = self.filepath
+        mockFetchAlgo = mock.MagicMock()
+        mockFetchAlgo.execute.return_value = True
+        mockFetchAlgo.getPropertyValue = ""
+
+        # make sure the workspace is clean
+        self.clearoutWorkspaces()
+
+        rx = Recipe()
+        assert len(rx._loadedRuns) == 0
+        testKeyLite = rx._runKey(self.runConfigLite)
+
+        # test that a nexus workspace can be loaded
+        res = rx.fetchRawNexusData(self.runConfigLite)
+        assert rx._loadedRuns == {testKeyLite: 0}
+        assert res["loader"] == "LoadNexusProcessed"
+
+        # test that on a second call, it returns the same workspace name
+        res = rx.fetchCleanNexusData(self.runConfigLite)
+        assert rx._loadedRuns == {testKeyLite: 1}
+        assert res["loader"] == ""
+
+    @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
     def test_failed_fetch_nexus(self, mockFilename):
         # this is some file that it can't load
         mockFilename.return_value = Resource.getPath("inputs/crystalInfo/fake_file.cif")
         rx = Recipe()
         with pytest.raises(RuntimeError):
-            rx.fetchNexusData(self.runConfigLite)
+            rx.fetchCleanNexusData(self.runConfigLite)
 
     @mock.patch.object(Recipe, "_createGroupingFilename")
     def test_fetch_grouping(self, mockFilename):

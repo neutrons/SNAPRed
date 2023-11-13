@@ -26,12 +26,10 @@ instrument:
 
 nexus:
   lite:
-    home: ${instrument.home}shared/lite/
-    prefix: SNAP_
+    prefix: shared/lite/SNAP_
     extension: .lite.nxs.h5
   native:
-    home: ${instrument.home}nexus/
-    prefix: SNAP_
+    prefix: nexus/SNAP_
     extension: .nxs.h5
   home: nexus/
   file:

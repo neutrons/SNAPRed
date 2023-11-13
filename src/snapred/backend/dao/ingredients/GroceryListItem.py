@@ -15,6 +15,7 @@ class GroceryListItem(BaseModel):
     groupingScheme: Optional[str]
     instrumentPropertySource: Optional[Literal["InstrumentName", "InstrumentFilename", "InstrumentDonor"]]
     instrumentSource: Optional[str]
+    keepItClean: bool = True
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_ingredients_for_gorceries(cls, v):
