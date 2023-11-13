@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from mantid.api import AlgorithmManager
+from mantid.simpleapi import CloneWorkspace
 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.RunConfig import RunConfig
@@ -18,7 +18,7 @@ class FetchGroceriesRecipe:
     """
 
     def __init__(self):
-        self._loadedRuns: List[RunConfig] = []
+        self._loadedRuns: Dict[(str, str, bool), int] = {}
 
     def _createFilenameFromRunConfig(self, runConfig: RunConfig) -> str:
         if runConfig.isLite:
@@ -51,9 +51,17 @@ class FetchGroceriesRecipe:
             "loader": loader,
             "workspace": workspaceName,
         }
-        if runConfig in self._loadedRuns:
+        thisKey = (runConfig.runNumber, runConfig.IPTS, runConfig.isLite)
+        if self._loadedRuns.get(thisKey, 0) > 0:
+            newWorkspaceName = f"{workspaceName}_{self._loadedRuns[thisKey]}"
+            self._loadedRuns[thisKey] += 1
             logger.info("Data already loaded... continuing")
+            CloneWorkspace(
+                InputWorkspace=workspaceName,
+                OutputWorkspace=newWorkspaceName,
+            )
             data["result"] = True
+            data["workspace"] = newWorkspaceName
         else:
             logger.info(f"Fetching nexus data for run {runConfig.runNumber} at {fileName}")
             algo = FetchAlgo()
@@ -67,7 +75,7 @@ class FetchGroceriesRecipe:
             except RuntimeError as e:
                 raise RuntimeError(str(e).split("\n")[0]) from e
             logger.info("Finished loading nexus data")
-            self._loadedRuns.append(runConfig)
+            self._loadedRuns[thisKey] = 1
         return data
 
     def _createGroupingFilename(self, groupingScheme: str, isLite: bool = True):

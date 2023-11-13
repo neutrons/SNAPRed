@@ -169,7 +169,9 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
     def test_fetch_nexus(self, mockFilename, mockWorkspaceName):
         """Test the correct behavior when fetching nexus data"""
         mockFilename.return_value = self.filepath
-        mockWorkspaceName.return_value = f"_{self.runNumber}_fetched"
+        mockWorkspaceName.return_value = f"_{self.runNumber}_lite_fetched"
+        testKeyLite = (self.runConfigLite.runNumber, self.runConfigLite.IPTS, self.runConfigLite.isLite)
+        testKeyNonlite = (self.runConfigNonlite.runNumber, self.runConfigNonlite.IPTS, self.runConfigNonlite.isLite)
         rx = Recipe()
         assert len(rx._loadedRuns) == 0
 
@@ -180,23 +182,23 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
         assert res["workspace"] == mockWorkspaceName.return_value
-        assert res.get("alreadyLoaded") is None
-        assert rx._loadedRuns == [self.runConfigLite]
-        self.clearoutWorkspaces()
+        assert rx._loadedRuns == {testKeyLite: 1}
 
         # test that trying to load data twice does nothing
         res = rx.fetchNexusData(self.runConfigLite)
         assert len(rx._loadedRuns) == 1
+        assert res["workspace"] == f"{mockWorkspaceName.return_value}_1"
+        assert rx._loadedRuns == {testKeyLite: 2}
 
         # test nonlike data can be loaded
+        mockWorkspaceName.return_value = f"_{self.runNumber}_fetched"
         res = rx.fetchNexusData(self.runConfigNonlite)
-        assert len(rx._loadedRuns) == 2
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
         assert res["workspace"] == mockWorkspaceName.return_value
-        assert rx._loadedRuns == [self.runConfigLite, self.runConfigNonlite]
-        assert res.get("alreadyLoaded") is None
+        assert len(rx._loadedRuns) == 2
+        assert rx._loadedRuns == {testKeyLite: 2, testKeyNonlite: 1}
 
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
     def test_failed_fetch_nexus(self, mockFilename):
