@@ -87,3 +87,6 @@ class DataFactoryService:
 
     def getGroupingFiles(self):
         return self.lookupService.readGroupingFiles()
+
+    def getCalibrantPaths(self):
+        return self.lookupService.readCalibrantSampleFiles()

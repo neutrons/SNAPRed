@@ -24,9 +24,9 @@ from snapred.backend.dao.normalization import Normalization, NormalizationRecord
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
-    CalibrationNormalizationRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
+    NormalizationCalibrationRequest,
     SpecifyNormalizationRequest,
 )
 from snapred.backend.dao.state import FocusGroup, FocusGroupParameters
@@ -315,39 +315,41 @@ class CalibrationService(Service):
         return record
 
     @FromString
-    def normalization(self, request: CalibrationNormalizationRequest):
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber)
-        calibration = self.dataFactoryService.getCalibrationState(request.runNumber)
-        instrumentState = calibration.instrumentState
-        cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
-        crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
-        calibrantSample = request.calibrantSample
-        calibrationRecord = self.load(request.run)
+    def normalization(self, request: NormalizationCalibrationRequest):
+        reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber.runNumber)
+        crystalInfo = CrystallographicInfoService().ingest(request.samplePath)["crystalInfo"]
+        calibrationRecord = self.load(request.runNumber)
+        calibrantSample = self.dataFactoryService.getCalibrantSample(request.calibrantPath)
+        groupingFiles = request.groupingFiles
+
+        # NOTE: How do we know there aren't more than one workspace names within CalibrationRecord?
+        #       CalibrationRecord records a list of workspace names...
         calibrationWorkspace = calibrationRecord.workspaceNames[0]
 
-        focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            request.runNumber,
-            request.focusGroupPath,
-        )
+        for group in groupingFiles:
+            focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
+                request.runNumber.runNumber,
+                groupingFiles[group],
+            )
 
-        smoothingIngredients = SmoothDataExcludingPeaksIngredients(
-            crystalInfo=crystalInfo,
-            instrumentState=instrumentState,
-            smoothingParameter=request.smoothingParameter,
-        )
+            smoothingIngredients = SmoothDataExcludingPeaksIngredients(
+                crystalInfo=crystalInfo,
+                instrumentState=instrumentState,
+                smoothingParameter=request.smoothingParameter,
+            )
 
-        normalizationIngredients = NormalizationCalibrationIngredients(
-            run=request.run,
-            backgroundRun=request.backgroundRun,
-            reductionIngredients=reductionIngredients,
-            smoothingIngredients=smoothingIngredients,
-            calibrationRecord=calibrationRecord,
-            calibrantSample=calibrantSample,
-            focusGroup=focusGroup,
-            calibrationWorkspace=calibrationWorkspace,
-        )
+            normalizationIngredients = NormalizationCalibrationIngredients(
+                run=request.run,
+                backgroundRun=request.backgroundRunNumber,
+                reductionIngredients=reductionIngredients,
+                smoothingIngredients=smoothingIngredients,
+                calibrationRecord=calibrationRecord,
+                calibrantSample=calibrantSample,
+                focusGroup=focusGroup,
+                calibrationWorkspace=calibrationWorkspace,
+            )
 
-        return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients)
+            return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients)
 
     @FromString
     def normalizationAssessment(self, request: SpecifyNormalizationRequest):

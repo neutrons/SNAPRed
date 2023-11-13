@@ -9,7 +9,8 @@ from snapred.backend.dao.RunConfig import RunConfig
 
 class NormalizationCalibrationRequest(BaseModel):
     runNumber: RunConfig
-    emptyRunNumber: RunConfig
+    backgroundRunNumber: RunConfig
     samplePath: str
-    focusGroupPath: str
+    groupingFiles: list[str]
+    calibrantPath: str
     smoothingParameter: Optional[float]

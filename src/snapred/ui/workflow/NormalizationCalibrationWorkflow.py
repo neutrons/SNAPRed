@@ -53,17 +53,24 @@ class NormalizationCalibrationWorkflow:
         request = SNAPRequest(path="config/groupingFiles")
         self.groupingFiles = self.interfaceController.executeRequest(request).data
 
+        request = SNAPRequest(path="config/calibrantSamples")
+        self.calibrantSamples = self.interfaceController.executeRequest(request).data
+
         self._normalizationCalibrationView = NormalizationCalibrationRequestView(
             jsonForm,
             self.samplePaths,
             self.groupingFiles,
+            self.calibrantSamples,
             parent=parent,
         )
 
         self._specifyCalibrationView = SpecifyNormalizationCalibrationView(
             "Specifying Calibration",
             self.assessmentSchema,
+            smoothingParameter=self._normalizationCalibrationView.smoothingParameter.value(),
             samples=self.samplePaths,
+            groups=self.groupingFiles,
+            calibrantSamples=self.calibrantSamples,
             parent=parent,
         )
 
@@ -96,38 +103,55 @@ class NormalizationCalibrationWorkflow:
             return SNAPResponse(code=500, message=f"Missing Fields!{e}")
 
         self.runNumber = view.getFieldText("runNumber")
-        self.emptyRunNumber = view.getFieldText("emptyRunNumber")
+        self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
         self.smoothingParmameter = view.getFieldText("smoothingParameter")
-        self.focusGroupPath = view.groupingFileDropDown.currentText()
         sampleIndex = view.sampleDropDown.currentIndex()
+        groupingIndex = view.groupingFileDropDown.currentIndex()
+        calibrantIndex = view.calibrantSampleDropDown.currentIndex()
+        self.samplePath = view.sampleDropDown.currentText()
+        self.groupingPath = view.groupingFileDropDown.currentText()
+        self.calibrantPath = view.calibrantSampleDropDown.currentText()
 
         self._specifyCalibrationView.updateSample(sampleIndex)
         self._specifyCalibrationView.updateRunNumber(self.runNumber)
-        self._specifyCalibrationView.updateEmptyRunNumber(self.emptyRunNumber)
+        self._specifyCalibrationView.updateBackgroundRunNumber(self.backgroundRunNumber)
+        self._specifyCalibrationView.updateGroupingFile(groupingIndex)
+        self._specifyCalibrationView.updateCalibrantSample(calibrantIndex)
+        self._specifyCalibrationView.updateSmoothingParameter(self.smoothingParmameter)
+
+        # self._saveNormalizationCalibrationView.updateSample(sampleIndex)
         # self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
-        self.samplePath = view.sampleDropDown.currentText()
+        # self._saveNormalizationCalibrationView.updateBackgroundRunNumber(self.backgroundRunNumber)
+        # self._saveNormalizationCalibrationView.updateGroupingFile(groupingIndex)
+        # self._saveNormalizationCalibrationView.updateCalibrantSample(calibrantIndex)
+        # self._saveNormalizationCalibrationView.updateSmoothingParameter(self.smoothingParmameter)
 
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
-            emptyRunNumber=self.emptyRunNumber,
+            backgroundRunNumber=self.backgroundRunNumber,
             samplePath=self.samplePath,
-            focusGroupPath=self.focusGroupPath,
+            groupingPath=self.groupingFiles,
+            calibrantPath=self.calibrantSamples[calibrantIndex],
             smoothingParameter=self.smoothingParmameter,
         )
 
         request = SNAPRequest(path="calibration/normalization", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
-        return response
+
+        return self.responses
 
     def _specifyCalibration(self, workflowPresenter):  # noqa: ARG002
+        # NOTE: need to send all responses from _triggerNormalizationCalibration to this payload
+
         payload = SpecifyNormalizationRequest(
             run=RunConfig(runNumber=self.runNumber),
             workspace=self.responses[-2].data["ws"],
             smoothWorkspace=self.responses[-1].data["smooth_ws"],
             smoothingParameter=self.smoothingParmameter,
             samplePath=self.samplePath,
-            focusGroupPath=self.focusGroupPath,
+            calibrantPath=self.calibrantPath,
+            focusGroupPath=self.groupingPath,
         )
         request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
