@@ -2,16 +2,19 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as
 
 
 def testRunNames():
-    assert "TOFAll123" == wng.run(123)
-    assert "DSPAll123" == wng.run(123, unit=wng.Units.DSP)
-    assert "DSPColumn123" == wng.run(123, unit=wng.Units.DSP, group=wng.Groups.COLUMN)
-    assert "DSPColumnTest123" == wng.run(123, unit=wng.Units.DSP, auxilary="Test", group=wng.Groups.COLUMN)
+    assert "TOFAll123" == wng.run().runNumber(123).build()
+    assert "DSPAll123" == wng.run().runNumber(123).unit(wng.Units.DSP).build()
+    assert "DSPColumn123" == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).build()
+    assert (
+        "DSPColumnTest123"
+        == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).auxilary("Test").build()
+    )
 
 
 def testDiffCalInputNames():
-    assert "_TOF_123_raw" == wng.diffCalInput(123)
-    assert "_DSP_123_raw" == wng.diffCalInput(123, unit=wng.Units.DSP)
+    assert "_TOF_123_raw" == wng.diffCalInput().runNumber(123).build()
+    assert "_DSP_123_raw" == wng.diffCalInput().runNumber(123).unit(wng.Units.DSP).build()
 
 
 def testDiffCalTableName():
-    assert "_DIFC_123" == wng.diffCalTable(123)
+    assert "_DIFC_123" == wng.diffCalTable().runNumber(123).build()

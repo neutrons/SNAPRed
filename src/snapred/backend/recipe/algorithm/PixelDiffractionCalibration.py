@@ -61,9 +61,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
 
         # create string names of workspaces that will be used by algorithm
 
-        self.inputWStof: str = wng.diffCalInput(self.runNumber)
-        self.inputWSdsp: str = wng.diffCalInput(self.runNumber, unit=wng.Units.DSP)
-        self.difcWS: str = wng.diffCalTable(self.runNumber)
+        self.inputWStof: str = wng.diffCalInput().runNumber(self.runNumber).build()
+        self.inputWSdsp: str = wng.diffCalInput().runNumber(self.runNumber).unit(wng.Units.DSP).build()
+        self.difcWS: str = wng.diffCalTable().runNumber(self.runNumber).build()
         self.maxOffset = float(self.getProperty("MaxOffset").value)
 
     def raidPantry(self) -> None:
