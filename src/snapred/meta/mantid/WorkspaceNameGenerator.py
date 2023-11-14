@@ -27,6 +27,10 @@ class _WorkspaceNameGenerator:
     def unit():
         return _WorkspaceNameGenerator.Units
 
+    @property
+    def group():
+        return _WorkspaceNameGenerator.Groups
+
     # TODO: Return abstract WorkspaceName type to help facilitate control over workspace names
     #       and discourage non-standard names.
     def run(self, runNumber, auxilary="", unit=Units.TOF, group=Groups.ALL):
