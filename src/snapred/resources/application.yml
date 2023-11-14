@@ -79,7 +79,7 @@ calibration:
 mantid:
     workspace:
       nameTemplate:
-        run: "{unit}{group}{auxilary}{runNumber}"
+        run: "{unit}{group}{lite}{auxilary}{runNumber}"
         diffCal:
           input: "_{unit}_{runNumber}_raw"
           table: "_DIFC_{runNumber}"
