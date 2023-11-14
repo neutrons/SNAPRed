@@ -62,7 +62,7 @@ class FetchGroceriesRecipe:
         algo = FetchAlgo()
         algo.initialize()
         algo.setProperty("Filename", filename)
-        algo.setProperty("Workspace", workspace)
+        algo.setProperty("OutputWorkspace", workspace)
         algo.setProperty("LoaderType", loader)
         try:
             data["result"] = algo.execute()
@@ -175,7 +175,7 @@ class FetchGroceriesRecipe:
         algo = FetchAlgo()
         algo.initialize()
         algo.setProperty("Filename", fileName)
-        algo.setProperty("Workspace", workspaceName)
+        algo.setProperty("OutputWorkspace", workspaceName)
         algo.setProperty("LoaderType", "LoadGroupingDefinition")
         algo.setProperty(item.instrumentPropertySource, item.instrumentSource)
         try:
