@@ -23,14 +23,6 @@ class _WorkspaceNameGenerator:
         COLUMN = Config[f"{_templateRoot}.column"]
         BANK = Config[f"{_templateRoot}.bank"]
 
-    @property
-    def unit():
-        return _WorkspaceNameGenerator.Units
-
-    @property
-    def group():
-        return _WorkspaceNameGenerator.Groups
-
     # TODO: Return abstract WorkspaceName type to help facilitate control over workspace names
     #       and discourage non-standard names.
     def run(self, runNumber, auxilary="", unit=Units.TOF, group=Groups.ALL):
