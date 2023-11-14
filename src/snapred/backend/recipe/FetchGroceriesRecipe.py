@@ -30,51 +30,47 @@ class FetchGroceriesRecipe:
         ext = instr + ".extension"
         return runConfig.IPTS + Config[pre] + str(runConfig.runNumber) + Config[ext]
 
-    def _createRawNexusWorkspaceName(self, runConfig) -> str:
-        name: str = f"_TOF_{runConfig.runNumber}_RAW"
+    def _createNexusWorkspaceName(self, runConfig: RunConfig) -> str:
+        name: str = f"_TOF_{runConfig.runNumber}"
         if runConfig.isLite:
             name = name + "_lite"
         return name
 
-    def _createNexusWorkspaceName(self, runConfig: RunConfig, numCopies: int) -> str:
-        name: str = f"_TOF_{runConfig.runNumber}_copy_{numCopies}"
-        if runConfig.isLite:
-            name = name + "_lite"
-        return name
+    def _createRawNexusWorkspaceName(self, runConfig: RunConfig) -> str:
+        return self._createNexusWorkspaceName(runConfig) + "_RAW"
 
-    def fetchRawNexusData(self, runConfig: RunConfig, loader: str = "") -> Dict[str, Any]:
+    def _createCopyNexusWorkspaceName(self, runConfig: RunConfig, numCopies: int) -> str:
+        return self._createNexusWorkspaceName(runConfig) + "_copy_" + str(numCopies)
+
+    def _fetch(self, filename: str, workspace: str, loader: str = "") -> Dict[str, Any]:
         """
-        Fetch a nexus data file from disk
+        Wraps the fetch groceries algorithm
         inputs:
-        - runConfig, a RunConfig object corresponf to the data desired
+        - filename, the path to the file where data is to be fetched
+        - workspace, a string name for the workspace to load data into
         - loader, the loading algorithm to use, if you think you already know
         outputs a dictionary with
         - "result": true if everything ran correctly
-        - "loader": the loader that was used by the algorithm, use it next time
+        - "loader": the loader that was used by the algorithm, use it next time (is blank if loading skipped)
         - "workspace": the name of the workspace created in the ADS
         """
-        fileName: str = self._createFilenameFromRunConfig(runConfig)
-        rawWorkspaceName: str = self._createRawNexusWorkspaceName(runConfig)
         data: Dict[str, Any] = {
             "result": False,
             "loader": loader,
         }
-        logger.info(f"Fetching nexus data for run {runConfig.runNumber} at {fileName}")
+        logger.info(f"Fetching nexus data from {filename} into {workspace}")
         algo = FetchAlgo()
         algo.initialize()
-        algo.setProperty("Filename", fileName)
-        algo.setProperty("Workspace", rawWorkspaceName)
+        algo.setProperty("Filename", filename)
+        algo.setProperty("Workspace", workspace)
         algo.setProperty("LoaderType", loader)
         try:
             data["result"] = algo.execute()
             data["loader"] = algo.getPropertyValue("LoaderType")
-            data["workspace"] = rawWorkspaceName
+            data["workspace"] = workspace
         except RuntimeError as e:
             raise RuntimeError(str(e).split("\n")[0]) from e
-        logger.info("Finished loading nexus data")
-        thisKey = self._runKey(runConfig)
-        if self._loadedRuns.get(thisKey) is None:
-            self._loadedRuns[thisKey] = 0
+        logger.info(f"Finished fetching nexus data into {workspace}")
         return data
 
     def fetchCleanNexusData(self, runConfig: RunConfig, loader: str = "") -> Dict[str, Any]:
@@ -88,6 +84,7 @@ class FetchGroceriesRecipe:
         - "loader": the loader that was used by the algorithm, use it next time
         - "workspace": the name of the workspace created in the ADS
         """
+        filename: str = self._createFilenameFromRunConfig(runConfig)
         rawWorkspaceName: str = self._createRawNexusWorkspaceName(runConfig)
         data: Dict[str, Any] = {
             "result": False,
@@ -95,20 +92,54 @@ class FetchGroceriesRecipe:
         }
         thisKey = self._runKey(runConfig)
         if self._loadedRuns.get(thisKey, 0) == 0:
-            subdata = self.fetchRawNexusData(runConfig, loader)
+            subdata = self._fetch(filename, rawWorkspaceName, loader)
             data["result"] = subdata["result"]
             data["loader"] = subdata["loader"]
             self._loadedRuns[thisKey] = 1
         else:
             logger.info(f"Data for run {runConfig.runNumber} already loaded... continuing")
             self._loadedRuns[thisKey] += 1
+            data["loader"] = ""
             data["result"] = True
-        workspaceName = self._createNexusWorkspaceName(runConfig, self._loadedRuns[thisKey])
+        workspaceName = self._createCopyNexusWorkspaceName(runConfig, self._loadedRuns[thisKey])
         CloneWorkspace(
             InputWorkspace=rawWorkspaceName,
             OutputWorkspace=workspaceName,
         )
         data["workspace"] = workspaceName
+        return data
+
+    def fetchDirtyNexusData(self, runConfig: RunConfig, loader: str = "") -> Dict[str, Any]:
+        """
+        Fetch a nexus data file to immediately use, without copy-protection
+        inputs:
+        - runConfig, a RunConfig object for the data desired
+        - loader, the loading algorithm to use, if you think you already know
+        outputs a dictionary with
+        - "result": true if everything ran correctly
+        - "loader": the loader that was used by the algorithm, use it next time
+        - "workspace": the name of the workspace created in the ADS
+        """
+        filename: str = self._createFilenameFromRunConfig(runConfig)
+        workspaceName: str = self._createNexusWorkspaceName(runConfig)
+        data: Dict[str, Any] = {
+            "result": False,
+            "loader": loader,
+            "workspace": workspaceName,
+        }
+        thisKey = self._runKey(runConfig)
+        # check if a raw workspace exists, and clone it if so
+        if self._loadedRuns.get(thisKey, 0) > 0:
+            CloneWorkspace(
+                InputWorkspace=self._createRawNexusWorkspaceName(runConfig),
+                OutputWorkspace=workspaceName,
+            )
+            data["loader"] = ""  # unset the loader as a sign none was used
+        # otherwise fetch the data
+        else:
+            subdata = self._fetch(filename, workspaceName, loader)
+            data["result"] = subdata["result"]
+            data["loader"] = subdata["loader"]
         return data
 
     def _createGroupingFilename(self, groupingScheme: str, isLite: bool = True):
@@ -172,7 +203,7 @@ class FetchGroceriesRecipe:
                 if item.keepItClean:
                     res = self.fetchCleanNexusData(item.runConfig, item.loader)
                 else:
-                    res = self.fetchRawNexusData(item.runConfig, item.loader)
+                    res = self.fetchDirtyNexusData(item.runConfig, item.loader)
                 data["result"] &= res["result"]
                 data["workspaces"].append(res["workspace"])
             elif item.workspaceType == "grouping":

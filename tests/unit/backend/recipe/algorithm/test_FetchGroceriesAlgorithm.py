@@ -44,18 +44,13 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         cls.fetchedWS = f"_{cls.runNumber}_fetched"
         # create some sample data
         cls.sampleWS = f"_{cls.runNumber}_grocery_to_fetch"
-        CreateSampleWorkspace(
+        # create some sample data
+        cls.sampleWS = "_grocery_to_fetch"
+        CreateWorkspace(
             OutputWorkspace=cls.sampleWS,
-            # WorkspaceType="Histogram",
-            Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=10,
-            Xmax=1000,
-            BinWidth=0.01,
-            XUnit="TOF",
-            NumBanks=4,  # must produce same number of pixels as fake instrument
-            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=True,
+            DataX=[1] * 16,
+            DataY=[1] * 16,
+            NSpec=16,
         )
         # load an instrument into sample data
         LoadInstrument(
