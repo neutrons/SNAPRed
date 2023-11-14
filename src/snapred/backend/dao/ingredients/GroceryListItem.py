@@ -10,11 +10,12 @@ class GroceryListItem(BaseModel):
 
     workspaceType: Literal["nexus", "grouping"]
     runConfig: Optional[RunConfig]
-    loader: Optional[Literal["LoadGroupingDefinition", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed"]]
+    loader: Literal["", "LoadGroupingDefinition", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed"] = ""
     isLite: Optional[bool]
     groupingScheme: Optional[str]
     instrumentPropertySource: Optional[Literal["InstrumentName", "InstrumentFilename", "InstrumentDonor"]]
     instrumentSource: Optional[str]
+    keepItClean: bool = True
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_ingredients_for_gorceries(cls, v):

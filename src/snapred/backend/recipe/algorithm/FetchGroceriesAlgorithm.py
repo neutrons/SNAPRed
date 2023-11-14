@@ -15,8 +15,11 @@ from mantid.kernel import (
     StringListValidator,
 )
 
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+
+logger = snapredLogger.getLogger(__name__)
 
 
 class FetchGroceriesAlgorithm(PythonAlgorithm):
@@ -90,6 +93,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         filename = self.getPropertyValue("Filename")
         outWS = self.getPropertyValue("Workspace")
         loaderType = self.getPropertyValue("LoaderType")
+        # TODO: do we need to guard this with an if?
         if not self.mantidSnapper.mtd.doesExist(outWS):
             if loaderType == "":
                 _, loaderType, _ = self.mantidSnapper.Load(
@@ -115,6 +119,9 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     Filename=filename,
                     OutputWorkspace=outWS,
                 )
+        else:
+            # TODO: should this throw a warning?  Or warn in logger?
+            logger.warning(f"A workspace with name {outWS} already exists in the ADS, and so will not be loaded")
         self.mantidSnapper.executeQueue()
         self.setPropertyValue("LoaderType", str(loaderType))
 
