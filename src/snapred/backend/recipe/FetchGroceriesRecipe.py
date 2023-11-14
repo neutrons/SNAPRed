@@ -45,7 +45,7 @@ class FetchGroceriesRecipe:
         return self._createNexusWorkspaceNameBuilder(runConfig).auxilary("Raw").build()
 
     def _createCopyNexusWorkspaceName(self, runConfig: RunConfig, numCopies: int) -> str:
-        return self._createNexusWorkspaceNameBuilder(runConfig).auxilary(f"Copy{numCopies}").build()
+        return self._createNexusWorkspaceNameBuilder(runConfig).auxilary(f"-Copy{numCopies}-").build()
 
     def _fetch(self, filename: str, workspace: str, loader: str = "") -> Dict[str, Any]:
         """

@@ -49,7 +49,7 @@ class _WorkspaceNameGenerator:
         BANK = Config[f"{_templateRoot}.bank"]
 
     class Lite:
-        TRUE = "lite"
+        TRUE = "Lite"
         FALSE = ""
 
     # TODO: Return abstract WorkspaceName type to help facilitate control over workspace names
