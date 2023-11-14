@@ -36,6 +36,7 @@ class FetchGroceriesRecipe:
         runNameBuilder = wng.run().runNumber(runConfig.runNumber)
         if runConfig.isLite:
             runNameBuilder.lite(wng.Lite.TRUE)
+        return runNameBuilder
 
     def _createNexusWorkspaceName(self, runConfig: RunConfig) -> str:
         return self._createNexusWorkspaceNameBuilder(runConfig).build()
