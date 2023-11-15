@@ -9,10 +9,11 @@ class WorkspaceName(str):
 
 
 class NameBuilder:
-    def __init__(self, template: str, keys: List[str], **kwargs):
+    def __init__(self, template: str, keys: List[str], delimiter: str, **kwargs):
         self.template = template
         self.keys = keys
         self.props = kwargs
+        self.delimiter = delimiter
 
     def __getattr__(self, key):
         if key not in self.keys:
@@ -25,11 +26,14 @@ class NameBuilder:
         return setValue
 
     def build(self):
-        return self.template.format(**self.props)
+        tokens = self.template.format(**self.props).split(",")
+        tokens = [token.lower() for token in tokens if token != ""]
+        return self.delimiter.join(tokens)
 
 
 class _WorkspaceNameGenerator:
     _templateRoot = "mantid.workspace.nameTemplate"
+    _delimiter = Config[f"{_templateRoot}.delimiter"]
     _runTemplate = Config[f"{_templateRoot}.run"]
     _runTemplateKeys = ["runNumber", "auxilary", "lite", "unit", "group"]
     _diffCalInputTemplate = Config[f"{_templateRoot}.diffCal.input"]
@@ -47,9 +51,10 @@ class _WorkspaceNameGenerator:
         ALL = Config[f"{_templateRoot}.all"]
         COLUMN = Config[f"{_templateRoot}.column"]
         BANK = Config[f"{_templateRoot}.bank"]
+        UNFOC = Config[f"{_templateRoot}.unfocussed"]
 
     class Lite:
-        TRUE = "Lite"
+        TRUE = "lite"
         FALSE = ""
 
     # TODO: Return abstract WorkspaceName type to help facilitate control over workspace names
@@ -58,6 +63,7 @@ class _WorkspaceNameGenerator:
         return NameBuilder(
             self._runTemplate,
             self._runTemplateKeys,
+            self._delimiter,
             auxilary="",
             unit=self.Units.TOF,
             group=self.Groups.ALL,
@@ -65,10 +71,12 @@ class _WorkspaceNameGenerator:
         )
 
     def diffCalInput(self):
-        return NameBuilder(self._diffCalInputTemplate, self._diffCalInputTemplateKeys, unit=self.Units.TOF)
+        return NameBuilder(
+            self._diffCalInputTemplate, self._diffCalInputTemplateKeys, self._delimiter, unit=self.Units.TOF
+        )
 
     def diffCalTable(self):
-        return NameBuilder(self._diffCalTableTemplate, self._diffCalTableTemplateKeys)
+        return NameBuilder(self._diffCalTableTemplate, self._diffCalTableTemplateKeys, self._delimiter)
 
 
 WorkspaceNameGenerator = _WorkspaceNameGenerator()

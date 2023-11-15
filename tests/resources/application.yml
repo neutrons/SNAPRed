@@ -76,17 +76,19 @@ calibration:
 mantid:
     workspace:
       nameTemplate:
-        run: "{unit}{group}{lite}{auxilary}{runNumber}"
+        delimiter: "_"
+        run: "{unit},{group},{lite},{runNumber},{auxilary}"
         diffCal:
-          input: "_{unit}_{runNumber}_raw"
-          table: "_DIFC_{runNumber}"
+          input: "_{unit},{runNumber},raw"
+          table: "_DIFC,{runNumber}"
         units:
-          dSpacing: DSP
-          timeOfFlight: TOF
+          dSpacing: dsp
+          timeOfFlight: tof
         groups:
-          all: All
-          column: Column
-          bank: Bank
+          unfocussed: unfoc
+          all: all
+          column: column
+          bank: bank
 
 localdataservice:
   config:
