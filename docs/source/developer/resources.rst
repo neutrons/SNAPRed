@@ -23,7 +23,7 @@ key substitution.
 Key Substitution
 ~~~~~~~~~~~~~~~~
 
-.. code:: ::
+.. code:: yaml
 
    instrument:
      name: SNAP
