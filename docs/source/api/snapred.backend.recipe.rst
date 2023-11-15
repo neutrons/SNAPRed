@@ -28,6 +28,14 @@ snapred.backend.recipe.DiffractionCalibrationRecipe module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.recipe.FetchGroceriesRecipe module
+--------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.FetchGroceriesRecipe
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.recipe.FitCalibrationWorkspaceRecipe module
 -----------------------------------------------------------
 

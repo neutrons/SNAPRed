@@ -24,8 +24,8 @@ from snapred.meta.redantic import list_to_raw_pretty
 snapredLogger._level = 20
 
 #diffraction calibration imports
-from snapred.backend.recipe.algorithm.CalculateOffsetDIFC import CalculateOffsetDIFC
-from snapred.backend.recipe.algorithm.GroupByGroupCalibration import GroupByGroupCalibration
+from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
+from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao import RunConfig, DetectorPeak, GroupPeakList
@@ -44,7 +44,7 @@ peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 
 # SET TO TRUE TO STOP WASHING DISHES
-Config._config['cis_mode'] = False
+Config._config['cis_mode'] = True
 ####################################################################################
 
 # CREATE NEEDED INGREDIENTS ########################################################
@@ -91,7 +91,7 @@ medianOffsets = []
 
 runNumber = ingredients.runConfig.runNumber
 convergenceThreshold = ingredients.convergenceThreshold
-offsetAlgo = CalculateOffsetDIFC()
+offsetAlgo = PixelDiffractionCalibration()
 offsetAlgo.initialize()
 offsetAlgo.setProperty("Ingredients", ingredients.json())
 offsetAlgo.execute()
@@ -122,7 +122,7 @@ while abs(medianOffsets[-1]) > convergenceThreshold:
 data["steps"] = dataSteps
 print(data["steps"], counter)
 
-calibAlgo = GroupByGroupCalibration()
+calibAlgo = GroupDiffractionCalibration()
 calibAlgo.initialize()
 calibAlgo.setProperty("Ingredients", ingredients.json())
 calibAlgo.setProperty("InputWorkspace", offsetAlgo.getProperty("OutputWorkspace").value)
