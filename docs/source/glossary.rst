@@ -1,5 +1,5 @@
 Glossary
-===
+========
 .. TODO: Provide links to a term's page if it exists
 .. glossary::
 
