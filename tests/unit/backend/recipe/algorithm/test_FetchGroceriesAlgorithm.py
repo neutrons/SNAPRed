@@ -104,8 +104,8 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         with pytest.raises(RuntimeError) as e:
             algo.execute()
             assert "Must specify the Workspace to load into" in e.msg()
-        algo.setPropertyValue("Workspace", fetched_groceries)
-        assert fetched_groceries == algo.getPropertyValue("Workspace")
+        algo.setPropertyValue("OutputWorkspace", fetched_groceries)
+        assert fetched_groceries == algo.getPropertyValue("OutputWorkspace")
         algo.setPropertyValue("LoaderType", "LoadNexus")
         assert "LoadNexus" == algo.getPropertyValue("LoaderType")
 
@@ -156,7 +156,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
         algo.setPropertyValue("LoaderType", "")
-        algo.setPropertyValue("Workspace", self.fetchedWS)
+        algo.setPropertyValue("OutputWorkspace", self.fetchedWS)
         assert algo.execute()
         assert CompareWorkspaces(
             Workspace1=self.fetchedWS,
@@ -170,7 +170,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
         algo.setPropertyValue("LoaderType", "LoadNexus")
-        algo.setPropertyValue("Workspace", self.fetchedWS)
+        algo.setPropertyValue("OutputWorkspace", self.fetchedWS)
         assert algo.execute()
         assert CompareWorkspaces(
             Workspace1=self.fetchedWS,
@@ -193,7 +193,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
         algo.setPropertyValue("LoaderType", "LoadNexusProcessed")
-        algo.setPropertyValue("Workspace", self.fetchedWS)
+        algo.setPropertyValue("OutputWorkspace", self.fetchedWS)
         assert algo.execute()
         assert CompareWorkspaces(
             Workspace1=self.fetchedWS,
@@ -210,12 +210,12 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.initialize()
         algo.setPropertyValue("Filename", self.filepath)
         algo.setPropertyValue("LoaderType", "LoadGroupingDefinition")
-        algo.setPropertyValue("Workspace", f"_{self.runNumber}_grouping_file")
+        algo.setPropertyValue("OutputWorkspace", f"_{self.runNumber}_grouping_file")
         algo.setPropertyValue("InstrumentFilename", self.instrumentFilepath)
         assert algo.execute()
         algo.setProperty("InstrumentFilename", "")
 
-        algo.setPropertyValue("Workspace", f"_{self.runNumber}_grouping_name")
+        algo.setPropertyValue("OutputWorkspace", f"_{self.runNumber}_grouping_name")
         algo.setPropertyValue("InstrumentName", "fakeSNAPLite")
         assert algo.execute()
         assert CompareWorkspaces(
@@ -224,7 +224,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         )
         algo.setProperty("InstrumentName", "")
 
-        algo.setPropertyValue("Workspace", f"_{self.runNumber}_grouping_donor")
+        algo.setPropertyValue("OutputWorkspace", f"_{self.runNumber}_grouping_donor")
         algo.setPropertyValue("InstrumentDonor", self.sampleWS)
         assert algo.execute()
         assert CompareWorkspaces(
@@ -263,7 +263,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.mantidSnapper = mockSnapper
         algo.setPropertyValue("Filename", self.filepath)
         algo.setPropertyValue("LoaderType", "LoadGroupingDefinition")
-        algo.setPropertyValue("Workspace", self.fetchedWS)
+        algo.setPropertyValue("OutputWorkspace", self.fetchedWS)
         algo.setPropertyValue("InstrumentFilename", self.instrumentFilepath)
         assert algo.execute()
         algo.mantidSnapper.mtd.doesExist.assert_called_once()
