@@ -31,10 +31,26 @@ instrument:
       file: ${instrument.home}shared/Calibration/Powder/LiteGroupMap.hdf
 
 nexus:
-  home: nexus/
+  lite:
+    prefix: shared/lite/SNAP_
+    extension: .lite.nxs.h5
+  native:
+    prefix: nexus/SNAP_
+    extension: .nxs.h5
   file:
     extension: .nxs.h5
     prefix: SNAP_
+
+grouping:
+  filename:
+    prefix: SNAPFocGroup_
+    lite:
+      extension: .lite.nxs
+    native:
+      extension: .xml
+  workspacename:
+    lite: SNAPLite_grouping_
+    native: SNAP_grouping_
 
 calibration:
   file:
