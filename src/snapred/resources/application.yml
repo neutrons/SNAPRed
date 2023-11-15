@@ -11,14 +11,15 @@ instrument:
     home: ${instrument.home}shared/Calibration
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
+      extensions:
+        - cif
+        - json
     powder:
       home: ${instrument.calibration.home}/Powder
       grouping:
         home: ${instrument.calibration.powder.home}/PixelGroupingDefinitions
         extensions:
-          - xml
-          - nxs
-          - hdf
+          - lite.hdf
   config: shared/Calibration/SNAPInstPrm.json
   native:
     definition:

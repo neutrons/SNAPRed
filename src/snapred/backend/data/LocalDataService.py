@@ -792,9 +792,10 @@ class LocalDataService:
 
     def readCalibrantSampleFiles(self):
         calibrantSamplesFolder = Config["instrument.calibration.sample.home"]
-        calibrantSamples = self._findMatchingFileList(
-            f"{calibrantSamplesFolder}/*. ADD A FILE EXTENSION ", throws=False
-        )
+        extensions = Config["instrument.calibration.sample.extensions"]
+        calibrantSamples = []
+        for extension in extensions:
+            calibrantSamples += self._findMatchingFileList(f"{calibrantSamplesFolder}/*.{extension}", throws=False)
         if len(calibrantSamples) < 1:
-            raise RuntimeError(f"No samples found in {calibrantSamplesFolder}")
+            raise RuntimeError(f"No calibrant samples found in {calibrantSamplesFolder} for extensions {extensions}")
         return calibrantSamples

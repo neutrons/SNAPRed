@@ -11,7 +11,6 @@ class NormalizationCalibrationRequestView(BackendRequestView):
         self.backgroundRunNumberField = self._labeledField(
             "Background Run Number", jsonForm.getField("backgroundRunNumber")
         )
-        self.smoothingParameter = self._labeledField("Smoothing Parameter", jsonForm.getField("smoothingParameter"))
 
         self.sampleDropDown = self._sampleDropDown("Sample", samplePaths)
         self.groupingFileDropDown = self._sampleDropDown("Grouping File", groups)
@@ -19,10 +18,9 @@ class NormalizationCalibrationRequestView(BackendRequestView):
 
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.backgroundRunNumberField, 0, 1)
-        self.layout.addWidget(self.smoothingParameter, 1, 0)
-        self.layout.addWidget(self.sampleDropDown, 2, 0)
-        self.layout.addWidget(self.groupingFileDropDown, 2, 1)
-        self.layout.addWidget(self.calibrantSampleDropDown, 3, 0)
+        self.layout.addWidget(self.sampleDropDown, 1, 0)
+        self.layout.addWidget(self.groupingFileDropDown, 2, 0)
+        self.layout.addWidget(self.calibrantSampleDropDown, 2, 1)
 
     def verify(self):
         if self.sampleDropDown.currentIndex() == 0:

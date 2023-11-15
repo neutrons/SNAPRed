@@ -1,16 +1,3 @@
-"""
-User Input:
-
-    Run number of normalization data set
-    Corresponding calibrant sample (vanadium or V-Nb)
-    Run number of empty instrument data set
-    Input parameters for absorption correction algo
-    Input parameters for new strip peaks algo
-
-Output:
-
-    Raw vanadium data file -> stored in calibration folder
-"""
 import json
 
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
@@ -18,15 +5,17 @@ from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest, SNAPResponse
+
+# from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
+from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.dao.request import (
-    NormalizationCalibrationRequest,
     #  NormalizationExportRequest,
+    CloneAndSmoothRequest,
+    NormalizationCalibrationRequest,
     SpecifyNormalizationRequest,
 )
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
-
-# from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
 from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
@@ -64,15 +53,18 @@ class NormalizationCalibrationWorkflow:
             parent=parent,
         )
 
-        self._specifyCalibrationView = SpecifyNormalizationCalibrationView(
-            "Specifying Calibration",
+        self._specifyNormalizationView = SpecifyNormalizationCalibrationView(
+            "Specifying Normalization",
             self.assessmentSchema,
-            smoothingParameter=self._normalizationCalibrationView.smoothingParameter.value(),
             samples=self.samplePaths,
             groups=self.groupingFiles,
             calibrantSamples=self.calibrantSamples,
             parent=parent,
         )
+
+        self._specifyNormalizationView.signalWorkspacesUpdate.connect(self._specifyNormalizationView.updateWorkspaces)
+
+        self._specifyNormalizationView.signalSmoothingValueChanged.connect(self.onSmoothingValueChanged)
 
         # self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
         #     "Saving Normalization Calibration", self.saveSchema, parent
@@ -86,8 +78,8 @@ class NormalizationCalibrationWorkflow:
                 "Normalization Calibration",
             )
             .addNode(
-                self._specifyCalibration,
-                self._specifyCalibrationView,
+                self._specifyNormalization,
+                self._specifyNormalizationView,
                 "Specify Calibration",
             )
             # .addNode(self._saveNormalizationCalibration, self._saveNormalizationCalibrationView, "Saving")
@@ -104,7 +96,6 @@ class NormalizationCalibrationWorkflow:
 
         self.runNumber = view.getFieldText("runNumber")
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
-        self.smoothingParmameter = view.getFieldText("smoothingParameter")
         sampleIndex = view.sampleDropDown.currentIndex()
         groupingIndex = view.groupingFileDropDown.currentIndex()
         calibrantIndex = view.calibrantSampleDropDown.currentIndex()
@@ -112,12 +103,11 @@ class NormalizationCalibrationWorkflow:
         self.groupingPath = view.groupingFileDropDown.currentText()
         self.calibrantPath = view.calibrantSampleDropDown.currentText()
 
-        self._specifyCalibrationView.updateSample(sampleIndex)
-        self._specifyCalibrationView.updateRunNumber(self.runNumber)
-        self._specifyCalibrationView.updateBackgroundRunNumber(self.backgroundRunNumber)
-        self._specifyCalibrationView.updateGroupingFile(groupingIndex)
-        self._specifyCalibrationView.updateCalibrantSample(calibrantIndex)
-        self._specifyCalibrationView.updateSmoothingParameter(self.smoothingParmameter)
+        self._specifyNormalizationView.updateSample(sampleIndex)
+        self._specifyNormalizationView.updateRunNumber(self.runNumber)
+        self._specifyNormalizationView.updateBackgroundRunNumber(self.backgroundRunNumber)
+        self._specifyNormalizationView.updateGroupingFile(groupingIndex)
+        self._specifyNormalizationView.updateCalibrantSample(calibrantIndex)
 
         # self._saveNormalizationCalibrationView.updateSample(sampleIndex)
         # self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
@@ -132,7 +122,6 @@ class NormalizationCalibrationWorkflow:
             samplePath=self.samplePath,
             groupingPath=self.groupingFiles,
             calibrantPath=self.calibrantSamples[calibrantIndex],
-            smoothingParameter=self.smoothingParmameter,
         )
 
         request = SNAPRequest(path="calibration/normalization", payload=payload.json())
@@ -141,27 +130,35 @@ class NormalizationCalibrationWorkflow:
 
         return self.responses
 
-    def _specifyCalibration(self, workflowPresenter):  # noqa: ARG002
-        # NOTE: need to send all responses from _triggerNormalizationCalibration to this payload
+    def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
+        # NOTE: Call to SmoothData service goes here pulling workspaces from response
+        #       based on focus grouping definition selected by user
+        #       need to extract a graph number to send to view and using logical if/ elif.
+        #       Need to find the list of grouping files. Method to
+        #       update view and call SmoothData service repeatedly.
 
-        payload = SpecifyNormalizationRequest(
-            run=RunConfig(runNumber=self.runNumber),
-            workspace=self.responses[-2].data["ws"],
-            smoothWorkspace=self.responses[-1].data["smooth_ws"],
-            smoothingParameter=self.smoothingParmameter,
-            samplePath=self.samplePath,
-            calibrantPath=self.calibrantPath,
-            focusGroupPath=self.groupingPath,
-        )
-        request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
+        # Send the final data selected by the user to this payload for saving.
 
-        # TODO: use data in response to update view with graphs
-        # response will return a Normalization record, this contains the workspaces and other information
-        # this wil need to be passed to a function defined here to update the view with the appropriate number of graphs
+        self.focusWorkspaces = self._updateWorkspaces()
+        # send focusWorkspaces to recipe to clone and smooth
+        # smoothedWorkspaces = self.createSmoothedWorkspaces(self.runNumber, focusWorkspaces, self.smoothingParameter)
 
-        self.responses.append(response)
-        return response
+        # self._specifyNormalizationView.signalWorkspacesUpdate.emit(focusWorkspace, smoothedWorkspaces)
+
+        # payload = SpecifyNormalizationRequest(
+        #     run=RunConfig(runNumber=self.runNumber),
+        #     workspace=,
+        #     smoothWorkspace=,
+        #     smoothingParameter=#TODO: Pull this from the view.,
+        #     samplePath=self.samplePath,
+        #     calibrantPath=self.calibrantPath,
+        #     focusGroupPath=self.groupingPath,
+        # )
+        # request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
+        # response = self.interfaceController.executeRequest(request)
+
+        # self.responses.append(response)
+        # return response
 
     # def _saveNormalizationCalibration(self, workflowPresenter):
     #     view = workflowPresenter.widget.tabview
@@ -169,6 +166,25 @@ class NormalizationCalibrationWorkflow:
     #     normalizationRecord = self.responses[-1].data
     #     normalizationRecord.workspaceNames.append(self.responses[-2].data)
     #     pass
+
+    def _updateWorkspaces(self):
+        # NOTE: This will only work for three default grouping files.
+
+        focusWorkspaces = []
+        for i in range(1, 4):
+            focusKey = (
+                f"data_rebinned_ragged_{self.runNumber}_input_WS_SNAPFocGroup_{['Column', 'Bank', 'All'][i-1]}.lite.hdf"
+            )
+
+            focusWorkspaces.append(self.responses[-i].data[focusKey])
+        return focusWorkspaces
+
+    def onSmoothingValueChanged(self, smoothingValue):
+        self.smoothingParameter = smoothingValue
+        # create smoothing workspaces and return
+        # updatedWorkspaces = self.updateWorkspacesWithSmoothing(smoothingValue)
+        # self._specifyNormalizationView.updateFocusWorkspaces(updatedWorkspaces)
+        # self._specifyNormalizationView.updateGraphs()
 
     @property
     def widget(self):

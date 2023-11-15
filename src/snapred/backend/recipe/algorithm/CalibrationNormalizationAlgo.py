@@ -10,10 +10,6 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
-from snapred.backend.dao.ingredients import (
-    ReductionIngredients,
-    SmoothDataExcludingPeaksIngredients,
-)
 from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import (
     NormalizationCalibrationIngredients as Ingredients,
 )
@@ -21,7 +17,6 @@ from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreati
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks  # noqa F401
-from snapred.meta.Config import Config
 
 name = "CalibrationNormalizationAlgo"
 
@@ -43,7 +38,6 @@ class CalibrationNormalization(PythonAlgorithm):
         )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("FocusWorkspace", defaultValue="", direction=Direction.Output)
-        self.declareProperty("SmoothWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
@@ -51,10 +45,10 @@ class CalibrationNormalization(PythonAlgorithm):
         self.run = ingredients.run
         self.backgroundRun = ingredients.backgroundRun
         self.reductionIngredients = ingredients.reductionIngredients
-        self.smoothDataIngredients = ingredients.smoothDataIngredients
         self.calibrationRecord = ingredients.calibrationRecord
         self.calibrantSample = ingredients.calibrantSample
         self.calibrationWorkspace = ingredients.calibrationWorkspace
+        self.instrumentState = ingredients.instrumentState
         self.focusGroup = ingredients.focusGroup
         yield
 
@@ -62,14 +56,11 @@ class CalibrationNormalization(PythonAlgorithm):
         ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
         self.chopIngredients(ingredients)
 
-        inputWS = self.getProperty("InputWorkspace").value
-        inputWSName = str(inputWS)
+        self.setProperty("InputWorkspace", f"{self.run.runNumber}_input_WS")
+        self.setProperty("BackgroundWorkspace", f"{self.backgroundRun.runNumber}_background_input_WS")
 
-        backgroundWS = self.getProperty("BackgroundWorkspace").value
-        backgroundWSName = str(backgroundWS)
-
-        self.mantidSnapper.mtd[inputWSName]
-        self.mantidSnapper.mtd[backgroundWSName]
+        inputWSName = str(self.getProperty("InputWorkspace").value)
+        backgroundWSName = str(self.getProperty("BackgroundWorkspace").value)
 
         # run the algo
         self.log().notice("Execution of CalibrationNormalizationAlgo START!")
@@ -78,7 +69,7 @@ class CalibrationNormalization(PythonAlgorithm):
             "Correcting Vanadium Data...",
             InputWorkspace=inputWSName,
             BackgroundWorkspace=backgroundWSName,
-            CalibrationWorkspace=self.calibrationWorkspace.json(),
+            CalibrationWorkspace=self.calibrationWorkspace.json(),  # remove this
             Ingredients=self.reductionIngredients.json(),
             CalibrantSample=self.calibrantSample.json(),
             OutputWorkspace=f"{inputWSName}_raw_vanadium_data",
@@ -102,39 +93,38 @@ class CalibrationNormalization(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
+        rebinRaggedFocussedWSName = f"data_rebinned_ragged_{inputWSName}_{self.focusGroup.name}"
         self.mantidSnapper.RebinRagged(
             "Rebinning ragged bins...",
             InputWorkspace=focusedWSName,
-            XMin=self.focusGroup.dMin,
-            XMax=self.focusGroup.dMax,
-            Delta=self.focusGroup.dBin,
-            OutputWorkspace=f"data_rebinned_ragged_{focusedWSName}",
+            XMin=self.instrumentState.PixelGroupingParameters.dResolution.minimum,
+            XMax=self.instrumentState.PixelGroupingParameters.dResolution.maximum,
+            Delta=(
+                self.instrumentState.PixelGroupingParameters.dRelativeResolution
+                / self.instrumentState.InstrumentConfig.NBins
+            ),
+            OutputWorkspace=rebinRaggedFocussedWSName,
             PreserveEvents=True,
         )
 
-        ws = f"{focusedWSName}_clone_focused_data"
-        self.mantidSnapper.CloneWorkspace(
-            "Cloning input workspace for lite data creation...",
-            InputWorkspace=f"data_rebinned_ragged_{focusedWSName}",
-            OutputWorkspace=ws,
-        )
-
-        self.mantidSnapper.SmoothDataExcludingPeaks(
-            "Fit and Smooth Peaks...",
-            InputWorkspace=ws,
-            SmoothDataExcludingPeaksIngredients=self.smoothDataIngredients.json(),
-            OutputWorkspace=f"{focusedWSName}_smooth_ws",
+        self.mantidSnapper.WashDishes(
+            "Washing dishes...",
+            WorkspaceList=[
+                f"{self.run.runNumber}_input_WS",
+                f"{self.backgroundRun.runNumber}_background_input_WS",
+                f"{inputWSName}_raw_vanadium_data",
+                f"{inputWSName}_{self.focusGroup.name}_focused_data",
+                f"{inputWSName}{self.focusGroup.name}_grouping_WS",
+            ],
         )
 
         self.mantidSnapper.executeQueue()
 
-        focusedWS = mtd[f"data_rebinned_ragged_{focusedWSName}"]
-        smoothedWS = mtd[f"{focusedWSName}_smooth_ws"]
+        focusedWS = mtd[rebinRaggedFocussedWSName]
 
-        self.setProperty("FocusWorkspace", f"data_rebinned_ragged_{focusedWSName}")
-        self.setProperty("SmoothWorkspace", f"{focusedWSName}_smooth_ws")
+        self.setProperty("FocusWorkspace", rebinRaggedFocussedWSName)
 
-        return focusedWS, smoothedWS
+        return focusedWS
 
 
 # Register algorithm with Mantid

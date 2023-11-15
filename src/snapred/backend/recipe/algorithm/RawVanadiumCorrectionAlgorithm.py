@@ -10,7 +10,6 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction
-from scipy.interpolate import make_smoothing_spline, splev
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples

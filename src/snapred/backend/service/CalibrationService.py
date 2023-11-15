@@ -24,6 +24,7 @@ from snapred.backend.dao.normalization import Normalization, NormalizationRecord
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
+    CloneAndSmoothRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
     NormalizationCalibrationRequest,
@@ -74,6 +75,7 @@ class CalibrationService(Service):
         self.registerPath("checkDataExists", self.calculatePixelGroupingParameters)
         self.registerPath("assessment", self.assessQuality)
         self.registerPath("normalization", self.normalization)
+        self.registerPath("cloneAndSmooth", self.cloneAndSmooth)
         self.registerPath("normalizationAssessment", self.normalizationAssessment)
         self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
         self.registerPath("diffraction", self.diffractionCalibration)
@@ -317,7 +319,6 @@ class CalibrationService(Service):
     @FromString
     def normalization(self, request: NormalizationCalibrationRequest):
         reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber.runNumber)
-        crystalInfo = CrystallographicInfoService().ingest(request.samplePath)["crystalInfo"]
         calibrationRecord = self.load(request.runNumber)
         calibrantSample = self.dataFactoryService.getCalibrantSample(request.calibrantPath)
         groupingFiles = request.groupingFiles
@@ -332,24 +333,22 @@ class CalibrationService(Service):
                 groupingFiles[group],
             )
 
-            smoothingIngredients = SmoothDataExcludingPeaksIngredients(
-                crystalInfo=crystalInfo,
-                instrumentState=instrumentState,
-                smoothingParameter=request.smoothingParameter,
-            )
-
             normalizationIngredients = NormalizationCalibrationIngredients(
-                run=request.run,
+                run=request.runNumber,
                 backgroundRun=request.backgroundRunNumber,
                 reductionIngredients=reductionIngredients,
-                smoothingIngredients=smoothingIngredients,
                 calibrationRecord=calibrationRecord,
                 calibrantSample=calibrantSample,
                 focusGroup=focusGroup,
+                instrumentState=instrumentState,
                 calibrationWorkspace=calibrationWorkspace,
             )
-
+            # append and then return
             return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients)
+
+    @FromString
+    def cloneAndSmooth(self, request: CloneAndSmoothRequest):
+        pass
 
     @FromString
     def normalizationAssessment(self, request: SpecifyNormalizationRequest):
