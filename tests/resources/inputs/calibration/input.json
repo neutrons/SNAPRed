@@ -107,18 +107,83 @@
       "focusGroups": [
         {
           "name": "Column",
+          "FWHM": [
+            5,
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          "nHst": 6,
+          "dBin": [
+            -0.00086,
+            -0.00096,
+            -0.0013,
+            -0.00117,
+            -0.00147,
+            -0.00186
+          ],
+          "dMax": [
+            2.15,
+            2.43,
+            2.77,
+            2.95,
+            3.74,
+            4.9
+          ],
+          "dMin": [
+            0.65,
+            0.65,
+            0.65,
+            0.65,
+            0.65,
+            0.65
+          ],
           "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
         },
         {
           "name": "Bank",
+          "FWHM": [
+            5,
+            5
+          ],
+          "nHst": 2,
+          "dBin": [
+            -0.001,
+            -0.001
+          ],
+          "dMax": [
+            2.74,
+            4.9
+          ],
+          "dMin": [
+            0.65,
+            0.65
+          ],
           "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Bank.lite.xml"
         },
         {
           "name": "All",
+          "FWHM": [
+            5
+          ],
+          "nHst": 1,
+          "dBin": [
+            -0.0008
+          ],
+          "dMax": [
+            4.9
+          ],
+          "dMin": [
+            0.65
+          ],
           "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.nxs"
         }
       ],
       "isLiteMode": true,
+      "rawVanadiumCorrectionFileName": "RVMB57473.lite.nxs",
+      "vanadiumFilePath": "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/RVMB57473.lite.nxs",
       "stateId": "04bd2c53f6bf6754",
       "tofBin": 0.0002,
       "tofMax": 14104.800181997423,

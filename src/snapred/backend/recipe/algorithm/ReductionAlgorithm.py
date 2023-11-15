@@ -6,6 +6,7 @@ from mantid.kernel import *
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import ReductionIngredients
+from snapred.backend.dao.state import PixelGroupingParameters
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # from snapred.backend.recipe.algorithm.CustomGroupWorkspace import name as CustomGroupWorkspace
@@ -22,12 +23,14 @@ class ReductionAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("PixelGroupingParameters", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
+        pixelGroupingParameters = PixelGroupingParameters.parse_raw(self.getProperty("PixelGroupingParameters").value)
         focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
         # run the algo
         self.log().notice("Execution of ReductionAlgorithm START!")
@@ -185,14 +188,21 @@ class ReductionAlgorithm(PythonAlgorithm):
         # TODO: Refactor so excute only needs to be called once
         self.mantidSnapper.executeQueue()
 
+        dMinList = []
+        dMaxList = []
+        dBinList = []
+        for i in pixelGroupingParameters:
+            dMinList.append(i.dResolution.minimum)
+            dMaxList.append(i.dResolution.maximum)
+            dBinList.append(i.dRelativeResolution)
         groupedData = data
         for workspaceIndex in range(len(focusGroups)):
             data = self.mantidSnapper.RebinRagged(
                 "Rebinning ragged bins...",
                 InputWorkspace=mtd[groupedData].getItem(workspaceIndex),
-                XMin=focusGroups[workspaceIndex].dMin,
-                XMax=focusGroups[workspaceIndex].dMax,
-                Delta=focusGroups[workspaceIndex].dBin,
+                XMin=dMinList[workspaceIndex],
+                XMax=dMaxList[workspaceIndex],
+                Delta=dBinList[workspaceIndex] / reductionIngredients.reductionState.instrumentConfig.NBins,
                 OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[workspaceIndex].name),
             )
         self.mantidSnapper.WashDishes(

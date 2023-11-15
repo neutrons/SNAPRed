@@ -92,7 +92,6 @@ class CalibrationService(Service):
         self,
         runNumber,
         definition,
-        nBinsAcrossPeakWidth=Config["calibration.diffraction.nBinsAcrossPeakWidth"],
         calibration=None,
     ):
         if calibration is None:
@@ -102,13 +101,8 @@ class CalibrationService(Service):
         instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams
         return (
             FocusGroup(
-                FWHM=[pgp.twoTheta for pgp in pixelGroupingParams],  # TODO: Remove or extract out a level up
                 name=definition.split("/")[-1],
                 definition=definition,
-                nHst=len(pixelGroupingParams),
-                dMin=[pgp.dResolution.minimum for pgp in pixelGroupingParams],
-                dMax=[pgp.dResolution.maximum for pgp in pixelGroupingParams],
-                dBin=[pgp.dRelativeResolution / nBinsAcrossPeakWidth for pgp in pixelGroupingParams],
             ),
             instrumentState,
         )

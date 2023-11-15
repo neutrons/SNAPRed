@@ -2,6 +2,7 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import ReductionIngredients
+from snapred.backend.dao.state import PixelGroupingParameters
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 name = "AlignAndFocusReductionAlgorithm"
@@ -11,12 +12,14 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("PixelGroupingParameters", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients.parse_raw(self.getProperty("ReductionIngredients").value)
+        pixelGroupingParameters = PixelGroupingParameters.parse_raw(self.getProperty("PixelGroupingParameters").value)
         # run the algo
         self.log().notice("Execution of AlignAndFocusReductionAlgorithm START!")
 
@@ -47,9 +50,16 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         )
 
         self.mantidSnapper.executeQueue()
-        DMin = reductionIngredients.reductionState.stateConfig.focusGroups[0].dMin
-        DMax = reductionIngredients.reductionState.stateConfig.focusGroups[0].dMax
-        DeltaRagged = reductionIngredients.reductionState.stateConfig.focusGroups[0].dBin
+        dMinList = []
+        dMaxList = []
+        dBinList = []
+        for i in pixelGroupingParameters:
+            dMinList.append(i.dResolution.minimum)
+            dMaxList.append(i.dResolution.maximum)
+            dBinList.append(i.dRelativeResolution)
+        DMin: float = max(dMinList)
+        DMax: float = min(dMaxList)
+        DeltaRagged: float = min(dBinList) / reductionIngredients.reductionState.instrumentConfig.NBins
 
         self.mantidSnapper.AlignAndFocusPowderFromFiles(
             "Executing AlignAndFocusPowder...",

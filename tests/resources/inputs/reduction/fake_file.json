@@ -107,18 +107,17 @@
         "focusGroups": [
           {
             "name": "Column",
-            "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
-          },
-          {
-            "name": "Bank",
-            "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Bank.lite.xml"
-          },
-          {
-            "name": "All",
-            "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.nxs"
+            "FWHM": [0],
+            "nHst": 6,
+            "dBin": [0],
+            "dMax": [0],
+            "dMin": [0],
+            "definition": "nope"
           }
         ],
         "isLiteMode": true,
+        "rawVanadiumCorrectionFileName": "nope",
+        "vanadiumFilePath": "nope",
         "stateId": "04bd2c53f6bf6754",
         "tofBin": 0.0002,
         "tofMax": 14104.800181997423,
