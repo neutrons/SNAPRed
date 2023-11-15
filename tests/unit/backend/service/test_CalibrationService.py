@@ -329,5 +329,5 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockGroceries = mockFetchGroceriesRecipe().executeRecipe.return_value["workspaces"]
         mockDiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
             mockDiffractionCalibrationIngredients.return_value,
-            {"InputWorkspace": mockGroceries[0], "GroupingWorkspace": mockGroceries[1]},
+            {"inputWorkspace": mockGroceries[0], "groupingWorkspace": mockGroceries[1]},
         )

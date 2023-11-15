@@ -1,4 +1,6 @@
 import unittest
+from typing import Any, Dict, List
+from unittest import mock
 
 import pytest
 from snapred.backend.dao.DetectorPeak import DetectorPeak
@@ -32,32 +34,39 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("inputs/diffcal/fakeFocusGroup.json"))
         fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
 
-        peakList3 = [
-            DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
-            DetectorPeak.parse_obj({"position": {"value": 5, "minimum": 4, "maximum": 6}}),
-        ]
-        group3 = GroupPeakList(groupID=3, peaks=peakList3)
-        peakList7 = [
-            DetectorPeak.parse_obj({"position": {"value": 3, "minimum": 2, "maximum": 4}}),
-            DetectorPeak.parse_obj({"position": {"value": 6, "minimum": 5, "maximum": 7}}),
-        ]
-        group7 = GroupPeakList(groupID=7, peaks=peakList7)
-        peakList2 = [
-            DetectorPeak.parse_obj({"position": {"value": 3, "minimum": 2, "maximum": 4}}),
-            DetectorPeak.parse_obj({"position": {"value": 6, "minimum": 5, "maximum": 7}}),
-        ]
-        group2 = GroupPeakList(groupID=2, peaks=peakList2)
-        peakList11 = [
-            DetectorPeak.parse_obj({"position": {"value": 3, "minimum": 2, "maximum": 4}}),
-            DetectorPeak.parse_obj({"position": {"value": 6, "minimum": 5, "maximum": 7}}),
-        ]
-        group11 = GroupPeakList(groupID=11, peaks=peakList11)
+        fakeFocusGroup = FocusGroup(
+            name="natural",
+            nHst=4,
+            FWHM=[5, 5, 5, 5],
+            dMin=[0.02, 0.05, 0.02, 0.03],
+            dMax=[0.36, 0.41, 0.65, 0.485],
+            dBin=[0.00086, 0.00096, 0.00130, 0.00117],
+            definition=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
+        )
+        peakLists: Dict[int, List[Any]] = {
+            3: [
+                DetectorPeak.parse_obj({"position": {"value": 0.37, "minimum": 0.35, "maximum": 0.39}}),
+                DetectorPeak.parse_obj({"position": {"value": 0.33, "minimum": 0.32, "maximum": 0.34}}),
+            ],
+            7: [
+                DetectorPeak.parse_obj({"position": {"value": 0.57, "minimum": 0.54, "maximum": 0.62}}),
+                DetectorPeak.parse_obj({"position": {"value": 0.51, "minimum": 0.49, "maximum": 0.53}}),
+            ],
+            2: [
+                DetectorPeak.parse_obj({"position": {"value": 0.33, "minimum": 0.31, "maximum": 0.35}}),
+                DetectorPeak.parse_obj({"position": {"value": 0.29, "minimum": 0.275, "maximum": 0.305}}),
+            ],
+            11: [
+                DetectorPeak.parse_obj({"position": {"value": 0.43, "minimum": 0.41, "maximum": 0.47}}),
+                DetectorPeak.parse_obj({"position": {"value": 0.39, "minimum": 0.37, "maximum": 0.405}}),
+            ],
+        }
 
         self.fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
-            groupedPeakLists=[group3, group7, group2, group11],
+            groupedPeakLists=[GroupPeakList(groupID=key, peaks=peakLists[key], maxfwhm=5) for key in peakLists.keys()],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
         )
@@ -77,20 +86,15 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
 
         TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
         TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
-        instrConfig = self.fakeIngredients.instrumentState.instrumentConfig
-        TOFBin = abs(instrConfig.delTOverT / instrConfig.NBins)
-        TOFParams = (TOFMin, TOFBin, TOFMax)
 
         # prepare with test data in TOF
-        midpoint = (TOFMax + TOFMin) / 2.0
         CreateSampleWorkspace(
             OutputWorkspace=rawWSname,
             # WorkspaceType="Histogram",
-            Function="User Defined",
-            UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={midpoint},Sigma={3*TOFBin}",
+            Function="Powder Diffraction",
             Xmin=TOFMin,
             Xmax=TOFMax,
-            BinWidth=TOFBin,
+            BinWidth=0.001,
             XUnit="TOF",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
@@ -98,7 +102,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         )
         Rebin(
             InputWorkspace=rawWSname,
-            Params=TOFParams,
+            Params=(TOFMin, -0.001, TOFMax),
             BinningMode="Logarithmic",
             OutputWorkspace=rawWSname,
         )

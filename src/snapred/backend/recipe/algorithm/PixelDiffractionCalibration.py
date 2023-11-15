@@ -24,6 +24,10 @@ class PixelDiffractionCalibration(PythonAlgorithm):
     May be re-called iteratively with `execute` to ensure convergence.
     """
 
+    # NOTE: there is already a method for creating a copy of data from a clean version
+    # therefore there is no reason not to deform the input workspace to this algorithm
+    # instead, the original clean file is preserved in a separate location
+
     def category(self):
         return "SNAPRed Diffraction Calibration"
 
@@ -31,19 +35,15 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # declare properties
         self.declareProperty(
             MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
-            doc="Workspace containing the raw neutron data",
+            doc="Workspace containing the TOF neutron data",
         )
         self.declareProperty(
             MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the grouping information",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
-            doc="Workspace containing the rebinned and pixel-calibrated data",
-        )
-        self.declareProperty(
             ITableWorkspaceProperty("CalibrationTable", "", Direction.Output, PropertyMode.Optional),
-            doc="Workspace containing the rebinned and pixel-calibrated data",
+            doc="Workspace containing the corrected calibration constants",
         )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
@@ -69,7 +69,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
         # instrConfig = ingredients.instrumentState.instrumentConfig
-        self.TOFBin: float = self.dBin  # instrConfig.delTOverT / instrConfig.NBins
+        self.TOFBin: float = self.dBin
         self.TOFParams = (self.TOFMin, self.TOFBin, self.TOFMax)
 
         # from the grouped peak lists, find the maximum shift in d-spacing
@@ -77,15 +77,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         for peakList in ingredients.groupedPeakLists:
             self.maxDSpaceShifts[peakList.groupID] = 2.5 * peakList.maxfwhm
 
-        # create string names of workspaces that will be used by algorithm
-        if self.getProperty("OutputWorkspace").isDefault:
-            self.outputWStof: str = self.getPropertyValue("InputWorkspace")
-            self.setProperty("OutputWorkspace", self.outputWStof)
-        else:
-            self.outputWStof: str = self.getPropertyValue("OutputWorkspace")
-        self.outputWSdsp: str = self.outputWStof + "_dsp"
-
         # create string name for output calibration table
+        # TODO: use workspace namer
         self.DIFCpixel: str = ""
         if self.getProperty("CalibrationTable").isDefault:
             self.DIFCpixel = f"_DIFC_{self.runNumber}"
@@ -101,33 +94,33 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         Process input neutron data
         """
 
-        self.wsRawTOF: str = self.getPropertyValue("InputWorkspace")
+        self.wsTOF: str = self.getPropertyValue("InputWorkspace")
+        # TODO: use workspace namer
+        self.wsDSP: str = self.wsTOF + "_dsp"
 
         # clone and crop the raw input data
         self.mantidSnapper.CropWorkspace(
             "Clone and crop the raw data",
-            InputWorkspace=self.wsRawTOF,
-            OutputWorkspace=self.outputWStof,
+            InputWorkspace=self.wsTOF,
+            OutputWorkspace=self.wsTOF,
             XMin=self.TOFMin,
             Xmax=self.TOFMax,
         )
         # rebin the TOF data logarithmically
-        self.convertUnitsAndRebin(self.outputWStof, self.outputWStof, "TOF")
+        self.convertUnitsAndRebin(self.wsTOF, self.wsTOF, "TOF")
         # also find d-spacing data and rebin logarithmically
-        self.convertUnitsAndRebin(self.outputWStof, self.outputWSdsp, "dSpacing")
+        self.convertUnitsAndRebin(self.wsTOF, self.wsDSP, "dSpacing")
 
         # for inspection, make a copy of initial data
-        inputWStof: str = self.getPropertyValue("InputWorkspace") + "_TOF_in"
-        inputWSdsp: str = self.getPropertyValue("InputWorkspace") + "_DSP_in"
         self.mantidSnapper.MakeDirtyDish(
             "Creating copy of initial TOF data",
-            InputWorkspace=self.outputWStof,
-            OutputWorkspace=inputWStof,
+            InputWorkspace=self.wsTOF,
+            OutputWorkspace=self.wsTOF + "_pixelBegin",
         )
         self.mantidSnapper.MakeDirtyDish(
             "Creating copy of initial d-spacing data",
-            InputWorkspace=self.outputWSdsp,
-            OutputWorkspace=inputWSdsp,
+            InputWorkspace=self.wsDSP,
+            OutputWorkspace=self.wsDSP + "_pixelBegin",
         )
 
         # get handle to group focusing workspace and retrieve all detector IDs
@@ -141,7 +134,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
 
         self.mantidSnapper.CalculateDiffCalTable(
             "Calculate initial table of DIFC values",
-            InputWorkspace=self.wsRawTOF,
+            InputWorkspace=self.wsTOF,
             CalibrationTable=self.DIFCpixel,
             OffsetMode="Signed",
             BinWidth=self.TOFBin,
@@ -199,6 +192,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         """
 
         self.log().notice(f"Executing pixel calibration iteration {self._counts}")
+        # convert to d-spacing and rebin logarithmically
+        self.convertUnitsAndRebin(self.wsTOF, self.wsDSP, "dSpacing")
 
         data: Dict[str, float] = {}
         totalOffsetWS: str = f"offsets_{self.runNumber}_{self._counts}"
@@ -209,7 +204,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             refID: int = self.getRefID(workspaceIndices)
             self.mantidSnapper.CrossCorrelate(
                 f"Cross-Correlating spectra for {wscc}",
-                InputWorkspace=self.outputWSdsp,
+                InputWorkspace=self.wsDSP,
                 OutputWorkspace=wscc,
                 ReferenceSpectra=refID,
                 WorkspaceIndexList=workspaceIndices,
@@ -260,28 +255,26 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         )
 
         # apply offset correction to input workspace
+        # this improves the unit conversion in next iteration
         self.mantidSnapper.ApplyDiffCal(
             "Apply the diffraction calibration to the input TOF workspace",
-            InstrumentWorkspace=self.outputWStof,
+            InstrumentWorkspace=self.wsTOF,
             CalibrationWorkspace=self.DIFCpixel,
         )
-        # convert to d-spacing and rebin logarithmically
-        self.convertUnitsAndRebin(self.outputWStof, self.outputWSdsp, "dSpacing")
         self.mantidSnapper.MakeDirtyDish(
             f"Store d-spacing data at {self._counts} iterations",
-            InputWorkspace=self.outputWSdsp,
-            OutputWorkspace=self.outputWSdsp + f"_{self._counts}",
+            InputWorkspace=self.wsDSP,
+            OutputWorkspace=self.wsDSP + f"_pixel{self._counts}",
         )
 
         # cleanup memory usage
         self.mantidSnapper.WashDishes(
             "Deleting temporary workspaces",
-            WorkspaceList=[wscc, wsoff, totalOffsetWS, self.outputWSdsp],
+            WorkspaceList=[wscc, wsoff, totalOffsetWS, self.wsDSP],
         )
         # now execute the queue
         self.mantidSnapper.executeQueue()
         self.setProperty("data", json.dumps(data))
-        self.setPropertyValue("OutputWorkspace", self.outputWStof)
 
     def PyExec(self) -> None:
         """

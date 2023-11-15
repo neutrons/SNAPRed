@@ -6,7 +6,17 @@ from unittest import mock
 import pytest
 from mantid.api import PythonAlgorithm
 from mantid.kernel import Direction
-from mantid.simpleapi import CreateWorkspace, DeleteWorkspace, LoadDetectorsGroupingFile, LoadInstrument, mtd
+from mantid.simpleapi import (
+    ConvertUnits,
+    CreateSampleWorkspace,
+    CreateWorkspace,
+    DeleteWorkspace,
+    LoadDetectorsGroupingFile,
+    LoadInstrument,
+    Rebin,
+    RebinRagged,
+    mtd,
+)
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as TheseIngredients
@@ -36,8 +46,8 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
 
         peakList = [
-            DetectorPeak.parse_obj({"position": {"value": 1.5, "minimum": 1, "maximum": 2}}),
-            DetectorPeak.parse_obj({"position": {"value": 3.5, "minimum": 3, "maximum": 4}}),
+            DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
+            DetectorPeak.parse_obj({"position": {"value": 5, "minimum": 4, "maximum": 6}}),
         ]
 
         self.fakeIngredients = TheseIngredients(
@@ -57,10 +67,16 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         self.fakeRawData = "_test_diffcal_rx"
         CreateWorkspace(
             OutputWorkspace=self.fakeRawData,
-            DataX=range(16),
-            DataY=[7] * 16,
+            DataX=[1, 2, 3, 4, 5, 6] * 16,
+            DataY=[2, 11, 2, 2, 11, 2] * 16,
             UnitX="TOF",
             NSpec=16,
+        )
+        Rebin(
+            InputWorkspace=self.fakeRawData,
+            Params=(1, -0.001, 6),
+            BinningMode="Logarithmic",
+            OutputWorkspace=self.fakeRawData,
         )
         LoadInstrument(
             Workspace=self.fakeRawData,
@@ -94,7 +110,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         self.recipe.chopIngredients(self.fakeIngredients)
         assert self.recipe.runNumber == self.fakeIngredients.runConfig.runNumber
         assert self.recipe.threshold == self.fakeIngredients.convergenceThreshold
-        self.recipe.fetchGroceries(self.groceryList)
+        self.recipe.unbagGroceries(self.groceryList)
         assert self.recipe.rawInput == self.fakeRawData
         assert self.recipe.groupingWS == self.fakeGroupingWorkspace
 
@@ -130,6 +146,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     @mock.patch(PixelCalAlgo, DummyCalibrationAlgorithm)
     @mock.patch(GroupCalAlgo, DummyCalibrationAlgorithm)
+    @mock.patch.object(Recipe, "restockShelves", mock.Mock())
     def test_execute_successful(self):
         result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         assert result["result"]
@@ -155,6 +172,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             raise RuntimeError("passed")
 
     @mock.patch(PixelCalAlgo, DummyPixelCalAlgo)
+    @mock.patch.object(Recipe, "restockShelves", mock.Mock())
     def test_execute_unsuccessful_pixel_cal(self):
         try:
             self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
@@ -182,6 +200,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     @mock.patch(PixelCalAlgo, DummyCalibrationAlgorithm)
     @mock.patch(GroupCalAlgo, DummyGroupCalAlgo)
+    @mock.patch.object(Recipe, "restockShelves", mock.Mock())
     def test_execute_unsuccessful_group_cal(self):
         try:
             self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
@@ -217,6 +236,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     @mock.patch(PixelCalAlgo, DummyFailingAlgo)
     @mock.patch(GroupCalAlgo, DummyFailingAlgo)
+    @mock.patch.object(Recipe, "restockShelves", mock.Mock())
     def test_execute_unsuccessful_later_calls(self):
         for i in range(1, 4):
             self.DummyFailingAlgo.fails = i
@@ -230,21 +250,14 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     def makeFakeNeutronData(self, rawWS, groupingWS):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
-        from mantid.simpleapi import (
-            ChangeBinOffset,
-            ConvertUnits,
-            CreateSampleWorkspace,
-            LoadInstrument,
-            MoveInstrumentComponent,
-            RotateInstrumentComponent,
-        )
+
+        TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
+        TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
 
         # prepare with test data
         CreateSampleWorkspace(
             OutputWorkspace=rawWS,
-            # WorkspaceType="Histogram",
-            Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=1.2,Sigma=0.2",
+            Function="Powder Diffraction",
             Xmin=0.2,
             Xmax=5,
             BinWidth=0.001,
@@ -262,32 +275,35 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             InputWorkspace=rawWS,
             OutputWorkspace=groupingWS,
         )
-        # the below are meant to de-align the pixels so an offset correction is needed
-        ChangeBinOffset(
+        focWS = mtd[groupingWS]
+        allXmins = [0] * 16
+        allXmaxs = [0] * 16
+        allDelta = [0] * 16
+        for i, gid in enumerate(focWS.getGroupIDs()):
+            for detid in focWS.getDetectorIDsOfGroup(int(gid)):
+                allXmins[detid] = self.fakeIngredients.focusGroup.dMin[i]
+                allXmaxs[detid] = self.fakeIngredients.focusGroup.dMax[i]
+                allDelta[detid] = self.fakeIngredients.focusGroup.dBin[i]
+        RebinRagged(
             InputWorkspace=rawWS,
             OutputWorkspace=rawWS,
-            Offset=-0.014,
-        )
-        RotateInstrumentComponent(
-            Workspace=rawWS,
-            ComponentName="bank1",
-            Y=1.0,
-            Angle=90.0,
-        )
-        MoveInstrumentComponent(
-            Workspace=rawWS,
-            ComponentName="bank1",
-            X=5.0,
-            Y=-0.1,
-            Z=0.1,
-            RelativePosition=False,
+            XMin=allXmins,
+            XMax=allXmaxs,
+            Delta=allDelta,
         )
         ConvertUnits(
             InputWorkspace=rawWS,
             OutputWorkspace=rawWS,
             Target="TOF",
         )
+        Rebin(
+            InputWorkspace=rawWS,
+            OutputWorkspace=rawWS,
+            Params=(TOFMin, -0.001, TOFMax),
+            BinningMode="Logarithmic",
+        )
 
+    @mock.patch.object(Recipe, "restockShelves", mock.Mock())
     def test_execute_with_algos(self):
         # create sample data
         rawWS = "_test_diffcal_rx_data"

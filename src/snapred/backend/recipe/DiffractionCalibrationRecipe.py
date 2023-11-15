@@ -23,15 +23,15 @@ class DiffractionCalibrationRecipe:
         self.runNumber = ingredients.runConfig.runNumber
         self.threshold = ingredients.convergenceThreshold
 
-    def fetchGroceries(self, groceryList: Dict[str, Any]):
+    def unbagGroceries(self, groceryList: Dict[str, Any]):
         """
         Checkout the workspace names needed for this recipe.
         It is necessary to provide the followign keys:
-         - "inputWorkspace": the raw neutron data
-         - "groupingWorkspace": a grouping workspace for focusing the data
+        - "inputWorkspace": the raw neutron data
+        - "groupingWorkspace": a grouping workspace for focusing the data
         It is optional to provide the following keys:
-         - "outputWorkspace": a name for the final output workspace; otherwise default is used
-         - "calibrationTable": a name for the fully caliibrated DIFC table; otherwise a default is used
+        - "outputWorkspace": a name for the final output workspace; otherwise default is used
+        - "calibrationTable": a name for the fully caliibrated DIFC table; otherwise a default is used
         """
 
         self.rawInput = groceryList["inputWorkspace"]
@@ -39,9 +39,31 @@ class DiffractionCalibrationRecipe:
         self.outputWS = groceryList.get("outputWorkspace", "")
         self.calTable = groceryList.get("calibrationTable", "")
 
+    # TODO: move saving to inside the calibration service using TBD saving method
+    def restockShelves(self, calibrationWS: str, maskWS: str = ""):
+        """
+        The final diffraction calibration table needs to be saved to disk,
+        This will later be handled in a more robust way with a service.
+        For the moment this is being handled by saving at the end of the recipe.
+        This in a separate method so it can be easily mocked for testing.
+        """
+        from mantid.simpleapi import SaveDiffCal
+
+        from snapred.backend.data.LocalDataService import LocalDataService
+
+        lds = LocalDataService()
+        calibrationPath = lds._getCalibrationDataPath(self.runNumber)
+        filename = calibrationPath + "/difcal.h5"
+        SaveDiffCal(
+            CalibrationWorkspace=calibrationWS,
+            GroupingWorkspace=self.groupingWS,
+            MaskWorkspace=maskWS,
+            Filename=filename,
+        )
+
     def executeRecipe(self, ingredients: Ingredients, groceryList: Dict[str, Any]) -> Dict[str, Any]:
         self.chopIngredients(ingredients)
-        self.fetchGroceries(groceryList)
+        self.unbagGroceries(groceryList)
 
         logger.info(f"Executing diffraction calibration for runId: {self.runNumber}")
         data: Dict[str, Any] = {"result": False}
@@ -54,8 +76,6 @@ class DiffractionCalibrationRecipe:
         pixelAlgo.setProperty("InputWorkspace", self.rawInput)
         pixelAlgo.setProperty("GroupingWorkspace", self.groupingWS)
         pixelAlgo.setProperty("Ingredients", ingredients.json())
-        tmpPixelAlgoOut = "_tmp_pixel_out"
-        pixelAlgo.setProperty("OutputWorkspace", tmpPixelAlgoOut)
         pixelAlgo.setProperty("CalibrationTable", self.calTable)
         try:
             pixelAlgo.execute()
@@ -81,11 +101,10 @@ class DiffractionCalibrationRecipe:
         logger.info("Beginning group-by-group fitting calibration")
         groupedAlgo = GroupDiffractionCalibration()
         groupedAlgo.initialize()
-        groupedAlgo.setProperty("Ingredients", ingredients.json())
-        print(pixelAlgo.getProperty("OutputWorkspace").value)
-        groupedAlgo.setProperty("InputWorkspace", tmpPixelAlgoOut)
+        groupedAlgo.setProperty("InputWorkspace", self.rawInput)
         groupedAlgo.setProperty("OutputWorkspace", self.outputWS)
         groupedAlgo.setProperty("GroupingWorkspace", self.groupingWS)
+        groupedAlgo.setProperty("Ingredients", ingredients.json())
         groupedAlgo.setProperty("PreviousCalibrationTable", self.calTable)
         groupedAlgo.setProperty("FinalCalibrationTable", self.calTable)
         try:
@@ -96,10 +115,8 @@ class DiffractionCalibrationRecipe:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
 
-        wd = WashDishes()
-        wd.initialize()
-        wd.setProperty("Workspace", tmpPixelAlgoOut)
-        wd.execute()
+        # TODO : this should be moved into diffcal service, handled by the new saving service
+        self.restockShelves(data["calibrationTable"])
 
         logger.info(f"Finished executing diffraction calibration for runId: {self.runNumber}")
         data["result"] = True

@@ -28,19 +28,19 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # declare properties
         self.declareProperty(
             MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
-            doc="Workspace containing neutron data that has been pixel calibrated",
+            doc="Workspace containing TOF neutron data.",
         )
         self.declareProperty(
             MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
-            doc="Workspace containing the grouping information",
+            doc="Workspace containing the grouping information.",
         )
         self.declareProperty(
             ITableWorkspaceProperty("PreviousCalibrationTable", "", Direction.Input, PropertyMode.Optional),
-            doc="Table workspace with previous pixel-calibrated DIFC values",
+            doc="Table workspace with previous pixel-calibrated DIFC values; if none given, will be calculated.",
         )
         self.declareProperty(
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
-            doc="Workspace containing the final diffraction calibration data",
+            doc="A diffraction-focused workspace in TOF, after calibration constants have been adjusted.",
         )
         self.declareProperty(
             ITableWorkspaceProperty("FinalCalibrationTable", "", Direction.Output, PropertyMode.Optional),
@@ -57,10 +57,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         self.runNumber: str = ingredients.runConfig.runNumber
 
-        # TODO setup for non-SNAPLite
-        self.isLite: bool = True
-
         # from grouping parameters, read the overall min/max d-spacings
+        # NOTE these MUST be in order of increasing grouping ID
+        # later work associating each with a group ID can relax this requirement
         self.dMax = ingredients.focusGroup.dMax
         self.dMin = ingredients.focusGroup.dMin
         self.dBin = [-abs(db) for db in ingredients.focusGroup.dBin]
@@ -69,6 +68,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
         self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
         self.TOFBin: float = min([abs(db) for db in self.dBin])
+        # NOTE TOFBin MUST be negative for PDCalibration
         self.TOFParams = (self.TOFMin, -abs(self.TOFBin), self.TOFMax)
 
         # for each group, need a list of peaks and boundaries of peaks
@@ -86,6 +86,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 allPeakBoundaries.append(peak.maximum)
             self.groupedPeaks[peakList.groupID] = allPeaks
             self.groupedPeakBoundaries[peakList.groupID] = allPeakBoundaries
+        # NOTE: this sort is unnecessary IF dmin/dmax can be related to specific group
+        # and not merely inferred group order from their order.
+        self.groupIDs = sorted(self.groupIDs)
 
         if len(self.groupIDs) != ingredients.focusGroup.nHst:
             raise RuntimeError(
@@ -97,16 +100,17 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         Process input neutron data
         """
 
-        self.rawWStof: str = self.getPropertyValue("InputWorkspace")
-        self.focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
+        self.wsTOF: str = self.getPropertyValue("InputWorkspace")
+        self.focusWS: str = str(self.getPropertyValue("GroupingWorkspace"))
 
         # set the previous calibration table, or create if none given
+        # TODO: use workspace namer
         self.DIFCprev: str = ""
         if self.getProperty("PreviousCalibrationTable").isDefault:
             self.DIFCprev = f"difc_prev_{self.runNumber}"
             self.mantidSnapper.CalculateDiffCalTable(
                 "Initialize the DIFC table from input",
-                InputWorkspace=self.rawWStof,
+                InputWorkspace=self.wsTOF,
                 CalibrationTable=self.DIFCprev,
                 OffsetMode="Signed",
                 BinWidth=self.TOFBin,
@@ -115,11 +119,11 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             self.DIFCprev = str(self.getPropertyValue("PreviousCalibrationTable"))
         self.mantidSnapper.ApplyDiffCal(
             "Apply the diffraction calibration table to the input workspace",
-            InstrumentWorkspace=self.rawWStof,
+            InstrumentWorkspace=self.wsTOF,
             CalibrationWorkspace=self.DIFCprev,
         )
 
-        # se the final calibration table, to be the output
+        # set the final calibration table, to be the output
         self.DIFCfinal: str = ""
         if self.getProperty("FinalCalibrationTable").isDefault:
             self.DIFCfinal = self.DIFCprev
@@ -127,22 +131,23 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         else:
             self.DIFCfinal = str(self.getPropertyValue("PreviousCalibrationTable"))
             self.mantidSnapper.CloneWorkspace(
-                "Make copy of calibration table, to not deform",
+                "Make copy of previous calibration table to use as first input",
                 InputWorkspace=self.DIFCprev,
                 OutputWorkspace=self.DIFCfinal,
             )
 
         # create string names of workspaces that will be used by algorithm
+        # TODO: use the workspace namer
         self.outputWStof: str = ""
         if self.getProperty("OutputWorkspace").isDefault:
-            self.outputWStof = self.rawWStof + "_TOF_out"
+            self.outputWStof = self.wsTOF + "_diffoc"
             self.setProperty("OutputWorkspace", self.outputWStof)
         else:
             self.outputWStof = self.getPropertyValue("OutputWorkspace")
 
         # process and diffraction focus the input data
         # must convert to d-spacing, diffraction focus, ragged rebin, then convert back to TOF
-        self.convertAndFocusAndReturn(self.rawWStof, self.outputWStof, "before")
+        self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "before")
 
     def PyExec(self) -> None:
         """
@@ -172,10 +177,11 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         if nHist != len(self.groupIDs):
             raise RuntimeError("error, the number of spectra in focused workspace, and number of groups, do not match")
 
+        diagnosticWS: str = "_PDCal_diag"
         for index in range(nHist):
             groupID: int = self.groupIDs[index]
-            DIFCpd: str = f"_tmp_PDCal_group_{groupID}"
-            diagnosticWSgroup: str = f"_PDCal_diag_{groupID}"
+            DIFCpd: str = f"_tmp_DIFCgroup_{groupID}"
+            diagnosticWSgroup: str = diagnosticWS + f"_{groupID}"
             self.mantidSnapper.PDCalibration(
                 f"Perform PDCalibration on group {groupID}",
                 InputWorkspace=self.outputWStof,
@@ -212,13 +218,13 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             #     )
             self.mantidSnapper.CombineDiffCal(
                 "Combine the new calibration values",
-                PixelCalibration=self.DIFCprev,  # previous calibration values, DIFCprev
+                PixelCalibration=self.DIFCfinal,  # previous calibration values, DIFCprev
                 GroupedCalibration=DIFCpd,  # values from PDCalibrate, DIFCpd
                 CalibrationWorkspace=self.outputWStof,  # input WS to PDCalibrate, source for DIFCarb
                 OutputWorkspace=self.DIFCfinal,  # resulting corrected calibration values, DIFCeff
             )
             self.mantidSnapper.WashDishes(
-                "Cleanup leftover workspace",
+                "Cleanup leftover workspaces",
                 WorkspaceList=[DIFCpd, diagnosticWSgroup],
             )
             self.mantidSnapper.executeQueue()
@@ -226,12 +232,13 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # apply the calibration table to input data, then re-focus
         self.mantidSnapper.ApplyDiffCal(
             "Apply the new calibration constants",
-            InstrumentWorkspace=self.rawWStof,
+            InstrumentWorkspace=self.wsTOF,
             CalibrationWorkspace=self.DIFCfinal,
         )
-        self.convertAndFocusAndReturn(self.rawWStof, self.outputWStof, "after")
+        self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "after")
 
     def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str):
+        # TODO use workspace name generator
         tmpWStof = f"_TOF_{self.runNumber}_diffoc_{note}"
         tmpWSdsp = f"_DSP_{self.runNumber}_diffoc_{note}"
         self.mantidSnapper.ConvertUnits(
@@ -243,7 +250,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.mantidSnapper.DiffractionFocussing(
             "Diffraction-focus the d-spacing data",
             InputWorkspace=tmpWSdsp,
-            GroupingWorkspace=self.focusWSname,
+            GroupingWorkspace=self.focusWS,
             OutputWorkspace=tmpWSdsp,
         )
         self.mantidSnapper.RebinRagged(

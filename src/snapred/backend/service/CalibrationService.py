@@ -176,8 +176,8 @@ class CalibrationService(Service):
         ]
         workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
         groceries = {
-            "InputWorkspace": workspaceList[0],
-            "GroupingWorkspace": workspaceList[1],
+            "inputWorkspace": workspaceList[0],
+            "groupingWorkspace": workspaceList[1],
         }
         return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
 
