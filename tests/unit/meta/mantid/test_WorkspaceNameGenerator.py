@@ -6,7 +6,7 @@ def testRunNames():
     assert "dsp_all_123" == wng.run().runNumber(123).unit(wng.Units.DSP).build()
     assert "dsp_column_123" == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).build()
     assert (
-        "dsp_column_123_Test"
+        "dsp_column_123_test"
         == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).auxilary("Test").build()
     )
 
@@ -17,4 +17,4 @@ def testDiffCalInputNames():
 
 
 def testDiffCalTableName():
-    assert "_DIFC_123" == wng.diffCalTable().runNumber(123).build()
+    assert "_difc_123" == wng.diffCalTable().runNumber(123).build()
