@@ -135,6 +135,11 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=self.DIFCprev,
                 OutputWorkspace=self.DIFCfinal,
             )
+        elf.mantidSnapper.MakeDirtyDish(
+            "Make a copy of initial DIFC prev",
+            InputWorkspace = self.DIFCprev,
+            OutputWorkspace = self.DIFCprev + "_before",
+        )
 
         # create string names of workspaces that will be used by algorithm
         # TODO: use the workspace namer
@@ -218,10 +223,21 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             #     )
             self.mantidSnapper.CombineDiffCal(
                 "Combine the new calibration values",
-                PixelCalibration=self.DIFCfinal,  # previous calibration values, DIFCprev
+                PixelCalibration=self.DIFCprev,  # previous calibration values, DIFCprev
                 GroupedCalibration=DIFCpd,  # values from PDCalibrate, DIFCpd
                 CalibrationWorkspace=self.outputWStof,  # input WS to PDCalibrate, source for DIFCarb
                 OutputWorkspace=self.DIFCfinal,  # resulting corrected calibration values, DIFCeff
+            )
+            # use the corrected workspace as starting point of next iteration
+            self.mantidSnapper.MakeDirtyDish(
+                f'Create record of how DIFC looks at group {index}',
+                InputWorkspace = self.DIFCprev,
+                OutputWorkspace = self.DIFCprev + f'_{index}',
+            )
+            self.mantidSnapper.RenameWorkspace(
+                "Use the corrected diffcal workspace as starting point in next iteration",
+                InputWorkspace=self.DIFCfinal,
+                OutputWorkspace=self.DIFCprev,
             )
             self.mantidSnapper.WashDishes(
                 "Cleanup leftover workspaces",

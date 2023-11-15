@@ -132,7 +132,7 @@ class CalibrationService(Service):
         # need to calculate these using DetectorPeakPredictor
         # 4a. InstrumentState
         # 4b. CrystalInfo
-        cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
+        cifFilePath = request.cifPath #self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # 4c. PeakIntensityThreshold
         peakIntensityThreshold = request.peakIntensityThreshold
@@ -168,8 +168,8 @@ class CalibrationService(Service):
             ),
             GroceryListItem(
                 workspaceType="grouping",
-                groupingScheme="Column",
-                isLite=True,
+                groupingScheme=request.focusGroupPath.split("/")[-1],
+                isLite=runConfig.isLite,
                 instrumentPropertySource="InstrumentDonor",
                 instrumentSource="prev",
             ),
