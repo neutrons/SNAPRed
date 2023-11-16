@@ -307,6 +307,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             focusGroupPath=focusGroupPath,
             nBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
             cifPath="path/to/cif",
+            useLiteMode=False,
         )
         self.instance.diffractionCalibration(request)
 

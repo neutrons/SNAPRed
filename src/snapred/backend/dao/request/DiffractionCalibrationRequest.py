@@ -15,6 +15,7 @@ class DiffractionCalibrationRequest(BaseModel):
     runNumber: str
     cifPath: str
     focusGroupPath: str
+    useLiteMode: bool
     convergenceThreshold: Optional[float] = Config["calibration.diffraction.convergenceThreshold"]
     peakIntensityThreshold: Optional[float] = Config["calibration.diffraction.peakIntensityThreshold"]
     nBinsAcrossPeakWidth: Optional[int] = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

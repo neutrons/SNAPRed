@@ -135,10 +135,10 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=self.DIFCprev,
                 OutputWorkspace=self.DIFCfinal,
             )
-        elf.mantidSnapper.MakeDirtyDish(
+        self.mantidSnapper.MakeDirtyDish(
             "Make a copy of initial DIFC prev",
-            InputWorkspace = self.DIFCprev,
-            OutputWorkspace = self.DIFCprev + "_before",
+            InputWorkspace=self.DIFCprev,
+            OutputWorkspace=self.DIFCprev + "_before",
         )
 
         # create string names of workspaces that will be used by algorithm
@@ -230,15 +230,16 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             )
             # use the corrected workspace as starting point of next iteration
             self.mantidSnapper.MakeDirtyDish(
-                f'Create record of how DIFC looks at group {index}',
-                InputWorkspace = self.DIFCprev,
-                OutputWorkspace = self.DIFCprev + f'_{index}',
+                f"Create record of how DIFC looks at group {index}",
+                InputWorkspace=self.DIFCprev,
+                OutputWorkspace=self.DIFCprev + f"_{index}",
             )
-            self.mantidSnapper.RenameWorkspace(
-                "Use the corrected diffcal workspace as starting point in next iteration",
-                InputWorkspace=self.DIFCfinal,
-                OutputWorkspace=self.DIFCprev,
-            )
+            if self.DIFCfinal != self.DIFCprev:
+                self.mantidSnapper.RenameWorkspace(
+                    "Use the corrected diffcal workspace as starting point in next iteration",
+                    InputWorkspace=self.DIFCfinal,
+                    OutputWorkspace=self.DIFCprev,
+                )
             self.mantidSnapper.WashDishes(
                 "Cleanup leftover workspaces",
                 WorkspaceList=[DIFCpd, diagnosticWSgroup],

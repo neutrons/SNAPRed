@@ -119,6 +119,7 @@ class CalibrationService(Service):
         # shopping list
         # 1. full runconfig
         runConfig = self.dataFactoryService.getRunConfig(request.runNumber)
+        runConfig.isLite = request.useLiteMode
         # 2. instrument state
         # 3. focus group
         # get the pixel grouping parameters and load them into the focus group
@@ -126,13 +127,15 @@ class CalibrationService(Service):
         # TODO: This may be pending a refactor and a closer look,
         # based on my convos it should be a correct translation
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            request.runNumber, request.focusGroupPath, nBinsAcrossPeakWidth
+            request.runNumber,
+            request.focusGroupPath,
+            nBinsAcrossPeakWidth,
         )
         # 4. grouped peak list
         # need to calculate these using DetectorPeakPredictor
         # 4a. InstrumentState
         # 4b. CrystalInfo
-        cifFilePath = request.cifPath #self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
+        cifFilePath = request.cifPath
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # 4c. PeakIntensityThreshold
         peakIntensityThreshold = request.peakIntensityThreshold
