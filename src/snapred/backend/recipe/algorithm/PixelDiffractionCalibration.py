@@ -15,6 +15,7 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
 class PixelDiffractionCalibration(PythonAlgorithm):
