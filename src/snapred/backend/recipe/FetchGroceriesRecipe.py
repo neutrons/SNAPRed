@@ -215,7 +215,7 @@ class FetchGroceriesRecipe:
             algo = FetchAlgo()
             algo.initialize()
             algo.setPropertyValue("Filename", fileName)
-            algo.setPropertyValue("Workspace", workspaceName)
+            algo.setPropertyValue("OutputWorkspace", workspaceName)
             algo.setPropertyValue("LoaderType", "LoadGroupingDefinition")
             algo.setPropertyValue(str(item.instrumentPropertySource), item.instrumentSource)
             try:
