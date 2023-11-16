@@ -214,7 +214,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("InstrumentFilename", self.instrumentFilepath)
         assert algo.execute()
         algo.setProperty("InstrumentFilename", "")
-        
+
         algo.setPropertyValue("OutputWorkspace", f"_{self.runNumber}_grouping_name")
         algo.setPropertyValue("InstrumentName", "fakeSNAP")
         assert algo.execute()
