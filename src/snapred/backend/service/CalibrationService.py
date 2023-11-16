@@ -149,10 +149,13 @@ class CalibrationService(Service):
         # this is just the state folder/calibration folder used solely for saving the calibration
         # set it to tmp because we dont know if we want to keep it yet
         # TODO: The algo really shouldnt be saving data unless it has to
-        calpath = "~/tmp/"
+        # calpath = "~/tmp/"
+        # TODO: this cal path needs to be exposed in DataFactoryService or DataExportService
+        from snapred.backend.data.LocalDataService import LocalDataService
+        calpath = LocalDataService()._getCalibrationDataPath(runConfig.runNumber)
         # 6. convergence threshold
-
         convergenceThreshold = request.convergenceThreshold
+        
         ingredients = DiffractionCalibrationIngredients(
             runConfig=runConfig,
             instrumentState=instrumentState,
@@ -161,6 +164,10 @@ class CalibrationService(Service):
             calPath=calpath,
             convergenceThreshold=convergenceThreshold,
         )
+        focusFile = request.focusGroupPath.split("/")[-1]
+        focusName = focusFile.split(".")[0]
+        focusScheme = focusName.split("_")[-1]
+        print(f"GROUPING SCHEME IS {focusScheme}")
 
         # get the needed input data
         groceryList = [
@@ -171,7 +178,7 @@ class CalibrationService(Service):
             ),
             GroceryListItem(
                 workspaceType="grouping",
-                groupingScheme=request.focusGroupPath.split("/")[-1],
+                groupingScheme=focusScheme,
                 isLite=runConfig.isLite,
                 instrumentPropertySource="InstrumentDonor",
                 instrumentSource="prev",
