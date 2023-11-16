@@ -26,12 +26,12 @@ class DiffractionCalibrationRecipe:
     def unbagGroceries(self, groceryList: Dict[str, Any]):
         """
         Checkout the workspace names needed for this recipe.
-        It is necessary to provide the followign keys:
+        It is necessary to provide the following keys:
         - "inputWorkspace": the raw neutron data
         - "groupingWorkspace": a grouping workspace for focusing the data
         It is optional to provide the following keys:
         - "outputWorkspace": a name for the final output workspace; otherwise default is used
-        - "calibrationTable": a name for the fully caliibrated DIFC table; otherwise a default is used
+        - "calibrationTable": a name for the fully calibrated DIFC table; otherwise a default is used
         """
 
         self.rawInput = groceryList["inputWorkspace"]
