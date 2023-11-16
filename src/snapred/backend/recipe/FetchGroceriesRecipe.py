@@ -9,6 +9,8 @@ from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGrocer
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo as LiteDataAlgo
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -32,17 +34,20 @@ class FetchGroceriesRecipe:
         ext = instr + ".extension"
         return runConfig.IPTS + Config[pre] + str(runConfig.runNumber) + Config[ext]
 
-    def _createNexusWorkspaceName(self, runConfig: RunConfig) -> str:
-        name: str = f"_TOF_{runConfig.runNumber}"
+    def _createNexusWorkspaceNameBuilder(self, runConfig: RunConfig) -> NameBuilder:
+        runNameBuilder = wng.run().runNumber(runConfig.runNumber)
         if runConfig.isLite:
-            name = name + "_lite"
-        return name
+            runNameBuilder.lite(wng.Lite.TRUE)
+        return runNameBuilder
+
+    def _createNexusWorkspaceName(self, runConfig: RunConfig) -> str:
+        return self._createNexusWorkspaceNameBuilder(runConfig).build()
 
     def _createRawNexusWorkspaceName(self, runConfig: RunConfig) -> str:
-        return self._createNexusWorkspaceName(runConfig) + "_RAW"
+        return self._createNexusWorkspaceNameBuilder(runConfig).auxilary("Raw").build()
 
     def _createCopyNexusWorkspaceName(self, runConfig: RunConfig, numCopies: int) -> str:
-        return self._createNexusWorkspaceName(runConfig) + "_copy_" + str(numCopies)
+        return self._createNexusWorkspaceNameBuilder(runConfig).auxilary(f"Copy{numCopies}").build()
 
     def _fetch(self, filename: str, workspace: str, loader: str = "") -> Dict[str, Any]:
         """
@@ -64,7 +69,7 @@ class FetchGroceriesRecipe:
         algo = FetchAlgo()
         algo.initialize()
         algo.setProperty("Filename", filename)
-        algo.setProperty("Workspace", workspace)
+        algo.setProperty("OutputWorkspace", workspace)
         algo.setProperty("LoaderType", loader)
         try:
             data["result"] = algo.execute()
@@ -204,6 +209,7 @@ class FetchGroceriesRecipe:
             "loader": groupingLoader,
             "workspace": workspaceName,
         }
+
         key = (item.groupingScheme, item.isLite)
         if self._loadedGroupings.get(key) is None:
             algo = FetchAlgo()
@@ -217,7 +223,8 @@ class FetchGroceriesRecipe:
             except RuntimeError as e:
                 raise RuntimeError(str(e).split("\n")[0]) from e
         else:
-            data["result"] = self._loadedGroupings[key]
+            data["result"] = True
+            data["workspace"] = self._loadedGroupings[key]
             data["loader"] = ""  # unset the loader to indicate it was unused
         logger.info("Finished loading grouping")
         return data

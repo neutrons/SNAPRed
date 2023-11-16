@@ -18,7 +18,9 @@ Contents
    :maxdepth: 4
 
    getting_started
+   glossary
    usage
+   developer/resources
    api/modules
    deploy
    ./ui/workflow/WorkflowBuilder
