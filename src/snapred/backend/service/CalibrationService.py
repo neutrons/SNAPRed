@@ -111,7 +111,7 @@ class CalibrationService(Service):
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
         # preload the data and copy it to cacheworkspace
 
-        diffCalInputWsName = wng.diffCalInput(request.runNumber)
+        diffCalInputWsName = wng.diffCalInput().runNumber(request.runNumber).build()
         self.dataFactoryService.getWorkspaceCached(request.runNumber, diffCalInputWsName)
         # shopping list
         # 1. full runconfig
