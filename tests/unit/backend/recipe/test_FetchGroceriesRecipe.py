@@ -144,24 +144,24 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         """Test the creation of a plain nexus workspace name"""
         rx = Recipe()
         res = rx._createNexusWorkspaceName(self.runConfigLite)
-        assert res == f"_TOF_{self.runConfigLite.runNumber}_lite"
+        assert res == f"tof_all_lite_{self.runConfigLite.runNumber}"
         res = rx._createNexusWorkspaceName(self.runConfigNonlite)
-        assert res == f"_TOF_{self.runConfigNonlite.runNumber}"
+        assert res == f"tof_all_{self.runConfigNonlite.runNumber}"
 
     def test_nexus_workspacename_raw(self):
         """Test the creation of a raw nexus workspace name"""
         rx = Recipe()
         res = rx._createRawNexusWorkspaceName(self.runConfigLite)
-        plain = rx._createNexusWorkspaceName(self.runConfigLite)
-        assert res == plain + "_RAW"
+        rx._createNexusWorkspaceName(self.runConfigLite)
+        assert res == "tof_all_lite_555_raw"
 
     def test_nexus_workspacename_copy(self):
         """Test the creation of a copy nexus workspace name"""
         rx = Recipe()
         fakeCopies = 117
         res = rx._createCopyNexusWorkspaceName(self.runConfigLite, fakeCopies)
-        plain = rx._createNexusWorkspaceName(self.runConfigLite)
-        assert res == plain + "_copy_" + str(fakeCopies)
+        rx._createNexusWorkspaceName(self.runConfigLite)
+        assert res == f"tof_all_lite_555_copy{fakeCopies}"
 
     def test_grouping_filename(self):
         """Test the creation of the grouping filename"""
