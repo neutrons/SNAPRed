@@ -57,8 +57,15 @@ class CalibrationNormalization(PythonAlgorithm):
         ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
         self.chopIngredients(ingredients)
 
-        runVanadiumFilePath = self.reductionIngredients.reductionState.stateConfig.vanadiumFilePath
-        backgroundVanadiumFilePath = self.backgroundReductionIngredients.reductionState.stateConfig.vanadiumFilePath
+        runIpts = self.reductionIngredients.runConfig.IPTS
+        backIpts = self.backgroundReductionIngredients.runConfig.IPTS
+
+        runVanadiumFilePath = runIpts + "shared/lite/SNAP_{}.lite.nxs.h5".format(
+            self.reductionIngredients.runConfig.runNumber
+        )
+        backgroundVanadiumFilePath = backIpts + "shared/lite/SNAP_{}.lite.nxs.h5".format(
+            self.backgroundReductionIngredients.runConfig.runNumber
+        )
 
         self.mantidSnapper.LoadEventNexus(
             Filename=runVanadiumFilePath,

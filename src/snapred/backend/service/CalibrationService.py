@@ -96,7 +96,7 @@ class CalibrationService(Service):
                 raise
         return {}
 
-    def da_generateFocusGroupAndInstrumentState(
+    def _generateFocusGroupAndInstrumentState(
         self,
         runNumber,
         definition,
