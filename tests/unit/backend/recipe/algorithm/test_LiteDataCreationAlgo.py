@@ -43,6 +43,11 @@ def test_fakeInstrument():
     fullInstrumentWS = "_test_lite_algo_native"
     liteInstrumentWS = "_test_lite_algo_lite"
     focusWS = "_test_lite_data_map"
+
+    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+    liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
+    liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+
     CreateSampleWorkspace(
         OutputWorkspace=fullInstrumentWS,
         WorkspaceType="Event",
@@ -56,11 +61,11 @@ def test_fakeInstrument():
     )
     LoadInstrument(
         Workspace=fullInstrumentWS,
-        Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+        Filename=fullInstrumentFile,
         RewriteSpectraMap=True,
     )
     LoadDetectorsGroupingFile(
-        InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml"),
+        InputFile=liteInstrumentMap,
         InputWorkspace=fullInstrumentWS,
         OutputWorkspace=focusWS,
     )
@@ -70,6 +75,7 @@ def test_fakeInstrument():
     liteDataCreationAlgo.setPropertyValue("InputWorkspace", fullInstrumentWS)
     liteDataCreationAlgo.setPropertyValue("OutputWorkspace", liteInstrumentWS)
     liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
+    liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
     liteDataCreationAlgo.execute()
 
     liteWS = mtd[liteInstrumentWS]

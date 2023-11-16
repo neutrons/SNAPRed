@@ -20,6 +20,11 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             MatrixWorkspaceProperty("LiteDataMapWorkspace", "", Direction.Input, PropertyMode.Optional),
             doc="Grouping workspace which converts maps full pixel resolution to lite data",
         )
+        self.declareProperty(
+            "LiteInstrumentDefinitionFile",
+            str(Config["instrument.lite.definition.file"]),
+            Direction.Input,
+        )
         self.declareProperty("AutoDeleteNonLiteWS", defaultValue=False, direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
@@ -61,6 +66,24 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             CopyGroupingFromWorkspace=groupingWorkspaceName,
         )
 
+        # iterate over spectra in grouped workspace, delete old ids and replace
+        self.mantidSnapper.executeQueue()
+        liteWksp = self.mantidSnapper.mtd[outputWorkspaceName]
+        nHst = liteWksp.getNumberHistograms()
+        for i in range(nHst):
+            el = liteWksp.getSpectrum(i)
+            el.clearDetectorIDs()
+            el.addDetectorID(i)
+
+        # replace instrument definition with lite
+        self.mantidSnapper.LoadInstrument(
+            "Replacing instrument definition with Lite instrument",
+            Workspace=outputWorkspaceName,
+            Filename=self.getPropertyValue("LiteInstrumentDefinitionFile"),
+            RewriteSpectraMap=False,
+        )
+
+        ###END Pete's suggestion to fix pixelID mapping
         self.mantidSnapper.CompressEvents(
             f"Compressing events in {outputWorkspaceName}...",
             InputWorkspace=outputWorkspaceName,
