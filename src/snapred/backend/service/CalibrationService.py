@@ -152,10 +152,11 @@ class CalibrationService(Service):
         # calpath = "~/tmp/"
         # TODO: this cal path needs to be exposed in DataFactoryService or DataExportService
         from snapred.backend.data.LocalDataService import LocalDataService
+
         calpath = LocalDataService()._getCalibrationDataPath(runConfig.runNumber)
         # 6. convergence threshold
         convergenceThreshold = request.convergenceThreshold
-        
+
         ingredients = DiffractionCalibrationIngredients(
             runConfig=runConfig,
             instrumentState=instrumentState,
