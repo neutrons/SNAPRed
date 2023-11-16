@@ -236,7 +236,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
     def test_fetch_dirty_nexus(self, mockFilename, mockLite):
         """Test the correct behavior when fetching raw nexus data"""
         mockFilename.return_value = self.filepath
-        mockLite = self.mockMakeLite  # noqa: ARG002
         rx = Recipe()
         # ensure a clean ADS
         workspaceName = rx._createNexusWorkspaceName(self.runConfigLite)
@@ -283,7 +282,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
     def test_fetch_clean_nexus(self, mockFilename, mockLite):
         """Test the correct behavior when fetching nexus data"""
         mockFilename.return_value = self.filepath
-        mockLite = self.mockMakeLite  # noqa: ARG002
         # make sure the workspace is clean
         self.clearoutWorkspaces()
         assert not mtd.doesExist(Recipe()._createRawNexusWorkspaceName(self.runConfigLite))
@@ -355,7 +353,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
     @mock.patch.object(Recipe, "_createGroupingFilename")
     def test_fetch_grouping(self, mockFilename, mockLite):
         mockFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
-        mockLite = self.mockMakeLite  # noqa: ARG002
         rx = Recipe()
         res = rx.fetchGroupingDefinition(self.groceryListItemGrouping)
         assert res["result"]
@@ -382,7 +379,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
     def test_fetch_grocery_list(self, mockNexusFilename, mockGroupFilename, mockLite):
         mockNexusFilename.return_value = self.filepath
         mockGroupFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
-        mockLite = self.mockMakeLite  # noqa: ARG002
         rx = Recipe()
         res = rx.executeRecipe(self.groceryList)
         assert res["result"]
@@ -404,7 +400,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
     def test_fetch_grocery_list_with_prev(self, mockNexusFilename, mockGroupFilename, mockLite):
         mockNexusFilename.return_value = self.filepath
         mockGroupFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
-        mockLite = self.mockMakeLite  # noqa: ARG002
         groceryList = [
             GroceryListItem(
                 workspaceType="nexus",
