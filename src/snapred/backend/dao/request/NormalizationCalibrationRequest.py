@@ -7,8 +7,9 @@ from snapred.backend.dao.RunConfig import RunConfig
 
 
 class NormalizationCalibrationRequest(BaseModel):
-    runNumber: RunConfig
-    backgroundRunNumber: RunConfig
+    runNumber: str
+    backgroundRunNumber: str
     samplePath: str
-    groupingFiles: list[str]
+    groupingPath: str
     calibrantPath: str
+    smoothingParameter: float

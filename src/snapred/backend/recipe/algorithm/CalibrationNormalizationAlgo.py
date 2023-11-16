@@ -38,26 +38,42 @@ class CalibrationNormalization(PythonAlgorithm):
         )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("FocusWorkspace", defaultValue="", direction=Direction.Output)
+        self.declareProperty("SmoothWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
     def chopIngredients(self, ingredients: Ingredients):
-        self.run = ingredients.run
-        self.backgroundRun = ingredients.backgroundRun
         self.reductionIngredients = ingredients.reductionIngredients
+        self.backgroundReductionIngredients = ingredients.backgroundReductionIngredients
         self.calibrationRecord = ingredients.calibrationRecord
         self.calibrantSample = ingredients.calibrantSample
         self.calibrationWorkspace = ingredients.calibrationWorkspace
         self.instrumentState = ingredients.instrumentState
         self.focusGroup = ingredients.focusGroup
+        self.smoothDataIngredients = ingredients.smoothDataIngredients
         yield
 
     def PyExec(self):
         ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
         self.chopIngredients(ingredients)
 
-        self.setProperty("InputWorkspace", f"{self.run.runNumber}_input_WS")
-        self.setProperty("BackgroundWorkspace", f"{self.backgroundRun.runNumber}_background_input_WS")
+        runVanadiumFilePath = self.reductionIngredients.reductionState.stateConfig.vanadiumFilePath
+        backgroundVanadiumFilePath = self.backgroundReductionIngredients.reductionState.stateConfig.vanadiumFilePath
+
+        self.mantidSnapper.LoadEventNexus(
+            Filename=runVanadiumFilePath,
+            OutputWorkspace=f"{self.reductionIngredients.runConfig.runNumber}_input_WS",
+        )
+
+        self.mantidSnapper.LoadEventNexus(
+            Filename=backgroundVanadiumFilePath,
+            OutputWorkspace=f"{self.reductionIngredients.runConfig.runNumber}_background_input_WS",
+        )
+
+        self.setProperty("InputWorkspace", f"{self.reductionIngredients.runConfig.runNumber}_input_WS")
+        self.setProperty(
+            "BackgroundWorkspace", f"{self.backgroundReductionIngredients.runConfig.runNumber}_background_input_WS"
+        )
 
         inputWSName = str(self.getProperty("InputWorkspace").value)
         backgroundWSName = str(self.getProperty("BackgroundWorkspace").value)
@@ -107,24 +123,46 @@ class CalibrationNormalization(PythonAlgorithm):
             PreserveEvents=True,
         )
 
+        clonedWSName = f"{focusedWSName}_clone_focused_data"
+        self.mantidSnapper.CloneWorkspace(
+            "Cloning input workspace for lite data creation...",
+            # InputWorkspace=focused_data,
+            InputWorkspace=rebinRaggedFocussedWSName,
+            OutputWorkspace=clonedWSName,
+        )
+
+        smoothedWSName = f"{inputWSName}_{self.focusGroup.name}_smoothed_ws"
+        self.mantidSnapper.SmoothDataExcludingPeaks(
+            "Fit and Smooth Peaks...",
+            # InputWorkspace=focused_data,
+            InputWorkspace=clonedWSName,
+            SmoothDataExcludingPeaksIngredients=self.smoothDataIngredients.json(),
+            OutputWorkspace=smoothedWSName,
+        )
+
+        self.mantidSnapper.executeQueue()
+
         self.mantidSnapper.WashDishes(
             "Washing dishes...",
             WorkspaceList=[
-                f"{self.run.runNumber}_input_WS",
-                f"{self.backgroundRun.runNumber}_background_input_WS",
+                f"{self.reductionIngredients.runConfig.runNumber}_input_WS",
+                f"{self.backgroundReductionIngredients.runConfig.runNumber}_background_input_WS",
                 f"{inputWSName}_raw_vanadium_data",
                 f"{inputWSName}_{self.focusGroup.name}_focused_data",
-                f"{inputWSName}{self.focusGroup.name}_grouping_WS",
+                f"{inputWSName}_{self.focusGroup.name}_grouping_WS",
+                f"{focusedWSName}_clone_focused_data",
             ],
         )
 
         self.mantidSnapper.executeQueue()
 
         focusedWS = mtd[rebinRaggedFocussedWSName]
+        smoothedWS = mtd[smoothedWSName]
 
         self.setProperty("FocusWorkspace", rebinRaggedFocussedWSName)
+        self.setProperty("SmoothWorkspace", smoothedWSName)
 
-        return focusedWS
+        return focusedWS, smoothedWS
 
 
 # Register algorithm with Mantid

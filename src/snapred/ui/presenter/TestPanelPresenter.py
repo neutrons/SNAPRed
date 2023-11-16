@@ -28,8 +28,13 @@ class TestPanelPresenter(object):
     def __init__(self, view):
         reductionRequest = SNAPRequest(path="api", payload=None)
         self.apiDict = self.interfaceController.executeRequest(reductionRequest).data
+        # self.apiComboBox = self.setupApiComboBox(self.apiDict, view)
 
+        jsonSchema = json.loads(self.apiDict["config"][""]["runs"])
         self.view = view
+        self.jsonForm = JsonForm("Advanced Parameters", jsonSchema=jsonSchema, parent=view)
+        self._loadDefaultJsonInput("config//runs", self.jsonForm)
+        self.comboSelectionView = BackendRequestView(self.jsonForm, "config//runs", parent=self.view)
         self.calibrationCheckView = InitializeCalibrationCheckView(parent=self.view)
 
         self.diffractionCalibrationLayout = QGridLayout()

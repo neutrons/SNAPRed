@@ -24,7 +24,6 @@ from snapred.backend.dao.normalization import Normalization, NormalizationRecord
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
-    CloneAndSmoothRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
     NormalizationCalibrationRequest,
@@ -43,6 +42,7 @@ from snapred.backend.recipe.GenericRecipe import (
     DetectorPeakPredictorRecipe,
     FitMultiplePeaksRecipe,
     GenerateTableWorkspaceFromListOfDictRecipe,
+    SmoothDataExcludingPeaksRecipe,
 )
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
@@ -75,8 +75,8 @@ class CalibrationService(Service):
         self.registerPath("checkDataExists", self.calculatePixelGroupingParameters)
         self.registerPath("assessment", self.assessQuality)
         self.registerPath("normalization", self.normalization)
-        self.registerPath("cloneAndSmooth", self.cloneAndSmooth)
         self.registerPath("normalizationAssessment", self.normalizationAssessment)
+        self.registerPath("saveNormalization", self.saveNormalization)
         self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
@@ -96,7 +96,7 @@ class CalibrationService(Service):
                 raise
         return {}
 
-    def _generateFocusGroupAndInstrumentState(
+    def da_generateFocusGroupAndInstrumentState(
         self,
         runNumber,
         definition,
@@ -318,42 +318,45 @@ class CalibrationService(Service):
 
     @FromString
     def normalization(self, request: NormalizationCalibrationRequest):
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber.runNumber)
-        calibrationRecord = self.load(request.runNumber)
+        reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber)
+        backgroundReductionIngredients = self.dataFactoryService.getReductionIngredients(request.backgroundRunNumber)
+        runConfig = self.dataFactoryService.getRunConfig(request.runNumber)
+        calibrationRecord = self.load(runConfig)
         calibrantSample = self.dataFactoryService.getCalibrantSample(request.calibrantPath)
-        groupingFiles = request.groupingFiles
+        groupingFile = request.groupingPath
+        sampleFilePath = self.dataFactoryService.getCifFilePath(request.samplePath.split("/")[-1].split(".")[0])
+        crystalInfo = CrystallographicInfoService().ingest(sampleFilePath)["crystalInfo"]
 
         # NOTE: How do we know there aren't more than one workspace names within CalibrationRecord?
         #       CalibrationRecord records a list of workspace names...
         calibrationWorkspace = calibrationRecord.workspaceNames[0]
 
-        for group in groupingFiles:
-            focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-                request.runNumber.runNumber,
-                groupingFiles[group],
-            )
+        focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
+            request.runNumber,
+            groupingFile,
+        )
 
-            normalizationIngredients = NormalizationCalibrationIngredients(
-                run=request.runNumber,
-                backgroundRun=request.backgroundRunNumber,
-                reductionIngredients=reductionIngredients,
-                calibrationRecord=calibrationRecord,
-                calibrantSample=calibrantSample,
-                focusGroup=focusGroup,
-                instrumentState=instrumentState,
-                calibrationWorkspace=calibrationWorkspace,
-            )
-            # append and then return
-            return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients)
+        smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
+            smoothingParameter=request.smoothingParameter,
+            instrumentState=instrumentState,
+            crystalInfo=crystalInfo,
+        )
 
-    @FromString
-    def cloneAndSmooth(self, request: CloneAndSmoothRequest):
-        pass
+        normalizationIngredients = NormalizationCalibrationIngredients(
+            reductionIngredients=reductionIngredients,
+            backgroundReductionIngredients=backgroundReductionIngredients,
+            calibrationRecord=calibrationRecord,
+            calibrantSample=calibrantSample,
+            focusGroup=focusGroup,
+            instrumentState=instrumentState,
+            calibrationWorkspace=calibrationWorkspace,
+            smoothDataIngredients=smoothDataIngredients,
+        )
+
+        return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients)
 
     @FromString
     def normalizationAssessment(self, request: SpecifyNormalizationRequest):
-        sampleFilePath = self.dataFactoryService.getCifFilePath(request.samplePath.split("/")[-1].split(".")[0])
-        crystalInfo = CrystallographicInfoService().ingest(sampleFilePath)["crystalInfo"]
         runNumber = request.runNumber.runNumber
         normalization = self.dataFactoryService.getNormalizationState(runNumber)
         preSmoothedWorkspace = request.preSmoothedWorkpace
@@ -366,12 +369,16 @@ class CalibrationService(Service):
 
         record = NormalizationRecord(
             runNumber=runNumber,
-            crystalInfo=crystalInfo,
-            smoothingParameter=smoothingParameter,
+            crystalInfo=crystalInfo,  # noqa F821
+            smoothingParameter=smoothingParameter,  # ^^^temporary^^^
             normalization=normalization,
             workspaceNames=workspaces,
         )
         return record
+
+    @FromString
+    def saveNormalization(self, runID: str):
+        pass
 
     @FromString
     def retrievePixelGroupingParams(self, runID: str):
