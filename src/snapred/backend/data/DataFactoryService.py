@@ -4,6 +4,7 @@ from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state import PixelGroupingParameters
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.LocalWorkspaceDataService import LocalWorkspaceDataService
@@ -28,10 +29,13 @@ class DataFactoryService:
             val = clazz()
         return val
 
-    def getReductionIngredients(self, runId: str) -> ReductionIngredients:
+    def getReductionIngredients(
+        self, runId: str, pixelGroupingParameters: PixelGroupingParameters
+    ) -> ReductionIngredients:
         return ReductionIngredients(
             reductionState=self.getReductionState(runId),
             runConfig=self.getRunConfig(runId),
+            pixelGroupingParameters=pixelGroupingParameters,
         )
 
     def getReductionState(self, runId: str) -> ReductionState:

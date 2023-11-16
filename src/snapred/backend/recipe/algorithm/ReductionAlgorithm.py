@@ -30,7 +30,6 @@ class ReductionAlgorithm(PythonAlgorithm):
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
-        pixelGroupingParameters = PixelGroupingParameters.parse_raw(self.getProperty("PixelGroupingParameters").value)
         focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
         # run the algo
         self.log().notice("Execution of ReductionAlgorithm START!")
@@ -188,22 +187,23 @@ class ReductionAlgorithm(PythonAlgorithm):
         # TODO: Refactor so excute only needs to be called once
         self.mantidSnapper.executeQueue()
 
-        dMinList = []
-        dMaxList = []
-        dBinList = []
-        for i in pixelGroupingParameters:
-            dMinList.append(i.dResolution.minimum)
-            dMaxList.append(i.dResolution.maximum)
-            dBinList.append(i.dRelativeResolution)
+        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in reductionIngredients.pixelGroupingParameters}
+        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in reductionIngredients.pixelGroupingParameters}
+        dBin = {
+            pgp.groupID: pgp.dRelativeResolution / reductionIngredients.reductionState.instrumentConfig.NBins
+            for pgp in reductionIngredients.pixelGroupingParameters
+        }
+        groupIDs = [pgp.groupID for pgp in reductionIngredients.pixelGroupingParameters]
+        groupIDs.sort()
         groupedData = data
-        for workspaceIndex in range(len(focusGroups)):
+        for groupID in range(len(groupIDs)):
             data = self.mantidSnapper.RebinRagged(
                 "Rebinning ragged bins...",
-                InputWorkspace=mtd[groupedData].getItem(workspaceIndex),
-                XMin=dMinList[workspaceIndex],
-                XMax=dMaxList[workspaceIndex],
-                Delta=dBinList[workspaceIndex] / reductionIngredients.reductionState.instrumentConfig.NBins,
-                OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[workspaceIndex].name),
+                InputWorkspace=mtd[groupedData].getItem(groupID),
+                XMin=dMin[groupID],
+                XMax=dMax[groupID],
+                Delta=dBin[groupID],
+                OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[groupID].name),
             )
         self.mantidSnapper.WashDishes(
             "Freeing workspace...",
