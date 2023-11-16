@@ -123,9 +123,9 @@ with mock.patch.dict(
     # @mock.patch.object(ThisAlgo, "raidPantry", mockRaidPantry)
     # def test_local_fake_grouping_file():
     #     run_test(
-    #         instrumentDefinitionFile=Resource.getPath("inputs/calibration/fakeSNAPLite.xml"),
+    #         instrumentDefinitionFile=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
     #         instrumentState=Resource.read("/inputs/calibration/sampleInstrumentState.json"),
-    #         groupingFile=Resource.getPath("inputs/calibration/fakeSNAPFocGroup_Column.xml"),
+    #         groupingFile=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
     #         referenceParametersFile=Resource.getPath("outputs/calibration/output.json"),
     #     )
 

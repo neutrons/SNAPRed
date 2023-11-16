@@ -9,8 +9,6 @@ from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGrouping
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 
-name = "LiteDataCreationAlgo"
-
 
 class LiteDataCreationAlgo(PythonAlgorithm):
     def PyInit(self):
@@ -18,18 +16,14 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing full resolution the data set to be converted to lite",
         )
-        self.declareProperty("RunConfig", defaultValue="", direction=Direction.Input)
+        self.declareProperty(
+            MatrixWorkspaceProperty("LiteDataMapWorkspace", "", Direction.Input, PropertyMode.Optional),
+            doc="Grouping workspace which converts maps full pixel resolution to lite data",
+        )
         self.declareProperty("AutoDeleteNonLiteWS", defaultValue=False, direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
-
-    def chopIngredients(self, run: RunConfig):
-        self.runNumber = run.runNumber
-        self.IPTS = run.IPTS
-        self.rawDataPath: str = self.IPTS + "nexus/SNAP_{}.nxs.h5".format(self.runNumber)
-        self.isLite = run.isLite
-        pass
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
         self.log().notice("Lite Data Creation START!")
@@ -40,24 +34,24 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         # flag for auto deletion of non-lite data
         autoDelete = self.getProperty("AutoDeleteNonLiteWS").value
 
-        # load run number
-        run = RunConfig.parse_raw(self.getPropertyValue("RunConfig"))
-        self.chopIngredients(run)
-
         # create outputworkspace
-        outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
+        if self.getProperty("OutputWorkspace").isDefault:
+            # TODO use workspace name generatoe
+            outputWorkspaceName = inputWorkspaceName + "_lite"
+            self.setPropertyValue("OutputWorkspace", outputWorkspaceName)
+        else:
+            outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
 
-        groupingWorkspaceName = f"{self.runNumber}_lite_grouping_ws"
-
-        # load grouping map
-        self.mantidSnapper.LoadGroupingDefinition(
-            "Loading lite grouping information...",
-            GroupingFilename=str(Config["instrument.lite.map.file"]),
-            InstrumentFilename=str(Config["instrument.native.definition.file"]),
-            OutputWorkspace=groupingWorkspaceName,
-        )
-
-        self.mantidSnapper.executeQueue()
+        if self.getProperty("LiteDataMapWorkspace").isDefault:
+            groupingWorkspaceName = "lite_grouping_map"
+            self.mantidSnapper.LoadGroupingDefinition(
+                "Load lite grouping pixel map",
+                GroupingFilename=str(Config["instrument.lite.map.file"]),
+                InstrumentFilename=str(Config["instrument.native.definition.file"]),
+                OutputWorkspace=groupingWorkspaceName,
+            )
+        else:
+            groupingWorkspaceName = self.getPropertyValue("LiteDataMapWorkspace")
 
         # use group detector with specific grouping file to create lite data
         self.mantidSnapper.GroupDetectors(
@@ -74,22 +68,19 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             Tolerance=1,
         )
 
-        self.mantidSnapper.executeQueue()
-
         if autoDelete is True:
-            self.mantidSnapper.DeleteWorkspace(
+            self.mantidSnapper.WashDishes(
                 f"Deleting {inputWorkspaceName}...",
-                Workspace=f"{self.runNumber}_raw",
+                Workspace=inputWorkspaceName,
             )
 
-        self.mantidSnapper.DeleteWorkspace(
-            f"Deleting {groupingWorkspaceName}...",
-            Workspace=groupingWorkspaceName,
-        )
+        if self.getProperty("LiteDataMapWorkspace").isDefault:
+            self.mantidSnapper.WashDishes(
+                "Removing lite map workspace",
+                Workspace=groupingWorkspaceName,
+            )
 
         self.mantidSnapper.executeQueue()
-        self.mantidSnapper.mtd[outputWorkspaceName]
-        self.setProperty("OutputWorkspace", outputWorkspaceName)
 
 
 # Register algorithm with Mantid

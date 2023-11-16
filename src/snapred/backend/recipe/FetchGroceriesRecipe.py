@@ -6,6 +6,7 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm as FetchAlgo
+from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo as LiteDataAlgo
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
@@ -20,6 +21,7 @@ class FetchGroceriesRecipe:
 
     def __init__(self):
         self._loadedRuns: Dict[(str, str, bool), int] = {}
+        self._loadedGroupings: Dict[(str, bool), str] = {}
 
     def _runKey(self, runConfig: RunConfig) -> Tuple[str, str, bool]:
         return (runConfig.runNumber, runConfig.IPTS, runConfig.isLite)
@@ -73,6 +75,26 @@ class FetchGroceriesRecipe:
         logger.info(f"Finished fetching nexus data into {workspace}")
         return data
 
+    def _makeLite(self, workspacename: str):
+        print("ORIGINAL MAKELITE")
+        liteMapKey = ("Lite", False)
+        liteAlgo = LiteDataAlgo()
+        liteAlgo.initialize()
+        liteAlgo.setPropertyValue("InputWorkspace", workspacename)
+        liteAlgo.setPropertyValue("OutputWorkspace", workspacename)
+        if self._loadedGroupings.get(liteMapKey) is None:
+            self.fetchGroupingDefinition(
+                GroceryListItem(
+                    workspaceType="grouping",
+                    groupingScheme="Lite",
+                    isLite=False,
+                    instrumentPropertySource="InstrumentFilename",
+                    instrumentSource=str(Config["instrument.native.definition.file"]),
+                )
+            )
+        liteAlgo.setPropertyValue("LiteDataMapWorkspace", self._loadedGroupings[liteMapKey])
+        liteAlgo.execute()
+
     def fetchCleanNexusData(self, runConfig: RunConfig, loader: str = "") -> Dict[str, Any]:
         """
         Fetch a nexus data file, only if it is not loaded; otherwise clone a copy
@@ -106,6 +128,9 @@ class FetchGroceriesRecipe:
             InputWorkspace=rawWorkspaceName,
             OutputWorkspace=workspaceName,
         )
+        # if lite data is specified, create a lite workspace
+        if runConfig.isLite:
+            self._makeLite(workspaceName)
         data["workspace"] = workspaceName
         return data
 
@@ -127,9 +152,8 @@ class FetchGroceriesRecipe:
             "loader": loader,
             "workspace": workspaceName,
         }
-        thisKey = self._runKey(runConfig)
         # check if a raw workspace exists, and clone it if so
-        if self._loadedRuns.get(thisKey, 0) > 0:
+        if self._loadedRuns.get(self._runKey(runConfig), 0) > 0:
             CloneWorkspace(
                 InputWorkspace=self._createRawNexusWorkspaceName(runConfig),
                 OutputWorkspace=workspaceName,
@@ -140,9 +164,14 @@ class FetchGroceriesRecipe:
             subdata = self._fetch(filename, workspaceName, loader)
             data["result"] = subdata["result"]
             data["loader"] = subdata["loader"]
+        # if lite data is specified, create a lite workspace
+        if runConfig.isLite:
+            self._makeLite(workspaceName)
         return data
 
     def _createGroupingFilename(self, groupingScheme: str, isLite: bool = True):
+        if groupingScheme == "Lite":
+            return str(Config["instrument.lite.map.file"])
         instr = "lite" if isLite else "native"
         home = "instrument.calibration.powder.grouping.home"
         pre = "grouping.filename.prefix"
@@ -150,6 +179,8 @@ class FetchGroceriesRecipe:
         return Config[home] + "/" + Config[pre] + groupingScheme + Config[ext]
 
     def _createGroupingWorkspaceName(self, groupingScheme: str, isLite: bool = True):
+        if groupingScheme == "Lite":
+            return "lite_grouping_map"
         instr = "lite" if isLite else "native"
         return Config["grouping.workspacename." + instr] + groupingScheme
 
@@ -167,21 +198,27 @@ class FetchGroceriesRecipe:
         workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.isLite)
         fileName = self._createGroupingFilename(item.groupingScheme, item.isLite)
         logger.info("Fetching grouping definition: %s" % item.groupingScheme)
+        groupingLoader = "LoadGroupingDefinition"
         data: Dict[str, Any] = {
             "result": False,
-            "loader": "LoadGroupingDefinition",
+            "loader": groupingLoader,
             "workspace": workspaceName,
         }
-        algo = FetchAlgo()
-        algo.initialize()
-        algo.setProperty("Filename", fileName)
-        algo.setProperty("Workspace", workspaceName)
-        algo.setProperty("LoaderType", "LoadGroupingDefinition")
-        algo.setProperty(item.instrumentPropertySource, item.instrumentSource)
-        try:
-            data["result"] = algo.execute()
-        except RuntimeError as e:
-            raise RuntimeError(str(e).split("\n")[0]) from e
+        key = (item.groupingScheme, item.isLite)
+        if self._loadedGroupings.get(key) is None:
+            algo = FetchAlgo()
+            algo.initialize()
+            algo.setPropertyValue("Filename", fileName)
+            algo.setPropertyValue("Workspace", workspaceName)
+            algo.setPropertyValue("LoaderType", "LoadGroupingDefinition")
+            algo.setPropertyValue(str(item.instrumentPropertySource), item.instrumentSource)
+            try:
+                data["result"] = algo.execute()
+            except RuntimeError as e:
+                raise RuntimeError(str(e).split("\n")[0]) from e
+        else:
+            data["result"] = self._loadedGroupings[key]
+            data["loader"] = ""  # unset the loader to indicate it was unused
         logger.info("Finished loading grouping")
         return data
 
@@ -198,6 +235,7 @@ class FetchGroceriesRecipe:
             "result": True,
             "workspaces": [],
         }
+        prev: str = ""
         for item in groceries:
             if item.workspaceType == "nexus":
                 if item.keepItClean:
@@ -206,11 +244,12 @@ class FetchGroceriesRecipe:
                     res = self.fetchDirtyNexusData(item.runConfig, item.loader)
                 data["result"] &= res["result"]
                 data["workspaces"].append(res["workspace"])
+                prev = res["workspace"]
             elif item.workspaceType == "grouping":
                 # if we intend to use the previously loaded workspace as the donor
                 if item.instrumentSource == "prev":
                     item.instrumentPropertySource = "InstrumentDonor"
-                    item.instrumentSource = data["workspaces"][-1]
+                    item.instrumentSource = str(prev)
                 res = self.fetchGroupingDefinition(item)
                 data["result"] &= res["result"]
                 data["workspaces"].append(res["workspace"])

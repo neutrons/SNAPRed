@@ -33,7 +33,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         fakeInstrumentState.particleBounds.tof.maximum = 1000
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("inputs/diffcal/fakeFocusGroup.json"))
-        fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
+        fakeFocusGroup.definition = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
 
         peakList3 = [
             DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
@@ -98,7 +98,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         # load the instrument and focus group
         LoadInstrument(
             Workspace=algo.inputWStof,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             RewriteSpectraMap=True,
         )
 
@@ -117,7 +117,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         )
         LoadInstrument(
             Workspace="idf",
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             RewriteSpectraMap=False,
         )
         cc = CalculateDiffCalTable()
@@ -194,7 +194,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         )
 
         LoadDiffCal(
-            InstrumentFilename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            InstrumentFilename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             Filename=algo.outputFilename,
             WorkspaceName="ReloadedCalibrationTable",
         )

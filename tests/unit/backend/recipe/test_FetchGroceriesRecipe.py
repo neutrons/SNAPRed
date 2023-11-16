@@ -44,7 +44,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
             isLite=False,
         )
         cls.filepath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesrx.nxs")
-        cls.instrumentFilepath = Resource.getPath("inputs/diffcal/fakeSNAPLite.xml")
+        cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
         cls.fetchedWSname = "_fetched_grocery"
         cls.groupingScheme = "Column"
         # create some sample data
@@ -59,7 +59,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         LoadInstrument(
             Workspace=cls.sampleWS,
             Filename=cls.instrumentFilepath,
-            InstrumentName="fakeSNAPLite",
+            InstrumentName="fakeSNAP",
             RewriteSpectraMap=True,
         )
         SaveNexusProcessed(
@@ -211,11 +211,32 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
             Workspace2=res["workspace"],
         )
 
+    def mockMakeLite(self, workspacename):
+        from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+
+        print("MOCK MAKE LITE!")
+        groupingWS = "test_lite_data_map"
+        mantidSnapper = MantidSnapper(Recipe(), "test_rx")
+        mantidSnapper.LoadGroupingDefinition(
+            "Load the test instrument's map",
+            GroupingFilename=Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml"),
+            InstrumentFilename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+            OutputWorkspace=groupingWS,
+        )
+        mantidSnapper.LiteDataCreationAlgo(
+            "Create lite version",
+            InputWorkspace=workspacename,
+            OutputWorkspace=workspacename,
+            LiteDataMapWorkspace=groupingWS,
+        )
+        mantidSnapper.executeQueue()
+
+    @mock.patch.object(Recipe, "_makeLite")
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
-    def test_fetch_dirty_nexus(self, mockFilename):
+    def test_fetch_dirty_nexus(self, mockFilename, mockLite):
         """Test the correct behavior when fetching raw nexus data"""
         mockFilename.return_value = self.filepath
-
+        mockLite = self.mockMakeLite  # noqa: ARG002
         rx = Recipe()
         # ensure a clean ADS
         workspaceName = rx._createNexusWorkspaceName(self.runConfigLite)
@@ -257,11 +278,12 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
             Workspace2=res["workspace"],
         )
 
+    @mock.patch.object(Recipe, "_makeLite")
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
-    def test_fetch_clean_nexus(self, mockFilename):
+    def test_fetch_clean_nexus(self, mockFilename, mockLite):
         """Test the correct behavior when fetching nexus data"""
         mockFilename.return_value = self.filepath
-
+        mockLite = self.mockMakeLite  # noqa: ARG002
         # make sure the workspace is clean
         self.clearoutWorkspaces()
         assert not mtd.doesExist(Recipe()._createRawNexusWorkspaceName(self.runConfigLite))
@@ -329,9 +351,11 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         with pytest.raises(RuntimeError):
             rx._fetch(mockFilename, self.fetchedWSname, "")
 
+    @mock.patch.object(Recipe, "_makeLite")
     @mock.patch.object(Recipe, "_createGroupingFilename")
-    def test_fetch_grouping(self, mockFilename):
-        mockFilename.return_value = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
+    def test_fetch_grouping(self, mockFilename, mockLite):
+        mockFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
+        mockLite = self.mockMakeLite  # noqa: ARG002
         rx = Recipe()
         res = rx.fetchGroupingDefinition(self.groceryListItemGrouping)
         assert res["result"]
@@ -352,11 +376,13 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         with pytest.raises(RuntimeError):
             rx.fetchGroupingDefinition(self.groceryListItemGrouping)
 
+    @mock.patch.object(Recipe, "_makeLite")
     @mock.patch.object(Recipe, "_createGroupingFilename")
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
-    def test_fetch_grocery_list(self, mockNexusFilename, mockGroupFilename):
+    def test_fetch_grocery_list(self, mockNexusFilename, mockGroupFilename, mockLite):
         mockNexusFilename.return_value = self.filepath
-        mockGroupFilename.return_value = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
+        mockGroupFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
+        mockLite = self.mockMakeLite  # noqa: ARG002
         rx = Recipe()
         res = rx.executeRecipe(self.groceryList)
         assert res["result"]
@@ -372,11 +398,13 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert mtd.doesExist(res["workspaces"][0])
         assert mtd.doesExist(res["workspaces"][1])
 
+    @mock.patch.object(Recipe, "_makeLite")
     @mock.patch.object(Recipe, "_createGroupingFilename")
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
-    def test_fetch_grocery_list_with_prev(self, mockNexusFilename, mockGroupFilename):
+    def test_fetch_grocery_list_with_prev(self, mockNexusFilename, mockGroupFilename, mockLite):
         mockNexusFilename.return_value = self.filepath
-        mockGroupFilename.return_value = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
+        mockGroupFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
+        mockLite = self.mockMakeLite  # noqa: ARG002
         groceryList = [
             GroceryListItem(
                 workspaceType="nexus",

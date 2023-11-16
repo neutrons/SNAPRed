@@ -90,7 +90,10 @@ class DiffractionCalibrationCreationWorkflow:
         self.cifPath = view.sampleDropdown.currentText()
 
         payload = DiffractionCalibrationRequest(
-            runNumber=self.runNumber, cifPath=self.cifPath, focusGroupPath=self.focusGroupPath
+            runNumber=self.runNumber,
+            cifPath=self.cifPath,
+            focusGroupPath=self.focusGroupPath,
+            useLiteMode=True,  # TODO make a switch for user to set this
         )
         payload.convergenceThreshold = view.fieldConvergnceThreshold.get(payload.convergenceThreshold)
         payload.peakIntensityThreshold = view.fieldPeakIntensityThreshold.get(payload.peakIntensityThreshold)

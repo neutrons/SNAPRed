@@ -29,7 +29,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/diffcal/fakeInstrumentState.json"))
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/diffcal/fakeFocusGroup.json"))
-        fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
+        fakeFocusGroup.definition = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
 
         peakList3 = [
             DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum": 0.15, "maximum": 0.25}}),
@@ -81,7 +81,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         )
         LoadInstrument(
             Workspace=algo.inputWSdsp,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             RewriteSpectraMap=True,
         )
         # # rebin and convert for DSP, TOF
@@ -187,7 +187,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         )
         LoadInstrument(
             Workspace=fakeDataWorkspace,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             InstrumentName="fakeSNAPLite",
             RewriteSpectraMap=False,
         )

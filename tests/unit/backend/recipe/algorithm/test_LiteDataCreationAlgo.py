@@ -6,6 +6,7 @@ from mantid.simpleapi import DeleteWorkspace, mtd
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
+from snapred.meta.Config import Resource
 
 HAVE_MOUNT_SNAP = os.path.exists("/SNS/SNAP/")
 
@@ -29,3 +30,52 @@ def test_LiteDataCreationAlgo_invalid_input():
     liteDataCreationAlgo.setPropertyValue("AutoDeleteNonLiteWS", "1")
     with pytest.raises(RuntimeError):
         liteDataCreationAlgo.execute()
+
+
+def test_fakeInstrument():
+    from mantid.simpleapi import (
+        CreateSampleWorkspace,
+        LoadDetectorsGroupingFile,
+        LoadInstrument,
+        mtd,
+    )
+
+    fullInstrumentWS = "_test_lite_algo_native"
+    liteInstrumentWS = "_test_lite_algo_lite"
+    focusWS = "_test_lite_data_map"
+    CreateSampleWorkspace(
+        OutputWorkspace=fullInstrumentWS,
+        WorkspaceType="Event",
+        Function="Flat background",
+        Xmin=0,
+        Xmax=1,
+        BinWidth=1,
+        XUnit="TOF",
+        NumBanks=4,
+        BankPixelWidth=2,
+    )
+    LoadInstrument(
+        Workspace=fullInstrumentWS,
+        Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+        RewriteSpectraMap=True,
+    )
+    LoadDetectorsGroupingFile(
+        InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml"),
+        InputWorkspace=fullInstrumentWS,
+        OutputWorkspace=focusWS,
+    )
+
+    liteDataCreationAlgo = LiteDataCreationAlgo()
+    liteDataCreationAlgo.initialize()
+    liteDataCreationAlgo.setPropertyValue("InputWorkspace", fullInstrumentWS)
+    liteDataCreationAlgo.setPropertyValue("OutputWorkspace", liteInstrumentWS)
+    liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
+    liteDataCreationAlgo.execute()
+
+    liteWS = mtd[liteInstrumentWS]
+    fullWS = mtd[fullInstrumentWS]
+    summedPixels = [0, 0, 0, 0]
+    for i in range(4):
+        for j in range(4):
+            summedPixels[i] += fullWS.readY(4 * i + j)[0]
+        assert summedPixels[i] == liteWS.readY(i)[0]
