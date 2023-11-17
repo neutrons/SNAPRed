@@ -8,6 +8,7 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
 class GroupDiffractionCalibration(PythonAlgorithm):
@@ -19,6 +20,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
         self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.Input)
+        self.declareProperty("MaskWorkspace", defaultValue="", direction=Direction.Output) # if present in mtd: incoming values will be used
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
@@ -28,7 +30,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         from datetime import date
 
-        """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         self.runNumber: str = ingredients.runConfig.runNumber
         self.ipts: str = ingredients.runConfig.IPTS
         self.rawDataPath: str = self.ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(ingredients.runConfig.runNumber)
@@ -80,8 +81,16 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # self.groupIDs = sorted(self.groupIDs)
 
         self.inputWStof: str = self.getProperty("InputWorkspace").value
+        
+        self.setPropertyValue("OutputWorkspace", wng.diffCalOutput().runNumber(self.runNumber).build())
+        self.diffractionfocusedWStof: str = self.getProperty("OutputWorkspace").value
+
+        # Allow for the possibility of an incoming a-priori mask
+        if self.getProperty("MaskWorkspace").isDefault:
+            self.setPropertyValue("MaskWorkspace", wng.diffCalMask().runNumber(self.runNumber).build());  
+        self.maskWS: str = self.getProperty("MaskWorkspace").value
+
         self.calibrationTable: str = self.getProperty("PreviousCalibrationTable").value
-        self.diffractionfocusedWStof: str = f"_TOF_{self.runNumber}_diffoc"
 
     def raidPantry(self):
         """Load required data, if not already loaded, and process it"""
@@ -116,6 +125,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         """
         self.mantidSnapper.SaveDiffCal(
             f"Saving the Diffraction Calibration table to {self.outputFilename}",
+            MaskWorkspace=self.getProperty("MaskWorkspace").value,
             CalibrationWorkspace=self.getProperty("FinalCalibrationTable").value,
             Filename=self.outputFilename,
         )
@@ -159,6 +169,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             self.mantidSnapper.PDCalibration(
                 f"Perform PDCalibration on subgroup {groupID}",
                 InputWorkspace=self.diffractionfocusedWStof,
+                MaskWorkspace=self.maskWS,
                 TofBinning=self.TOFParams,
                 PeakFunction="Gaussian",
                 BackgroundType="Linear",
@@ -183,10 +194,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 CalibrationWorkspace=self.diffractionfocusedWStof,  # input WS to PDCalibrate, source for DIFCarb
                 OutputWorkspace=self.calibrationTable,  # resulting corrected calibration values, DIFCeff
             )
-            self.mantidSnapper.WashDishes(
-                "Cleanup needless mask workspace",
-                Workspace=pdcalibratedWorkspace + "_mask",
-            )
             self.mantidSnapper.executeQueue()
 
         self.mantidSnapper.ApplyDiffCal(
@@ -197,7 +204,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.convertAndFocusAndReturn(self.inputWStof, self.diffractionfocusedWStof, "after")
 
         # save the data
-        self.setProperty("OutputWorkspace", self.diffractionfocusedWStof)
         self.setProperty("FinalCalibrationTable", self.calibrationTable)
         self.restockPantry()
 

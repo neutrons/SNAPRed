@@ -84,6 +84,8 @@ mantid:
         diffCal:
           input: "_{unit},{runNumber},raw"
           table: "_DIFC,{runNumber}"
+          output: "_{unit},{runNumber},diffoc"
+          mask: "_DIFC,{runNumber},mask"
         units:
           dSpacing: DSP
           timeOfFlight: TOF

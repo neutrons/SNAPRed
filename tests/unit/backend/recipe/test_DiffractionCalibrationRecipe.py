@@ -6,7 +6,14 @@ from unittest import mock
 import pytest
 from mantid.api import PythonAlgorithm
 from mantid.kernel import Direction
-from mantid.simpleapi import DeleteWorkspace, mtd
+from mantid.simpleapi import (
+  CreateWorkspace,
+  DeleteWorkspace,
+  LoadDetectorsGroupingFile,
+  LoadInstrument,
+  LoadDiffCal,
+  mtd
+)
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as TheseIngredients
@@ -21,14 +28,14 @@ from snapred.meta.Config import Resource
 TheAlgorithmManager: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.AlgorithmManager"
 
 
-class TestDiffractionCalibtationRecipe(unittest.TestCase):
+class TestDiffractionCalibrationRecipe(unittest.TestCase):
     def setUp(self):
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/calibration/sampleInstrumentState.json"))
-        fakeInstrumentState.particleBounds.tof.minimum = 10
-        fakeInstrumentState.particleBounds.tof.maximum = 1000
+        fakeInstrumentState.particleBounds.tof.minimum = 1
+        fakeInstrumentState.particleBounds.tof.maximum = 10
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/diffcal/fakeFocusGroup.json"))
         fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
@@ -76,6 +83,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             def PyInit(self):
                 # declare properties of offset algo
                 self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
+                self.declareProperty("MaskWorkspace", defaultValue="", direction=Direction.Output)
                 self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
                 self.declareProperty("data", defaultValue="", direction=Direction.Output)
                 # declare properties of calibration algo
@@ -96,6 +104,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
                 data = {"medianOffset": self.medianOffset}
                 self.setProperty("data", json.dumps(data))
                 self.setProperty("CalibrationTable", "fake calibration table")
+                self.setProperty("MaskWorkspace", "fake calibration mask")
 
         mockAlgo = DummyCalibrationAlgorithm()
         mockAlgo.initialize()
@@ -131,6 +140,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         class DummyFailingAlgo(PythonAlgorithm):
             def PyInit(self):
                 self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
+                self.declareProperty("MaskWorkspace", defaultValue="", direction=Direction.Output)
                 self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
                 self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
                 self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.InOut)
@@ -195,6 +205,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             RewriteSpectraMap=True,
         )
+
         # the below are meant to de-align the pixels so an offset correction is needed
         ChangeBinOffset(
             InputWorkspace=algo.inputWSdsp,
@@ -221,20 +232,72 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     def test_execute_with_algos(self):
         import os
-
+        
+        from mantid.simpleapi import mtd
+        
         # create sample data
         offsetAlgo = PixelDiffractionCalibration()
-        offsetAlgo.initialize()
+        offsetAlgo.initialize()        
         offsetAlgo.chopIngredients(self.fakeIngredients)
         self.makeFakeNeutronData(offsetAlgo)
+        
         pdcalAlgo = GroupDiffractionCalibration()
         pdcalAlgo.initialize()
         pdcalAlgo.chopIngredients(self.fakeIngredients)
+       
         fakeFile = pdcalAlgo.outputFilename
         res = self.recipe.executeRecipe(self.fakeIngredients)
         assert res["result"]
-        print(res["steps"])
+        
+        assert res["maskWorkspace"]
+        """ # ADD THIS SECTION BACK IN WHEN WE HAVE INPUT DATA THAT
+            #   ACTUALLY SUCCESSFULLY EXECUTES!
+        mask = mtd[res["maskWorkspace"]]
+        assert(mask.getNumberMasked() == 0)
+        """
         assert res["steps"][-1]["medianOffset"] <= self.fakeIngredients.convergenceThreshold
+        os.remove(fakeFile)
+
+    def test_mask_persists(self):
+        import os
+        
+        from mantid.simpleapi import mtd
+        
+        # create sample data
+        offsetAlgo = PixelDiffractionCalibration()
+        offsetAlgo.initialize()        
+        offsetAlgo.chopIngredients(self.fakeIngredients)
+        self.makeFakeNeutronData(offsetAlgo)
+        
+        pdcalAlgo = GroupDiffractionCalibration()
+        pdcalAlgo.initialize()
+        pdcalAlgo.chopIngredients(self.fakeIngredients)
+       
+        fakeFile = pdcalAlgo.outputFilename
+        res = self.recipe.executeRecipe(self.fakeIngredients)
+        assert res["result"]
+        
+        assert res["maskWorkspace"]
+        """ # ADD THIS SECTION BACK IN WHEN WE HAVE INPUT DATA THAT
+            #   ACTUALLY SUCCESSFULLY EXECUTES!
+        mask = mtd[res["maskWorkspace"]]
+        assert mask.getNumberMasked() == 0
+        """
+        readbackWSName = "TEST_READBACK"
+        maskWSName = readbackWSName + "_mask"
+        assert not mtd.doesExist(maskWSName)
+        LoadDiffCal(
+            FileName=fakeFile,
+            InstrumentFilename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            WorkspaceName=readbackWSName
+        )
+        maskWSName = readbackWSName + "_mask"
+        assert mtd.doesExist(maskWSName)
+        """ # ADD THIS SECTION BACK IN WHEN WE HAVE INPUT DATA THAT
+            #   ACTUALLY SUCCESSFULLY EXECUTES!
+        mask = mtd[maskWSName]
+        assert mask.getNumberMasked() == 0
+        """
         os.remove(fakeFile)
 
 

@@ -26,6 +26,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # declare properties
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
+        self.declareProperty("MaskWorkspace", defaultValue="", direction=Direction.Output) # if present in mtd: incoming values will be used
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
         self.declareProperty("MaxOffset", 2.0, direction=Direction.Input)
@@ -59,13 +60,22 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # path to grouping file, specifying group IDs of pixels
         self.groupingFile: str = ingredients.focusGroup.definition
 
-        # create string names of workspaces that will be used by algorithm
+        # create string names for workspaces that will be used by algorithm
 
-        self.inputWStof: str = wng.diffCalInput().runNumber(self.runNumber).build()
+        self.setProperty("OutputWorkspace", wng.diffCalInput().runNumber(self.runNumber).build())
+        self.inputWStof: str = self.getProperty("OutputWorkspace").value
         self.inputWSdsp: str = wng.diffCalInput().runNumber(self.runNumber).unit(wng.Units.DSP).build()
-        self.difcWS: str = wng.diffCalTable().runNumber(self.runNumber).build()
-        self.maxOffset = float(self.getProperty("MaxOffset").value)
 
+        # Allow for the possibility of an incoming a-priori mask
+        if self.getProperty("MaskWorkspace").isDefault:
+            self.setPropertyValue("MaskWorkspace", wng.diffCalMask().runNumber(self.runNumber).build());  
+        self.maskWS: str = self.getProperty("MaskWorkspace").value
+
+        self.setProperty("CalibrationTable", wng.diffCalTable().runNumber(self.runNumber).build())
+        self.difcWS: str = self.getProperty("CalibrationTable").value
+
+        self.maxOffset = float(self.getProperty("MaxOffset").value)
+        
     def raidPantry(self) -> None:
         """Initialize the input TOF data from the input filename in the ingredients"""
         if not self.mantidSnapper.mtd.doesExist(self.inputWStof):
@@ -185,6 +195,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             self.mantidSnapper.GetDetectorOffsets(
                 f"Calculate offset workspace {wsoff}",
                 InputWorkspace=wscc,
+                MaskWorkspace=self.maskWS,
                 OutputWorkspace=wsoff,
                 XMin=-100,
                 XMax=100,
@@ -240,10 +251,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         )
         # now execute the queue
         self.mantidSnapper.executeQueue()
-        # data["calibrationTable"] = self.difcWS
         self.setProperty("data", json.dumps(data))
-        self.setProperty("OutputWorkspace", self.inputWStof)
-        self.setProperty("CalibrationTable", self.difcWS)
 
     def PyExec(self) -> None:
         """

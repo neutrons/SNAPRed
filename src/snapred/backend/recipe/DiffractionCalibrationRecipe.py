@@ -5,8 +5,8 @@ from mantid.api import AlgorithmManager
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
+from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -36,6 +36,7 @@ class DiffractionCalibrationRecipe:
         logger.info("Calibrating by cross-correlation and adjusting offsets...")
         offsetAlgo = AlgorithmManager.create(self.offsetDIFCAlgorithmName)
         offsetAlgo.setProperty("Ingredients", ingredients.json())
+        
         try:
             offsetAlgo.execute()
             dataSteps.append(json.loads(offsetAlgo.getProperty("data").value))
@@ -61,11 +62,13 @@ class DiffractionCalibrationRecipe:
         logger.info("Beginning group-by-group fitting calibration")
         calibrateAlgo = AlgorithmManager.create(self.pdcalibrateAlgorithmName)
         calibrateAlgo.setProperty("Ingredients", ingredients.json())
-        calibrateAlgo.setProperty("InputWorkspace", offsetAlgo.getProperty("OutputWorkspace").value)
+        calibrateAlgo.setProperty("InputWorkspace", offsetAlgo.getProperty("OutputWorkspace").value)        
+        calibrateAlgo.setProperty("MaskWorkspace", offsetAlgo.getProperty("MaskWorkspace").value)        
         calibrateAlgo.setProperty("PreviousCalibrationTable", offsetAlgo.getProperty("CalibrationTable").value)
         try:
             calibrateAlgo.execute()
             data["calibrationTable"] = calibrateAlgo.getProperty("FinalCalibrationTable").value
+            data["maskWorkspace"] = calibrateAlgo.getProperty("MaskWorkspace").value
             data["outputWorkspace"] = calibrateAlgo.getProperty("OutputWorkspace").value
         except RuntimeError as e:
             errorString = str(e)

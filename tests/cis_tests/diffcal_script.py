@@ -1,13 +1,23 @@
-## This script is to test EWM 1126 and EWM 2166
+## This script is to test EWM 1126, EWM 2166, and EWM 2853.
 #   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=1126
 #   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=2166
-# This tests that 
-#  1. the algorithm will run,
-#  2. the algorithm will create a calibration table, 
-#  #. the algorithm will convergence to within a threshold.
+#   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=2853
+
+# This tests that: 
+#  1. the algorithm will run;
+#  2. the algorithm will create a calibration table;
+#  3. the algorithm will create (or optionally augment) a mask of failing detectors;
+#  3. the algorithm will converge to within a threshold.
 # Adjust the convergenceThreshold parameter below, and compare to the "medianOffset" in the calData dictionary
 
+# A routine is provided to create a compatible MaskWorkspace, which may be used to initialize a mask as an optional input parameter.
+# In this usage, a-priori masking is allowed: that is, any detector may be masked in the input mask, and it will then be ignored
+#   during the diffraction-calibration process.
+# However, unfortunately at present, setting such an input mask is not yet conveniently supported by the "DiffractionCalibrationRecipe" itself.
+
 from mantid.simpleapi import *
+from mantid.dataobjects import MaskWorkspace
+
 import matplotlib.pyplot as plt
 import numpy as np
 import json
@@ -36,6 +46,33 @@ from snapred.meta.Config import Config
 
 from snapred.meta.redantic import list_to_raw_pretty
 
+    
+def createCompatibleMask(maskWSName, inputWSName):
+    """Create a mask workspace, compatible with the sample data in the input workspace:
+      this mask workspace contains one spectrum per detector.
+    """
+    
+    # Warning: this routine assumes that the input workspace is resident in memory!
+
+    inputWS = mtd[inputWSName]
+    inst = inputWS.getInstrument()
+    # detectors which are monitors are not included in the mask
+    mask = WorkspaceFactory.create("SpecialWorkspace2D", NVectors=inst.getNumberDetectors(True),
+                                    XLength=1, YLength=1)
+    mtd[maskWSName] = mask
+    
+    LoadInstrument(
+        Workspace=maskWSName,
+        Filename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
+        RewriteSpectraMap=True,
+    )
+    
+    # output_workspace needs to be converted to an actual MaskWorkspace instance
+    ExtractMask(InputWorkspace=maskWSName, OutputWorkspace=maskWSName)
+    assert isinstance(mtd[maskWSName], MaskWorkspace)
+    return maskWSName
+
+
 # User inputs ######################################################################
 runNumber = "58882"  # 58409'
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
@@ -57,6 +94,7 @@ calibrationService = CalibrationService()
 pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
 
 instrumentState = calibration.instrumentState
+
 calPath = instrumentState.instrumentConfig.calibrationDirectory
 instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters[0]
 
@@ -80,6 +118,29 @@ ingredients = DiffractionCalibrationIngredients(
     calPath=calPath,
     convergenceThreshold=offsetConvergenceLimit,
 )
+
+### Optional: create a compatible input mask if required: ##########################
+
+# Load the input workspace to use as an "instrument donor" for the mask workspace:
+runNumber = ingredients.runConfig.runNumber
+ipts = ingredients.runConfig.IPTS
+rawDataPath = ipts + f'shared/lite/SNAP_{runNumber}.lite.nxs.h5'
+
+inputWSName = f'_TOF_{runNumber}_raw'
+LoadEventNexus(
+    Filename=rawDataPath,
+    OutputWorkspace=inputWSName,
+    FilterByTofMin=ingredients.instrumentState.particleBounds.tof.minimum,
+    FilterByTofMax=ingredients.instrumentState.particleBounds.tof.maximum,
+    BlockList="Phase*,Speed*,BL*:Chop:*,chopper*TDC",
+)
+
+# Note: this will also be the DEFAULT MASK NAME, in the case a mask is automatically created by the routines below
+maskWSName = f"_MASK_{runNumber}"
+# createCompatibleMask(maskWSName, inputWSName)
+
+# Here any detectors can be masked in the input, if required for testing...
+
 ####################################################################################
 # Run the individual steps of the recipe
 # Run the pixel offset calibration to converge
@@ -89,16 +150,17 @@ data = {"result": False}
 dataSteps = []
 medianOffsets = []
 
-runNumber = ingredients.runConfig.runNumber
 convergenceThreshold = ingredients.convergenceThreshold
 offsetAlgo = PixelDiffractionCalibration()
 offsetAlgo.initialize()
 offsetAlgo.setProperty("Ingredients", ingredients.json())
+offsetAlgo.setProperty("MaskWorkspace", maskWSName)
 offsetAlgo.execute()
 
-# save a permanent copy of the input data
+# save a permanent copy of the input data, and the associated mask
 rawTOFInputWS = f'z_TOF_{runNumber}_raw'
 rawDSPInputWS = f'z_DSP_{runNumber}_raw'
+postOffsetAlgoMaskWS = f'z_MASK_{runNumber}'
 CloneWorkspace(
     InputWorkspace=offsetAlgo.inputWStof,
     OutputWorkspace=rawTOFInputWS,
@@ -106,6 +168,10 @@ CloneWorkspace(
 CloneWorkspace(
     InputWorkspace=offsetAlgo.inputWSdsp,
     OutputWorkspace=rawDSPInputWS,
+)
+CloneWorkspace(
+    InputWorkspace=maskWSName,
+    OutputWorkspace=postOffsetAlgoMaskWS,
 )
 
 # record the median offset used in convergence
@@ -126,16 +192,30 @@ calibAlgo = GroupDiffractionCalibration()
 calibAlgo.initialize()
 calibAlgo.setProperty("Ingredients", ingredients.json())
 calibAlgo.setProperty("InputWorkspace", offsetAlgo.getProperty("OutputWorkspace").value)
+calibAlgo.setProperty("MaskWorkspace", offsetAlgo.getProperty("MaskWorkspace").value)
 calibAlgo.setProperty("PreviousCalibrationTable", offsetAlgo.getProperty("CalibrationTable").value)
 calibAlgo.execute()
 data["calibrationTable"] = calibrateAlgo.getProperty("FinalCalibrationTable").value
 data["result"] = True
+data["outputFileName"] = calibrateAlgo.outputFilename # TODO: make this a property please!
+
+#############################################################################################
+### IMPORTANT: remember to _remove_ any existing mask workspace here!! ######################
+mtd.remove(maskWSName)
+
+### Optional: prepare a mask workspace (as above) to use as an input parameter: #############
+# Unfortunately here,
+#   we need to rely on the fact that the 'maskWSName' is the same as the DEFAULT MASK name.
+# Even in this default case: if the mask workspace already exists, its values will be used.
 
 # Run the entire recipe #####################################################################
 rx = DiffractionCalibrationRecipe()
 res = rx.executeRecipe(ingredients)
-print(res["result"])
-print(res["steps"])
+print(f'Result: {res["result"]}')
+print(f'  steps: {res["steps"]}')
+print(f'  mask workspace name: {res["maskWorkspace"]}')
+print(f'Calibration data saved to: {data["outputFilename"]}')
+
 #############################################################################################
 
 

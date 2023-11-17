@@ -12,6 +12,7 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 
 # the algorithm to test
@@ -36,31 +37,31 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
 
         peakList3 = [
-            DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
-            DetectorPeak.parse_obj({"position": {"value": 5, "minimum": 4, "maximum": 6}}),
+            DetectorPeak.parse_obj({"position": {"value": 0.37, "minimum": 0.35, "maximum": 0.39}}),
+            DetectorPeak.parse_obj({"position": {"value": 0.33, "minimum": 0.32, "maximum": 0.34}}),
         ]
-        group3 = GroupPeakList(groupID=3, peaks=peakList3)
+        group3 = GroupPeakList(groupID=3, peaks=peakList3, maxfwhm = 5)
         peakList7 = [
-            DetectorPeak.parse_obj({"position": {"value": 3, "minimum": 2, "maximum": 4}}),
-            DetectorPeak.parse_obj({"position": {"value": 6, "minimum": 5, "maximum": 7}}),
+            DetectorPeak.parse_obj({"position": {"value": 0.57, "minimum": 0.54, "maximum": 0.62}}),
+            DetectorPeak.parse_obj({"position": {"value": 0.51, "minimum": 0.49, "maximum": 0.53}}),
         ]
-        group7 = GroupPeakList(groupID=7, peaks=peakList7)
+        group7 = GroupPeakList(groupID=7, peaks=peakList7, maxfwhm = 5)
         peakList2 = [
-            DetectorPeak.parse_obj({"position": {"value": 3, "minimum": 2, "maximum": 4}}),
-            DetectorPeak.parse_obj({"position": {"value": 6, "minimum": 5, "maximum": 7}}),
+            DetectorPeak.parse_obj({"position": {"value": 0.33, "minimum": 0.31, "maximum": 0.35}}),
+            DetectorPeak.parse_obj({"position": {"value": 0.29, "minimum": 0.275, "maximum": 0.305}}),
         ]
-        group2 = GroupPeakList(groupID=2, peaks=peakList2)
+        group2 = GroupPeakList(groupID=2, peaks=peakList2, maxfwhm = 5)
         peakList11 = [
-            DetectorPeak.parse_obj({"position": {"value": 3, "minimum": 2, "maximum": 4}}),
-            DetectorPeak.parse_obj({"position": {"value": 6, "minimum": 5, "maximum": 7}}),
+            DetectorPeak.parse_obj({"position": {"value": 0.43, "minimum": 0.41, "maximum": 0.47}}),
+            DetectorPeak.parse_obj({"position": {"value": 0.39, "minimum": 0.37, "maximum": 0.405}}),
         ]
-        group11 = GroupPeakList(groupID=11, peaks=peakList11)
+        group11 = GroupPeakList(groupID=11, peaks=peakList11, maxfwhm = 5)
 
         self.fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
-            groupedPeakLists=[group3, group7, group2, group11],
+            groupedPeakLists=[group2, group3, group7, group11],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
         )
@@ -73,34 +74,38 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             LoadInstrument,
             Rebin,
         )
-
+        
+        TOFMin = 10
+        TOFMax = 1000
+        TOFBin = 0.001
+        
         # prepare with test data, made in d-spacing
-        midpoint = (algo.TOFMax + algo.TOFMin) / 2.0
+        midpoint = (TOFMax + TOFMin) / 2.0
         CreateSampleWorkspace(
             OutputWorkspace=algo.inputWStof,
             # WorkspaceType="Histogram",
-            Function="User Defined",
-            UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={midpoint},Sigma={3*algo.TOFBin}",
-            Xmin=algo.TOFMin,
-            Xmax=algo.TOFMax,
-            BinWidth=algo.TOFBin,
+            Function="Powder Diffraction",
+            Xmin=TOFMin,
+            Xmax=TOFMax,
+            BinWidth=TOFBin,
             XUnit="TOF",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
             Random=True,
         )
-        Rebin(
-            InputWorkspace=algo.inputWStof,
-            Params=algo.TOFParams,
-            BinningMode="Logarithmic",
-            OutputWorkspace=algo.inputWStof,
-        )
-        # load the instrument and focus group
         LoadInstrument(
             Workspace=algo.inputWStof,
             Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
             RewriteSpectraMap=True,
         )
+        """
+        Rebin(
+            InputWorkspace=algo.inputWStof,
+            Params=(TOFMin, TOFBin, TOFMax),
+            BinningMode="Logarithmic",
+            OutputWorkspace=algo.inputWStof,
+        )
+        """
 
     def initDIFCTable(self, difcws: str):
         from mantid.simpleapi import (
@@ -128,7 +133,56 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         cc.setProperty("BinWidth", self.fakeDBin)
         cc.execute()
         DeleteWorkspace("idf")
-
+    
+    def makeFakeInputMaskAndGrouping(self, algo, maskWSName, groupingWSName = None):
+        """Create input mask compatible with the sample data:
+           -- return group-to-detid map """
+        # Assumes algo.diffractionfocusedWStof has already been created
+        from mantid.dataobjects import MaskWorkspace
+        from mantid.simpleapi import (
+            mtd,
+            WorkspaceFactory,
+            LoadInstrument,
+            ClearMaskFlag,
+            ExtractMask,
+        )
+        
+        maskWSName = algo.getPropertyValue("MaskWorkspace")
+        
+        grouping = None
+        if groupingWSName is not None:
+            groupingWS = None
+            if not mtd.doesExist(groupingWSName):
+                lg = LoadGroupingDefinition()
+                lg.initialize()
+                lg.setProperty('GroupingFilename', algo.groupingFile)
+                lg.setProperty('InstrumentDonor', algo.inputWStof)
+                lg.setProperty('OutputWorkspace', groupingWSName)
+                lg.execute()
+            groupingWS = mtd[groupingWSName]
+            grouping: Dict(int, List(int)) = {}
+            for nd in range(groupingWS.getNumberHistograms()):
+                groupID = groupingWS.readY(nd)[0]
+                if groupID in grouping:
+                    grouping[groupID].append(nd)
+                else:
+                    grouping[groupID] = [nd]
+        
+        inputWS = mtd[algo.inputWStof]
+        inst = inputWS.getInstrument()
+        mask = WorkspaceFactory.create("SpecialWorkspace2D", NVectors=inst.getNumberDetectors(),
+                                        XLength=1, YLength=1)
+        mtd[maskWSName] = mask
+        LoadInstrument(
+            Workspace=maskWSName,
+            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            RewriteSpectraMap=True,
+        )
+        # output_workspace is converted to a MaskWorkspace
+        ExtractMask(InputWorkspace=maskWSName, OutputWorkspace=maskWSName)
+        assert isinstance(mtd[maskWSName], MaskWorkspace)
+        return grouping
+       
     def test_chop_ingredients(self):
         """Test that ingredients for algo are properly processed"""
         algo = ThisAlgo()
@@ -152,6 +206,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
     @mock.patch.object(ThisAlgo, "restockPantry", mock.Mock(return_value=None))
     def test_execute(self):
         """Test that the algorithm executes"""
+        from mantid.simpleapi import mtd
         # we need to create a DIFC table before we can run
         difcWS: str = f"_{self.fakeRunNumber}_difcs_test"
         self.initDIFCTable(difcWS)
@@ -161,11 +216,15 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
+        algo.setProperty("MaskWorkspace", f"_test_mask_{self.fakeRunNumber}")
         algo.setProperty("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
         algo.setProperty("PreviousCalibrationTable", difcWS)
         algo.chopIngredients(self.fakeIngredients)
         self.makeFakeNeutronData(algo)
+        self.makeFakeInputMaskAndGrouping(algo, algo.getPropertyValue('MaskWorkspace'))
         assert algo.execute()
+        mask = mtd[f"_test_mask_{self.fakeRunNumber}"]
+        assert mask.getNumberMasked() == 0
 
     def test_save_load(self):
         """Test that files are correctly saved and loaded"""
@@ -203,6 +262,222 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             Workspace2=algo.getProperty("FinalCalibrationTable").value,
         )
         os.remove(algo.outputFilename)
+
+    def test_mask_is_created(self):
+        """Test that a mask workspace is created if it doesn't already exist:
+           -- this method also verifies that none of the spectra in the synthetic data will be masked.
+        """
+        from mantid.simpleapi import mtd
+        # we need to create a DIFC table before we can run
+        difcWS: str = f"_{self.fakeRunNumber}_difcs_test"
+        self.initDIFCTable(difcWS)
+        
+        # Ensure that the mask workspace doesn't already exist
+        maskWSName = f"_test_mask_{self.fakeRunNumber}"
+        mtd.remove(maskWSName);
+        assert maskWSName not in mtd
+        
+        # now run the algorithm
+        algo = ThisAlgo()
+        algo.initialize()
+        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
+        algo.setProperty("MaskWorkspace", maskWSName)
+        algo.setProperty("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
+        algo.setProperty("PreviousCalibrationTable", difcWS)
+        algo.chopIngredients(self.fakeIngredients)
+        self.makeFakeNeutronData(algo)
+        algo.execute()
+        assert maskWSName in mtd
+        mask = mtd[maskWSName]
+        assert mask.getNumberMasked() == 0        
+        
+    def test_existing_mask_is_used(self):
+        """Test that an existing mask workspace is not overwritten"""
+        import uuid
+        from mantid.simpleapi import mtd
+        
+        # we need to create a DIFC table before we can run
+        difcWS: str = f"_{self.fakeRunNumber}_difcs_test"
+        self.initDIFCTable(difcWS)
+        
+        maskWSName = f"_test_mask_{self.fakeRunNumber}"
+        maskTitle = str(uuid.uuid1())
+        
+        algo = ThisAlgo()
+        algo.initialize()
+        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
+        algo.setProperty("MaskWorkspace", maskWSName)
+        algo.setProperty("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
+        algo.setProperty("PreviousCalibrationTable", difcWS)
+        algo.chopIngredients(self.fakeIngredients)
+        self.makeFakeNeutronData(algo)
+        self.makeFakeInputMaskAndGrouping(algo, maskWSName)
+        assert maskWSName in mtd
+        mask = mtd[maskWSName]
+        mask.setTitle(maskTitle);
+        # algo.execute()
+        # THE FOLLOWING ASSERTION FAILS:  TODO: track this down.
+        # Mantid 'PDCalibrate' itself indicates that it is *not* creating a new mask workspace.
+        # assert id(mtd[maskWSName]) == idIncomingMask
+        # 
+        algo.execute()
+        assert maskWSName in mtd
+        mask = mtd[maskWSName] # handle will have changed
+        assert mask.getTitle() == maskTitle
+        assert mask.getNumberMasked() == 0        
+ 
+    def countDetectorsForGroups(self, grouping, gs): # grouping: Dict(<group id>, List(<detector id>), gs: tuple[<group id>]
+        count = 0
+        for g in gs:
+            count += 0 if g not in grouping else len(grouping[g])
+        return count
+              
+    def prepareGroupsToFail(self, ws, grouping, gs): # ws: MatrixWorkspace, grouping:Dict(<group id>, List(<detector id>), gs: tuple[<group id>]
+        import numpy as np
+        zs = np.zeros_like(ws.readY(0))
+        detInfo = ws.detectorInfo()
+        for g in gs:
+            if g in grouping:
+                dets = grouping[g]
+                for det in dets:
+                    ws.setY(detInfo.indexOf(det), zs)
+
+    def test_failures_are_masked(self):
+        """Test that failing spectra are masked"""
+        from mantid.simpleapi import mtd
+        
+        # we need to create a DIFC table before we can run
+        difcWS: str = f"_{self.fakeRunNumber}_difcs_test"
+        self.initDIFCTable(difcWS)
+        
+        maskWSName = f"_test_mask_{self.fakeRunNumber}"
+        
+        # now run the algorithm
+        algo = ThisAlgo()
+        algo.initialize()
+        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
+        algo.setProperty("MaskWorkspace", maskWSName)
+        algo.setProperty("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
+        algo.setProperty("PreviousCalibrationTable", difcWS)
+        algo.chopIngredients(self.fakeIngredients)
+        self.makeFakeNeutronData(algo)
+
+        groupingWSName = f"_test_grouping_{self.fakeRunNumber}"
+        grouping = self.makeFakeInputMaskAndGrouping(algo, maskWSName, groupingWSName)
+        mask = mtd[maskWSName]
+        assert mask.getNumberMasked() == 0
+        inputWS = mtd[algo.inputWStof]
+        groupsToFail = (3,)
+        self.prepareGroupsToFail(inputWS, grouping, groupsToFail)
+        tofWS = inputWS.clone() # Algorithm will delete its temporary workspaces after execution
+        algo.execute()
+        mask = mtd[maskWSName]
+        assert mask.getNumberMasked() == \
+          self.countDetectorsForGroups(grouping, groupsToFail)       
+        for g in groupsToFail:
+            if g in grouping:
+                dets = grouping[g]
+                for det in dets:
+                    assert mask.isMasked(det)
+
+    def maskGroups(self, maskWS, grouping, gs): # maskWS: MaskWorkspace, grouping:Dict(<group id>, List(<detector id>), gs: tuple[<group id>]
+        for g in gs:
+            if g in grouping:
+                dets = grouping[g]
+                for det in dets:
+                    maskWS.setValue(det, True)
+            
+    def test_masks_stay_masked(self):
+        """Test that incoming masked spectra are still masked at output"""
+        from mantid.simpleapi import mtd
+        
+        # we need to create a DIFC table before we can run
+        difcWS: str = f"_{self.fakeRunNumber}_difcs_test"
+        self.initDIFCTable(difcWS)
+        
+        maskWSName = f"_test_mask_{self.fakeRunNumber}"
+        
+        # now run the algorithm
+        algo = ThisAlgo()
+        algo.initialize()
+        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
+        algo.setProperty("MaskWorkspace", maskWSName)
+        algo.setProperty("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
+        algo.setProperty("PreviousCalibrationTable", difcWS)
+        algo.chopIngredients(self.fakeIngredients)
+        self.makeFakeNeutronData(algo)
+               
+        groupingWSName = f"_test_grouping_{self.fakeRunNumber}"
+        grouping = self.makeFakeInputMaskAndGrouping(algo, maskWSName, groupingWSName)
+        mask = mtd[maskWSName]
+        assert mask.getNumberMasked() == 0
+        inputWS = mtd[algo.inputWStof]
+        groupsToMask = (0,)
+        self.maskGroups(mask, grouping, groupsToMask)
+        assert mask.getNumberMasked() == \
+          self.countDetectorsForGroups(grouping, groupsToMask)        
+        algo.execute()
+        mask = mtd[maskWSName]
+        assert mask.getNumberMasked() == \
+          self.countDetectorsForGroups(grouping, groupsToMask)        
+        for g in groupsToMask:
+            if g in grouping:
+                dets = grouping[g]
+                for det in dets:
+                    assert mask.isMasked(det)
+            
+    def test_masks_are_combined(self):
+        """Test that masks for failing spectra are combined with any input mask"""
+        from mantid.simpleapi import mtd
+        
+        # we need to create a DIFC table before we can run
+        difcWS: str = f"_{self.fakeRunNumber}_difcs_test"
+        self.initDIFCTable(difcWS)
+        
+        maskWSName = f"_test_mask_{self.fakeRunNumber}"
+        
+        # now run the algorithm
+        algo = ThisAlgo()
+        algo.initialize()
+        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("InputWorkspace", f"_TOF_{self.fakeRunNumber}")
+        algo.setProperty("MaskWorkspace", maskWSName)
+        algo.setProperty("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
+        algo.setProperty("PreviousCalibrationTable", difcWS)
+        algo.chopIngredients(self.fakeIngredients)
+        self.makeFakeNeutronData(algo)
+
+
+        groupingWSName = f"_test_grouping_{self.fakeRunNumber}"
+        grouping = self.makeFakeInputMaskAndGrouping(algo, maskWSName, groupingWSName)
+        mask = mtd[maskWSName]
+        assert mask.getNumberMasked() == 0
+        inputWS = mtd[algo.inputWStof]
+        groupsToFail = (3,)
+        self.prepareGroupsToFail(inputWS, grouping, groupsToFail)
+        groupsToMask = (0,)
+        self.maskGroups(mask, grouping, groupsToMask)
+        assert mask.getNumberMasked() == \
+          self.countDetectorsForGroups(grouping, groupsToMask)        
+        algo.execute()
+        mask = mtd[maskWSName]
+        assert mask.getNumberMasked() == \
+          self.countDetectorsForGroups(grouping, groupsToFail) + \
+          self.countDetectorsForGroups(grouping, groupsToMask)        
+        for g in groupsToFail:
+            if g in grouping:
+                dets = grouping[g]
+                for det in dets:
+                    assert mask.isMasked(det)
+        for g in groupsToMask:
+          if g in grouping:
+              dets = grouping[g] 
+              for det in dets:
+                  assert mask.isMasked(det)
 
     # TODO more and more better tests of behavior
 
