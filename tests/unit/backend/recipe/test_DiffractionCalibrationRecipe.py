@@ -303,8 +303,8 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             BinningMode="Logarithmic",
         )
 
-    @mock.patch.object(Recipe, "restockShelves", mock.Mock())
-    def test_execute_with_algos(self):
+    @mock.patch("mantid.simpleapi.SaveDiffCal")
+    def test_execute_with_algos(self, mockSaveDiffCal):
         # create sample data
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"
@@ -317,6 +317,10 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             print(res)
         assert res["result"]
         assert res["steps"][-1]["medianOffset"] <= self.fakeIngredients.convergenceThreshold
+        mockSaveDiffCal.assert_called_once_with(
+            self.recipe,
+            res["calibrationTable"],
+        )
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
