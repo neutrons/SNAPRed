@@ -271,7 +271,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # cleanup memory usage
         self.mantidSnapper.WashDishes(
             "Deleting temporary workspaces",
-            WorkspaceList=[wscc, wsoff, totalOffsetWS, self.wsDSP],
+            WorkspaceList=[wscc, wsoff, totalOffsetWS, self.wsDSP, "Mask"],
         )
         # now execute the queue
         self.mantidSnapper.executeQueue()

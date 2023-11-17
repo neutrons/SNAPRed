@@ -203,24 +203,24 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 StartWorkspaceIndex=index,
                 StopWorkspaceIndex=index,
             )
-            # self.mantidSnapper.ExtractSingleSpectrum(
-            #     "Extract the calibrated spectrum's diagnostic workspace",
-            #     InputWorkspace=diagnosticWSgroup,
-            #     OutputWorkspace=diagnosticWSgroup,
-            #     WorkspaceIndex = index,
-            # )
-            # if index == 0:
-            #     self.mantidSnapper.CloneWorkspace(
-            #         "Save the first diagnostic workspace",
-            #         InputWorkspace = diagnosticWSgroup,
-            #         OutputWorkspace = diagnosticWS
-            #     )
-            # else:
-            #     self.mantidSnapper.ConjoinWorkspaces(
-            #         "Combine diagnostic workspaces",
-            #         InputWorkspace1=diagnosticWS,
-            #         InputWorkspace2=diagnosticWSgroup,
-            #     )
+            self.mantidSnapper.ExtractSingleSpectrum(
+                "Extract the calibrated spectrum's diagnostic workspace",
+                InputWorkspace=diagnosticWSgroup+"_fitted",
+                OutputWorkspace=diagnosticWSgroup+"_fitted",
+                WorkspaceIndex = index,
+            )
+            if index == 0:
+                self.mantidSnapper.CloneWorkspace(
+                    "Save the first diagnostic workspace",
+                    InputWorkspace = diagnosticWSgroup+"_fitted",
+                    OutputWorkspace = diagnosticWS
+                )
+            else:
+                self.mantidSnapper.ConjoinWorkspaces(
+                    "Combine diagnostic workspaces",
+                    InputWorkspace1=diagnosticWS,
+                    InputWorkspace2=diagnosticWSgroup+"_fitted",
+                )
             self.mantidSnapper.CombineDiffCal(
                 "Combine the new calibration values",
                 PixelCalibration=self.DIFCprev,  # previous calibration values, DIFCprev
@@ -242,7 +242,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 )
             self.mantidSnapper.WashDishes(
                 "Cleanup leftover workspaces",
-                WorkspaceList=[DIFCpd, diagnosticWSgroup],
+                WorkspaceList=[DIFCpd, DIFCpd+"_mask", diagnosticWSgroup,],
             )
             self.mantidSnapper.executeQueue()
 
