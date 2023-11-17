@@ -1,4 +1,5 @@
 import json
+import socket
 import unittest
 from unittest.mock import MagicMock
 
@@ -21,8 +22,11 @@ from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import Calibr
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.meta.Config import Resource
 
+IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
+
 
 class TestCalibrationNormalizationAlgo(unittest.TestCase):
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def setUp(self):
         with open(Resource.getPath("inputs/calibration/input.json"), "r") as file:
             inputData = json.load(file)
