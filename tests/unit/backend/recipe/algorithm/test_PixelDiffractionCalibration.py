@@ -141,12 +141,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         algo.initialize()
         algo.chopIngredients(self.fakeIngredients)
         assert algo.runNumber == self.fakeRunNumber
-        assert algo.TOFMin == self.fakeIngredients.instrumentState.particleBounds.tof.minimum
-        assert algo.TOFMax == self.fakeIngredients.instrumentState.particleBounds.tof.maximum
         assert algo.overallDMin == min(self.fakeIngredients.focusGroup.dMin)
         assert algo.overallDMax == max(self.fakeIngredients.focusGroup.dMax)
-        assert algo.dBin == min([abs(db) for db in self.fakeIngredients.focusGroup.dBin])
-        assert algo.TOFBin == algo.dBin
+        assert algo.dBin == max([abs(db) for db in self.fakeIngredients.focusGroup.dBin])
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""
