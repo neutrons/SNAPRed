@@ -26,7 +26,7 @@ IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
 
 class TestCalibrationNormalizationAlgo(unittest.TestCase):
-    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    @unittest.skipIf(not IS_ON_ANALYSIS_MACHINE, "requires analysis datafiles")
     def setUp(self):
         with open(Resource.getPath("inputs/calibration/input.json"), "r") as file:
             inputData = json.load(file)
@@ -93,13 +93,16 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
         self.algo.setProperty("CalibrationWorkspace", self.mockCalibrationTableName)
         self.algo.setProperty("Ingredients", self.mockIngredientsJson.json())
 
+    @unittest.skipIf(not IS_ON_ANALYSIS_MACHINE, "requires analysis datafiles")
     def testAlgorithmInitialization(self):
         assert self.algo.isInitialized()
 
+    @unittest.skipIf(not IS_ON_ANALYSIS_MACHINE, "requires analysis datafiles")
     def testAlgorithmPropertySetup(self):
         assert "mock_input_workspace" in self.algo.getPropertyValue("InputWorkspace")
         assert "mock_background_input_workspace" in self.algo.getPropertyValue("BackgroundWorkspace")
 
+    @unittest.skipIf(not IS_ON_ANALYSIS_MACHINE, "requires analysis datafiles")
     def getCalibrantSample(self, samplePath):
         with open(samplePath, "r") as file:
             sampleJson = json.load(file)
