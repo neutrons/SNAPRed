@@ -60,10 +60,9 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
 
         groupIDs = [pgp.groupID for pgp in reductionIngredients.pixelGroupingParameters]
         groupIDs.sort()
-        for i in groupIDs:
-            DMin.append(dMin[i])
-            DMax.append(dMax[i])
-            DeltaRagged.append(dBin[i])
+        DMin = [dMin[groupID] for groupID in groupIDs]
+        DMax = [dMax[groupID] for groupID in groupIDs]
+        DeltaRagged = [dBin[groupID] for groupID in groupIDs]
 
         self.mantidSnapper.AlignAndFocusPowderFromFiles(
             "Executing AlignAndFocusPowder...",

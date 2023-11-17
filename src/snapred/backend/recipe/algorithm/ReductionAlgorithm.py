@@ -195,14 +195,14 @@ class ReductionAlgorithm(PythonAlgorithm):
         groupIDs = [pgp.groupID for pgp in reductionIngredients.pixelGroupingParameters]
         groupIDs.sort()
         groupedData = data
-        for groupID in range(len(groupIDs)):
+        for index, groupID in enumerate(groupIDs):
             data = self.mantidSnapper.RebinRagged(
                 "Rebinning ragged bins...",
-                InputWorkspace=mtd[groupedData].getItem(groupID),
+                InputWorkspace=mtd[groupedData].getItem(index),  # or groupID
                 XMin=dMin[groupID],
                 XMax=dMax[groupID],
                 Delta=dBin[groupID],
-                OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[groupID].name),
+                OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[index].name),  # or groupID
             )
         self.mantidSnapper.WashDishes(
             "Freeing workspace...",
