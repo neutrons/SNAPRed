@@ -83,7 +83,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             RewriteSpectraMap=False,
         )
 
-        ###END Pete's suggestion to fix pixelID mapping
+        # TODO is this necessary?
         self.mantidSnapper.CompressEvents(
             f"Compressing events in {outputWorkspaceName}...",
             InputWorkspace=outputWorkspaceName,

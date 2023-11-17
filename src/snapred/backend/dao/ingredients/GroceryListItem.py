@@ -29,7 +29,7 @@ class GroceryListItem(BaseModel):
                 raise ValueError("you must specify the grouping scheme to use")
             if v["groupingScheme"] == "Lite":
                 # the Lite grouping scheme reduces native resolution to Lite mode
-                v["instrumentPropertySource"] = "InsstrumentFilename"
+                v["instrumentPropertySource"] = "InstrumentFilename"
                 v["instrumentSource"] = str(Config["instrument.native.definition.file"])
                 v["isLite"] = False
             else:

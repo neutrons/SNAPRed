@@ -78,10 +78,20 @@ def test_fakeInstrument():
     liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
     liteDataCreationAlgo.execute()
 
+    nHst = 4
     liteWS = mtd[liteInstrumentWS]
     fullWS = mtd[fullInstrumentWS]
-    summedPixels = [0, 0, 0, 0]
-    for i in range(4):
-        for j in range(4):
-            summedPixels[i] += fullWS.readY(4 * i + j)[0]
+    assert liteWS.getNumberHistograms() == nHst
+    assert liteWS.getSpectrumNumbers() == list(range(1, nHst + 1))
+    for i in range(nHst):
+        el = liteWS.getSpectrum(i)
+        assert list(el.getDetectorIDs()) == [i]
+
+    for i in range(nHst):
+        assert liteWS.getDetector(i).getID() == i
+
+    summedPixels = [0] * nHst
+    for i in range(nHst):
+        for j in range(nHst):
+            summedPixels[i] += fullWS.readY(nHst * i + j)[0]
         assert summedPixels[i] == liteWS.readY(i)[0]

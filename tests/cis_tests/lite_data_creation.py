@@ -4,22 +4,33 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
+from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 
+from snapred.meta.Config import Config
+
 #User input ###########################
 runNumber = "47278"
+runNumber = "58882"
 #######################################
 
 dataFactoryService = DataFactoryService()
 
-runConfig = dataFactoryService.getRunConfig(runNumber)
-ipts = runConfig.IPTS
-run = RunConfig(runNumber=runNumber,IPTS=ipts, isLite=True)
+print(Config["nexus.native.prefix"])
+run = RunConfig(
+    runNumber=runNumber,
+    IPTS=GetIPTS(RunNumber=runNumber,Instrument='SNAP'), 
+    isLite=False,
+)
+
+fetchRx = FetchRx()
+fetchRx.fetchDirtyNexusData(run)
 
 LDCA = LiteDataCreationAlgo()
 LDCA.initialize()
-LDCA.setProperty("InputWorkspace", f"{runNumber}_raw")
+LDCA.setProperty("InputWorkspace", f"_TOF_58882")
 LDCA.setProperty("RunConfig", run.json())
 LDCA.setProperty("AutoDeleteNonLiteWS", True)
 LDCA.setProperty("OutputWorkspace", f"{runNumber}_lite")

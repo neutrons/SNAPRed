@@ -18,7 +18,9 @@ logger = snapredLogger.getLogger(__name__)
 @Singleton
 class FetchGroceriesRecipe:
     """
-    You need some data?  Yeah, I can get that for you.  Just send me a list.
+    You need some data?
+    Yeah, I can get that for you.
+    Just send me a list.
     """
 
     def __init__(self):
@@ -81,7 +83,6 @@ class FetchGroceriesRecipe:
         return data
 
     def _makeLite(self, workspacename: str):
-        print("ORIGINAL MAKELITE")
         liteMapKey = ("Lite", False)
         liteAlgo = LiteDataAlgo()
         liteAlgo.initialize()
@@ -199,7 +200,6 @@ class FetchGroceriesRecipe:
         - "loader", just "LoadGroupingDefinition" with no apologies
         - "workspaceName", the name of the new grouping workspace in the ADS
         """
-
         workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.isLite)
         fileName = self._createGroupingFilename(item.groupingScheme, item.isLite)
         logger.info("Fetching grouping definition: %s" % item.groupingScheme)
@@ -220,6 +220,7 @@ class FetchGroceriesRecipe:
             algo.setPropertyValue(str(item.instrumentPropertySource), item.instrumentSource)
             try:
                 data["result"] = algo.execute()
+                self._loadedGroupings[key] = workspaceName
             except RuntimeError as e:
                 raise RuntimeError(str(e).split("\n")[0]) from e
         else:
