@@ -303,8 +303,9 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             BinningMode="Logarithmic",
         )
 
+    @mock.patch("snapred.backend.data.LocalDataService.LocalDataService")
     @mock.patch("mantid.simpleapi.SaveDiffCal")
-    def test_execute_with_algos(self, mockSaveDiffCal):
+    def test_execute_with_algos(self, mockSaveDiffCal, mockLDS):
         # create sample data
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"
@@ -317,9 +318,12 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             print(res)
         assert res["result"]
         assert res["steps"][-1]["medianOffset"] <= self.fakeIngredients.convergenceThreshold
+        mockLDS.assert_called_once()
         mockSaveDiffCal.assert_called_once_with(
-            self.recipe,
-            res["calibrationTable"],
+            CalibrationWorkspace=res["calibrationTable"],
+            GroupingWorkspace=self.recipe.groupingWS,
+            MaskWorkspace="",
+            Filename=mockLDS()._getCalibrationDataPath() + "/difcal.h5",
         )
 
 
