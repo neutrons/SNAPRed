@@ -83,7 +83,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # set the max offset
         self.maxOffset: float = ingredients.maxOffset
 
-    def chopNeutronData(self) -> None:
+    def unbagGroceries(self, ingredients: Ingredients) -> None:
         """
         Process input neutron data
         """
@@ -91,11 +91,13 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.wsTOF: str = self.getPropertyValue("InputWorkspace")
         # TODO: use workspace namer
         self.wsDSP: str = self.wsTOF + "_dsp"
-
-        # find d-spacing data and rebin logarithmically
-        self.convertUnitsAndRebin(self.wsTOF, self.wsDSP)
-
         # for inspection, make a copy of initial data
+        self.mantidSnapper.ConvertUnits(
+            "Convert to d-spacing to diffraction focus",
+            InputWorkspace=self.wsTOF,
+            OutPutWorkspace=self.wsDSP,
+            Target="dSpacing",
+        )
         self.mantidSnapper.MakeDirtyDish(
             "Creating copy of initial TOF data",
             InputWorkspace=self.wsTOF,
@@ -123,6 +125,68 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             OffsetMode="Signed",
             BinWidth=self.dBin,
         )
+
+        if "EventWorkspace" in self.mantidSnapper.mtd[self.wsTOF].id():
+            #############################################################
+            # remove the background from the data
+            # this helps with cross-correlation for high-background data
+            # extracts peaks by deleting events inside the peak windows
+            # then subtracts the peak-deleted workspace from the original
+            #############################################################
+            background: str = self.wsTOF + "_background"
+            focusedBackground: str = background + "_focus"
+            self.mantidSnapper.CloneWorkspace(
+                "Create a copy to hold only the background",
+                InputWorkspace=self.wsDSP,
+                OutputWorkspace=background,
+            )
+            self.mantidSnapper.DiffractionFocussing(
+                "Diffraction focus the background before stripping peaks",
+                InputWorkspace=background,
+                OutputWorkspace=focusedBackground,
+                GroupingWorkspace=focusWSname,
+            )
+            self.mantidSnapper.executeQueue()
+            # the background WS holds the original d-spacing data
+            # each group should have similar d-spacing peaks
+            # use the diffraction focused group to indicate all the detectors with these peaks
+            # then at each of those detectors in full instrument, delete d spaces of peaks
+            backgroundWS = self.mantidSnapper.mtd[background]
+            focusedBackgroundWS = self.mantidSnapper.mtd[focusedBackground]
+            nSpec = focusedBackgroundWS.getNumberHistograms()
+            for index in range(nSpec):
+                for detid in focusedBackgroundWS.getSpectrum(index).getDetectorIDs():
+                    event_list = backgroundWS.getEventList(detid)
+                    for peak in ingredients.groupedPeakList[index].peaks:
+                        event_list.maskTof(peak.minimum, peak.maximum)
+            # now subtract off the background and convert back to TOF
+            self.mantidSnapper.Minus(
+                "Subtract out the peak-stripped background",
+                LHSWorkspace=self.wsDSP,
+                RHSWorkspace=background,
+                OutputWorkspace=self.wsDSP,
+            )
+            self.mantidSnapper.ConvertUnits(
+                "Convert units back to TOF",
+                InputWorkspace=self.wsDSP,
+                OutputWorkspace=self.wsTOF,
+                Target="TOF",
+            )
+            # for inspection, make a copy background-stripped data
+            self.mantidSnapper.MakeDirtyDish(
+                "Creating copy of initial TOF data",
+                InputWorkspace=self.wsTOF,
+                OutputWorkspace=self.wsTOF + "_pixelStripped",
+            )
+            self.mantidSnapper.MakeDirtyDish(
+                "Creating copy of initial d-spacing data",
+                InputWorkspace=self.wsDSP,
+                OutputWorkspace=self.wsDSP + "_pixelStripped",
+            )
+            self.mantidSnapper.WashDishes(
+                "Remove intermediate workspaces",
+                WorkspaceList=[background, focusedBackground],
+            )
         self.mantidSnapper.executeQueue()
 
     def convertUnitsAndRebin(self, inputWS: str, outputWS: str) -> None:
@@ -288,7 +352,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             ingredients = Ingredients.parse_raw(self.getPropertyValue("Ingredients"))
             self.chopIngredients(ingredients)
             # load and process the input data for algorithm
-            self.chopNeutronData()
+            self.unbagGroceries(ingredients)
         # now calculate and correct by offsets
         self.reexecute()
         self._counts += 1

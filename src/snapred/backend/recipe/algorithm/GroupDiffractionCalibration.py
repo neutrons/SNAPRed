@@ -95,7 +95,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 f"Group IDs do not match between peak list and focus group: {self.groupIDs} vs {ingredients.focusGroup.nHst}"  # noqa: E501
             )
 
-    def chopNeutronData(self):
+    def unbagGroceries(self):
         """
         Process input neutron data
         """
@@ -175,7 +175,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # get the ingredients
         ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
-        self.chopNeutronData()
+        self.unbagGroceries()
 
         diffocWS = self.mantidSnapper.mtd[self.outputWStof]
         nHist = diffocWS.getNumberHistograms()
