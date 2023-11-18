@@ -157,7 +157,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             for index in range(nSpec):
                 for detid in focusedBackgroundWS.getSpectrum(index).getDetectorIDs():
                     event_list = backgroundWS.getEventList(detid)
-                    for peak in ingredients.groupedPeakList[index].peaks:
+                    for peak in ingredients.groupedPeakLists[index].peaks:
                         event_list.maskTof(peak.minimum, peak.maximum)
             # now subtract off the background and convert back to TOF
             self.mantidSnapper.Minus(
