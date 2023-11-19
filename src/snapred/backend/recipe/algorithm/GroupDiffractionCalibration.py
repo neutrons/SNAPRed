@@ -20,7 +20,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
         self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.Input)
-        self.declareProperty("MaskWorkspace", defaultValue="", direction=Direction.Output) # if present in mtd: incoming values will be used
+        self.declareProperty(
+            "MaskWorkspace", defaultValue="", direction=Direction.Output
+        )  # if present in mtd: incoming values will be used
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
@@ -81,13 +83,13 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # self.groupIDs = sorted(self.groupIDs)
 
         self.inputWStof: str = self.getProperty("InputWorkspace").value
-        
+
         self.setPropertyValue("OutputWorkspace", wng.diffCalOutput().runNumber(self.runNumber).build())
         self.diffractionfocusedWStof: str = self.getProperty("OutputWorkspace").value
 
         # Allow for the possibility of an incoming a-priori mask
         if self.getProperty("MaskWorkspace").isDefault:
-            self.setPropertyValue("MaskWorkspace", wng.diffCalMask().runNumber(self.runNumber).build());  
+            self.setPropertyValue("MaskWorkspace", wng.diffCalMask().runNumber(self.runNumber).build())
         self.maskWS: str = self.getProperty("MaskWorkspace").value
 
         self.calibrationTable: str = self.getProperty("PreviousCalibrationTable").value

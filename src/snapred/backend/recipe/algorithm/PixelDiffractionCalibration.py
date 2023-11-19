@@ -26,7 +26,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # declare properties
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
-        self.declareProperty("MaskWorkspace", defaultValue="", direction=Direction.Output) # if present in mtd: incoming values will be used
+        self.declareProperty(
+            "MaskWorkspace", defaultValue="", direction=Direction.Output
+        )  # if present in mtd: incoming values will be used
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
         self.declareProperty("MaxOffset", 2.0, direction=Direction.Input)
@@ -68,14 +70,14 @@ class PixelDiffractionCalibration(PythonAlgorithm):
 
         # Allow for the possibility of an incoming a-priori mask
         if self.getProperty("MaskWorkspace").isDefault:
-            self.setPropertyValue("MaskWorkspace", wng.diffCalMask().runNumber(self.runNumber).build());  
+            self.setPropertyValue("MaskWorkspace", wng.diffCalMask().runNumber(self.runNumber).build())
         self.maskWS: str = self.getProperty("MaskWorkspace").value
 
         self.setProperty("CalibrationTable", wng.diffCalTable().runNumber(self.runNumber).build())
         self.difcWS: str = self.getProperty("CalibrationTable").value
 
         self.maxOffset = float(self.getProperty("MaxOffset").value)
-        
+
     def raidPantry(self) -> None:
         """Initialize the input TOF data from the input filename in the ingredients"""
         if not self.mantidSnapper.mtd.doesExist(self.inputWStof):

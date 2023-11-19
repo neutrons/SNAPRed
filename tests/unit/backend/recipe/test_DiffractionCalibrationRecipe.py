@@ -7,12 +7,12 @@ import pytest
 from mantid.api import PythonAlgorithm
 from mantid.kernel import Direction
 from mantid.simpleapi import (
-  CreateWorkspace,
-  DeleteWorkspace,
-  LoadDetectorsGroupingFile,
-  LoadInstrument,
-  LoadDiffCal,
-  mtd
+    CreateWorkspace,
+    DeleteWorkspace,
+    LoadDetectorsGroupingFile,
+    LoadDiffCal,
+    LoadInstrument,
+    mtd,
 )
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
@@ -232,23 +232,23 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
 
     def test_execute_with_algos(self):
         import os
-        
+
         from mantid.simpleapi import mtd
-        
+
         # create sample data
         offsetAlgo = PixelDiffractionCalibration()
-        offsetAlgo.initialize()        
+        offsetAlgo.initialize()
         offsetAlgo.chopIngredients(self.fakeIngredients)
         self.makeFakeNeutronData(offsetAlgo)
-        
+
         pdcalAlgo = GroupDiffractionCalibration()
         pdcalAlgo.initialize()
         pdcalAlgo.chopIngredients(self.fakeIngredients)
-       
+
         fakeFile = pdcalAlgo.outputFilename
         res = self.recipe.executeRecipe(self.fakeIngredients)
         assert res["result"]
-        
+
         assert res["maskWorkspace"]
         """ # ADD THIS SECTION BACK IN WHEN WE HAVE INPUT DATA THAT
             #   ACTUALLY SUCCESSFULLY EXECUTES!
@@ -260,23 +260,23 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
 
     def test_mask_persists(self):
         import os
-        
+
         from mantid.simpleapi import mtd
-        
+
         # create sample data
         offsetAlgo = PixelDiffractionCalibration()
-        offsetAlgo.initialize()        
+        offsetAlgo.initialize()
         offsetAlgo.chopIngredients(self.fakeIngredients)
         self.makeFakeNeutronData(offsetAlgo)
-        
+
         pdcalAlgo = GroupDiffractionCalibration()
         pdcalAlgo.initialize()
         pdcalAlgo.chopIngredients(self.fakeIngredients)
-       
+
         fakeFile = pdcalAlgo.outputFilename
         res = self.recipe.executeRecipe(self.fakeIngredients)
         assert res["result"]
-        
+
         assert res["maskWorkspace"]
         """ # ADD THIS SECTION BACK IN WHEN WE HAVE INPUT DATA THAT
             #   ACTUALLY SUCCESSFULLY EXECUTES!
@@ -289,7 +289,7 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         LoadDiffCal(
             FileName=fakeFile,
             InstrumentFilename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
-            WorkspaceName=readbackWSName
+            WorkspaceName=readbackWSName,
         )
         maskWSName = readbackWSName + "_mask"
         assert mtd.doesExist(maskWSName)
