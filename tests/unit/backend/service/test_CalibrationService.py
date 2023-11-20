@@ -25,10 +25,10 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric  # noqa: E402
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
-    from snapred.backend.dao.request.CalibrationNormalizationRequest import (
-        CalibrationNormalizationRequest,  # noqa: E402
-    )
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest  # noqa: E402
+    from snapred.backend.dao.request.NormalizationCalibrationRequest import (
+        NormalizationCalibrationRequest,  # noqa: E402
+    )
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
     from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples  # noqa: E402
     from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry  # noqa: E402
@@ -363,7 +363,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             material=material,
         )
 
-        request = CalibrationNormalizationRequest(
+        request = NormalizationCalibrationRequest(
             runNumber=runNumber,
             cifPath="mock_cif_path",
             smoothingParameter=0.5,

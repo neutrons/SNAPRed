@@ -789,13 +789,3 @@ class LocalDataService:
         if len(groupingFiles) < 1:
             raise RuntimeError(f"No grouping files found in {groupingFolder} for extensions {extensions}")
         return groupingFiles
-
-    def readCalibrantSampleFiles(self):
-        calibrantSamplesFolder = Config["instrument.calibration.sample.home"]
-        extensions = Config["instrument.calibration.sample.extensions"]
-        calibrantSamples = []
-        for extension in extensions:
-            calibrantSamples += self._findMatchingFileList(f"{calibrantSamplesFolder}/*.{extension}", throws=False)
-        if len(calibrantSamples) < 1:
-            raise RuntimeError(f"No calibrant samples found in {calibrantSamplesFolder} for extensions {extensions}")
-        return calibrantSamples

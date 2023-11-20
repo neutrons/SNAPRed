@@ -18,7 +18,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
     signalSmoothingValueChanged = pyqtSignal(float)
     signalWorkspacesUpdate = pyqtSignal(str, str)
 
-    def __init__(self, name, jsonSchemaMap, samples=[], groups=[], calibrantSamples=[], parent=None):
+    def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
         super().__init__(parent)
         self._jsonFormList = JsonFormList(name, jsonSchemaMap, parent=parent)
 
@@ -53,13 +53,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.signalGroupingUpdate.connect(self._updateGrouping)
         self.groupingDropDown.currentIndexChanged.connect(self.onGroupingChanged)
 
-        self.calibrantDropDown = QComboBox()
-        self.calibrantDropDown.setEnabled(False)
-        self.calibrantDropDown.addItem("Select Calibrant")
-        self.calibrantDropDown.addItems(calibrantSamples)
-        self.calibrantDropDown.model().item(0).setEnabled(False)
-        self.signalCalibrantUpdate.connect(self._updateCalibrant)
-
         self.smoothingSlider = QSlider(Qt.Horizontal)
         self.smoothingSlider.setMinimum(0)
         self.smoothingSlider.setMaximum(100)
@@ -74,7 +67,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout.addWidget(LabeledField("Smoothing Parameter:", self.smoothingSlider, self))
         self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self))
         self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self))
-        self.layout.addWidget(LabeledField("Calibrant :", self.calibrantDropDown, self))
 
     def _updateRunNumber(self, runNumber):
         self.fieldRunNumber.setText(runNumber)
@@ -99,12 +91,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
     def updateGrouping(self, groupingIndex):
         self.signalGroupingUpdate.emit(groupingIndex)
-
-    def _updateCalibrant(self, calibrantIndex):
-        self.calibrantDropDown.setCurrentIndex(calibrantIndex)
-
-    def updateCalibrant(self, calibrantIndex):
-        self.signalCalibrantUpdate.emit(calibrantIndex)
 
     def onSmoothingValueChanged(self, value):
         self.smoothingValue = value / 100.0

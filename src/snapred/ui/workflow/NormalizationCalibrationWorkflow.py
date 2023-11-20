@@ -41,14 +41,10 @@ class NormalizationCalibrationWorkflow:
         request = SNAPRequest(path="config/groupingFiles")
         self.groupingFiles = self.interfaceController.executeRequest(request).data
 
-        request = SNAPRequest(path="config/calibrantSamples")
-        self.calibrantSamples = self.interfaceController.executeRequest(request).data
-
         self._normalizationCalibrationView = NormalizationCalibrationRequestView(
             jsonForm,
             self.samplePaths,
             self.groupingFiles,
-            self.calibrantSamples,
             parent=parent,
         )
 
@@ -57,7 +53,6 @@ class NormalizationCalibrationWorkflow:
             self.assessmentSchema,
             samples=self.samplePaths,
             groups=self.groupingFiles,
-            calibrantSamples=self.calibrantSamples,
             parent=parent,
         )
 
@@ -94,16 +89,13 @@ class NormalizationCalibrationWorkflow:
         smoothingParameter = view.getFieldText("smoothingParameter")
         self.sampleIndex = view.sampleDropDown.currentIndex()
         groupingIndex = view.groupingFileDropDown.currentIndex()
-        self.calibrantIndex = view.calibrantSampleDropDown.currentIndex()
         self.samplePath = view.sampleDropDown.currentText()
         self.groupingPath = view.groupingFileDropDown.currentText()
-        self.calibrantPath = view.calibrantSampleDropDown.currentText()
 
         self._specifyNormalizationView.updateSample(self.sampleIndex)
         self._specifyNormalizationView.updateRunNumber(self.runNumber)
         self._specifyNormalizationView.updateBackgroundRunNumber(self.backgroundRunNumber)
         self._specifyNormalizationView.updateGrouping(groupingIndex)
-        self._specifyNormalizationView.updateCalibrant(self.calibrantIndex)
 
         # self._saveNormalizationCalibrationView.updateSample(sampleIndex)
         # self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
@@ -152,7 +144,6 @@ class NormalizationCalibrationWorkflow:
             backgroundRunNumber=self.backgroundRunNumber,
             samplePath=self.samplePath,
             groupingPath=self.groupingFiles[groupingIndex],
-            calibrantPath=self.calibrantPath,
             smoothingParameter=smoothingParameter,
         )
 

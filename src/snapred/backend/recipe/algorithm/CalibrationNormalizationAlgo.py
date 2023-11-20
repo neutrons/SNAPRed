@@ -1,4 +1,5 @@
 import json
+from typing import Any, Dict
 
 from mantid.api import (
     AlgorithmFactory,
@@ -21,15 +22,15 @@ from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import Smooth
 name = "CalibrationNormalizationAlgo"
 
 
-class CalibrationNormalization(PythonAlgorithm):
+class CalibrationNormalizationAlgo(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "ws_in_normalization", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty("InputWorkspace", "ws_in_normalization", Direction.Input, PropertyMode.Optional),
             doc="Workspace containing the raw vanadium data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("BackgroundWorkspace", "ws_background", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty("BackgroundWorkspace", "ws_background", Direction.Input, PropertyMode.Optional),
             doc="Workspace containing the raw vanadium background data",
         )
         self.declareProperty(
@@ -45,42 +46,15 @@ class CalibrationNormalization(PythonAlgorithm):
     def chopIngredients(self, ingredients: Ingredients):
         self.reductionIngredients = ingredients.reductionIngredients
         self.backgroundReductionIngredients = ingredients.backgroundReductionIngredients
-        self.calibrationRecord = ingredients.calibrationRecord
         self.calibrantSample = ingredients.calibrantSample
-        self.calibrationWorkspace = ingredients.calibrationWorkspace
         self.instrumentState = ingredients.instrumentState
         self.focusGroup = ingredients.focusGroup
         self.smoothDataIngredients = ingredients.smoothDataIngredients
-        yield
+        pass
 
     def PyExec(self):
-        ingredients = Ingredients(**json.loads(self.getProperty("Ingredients").value))
+        ingredients: Ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
-
-        runIpts = self.reductionIngredients.runConfig.IPTS
-        backIpts = self.backgroundReductionIngredients.runConfig.IPTS
-
-        runVanadiumFilePath = runIpts + "shared/lite/SNAP_{}.lite.nxs.h5".format(
-            self.reductionIngredients.runConfig.runNumber
-        )
-        backgroundVanadiumFilePath = backIpts + "shared/lite/SNAP_{}.lite.nxs.h5".format(
-            self.backgroundReductionIngredients.runConfig.runNumber
-        )
-
-        self.mantidSnapper.LoadEventNexus(
-            Filename=runVanadiumFilePath,
-            OutputWorkspace=f"{self.reductionIngredients.runConfig.runNumber}_input_WS",
-        )
-
-        self.mantidSnapper.LoadEventNexus(
-            Filename=backgroundVanadiumFilePath,
-            OutputWorkspace=f"{self.reductionIngredients.runConfig.runNumber}_background_input_WS",
-        )
-
-        self.setProperty("InputWorkspace", f"{self.reductionIngredients.runConfig.runNumber}_input_WS")
-        self.setProperty(
-            "BackgroundWorkspace", f"{self.backgroundReductionIngredients.runConfig.runNumber}_background_input_WS"
-        )
 
         inputWSName = str(self.getProperty("InputWorkspace").value)
         backgroundWSName = str(self.getProperty("BackgroundWorkspace").value)
@@ -88,28 +62,28 @@ class CalibrationNormalization(PythonAlgorithm):
         # run the algo
         self.log().notice("Execution of CalibrationNormalizationAlgo START!")
 
+        rawVanadiumWSName = f"{inputWSName}_raw_vanadium_data"
         self.mantidSnapper.RawVanadiumCorrectionAlgorithm(
             "Correcting Vanadium Data...",
             InputWorkspace=inputWSName,
             BackgroundWorkspace=backgroundWSName,
-            CalibrationWorkspace=self.calibrationWorkspace.json(),  # remove this
             Ingredients=self.reductionIngredients.json(),
             CalibrantSample=self.calibrantSample.json(),
-            OutputWorkspace=f"{inputWSName}_raw_vanadium_data",
+            OutputWorkspace=rawVanadiumWSName,
         )
 
+        groupingWSName = f"{inputWSName}_{self.focusGroup.name}_grouping_WS"
         self.mantidSnapper.LoadGroupingDefinition(
             f"Loading grouping file for focus group {self.focusGroup.name}...",
             GroupingFilename=self.focusGroup.definition,
-            InstrumentDonor=f"{inputWSName}_raw_vanadium_data",
-            OutputWorkspace=f"{inputWSName}{self.focusGroup.name}_grouping_WS",
+            InstrumentDonor=rawVanadiumWSName,
+            OutputWorkspace=groupingWSName,
         )
 
         focusedWSName = f"{inputWSName}_{self.focusGroup.name}_focused_data"
-        groupingWSName = f"{inputWSName}_{self.focusGroup.name}_grouping_WS"
         self.mantidSnapper.DiffractionFocussing(
             "Performing Diffraction Focusing ...",
-            InputWorkspace=f"{inputWSName}_raw_vanadium_data",
+            InputWorkspace=rawVanadiumWSName,
             GroupingWorkspace=groupingWSName,
             OutputWorkspace=focusedWSName,
             PreserveEvents=True,
@@ -117,23 +91,34 @@ class CalibrationNormalization(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
         rebinRaggedFocussedWSName = f"data_rebinned_ragged_{inputWSName}_{self.focusGroup.name}"
-        self.mantidSnapper.RebinRagged(
-            "Rebinning ragged bins...",
-            InputWorkspace=focusedWSName,
-            XMin=self.instrumentState.PixelGroupingParameters.dResolution.minimum,
-            XMax=self.instrumentState.PixelGroupingParameters.dResolution.maximum,
-            Delta=(
-                self.instrumentState.PixelGroupingParameters.dRelativeResolution
-                / self.instrumentState.InstrumentConfig.NBins
-            ),
-            OutputWorkspace=rebinRaggedFocussedWSName,
-            PreserveEvents=True,
-        )
+        if (
+            self.instrumentState.pixelGroupingInstrumentParameters is not None
+            and len(self.instrumentState.pixelGroupingInstrumentParameters) > 0
+        ):
+            pixelGroupingParam = self.instrumentState.pixelGroupingInstrumentParameters
+
+            dResolutionMin = [pgp.dResolution.minimum for pgp in pixelGroupingParam]
+            dResolutionMax = [pgp.dResolution.maximum for pgp in pixelGroupingParam]
+            dRelativeResolution = [
+                (pgp.dRelativeResolution / self.instrumentState.instrumentConfig.NBins) for pgp in pixelGroupingParam
+            ]
+
+            self.mantidSnapper.RebinRagged(
+                "Rebinning ragged bins...",
+                InputWorkspace=focusedWSName,
+                XMin=dResolutionMin,
+                XMax=dResolutionMax,
+                Delta=dRelativeResolution,
+                OutputWorkspace=rebinRaggedFocussedWSName,
+                PreserveEvents=True,
+            )
+
+        else:
+            raise Exception("Pixel grouping instrument parameters not defined!")
 
         clonedWSName = f"{focusedWSName}_clone_focused_data"
         self.mantidSnapper.CloneWorkspace(
             "Cloning input workspace for lite data creation...",
-            # InputWorkspace=focused_data,
             InputWorkspace=rebinRaggedFocussedWSName,
             OutputWorkspace=clonedWSName,
         )
@@ -141,23 +126,20 @@ class CalibrationNormalization(PythonAlgorithm):
         smoothedWSName = f"{inputWSName}_{self.focusGroup.name}_smoothed_ws"
         self.mantidSnapper.SmoothDataExcludingPeaks(
             "Fit and Smooth Peaks...",
-            # InputWorkspace=focused_data,
             InputWorkspace=clonedWSName,
-            SmoothDataExcludingPeaksIngredients=self.smoothDataIngredients.json(),
+            Ingredients=self.smoothDataIngredients.json(),
             OutputWorkspace=smoothedWSName,
         )
-
-        self.mantidSnapper.executeQueue()
 
         self.mantidSnapper.WashDishes(
             "Washing dishes...",
             WorkspaceList=[
-                f"{self.reductionIngredients.runConfig.runNumber}_input_WS",
-                f"{self.backgroundReductionIngredients.runConfig.runNumber}_background_input_WS",
-                f"{inputWSName}_raw_vanadium_data",
-                f"{inputWSName}_{self.focusGroup.name}_focused_data",
-                f"{inputWSName}_{self.focusGroup.name}_grouping_WS",
-                f"{focusedWSName}_clone_focused_data",
+                inputWSName,
+                backgroundWSName,
+                rawVanadiumWSName,
+                groupingWSName,
+                focusedWSName,
+                clonedWSName,
             ],
         )
 
@@ -173,4 +155,4 @@ class CalibrationNormalization(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(CalibrationNormalization)
+AlgorithmFactory.subscribe(CalibrationNormalizationAlgo)

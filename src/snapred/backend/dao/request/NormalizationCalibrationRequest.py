@@ -11,5 +11,4 @@ class NormalizationCalibrationRequest(BaseModel):
     backgroundRunNumber: str
     samplePath: str
     groupingPath: str
-    calibrantPath: str
     smoothingParameter: float

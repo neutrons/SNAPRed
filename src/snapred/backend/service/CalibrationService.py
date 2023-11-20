@@ -16,6 +16,7 @@ from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
+    GroceryListItem,
     NormalizationCalibrationIngredients,
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
@@ -34,10 +35,11 @@ from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.CalibrationNormalizationRecipe import CalibrationNormalizationRecipe
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
+from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
-    CalibrationNormalizationRecipe,
     CalibrationReductionRecipe,
     DetectorPeakPredictorRecipe,
     FitMultiplePeaksRecipe,
@@ -320,16 +322,10 @@ class CalibrationService(Service):
     def normalization(self, request: NormalizationCalibrationRequest):
         reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber)
         backgroundReductionIngredients = self.dataFactoryService.getReductionIngredients(request.backgroundRunNumber)
-        runConfig = self.dataFactoryService.getRunConfig(request.runNumber)
-        calibrationRecord = self.load(runConfig)
-        calibrantSample = self.dataFactoryService.getCalibrantSample(request.calibrantPath)
         groupingFile = request.groupingPath
+        calibrantSample = self.dataFactoryService.getCalibrantSample(request.samplePath.split("/")[-1].split(".")[0])
         sampleFilePath = self.dataFactoryService.getCifFilePath(request.samplePath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(sampleFilePath)["crystalInfo"]
-
-        # NOTE: How do we know there aren't more than one workspace names within CalibrationRecord?
-        #       CalibrationRecord records a list of workspace names...
-        calibrationWorkspace = calibrationRecord.workspaceNames[0]
 
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             request.runNumber,
@@ -345,15 +341,31 @@ class CalibrationService(Service):
         normalizationIngredients = NormalizationCalibrationIngredients(
             reductionIngredients=reductionIngredients,
             backgroundReductionIngredients=backgroundReductionIngredients,
-            calibrationRecord=calibrationRecord,
-            calibrantSample=calibrantSample,
             focusGroup=focusGroup,
+            calibrantSample=calibrantSample,
             instrumentState=instrumentState,
-            calibrationWorkspace=calibrationWorkspace,
             smoothDataIngredients=smoothDataIngredients,
         )
 
-        return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients)
+        groceryList = [
+            GroceryListItem(
+                workspaceType="nexus",
+                runConfig=reductionIngredients.runConfig,
+                loader="LoadEventNexus",
+            ),
+            GroceryListItem(
+                workspaceType="nexus",
+                runConfig=backgroundReductionIngredients.runConfig,
+                loader="LoadEventNexus",
+            ),
+        ]
+        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
+        groceries = {
+            "InputWorkspace": workspaceList[0],
+            "BackgroundWorkspace": workspaceList[1],
+        }
+
+        return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients, groceries)
 
     @FromString
     def normalizationAssessment(self, request: SpecifyNormalizationRequest):
