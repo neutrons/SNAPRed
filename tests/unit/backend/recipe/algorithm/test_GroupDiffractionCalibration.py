@@ -21,11 +21,12 @@ from snapred.meta.Config import Resource
 
 
 class TestGroupDiffractionCalibration(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
-        self.fakeDBin = abs(0.001)
-        self.fakeRunNumber = "555"
-        fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
+        cls.fakeDBin = abs(0.001)
+        cls.fakeRunNumber = "555"
+        fakeRunConfig = RunConfig(runNumber=str(cls.fakeRunNumber))
 
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
         fakeInstrumentState.particleBounds.tof.minimum = 10
@@ -62,7 +63,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             ],
         }
 
-        self.fakeIngredients = DiffractionCalibrationIngredients(
+        cls.fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
@@ -71,11 +72,27 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             convergenceThreshold=1.0,
         )
 
-        self.fakeRawData = f"_test_groupcal_{self.fakeRunNumber}"
-        self.fakeGroupingWorkspace = f"_test_groupcal_difc_{self.fakeRunNumber}"
-        self.makeFakeNeutronData(self.fakeRawData, self.fakeGroupingWorkspace)
+        cls.fakeRawData = f"_test_groupcal_{cls.fakeRunNumber}"
+        cls.fakeGroupingWorkspace = f"_test_groupcal_difc_{cls.fakeRunNumber}"
+        cls.difcWS = f"_{cls.fakeRunNumber}_difcs_test"
+        cls.makeFakeNeutronData(cls.fakeRawData, cls.fakeGroupingWorkspace, cls.difcWS)
 
-    def makeFakeNeutronData(self, rawWSname, focusWSname):
+    @classmethod
+    def tearDownClass(cls) -> None:
+        from mantid.simpleapi import DeleteWorkspace
+
+        """
+        Delete all workspaces created by this test, and remove the ceated filed.
+        This is run once at the end of this test suite.
+        """
+        for ws in [cls.fakeRawData, cls.fakeGroupingWorkspace, cls.difcWS]:
+            try:
+                DeleteWorkspace(ws)
+            except:  # noqa: E722
+                pass
+        return super().tearDownClass()
+
+    def makeFakeNeutronData(self, rawWSname, focusWSname, difcws):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
         from mantid.simpleapi import (
             CreateSampleWorkspace,
@@ -118,33 +135,14 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             InputWorkspace=rawWSname,
             OutputWorkspace=focusWSname,
         )
-
-    def initDIFCTable(self, difcws: str):
-        from mantid.simpleapi import (
-            CreateWorkspace,
-            DeleteWorkspace,
-            LoadInstrument,
-        )
-
-        # load an instrument, requires a workspace to load into
-        CreateWorkspace(
-            OutputWorkspace="idf",
-            DataX=1,
-            DataY=1,
-        )
-        LoadInstrument(
-            Workspace="idf",
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
-            RewriteSpectraMap=False,
-        )
+        # also create the DIFCprev table
         cc = CalculateDiffCalTable()
         cc.initialize()
-        cc.setProperty("InputWorkspace", "idf")
+        cc.setProperty("InputWorkspace", rawWSname)
         cc.setProperty("CalibrationTable", difcws)
         cc.setProperty("OffsetMode", "Signed")
         cc.setProperty("BinWidth", self.fakeDBin)
         cc.execute()
-        DeleteWorkspace("idf")
 
     def test_chop_ingredients(self):
         """Test that ingredients for algo are properly processed"""
@@ -168,10 +166,6 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
 
     def test_execute(self):
         """Test that the algorithm executes"""
-        # we need to create a DIFC table before we can run
-        difcWS: str = f"_{self.fakeRunNumber}_difcs_test"
-        self.initDIFCTable(difcWS)
-
         # now run the algorithm
         algo = ThisAlgo()
         algo.initialize()
@@ -180,7 +174,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
         algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
         algo.setProperty("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
-        algo.setProperty("PreviousCalibrationTable", difcWS)
+        algo.setProperty("PreviousCalibrationTable", self.difcWS)
         assert algo.execute()
 
     # TODO more and more better tests of behavior

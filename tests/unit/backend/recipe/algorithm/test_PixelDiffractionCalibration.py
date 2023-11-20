@@ -195,10 +195,6 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             allOffsets.append(data["medianOffset"])
             assert allOffsets[-1] <= max(1.0e-4, allOffsets[-2])
 
-    def test_chop_neutron_data(self):
-        # TODO: test it
-        pass
-
 
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
