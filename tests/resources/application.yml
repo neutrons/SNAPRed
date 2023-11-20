@@ -73,6 +73,23 @@ calibration:
         - 2
       peakTailCoefficient: 2.0
 
+mantid:
+    workspace:
+      nameTemplate:
+        delimiter: "_"
+        run: "{unit},{group},{lite},{runNumber},{auxilary}"
+        diffCal:
+          input: "_{unit},{runNumber},raw"
+          table: "_DIFC,{runNumber}"
+        units:
+          dSpacing: dsp
+          timeOfFlight: tof
+        groups:
+          unfocussed: unfoc
+          all: all
+          column: column
+          bank: bank
+
 localdataservice:
   config:
     verifypaths: true

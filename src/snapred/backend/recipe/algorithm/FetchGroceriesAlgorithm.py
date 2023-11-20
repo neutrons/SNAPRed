@@ -44,7 +44,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             doc="Path to file to be loaded",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("Workspace", "", Direction.Output, PropertyMode.Optional),
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="Workspace containing the loaded data",
         )
         self.declareProperty(
@@ -75,8 +75,8 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
     def validateInputs(self) -> Dict[str, str]:
         # cannot load a grouping workspace with a nexus loader
         issues: Dict[str, str] = {}
-        if self.getProperty("Workspace").isDefault:
-            issues["Workspace"] = "Must specify the Workspace to load into"
+        if self.getProperty("OutputWorkspace").isDefault:
+            issues["OutputWorkspace"] = "Must specify the Workspace to load into"
         instrumentSources = [
             self.getPropertyValue("InstrumentName"),
             self.getPropertyValue("InstrumentFilename"),
@@ -91,7 +91,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
 
     def PyExec(self) -> None:
         filename = self.getPropertyValue("Filename")
-        outWS = self.getPropertyValue("Workspace")
+        outWS = self.getPropertyValue("OutputWorkspace")
         loaderType = self.getPropertyValue("LoaderType")
         # TODO: do we need to guard this with an if?
         if not self.mantidSnapper.mtd.doesExist(outWS):
