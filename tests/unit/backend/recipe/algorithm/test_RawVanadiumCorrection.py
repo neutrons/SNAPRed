@@ -4,14 +4,10 @@ import unittest
 
 import pytest
 from mantid.simpleapi import (
-    AddSampleLog,
-    CalculateDIFC,
     CloneWorkspace,
-    CreateEmptyTableWorkspace,
     CreateSampleWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
-    DeleteWorkspaces,
     LoadInstrument,
     Plus,
     Rebin,
@@ -84,8 +80,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             crystallography=fakeXtal,
         )
 
-        self.sample_proton_charge = 10.0
-
         # create some sample data
         self.backgroundWS = "_test_data_raw_vanadium_background"
         self.sampleWS = "_test_data_raw_vanadium"
@@ -102,13 +96,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
             Random=True,
         )
-        # add proton charge for current normalization
-        AddSampleLog(
-            Workspace=self.backgroundWS,
-            LogName="gd_prtn_chrg",
-            LogText=f"{self.sample_proton_charge}",
-            LogType="Number",
-        )
+
         # load an instrument into sample data
         LoadInstrument(
             Workspace=self.backgroundWS,
@@ -140,23 +128,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             OutputWorkspace=self.sampleWS,
         )
         DeleteWorkspace("_tmp_raw_vanadium")
-
-        self.difcWS = "_difc_table_raw_vanadium"
-        ws = CalculateDIFC(
-            InputWorkspace=self.sampleWS,
-            OutputWorkspace=self.difcWS,
-            OffsetMode="Signed",
-            BinWidth=TOFBinParams[1],
-        )
-        difc = CreateEmptyTableWorkspace()
-        difc.addColumn("int", "detid")
-        difc.addColumn("double", "difc")
-        difc.addColumn("double", "tzero")
-        difc.addColumn("double", "difa")
-        for i in range(ws.getNumberHistograms()):
-            difc.addRow([i + 1, ws.readY(i)[0], 0.0, 0.0])
-        DeleteWorkspace(self.difcWS)
-        self.difcWS = difc.name()
 
         Rebin(
             InputWorkspace=self.sampleWS,
@@ -227,45 +198,30 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             DataY=dataY,
             UnitX="TOF",
         )
-        AddSampleLog(
-            Workspace=testWS,
-            LogName="gd_prtn_chrg",
-            LogText=f"{self.sample_proton_charge}",
-            LogType="Number",
-        )
-
-        difc = CreateEmptyTableWorkspace()
-        difc.addColumn("int", "detid")
-        difc.addColumn("double", "difc")
-        difc.addColumn("double", "tzero")
-        difc.addColumn("double", "difa")
-        difc.addRow([0, 7000, 0, 0])
-        difc = difc.name()
 
         algo = Algo()
         algo.initialize()
-        algo.setProperty("CalibrationWorkspace", difc)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.chopIngredients(self.fakeIngredients)
         algo.TOFPars = (2, 2, 4)
         algo.chopNeutronData(testWS)
 
-        dataXnorm = []
-        dataYnorm = []
+        dataX_TOFselected = []
+        dataY_TOFselected = []
         for x, y in zip(dataX, dataY):
             if x >= algo.TOFPars[0] and x <= algo.TOFPars[2]:
-                dataXnorm.append(x)
-                dataYnorm.append(y / self.sample_proton_charge)
+                dataX_TOFselected.append(x)
+                dataY_TOFselected.append(y)
 
-        print(dataXnorm, dataYnorm)
-        dataXrebin = [sum(dataXnorm) / len(dataXnorm)]
-        dataYrebin = [sum(dataYnorm[:-1])]
+        print(dataX_TOFselected, dataY_TOFselected)
+        dataXrebin = [sum(dataX_TOFselected) / len(dataX_TOFselected)]
+        dataYrebin = [sum(dataY_TOFselected[:-1])]
 
         ws = mtd[testWS]
         assert ws.readX(0) == dataXrebin
         assert ws.readY(0) == dataYrebin
 
-        DeleteWorkspaces([testWS, difc])
+        DeleteWorkspace(testWS)
 
     def test_execute(self):
         """Test that the algorithm executes"""
@@ -273,7 +229,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.sampleWS)
         algo.setProperty("BackgroundWorkspace", self.backgroundWS)
-        algo.setProperty("CalibrationWorkspace", self.difcWS)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("CalibrantSample", self.calibrantSample.json())
         algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")
