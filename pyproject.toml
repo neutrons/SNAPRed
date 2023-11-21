@@ -8,6 +8,8 @@ license = { text = "GPL3.0" }
 
 [tools.setuptools.dynamic.dependecies]
 
+[project.scripts]
+snapred = "snapred.__main__:main"
 
 [build-system]
 requires = ["setuptools", "wheel", "toml", "versioningit"]
