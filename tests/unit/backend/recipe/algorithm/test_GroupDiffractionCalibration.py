@@ -92,7 +92,8 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
                 pass
         return super().tearDownClass()
 
-    def makeFakeNeutronData(self, rawWSname, focusWSname, difcws):
+    @classmethod
+    def makeFakeNeutronData(cls, rawWSname, focusWSname, difcws):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
         from mantid.simpleapi import (
             CreateSampleWorkspace,
@@ -101,8 +102,8 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             Rebin,
         )
 
-        TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
-        TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
+        TOFMin = cls.fakeIngredients.instrumentState.particleBounds.tof.minimum
+        TOFMax = cls.fakeIngredients.instrumentState.particleBounds.tof.maximum
 
         # prepare with test data in TOF
         CreateSampleWorkspace(
@@ -131,7 +132,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         )
         # also load the focus grouping workspace
         LoadDetectorsGroupingFile(
-            InputFile=self.fakeIngredients.focusGroup.definition,
+            InputFile=cls.fakeIngredients.focusGroup.definition,
             InputWorkspace=rawWSname,
             OutputWorkspace=focusWSname,
         )
@@ -141,7 +142,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         cc.setProperty("InputWorkspace", rawWSname)
         cc.setProperty("CalibrationTable", difcws)
         cc.setProperty("OffsetMode", "Signed")
-        cc.setProperty("BinWidth", self.fakeDBin)
+        cc.setProperty("BinWidth", cls.fakeDBin)
         cc.execute()
 
     def test_chop_ingredients(self):

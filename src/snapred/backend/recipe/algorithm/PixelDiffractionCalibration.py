@@ -83,7 +83,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # set the max offset
         self.maxOffset: float = ingredients.maxOffset
 
-    def unbagGroceries(self) -> None:
+    def unbagGroceries(self, ingredients: Ingredients) -> None:  # noqa ARG002
         """
         Process input neutron data
         """
