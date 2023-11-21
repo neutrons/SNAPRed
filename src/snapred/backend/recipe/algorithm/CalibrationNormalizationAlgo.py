@@ -83,11 +83,20 @@ class CalibrationNormalization(PythonAlgorithm):
             InstrumentDonor=rawVanadiumWSName,
             OutputWorkspace=groupingWSName,
         )
+        dSpacingRawWSName = f"{rawVanadiumWSName}_dSpacing"
+        self.mantidSnapper.ConvertUnits(
+            "Converting to Units of dSpacing...",
+            InputWorkspace=rawVanadiumWSName,
+            Emode="Elastic",
+            Target="dSpacing",
+            OutputWorkspace=dSpacingRawWSName,
+            ConvertFromPointData=True,
+        )
 
         focusedWSName = f"{inputWSName}_{self.focusGroup.name}_focused_data"
         self.mantidSnapper.DiffractionFocussing(
             "Performing Diffraction Focusing ...",
-            InputWorkspace=rawVanadiumWSName,
+            InputWorkspace=dSpacingRawWSName,
             GroupingWorkspace=groupingWSName,
             OutputWorkspace=focusedWSName,
             PreserveEvents=True,
@@ -141,6 +150,7 @@ class CalibrationNormalization(PythonAlgorithm):
                 inputWSName,
                 backgroundWSName,
                 rawVanadiumWSName,
+                dSpacingRawWSName,
                 groupingWSName,
                 focusedWSName,
                 clonedWSName,
