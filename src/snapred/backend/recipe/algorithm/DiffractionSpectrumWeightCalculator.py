@@ -69,6 +69,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             for peak in predictedPeaks[groupID]:
                 mask_indices = np.where(np.logical_and(x > peak.position.minimum, x < peak.position.maximum))
                 weights[mask_indices] = 0.0
+                mask_indices = [x for x in mask_indices[0] if x < len(weights)]
             weight_ws.setY(index, weights)
 
         return weight_ws
