@@ -102,7 +102,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         )
         # also load the focus grouping workspace
         LoadDetectorsGroupingFile(
-            InputFile=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
+            InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
             InputWorkspace=rawWsName,
             OutputWorkspace=focusWSname,
         )

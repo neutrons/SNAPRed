@@ -42,7 +42,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             dMin=[0.02, 0.05, 0.02, 0.03],
             dMax=[0.36, 0.41, 0.65, 0.485],
             dBin=[0.00086, 0.00096, 0.00130, 0.00117],
-            definition=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
+            definition=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
         )
         peakLists: Dict[int, List[Any]] = {
             3: [

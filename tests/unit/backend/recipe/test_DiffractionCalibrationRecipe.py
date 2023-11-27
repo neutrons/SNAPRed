@@ -80,12 +80,12 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         )
         LoadInstrument(
             Workspace=self.fakeRawData,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml"),
             RewriteSpectraMap=True,
         )
         self.fakeGroupingWorkspace = "_test_diffcal_rx_grouping"
         LoadDetectorsGroupingFile(
-            InputFile=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
+            InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
             InputWorkspace=self.fakeRawData,
             OutputWorkspace=self.fakeGroupingWorkspace,
         )
@@ -271,7 +271,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             RewriteSpectraMap=True,
         )
         LoadDetectorsGroupingFile(
-            InputFile=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
+            InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
             InputWorkspace=rawWS,
             OutputWorkspace=groupingWS,
         )
