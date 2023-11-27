@@ -18,6 +18,7 @@ runNumber = "58882"
 
 dataFactoryService = DataFactoryService()
 
+
 print(Config["nexus.native.prefix"])
 run = RunConfig(
     runNumber=runNumber,
@@ -30,8 +31,7 @@ fetchRx.fetchDirtyNexusData(run)
 
 LDCA = LiteDataCreationAlgo()
 LDCA.initialize()
-LDCA.setProperty("InputWorkspace", f"_TOF_58882")
-LDCA.setProperty("RunConfig", run.json())
+LDCA.setProperty("InputWorkspace", f"tof_all_58882")
 LDCA.setProperty("AutoDeleteNonLiteWS", True)
 LDCA.setProperty("OutputWorkspace", f"{runNumber}_lite")
 LDCA.execute()

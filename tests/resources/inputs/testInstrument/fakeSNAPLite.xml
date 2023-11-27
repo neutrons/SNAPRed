@@ -43,46 +43,44 @@
     <location x="+2.0+value" z="-5.0+value"/>
   </component>
 
-  <type name="Column1">
-    <component type="panel" idstart="0" idfillbyfirst="x" idstepbyrow="1" >
-      <location name="bank1">
-        <trans x="0.0" y="+1" />
+  <type name="Column1">/
+    <component type="pixel" idlist="column1-id-list">
+      <location name="pixel1">
+        <trans x="0.0" y="+2" />
       </location>
-    </component>
-    <component type="panel" idstart="1" idfillbyfirst="y" idstepbyrow="1" >
-      <location name="bank2">
-        <trans x="0.0" y="-1" />
+      <location name="pixel2">
+        <trans x="0.0" y="-2" />
       </location>
     </component>
   </type>
 
   <type name="Column2">
-    <component type="panel" idstart="2" idfillbyfirst="y" idstepbyrow="1" >
-      <location name="bank3">
-        <trans x="0.0" y="+1" />
+    <component type="pixel" idlist="column2-id-list">
+      <location name="pixel3">
+        <trans x="0.0" y="+2" />
       </location>
-    </component>
-    <component type="panel" idstart="3" idfillbyfirst="y" idstepbyrow="1" >
-      <location name="bank4">
-        <trans x="0.0" y="-1" />
+      <location name="pixel4">
+        <trans x="0.0" y="-2" />
       </location>
     </component>
   </type>
 
-<!-- Rectangular Detector Panel -->
-<type name="panel" is="rectangular_detector" type="pixel"
-    xpixels="1" xstart="-1.0" xstep="+2"
-    ypixels="1" ystart="-1.0" ystep="+2" >
-  <properties/>
-</type>
+  <idlist idname="column1-id-list">
+    <id val="0" />
+    <id val="1" />
+  </idlist>
+  <idlist idname="column2-id-list">
+    <id val="2" />
+    <id val="3" />
+  </idlist>
 
 <!-- Pixel for Detectors-->
 <type name="pixel" is="detector">
   <cuboid id="pixel-shape">
-    <left-front-bottom-point  y="-0.50" x="-0.50" z="0.0"/>
-    <left-front-top-point     y="+0.50" x="-0.50" z="0.0"/>
-    <left-back-bottom-point   y="-0.50" x="-0.50" z="0.01"/>
-    <right-front-bottom-point y="-0.50" x="+0.50" z="0.0"/>
+    <left-front-bottom-point  y="-0.5" x="-0.5" z="0.0"/>
+    <left-front-top-point     y="+0.5" x="-0.5" z="0.0"/>
+    <left-back-bottom-point   y="-0.5" x="-0.5" z="0.01"/>
+    <right-front-bottom-point y="-0.5" x="+0.5" z="0.0"/>
   </cuboid>
   <algebra val="pixel-shape"/>
 </type>
