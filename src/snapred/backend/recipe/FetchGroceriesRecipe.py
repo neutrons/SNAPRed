@@ -225,7 +225,6 @@ class FetchGroceriesRecipe:
                 raise RuntimeError(str(e).split("\n")[0]) from e
         else:
             data["result"] = True
-            data["workspace"] = self._loadedGroupings[key]
             data["loader"] = ""  # unset the loader to indicate it was unused
         logger.info("Finished loading grouping")
         return data
@@ -257,7 +256,7 @@ class FetchGroceriesRecipe:
                 # if we intend to use the previously loaded workspace as the donor
                 if item.instrumentSource == "prev":
                     item.instrumentPropertySource = "InstrumentDonor"
-                    item.instrumentSource = str(prev)
+                    item.instrumentSource = prev
                 res = self.fetchGroupingDefinition(item)
                 data["result"] &= res["result"]
                 data["workspaces"].append(res["workspace"])
