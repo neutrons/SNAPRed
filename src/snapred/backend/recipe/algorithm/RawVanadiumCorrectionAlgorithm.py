@@ -93,7 +93,7 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             OutputWorkspace=wsName,
         )
         self.mantidSnapper.MakeDirtyDish(
-            "make a copy of data before chop",
+            "make a copy of data after chop",
             InputWorkspace=wsName,
             Outputworkspace=wsName + "_afterChop",
         )
