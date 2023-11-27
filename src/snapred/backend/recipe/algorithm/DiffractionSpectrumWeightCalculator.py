@@ -26,56 +26,47 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, name)
 
-    def chopIngredients(self):
-        # get the peak predictions from user input, or load them
-        if self.getProperty("DetectorPeaks").isDefault:
-            peakString = self.mantidSnapper.DetectorPeakPredictor(
+    def PyExec(self):
+        # get or generate predicted detector peaks
+        predictedPeaksInput = self.getProperty("DetectorPeaks").value
+        if predictedPeaksInput != "":
+            predictedPeaks_json = json.loads(predictedPeaksInput)
+        else:
+            result = self.mantidSnapper.DetectorPeakPredictor(
                 "Predicting peaks...",
                 InstrumentState=self.getProperty("InstrumentState").value,
                 CrystalInfo=self.getProperty("CrystalInfo").value,
                 PeakIntensityFractionThreshold=0.0,
             )
             self.mantidSnapper.executeQueue()
-        else:
-            peakString = self.getPropertyValue("DetectorPeaks")
-        predictedPeaksList = json.loads(str(peakString))
+            predictedPeaks_json = json.loads(result.get())
 
-        self.groupIDs = []
-        self.predictedPeaks = {}
-        for prediction in predictedPeaksList:
+        groupIDs = []
+        predictedPeaks = {}
+        for prediction in predictedPeaks_json:
             groupPeakList = GroupPeakList.parse_obj(prediction)
-            self.groupIDs.append(groupPeakList.groupID)
-            self.predictedPeaks[groupPeakList.groupID] = groupPeakList.peaks
-
-    def unbagGroceries(self):
-        self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
-        if self.getProperty("WeightWorkspace").isDefault:
-            self.outputWorkspaceName = "tmp_weight_ws"
-            self.setPropertyValue("WeightWorkspace", self.outputWorkspaceName)
-        else:
-            self.outputWorkspaceName = self.getPropertyValue("WeightWorkspace")
-
-    def PyExec(self):
-        self.chopIngredients()
-        self.unbagGroceries()
+            groupIDs.append(groupPeakList.groupID)
+            predictedPeaks[groupPeakList.groupID] = groupPeakList.peaks
 
         # clone input workspace to create a weight workspace
+        input_ws_name = self.getProperty("InputWorkspace").value
+        weight_ws_name = self.getProperty("WeightWorkspace").value
         self.mantidSnapper.CloneWorkspace(
-            "Cloning a weighting workspce...",
-            InputWorkspace=self.inputWorkspaceName,
-            OutputWorkspace=self.outputWorkspaceName,
+            f"Cloning {input_ws_name} to {weight_ws_name}...",
+            InputWorkspace=input_ws_name,
+            OutputWorkspace=weight_ws_name,
         )
         self.mantidSnapper.executeQueue()
-        weight_ws = self.mantidSnapper.mtd[self.outputWorkspaceName]
+        weight_ws = self.mantidSnapper.mtd[weight_ws_name]
 
-        for index, groupID in enumerate(self.groupIDs):
+        for index, groupID in enumerate(groupIDs):
             # get spectrum X,Y
             x = weight_ws.readX(index)
             y = weight_ws.readY(index)
             # create and initialize a weights array
             weights = np.ones(len(y))
             # for each peak extent, set zeros to the weights array
-            for peak in self.predictedPeaks[groupID]:
+            for peak in predictedPeaks[groupID]:
                 mask_indices = np.where(np.logical_and(x > peak.position.minimum, x < peak.position.maximum))
                 weights[mask_indices] = 0.0
             weight_ws.setY(index, weights)
