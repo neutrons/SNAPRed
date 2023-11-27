@@ -22,6 +22,7 @@ class FetchGroceriesRecipe:
 
     def __init__(self):
         self._loadedRuns: Dict[(str, str, bool), int] = {}
+        self._loadedGroupings: Dict[(str, bool), str] = {}
 
     def _runKey(self, runConfig: RunConfig) -> Tuple[str, str, bool]:
         return (runConfig.runNumber, runConfig.IPTS, runConfig.isLite)
@@ -132,9 +133,8 @@ class FetchGroceriesRecipe:
             "loader": loader,
             "workspace": workspaceName,
         }
-        thisKey = self._runKey(runConfig)
         # check if a raw workspace exists, and clone it if so
-        if self._loadedRuns.get(thisKey, 0) > 0:
+        if self._loadedRuns.get(self._runKey(runConfig), 0) > 0:
             CloneWorkspace(
                 InputWorkspace=self._createRawNexusWorkspaceName(runConfig),
                 OutputWorkspace=workspaceName,
@@ -172,21 +172,31 @@ class FetchGroceriesRecipe:
         workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.isLite)
         fileName = self._createGroupingFilename(item.groupingScheme, item.isLite)
         logger.info("Fetching grouping definition: %s" % item.groupingScheme)
-        data: Dict[str, Any] = {
-            "result": False,
-            "loader": "LoadGroupingDefinition",
-            "workspace": workspaceName,
-        }
-        algo = FetchAlgo()
-        algo.initialize()
-        algo.setProperty("Filename", fileName)
-        algo.setProperty("OutputWorkspace", workspaceName)
-        algo.setProperty("LoaderType", "LoadGroupingDefinition")
-        algo.setProperty(item.instrumentPropertySource, item.instrumentSource)
-        try:
-            data["result"] = algo.execute()
-        except RuntimeError as e:
-            raise RuntimeError(str(e).split("\n")[0]) from e
+        groupingLoader = "LoadGroupingDefinition"
+        data: Dict[str, Any] = {}
+        key = (item.groupingScheme, item.isLite)
+        if self._loadedGroupings.get(key) is None:
+            algo = FetchAlgo()
+            algo.initialize()
+            algo.setPropertyValue("Filename", fileName)
+            algo.setPropertyValue("OutputWorkspace", workspaceName)
+            algo.setPropertyValue("LoaderType", "LoadGroupingDefinition")
+            algo.setPropertyValue(str(item.instrumentPropertySource), item.instrumentSource)
+            try:
+                data = {
+                    "result": algo.execute(),
+                    "loader": groupingLoader,
+                    "workspace": workspaceName,
+                }
+                self._loadedGroupings[key] = workspaceName
+            except RuntimeError as e:
+                raise RuntimeError(str(e).split("\n")[0]) from e
+        else:
+            data = {
+                "result": True,
+                "loader": "",  # unset the loader to indicate it was unused
+                "workspace": self._loadedGroupings[key],
+            }
         logger.info("Finished loading grouping")
         return data
 
@@ -203,6 +213,7 @@ class FetchGroceriesRecipe:
             "result": True,
             "workspaces": [],
         }
+        prev: str = ""
         for item in groceries:
             if item.workspaceType == "nexus":
                 if item.keepItClean:
@@ -211,11 +222,12 @@ class FetchGroceriesRecipe:
                     res = self.fetchDirtyNexusData(item.runConfig, item.loader)
                 data["result"] &= res["result"]
                 data["workspaces"].append(res["workspace"])
+                prev = res["workspace"]
             elif item.workspaceType == "grouping":
                 # if we intend to use the previously loaded workspace as the donor
                 if item.instrumentSource == "prev":
                     item.instrumentPropertySource = "InstrumentDonor"
-                    item.instrumentSource = data["workspaces"][-1]
+                    item.instrumentSource = prev
                 res = self.fetchGroupingDefinition(item)
                 data["result"] &= res["result"]
                 data["workspaces"].append(res["workspace"])

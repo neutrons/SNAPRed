@@ -108,9 +108,9 @@
           {
             "name": "Column",
             "FWHM": [0],
-            "nHst": 6,
+            "nHst": 1,
             "dBin": [0],
-            "dMax": [0],
+            "dMax": [1],
             "dMin": [0],
             "definition": "nope"
           }

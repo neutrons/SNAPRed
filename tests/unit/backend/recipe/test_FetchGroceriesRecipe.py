@@ -341,9 +341,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
             self.groceryListItemGrouping.isLite,
         )
 
-    def test_name_with_many_underscores_in_it(self):
-        pass
-
     @mock.patch.object(Recipe, "_createGroupingFilename")
     def test_failed_fetch_grouping(self, mockFilename):
         # this is some file that it can't load
