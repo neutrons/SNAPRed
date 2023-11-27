@@ -11,7 +11,15 @@ import h5py
 from mantid.api import AlgorithmManager, mtd
 from pydantic import parse_file_as
 
-from snapred.backend.dao import GSASParameters, InstrumentConfig, Limit, ParticleBounds, RunConfig, StateConfig, StateId
+from snapred.backend.dao import (
+    GSASParameters,
+    InstrumentConfig,
+    Limit,
+    ParticleBounds,
+    RunConfig,
+    StateConfig,
+    StateId,
+)
 from snapred.backend.dao.calibration import Calibration, CalibrationIndexEntry, CalibrationRecord
 from snapred.backend.dao.state import (
     DetectorState,
@@ -100,17 +108,16 @@ class LocalDataService:
 
     def readStateConfig(self, runId: str) -> StateConfig:
         reductionParameters = self._readReductionParameters(runId)
-        diffCalRecord = self.readCalibrationRecord(runId)
-        if diffCalRecord is None:
-            diffCalRecord = self.readCalibrationState(runId)
-            particleBounds = diffCalRecord.instrumentState.particleBounds
+        previousDiffCalRecord: CalibrationRecord = self.readCalibrationRecord(runId)
+        if previousDiffCalRecord is None:
+            diffCalibration: Calibration = self.readCalibrationState(runId)
         else:
-            diffCalRecord = diffCalRecord.calibrationFittingIngredients
-            particleBounds = diffCalRecord.calibrationFittingIngredients.instrumentState.particleBounds
+            diffCalibration: Calibration = previousDiffCalRecord.calibrationFittingIngredients
+        particleBounds = diffCalibration.instrumentState.particleBounds
         stateId, _ = self._generateStateId(runId)
 
         return StateConfig(
-            calibration=diffCalRecord,
+            calibration=diffCalibration,
             focusGroups=self._readFocusGroups(runId),
             isLiteMode=True,  # TODO: Support non lite mode
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
@@ -185,7 +192,6 @@ class LocalDataService:
 
     def _constructPVFilePath(self, runId: str):
         runConfig = self._readRunConfig(runId)
-        breakpoint()
         return (
             runConfig.IPTS
             + self.instrumentConfig.nexusDirectory

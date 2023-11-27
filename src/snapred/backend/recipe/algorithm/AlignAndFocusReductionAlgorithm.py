@@ -48,9 +48,6 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
 
         self.mantidSnapper.executeQueue()
 
-        DMin = []
-        DMax = []
-        DeltaRagged = []
         dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in reductionIngredients.pixelGroupingParameters}
         dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in reductionIngredients.pixelGroupingParameters}
         dBin = {
