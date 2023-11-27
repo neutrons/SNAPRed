@@ -372,7 +372,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["workspace"] == groupingWorkspaceName
         assert rx._loadedGroupings == {groupKey: groupingWorkspaceName}
 
-
     @mock.patch.object(Recipe, "_createGroupingFilename")
     def test_failed_fetch_grouping(self, mockFilename):
         # this is some file that it can't load
