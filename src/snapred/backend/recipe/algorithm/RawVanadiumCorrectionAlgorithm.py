@@ -4,6 +4,7 @@ from typing import Any, Dict, Tuple
 import numpy as np
 from mantid.api import (
     AlgorithmFactory,
+    ITableWorkspaceProperty,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
@@ -27,6 +28,10 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         self.declareProperty(
             MatrixWorkspaceProperty("BackgroundWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the raw vanadium background data",
+        )
+        self.declareProperty(
+            ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Table workspace with calibration data: cols detid, difc, difa, tzero",
         )
         self.declareProperty(
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
@@ -68,6 +73,11 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             XMin=self.TOFPars[0],
             XMax=self.TOFPars[2],
         )
+        self.mantidSnapper.ApplyDiffCal(
+            "Apply diffraction calibration from geometry file",
+            InstrumentWorkspace=wsName,
+            CalibrationWorkspace=self.getProperty("CalibrationWorkspace").value,
+        )
 
         self.mantidSnapper.Rebin(
             "Rebin in log TOF",
@@ -76,6 +86,11 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             PreserveEvents=False,
             OutputWorkspace=wsName,
             BinningMode="Logarithmic",
+        )
+        self.mantidSnapper.NormaliseByCurrent(
+            "Normalize by current",
+            InputWorkspace=wsName,
+            OutputWorkspace=wsName,
         )
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data before chop",
