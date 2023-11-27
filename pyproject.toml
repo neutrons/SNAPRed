@@ -46,6 +46,11 @@ select = ["A", "ARG", "BLE", "E", "F", "I", "PT"]
 ignore = ["F403", "F405", "F401", # wild imports and  unknown names
 ]
 
+[tool.mypy]
+plugins = [
+  "pydantic.mypy"
+]
+
 [[tool.mypy.overrides]]
 module = [
     "yaml",
