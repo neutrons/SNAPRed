@@ -34,7 +34,9 @@ def test_LiteDataCreationAlgo_invalid_input():
 
 def test_fakeInstrument():
     from mantid.simpleapi import (
-        CreateSampleWorkspace,
+        ConvertToEventWorkspace,
+        ConvertToHistogram,
+        CreateWorkspace,
         LoadDetectorsGroupingFile,
         LoadInstrument,
         mtd,
@@ -48,17 +50,22 @@ def test_fakeInstrument():
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
 
-    CreateSampleWorkspace(
+    # create simle event data with a different number in each pixel
+    CreateWorkspace(
         OutputWorkspace=fullInstrumentWS,
-        WorkspaceType="Event",
-        Function="Flat background",
-        Xmin=0,
-        Xmax=1,
-        BinWidth=1,
-        XUnit="TOF",
-        NumBanks=4,
-        BankPixelWidth=2,
+        DataX=[1] * 16,
+        DataY=range(16),
+        NSpec=16,
     )
+    ConvertToHistogram(
+        InputWorkspace=fullInstrumentWS,
+        OutputWorkspace=fullInstrumentWS,
+    )
+    ConvertToEventWorkspace(
+        InputWorkspace=fullInstrumentWS,
+        OutputWorkspace=fullInstrumentWS,
+    )
+    # load the instrument, and load the grouping file
     LoadInstrument(
         Workspace=fullInstrumentWS,
         Filename=fullInstrumentFile,
@@ -70,6 +77,7 @@ def test_fakeInstrument():
         OutputWorkspace=focusWS,
     )
 
+    # run the algorithm
     liteDataCreationAlgo = LiteDataCreationAlgo()
     liteDataCreationAlgo.initialize()
     liteDataCreationAlgo.setPropertyValue("InputWorkspace", fullInstrumentWS)
@@ -78,6 +86,11 @@ def test_fakeInstrument():
     liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
     liteDataCreationAlgo.execute()
 
+    # check that the lite data is correct
+    # 1. check the lite data has four histograms
+    # 2. check each histograms has a single pixel
+    # 3. check the pixel ids of histograms are 0, 1, 2, 3 in order
+    # 4. check each superpixel has the sum corresponding to the four banks
     nHst = 4
     liteWS = mtd[liteInstrumentWS]
     fullWS = mtd[fullInstrumentWS]
