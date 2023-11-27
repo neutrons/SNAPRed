@@ -3,6 +3,7 @@ from typing import Any, Dict
 from mantid.api import AlgorithmManager
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
+from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CrystallographicInfoAlgorithm import CrystallographicInfoAlgorithm as Algo
 from snapred.meta.decorators.Singleton import Singleton
@@ -25,7 +26,8 @@ class CrystallographicInfoRecipe:
 
         try:
             data["result"] = algo.execute()
-            data["crystalInfo"] = CrystallographicInfo.parse_raw(algo.getProperty("crystalInfo").value)
+            data["crystalInfo"] = CrystallographicInfo.parse_raw(algo.getPropertyValue("crystalInfo"))
+            data["crystalStructure"] = Crystallography.parse_raw(algo.getPropertyValue("crystalStructure"))
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])

@@ -16,6 +16,7 @@ from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
+    GroceryListItem,
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
@@ -31,6 +32,7 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
+from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
     CalibrationReductionRecipe,
@@ -117,6 +119,7 @@ class CalibrationService(Service):
         # shopping list
         # 1. full runconfig
         runConfig = self.dataFactoryService.getRunConfig(request.runNumber)
+        runConfig.isLite = request.useLiteMode
         # 2. instrument state
         # 3. focus group
         # get the pixel grouping parameters and load them into the focus group
@@ -124,13 +127,15 @@ class CalibrationService(Service):
         # TODO: This may be pending a refactor and a closer look,
         # based on my convos it should be a correct translation
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            request.runNumber, request.focusGroupPath, nBinsAcrossPeakWidth
+            request.runNumber,
+            request.focusGroupPath,
+            nBinsAcrossPeakWidth,
         )
         # 4. grouped peak list
         # need to calculate these using DetectorPeakPredictor
         # 4a. InstrumentState
         # 4b. CrystalInfo
-        cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
+        cifFilePath = request.cifPath
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # 4c. PeakIntensityThreshold
         peakIntensityThreshold = request.peakIntensityThreshold
@@ -144,9 +149,9 @@ class CalibrationService(Service):
         # this is just the state folder/calibration folder used solely for saving the calibration
         # set it to tmp because we dont know if we want to keep it yet
         # TODO: The algo really shouldnt be saving data unless it has to
+        # TODO: this cal path needs to be exposed in DataFactoryService or DataExportService
         calpath = "~/tmp/"
         # 6. convergence threshold
-
         convergenceThreshold = request.convergenceThreshold
         ingredients = DiffractionCalibrationIngredients(
             runConfig=runConfig,
@@ -156,8 +161,31 @@ class CalibrationService(Service):
             calPath=calpath,
             convergenceThreshold=convergenceThreshold,
         )
+        focusFile = request.focusGroupPath.split("/")[-1]
+        focusName = focusFile.split(".")[0]
+        focusScheme = focusName.split("_")[-1]
 
-        return DiffractionCalibrationRecipe().executeRecipe(ingredients)
+        # get the needed input data
+        groceryList = [
+            GroceryListItem(
+                workspaceType="nexus",
+                runConfig=runConfig,
+                loader="LoadEventNexus",
+            ),
+            GroceryListItem(
+                workspaceType="grouping",
+                groupingScheme=focusScheme,
+                isLite=runConfig.isLite,
+                instrumentPropertySource="InstrumentDonor",
+                instrumentSource="prev",
+            ),
+        ]
+        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
+        groceries = {
+            "inputWorkspace": workspaceList[0],
+            "groupingWorkspace": workspaceList[1],
+        }
+        return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
 
     @FromString
     def save(self, request: CalibrationExportRequest):

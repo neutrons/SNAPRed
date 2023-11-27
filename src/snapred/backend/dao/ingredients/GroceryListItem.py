@@ -3,6 +3,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, root_validator
 
 from snapred.backend.dao import RunConfig
+from snapred.meta.Config import Config
 
 
 class GroceryListItem(BaseModel):
@@ -26,8 +27,14 @@ class GroceryListItem(BaseModel):
                 raise ValueError("you must specify whether to use Lite mode for grouping workspace")
             if v.get("groupingScheme") is None:
                 raise ValueError("you must specify the grouping scheme to use")
-            if v.get("instrumentPropertySource") is None:
-                raise ValueError("a grouping workspace requires an instrument source")
-            if v.get("instrumentSource") is None:
-                raise ValueError("a grouping workspace requries an instrument source")
+            if v["groupingScheme"] == "Lite":
+                # the Lite grouping scheme reduces native resolution to Lite mode
+                v["instrumentPropertySource"] = "InstrumentFilename"
+                v["instrumentSource"] = str(Config["instrument.native.definition.file"])
+                v["isLite"] = False
+            else:
+                if v.get("instrumentPropertySource") is None:
+                    raise ValueError("a grouping workspace requires an instrument source")
+                if v.get("instrumentSource") is None:
+                    raise ValueError("a grouping workspace requries an instrument source")
         return v
