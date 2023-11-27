@@ -16,11 +16,13 @@ Contents
 
 .. toctree::
    :maxdepth: 4
+   :titlesonly:
 
    getting_started
    glossary
    usage
    developer/resources
+   dao
    api/modules
    deploy
    ./ui/workflow/WorkflowBuilder
