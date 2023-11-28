@@ -10,7 +10,6 @@ import random
 import unittest
 import unittest.mock as mock
 from typing import Dict, List
-import time
 
 import os
 os.environ["env"] = "test"
