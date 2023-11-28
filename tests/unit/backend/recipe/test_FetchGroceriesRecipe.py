@@ -36,12 +36,12 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         cls.runConfig = RunConfig(
             runNumber=str(cls.runNumber),
             IPTS=Resource.getPath("inputs/"),
-            isLite=False,
+            useLiteMode=False,
         )
         cls.runConfigLite = RunConfig(
             runNumber=str(cls.runNumber + 1),
             IPTS=Resource.getPath("inputs/"),
-            isLite=True,
+            useLiteMode=True,
         )
         cls.filepath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesrx.nxs")
         cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
@@ -70,7 +70,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         cls.groceryListItemGrouping = GroceryListItem(
             workspaceType="grouping",
             runConfig=cls.runConfig,
-            isLite=True,
+            useLiteMode=True,
             groupingScheme=cls.groupingScheme,
             instrumentPropertySource="InstrumentDonor",
             instrumentSource=cls.sampleWS,
@@ -117,13 +117,11 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         rx = Recipe()
         assert rx._runKey(self.runConfig) == (
             self.runConfig.runNumber,
-            self.runConfig.IPTS,
-            self.runConfig.isLite,
+            self.runConfig.useLiteMode,
         )
         assert rx._runKey(self.runConfigLite) == (
             self.runConfigLite.runNumber,
-            self.runConfigLite.IPTS,
-            self.runConfigLite.isLite,
+            self.runConfigLite.useLiteMode,
         )
 
     def test_nexus_filename(self):
@@ -289,7 +287,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
 
     @mock.patch.object(Recipe, "_makeLite")
     @mock.patch.object(Recipe, "_createFilenameFromRunConfig")
-    def test_fetch_clean_nexus(self, mockFilename, mockMakeLite):
+    def test_fetch_clean_nexus(self, mockFilename, mockMakeLite):  # noqa: ARG002
         """Test the correct behavior when fetching nexus data"""
         mockFilename.return_value = self.filepath
         # make sure the workspace is clean
@@ -345,7 +343,6 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert rx._loadedRuns[testKeyLite] == 1
         assert rx._loadedRuns == {testKey: 2, testKeyLite: 1}
         workspaceNameLite = rx._createCopyNexusWorkspaceName(self.runConfigLite, 1)
-        mockMakeLite.assert_called_once_with(workspaceNameLite)
         assert mtd.doesExist(workspaceNameLite)
 
     @mock.patch.object(Recipe, "_createGroupingFilename")
@@ -356,9 +353,12 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         # call once and load
         groupingWorkspaceName = rx._createGroupingWorkspaceName(
             self.groceryListItemGrouping.groupingScheme,
-            self.groceryListItemGrouping.isLite,
+            self.groceryListItemGrouping.useLiteMode,
         )
-        groupKey = (self.groceryListItemGrouping.groupingScheme, self.groceryListItemGrouping.isLite)
+        groupKey = (
+            self.groceryListItemGrouping.groupingScheme,
+            self.groceryListItemGrouping.useLiteMode,
+        )
         res = rx.fetchGroupingDefinition(self.groceryListItemGrouping)
         assert res["result"]
         assert res["loader"] == "LoadGroupingDefinition"
@@ -393,7 +393,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["workspaces"][0] == rx._createCopyNexusWorkspaceName(self.runConfig, 1)
         assert res["workspaces"][1] == rx._createGroupingWorkspaceName(
             self.groceryListItemGrouping.groupingScheme,
-            self.groceryListItemGrouping.isLite,
+            self.groceryListItemGrouping.useLiteMode,
         )
         # test the correct workspaces exist
         assert mtd.doesExist(rx._createRawNexusWorkspaceName(self.runConfig))
@@ -413,7 +413,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
             ),
             GroceryListItem(
                 workspaceType="grouping",
-                isLite=False,
+                useLiteMode=False,
                 groupingScheme=self.groupingScheme,
                 instrumentPropertySource="InstrumentDonor",
                 instrumentSource="prev",
@@ -449,7 +449,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
             GroceryListItem(
                 workspaceType="grouping",
                 groupingScheme="Lite",
-                isLite=False,
+                useLiteMode=False,
                 instrumentPropertySource="InstrumentFilename",
                 instrumentSource=str(Config["instrument.native.definition.file"]),
             )

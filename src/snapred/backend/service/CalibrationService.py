@@ -119,7 +119,7 @@ class CalibrationService(Service):
         # shopping list
         # 1. full runconfig
         runConfig = self.dataFactoryService.getRunConfig(request.runNumber)
-        runConfig.isLite = request.useLiteMode
+        runConfig.useLiteMode = request.useLiteMode
         # 2. instrument state
         # 3. focus group
         # get the pixel grouping parameters and load them into the focus group
@@ -171,11 +171,12 @@ class CalibrationService(Service):
                 workspaceType="nexus",
                 runConfig=runConfig,
                 loader="LoadEventNexus",
+                useLiteMode=request.useLiteMode,
             ),
             GroceryListItem(
                 workspaceType="grouping",
                 groupingScheme=focusScheme,
-                isLite=runConfig.isLite,
+                useLiteMode=request.useLiteMode,
                 instrumentPropertySource="InstrumentDonor",
                 instrumentSource="prev",
             ),

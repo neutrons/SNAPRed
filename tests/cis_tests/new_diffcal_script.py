@@ -36,7 +36,7 @@ Config._config["cis_mode"] = False
 runConfig = RunConfig(
     runNumber=runNumber,
     IPTS=GetIPTS(RunNumber=runNumber,Instrument='SNAP'), 
-    isLite=isLite,
+    useLiteMode=isLite,
 )
 dataFactoryService = DataFactoryService()
 focusGroup=dataFactoryService.getFocusGroups(runNumber)[0] #column
@@ -80,7 +80,7 @@ groceryList = [
     ),
     GroceryListItem(
         workspaceType="grouping",
-        isLite=isLite,
+        useLiteMode=isLite,
         groupingScheme="Column",
         instrumentPropertySource="InstrumentDonor",
         instrumentSource="prev",

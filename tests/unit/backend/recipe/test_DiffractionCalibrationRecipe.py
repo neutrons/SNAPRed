@@ -36,7 +36,10 @@ TheAlgorithmManager = "hello"
 class TestDiffractionCalibtationRecipe(unittest.TestCase):
     def setUp(self):
         self.fakeRunNumber = "555"
-        fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
+        fakeRunConfig = RunConfig(
+            runNumber=str(self.fakeRunNumber),
+            IPTS="",
+        )
 
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/calibration/sampleInstrumentState.json"))
         fakeInstrumentState.particleBounds.tof.minimum = 1

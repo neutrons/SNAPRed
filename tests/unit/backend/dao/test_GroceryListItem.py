@@ -14,21 +14,30 @@ from snapred.meta.Config import Resource
 
 
 class TestGroceryListItem(unittest.TestCase):
+    # we only need this workspace made once for entire test suite
+    @classmethod
+    def setUpClass(cls):
+        cls.instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.instrumentDonor = "_test_grocerylistitem_instrument"
+        LoadEmptyInstrument(
+            OutputWorkspace=cls.instrumentDonor,
+            Filename=cls.instrumentFilename,
+        )
+        return super().setUpClass()
+
+    # we only need to delete this workspace when the test suite ends
+    @classmethod
+    def tearDownClass(cls) -> None:
+        DeleteWorkspace(cls.instrumentDonor)
+        return super().tearDownClass()
+
+    # at the beginning of each test, make a new runConfig object
     def setUp(self):
         self.runConfig = RunConfig(
             runNumber=555,
             IPTS=Resource.getPath("inputs"),
         )
-        self.instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
-        self.instrumentDonor = f"_test_grocerylistitem_{self.runConfig.runNumber}"
-        LoadEmptyInstrument(
-            OutputWorkspace=self.instrumentDonor,
-            Filename=self.instrumentFilename,
-        )
-
-    def tearDown(self) -> None:
-        DeleteWorkspace(self.instrumentDonor)
-        return super().tearDown()
+        return super().setUp()
 
     def test_make_correct(self):
         """
@@ -39,6 +48,7 @@ class TestGroceryListItem(unittest.TestCase):
             GroceryListItem(
                 workspaceType="nexus",
                 runConfig=self.runConfig,
+                useLiteMode=True,
             )
         except:
             pytest.fail("Failed to make a valid GroceryListItem for nexus")
@@ -46,7 +56,7 @@ class TestGroceryListItem(unittest.TestCase):
         try:
             GroceryListItem(
                 workspaceType="grouping",
-                isLite=True,
+                useLiteMode=True,
                 groupingScheme="Column",
                 instrumentPropertySource="InstrumentDonor",
                 instrumentSource=self.instrumentDonor,
@@ -54,43 +64,45 @@ class TestGroceryListItem(unittest.TestCase):
         except:
             pytest.fail("Failed to make a valid GroceryListItem for grouping")
 
-    def test_literals(self):
-        with pytest.raises(ValidationError) as e:
-            GroceryListItem(
-                workspaceType="fruitcake",
-                runConfig=self.runConfig,
-            )
-            assert "'nexus', 'grouping'" in e.msg()
-        with pytest.raises(ValidationError) as e:
+    def test_next_and_useLiteMode(self):
+        # check that it fails if neither runconfig.useLiteMode nor useLiteMode are set
+        with pytest.raises(ValueError) as e:
             GroceryListItem(
                 workspaceType="nexus",
                 runConfig=self.runConfig,
-                loader="fruitcake",
             )
-            assert "'LoadGroupingDefinition', 'LoadNexus', 'LoadEventNexus', 'LoadNexusProcessed'" in e.msg()
-        with pytest.raises(ValidationError) as e:
-            GroceryListItem(
-                workspaceType="grouping",
-                isLite=True,
-                groupingScheme="Column",
-                instrumentPropertySource="fruitcake",
-                instrumentSource=self.instrumentDonor,
-            )
-            assert "'InstrumentName', 'InstrumentFilename', 'InstrumentDonor'" in e.msg()
+            assert "useLiteMode" in e.msg()
+
+        # check that if runConfig.useLiteMode is not set, will be set by useLiteMode
+        assert self.runConfig.useLiteMode is None
+        item = GroceryListItem(
+            workspaceType="nexus",
+            runConfig=self.runConfig,
+            useLiteMode=True,
+        )
+        assert item.runConfig.useLiteMode is True
+
+        # check that if useLiteMode is not set, will be set by runcConfig.useLiteMode
+        self.runConfig.useLiteMode = True
+        item = GroceryListItem(
+            workspaceType="nexus",
+            runConfig=self.runConfig,
+        )
+        assert item.useLiteMode is True
 
     def test_nexus_needs_runconfig(self):
         with pytest.raises(ValueError) as e:
             GroceryListItem(
                 workspaceType="nexus",
                 loader="LoadEventNexus",
-                isLite=True,
+                useLiteMode=True,
                 instrumentPropertySource="InstrumentDonor",
                 instrumentSource=self.instrumentDonor,
             )
             assert "you must set the run config" in e.msg()
 
     def test_grouping_needs_stuff(self):
-        # test needs isLite
+        # test needs useLiteMode
         with pytest.raises(ValueError) as e:
             GroceryListItem(
                 workspaceType="grouping",
@@ -103,7 +115,7 @@ class TestGroceryListItem(unittest.TestCase):
         with pytest.raises(ValueError) as e:
             GroceryListItem(
                 workspaceType="grouping",
-                isLite=True,
+                useLiteMode=True,
                 instrumentPropertySource="InstrumentDonor",
                 instrumentSource=self.instrumentDonor,
             )
@@ -112,7 +124,7 @@ class TestGroceryListItem(unittest.TestCase):
         with pytest.raises(ValueError) as e:
             GroceryListItem(
                 workspaceType="grouping",
-                isLite=True,
+                useLiteMode=True,
                 groupingScheme="Column",
                 instrumentSource=self.instrumentDonor,
             )
@@ -121,7 +133,7 @@ class TestGroceryListItem(unittest.TestCase):
         with pytest.raises(ValueError) as e:
             GroceryListItem(
                 workspaceType="grouping",
-                isLite=True,
+                useLiteMode=True,
                 groupingScheme="Column",
                 instrumentPropertySource="InstrumentDonor",
             )

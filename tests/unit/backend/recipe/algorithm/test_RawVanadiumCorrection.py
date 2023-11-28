@@ -186,7 +186,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.chopIngredients(self.fakeIngredients)
-        assert algo.liteMode == self.fakeIngredients.reductionState.stateConfig.isLiteMode
         assert algo.TOFPars[0] == self.fakeIngredients.reductionState.stateConfig.tofMin
         assert algo.TOFPars[1] == self.fakeIngredients.reductionState.stateConfig.tofBin
         assert algo.TOFPars[2] == self.fakeIngredients.reductionState.stateConfig.tofMax

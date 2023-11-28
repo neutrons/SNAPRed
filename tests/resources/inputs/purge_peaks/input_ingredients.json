@@ -182,7 +182,6 @@
           "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Mid.lite.xml"
         }
       ],
-      "isLiteMode": true,
       "rawVanadiumCorrectionFileName": "RVMB57473.lite.nxs",
       "vanadiumFilePath": "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/RVMB57473.lite.nxs",
       "calibrationMaskFileName": null,

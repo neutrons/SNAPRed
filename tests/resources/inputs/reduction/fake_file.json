@@ -71,7 +71,6 @@
             "definition": "nope"
           }
         ],
-        "isLiteMode": true,
         "rawVanadiumCorrectionFileName": "nope",
         "vanadiumFilePath": "nope",
         "calibrationMaskFileName": null,

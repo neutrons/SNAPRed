@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict, List, Tuple
 
 from mantid.simpleapi import CloneWorkspace
@@ -24,21 +25,21 @@ class FetchGroceriesRecipe:
     """
 
     def __init__(self):
-        self._loadedRuns: Dict[(str, str, bool), int] = {}
+        self._loadedRuns: Dict[(str, bool), int] = {}
         self._loadedGroupings: Dict[(str, bool), str] = {}
 
-    def _runKey(self, runConfig: RunConfig) -> Tuple[str, str, bool]:
-        return (runConfig.runNumber, runConfig.IPTS, runConfig.isLite)
+    def _runKey(self, runConfig: RunConfig) -> Tuple[str, bool]:
+        return (runConfig.runNumber, runConfig.useLiteMode)
 
     def _createFilenameFromRunConfig(self, runConfig: RunConfig) -> str:
-        instr = "nexus.lite" if runConfig.isLite else "nexus.native"
+        instr = "nexus.lite" if runConfig.useLiteMode else "nexus.native"
         pre = instr + ".prefix"
         ext = instr + ".extension"
         return runConfig.IPTS + Config[pre] + str(runConfig.runNumber) + Config[ext]
 
     def _createNexusWorkspaceNameBuilder(self, runConfig: RunConfig) -> NameBuilder:
         runNameBuilder = wng.run().runNumber(runConfig.runNumber)
-        if runConfig.isLite:
+        if runConfig.useLiteMode:
             runNameBuilder.lite(wng.Lite.TRUE)
         return runNameBuilder
 
@@ -93,7 +94,7 @@ class FetchGroceriesRecipe:
                 GroceryListItem(
                     workspaceType="grouping",
                     groupingScheme="Lite",
-                    isLite=False,
+                    useLiteMode=False,
                     instrumentPropertySource="InstrumentFilename",
                     instrumentSource=str(Config["instrument.native.definition.file"]),
                 )
@@ -112,30 +113,119 @@ class FetchGroceriesRecipe:
         - "loader": the loader that was used by the algorithm, use it next time
         - "workspace": the name of the workspace created in the ADS
         """
-        filename: str = self._createFilenameFromRunConfig(runConfig)
-        rawWorkspaceName: str = self._createRawNexusWorkspaceName(runConfig)
+
         data: Dict[str, Any] = {
             "result": False,
             "loader": loader,
         }
-        thisKey = self._runKey(runConfig)
-        if self._loadedRuns.get(thisKey, 0) == 0:
-            subdata = self._fetch(filename, rawWorkspaceName, loader)
-            data["result"] = subdata["result"]
-            data["loader"] = subdata["loader"]
-            self._loadedRuns[thisKey] = 1
+        # treat Lite data specially -- this easier than extending the if/else block here
+        if runConfig.useLiteMode:
+            data = self.fetchCleanNexusDataLite(runConfig, loader)
+
+        # if not Lite data, continue as below
         else:
-            logger.info(f"Data for run {runConfig.runNumber} already loaded... continuing")
-            self._loadedRuns[thisKey] += 1
-            data["loader"] = ""
+            filename: str = self._createFilenameFromRunConfig(runConfig)
+            rawWorkspaceName: str = self._createRawNexusWorkspaceName(runConfig)
+            thisKey = self._runKey(runConfig)
+            # if the raw data has not been loaded, first load it
+            # if it has been loaded, increment its counts
+            if self._loadedRuns.get(thisKey, 0) == 0:
+                data = self._fetch(filename, rawWorkspaceName, loader)
+                self._loadedRuns[thisKey] = 1
+            else:
+                logger.info(f"Data for run {runConfig.runNumber} already loaded... continuing")
+                self._loadedRuns[thisKey] += 1
+                data["loader"] = ""  # unset to indicate no loading occurred
+                data["result"] = True
+            # create a copy of the raw data for use
+            workspaceName = self._createCopyNexusWorkspaceName(runConfig, self._loadedRuns[thisKey])
+            CloneWorkspace(
+                InputWorkspace=rawWorkspaceName,
+                OutputWorkspace=workspaceName,
+            )
+            data["workspace"] = workspaceName
+        return data
+
+    def fetchCleanNexusDataLite(self, runConfig: RunConfig, loader: str = "") -> Dict[str, Any]:
+        """
+        Fetch a Lite nexus data file.
+        In the SNAP instrument, Lite data is formed by summing 8x8 grids of pixels
+        Leading to reduced resolution but enhanced imaging in the superpixels, and faster run times
+        Lite data is formed by grouping and remapping pixels in the native resolution data, and is
+        sometimes saved to disk.
+        If the Lite data exists in cache, it will clone from it.
+        If a Lite file exists, it will open that.
+        If a Lite file does not exist, but the non-Lite version is already loaded, it will reduce that
+        If a Lite file does not exist and non-Lite version not loaded, it will load the native data and reduce it
+        inputs:
+        - runConfig, a RunConfig object corresponf to the data desired
+        - loader, the loading algorithm to use, if you think you already know
+        outputs a dictionary with
+        - "result": true if everything ran correctly
+        - "loader": the loader that was used by the algorithm, use it next time
+        - "workspace": the name of the workspace created in the ADS
+        """
+
+        data: Dict[str, Any] = {
+            "result": False,
+            "loader": loader,
+        }
+
+        rawWorkspaceName: str = self._createRawNexusWorkspaceName(runConfig)
+        filename: str = self._createFilenameFromRunConfig(runConfig)
+        key = self._runKey(runConfig)
+
+        loadedFromNative: bool = False
+
+        # if the lite data exists in cache, copy it
+        if self._loadedRuns.get(key, 0) > 0:
             data["result"] = True
-        workspaceName = self._createCopyNexusWorkspaceName(runConfig, self._loadedRuns[thisKey])
+            data["loader"] = ""  # unset to indicate no loading occurred
+            self._loadedRuns[key] += 1
+
+        # the lite data is not cached, but the lite file exists
+        # then load the lite file
+        elif os.path.isfile(filename):
+            data = self._fetch(filename, rawWorkspaceName, loader)
+            self._loadedRuns[key] = 1
+
+        # the lite data is not cached and lite file does not exist,
+        # but native data exists in cache, clone it then reduce it
+        elif self._loadedRuns.get((runConfig, False), 0) > 0:
+            # this can be accomplished by changing rawWorkspaceName to name of native workspace
+            nativeRunConfig = RunConfig(
+                runNumber=runConfig.runNumber,
+                IPTS=runConfig.IPTS,
+                useLiteMode=False,
+            )
+            # use the native raw workspace as the raw workspace to copy
+            rawWorkspaceName = self._createRawNexusWorkspaceName(nativeRunConfig)
+            data["result"] = True
+            data["loader"] = ""
+            self._loadedRuns[(runConfig, False)] += 1
+            loadedFromNative = True
+
+        # neither lite nor native data in cache and lite file does not exist
+        # then load native data and reduce it
+        else:
+            nativeRunConfig = RunConfig(
+                runNumber=runConfig.runNumber,
+                IPTS=runConfig.IPTS,
+                useLiteMode=False,
+            )
+            # use the native resolution data
+            rawWorkspaceName = self._createRawNexusWorkspaceName(nativeRunConfig)
+            filename = self._createFilenameFromRunConfig(nativeRunConfig)
+            data = self._fetch(filename, rawWorkspaceName, loader)
+            loadedFromNative = True
+
+        workspaceName = self._createCopyNexusWorkspaceName(runConfig, self._loadedRuns[key])
         CloneWorkspace(
             InputWorkspace=rawWorkspaceName,
             OutputWorkspace=workspaceName,
         )
         # if lite data is specified, create a lite workspace
-        if runConfig.isLite:
+        if loadedFromNative:
             self._makeLite(workspaceName)
         data["workspace"] = workspaceName
         return data
@@ -171,23 +261,23 @@ class FetchGroceriesRecipe:
             data["result"] = subdata["result"]
             data["loader"] = subdata["loader"]
         # if lite data is specified, create a lite workspace
-        if runConfig.isLite:
+        if runConfig.useLiteMode:
             self._makeLite(workspaceName)
         return data
 
-    def _createGroupingFilename(self, groupingScheme: str, isLite: bool = True):
+    def _createGroupingFilename(self, groupingScheme: str, useLiteMode: bool = True):
         if groupingScheme == "Lite":
             return str(Config["instrument.lite.map.file"])
-        instr = "lite" if isLite else "native"
+        instr = "lite" if useLiteMode else "native"
         home = "instrument.calibration.powder.grouping.home"
         pre = "grouping.filename.prefix"
         ext = "grouping.filename." + instr + ".extension"
         return Config[home] + "/" + Config[pre] + groupingScheme + Config[ext]
 
-    def _createGroupingWorkspaceName(self, groupingScheme: str, isLite: bool = True):
+    def _createGroupingWorkspaceName(self, groupingScheme: str, useLiteMode: bool = True):
         if groupingScheme == "Lite":
             return "lite_grouping_map"
-        instr = "lite" if isLite else "native"
+        instr = "lite" if useLiteMode else "native"
         return Config["grouping.workspacename." + instr] + groupingScheme
 
     def fetchGroupingDefinition(self, item: GroceryListItem) -> str:
@@ -200,8 +290,8 @@ class FetchGroceriesRecipe:
         - "loader", just "LoadGroupingDefinition" with no apologies
         - "workspaceName", the name of the new grouping workspace in the ADS
         """
-        workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.isLite)
-        fileName = self._createGroupingFilename(item.groupingScheme, item.isLite)
+        workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.useLiteMode)
+        fileName = self._createGroupingFilename(item.groupingScheme, item.useLiteMode)
         logger.info("Fetching grouping definition: %s" % item.groupingScheme)
         groupingLoader = "LoadGroupingDefinition"
         data: Dict[str, Any] = {
@@ -210,7 +300,7 @@ class FetchGroceriesRecipe:
             "workspace": workspaceName,
         }
 
-        key = (item.groupingScheme, item.isLite)
+        key = (item.groupingScheme, item.useLiteMode)
         if self._loadedGroupings.get(key) is None:
             algo = FetchAlgo()
             algo.initialize()

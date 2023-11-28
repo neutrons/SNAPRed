@@ -15,7 +15,6 @@ class StateConfig(BaseModel):
     calibrationAuthor: str
     calibrationDate: str  # Should this be of type datetime?
     focusGroups: List[FocusGroup]
-    isLiteMode: bool
     rawVanadiumCorrectionFileName: str
     vanadiumFilePath: str
     calibrationMaskFileName: Optional[str]

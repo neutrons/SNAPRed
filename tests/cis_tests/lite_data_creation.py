@@ -1,7 +1,5 @@
 # Use this script to test LiteDataCreationAlgo.py
 from mantid.simpleapi import *
-import matplotlib.pyplot as plt
-import numpy as np
 
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
@@ -18,12 +16,11 @@ runNumber = "58882"
 
 dataFactoryService = DataFactoryService()
 
-
 print(Config["nexus.native.prefix"])
 run = RunConfig(
     runNumber=runNumber,
     IPTS=GetIPTS(RunNumber=runNumber,Instrument='SNAP'), 
-    isLite=False,
+    useLiteMode=False,
 )
 
 fetchRx = FetchRx()
