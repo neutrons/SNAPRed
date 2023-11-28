@@ -128,7 +128,7 @@ class LocalDataService:
                 / reductionParameters["rawVCorrFileName"]
             ),
             stateId=stateId,
-            tofBin=self.instrumentConfig.delTOverT / self.instrumentConfig.NBins,
+            tofBin=min(min(reductionParameters["focGroupDBin"])),
             tofMax=particleBounds.tof.maximum,
             tofMin=particleBounds.tof.minimum,
         )  # TODO: fill with real value
