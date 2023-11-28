@@ -1,4 +1,5 @@
 import json
+from typing import Dict
 
 from mantid.api import *
 from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
@@ -30,6 +31,43 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
+    def validateInputs(self) -> Dict[str, str]:
+        errors = {}
+        # if we specified a map, make sure it is consistent with input data
+        if not self.getProperty("LiteDataMapWorkspace").isDefault:
+            inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
+            groupWS = self.mantidSnapper.mtd[self.getPropertyValue("LiteDataMapWorkspace")]
+            if inWS.getNumberHistograms() == len(groupWS.getGroupIDs()):
+                # the data has already been reduced -- not an issue
+                pass
+            elif inWS.getNumberHistograms() != groupWS.getNumberHistograms():
+                msg = f"""
+                    The workspaces {self.getPropertyValue("InputWorkspace")}
+                    and {self.getPropertyValue("LiteDataMapWorkspace")}
+                    have inconsistent number of spectra
+                    """
+                errors["InputWorkspace"] = msg
+                errors["LiteDataMapWorkspace"] = msg
+            self._liteModeResolution = len(groupWS.getGroupIDs())
+        # if we did not specify a map, we are using the standard SNAP lite data map
+        # this takes the SNAP native resolution of 1179648 pixels
+        # down to lite resolution of 18432 pixels
+        else:
+            inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
+            if inWS.getNumberHistograms() == 18432:
+                # in this case we have an already-lite workspace
+                # no need to raise an error, just skip doing anything
+                pass
+            elif inWS.getNumberHistograms() != 1179648:
+                msg = f"""
+                    The workspace {self.getPropertyValue("InputWorkspace")}
+                    is inconsistent with SNAP resolution.  You must specify a
+                    Lite data map to use consistent with this workspace's resolution.
+                    """
+                errors["InputWorkspace"] = msg
+            self._liteModeResolution = 18432
+        return errors
+
     def PyExec(self):
         self.log().notice("Lite Data Creation START!")
 
@@ -47,8 +85,29 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         else:
             outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
 
+        # check that we are not already in lite mode
+        # if we are, simply copy over the workspace and continue
+        # lite mode could be indicated by:
+        # - the word "Lite" in the comments of the workspace
+        # - the workspace having exactly as many pixels as Lite data
+        inputWS = self.mantidSnapper.mtd[inputWorkspaceName]
+        if "Lite" in inputWS.getComment() or inputWS.getNumberHistograms() == self._liteModeResolution:
+            self.log().notice("Input data already in Lite mode")
+            if outputWorkspaceName != inputWorkspaceName:
+                self.mantidSnapper.CloneWorkspace(
+                    "Workspace already lite, cloning it to output",
+                    InputWorkspace=inputWorkspaceName,
+                    OutputWorkspace=outputWorkspaceName,
+                )
+                self.mantidSnapper.executeQueue()
+            # add the word "Lite" to the comments for good measure
+            outWS = self.mantidSnapper.mtd[outputWorkspaceName]
+            outWS.setComment(outWS.getComment() + "\nLite")
+            return
+
         if self.getProperty("LiteDataMapWorkspace").isDefault:
             groupingWorkspaceName = "lite_grouping_map"
+            # TODO this should use FetchGroceries recipe so the map is cached
             self.mantidSnapper.LoadGroupingDefinition(
                 "Load lite grouping pixel map",
                 GroupingFilename=str(Config["instrument.lite.map.file"]),
@@ -104,6 +163,8 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             )
 
         self.mantidSnapper.executeQueue()
+        outputWS = self.mantidSnapper.mtd[outputWorkspaceName]
+        outputWS.setComment(outputWS.getComment() + "\nLite")
 
 
 # Register algorithm with Mantid

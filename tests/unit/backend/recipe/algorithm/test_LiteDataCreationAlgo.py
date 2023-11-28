@@ -35,8 +35,8 @@ def test_LiteDataCreationAlgo_invalid_input():
 def test_fakeInstrument():
     from mantid.simpleapi import (
         ConvertToEventWorkspace,
-        ConvertToHistogram,
         CreateWorkspace,
+        DeleteWorkspace,
         LoadDetectorsGroupingFile,
         LoadInstrument,
         mtd,
@@ -50,13 +50,16 @@ def test_fakeInstrument():
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
 
-    # create simle event data with a different number in each pixel
+    fullResolution: int = 16
+    liteResolution: int = 4
+
+    # create simple event data with a different number in each pixel
     CreateWorkspace(
         OutputWorkspace=fullInstrumentWS,
-        DataX=[0.5, 1.5] * 16,
-        DataY=range(16),
-        DataE=[0.01] * 16,
-        NSpec=16,
+        DataX=[0.5, 1.5] * fullResolution,
+        DataY=range(fullResolution),
+        DataE=[0.01] * fullResolution,
+        NSpec=fullResolution,
     )
     ConvertToEventWorkspace(
         InputWorkspace=fullInstrumentWS,
@@ -88,20 +91,255 @@ def test_fakeInstrument():
     # 2. check each histograms has a single pixel
     # 3. check the pixel ids of histograms are 0, 1, 2, 3 in order
     # 4. check each superpixel has the sum corresponding to the four banks
-    nHst = 4
     liteWS = mtd[liteInstrumentWS]
     fullWS = mtd[fullInstrumentWS]
-    assert liteWS.getNumberHistograms() == nHst
-    assert liteWS.getSpectrumNumbers() == list(range(1, nHst + 1))
-    for i in range(nHst):
+    assert liteWS.getNumberHistograms() == liteResolution
+    assert liteWS.getSpectrumNumbers() == list(range(1, liteResolution + 1))
+    for i in range(liteResolution):
         el = liteWS.getSpectrum(i)
         assert list(el.getDetectorIDs()) == [i]
 
-    for i in range(nHst):
+    for i in range(liteResolution):
         assert liteWS.getDetector(i).getID() == i
 
-    summedPixels = [0] * nHst
-    for i in range(nHst):
-        for j in range(nHst):
-            summedPixels[i] += fullWS.readY(nHst * i + j)[0]
+    summedPixels = [0] * liteResolution
+    for i in range(liteResolution):
+        for j in range(liteResolution):
+            summedPixels[i] += fullWS.readY(liteResolution * i + j)[0]
         assert summedPixels[i] == liteWS.readY(i)[0]
+
+    # check that the data has been flagged as lite
+    assert "Lite" in liteWS.getComment()
+
+    # clean up
+    DeleteWorkspace(fullInstrumentWS)
+    DeleteWorkspace(liteInstrumentWS)
+    DeleteWorkspace(focusWS)
+
+
+def test_fail_to_validate():
+    from mantid.simpleapi import (
+        CreateWorkspace,
+        DeleteWorkspace,
+        LoadDetectorsGroupingFile,
+        LoadEmptyInstrument,
+    )
+
+    instrumentWorkspace: str = "_test_lite_idf"
+    invalidWorkspace: str = "_test_lite_algo_invalid"
+    liteInstrumentWS: str = "_test_lite_algo_lite"
+    focusWS = "_test_lite_data_map"
+
+    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+    liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
+    liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+
+    # load the instrument, and load the grouping file
+    LoadEmptyInstrument(
+        OutputWorkspace=instrumentWorkspace,
+        Filename=fullInstrumentFile,
+    )
+    LoadDetectorsGroupingFile(
+        InputFile=liteInstrumentMap,
+        InputWorkspace=instrumentWorkspace,
+        OutputWorkspace=focusWS,
+    )
+
+    fullResolution: int = 16
+    liteResolution: int = 4
+
+    # setup the algorithm
+    liteDataCreationAlgo = LiteDataCreationAlgo()
+    liteDataCreationAlgo.initialize()
+    liteDataCreationAlgo.setPropertyValue("OutputWorkspace", liteInstrumentWS)
+    liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
+
+    # try running with the incorrect number of spectra
+    invalidResolution: int = fullResolution + 1
+    CreateWorkspace(
+        OutputWorkspace=invalidWorkspace,
+        DataX=[1] * invalidResolution,
+        DataY=[1] * invalidResolution,
+        DataE=[1] * invalidResolution,
+        NSpec=invalidResolution,
+    )
+    # run without the lite data map set
+    # should complain it is incompatible with SNAP resolution
+    liteDataCreationAlgo.setPropertyValue("InputWorkspace", invalidWorkspace)
+    with pytest.raises(RuntimeError) as e:
+        liteDataCreationAlgo.execute()
+    print(str(e))
+    assert "InputWorkspace" in str(e.value)
+    assert "LiteDataMapWorkspace" not in str(e.value)
+    assert invalidWorkspace in str(e.value)
+    assert "SNAP resolution" in str(e.value)
+    assert liteDataCreationAlgo._liteModeResolution == 18432
+
+    # set the lite data map, then try executing again
+    # should complain inconsistent resolution with lite data map
+    liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
+    with pytest.raises(RuntimeError) as e:
+        liteDataCreationAlgo.execute()
+    print(str(e))
+    assert "InputWorkspace" in str(e.value)
+    assert "LiteDataMapWorkspace" in str(e.value)
+    assert invalidWorkspace in str(e.value)
+    assert focusWS in str(e.value)
+    assert liteDataCreationAlgo._liteModeResolution == liteResolution
+
+    # make sure there is no issue if using default SNAP data map
+    # and send in a file with SNAPLite resolution
+    SNAPLiteResolution: int = 18432
+    CreateWorkspace(
+        OutputWorkspace=invalidWorkspace,
+        DataX=[1] * SNAPLiteResolution,
+        DataY=[1] * SNAPLiteResolution,
+        DataE=[1] * SNAPLiteResolution,
+        NSpec=SNAPLiteResolution,
+    )
+    liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", "")
+    assert liteDataCreationAlgo.getProperty("LiteDataMapWorkspace").isDefault
+    assert liteDataCreationAlgo.validateInputs() == {}
+
+    # cleanup
+    DeleteWorkspace(invalidWorkspace)
+    DeleteWorkspace(instrumentWorkspace)
+    DeleteWorkspace(focusWS)
+
+
+def test_no_run_twice():
+    from mantid.simpleapi import (
+        CloneWorkspace,
+        ConvertToEventWorkspace,
+        CreateWorkspace,
+        DeleteWorkspace,
+        LoadDetectorsGroupingFile,
+        LoadEmptyInstrument,
+    )
+
+    instrumentWorkspace: str = "_test_lite_idf"
+    inputWorkspace: str = "_test_lite_algo_input"
+    outputWorkspace: str = "_test_lite_algo_output"
+    focusWS = "_test_lite_data_map"
+
+    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+    liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
+    liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+
+    # load the instrument, and load the grouping file
+    LoadEmptyInstrument(
+        OutputWorkspace=instrumentWorkspace,
+        Filename=fullInstrumentFile,
+    )
+    LoadDetectorsGroupingFile(
+        InputFile=liteInstrumentMap,
+        InputWorkspace=instrumentWorkspace,
+        OutputWorkspace=focusWS,
+    )
+
+    fullResolution: int = 16
+    liteResolution: int = 4
+
+    # setup the algorithm
+    liteDataCreationAlgo = LiteDataCreationAlgo()
+    liteDataCreationAlgo.initialize()
+    liteDataCreationAlgo.setPropertyValue("OutputWorkspace", outputWorkspace)
+    liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
+    liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
+
+    # try reducing native resolution, then running again with the Lite output
+    CreateWorkspace(
+        OutputWorkspace=inputWorkspace,
+        DataX=[0.5, 1.5] * fullResolution,
+        DataY=[1] * fullResolution,
+        DataE=[1] * fullResolution,
+        NSpec=fullResolution,
+    )
+    ConvertToEventWorkspace(
+        InputWorkspace=inputWorkspace,
+        OutputWorkspace=inputWorkspace,
+    )
+
+    # check that it runs
+    liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
+    assert liteDataCreationAlgo.execute()
+    assert liteDataCreationAlgo._liteModeResolution == liteResolution
+
+    # check the data is reduced and marked as lite
+    liteWS = mtd[outputWorkspace]
+    assert liteWS.getNumberHistograms() == liteResolution
+    assert "Lite" in liteWS.getComment()
+
+    # copy the reduced data, and run it again as the input
+    CloneWorkspace(
+        InputWorkspace=outputWorkspace,
+        outputWorkspace=inputWorkspace,
+    )
+
+    # ensure it is reduced data being sent as the input
+    liteWS = mtd[inputWorkspace]
+    assert liteWS.getNumberHistograms() == liteResolution
+    assert "Lite" in liteWS.getComment()
+
+    # mock GroupDetectors -- should never be reached
+    liteDataCreationAlgo.mantidSnapper.GroupDetectors = mock.Mock()
+
+    # run the algo with this reduced workspace and check it never got to GroupDetectors
+    liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
+    assert liteDataCreationAlgo.execute()
+    assert liteDataCreationAlgo._liteModeResolution == liteResolution
+    liteWS = mtd[outputWorkspace]
+    assert liteWS.getNumberHistograms() == liteResolution
+    assert "Lite" in liteWS.getComment()
+    liteDataCreationAlgo.mantidSnapper.GroupDetectors.assert_not_called()
+
+    # reset the comment so it does not have the word "Lite"
+    # but it does have lite resolution
+    # run, and make sure not further reduced
+    liteWS.setComment("No comment")
+    assert "Lite" not in liteWS.getComment()
+    CloneWorkspace(
+        InputWorkspace=liteWS,
+        OutputWorkspace=inputWorkspace,
+    )
+    liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
+    assert liteDataCreationAlgo.execute()
+    assert liteDataCreationAlgo._liteModeResolution == liteResolution
+    liteDataCreationAlgo.mantidSnapper.GroupDetectors.assert_not_called()
+
+    # try running with data already at Lite resolution
+    CreateWorkspace(
+        OutputWorkspace=inputWorkspace,
+        DataX=[1] * liteResolution,
+        DataY=[1] * liteResolution,
+        DataE=[1] * liteResolution,
+        NSpec=liteResolution,
+    )
+    #
+    liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
+    assert liteDataCreationAlgo.execute()
+    assert liteDataCreationAlgo._liteModeResolution == liteResolution
+    liteDataCreationAlgo.mantidSnapper.GroupDetectors.assert_not_called()
+
+    # to make sure the issue isn't some error caused before GroupDetectors
+    # run with full resolution data and make sure it executes the whole thing
+    CreateWorkspace(
+        OutputWorkspace=inputWorkspace,
+        DataX=[1] * fullResolution,
+        DataY=[1] * fullResolution,
+        DataE=[1] * fullResolution,
+        NSpec=fullResolution,
+    )
+    #
+    liteDataCreationAlgo.mantidSnapper = mock.MagicMock()
+    liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
+    assert liteDataCreationAlgo.execute()
+    liteDataCreationAlgo.mantidSnapper.GroupDetectors.called_once()
+    liteDataCreationAlgo.mantidSnapper.LoadInstrument.called_once()
+    liteDataCreationAlgo.mantidSnapper.CompressEvents.called_once()
+
+    # cleanup
+    DeleteWorkspace(inputWorkspace)
+    DeleteWorkspace(outputWorkspace)
+    DeleteWorkspace(instrumentWorkspace)
+    DeleteWorkspace(focusWS)
