@@ -56,6 +56,8 @@ class NormalizationCalibrationWorkflow:
             parent=parent,
         )
 
+        self._specifyNormalizationView.signalValueChanged.connect(self.onNormalizationValueChange)
+
         # self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
         #     "Saving Normalization Calibration", self.saveSchema, parent
         # )
@@ -104,7 +106,8 @@ class NormalizationCalibrationWorkflow:
         # self._saveNormalizationCalibrationView.updateCalibrantSample(calibrantIndex)
         # self._saveNormalizationCalibrationView.updateSmoothingParameter(self.smoothingParmameter)
 
-        self.callNormalizationCalibration(groupingIndex, smoothingParameter)
+        focusWS, smoothWS = self.callNormalizationCalibration(groupingIndex, smoothingParameter)
+        self._specifyNormalizationView.updateWorkspaces(focusWS, smoothWS)
 
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
         pass
@@ -151,11 +154,16 @@ class NormalizationCalibrationWorkflow:
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
-        focusWorkspace = self.responses[-1].data[0]
-        smoothWorkspace = self.responses[-1].data[1]
+        focusWorkspace = self.responses[-1].data["FocusWorkspace"]
+        smoothWorkspace = self.responses[-1].data["SmoothWorkspace"]
 
-        print(focusWorkspace, smoothWorkspace)
-        # self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+        return focusWorkspace, smoothWorkspace
+
+    def onNormalizationValueChange(self, index, smoothingValue):
+        # self._saveNormalizationCalibrationView.updateCalibrantSample(index)
+        # self._saveNormalizationCalibrationView.updateSmoothingParameter(smoothingValue)
+        focusWS, smoothWS = self.callNormalizationCalibration(index, smoothingValue)
+        self._specifyNormalizationView.updateWorkspaces(focusWS, smoothWS)
 
     @property
     def widget(self):

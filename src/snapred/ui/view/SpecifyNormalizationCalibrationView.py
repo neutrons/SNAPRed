@@ -15,12 +15,15 @@ class SpecifyNormalizationCalibrationView(QWidget):
     signalGroupingUpdate = pyqtSignal(int)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
     signalCalibrantUpdate = pyqtSignal(int)
-    signalSmoothingValueChanged = pyqtSignal(float)
+    signalValueChanged = pyqtSignal(int, float)
     signalWorkspacesUpdate = pyqtSignal(str, str)
 
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
         super().__init__(parent)
         self._jsonFormList = JsonFormList(name, jsonSchemaMap, parent=parent)
+
+        self.groupingSchema = None
+        self.subplots = []
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
@@ -51,7 +54,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.groupingDropDown.addItems(groups)
         self.groupingDropDown.model().item(0).setEnabled(False)
         self.signalGroupingUpdate.connect(self._updateGrouping)
-        self.groupingDropDown.currentIndexChanged.connect(self.onGroupingChanged)
+        self.groupingDropDown.currentIndexChanged.connect(self.onValueChanged)
 
         self.smoothingSlider = QSlider(Qt.Horizontal)
         self.smoothingSlider.setMinimum(0)
@@ -59,7 +62,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.smoothingSlider.setValue(0)
         self.smoothingSlider.setTickInterval(1)
         self.smoothingSlider.setSingleStep(1)
-        self.smoothingSlider.valueChanged.connect(self.onSmoothingValueChanged)
+        self.smoothingSlider.valueChanged.connect(self.onValueChanged)
 
         self.layout.addWidget(self.canvas)
         self.layout.addWidget(self.fieldRunNumber)
@@ -92,78 +95,46 @@ class SpecifyNormalizationCalibrationView(QWidget):
     def updateGrouping(self, groupingIndex):
         self.signalGroupingUpdate.emit(groupingIndex)
 
-    def onSmoothingValueChanged(self, value):
-        self.smoothingValue = value / 100.0
-        self.signalSmoothingValueChanged.emit(self.smoothingValue)
+    def onValueChanged(self):
+        index = self.groupingDropDown.currentIndex()
+        smoothingValue = (self.smoothingSlider.value()) / 100.0
+        self.signalValueChanged.emit(index, smoothingValue)
 
-    def onGroupingChanged(self, index):
-        if index > 0:
-            self.groupingDropDown.currentText()
-            # self.update(groupingSchema)
+    def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):
+        self.focusWorkspace = focusWorkspace
+        self.smoothedWorkspace = smoothedWorkspace
+        self.groupingSchema = str(self.groupingDropDown.currentText()).split("/")[-1].split("_")[-2]
+        self._updateGraphs()
 
-    # def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):
-    #     self.focusWorkspace = focusWorkspace
-    #     self.smoothedWorkspace = smoothedWorkspace
-    #     self._updateGraphs(focusWorkspace, smoothedWorkspace)
+    def _updateGraphs(self):
+        self.figure.clear()
+        self.subplots.clear()
 
-    # def _updateGraphs(self, groupingSchema, numGroups):
-    #     # Clear the existing figure
-    #     self.figure.clear()
+        if self.groupingSchema == "All":
+            numGraphs = 1
+        elif self.groupingSchema == "Bank":
+            numGraphs = 2
+        elif self.groupingSchema == "Column":
+            numGraphs = 6
+        else:
+            raise Exception("Invalid grouping schema or this schema is not yet supported.")
 
-    #     self.groupinSchema = groupingSchema
-    #     # Define a layout for the subplots
-    #     layout = [["ws1_plot" + str(i) for i in range(numGroups)], ["ws2_plot" + str(i) for i in range(numGroups)]]
+        for i in range(numGraphs * 2):
+            ax = self.figure.add_subplot(2, numGraphs, i + 1)
+            self.subplots.append(ax)
 
-    #     # Create subplots based on the layout
-    #     ax_dict = self.figure.subplot_mosaic(layout, subplot_kw={"projection": "mantid"})
+        self.updatePlots(numGraphs)
 
-    #     # Loop through the number of groups and plot each workspace
-    #     for i in range(numGroups):
-    #         # Retrieve workspaces from the lists
-    #         focusWorkspace = self.focusWorkspaces[i]
-    #         clonedWorkspace = self.clonedWorkspaces[i]
+    def updatePlots(self, numGraphs):
+        for i, ax in enumerate(self.subplots):
+            groupIndex = i // numGraphs
 
-    # You might need to extract the data from the workspace depending on how it's stored
-    # This is a placeholder for that process
-    # focusData = extract_data_from_workspace(focusWorkspace)
-    # clonedData = extract_data_from_workspace(clonedWorkspace)
+            focusedData = self.focusWorkspace.readY(groupIndex)
+            smoothedData = self.smoothedWorkspace.readY(groupIndex)
 
-    #     # Plot data on respective axes
-    #     ax_dict["ws1_plot" + str(i)].plot(focusWorkspace.readY(0), label="Focus Workspace")
-    #     ax_dict["ws2_plot" + str(i)].plot(clonedWorkspace.readY(0), label="Cloned Workspace")
+            ax.plot(focusedData, label="Focussed Data")
+            ax.plot(smoothedData, label="Smoothed Data", linestyle="--")
 
-    #     # Optionally, you can set labels, titles, etc.
-    #     ax_dict["ws1_plot" + str(i)].set_title(f"Focus Workspace {i}")
-    #     ax_dict["ws2_plot" + str(i)].set_title(f"Cloned Workspace {i}")
-    #     ax_dict["ws1_plot" + str(i)].legend()
-    #     ax_dict["ws2_plot" + str(i)].legend()
+            ax.legend()
 
-    # # Update the canvas to reflect new plots
-    # self.canvas.draw()
-
-    # # Determine the number of graphs based on the grouping scheme
-    # if groupingScheme == "All":
-    #     numGroups = load_grouping_scheme('/path/to/SNAPFocGroup_All.lite.hdf')
-    # elif groupingScheme == "Bank":
-    #     numGroups = load_grouping_scheme('/path/to/SNAPFocGroup_Bank.lite.hdf')
-    # elif groupingScheme == "Column":
-    #     numGroups = load_grouping_scheme('/path/to/SNAPFocGroup_Column.lite.hdf')
-    # else:
-    #     return  # Handle invalid grouping scheme
-
-    # numGraphs = numGroups * 2  # Since there are two workspaces
-
-    # # Create subplots and plot data
-    # for i in range(numGraphs):
-    #     ax = self.figure.add_subplot(numGroups, 2, i + 1)
-    #     group_index = i // 2
-    #     workspace_index = i % 2
-    #     workspace_name = self.focusWorkspaces[workspace_index] if workspace_index <
-    #     len(self.focusWorkspaces) else None
-
-    #     if workspace_name:
-    #         spectra = self.get_spectra_data(workspace_name, group_index)
-    #         ax.plot(spectra)  # Plot the spectra data
-    #         # Additional plot formatting here
-
-    # self.canvas.draw()
+        self.canvas.draw()
