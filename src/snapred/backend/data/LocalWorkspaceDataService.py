@@ -1,6 +1,5 @@
 from mantid.api import AlgorithmManager, mtd
 
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -8,7 +7,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 @Singleton
 class LocalWorkspaceDataService:
     def __init__(self) -> None:
-        self.mantidSnapper = MantidSnapper(self, __name__)
+        pass
 
     def writeWorkspace(self, path: str, name: WorkspaceName):
         """
@@ -43,8 +42,6 @@ class LocalWorkspaceDataService:
         Mostly for cleanup at the Service Layer.
         """
         if self.getWorkspaceForName(name) is not None:
-            self.mantidSnapper.WashDishes(
-                "Deleting workspace...",
-                Workspace=name,
-            )
-            self.mantidSnapper.executeQueue()
+            saveAlgo = AlgorithmManager.create("WashDishes")
+            saveAlgo.setProperty("Workspace", name)
+            saveAlgo.execute()
