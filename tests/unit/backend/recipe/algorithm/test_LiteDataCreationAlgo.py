@@ -53,13 +53,10 @@ def test_fakeInstrument():
     # create simle event data with a different number in each pixel
     CreateWorkspace(
         OutputWorkspace=fullInstrumentWS,
-        DataX=[1] * 16,
+        DataX=[0.5, 1.5] * 16,
         DataY=range(16),
+        DataE=[0.01] * 16,
         NSpec=16,
-    )
-    ConvertToHistogram(
-        InputWorkspace=fullInstrumentWS,
-        OutputWorkspace=fullInstrumentWS,
     )
     ConvertToEventWorkspace(
         InputWorkspace=fullInstrumentWS,

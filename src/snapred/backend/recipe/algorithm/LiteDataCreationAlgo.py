@@ -71,7 +71,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         liteWksp = self.mantidSnapper.mtd[outputWorkspaceName]
         nHst = liteWksp.getNumberHistograms()
         for i in range(nHst):
-            liteWksp.readY(i)  # this is inexplicably needed to compress events to work
             el = liteWksp.getSpectrum(i)
             el.clearDetectorIDs()
             el.addDetectorID(i)
