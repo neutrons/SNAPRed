@@ -36,31 +36,37 @@ VBRun = 57472
 liteMode=True
 # File defining reduction parameters for this instrument state (Manually spec'ed for now)
 sPrmFile = '/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/057514/SNAPcalibLog57514.lite.json' 
-iPrmFile = '/SNS/SNAP/shared/Calibration/SNAPInstPrm.json'
+#iPrmFile = '/SNS/SNAP/shared/Calibration/SNAPInstPrm.json'
 idf = '/SNS/SNAP/shared/Calibration_old/SNAPLite.xml'
 #############################Don't edit below here#########################
 
 #instrument parameters
-with open(iPrmFile, "r") as json_file:
-  iPrm = json.load(json_file) 
+# with open(iPrmFile, "r") as json_file:
+#   iPrm = json.load(json_file) 
 
 #state parameters
 with open(sPrmFile, "r") as json_file:
   sPrm = json.load(json_file) 
 
-geomCalibFile= iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ sPrm['calFileName']
+#geomCalibFile= iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ sPrm['calFileName']
 
 xmin = sPrm['tofMin']
 xmax = sPrm['tofMax']
 xbin = (xmax-xmin)/xmin/1000
 TOFBinParams = (xmin, xbin, xmax)
 print(TOFBinParams)
-print(geomCalibFile)
+#print(geomCalibFile)
 print('/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/057514/SNAP057514_calib_geom_20230324.lite.h5')
 
 # LOAD ALL NEEDED DATA  ########################################################
-dataFactoryService=DataFactoryService()
-ingredients = dataFactoryService.getReductionIngredients(VRun)
+
+# Getting reduction ingredients for VRun through DataFactoryService doesn't work.
+# As the service tries to locate various files, at one point it needs Config "instrument.home" path to be "/SNS/SNAP/", 
+# but at another point it needs it to be "~/SNAPRed/tests/resources/". 
+#dataFactoryService=DataFactoryService()
+#ingredients = dataFactoryService.getReductionIngredients(VRun)
+ingredients = Ingredients.parse_raw(Resource.read("/inputs/reduction/input_ingredients.json"))
+
 ingredients.reductionState.stateConfig.tofMin = TOFBinParams[0]
 ingredients.reductionState.stateConfig.tofBin = TOFBinParams[1]
 ingredients.reductionState.stateConfig.tofMax = TOFBinParams[2]
@@ -97,15 +103,6 @@ CloneWorkspace(
     OutputWorkspace = backgroundWS,
 )
 
-difcWS = "_difc"
-LoadDiffCal(
-    Filename = geomCalibFile,
-    MakeCalWorkspace = True,
-    WorkspaceName = difWS,
-    InstrumentFilename = idf,
-)
-difcWS = difcWS + "_cal"
-
 
 # CREATE MATERIAL ########################################################
 material = Material(
@@ -129,16 +126,19 @@ algo = Algo()
 algo.initialize()
 algo.setProperty("InputWorkspace", vanadiumWS)
 algo.setProperty("BackgroundWorkspace", backgroundWS)
-algo.setProperty("CalibrationWorkspace", difcWS)
 algo.setProperty("Ingredients", ingredients.json())
 algo.setProperty("CalibrantSample", calibrantSample.json())
 algo.setProperty("OutputWorkspace", outputWS)
 assert algo.execute()
+
+ConvertUnits(
+   InputWorkspace = outputWS,
+   OutputWorkspace = outputWS,
+   Target = 'dSpacing')  
 
 DiffractionFocussing(
     InputWorkspace = outputWS,
     OutputWorkspace = '_test_focussed',
     GroupingFilename = '/SNS/SNAP/shared/Calibration_old/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.cal',
 )
-
 
