@@ -10,6 +10,7 @@ import random
 import unittest
 import unittest.mock as mock
 from typing import Dict, List
+import time
 
 import os
 os.environ["env"] = "test"
@@ -21,7 +22,7 @@ from mantid.kernel import Direction
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
-from snapred.backend.recipe.algorithm.WashDishes import WashDishes
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
@@ -35,10 +36,8 @@ from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm as Algo  # noqa: E402
 from snapred.meta.Config import Config, Resource
 Config._config['cis_mode'] = True
-Resource._resourcesPath = "/SNS/users/4rx/SNAPRed/tests/resources/"
-
+Resource._resourcesPath = os.path.expanduser("~/SNAPRed/tests/resources/")
 TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
-
 
 class TestRawVanadiumCorrection(unittest.TestCase):
     def setUp(self):
@@ -46,7 +45,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
-        print("/home/4rx/SNAPRed/tests/resources/inputs/reduction")
+        print(Resource._resourcesPath)
         print(Resource.getPath("inputs/reduction/fake_file.json"))
         print(Resource.exists("inputs/reduction/fake_file.json"))
 
@@ -149,24 +148,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             RHSWorkspace=self.sampleWS, 
             OutputWorkspace=self.sampleWS,
         )
-        # WashDishes(Workspace="_tmp_raw_vanadium")
-
-        self.difcWS = "_difc_table_raw_vanadium"
-        ws = CalculateDIFC(
-            InputWorkspace=self.sampleWS,
-            OutputWorkspace=self.difcWS,
-            OffsetMode="Signed",
-            BinWidth=TOFBinParams[1],
-        )
-        difc = CreateEmptyTableWorkspace()
-        difc.addColumn("int", "detid")
-        difc.addColumn("double", "difc")
-        difc.addColumn("double", "tzero")
-        difc.addColumn("double", "difa")
-        for i in range(ws.getNumberHistograms()):
-            difc.addRow([i + 1, ws.readY(i)[0], 0.0, 0.0])
-        # WashDishes(Workspace=self.difcWS)
-        self.difcWS = difc.name()
 
         Rebin(
             InputWorkspace=self.sampleWS,
@@ -184,7 +165,8 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         )
 
     def tearDown(self) -> None:
-        WashDishes(self.sampleWS)
+        self.mantidSnapper = MantidSnapper(self, __name__)
+        self.mantidSnapper.WashDishes(self.sampleWS)
         return super().tearDown()
 
     def test_execute(self):
@@ -193,7 +175,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.sampleWS)
         algo.setProperty("BackgroundWorkspace", self.backgroundWS)
-        algo.setProperty("CalibrationWorkspace", self.difcWS)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("CalibrantSample", self.calibrantSample.json())
         algo.setProperty("OutputWorkspace", self.outputWS)
