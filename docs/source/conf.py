@@ -85,6 +85,7 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
         "sphinx.ext.autodoc",
         "sphinx.ext.autosummary",
         "sphinx.ext.intersphinx",
+        "sphinxcontrib.mermaid",
     ]
 
     intersphinx_mapping = {
@@ -125,7 +126,7 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
     daoClasses.extend(calibrantSampleAll)
 
     # create dao.rst file to house the toctree for all the dao classes
-    daoRstPath = "dao.rst"
+    daoRstPath = "./developer/dao.rst"
     # delete if it already exists
     if os.path.exists(daoRstPath):
         os.remove(daoRstPath)
@@ -140,7 +141,8 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
 
     def generateDataDiagram(clazz):
         # get package path for Calibration
-        clazzPath = "/".join(clazz.__module__.split("."))
+        root = "./developer/"
+        clazzPath = root + "/".join(clazz.__module__.split("."))
         # create path if it doesn't exist
         if not os.path.exists(clazzPath):
             os.makedirs(clazzPath)
@@ -166,6 +168,7 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
             clazzRstFile.write("\n")
 
         clazzRstPath = clazzRstPath.replace(".rst", "")
+        clazzRstPath = clazzRstPath.replace(root, "")
         # append to dao.rst file
         with open(daoRstPath, "a") as daoRstFile:
             daoRstFile.write(f"   {clazzRstPath}\n")
