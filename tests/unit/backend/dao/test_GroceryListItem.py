@@ -137,7 +137,7 @@ class TestGroceryListItem(unittest.TestCase):
         assert item.dict().get("IPTS") == mockIPTS.return_value
         # call IPTS a second time, and should not call GetIPTS
         item.IPTS
-        mockIPTS.assert_called_once()
+        mockIPTS.assert_called_once_with(self.runNumber, "SNAP")
 
         item = GroceryListItem(
             workspaceType="nexus",

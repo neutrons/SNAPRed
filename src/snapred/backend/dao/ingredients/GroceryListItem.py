@@ -71,7 +71,7 @@ class GroceryListItem(BaseModel):
         from mantid.simpleapi import GetIPTS
 
         if self._ipts is None:
-            self._ipts = GetIPTS(self.runNumber)
+            self._ipts = GetIPTS(self.runNumber, Config["instrument.name"])
         return self._ipts
 
     def toggleLiteMode(self, set_to: bool = None):

@@ -57,18 +57,18 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         # down to lite resolution of 18432 pixels
         else:
             inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
-            if inWS.getNumberHistograms() == 18432:
+            if inWS.getNumberHistograms() == Config["instrument.lite.pixelResolution"]:
                 # in this case we have an already-lite workspace
                 # no need to raise an error, just skip doing anything
                 pass
-            elif inWS.getNumberHistograms() != 1179648:
+            elif inWS.getNumberHistograms() != Config["instrument.native.pixelResolution"]:
                 msg = f"""
                     The workspace {self.getPropertyValue("InputWorkspace")}
                     is inconsistent with SNAP resolution.  You must specify a
                     Lite data map to use consistent with this workspace's resolution.
                     """
                 errors["InputWorkspace"] = msg
-            self._liteModeResolution = 18432
+            self._liteModeResolution = Config["instrument.lite.pixelResolution"]
         return errors
 
     def PyExec(self):
