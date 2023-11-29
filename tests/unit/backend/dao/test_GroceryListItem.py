@@ -1,6 +1,7 @@
 # ruff: noqa: E722, PT011, PT012
 
 import unittest
+from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
@@ -9,7 +10,6 @@ from mantid.simpleapi import (
 )
 from pydantic.error_wrappers import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.meta.Config import Resource
 
 
@@ -17,6 +17,9 @@ class TestGroceryListItem(unittest.TestCase):
     # we only need this workspace made once for entire test suite
     @classmethod
     def setUpClass(cls):
+        cls.runNumber = "555"
+        cls.IPTS = Resource.getPath("inputs")
+
         cls.instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
         cls.instrumentDonor = "_test_grocerylistitem_instrument"
         LoadEmptyInstrument(
@@ -31,14 +34,6 @@ class TestGroceryListItem(unittest.TestCase):
         DeleteWorkspace(cls.instrumentDonor)
         return super().tearDownClass()
 
-    # at the beginning of each test, make a new runConfig object
-    def setUp(self):
-        self.runConfig = RunConfig(
-            runNumber=555,
-            IPTS=Resource.getPath("inputs"),
-        )
-        return super().setUp()
-
     def test_make_correct(self):
         """
         Test that valid grocery list items can be made, so that below negative tests can be trusted
@@ -47,7 +42,7 @@ class TestGroceryListItem(unittest.TestCase):
         try:
             GroceryListItem(
                 workspaceType="nexus",
-                runConfig=self.runConfig,
+                runNumber=self.runNumber,
                 useLiteMode=True,
             )
         except:
@@ -64,44 +59,15 @@ class TestGroceryListItem(unittest.TestCase):
         except:
             pytest.fail("Failed to make a valid GroceryListItem for grouping")
 
-    def test_next_and_useLiteMode(self):
-        # check that it fails if neither runconfig.useLiteMode nor useLiteMode are set
+    def test_nexus_needs_runNumber(self):
         with pytest.raises(ValueError) as e:
             GroceryListItem(
                 workspaceType="nexus",
-                runConfig=self.runConfig,
-            )
-            assert "useLiteMode" in e.msg()
-
-        # check that if runConfig.useLiteMode is not set, will be set by useLiteMode
-        assert self.runConfig.useLiteMode is None
-        item = GroceryListItem(
-            workspaceType="nexus",
-            runConfig=self.runConfig,
-            useLiteMode=True,
-        )
-        assert item.runConfig.useLiteMode is True
-
-        # check that if useLiteMode is not set, will be set by runcConfig.useLiteMode
-        self.runConfig.useLiteMode = True
-        item = GroceryListItem(
-            workspaceType="nexus",
-            runConfig=self.runConfig,
-        )
-        assert item.useLiteMode is True
-
-    def test_nexus_needs_runconfig(self):
-        with pytest.raises(ValueError) as e:
-            GroceryListItem(
-                workspaceType="nexus",
-                loader="LoadEventNexus",
                 useLiteMode=True,
-                instrumentPropertySource="InstrumentDonor",
-                instrumentSource=self.instrumentDonor,
             )
             assert "you must set the run config" in e.msg()
 
-    def test_grouping_needs_stuff(self):
+    def test_grouping_needs_useLiteMode(self):
         # test needs useLiteMode
         with pytest.raises(ValueError) as e:
             GroceryListItem(
@@ -111,6 +77,8 @@ class TestGroceryListItem(unittest.TestCase):
                 instrumentSource=self.instrumentDonor,
             )
             assert "Lite mode" in e.msg()
+
+    def test_grouping_needs_groupingScheme(self):
         # test needs grouping scheme
         with pytest.raises(ValueError) as e:
             GroceryListItem(
@@ -120,6 +88,8 @@ class TestGroceryListItem(unittest.TestCase):
                 instrumentSource=self.instrumentDonor,
             )
             assert "grouping scheme" in e.msg()
+
+    def test_grouping_needs_propertySource(self):
         # test needs instrument property source
         with pytest.raises(ValueError) as e:
             GroceryListItem(
@@ -129,6 +99,8 @@ class TestGroceryListItem(unittest.TestCase):
                 instrumentSource=self.instrumentDonor,
             )
             assert "instrument source" in e.msg()
+
+    def test_grouping_needs_instrumentSource(self):
         # test needs instrument source
         with pytest.raises(ValueError) as e:
             GroceryListItem(
@@ -138,3 +110,61 @@ class TestGroceryListItem(unittest.TestCase):
                 instrumentPropertySource="InstrumentDonor",
             )
             assert "instrument source" in e.msg()
+
+    @mock.patch("mantid.simpleapi.GetIPTS")
+    def test_ipts(self, mockIPTS):
+        mockIPTS.return_value = "nowhere"
+
+        # make sure IPTS can be set form constructor
+        item = GroceryListItem(
+            workspaceType="nexus",
+            useLiteMode=False,
+            runNumber=self.runNumber,
+            IPTS=self.IPTS,
+        )
+        assert item.dict().get("IPTS") is not None
+        assert item.IPTS == self.IPTS
+
+        # make sure constructor does not require IPTS
+        item = GroceryListItem(
+            workspaceType="nexus",
+            useLiteMode=False,
+            runNumber=self.runNumber,
+        )
+        assert item.dict().get("IPTS") is None
+        # call for IPTS here, which should then set its value
+        assert item.IPTS == mockIPTS.return_value
+        assert item.dict().get("IPTS") == mockIPTS.return_value
+        # call IPTS a second time, and should not call GetIPTS
+        item.IPTS
+        mockIPTS.assert_called_once()
+
+        item = GroceryListItem(
+            workspaceType="nexus",
+            useLiteMode=False,
+            runNumber=self.runNumber,
+        )
+        item.IPTS = "a fake ipts"
+        assert item.IPTS == "a fake ipts"
+        assert item.dict().get("IPTS") == "a fake ipts"
+
+    def test_creation_methods(self):
+        item = GroceryListItem.makeNativeNexusItem(self.runNumber)
+        assert item.runNumber == self.runNumber
+        assert item.useLiteMode is False
+        assert item.workspaceType == "nexus"
+
+        item = GroceryListItem.makeLiteNexusItem(self.runNumber)
+        assert item.runNumber == self.runNumber
+        assert item.useLiteMode is True
+        assert item.workspaceType == "nexus"
+
+        item = GroceryListItem.makeNativeGroupingItem("Native")
+        assert item.groupingScheme == "Native"
+        assert item.useLiteMode is False
+        assert item.workspaceType == "grouping"
+
+        item = GroceryListItem.makeLiteGroupingItem("Native")
+        assert item.groupingScheme == "Native"
+        assert item.useLiteMode is True
+        assert item.workspaceType == "grouping"

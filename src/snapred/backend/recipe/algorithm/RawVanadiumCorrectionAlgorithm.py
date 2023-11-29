@@ -17,6 +17,9 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Normalization Calibration"
+
     def PyInit(self):
         # declare properties
         self.declareProperty(

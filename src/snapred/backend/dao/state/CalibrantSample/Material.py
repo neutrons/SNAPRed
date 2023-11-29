@@ -26,8 +26,8 @@ class Material(BaseModel):
             ans["massDensity"] = self.massDensity
         return ans
 
-    def json(self) -> str:
-        return json.dumps(self.dict())
+    def json(self, **kwargs) -> str:
+        return json.dumps(self.dict(), **kwargs)
 
     @validator("packingFraction", allow_reuse=True)
     def validate_packingFraction(cls, v):

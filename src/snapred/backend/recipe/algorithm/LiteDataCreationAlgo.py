@@ -12,6 +12,9 @@ from snapred.meta.Config import Config
 
 
 class LiteDataCreationAlgo(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Lite mode reduction"
+
     def PyInit(self):
         self.declareProperty(
             MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),

@@ -30,7 +30,6 @@ from snapred.meta.Config import Resource
 
 PixelCalAlgo: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.PixelDiffractionCalibration"
 GroupCalAlgo: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.GroupDiffractionCalibration"
-TheAlgorithmManager = "hello"
 
 
 class TestDiffractionCalibtationRecipe(unittest.TestCase):
