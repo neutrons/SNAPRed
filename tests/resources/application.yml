@@ -21,9 +21,11 @@ instrument:
           - hdf
   config: shared/Calibration/SNAPInstPrm.json
   native:
+    pixelResolution: 1179648
     definition:
       file: ${instrument.home}shared/Malcolm/dataFiles/SNAP_Definition.xml
   lite:
+    pixelResolution: 18432
     definition:
       file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
     map:
