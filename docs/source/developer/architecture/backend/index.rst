@@ -7,7 +7,7 @@ Backend
 Summary
 -------
 
-The backend is splite into 3 layers, with a total of 4 conceptual components.
+The backend is split into 3 layers, with a total of 4 conceptual components.
 The layers are organized to fulfill the different levels of abstractive needs a developer requires to achieve user requirments.
 The layers are as follows:
 
