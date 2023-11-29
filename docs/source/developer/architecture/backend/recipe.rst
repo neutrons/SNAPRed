@@ -16,9 +16,9 @@ Simple as.
     Ingredients are a class of Data Access Objects that are used to provide the Recipe Component with the data(minus workspace references) it needs to perform its calculations.
     They are a self validating DataModel of non-run data that is used to perform the calculations of the Recipe Component.
 * Workspaces
-    Workspaces are a Mantid concept that house that large sets of data that are used to perform calculations.
+    Workspaces are a Mantid concept that house large sets of data that are used to perform calculations.
     In SNAPRed we typically use these to hold data collected during Runs(Experiment Runs, Vanadium Runs, Calibration Runs etc), as well as DiffCal data.
-    More generally, they are used to interect with Mantid.
+    More generally, they are used to interact with Mantid.
     Mantid widely integrates workspaces into its API, and as such, they enable the use of a lot of Mantid's functionality. (Algorithms, Plotting, etc)
 
 Outputs
