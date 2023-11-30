@@ -60,15 +60,6 @@ ingredients.reductionState.stateConfig.tofMin = TOFBinParams[0]
 ingredients.reductionState.stateConfig.tofBin = TOFBinParams[1]
 ingredients.reductionState.stateConfig.tofMax = TOFBinParams[2]
 
-difcWS = "_difc"
-LoadDiffCal(
-    Filename = geomCalibFile,
-    MakeCalWorkspace = True,
-    WorkspaceName = difcWS,
-    InstrumentFilename = idf,
-)
-difcWS = difcWS + "_cal"
-
 groceryList = [
     GroceryListItem.makeLiteNexusItem(VRun),
     GroceryListItem.makeLiteNexusItem(VBRun),
@@ -99,7 +90,6 @@ algo = Algo()
 algo.initialize()
 algo.setPropertyValue("InputWorkspace", groceries[0])
 algo.setPropertyValue("BackgroundWorkspace", groceries[1])
-algo.setPropertyValue("CalibrationWorkspace", difcWS)
 algo.setPropertyValue("Ingredients", ingredients.json())
 algo.setPropertyValue("CalibrantSample", calibrantSample.json())
 algo.setPropertyValue("OutputWorkspace", outputWS)
