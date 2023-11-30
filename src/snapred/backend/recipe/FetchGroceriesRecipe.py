@@ -36,10 +36,13 @@ class FetchGroceriesRecipe:
     ## FILENAME METHODS
 
     def _createNexusFilename(self, item: GroceryListItem) -> str:
+        from mantid.simpleapi import GetIPTS
+
         instr = "nexus.lite" if item.useLiteMode else "nexus.native"
         pre = instr + ".prefix"
         ext = instr + ".extension"
-        return item.IPTS + Config[pre] + str(item.runNumber) + Config[ext]
+        ipts = GetIPTS(item.runNumber, Config["instrument.name"])
+        return ipts + Config[pre] + str(item.runNumber) + Config[ext]
 
     def _createGroupingFilename(self, item: GroceryListItem):
         if item.groupingScheme == "Lite":

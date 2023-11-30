@@ -25,7 +25,6 @@ from snapred.meta.Config import Config, Resource
 TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
 
 
-@mock.patch("mantid.simpleapi.GetIPTS", mock.Mock(return_value="nowhere"))
 class TestFetchGroceriesRecipe(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -115,18 +114,19 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert rx._key(self.nexusItem) == (self.runNumber, False)
         assert rx._key(self.nexusItem.toggleLiteMode()) == (self.runNumber, True)
 
+    @mock.patch("mantid.simpleapi.GetIPTS", mock.Mock(return_value="nowhere/"))
     def test_nexus_filename(self):
         """Test the creation of the nexus filename"""
         rx = Recipe()
         res = rx._createNexusFilename(self.nexusItem)
-        assert self.nexusItem.IPTS in res
+        assert "nowhere" in res
         assert Config["nexus.native.prefix"] in res
         assert self.runNumber in res
         assert "lite" not in res.lower()
 
         # now use lite mode
         res = rx._createNexusFilename(self.nexusItem.toggleLiteMode())
-        assert self.nexusItem.IPTS in res
+        assert "nowhere" in res
         assert Config["nexus.lite.prefix"] in res
         assert self.runNumber in res
         assert "lite" in res.lower()

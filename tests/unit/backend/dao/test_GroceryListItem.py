@@ -111,43 +111,6 @@ class TestGroceryListItem(unittest.TestCase):
             )
             assert "instrument source" in e.msg()
 
-    @mock.patch("mantid.simpleapi.GetIPTS")
-    def test_ipts(self, mockIPTS):
-        mockIPTS.return_value = "nowhere"
-
-        # make sure IPTS can be set form constructor
-        item = GroceryListItem(
-            workspaceType="nexus",
-            useLiteMode=False,
-            runNumber=self.runNumber,
-            IPTS=self.IPTS,
-        )
-        assert item.dict().get("IPTS") is not None
-        assert item.IPTS == self.IPTS
-
-        # make sure constructor does not require IPTS
-        item = GroceryListItem(
-            workspaceType="nexus",
-            useLiteMode=False,
-            runNumber=self.runNumber,
-        )
-        assert item.dict().get("IPTS") is None
-        # call for IPTS here, which should then set its value
-        assert item.IPTS == mockIPTS.return_value
-        assert item.dict().get("IPTS") == mockIPTS.return_value
-        # call IPTS a second time, and should not call GetIPTS
-        item.IPTS
-        mockIPTS.assert_called_once_with(self.runNumber, "SNAP")
-
-        item = GroceryListItem(
-            workspaceType="nexus",
-            useLiteMode=False,
-            runNumber=self.runNumber,
-        )
-        item.IPTS = "a fake ipts"
-        assert item.IPTS == "a fake ipts"
-        assert item.dict().get("IPTS") == "a fake ipts"
-
     def test_creation_methods(self):
         item = GroceryListItem.makeNativeNexusItem(self.runNumber)
         assert item.runNumber == self.runNumber

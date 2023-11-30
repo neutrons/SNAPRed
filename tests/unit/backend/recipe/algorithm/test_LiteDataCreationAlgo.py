@@ -117,6 +117,63 @@ def test_fakeInstrument():
     DeleteWorkspace(focusWS)
 
 
+def test_fail_with_no_output():
+    from mantid.simpleapi import (
+        ConvertToEventWorkspace,
+        CreateWorkspace,
+        DeleteWorkspace,
+        LoadDetectorsGroupingFile,
+        LoadInstrument,
+        mtd,
+    )
+
+    fullInstrumentWS = "_test_lite_algo_native"
+    focusWS = "_test_lite_data_map"
+
+    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+    liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
+    liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+
+    fullResolution: int = 16
+
+    # create simple event data with a different number in each pixel
+    CreateWorkspace(
+        OutputWorkspace=fullInstrumentWS,
+        DataX=[0.5, 1.5] * fullResolution,
+        DataY=range(fullResolution),
+        DataE=[0.01] * fullResolution,
+        NSpec=fullResolution,
+    )
+    ConvertToEventWorkspace(
+        InputWorkspace=fullInstrumentWS,
+        OutputWorkspace=fullInstrumentWS,
+    )
+    # load the instrument, and load the grouping file
+    LoadInstrument(
+        Workspace=fullInstrumentWS,
+        Filename=fullInstrumentFile,
+        RewriteSpectraMap=True,
+    )
+    LoadDetectorsGroupingFile(
+        InputFile=liteInstrumentMap,
+        InputWorkspace=fullInstrumentWS,
+        OutputWorkspace=focusWS,
+    )
+
+    # will fail with no output
+    liteDataCreationAlgo = LiteDataCreationAlgo()
+    liteDataCreationAlgo.initialize()
+    liteDataCreationAlgo.setPropertyValue("InputWorkspace", fullInstrumentWS)
+    liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
+    liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
+    with pytest.raises(RuntimeError) as e:
+        liteDataCreationAlgo.execute()
+    assert "OutputWorkspace" in str(e.value)
+
+    DeleteWorkspace(fullInstrumentWS)
+    DeleteWorkspace(focusWS)
+
+
 def test_fail_to_validate():
     from mantid.simpleapi import (
         CreateWorkspace,

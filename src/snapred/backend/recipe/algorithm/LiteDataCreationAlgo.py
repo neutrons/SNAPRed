@@ -36,6 +36,8 @@ class LiteDataCreationAlgo(PythonAlgorithm):
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
+        if self.getProperty("OutputWorkspace").isDefault:
+            errors["OutputWorkspace"] = "You must specify an output workspace for Lite data"
         # if we specified a map, make sure it is consistent with input data
         if not self.getProperty("LiteDataMapWorkspace").isDefault:
             inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
@@ -76,17 +78,10 @@ class LiteDataCreationAlgo(PythonAlgorithm):
 
         # load input workspace
         inputWorkspaceName = self.getPropertyValue("InputWorkspace")
+        outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
 
         # flag for auto deletion of non-lite data
         autoDelete = self.getProperty("AutoDeleteNonLiteWS").value
-
-        # create outputworkspace
-        if self.getProperty("OutputWorkspace").isDefault:
-            # TODO use workspace name generatoe
-            outputWorkspaceName = inputWorkspaceName + "_lite"
-            self.setPropertyValue("OutputWorkspace", outputWorkspaceName)
-        else:
-            outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
 
         # check that we are not already in lite mode
         # if we are, simply copy over the workspace and continue

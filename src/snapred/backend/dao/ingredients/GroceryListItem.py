@@ -21,58 +21,12 @@ class GroceryListItem(BaseModel):
     runNumber: Optional[str]
     groupingScheme: Optional[str]
     # grouping workspaces require an instrument definition
-    # these indicate which property defines the sourt, and then that source
+    # these indicate which property defines the source, and then that source
     instrumentPropertySource: Optional[Literal["InstrumentName", "InstrumentFilename", "InstrumentDonor"]]
     instrumentSource: Optional[str]
     # if set to False, nexus data will not be loaded in a clean, cached way
     # this is faster and uses less memory, if you know you only need one copy
     keepItClean: bool = True
-
-    # IPTS is implemented lazily and is not a true model field
-    # the _ipts private field stores its value, and methods handle getting/setting
-    # this can be avoided with @property getter/setter, only supported in pydantic >v2
-    _ipts: str = PrivateAttr()
-
-    def __init__(self, **kwargs):
-        # set the model as usual
-        super().__init__(**kwargs)
-        # also if IPTS was set in construction, set its value
-        object.__setattr__(self, "_ipts", kwargs.get("IPTS"))
-
-    def dict(self, **kwargs) -> Dict[str, Any]:  # noqa: A003, ARG002
-        # return the usual dictionary
-        ans = super().dict(**kwargs)
-        # if IPTS is set, also return its value
-        if self._ipts is not None:
-            ans["IPTS"] = self.IPTS
-        return ans
-
-    def json(self, **kwargs) -> str:
-        # get the dictionary and dump it
-        return json.dumps(self.dict(), **kwargs)
-
-    def __setattr__(self, name, value):
-        # set as usual
-        try:
-            super().__setattr__(name, value)
-        # if a key error occured, check if the key was IPTS
-        # if it was IPTS, then set the IPTS
-        # otherwise raise an error
-        except ValueError as e:
-            if name == "IPTS":
-                object.__setattr__(self, "_ipts", value)
-            else:
-                raise e
-
-    # if something calls for the IPTS, and it is not set,
-    # then call the GetIPTS mantid function to set the IPTS
-    @property
-    def IPTS(self):
-        from mantid.simpleapi import GetIPTS
-
-        if self._ipts is None:
-            self._ipts = GetIPTS(self.runNumber, Config["instrument.name"])
-        return self._ipts
 
     def toggleLiteMode(self, set_to: bool = None):
         if set_to is not None:
