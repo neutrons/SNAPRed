@@ -28,7 +28,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
     """
 
     def category(self):
-        return "SNAPRed data loading"
+        return "SNAPRed Data Handling"
 
     def PyInit(self):
         # declare properties

@@ -2,24 +2,10 @@
 # this in a very lazy test, which copy/pastes over the unit test then runs it
 
 from mantid.simpleapi import *
-import matplotlib.pyplot as plt
-import numpy as np
 
 import json
-import random
-import unittest
-import unittest.mock as mock
-from typing import Dict, List
-
-# import os
-# os.environ["env"] = "test"
-
-import pytest
-from mantid.api import PythonAlgorithm
-from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
-from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
@@ -33,7 +19,7 @@ from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as 
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm as Algo  # noqa: E402
 from snapred.meta.Config import Config, Resource
 Config._config['cis_mode'] = False
-
+Resource._resourcesPath = os.path.expanduser("~/SNAPRed/tests/resources/")
 
 # Inputs
 VRun = 57473
@@ -45,15 +31,10 @@ sPrmFile = '/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/057514/SNAPcali
 idf = '/SNS/SNAP/shared/Calibration_old/SNAPLite.xml'
 #############################Don't edit below here#########################
 
-#instrument parameters
-# with open(iPrmFile, "r") as json_file:
-#   iPrm = json.load(json_file) 
 
 #state parameters
 with open(sPrmFile, "r") as json_file:
   sPrm = json.load(json_file) 
-
-#geomCalibFile= iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ sPrm['calFileName']
 
 xmin = sPrm['tofMin']
 xmax = sPrm['tofMax']
@@ -68,8 +49,6 @@ print('/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/057514/SNAP057514_ca
 # Getting reduction ingredients for VRun through DataFactoryService doesn't work.
 # As the service tries to locate various files, at one point it needs Config "instrument.home" path to be "/SNS/SNAP/", 
 # but at another point it needs it to be "~/SNAPRed/tests/resources/". 
-#dataFactoryService=DataFactoryService()
-#ingredients = dataFactoryService.getReductionIngredients(VRun)
 ingredients = Ingredients.parse_raw(Resource.read("/inputs/reduction/input_ingredients.json"))
 
 ingredients.reductionState.stateConfig.tofMin = TOFBinParams[0]

@@ -7,6 +7,9 @@ name = "DummyAlgo"
 
 
 class DummyAlgo(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Internal"
+
     def PyInit(self):
         # declare properties
         pass

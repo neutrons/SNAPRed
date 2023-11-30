@@ -21,6 +21,9 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
     This is done per group, strain and sigma collected over spectra within said group.
     """
 
+    def category(self):
+        return "SNAPRed Calibration"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)

@@ -14,6 +14,9 @@ name = "DetectorPeakPredictor"
 
 
 class DetectorPeakPredictor(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Sample Data"
+
     def PyInit(self) -> None:
         # declare properties
         self.declareProperty(

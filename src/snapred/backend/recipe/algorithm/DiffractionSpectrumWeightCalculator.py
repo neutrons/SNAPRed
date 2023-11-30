@@ -13,6 +13,9 @@ name = "DiffractionSpectrumWeightCalculator"
 
 
 class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Internal"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)

@@ -22,6 +22,9 @@ class FitOutputEnum(Enum):
 
 
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Sample Data"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("FitMultiplePeaksIngredients", defaultValue="", direction=Direction.Input)

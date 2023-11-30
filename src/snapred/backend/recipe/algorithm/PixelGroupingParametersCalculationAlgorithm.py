@@ -21,6 +21,9 @@ name = "PixelGroupingParametersCalculationAlgorithm"
 
 
 class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Internal"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)

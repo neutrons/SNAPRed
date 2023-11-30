@@ -11,6 +11,9 @@ name = "CustomGroupWorkspace"
 
 
 class CustomGroupWorkspace(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Internal"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("StateConfig", defaultValue="", direction=Direction.Input)

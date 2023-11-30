@@ -12,6 +12,9 @@ name = "PurgeOverlappingPeaksAlgorithm"
 
 
 class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Sample Data"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)

@@ -19,6 +19,9 @@ name = "ReductionAlgorithm"
 # and after is equivalent                             #
 #######################################################
 class ReductionAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Reduction"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)

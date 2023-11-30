@@ -26,6 +26,9 @@ class SaveGroupingDefinition(PythonAlgorithm):
         OutputFilename: str -- path of an output file. Supported file name extensions: "h5", "hd5", "hdf".
     """
 
+    def category(self):
+        return "SNAPRed Data Handling"
+
     def PyInit(self) -> None:
         # declare properties
         self.declareProperty(

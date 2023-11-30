@@ -28,6 +28,9 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
         OutputWorkspaceGroup: str -- the name of the Output Workspace group (diffraction_focused_vanadium)
     """
 
+    def category(self):
+        return "SNAPRed Normalization Calibration"
+
     def PyInit(self):
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("SmoothDataIngredients", defaultValue="", direction=Direction.Input)

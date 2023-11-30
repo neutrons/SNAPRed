@@ -12,6 +12,9 @@ name = "CalibrationReductionAlgorithm"
 
 
 class CalibrationReductionAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Calibration"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
