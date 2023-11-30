@@ -1,6 +1,6 @@
 import pathlib
+from typing import Dict
 
-import h5py
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 from mantid.simpleapi import mtd
@@ -61,7 +61,7 @@ class SaveGroupingDefinition(PythonAlgorithm):
         self.supported_nexus_file_extensions = ["NXS", "NXS5"]
         self.supported_xml_file_extensions = ["XML"]
 
-    def validateInputs(self) -> None:
+    def validateInputs(self) -> Dict[str, str]:
         errors = {}
 
         # either file name or workspace name must be specified

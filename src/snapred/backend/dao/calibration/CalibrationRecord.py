@@ -2,10 +2,11 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from snapred.backend.dao import CrystallographicInfo
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
-from snapred.backend.dao.state import FocusGroupParameters
+from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
+from snapred.backend.dao.state.FocusGroupParameters import FocusGroupParameters
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class CalibrationRecord(BaseModel):
@@ -16,5 +17,5 @@ class CalibrationRecord(BaseModel):
     calibrationFittingIngredients: Calibration
     focusGroupParameters: List[FocusGroupParameters]
     focusGroupCalibrationMetrics: FocusGroupMetric
-    workspaceNames: List[str]
+    workspaceNames: List[WorkspaceName]
     version: Optional[int]

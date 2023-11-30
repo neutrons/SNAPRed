@@ -111,7 +111,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         # load an instrument into sample data
         LoadInstrument(
             Workspace=self.backgroundWS,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             InstrumentName="fakeSNAPLite",
             RewriteSpectraMap=False,
         )
@@ -168,7 +168,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.chopIngredients(self.fakeIngredients)
-        assert algo.liteMode == self.fakeIngredients.reductionState.stateConfig.isLiteMode
         assert algo.TOFPars[0] == self.fakeIngredients.reductionState.stateConfig.tofMin
         assert algo.TOFPars[1] == self.fakeIngredients.reductionState.stateConfig.tofBin
         assert algo.TOFPars[2] == self.fakeIngredients.reductionState.stateConfig.tofMax

@@ -24,10 +24,15 @@ from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import Calibrant
 from snapred.backend.dao.state.CalibrantSample.Material import Material
 from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 
+
+# for loading data
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
+
 # the algorithm to test
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm as Algo  # noqa: E402
 from snapred.meta.Config import Config, Resource
-Config._config['cis_mode'] = True
+Config._config['cis_mode'] = False
 
 
 # Inputs
@@ -71,37 +76,21 @@ ingredients.reductionState.stateConfig.tofMin = TOFBinParams[0]
 ingredients.reductionState.stateConfig.tofBin = TOFBinParams[1]
 ingredients.reductionState.stateConfig.tofMax = TOFBinParams[2]
 
-def loadFromRunNumber(runNo, wsName):
-    IPTSLoc = GetIPTS(RunNumber=runNo,Instrument='SNAP')
-    if liteMode:
-        filename = f'{IPTSLoc}shared/lite/SNAP_{runNo}.lite.nxs.h5'
-    else:
-        filename = f'{IPTSLoc}nexus/SNAP_{runNo}.nxs.h5'  
-    if mtd.doesExist(wsName):
-        print("ALREADY EXISTS!")
-    else:
-        LoadEventNexus(
-            Filename=filename, 
-            OutputWorkspace=wsName, 
-            FilterByTofMin=TOFBinParams[0], 
-            FilterByTofMax=TOFBinParams[2], 
-            NumberOfBins=1,
-        )
+difcWS = "_difc"
+LoadDiffCal(
+    Filename = geomCalibFile,
+    MakeCalWorkspace = True,
+    WorkspaceName = difcWS,
+    InstrumentFilename = idf,
+)
+difcWS = difcWS + "_cal"
 
-rawVanadiumWS = 'z_TOF_V'
-rawBackgroundWS = 'z_TOF_VB'
-vanadiumWS = '_TOF_V'
-backgroundWS = '_TOF_VB'
-loadFromRunNumber(VRun, rawVanadiumWS)
-loadFromRunNumber(VBRun, rawBackgroundWS)
-CloneWorkspace(
-    InputWorkspace = rawVanadiumWS,
-    OutputWorkspace = vanadiumWS,
-)
-CloneWorkspace(
-    Inputworkspace = rawBackgroundWS,
-    OutputWorkspace = backgroundWS,
-)
+groceryList = [
+    GroceryListItem.makeLiteNexusItem(VRun),
+    GroceryListItem.makeLiteNexusItem(VBRun),
+    GroceryListItem.makeLiteGroupingItemFrom("Column", "prev"),
+]
+groceries = FetchRx().executeRecipe(groceryList)["workspaces"]
 
 
 # CREATE MATERIAL ########################################################
@@ -123,9 +112,9 @@ calibrantSample = CalibrantSamples(
 # RUN ALGO ########################################################
 outputWS = "_test_raw_vanadium_final_output"
 algo = Algo()
-algo.initialize()
-algo.setProperty("InputWorkspace", vanadiumWS)
-algo.setProperty("BackgroundWorkspace", backgroundWS)
+algo.setProperty("InputWorkspace", groceries[0])
+algo.setProperty("BackgroundWorkspace", groceries[1])
+algo.setProperty("CalibrationWorkspace", difcWS)
 algo.setProperty("Ingredients", ingredients.json())
 algo.setProperty("CalibrantSample", calibrantSample.json())
 algo.setProperty("OutputWorkspace", outputWS)
@@ -139,6 +128,6 @@ ConvertUnits(
 DiffractionFocussing(
     InputWorkspace = outputWS,
     OutputWorkspace = '_test_focussed',
-    GroupingFilename = '/SNS/SNAP/shared/Calibration_old/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.cal',
+    GroupingWorkspace = groceries[2],
 )
 
