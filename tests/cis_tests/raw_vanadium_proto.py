@@ -27,14 +27,19 @@ VBRun = 57472
 liteMode=True
 # File defining reduction parameters for this instrument state (Manually spec'ed for now)
 sPrmFile = '/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/057514/SNAPcalibLog57514.lite.json' 
-#iPrmFile = '/SNS/SNAP/shared/Calibration/SNAPInstPrm.json'
+iPrmFile = '/SNS/SNAP/shared/Calibration/SNAPInstPrm.json'
 idf = '/SNS/SNAP/shared/Calibration_old/SNAPLite.xml'
 #############################Don't edit below here#########################
 
+#instrument parameters
+with open(iPrmFile, "r") as json_file:
+  iPrm = json.load(json_file) 
 
 #state parameters
 with open(sPrmFile, "r") as json_file:
   sPrm = json.load(json_file) 
+  
+geomCalibFile= iPrm['calibrationDirectory'] + sPrm['stateID'] +'/057514/'+ sPrm['calFileName']
 
 xmin = sPrm['tofMin']
 xmax = sPrm['tofMax']
@@ -91,12 +96,13 @@ calibrantSample = CalibrantSamples(
 # RUN ALGO ########################################################
 outputWS = "_test_raw_vanadium_final_output"
 algo = Algo()
-algo.setProperty("InputWorkspace", groceries[0])
-algo.setProperty("BackgroundWorkspace", groceries[1])
-algo.setProperty("CalibrationWorkspace", difcWS)
-algo.setProperty("Ingredients", ingredients.json())
-algo.setProperty("CalibrantSample", calibrantSample.json())
-algo.setProperty("OutputWorkspace", outputWS)
+algo.initialize()
+algo.setPropertyValue("InputWorkspace", groceries[0])
+algo.setPropertyValue("BackgroundWorkspace", groceries[1])
+algo.setPropertyValue("CalibrationWorkspace", difcWS)
+algo.setPropertyValue("Ingredients", ingredients.json())
+algo.setPropertyValue("CalibrantSample", calibrantSample.json())
+algo.setPropertyValue("OutputWorkspace", outputWS)
 assert algo.execute()
 
 ConvertUnits(
