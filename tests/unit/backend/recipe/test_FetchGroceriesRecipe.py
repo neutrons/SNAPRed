@@ -400,6 +400,11 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
     def test_fetch_grocery_list(self, mockNexusFilename, mockGroupFilename):
         mockNexusFilename.return_value = self.filepath
         mockGroupFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
+        # add an item meant to load a dirty copy
+        dirtyItem = GroceryListItem.makeNativeNexusItem(self.runNumber + "1")
+        dirtyItem.keepItClean = False
+        self.groceryList.append(dirtyItem)
+        # run the recipe
         rx = Recipe()
         res = rx.executeRecipe(self.groceryList)
         assert res["result"]
@@ -425,6 +430,36 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res.get("workspaces") is not None
         assert len(res["workspaces"]) == len(self.groceryList)
         assert self.groceryList[1].instrumentSource == res["workspaces"][0]
+
+    @mock.patch.object(Recipe, "_createNexusFilename")
+    def test_fetch_grocery_list_check_ads(self, mockNexusFilename):
+        mockNexusFilename.return_value = self.filepath
+
+        # load data so the raw file exists in the ADS
+        self.groceryList = [self.nexusItem]
+        rx = Recipe()
+        testKey = rx._key(self.nexusItem)
+        rawWorkspaceName = rx._createRawNexusWorkspaceName(self.nexusItem)
+        copyWorkspaceName = rx._createCopyNexusWorkspaceName(self.nexusItem, 1)
+        rx.executeRecipe(self.groceryList)
+        assert mtd.doesExist(rawWorkspaceName)
+        assert mtd.doesExist(copyWorkspaceName)
+        assert rx._loadedRuns[testKey] == 1
+
+        # now clear it out from the ADS
+        rx._loadedRuns = {}
+        DeleteWorkspace(copyWorkspaceName)
+        assert mtd.doesExist(rawWorkspaceName)
+        assert not mtd.doesExist(copyWorkspaceName)
+        assert rx._loadedRuns.get(testKey) is None
+
+        # re-run, and it should copy the raw fiel from the ADS
+        rx._fetch = mock.Mock()
+        rx.executeRecipe(self.groceryList)
+        assert rx._loadedRuns[testKey] > 0
+        rx._fetch.assert_not_called()
+        assert mtd.doesExist(rawWorkspaceName)
+        assert mtd.doesExist(copyWorkspaceName)
 
     ## TEST LITE MODE METHODS
 

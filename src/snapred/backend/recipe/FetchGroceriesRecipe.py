@@ -1,7 +1,7 @@
 import os
 from typing import Any, Dict, List, Tuple
 
-from mantid.simpleapi import CloneWorkspace
+from mantid.simpleapi import CloneWorkspace, mtd
 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.log.logger import snapredLogger
@@ -90,6 +90,7 @@ class FetchGroceriesRecipe:
         }
         prev: str = ""
         for item in groceries:
+            self.checkADS(item)
             if item.workspaceType == "nexus":
                 if item.keepItClean:
                     res = self.fetchCleanNexusData(item)
@@ -155,15 +156,16 @@ class FetchGroceriesRecipe:
             "result": False,
             "loader": "",
         }
+
         # treat Lite data specially -- this is easier than extending the if/else block here
         if item.useLiteMode:
             data = self.fetchCleanNexusDataLite(item)
 
         # if not Lite data, continue as below
         else:
-            filename: str = self._createNexusFilename(item)
-            rawWorkspaceName: str = self._createRawNexusWorkspaceName(item)
             thisKey = self._key(item)
+            rawWorkspaceName: str = self._createRawNexusWorkspaceName(item)
+            filename: str = self._createNexusFilename(item)
             # if the raw data has not been loaded, first load it
             # if it has been loaded, increment its counts
             if self._loadedRuns.get(thisKey) is None:
@@ -205,8 +207,9 @@ class FetchGroceriesRecipe:
             "loader": "",
             "workspace": workspaceName,
         }
+
         # check if a raw workspace exists, and clone it if so
-        if self._loadedRuns.get(self._key(item), 0) > 0:
+        if self._loadedRuns.get(self._key(item)) is not None:
             CloneWorkspace(
                 InputWorkspace=self._createRawNexusWorkspaceName(item),
                 OutputWorkspace=workspaceName,
@@ -242,7 +245,7 @@ class FetchGroceriesRecipe:
             "workspace": workspaceName,
         }
 
-        key = (item.groupingScheme, item.useLiteMode)
+        key = self._key(item)
         if self._loadedGroupings.get(key) is None:
             algo = FetchAlgo()
             algo.initialize()
@@ -260,6 +263,12 @@ class FetchGroceriesRecipe:
             data["loader"] = "cached"  # unset the loader to indicate it was unused
         logger.info("Finished loading grouping")
         return data
+
+    def checkADS(self, item):
+        workspace = self._createRawNexusWorkspaceName(item)
+        key = self._key(item)
+        if mtd.doesExist(workspace) and self._loadedRuns.get(key) is None:
+            self._loadedRuns[key] = 0
 
     ## FOR FETCHING LITE MODE DATA
 
