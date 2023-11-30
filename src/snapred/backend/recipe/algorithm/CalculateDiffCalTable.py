@@ -23,6 +23,9 @@ class CalculateDiffCalTable(PythonAlgorithm):
     Record a workspace in a state for the CIS to view later
     """
 
+    def category(self):
+        return "SNAPRed Diffraction Calibration"
+
     def PyInit(self):
         # declare properties
         self.declareProperty(

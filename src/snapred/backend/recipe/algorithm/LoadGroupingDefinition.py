@@ -24,6 +24,9 @@ class LoadGroupingDefinition(PythonAlgorithm):
         OutputWorkspace: str -- name of an output grouping workspace
     """
 
+    def category(self):
+        return "SNAPRed Data Handling"
+
     def PyInit(self) -> None:
         # declare properties
         self.declareProperty(

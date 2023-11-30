@@ -8,16 +8,17 @@ from snapred.backend.recipe.algorithm.CustomGroupWorkspace import CustomGroupWor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 
-name = "CalibrationReductionAlgorithm"
-
 
 class CalibrationReductionAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Calibration"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))

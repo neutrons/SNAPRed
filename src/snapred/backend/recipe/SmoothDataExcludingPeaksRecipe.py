@@ -4,9 +4,7 @@ from mantid.api import AlgorithmManager
 
 from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import (
-    name as SmoothDataExcludingPeaksAlgo,
-)
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -14,7 +12,7 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class SmoothDataExcludingPeaksRecipe:
-    smoothDataExcludingPeaksAlgoName: str = SmoothDataExcludingPeaksAlgo
+    smoothDataExcludingPeaksAlgoName: str = SmoothDataExcludingPeaksAlgo.__name__
 
     def __init__(self):
         pass
