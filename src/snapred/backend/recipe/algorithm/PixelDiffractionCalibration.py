@@ -57,9 +57,6 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         self.runNumber: str = ingredients.runConfig.runNumber
 
-        # TODO setup for SNAPLite
-        self.isLite: bool = False
-
         # from grouping parameters, read the overall min/max d-spacings
         self.overallDMin: float = min(ingredients.focusGroup.dMin)
         self.overallDMax: float = max(ingredients.focusGroup.dMax)

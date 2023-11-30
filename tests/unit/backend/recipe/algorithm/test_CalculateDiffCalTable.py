@@ -48,7 +48,7 @@ class TestCalculateDiffCalTable(unittest.TestCase):
         )
         LoadInstrument(
             Workspace=rawWsName,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             RewriteSpectraMap=True,
         )
 

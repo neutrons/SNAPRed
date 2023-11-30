@@ -1,5 +1,4 @@
-import json
-from typing import Any, Dict, Tuple
+from typing import Tuple
 
 import numpy as np
 from mantid.api import (
@@ -10,7 +9,6 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction
-from scipy.interpolate import make_smoothing_spline, splev
 
 from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -19,6 +17,9 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Normalization Calibration"
+
     def PyInit(self):
         # declare properties
         self.declareProperty(
@@ -44,16 +45,9 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
         stateConfig = ingredients.reductionState.stateConfig
-        self.liteMode: bool = stateConfig.isLiteMode
         self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
 
     def chopNeutronData(self, wsName: str) -> None:
-        # TODO: handle lite mode
-        if self.liteMode:
-            pass
-        else:
-            pass
-
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data before chop",
             InputWorkspace=wsName,
@@ -166,15 +160,6 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             "Remove local vanadium background copy",
             Workspace=outputWSVB,
         )
-
-        if not self.liteMode:
-            self.mantidSnapper.SumNeighbours(
-                "Add neighboring pixels",
-                InputWorkspace=outputWS,
-                SumX=8,  # TODO: extract this from SNAPLite definition
-                SumY=8,  # TODO: extract this from SNAPLite definition
-                OutputWorkspace=outputWS,
-            )
 
         # calculate and apply cylindrical absorption
         self.mantidSnapper.ConvertUnits(

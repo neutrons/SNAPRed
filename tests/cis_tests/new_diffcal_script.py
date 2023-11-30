@@ -24,19 +24,19 @@ from snapred.backend.dao.request.DiffractionCalibrationRequest import Diffractio
 from snapred.meta.Config import Config
 
 #User input ###########################
-runNumber = "57514"
+runNumber = "58882"
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
-peakThreshold = 0.005
-offsetConvergenceLimit = 0.01
+peakThreshold = 0.05
+offsetConvergenceLimit = 0.1
 isLite = True
-Config._config["cis_mode"] = False
+Config._config["cis_mode"] = True
 #######################################
 
 ### CREATE INGREDIENTS ################
 runConfig = RunConfig(
     runNumber=runNumber,
     IPTS=GetIPTS(RunNumber=runNumber,Instrument='SNAP'), 
-    isLite=isLite,
+    useLiteMode=isLite,
 )
 dataFactoryService = DataFactoryService()
 focusGroup=dataFactoryService.getFocusGroups(runNumber)[0] #column
@@ -70,33 +70,35 @@ ingredients = DiffractionCalibrationIngredients(
     maxOffset = 100.0,
 )
 
-
 ### FETCH GROCERIES ##################
 groceryList = [
     GroceryListItem(
         workspaceType="nexus",
-        runConfig = runConfig,
-        loader="LoadEventNexus",
+        useLiteMode=isLite,
+        runNumber=runNumber,
     ),
     GroceryListItem(
         workspaceType="grouping",
-        isLite=isLite,
+        useLiteMode=isLite,
         groupingScheme="Column",
         instrumentPropertySource="InstrumentDonor",
         instrumentSource="prev",
     ),
 ]
 fetchRx = FetchRx()
-data = fetchRx.executeRecipe(groceryList)
-print(json.dumps(data, indent=2))
+# fetchRx._loadedRuns[("58882",False)] = 1 # uncomment this line if the raw file already exists
+groceries = fetchRx.executeRecipe(groceryList)["workspaces"]
+print(json.dumps(groceries, indent=2))
 
 ### RUN PIXEL CALIBRATION ##########
 pixelAlgo = PixelAlgo()
 pixelAlgo.initialize()
 pixelAlgo.setPropertyValue("Ingredients", ingredients.json())
-pixelAlgo.setPropertyValue("InputWorkspace", data["workspaces"][0])
-pixelAlgo.setPropertyValue("GroupingWorkspace", data["workspaces"][1])
+pixelAlgo.setPropertyValue("InputWorkspace",groceries[0])
+pixelAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
 pixelAlgo.execute()
+
+assert False
 
 median = json.loads(pixelAlgo.getPropertyValue("data"))["medianOffset"]
 print(median)
@@ -106,12 +108,15 @@ while median > offsetConvergenceLimit:
     median = json.loads(pixelAlgo.getPropertyValue("data"))["medianOffset"]
 
 ### RUN GROUP CALIBRATION
+
+DIFCprev = pixelAlgo.getPropertyValue("CalibrationTable")
+
 groupAlgo = GroupAlgo()
 groupAlgo.initialize()
 groupAlgo.setPropertyValue("Ingredients", ingredients.json())
-groupAlgo.setPropertyValue("InputWorkspace", data["workspaces"][0])
-groupAlgo.setPropertyValue("GroupingWorkspace", data["workspaces"][1])
-groupAlgo.setPropertyValue("PreviousCalibrationTable", "_DIFC_57514")
+groupAlgo.setPropertyValue("InputWorkspace", groceries[0])
+groupAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
+groupAlgo.setPropertyValue("PreviousCalibrationTable", DIFCprev)
 groupAlgo.execute()
 
 ### PAUSE
@@ -125,12 +130,16 @@ assert False
 
 
 ### RUN RECIPE
+from unittest import mock
+fetchRx = FetchRx()
+groceries = fetchRx.executeRecipe(groceryList)["workspaces"]
 rx = Recipe()
 groceries = {
-    "inputWorkspace": data["workspaces"][0],
-    "groupingWorkspace": data["workspaces"][1],
+    "inputWorkspace": groceries[0],
+    "groupingWorkspace": groceries[1],
 }
-rx.executeRecipe(ingredients, groceries)
+with mock.patch.object(Recipe, "restockShelves"):
+    rx.executeRecipe(ingredients, groceries)
 
 
 ### PAUSE
@@ -140,7 +149,7 @@ Stop here and make sure everything still looks good.
 assert False
 
 ### CALL CALIBRATION SERVICE
-
+from unittest import mock
 diffcalRequest = DiffractionCalibrationRequest(
     runNumber = runNumber,
     cifPath = cifPath,
@@ -151,6 +160,7 @@ diffcalRequest = DiffractionCalibrationRequest(
 )
 
 calibrationService = CalibrationService()
-res = calibrationService.diffractionCalibration(diffcalRequest)
+with mock.patch.object(Recipe, "restockShelves"):
+    res = calibrationService.diffractionCalibration(diffcalRequest)
 print(json.dumps(res,indent=2))
 assert False

@@ -30,20 +30,22 @@ from snapred.meta.Config import Resource
 
 PixelCalAlgo: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.PixelDiffractionCalibration"
 GroupCalAlgo: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.GroupDiffractionCalibration"
-TheAlgorithmManager = "hello"
 
 
 class TestDiffractionCalibtationRecipe(unittest.TestCase):
     def setUp(self):
         self.fakeRunNumber = "555"
-        fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
+        fakeRunConfig = RunConfig(
+            runNumber=str(self.fakeRunNumber),
+            IPTS="",
+        )
 
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/calibration/sampleInstrumentState.json"))
         fakeInstrumentState.particleBounds.tof.minimum = 1
         fakeInstrumentState.particleBounds.tof.maximum = 10
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/diffcal/fakeFocusGroup.json"))
-        fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
+        fakeFocusGroup.definition = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
 
         peakList = [
             DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
@@ -80,12 +82,12 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         )
         LoadInstrument(
             Workspace=self.fakeRawData,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml"),
             RewriteSpectraMap=True,
         )
         self.fakeGroupingWorkspace = "_test_diffcal_rx_grouping"
         LoadDetectorsGroupingFile(
-            InputFile=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
+            InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
             InputWorkspace=self.fakeRawData,
             OutputWorkspace=self.fakeGroupingWorkspace,
         )
@@ -267,11 +269,11 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         )
         LoadInstrument(
             Workspace=rawWS,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             RewriteSpectraMap=True,
         )
         LoadDetectorsGroupingFile(
-            InputFile=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
+            InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
             InputWorkspace=rawWS,
             OutputWorkspace=groupingWS,
         )
