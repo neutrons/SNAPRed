@@ -11,9 +11,6 @@ import unittest
 import unittest.mock as mock
 from typing import Dict, List
 
-import os
-os.environ["env"] = "test"
-
 import pytest
 from mantid.api import PythonAlgorithm
 from mantid.kernel import Direction
