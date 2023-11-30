@@ -47,9 +47,19 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         )
 
         self.mantidSnapper.executeQueue()
-        DMin = reductionIngredients.reductionState.stateConfig.focusGroups[0].dMin
-        DMax = reductionIngredients.reductionState.stateConfig.focusGroups[0].dMax
-        DeltaRagged = reductionIngredients.reductionState.stateConfig.focusGroups[0].dBin
+
+        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in reductionIngredients.pixelGroupingParameters}
+        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in reductionIngredients.pixelGroupingParameters}
+        dBin = {
+            pgp.groupID: pgp.dRelativeResolution / reductionIngredients.reductionState.instrumentConfig.NBins
+            for pgp in reductionIngredients.pixelGroupingParameters
+        }
+
+        groupIDs = [pgp.groupID for pgp in reductionIngredients.pixelGroupingParameters]
+        groupIDs.sort()
+        DMin = [dMin[groupID] for groupID in groupIDs]
+        DMax = [dMax[groupID] for groupID in groupIDs]
+        DeltaRagged = [dBin[groupID] for groupID in groupIDs]
 
         self.mantidSnapper.AlignAndFocusPowderFromFiles(
             "Executing AlignAndFocusPowder...",

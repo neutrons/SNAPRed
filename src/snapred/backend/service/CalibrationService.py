@@ -47,6 +47,7 @@ from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
@@ -93,7 +94,6 @@ class CalibrationService(Service):
         self,
         runNumber,
         definition,
-        nBinsAcrossPeakWidth=Config["calibration.diffraction.nBinsAcrossPeakWidth"],
         calibration=None,
     ):
         if calibration is None:
@@ -103,19 +103,18 @@ class CalibrationService(Service):
         instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams
         return (
             FocusGroup(
-                FWHM=[pgp.twoTheta for pgp in pixelGroupingParams],  # TODO: Remove or extract out a level up
                 name=definition.split("/")[-1],
                 definition=definition,
-                nHst=len(pixelGroupingParams),
-                dMin=[pgp.dResolution.minimum for pgp in pixelGroupingParams],
-                dMax=[pgp.dResolution.maximum for pgp in pixelGroupingParams],
-                dBin=[pgp.dRelativeResolution / nBinsAcrossPeakWidth for pgp in pixelGroupingParams],
             ),
             instrumentState,
         )
 
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
+        # preload the data and copy it to cacheworkspace
+
+        diffCalInputWsName = wng.diffCalInput().runNumber(request.runNumber).build()
+        self.dataFactoryService.getWorkspaceCached(request.runNumber, diffCalInputWsName)
         # shopping list
         # 1. full runconfig
         runConfig = self.dataFactoryService.getRunConfig(request.runNumber)

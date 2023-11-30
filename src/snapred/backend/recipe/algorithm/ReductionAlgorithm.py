@@ -185,15 +185,23 @@ class ReductionAlgorithm(PythonAlgorithm):
         # TODO: Refactor so excute only needs to be called once
         self.mantidSnapper.executeQueue()
 
+        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in reductionIngredients.pixelGroupingParameters}
+        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in reductionIngredients.pixelGroupingParameters}
+        dBin = {
+            pgp.groupID: pgp.dRelativeResolution / reductionIngredients.reductionState.instrumentConfig.NBins
+            for pgp in reductionIngredients.pixelGroupingParameters
+        }
+        groupIDs = [pgp.groupID for pgp in reductionIngredients.pixelGroupingParameters]
+        groupIDs.sort()
         groupedData = data
-        for workspaceIndex in range(len(focusGroups)):
+        for index, groupID in enumerate(groupIDs):
             data = self.mantidSnapper.RebinRagged(
                 "Rebinning ragged bins...",
-                InputWorkspace=mtd[groupedData].getItem(workspaceIndex),
-                XMin=focusGroups[workspaceIndex].dMin,
-                XMax=focusGroups[workspaceIndex].dMax,
-                Delta=focusGroups[workspaceIndex].dBin,
-                OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[workspaceIndex].name),
+                InputWorkspace=mtd[groupedData].getItem(index),  # or groupID
+                XMin=dMin[groupID],
+                XMax=dMax[groupID],
+                Delta=dBin[groupID],
+                OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[index].name),  # or groupID
             )
         self.mantidSnapper.WashDishes(
             "Freeing workspace...",
