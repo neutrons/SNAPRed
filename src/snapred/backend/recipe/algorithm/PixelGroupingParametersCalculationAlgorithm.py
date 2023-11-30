@@ -17,8 +17,6 @@ from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParam
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "PixelGroupingParametersCalculationAlgorithm"
-
 
 class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
     def category(self):
@@ -35,7 +33,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.declareProperty("OutputParameters", defaultValue="", direction=Direction.Output)
 
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
         return
 
     def chopIngredients(self, instrumentState: InstrumentState) -> None:

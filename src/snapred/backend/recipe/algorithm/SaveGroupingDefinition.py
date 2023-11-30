@@ -9,8 +9,6 @@ from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "SaveGroupingDefinition"
-
 
 class SaveGroupingDefinition(PythonAlgorithm):
     """
@@ -57,7 +55,7 @@ class SaveGroupingDefinition(PythonAlgorithm):
         )
 
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
         # define supported file name extensions
         self.supported_calib_file_extensions = ["H5", "HD5", "HDF"]

@@ -27,7 +27,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 # TODO: Rename so it matches filename
-class SmoothDataExcludingPeaks(PythonAlgorithm):
+class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
     def category(self):
         return "SNAPRed Sample Data"
 
@@ -110,4 +110,4 @@ class SmoothDataExcludingPeaks(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(SmoothDataExcludingPeaks)
+AlgorithmFactory.subscribe(SmoothDataExcludingPeaksAlgo)

@@ -11,8 +11,6 @@ from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParam
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "CalibrationMetricExtractionAlgorithm"
-
 
 class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
     """
@@ -29,7 +27,7 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
         self.declareProperty("PixelGroupingParameter", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputMetrics", defaultValue="", direction=Direction.Output)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
         self.setRethrows(True)
 
     def PyExec(self):

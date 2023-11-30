@@ -17,7 +17,7 @@ from snapred.backend.service.CalibrationService import CalibrationService
 
 # the algorithm to test (and its ingredients)
 from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
-from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
 
 #for loading workspaces
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
@@ -54,7 +54,7 @@ Rebin(
 )
 
 ## RUN ALGORITHM
-algo = SmoothDataExcludingPeaks()
+algo = SmoothDataExcludingPeaksAlgo()
 algo.initialize()
 algo.setProperty("Ingredients", ingredients.json())
 algo.setProperty("InputWorkspace", grocery)

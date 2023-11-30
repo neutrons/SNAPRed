@@ -4,8 +4,6 @@ from mantid.kernel import Direction
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "AlignAndFocusReductionAlgorithm"
-
 
 class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
     def PyInit(self):
@@ -13,7 +11,7 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients.parse_raw(self.getProperty("ReductionIngredients").value)

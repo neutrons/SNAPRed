@@ -8,10 +8,6 @@ from mantid.kernel import Direction
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-# from snapred.backend.recipe.algorithm.CustomGroupWorkspace import name as CustomGroupWorkspace
-
-name = "ReductionAlgorithm"
-
 
 #######################################################
 # ATTENTION: Could be replaced by alignAndFocusPowder #
@@ -27,7 +23,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))

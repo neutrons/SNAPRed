@@ -9,9 +9,7 @@ from snapred.backend.dao.ingredients import (
 )
 from snapred.backend.recipe.algorithm.CustomGroupWorkspace import CustomGroupWorkspace  # noqa F401
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks  # noqa F401
-
-name = "VanadiumFocussedReductionAlgorithm"
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo  # noqa F401
 
 
 class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
@@ -36,7 +34,7 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
         self.declareProperty("SmoothDataIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspaceGroup", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
@@ -83,7 +81,7 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
         ws_list = list(diff_group.getNames())
 
         for idx, ws in enumerate(ws_list):
-            self.mantidSnapper.SmoothDataExcludingPeaks(
+            self.mantidSnapper.SmoothDataExcludingPeaksAlgo(
                 "Fit and Smooth Peaks...",
                 InputWorkspace=ws,
                 SmoothDataExcludingPeaksIngredients=smoothIngredients.json(),
