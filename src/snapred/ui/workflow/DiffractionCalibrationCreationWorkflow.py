@@ -93,7 +93,7 @@ class DiffractionCalibrationCreationWorkflow:
             runNumber=self.runNumber,
             cifPath=self.cifPath,
             focusGroupPath=self.focusGroupPath,
-            useLiteMode=view.litemodeToggle.getState(),
+            useLiteMode=view.litemodeToggle.field.getState(),
         )
         payload.convergenceThreshold = view.fieldConvergnceThreshold.get(payload.convergenceThreshold)
         payload.peakIntensityThreshold = view.fieldPeakIntensityThreshold.get(payload.peakIntensityThreshold)

@@ -169,7 +169,7 @@ class CalibrationService(Service):
         groceryList = [
             GroceryListItem(
                 workspaceType="nexus",
-                runConfig=runConfig,
+                runNumber=request.runNumber,
                 loader="LoadEventNexus",
                 useLiteMode=request.useLiteMode,
             ),

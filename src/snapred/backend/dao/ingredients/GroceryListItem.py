@@ -81,6 +81,8 @@ class GroceryListItem(BaseModel):
             self.useLiteMode = not self.useLiteMode
         return self
 
+    # some helpful constructor methods
+
     @classmethod
     def makeNativeNexusItem(cls, runNumber: str):
         return GroceryListItem(
@@ -115,6 +117,16 @@ class GroceryListItem(BaseModel):
             useLiteMode=True,
             instrumentPropertySource="InstrumentFilename",
             instrumentSource=str(Config["instrument.lite.definition"]),
+        )
+
+    @classmethod
+    def makeLiteGroupingItemFrom(cls, groupingScheme: str, instrumentDonor: str):
+        return GroceryListItem(
+            workspaceType="grouping",
+            groupingScheme=groupingScheme,
+            useLiteMode=True,
+            instrumentPropertySource="InstrumentDonor",
+            instrumentSource=instrumentDonor,
         )
 
     @root_validator(pre=True, allow_reuse=True)

@@ -18,15 +18,19 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.redantic import list_to_raw_pretty
 
+# for loading data
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
+
 snapredLogger._level = 20
 
 #User inputs ###########################
 
 runNumber = '58882'#58409'
 cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif'
-groupingFile = '/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml'
+groupingScheme = "Column"
 peakFractionalThreshold = 0.01
-isLite = False
+isLite = True
 
 # SET TO TRUE TO STOP WASHING DISHES
 Config._config['cis_mode'] = False
@@ -66,28 +70,26 @@ for group in peakList:
 ################################################################
 # Plot the found peaks on focused data
 ################################################################
-from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
-ingredients = DiffractionCalibrationIngredients(
-    runConfig=runConfig,
-    instrumentState=instrumentState,
-    focusGroup=focusGroup,
-    groupedPeakLists=peakList,
-    calPath=calPath,
-    convergenceThreshold=0.01,
-)
-rx = DiffractionCalibrationRecipe()
-res = rx.executeRecipe(ingredients) # <<-- WILL FAIL AT SAVE STEP -- IGNORE
 
+groceryList = [
+    GroceryListItem.makeLiteNexusItem(runNumber),
+    GroceryListItem.makeLiteGroupingItemFrom(groupingScheme, "prev")
+]
+groceries = FetchRx().executeRecipe(groceryList)["workspaces"]
 
 ConvertUnits(
-    InputWorkspace = f'_TOF_{runNumber}_diffoc',
-    OutputWorkspace = f'_DSP_{runNumber}_diffoc',
+    InputWorkspace = groceries[0],
+    OutputWorkspace = groceries[0],
     Target="dSpacing",
 )
+DiffractionFocussing(
+    InputWorkspace = groceries[0],
+    OutputWorkspace = groceries[0],
+    GroupingWorkspace = groceries[1],
+)
 Rebin(
-    InputWorkspace = f'_DSP_{runNumber}_diffoc',
-    OutputWorkspace = f'_DSP_{runNumber}_diffoc',
+    InputWorkspace = groceries[0],
+    OutputWorkspace = groceries[0],
     Params = (0.01),
 )
 
@@ -95,7 +97,7 @@ Rebin(
 for i,group in enumerate(peakList):
     tableName = f'peakProperties{i+1}'
     fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
-    ax.plot(mtd[f'_DSP_{runNumber}_diffoc'], wkspIndex=i)# plot the initial guess with black line
+    ax.plot(mtd[groceries[0]], wkspIndex=i)# plot the initial guess with black line
     ax.vlines(peakCenter[i], ymin=1e6, ymax=1e8, color='red')
     ax.vlines(peakMin[i], ymin=1e6, ymax=1e8, color='orange')
     ax.vlines(peakMax[i], ymin=1e6, ymax=1e8, color='orange')
@@ -131,7 +133,7 @@ for group in peakList:
 for i,group in enumerate(peakList):
     tableName = f'peakProperties{i+1}_after'
     fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
-    ax.plot(mtd[f'_DSP_{runNumber}_diffoc'], wkspIndex=i)# plot the initial guess with black line
+    ax.plot(mtd[groceries[0], wkspIndex=i)# plot the initial guess with black line
     ax.vlines(peakCenter[i], ymin=1e6, ymax=1e8, color='red')
     ax.vlines(peakMin[i], ymin=1e6, ymax=1e8, color='orange')
     ax.vlines(peakMax[i], ymin=1e6, ymax=1e8, color='orange')

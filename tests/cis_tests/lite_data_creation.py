@@ -8,27 +8,32 @@ from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 
 from snapred.meta.Config import Config
+Config._config["cis_mode"] = False
 
 #User input ###########################
-runNumber = "47278"
 runNumber = "58882"
 #######################################
 
-dataFactoryService = DataFactoryService()
-
-print(Config["nexus.native.prefix"])
-run = RunConfig(
-    runNumber=runNumber,
-    IPTS=GetIPTS(RunNumber=runNumber,Instrument='SNAP'), 
-    useLiteMode=False,
-)
-
+run = GroceryListItem.makeNativeNexusItem(runNumber)
+run.keepItClean = False
 fetchRx = FetchRx()
-fetchRx.fetchDirtyNexusData(run)
+res = fetchRx.fetchDirtyNexusData(run)
+
+workspace = res["workspaces"]
 
 LDCA = LiteDataCreationAlgo()
 LDCA.initialize()
-LDCA.setProperty("InputWorkspace", f"tof_all_58882")
+LDCA.setProperty("InputWorkspace", workspace)
 LDCA.setProperty("AutoDeleteNonLiteWS", True)
-LDCA.setProperty("OutputWorkspace", f"{runNumber}_lite")
+LDCA.setProperty("OutputWorkspace", workspace + "_lite")
 LDCA.execute()
+
+# check it can't be double-reduced
+LDCA.setProperty("InputWorkspace", workspace + "_lite")
+LDCA.setProperty("OutputWorkspace", workspace + "_doubleLite")
+LDCA.execute()
+
+assert CompareWorkspaces(
+    Workspace1 = workspace + "_lite",
+    Workspace2 = workspace + "_doubleLite",
+)
