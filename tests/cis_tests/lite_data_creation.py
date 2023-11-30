@@ -19,7 +19,7 @@ run.keepItClean = False
 fetchRx = FetchRx()
 res = fetchRx.fetchDirtyNexusData(run)
 
-workspace = res["workspaces"]
+workspace = res["workspace"]
 
 LDCA = LiteDataCreationAlgo()
 LDCA.initialize()
