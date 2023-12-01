@@ -9,10 +9,11 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "DiffractionSpectrumWeightCalculator"
-
 
 class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Internal"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
@@ -24,7 +25,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         )  # name of the output workspace to be created by the algorithm
 
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self):
         # get the peak predictions from user input, or load them
