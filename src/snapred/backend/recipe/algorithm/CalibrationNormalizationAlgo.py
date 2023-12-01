@@ -57,7 +57,9 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
         self.dResolutionMin = [pgp.dResolution.minimum for pgp in pixelGroupingParam]
         self.dResolutionMax = [pgp.dResolution.maximum for pgp in pixelGroupingParam]
         instrumentConfig = self.reductionIngredients.reductionState.instrumentConfig
-        self.dRelativeResolution = [(pgp.dRelativeResolution / instrumentConfig.NBins) for pgp in pixelGroupingParam]
+        self.dRelativeResolution = [
+            -abs(pgp.dRelativeResolution / instrumentConfig.NBins) for pgp in pixelGroupingParam
+        ]
         pass
 
     def unbagGroceries(self):
