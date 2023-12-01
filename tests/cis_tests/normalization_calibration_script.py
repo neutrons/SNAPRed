@@ -6,17 +6,24 @@ import numpy as np
 from pydantic import parse_file_as
 import json
 
-from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import CalibrationNormalization
+from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import CalibrationNormalizationAlgo
 from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import NormalizationCalibrationIngredients
 from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.dao.state import FocusGroup
+from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.calibration import CalibrationRecord, Calibration
+
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 from snapred.meta.Config import Config
+
+# for loading data
+from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+
 
 #User input ###############################################################################################
 runNumber = "58810"
@@ -26,58 +33,9 @@ cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
 groupPath = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
 calibrationWorkspace = "/SNS/users/dzj/Desktop/58810_calibration_ws.nxs" # need to create this using diffc_test.py with run number 58810
 smoothingParam = 0.50
+groupingScheme = "Column"
 calibrationStatePath = "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/57514/v_1/CalibrationParameters.json" # need to change this!!!!!!
 ###########################################################################################################
-
-DFS = DataFactoryService()
-
-#PixelGroupingCalulations #################################################################################
-
-def _generateFocusGroupAndInstrumentState(
-runNumber,
-definition,
-nBinsAcrossPeakWidth=Config["calibration.diffraction.nBinsAcrossPeakWidth"],
-calibration=None,):
-    if calibration is None:
-        calibration = DFS.getCalibrationState(runNumber)
-    instrumentState = calibration.instrumentState
-    pixelGroupingParams = _calculatePixelGroupingParameters(instrumentState, definition)["parameters"]
-    instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams
-    return (
-        FocusGroup(
-            FWHM=[pgp.twoTheta for pgp in pixelGroupingParams],
-            name=definition.split("/")[-1],
-            definition=definition,
-            nHst=len(pixelGroupingParams),
-            dMin=[pgp.dResolution.minimum for pgp in pixelGroupingParams],
-            dMax=[pgp.dResolution.maximum for pgp in pixelGroupingParams],
-            dBin=[pgp.dRelativeResolution / nBinsAcrossPeakWidth for pgp in pixelGroupingParams],
-        ),
-        instrumentState,
-)
-
-def _calculatePixelGroupingParameters(instrumentState, groupingFile: str):
-        groupingIngredients = PixelGroupingIngredients(
-            instrumentState=instrumentState,
-            instrumentDefinitionFile=Config["instrument.lite.definition.file"],
-            groupingFile=groupingFile,
-        )
-        try:
-            data = PixelGroupingParametersCalculationRecipe().executeRecipe(groupingIngredients)
-        except:
-            raise
-        return data
-
-#GetCalibrationRecord######################################################################################
-
-def getCalibrationState(calibrationStatePath):
-    calibrationState = parse_file_as(Calibration, calibrationStatePath)
-    return calibrationState
-
-###########################################################################################################
-
-#GetSampleFilePath#########################################################################################
-
 def getCalibrantSample(samplePath):
     with open(samplePath, 'r') as file:
         sampleJson = json.load(file)
@@ -90,54 +48,45 @@ def getCalibrantSample(samplePath):
     return sample
 ###########################################################################################################
 
-reductionIngredients = DFS.getReductionIngredients(runNumber)
-backgroundReductionIngredients = DFS.getReductionIngredients(backgroundRunNumber)
-runConfig = DFS.getRunConfig(runNumber)
-calibration = getCalibrationState(calibrationStatePath)
-calibrantSample = getCalibrantSample(samplePath)
-crystalInfo = CrystallographicInfoService().ingest(cifPath)["crystalInfo"]
+DFS = DataFactoryService()
+instrumentState = DFS.getCalibrationState(runNumber).instrumentState
 
-focusGroup, instrumentState = _generateFocusGroupAndInstrumentState(
-runNumber,
-groupPath,
+pgpIngredients = PixelGroupingIngredients(
+    instrumentState = instrumentState,
+    instrumentDefinitionFile = Config["instrument.lite.definition.file"],
+    groupingFile=groupPath,
 )
 
+pgp = PixelGroupingParametersCalculationRecipe().executeRecipe(pgpIngredients)["parameters"]
+reductionIngredients = DFS.getReductionIngredients(runNumber, pgp)
+
+calibrantSample = getCalibrantSample(samplePath)
+
+crystalInfo = CrystallographicInfoService().ingest(cifPath)["crystalInfo"]
 smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
     smoothingParameter=smoothingParam,
     instrumentState=instrumentState,
     crystalInfo=crystalInfo,
 )
 
-calibrationWorkspaceName = Load(calibrationWorkspace)
-
-
 ingredients = NormalizationCalibrationIngredients(
-reductionIngredients=reductionIngredients,
-backgroundReductionIngredients=backgroundReductionIngredients,
-calibrantSample=calibrantSample,
-focusGroup=focusGroup,
-instrumentState=instrumentState,
-smoothDataIngredients=smoothDataIngredients,
+    reductionIngredients=reductionIngredients,
+    calibrantSample=calibrantSample,
+    smoothDataIngredients=smoothDataIngredients,
 )
 
-runIpts = reductionIngredients.runConfig.IPTS
-backIpts = backgroundReductionIngredients.runConfig.IPTS
+groceryList = [
+    GroceryListItem.makeLiteNexusItem(runNumber),
+    GroceryListItem.makeLiteNexusItem(backgroundRunNumber),
+    GroceryListItem.makeLiteGroupingItemFrom("Column", "prev"),
+]
+groceries = FetchRx().executeRecipe(groceryList)["workspaces"]
 
-runVanadiumFilePath = runIpts + "shared/lite/SNAP_{}.lite.nxs.h5".format(
-    reductionIngredients.runConfig.runNumber
-)
-backgroundVanadiumFilePath = backIpts + "shared/lite/SNAP_{}.lite.nxs.h5".format(
-    backgroundReductionIngredients.runConfig.runNumber
-)
-
-input_WS = LoadEventNexus(runVanadiumFilePath)
-
-background_input_WS = LoadEventNexus(backgroundVanadiumFilePath)
-
-CNA = CalibrationNormalization()
+CNA = CalibrationNormalizationAlgo()
 CNA.initialize()
-CNA.setProperty("InputWorkspace", input_WS)
-CNA.setProperty("BackgroundWorkspace", background_input_WS)
-CNA.setProperty("CalibrationWorkspace", calibrationWorkspaceName)
+CNA.setProperty("InputWorkspace", groceries[0])
+CNA.setProperty("BackgroundWorkspace", groceries[1])
+CNA.setProperty("GroupingWorkspace", groceries[2])
+CNA.setProperty("OutputWorkspace", groceries[0])
 CNA.setProperty("Ingredients", ingredients.json())
 CNA.execute()

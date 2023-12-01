@@ -46,6 +46,8 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             groupPeakList = GroupPeakList.parse_obj(prediction)
             self.groupIDs.append(groupPeakList.groupID)
             self.predictedPeaks[groupPeakList.groupID] = groupPeakList.peaks
+        print(self.groupIDs)
+        print(self.predictedPeaks)
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
@@ -65,6 +67,8 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             InputWorkspace=self.inputWorkspaceName,
             OutputWorkspace=self.outputWorkspaceName,
         )
+        print(self.groupIDs)
+        print(self.predictedPeaks)
         self.mantidSnapper.executeQueue()
         weight_ws = self.mantidSnapper.mtd[self.outputWorkspaceName]
 
