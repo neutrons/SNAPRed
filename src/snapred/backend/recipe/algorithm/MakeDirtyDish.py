@@ -14,6 +14,9 @@ class MakeDirtyDish(PythonAlgorithm):
     Record a workspace in a state for the CIS to view later
     """
 
+    def category(self):
+        return "SNAPRed Internal"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)  # noqa: F821

@@ -10,10 +10,11 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.Limit import LimitedValue
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
-name = "DetectorPeakPredictor"
-
 
 class DetectorPeakPredictor(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Sample Data"
+
     def PyInit(self) -> None:
         # declare properties
         self.declareProperty(

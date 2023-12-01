@@ -8,6 +8,9 @@ from snapred.meta.Config import Config
 
 
 class GenerateTableWorkspaceFromListOfDict(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Internal"
+
     def PyInit(self):
         # declare properties
         # shallow extraction

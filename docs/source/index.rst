@@ -15,12 +15,12 @@ Contents
 --------
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
+   :titlesonly:
 
    getting_started
    glossary
    usage
-   developer/resources
+   developer/index
    api/modules
-   deploy
-   ./ui/workflow/WorkflowBuilder
+   ui/workflow/WorkflowBuilder

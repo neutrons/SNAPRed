@@ -2,29 +2,20 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
+from snapred.backend.dao.calibration import Calibration
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 
 
 class StateConfig(BaseModel):
-    diffractionCalibrant: DiffractionCalibrant
-    emptyInstrumentRunNumber: int
-    normalizationCalibrant: NormalizationCalibrant
-    geometryCalibrationFileName: Optional[str]
-    calibrationAuthor: str
-    calibrationDate: str  # Should this be of type datetime?
-    focusGroups: List[FocusGroup]
-    isLiteMode: bool
-    rawVanadiumCorrectionFileName: str
-    vanadiumFilePath: str
-    calibrationMaskFileName: Optional[str]
-    stateId: str
-    tofBin: float
-    tofMax: float
-    tofMin: float
-    version: str
-    wallclockTof: float
-    temporalProximity: Optional[
-        int
-    ]  # diffrence between current run number and calibration run number, - == before, + == after
+    calibration: Calibration
+    diffractionCalibrant: Optional[DiffractionCalibrant]
+    normalizationCalibrant: Optional[NormalizationCalibrant]
+    rawVanadiumCorrectionFileName: str  # Needs to be removed when Normalization changes go in
+    vanadiumFilePath: str  # Needs to be removed when Normalization changes go in
+    focusGroups: List[FocusGroup]  # PixelGroupingParameters
+    stateId: str  # generated.
+    tofBin: float  # instrConfig.delTOverT / instrConfig.NBins
+    tofMax: float  # ParticleBound
+    tofMin: float  # ParticleBound

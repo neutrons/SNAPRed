@@ -16,6 +16,7 @@ from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
+    GroceryListItem,
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
@@ -31,6 +32,7 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
+from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
     CalibrationReductionRecipe,
@@ -45,6 +47,7 @@ from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
@@ -91,7 +94,6 @@ class CalibrationService(Service):
         self,
         runNumber,
         definition,
-        nBinsAcrossPeakWidth=Config["calibration.diffraction.nBinsAcrossPeakWidth"],
         calibration=None,
     ):
         if calibration is None:
@@ -101,22 +103,22 @@ class CalibrationService(Service):
         instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams
         return (
             FocusGroup(
-                FWHM=[pgp.twoTheta for pgp in pixelGroupingParams],  # TODO: Remove or extract out a level up
                 name=definition.split("/")[-1],
                 definition=definition,
-                nHst=len(pixelGroupingParams),
-                dMin=[pgp.dResolution.minimum for pgp in pixelGroupingParams],
-                dMax=[pgp.dResolution.maximum for pgp in pixelGroupingParams],
-                dBin=[pgp.dRelativeResolution / nBinsAcrossPeakWidth for pgp in pixelGroupingParams],
             ),
             instrumentState,
         )
 
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
+        # preload the data and copy it to cacheworkspace
+
+        diffCalInputWsName = wng.diffCalInput().runNumber(request.runNumber).build()
+        self.dataFactoryService.getWorkspaceCached(request.runNumber, diffCalInputWsName)
         # shopping list
         # 1. full runconfig
         runConfig = self.dataFactoryService.getRunConfig(request.runNumber)
+        runConfig.useLiteMode = request.useLiteMode
         # 2. instrument state
         # 3. focus group
         # get the pixel grouping parameters and load them into the focus group
@@ -124,13 +126,15 @@ class CalibrationService(Service):
         # TODO: This may be pending a refactor and a closer look,
         # based on my convos it should be a correct translation
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            request.runNumber, request.focusGroupPath, nBinsAcrossPeakWidth
+            request.runNumber,
+            request.focusGroupPath,
+            nBinsAcrossPeakWidth,
         )
         # 4. grouped peak list
         # need to calculate these using DetectorPeakPredictor
         # 4a. InstrumentState
         # 4b. CrystalInfo
-        cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
+        cifFilePath = request.cifPath
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # 4c. PeakIntensityThreshold
         peakIntensityThreshold = request.peakIntensityThreshold
@@ -144,9 +148,9 @@ class CalibrationService(Service):
         # this is just the state folder/calibration folder used solely for saving the calibration
         # set it to tmp because we dont know if we want to keep it yet
         # TODO: The algo really shouldnt be saving data unless it has to
+        # TODO: this cal path needs to be exposed in DataFactoryService or DataExportService
         calpath = "~/tmp/"
         # 6. convergence threshold
-
         convergenceThreshold = request.convergenceThreshold
         ingredients = DiffractionCalibrationIngredients(
             runConfig=runConfig,
@@ -156,8 +160,32 @@ class CalibrationService(Service):
             calPath=calpath,
             convergenceThreshold=convergenceThreshold,
         )
+        focusFile = request.focusGroupPath.split("/")[-1]
+        focusName = focusFile.split(".")[0]
+        focusScheme = focusName.split("_")[-1]
 
-        return DiffractionCalibrationRecipe().executeRecipe(ingredients)
+        # get the needed input data
+        groceryList = [
+            GroceryListItem(
+                workspaceType="nexus",
+                runNumber=request.runNumber,
+                loader="LoadEventNexus",
+                useLiteMode=request.useLiteMode,
+            ),
+            GroceryListItem(
+                workspaceType="grouping",
+                groupingScheme=focusScheme,
+                useLiteMode=request.useLiteMode,
+                instrumentPropertySource="InstrumentDonor",
+                instrumentSource="prev",
+            ),
+        ]
+        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
+        groceries = {
+            "inputWorkspace": workspaceList[0],
+            "groupingWorkspace": workspaceList[1],
+        }
+        return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
 
     @FromString
     def save(self, request: CalibrationExportRequest):

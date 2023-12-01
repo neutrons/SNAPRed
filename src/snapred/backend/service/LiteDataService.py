@@ -29,7 +29,11 @@ class LiteDataService(Service):
         for run in runs:
             inputWorkspace = "SNAP_" + str(run.runNumber) + ".nxs"
             try:
-                data[str(run.runNumber)] = Recipe().executeRecipe(inputWorkspace=inputWorkspace, Run=run, isLite=True)
+                data[str(run.runNumber)] = Recipe().executeRecipe(
+                    inputWorkspace=inputWorkspace,
+                    Run=run,
+                    useLiteMode=True,
+                )
             except Exception as e:
                 raise e
         return data
