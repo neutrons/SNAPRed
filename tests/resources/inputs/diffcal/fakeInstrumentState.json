@@ -89,29 +89,11 @@
         "maximum": 2.6535713892489396
       },
       "dRelativeResolution": 0.004309856397320412
-    },
-    {
-      "groupID": 4,
-      "twoTheta": 1.1543988461042238,
-      "dResolution": {
-        "minimum": 0.6414024711539658,
-        "maximum": 3.207012355769829
-      },
-      "dRelativeResolution": 0.005408489642872038
-    },
-    {
-      "groupID": 5,
-      "twoTheta": 0.8690010092470938,
-      "dResolution": {
-        "minimum": 0.831438096217031,
-        "maximum": 4.157190481085156
-      },
-      "dRelativeResolution": 0.007548513084996265
     }
   ],
   "defaultGroupingSliceValue": 5,
   "fwhmMultiplierLimit": {
-    "minimum": -2,
+    "minimum": 1,
     "maximum": 2
   }
 }

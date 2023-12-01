@@ -1,62 +1,116 @@
 import json
-import socket
 import unittest
-from unittest.mock import MagicMock
 
 import pytest
-from mantid.api import AnalysisDataService as ADS
-from mantid.simpleapi import AddSampleLog, CreateEmptyTableWorkspace, CreateSampleWorkspace, mtd
 from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import (
     NormalizationCalibrationIngredients as Ingredients,
 )
+
+# to make ingredients
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
-from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.ReductionState import ReductionState
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.dao.StateConfig import StateConfig
-from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import CalibrationNormalization
-from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
-from snapred.meta.Config import Resource
 
-IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
+# the algorithm to test
+from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import CalibrationNormalizationAlgo as Algo
+from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
+
+# for accessing test files
+from snapred.meta.Config import Resource
 
 
 class TestCalibrationNormalizationAlgo(unittest.TestCase):
-    @unittest.skipIf(not IS_ON_ANALYSIS_MACHINE, "requires analysis datafiles")
-    def setUp(self):
-        with open(Resource.getPath("inputs/calibration/input.json"), "r") as file:
-            inputData = json.load(file)
-        runConfigData = inputData["runConfig"]
-        instrumentConfigData = inputData["reductionState"]["instrumentConfig"]
-        stateConfigData = inputData["reductionState"]["stateConfig"]
-
-        mockInstrumentConfig = InstrumentConfig.parse_obj(instrumentConfigData)
-
-        mockStateConfig = StateConfig.parse_obj(stateConfigData)
-
-        mockRunConfig = RunConfig.parse_obj(runConfigData)
-
-        mockReductionState = ReductionState(
-            instrumentConfig=mockInstrumentConfig, stateConfig=mockStateConfig, overrides=None
+    @classmethod
+    def setUpClass(cls):
+        from mantid.simpleapi import (
+            AddSampleLog,
+            CloneWorkspace,
+            CreateSampleWorkspace,
+            DeleteWorkspace,
+            LoadDetectorsGroupingFile,
+            LoadInstrument,
+            Plus,
         )
 
-        mockReductionIngredients = ReductionIngredients(
-            runConfig=mockRunConfig,
-            reductionState=mockReductionState,
+        super().setUpClass()
+
+        # create mock ingredients
+        cls.mockIngredients: Ingredients = cls.createMockIngredients()
+        tofMin = cls.mockIngredients.reductionIngredients.reductionState.stateConfig.tofMin
+        tofMax = cls.mockIngredients.reductionIngredients.reductionState.stateConfig.tofMax
+        cls.sample_proton_charge = 10.0
+
+        # the test instrument uses 16 pixels, 4 banks of 4 pixels each
+        # first create background data, then add a spectrum to it
+
+        cls.rawInputWS: str = "_test_calibration_normalization_input_raw"
+        cls.rawBackgroundWS: str = "_test_calibration_normalization_background_raw"
+        CreateSampleWorkspace(
+            OutputWorkspace=cls.rawBackgroundWS,
+            WorkspaceType="Histogram",
+            Function="Flat background",
+            Xmin=tofMin,
+            Xmax=tofMax,
+            BinWidth=0.01,
+            XUnit="TOF",
+            NumBanks=4,
+            BankPixelWidth=2,
         )
+        AddSampleLog(
+            Workspace=cls.rawBackgroundWS,
+            LogName="gd_prtn_chrg",
+            LogText=f"{cls.sample_proton_charge}",
+            LogType="Number",
+        )
+        LoadInstrument(
+            Workspace=cls.rawBackgroundWS,
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+            RewriteSpectraMap=True,
+        )
+
+        # create the total data
+        CloneWorkspace(
+            InputWorkspace=cls.rawBackgroundWS,
+            OutputWorkspace=cls.rawInputWS,
+        )
+        # now create just the signal and add it in
+        CreateSampleWorkspace(
+            OutputWorkspace="_tmp_sample",
+            WorkspaceType="Histogram",
+            Function="Powder Diffraction",
+            Xmin=tofMin,
+            Xmax=tofMax,
+            BinWidth=0.01,
+            XUnit="TOF",
+            NumBanks=4,
+            BankPixelWidth=2,
+            InstrumentName="fakeSNAP.xml",
+        )
+        Plus(LHSWorkspace="_tmp_sample", RHSWorkspace=cls.rawInputWS, OutputWorkspace=cls.rawInputWS)
+        DeleteWorkspace("_tmp_sample")
+        # create the grouping workspace
+        cls.focusWS = "_test_calibration_normalization_focus"
+        LoadDetectorsGroupingFile(
+            InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
+            InputWorkspace=cls.rawInputWS,
+            OutputWorkspace=cls.focusWS,
+        )
+
+    @classmethod
+    def createMockIngredients(cls) -> Ingredients:
+        ingredientsPath = "inputs/purge_peaks/input_ingredients.json"
+        mockReductionIngredients = ReductionIngredients.parse_raw(Resource.read(ingredientsPath))
 
         randomSmoothingParameter = 0.01
         fakeCIF = Resource.getPath("/inputs/crystalInfo/example.cif")
-        samplePath = Resource.getPath("/inputs/normalization/Silicon_NIST_640D_001.json")
-        calibrantSample = self.getCalibrantSample(samplePath)
+        calibrantJSON = json.loads(Resource.read("/inputs/normalization/Silicon_NIST_640D_001.json"))
+        calibrantJSON["crystallography"]["cifFile"] = fakeCIF
+        del calibrantJSON["material"]["packingFraction"]
+        calibrantSample = CalibrantSamples.parse_obj(calibrantJSON)
+        calibrantSample.crystallography.cifFile = fakeCIF
         crystalInfo = CrystallographicInfoService().ingest(fakeCIF)["crystalInfo"]
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
-        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("inputs/diffcal/fakeFocusGroup.json"))
-        fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
 
         smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
             smoothingParameter=randomSmoothingParameter,
@@ -64,55 +118,57 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
             crystalInfo=crystalInfo,
         )
 
-        self.mockIngredientsJson = Ingredients(
+        return Ingredients(
             reductionIngredients=mockReductionIngredients,
-            backgroundReductionIngredients=mockReductionIngredients,
             calibrantSample=calibrantSample,
-            focusGroup=fakeFocusGroup,
-            instrumentState=fakeInstrumentState,
             smoothDataIngredients=smoothDataIngredients,
         )
 
-        self.inputWorkspaceName = "mock_input_workspace"
-        CreateSampleWorkspace(OutputWorkspace=self.inputWorkspaceName)
+    def setUp(self):
+        from mantid.simpleapi import CloneWorkspace
 
-        self.backgroundInputWorkspaceName = "mock_background_input_workspace"
-        CreateSampleWorkspace(OutputWorkspace=self.backgroundInputWorkspaceName)
+        self.inputWS = "_test_calibration_normalization_input"
+        self.backgroundWS = "_test_calibration_normalization_background"
+        CloneWorkspace(
+            InputWorkspace=self.rawInputWS,
+            OutputWorkspace=self.inputWS,
+        )
+        CloneWorkspace(
+            InputWorkspace=self.rawBackgroundWS,
+            OutputWorkspace=self.backgroundWS,
+        )
 
-        self.mockCalibrationTableName = "mock_calibration_table"
-        self.mockCalibrationTable = CreateEmptyTableWorkspace(OutputWorkspace=self.mockCalibrationTableName)
-        self.mockCalibrationTable.addColumn("int", "detid")
-        self.mockCalibrationTable.addColumn("double", "difc")
-        self.mockCalibrationTable.addColumn("double", "difa")
-        self.mockCalibrationTable.addColumn("double", "tzero")
+    def test_init(self):
+        algo = Algo()
+        algo.initialize()
+        try:
+            algo.setPropertyValue("InputWorkspace", self.inputWS)
+            algo.setPropertyValue("BackgroundWorkspace", self.backgroundWS)
+            algo.setPropertyValue("GroupingWorkspace", self.focusWS)
+            algo.setPropertyValue("Ingredients", self.mockIngredients.json())
+        except RuntimeError:
+            pytest.fail("Failed to initialize the properties")
 
-        self.algo = CalibrationNormalization()
-        self.algo.initialize()
-        self.algo.setProperty("InputWorkspace", self.inputWorkspaceName)
-        self.algo.setProperty("BackgroundWorkspace", self.backgroundInputWorkspaceName)
-        self.algo.setProperty("CalibrationWorkspace", self.mockCalibrationTableName)
-        self.algo.setProperty("Ingredients", self.mockIngredientsJson.json())
+    def test_fail_no_output(self):
+        algo = Algo()
+        algo.initialize()
+        algo.setPropertyValue("InputWorkspace", self.inputWS)
+        algo.setPropertyValue("BackgroundWorkspace", self.backgroundWS)
+        algo.setPropertyValue("GroupingWorkspace", self.focusWS)
+        algo.setPropertyValue("Ingredients", self.mockIngredients.json())
+        with pytest.raises(RuntimeError) as e:
+            algo.execute()
+        assert "OutputWorkspace" in str(e.value)
 
-    @unittest.skipIf(not IS_ON_ANALYSIS_MACHINE, "requires analysis datafiles")
-    def testAlgorithmInitialization(self):
-        assert self.algo.isInitialized()
-
-    @unittest.skipIf(not IS_ON_ANALYSIS_MACHINE, "requires analysis datafiles")
-    def testAlgorithmPropertySetup(self):
-        assert "mock_input_workspace" in self.algo.getPropertyValue("InputWorkspace")
-        assert "mock_background_input_workspace" in self.algo.getPropertyValue("BackgroundWorkspace")
-
-    @unittest.skipIf(not IS_ON_ANALYSIS_MACHINE, "requires analysis datafiles")
-    def getCalibrantSample(self, samplePath):
-        with open(samplePath, "r") as file:
-            sampleJson = json.load(file)
-        del sampleJson["material"]["packingFraction"]
-        for atom in sampleJson["crystallography"]["atoms"]:
-            atom["symbol"] = atom.pop("atom_type")
-            atom["coordinates"] = atom.pop("atom_coordinates")
-            atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
-        sample = CalibrantSamples.parse_raw(json.dumps(sampleJson))
-        return sample
+    def test_exec(self):
+        algo = Algo()
+        algo.initialize()
+        algo.setPropertyValue("InputWorkspace", self.inputWS)
+        algo.setPropertyValue("BackgroundWorkspace", self.backgroundWS)
+        algo.setPropertyValue("GroupingWorkspace", self.focusWS)
+        algo.setPropertyValue("Ingredients", self.mockIngredients.json())
+        algo.setPropertyValue("OutputWorkspace", "_test_normalization_calibration_output")
+        assert algo.execute()
 
 
 @pytest.fixture(autouse=True)

@@ -11,8 +11,5 @@ class NormalizationCalibrationIngredients(BaseModel):
     """Class to hold the ingredients necessary for normalization calibration algo."""
 
     reductionIngredients: ReductionIngredients
-    backgroundReductionIngredients: ReductionIngredients
     calibrantSample: CalibrantSamples
-    focusGroup: FocusGroup
-    instrumentState: InstrumentState
     smoothDataIngredients: SmoothDataExcludingPeaksIngredients
