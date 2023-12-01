@@ -58,6 +58,7 @@ pgpIngredients = PixelGroupingIngredients(
 )
 
 pgp = PixelGroupingParametersCalculationRecipe().executeRecipe(pgpIngredients)["parameters"]
+instrumentState.pixelGroupingInstrumentParameters = pgp
 reductionIngredients = DFS.getReductionIngredients(runNumber, pgp)
 
 calibrantSample = getCalibrantSample(samplePath)

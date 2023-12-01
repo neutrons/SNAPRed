@@ -1,7 +1,13 @@
 import json
+from typing import Dict
 
 import numpy as np
-from mantid.api import AlgorithmFactory, PythonAlgorithm
+from mantid.api import (
+    AlgorithmFactory,
+    MatrixWorkspaceProperty,
+    PropertyMode,
+    PythonAlgorithm,
+)
 from mantid.kernel import Direction
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
@@ -16,13 +22,17 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
 
     def PyInit(self):
         # declare properties
-        self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
+        self.declareProperty(
+            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace peaks to be weighted",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("WeightWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="The output workspace to be created by the algorithm",
+        )
         self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
         self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
-        self.declareProperty(
-            "WeightWorkspace", defaultValue="", direction=Direction.Input
-        )  # name of the output workspace to be created by the algorithm
 
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
@@ -52,11 +62,26 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
+        self.outputWorkspaceName = self.getPropertyValue("WeightWorkspace")
+
+    def validateInputs(self) -> Dict[str, str]:
+        errors = {}
+
         if self.getProperty("WeightWorkspace").isDefault:
-            self.outputWorkspaceName = "tmp_weight_ws"
-            self.setPropertyValue("WeightWorkspace", self.outputWorkspaceName)
-        else:
-            self.outputWorkspaceName = self.getPropertyValue("WeightWorkspace")
+            errors["WeightWorkspace"] = "Weghit calculator requires namefor weight worspace"
+
+        if self.getProperty("DetectorPeaks").isDefault:
+            noState = self.getProperty("InstrumentState").isDefault
+            noXtal = self.getProperty("CrystalInfo").isDefault
+            if noState or noXtal:
+                msg = """
+                must specify either detector peaks,
+                OR both crystal info and instrument state
+                """
+                errors["DetectorPeaks"] = msg
+                errors["InstrumentState"] = msg
+                errors["CrystalInfo"] = msg
+        return errors
 
     def PyExec(self):
         self.chopIngredients()

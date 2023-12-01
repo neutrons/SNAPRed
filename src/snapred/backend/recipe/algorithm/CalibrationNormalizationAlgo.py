@@ -3,11 +3,9 @@ from typing import Dict
 
 from mantid.api import (
     AlgorithmFactory,
-    ITableWorkspaceProperty,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
-    mtd,
 )
 from mantid.kernel import Direction
 
