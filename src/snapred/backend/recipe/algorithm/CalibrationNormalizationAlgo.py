@@ -16,20 +16,23 @@ from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import 
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
-from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks  # noqa F401
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo  # noqa F401
 
-name = "CalibrationNormalizationAlgo"
+__name__ = "CalibrationNormalizationAlgo"  # noqa A001
 
 
-class CalibrationNormalization(PythonAlgorithm):
+class CalibrationNormalizationAlgo(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Normalization Calibration"
+
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "ws_in_normalization", Direction.Input, PropertyMode.Optional),
+            MatrixWorkspaceProperty("InputWorkspace", "ws_in_normalization", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the raw vanadium data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("BackgroundWorkspace", "ws_background", Direction.Input, PropertyMode.Optional),
+            MatrixWorkspaceProperty("BackgroundWorkspace", "ws_background", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the raw vanadium background data",
         )
         self.declareProperty(
@@ -41,10 +44,16 @@ class CalibrationNormalization(PythonAlgorithm):
             doc="Table workspace with calibration data: cols detid, difc, difa, tzero",
         )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("FocusWorkspace", defaultValue="", direction=Direction.Output)
-        self.declareProperty("SmoothWorkspace", defaultValue="", direction=Direction.Output)
+        self.declareProperty(
+            MatrixWorkspaceProperty("FocusWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="Workspace containing focussed data",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("SmoothWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="Workspace containing smoothed data",
+        )
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients):
         self.reductionIngredients = ingredients.reductionIngredients
@@ -53,6 +62,15 @@ class CalibrationNormalization(PythonAlgorithm):
         self.instrumentState = ingredients.instrumentState
         self.focusGroup = ingredients.focusGroup
         self.smoothDataIngredients = ingredients.smoothDataIngredients
+        pixelGroupingParam = self.instrumentState.pixelGroupingInstrumentParameters
+        if pixelGroupingParam is None or len(pixelGroupingParam) == 0:
+            raise Exception("Pixel grouping instrument parameters not defines!")
+
+        self.dResolutionMin = [pgp.dResolution.minimum for pgp in pixelGroupingParam]
+        self.dResolutionMax = [pgp.dResolution.maximum for pgp in pixelGroupingParam]
+        self.dRelativeResolution = [
+            (pgp.dRelativeResolution / self.instrumentState.instrumentConfig.NBins) for pgp in pixelGroupingParam
+        ]
         pass
 
     def PyExec(self):
@@ -104,34 +122,20 @@ class CalibrationNormalization(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
         rebinRaggedFocussedWSName = f"data_rebinned_ragged_{inputWSName}_{self.focusGroup.name}"
-        if (
-            self.instrumentState.pixelGroupingInstrumentParameters is not None
-            and len(self.instrumentState.pixelGroupingInstrumentParameters) > 0
-        ):
-            pixelGroupingParam = self.instrumentState.pixelGroupingInstrumentParameters
 
-            dResolutionMin = [pgp.dResolution.minimum for pgp in pixelGroupingParam]
-            dResolutionMax = [pgp.dResolution.maximum for pgp in pixelGroupingParam]
-            dRelativeResolution = [
-                (pgp.dRelativeResolution / self.instrumentState.instrumentConfig.NBins) for pgp in pixelGroupingParam
-            ]
-
-            self.mantidSnapper.RebinRagged(
-                "Rebinning ragged bins...",
-                InputWorkspace=focusedWSName,
-                XMin=dResolutionMin,
-                XMax=dResolutionMax,
-                Delta=dRelativeResolution,
-                OutputWorkspace=rebinRaggedFocussedWSName,
-                PreserveEvents=True,
-            )
-
-        else:
-            raise Exception("Pixel grouping instrument parameters not defined!")
+        self.mantidSnapper.RebinRagged(
+            "Rebinning ragged bins...",
+            InputWorkspace=focusedWSName,
+            XMin=self.dResolutionMin,
+            XMax=self.dResolutionMax,
+            Delta=self.dRelativeResolution,
+            OutputWorkspace=rebinRaggedFocussedWSName,
+            PreserveEvents=True,
+        )
 
         clonedWSName = f"{focusedWSName}_clone_focused_data"
         self.mantidSnapper.CloneWorkspace(
-            "Cloning input workspace for lite data creation...",
+            "Cloning input workspace for smoothed workspace creation...",
             InputWorkspace=rebinRaggedFocussedWSName,
             OutputWorkspace=clonedWSName,
         )
@@ -169,4 +173,4 @@ class CalibrationNormalization(PythonAlgorithm):
 
 
 # Register algorithm with Mantid
-AlgorithmFactory.subscribe(CalibrationNormalization)
+AlgorithmFactory.subscribe(CalibrationNormalizationAlgo)
