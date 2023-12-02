@@ -79,6 +79,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
         if self.getProperty("OutputWorkspace").isDefault:
             errors["OutputWorkspace"] = "Output workspace is required"
 
+        # TODO these validation checks should be redundant now with the extra validator
         reductionIngredientJSON = json.loads(self.getPropertyValue("Ingredients"))["reductionIngredients"]
         if reductionIngredientJSON.get("pixelGroupingParameters") is None:
             errors["Ingredients"] = "Pixel grouping parameters must be specified"
