@@ -30,7 +30,7 @@ with mock.patch.dict(
     from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
     from snapred.backend.dao.state.CalibrantSample.Material import Material
     from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import (
-        CalibrationNormalization,  # noqa: E402
+        CalibrationNormalizationAlgo,  # noqa: E402
     )
     from snapred.meta.Config import Resource
 
@@ -155,7 +155,7 @@ with mock.patch.dict(
         def test_init(self):
             """Test ability to initialize vanadium focussed reduction algo"""
             outputWSName = "_test_workspace_raw_vanadium"
-            normalAlgo = CalibrationNormalization()
+            normalAlgo = CalibrationNormalizationAlgo()
             normalAlgo.initialize()
             normalAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
             normalAlgo.setProperty("SmoothDataIngredients", self.smoothIngredients.json())
@@ -174,7 +174,7 @@ with mock.patch.dict(
         @mock.patch("snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo.mtd")
         @mock.patch("snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo.MantidSnapper")
         def test_execute(self, mock_MantidSnapper, mock_mtd):
-            normalAlgo = CalibrationNormalization()
+            normalAlgo = CalibrationNormalizationAlgo()
             mock_mtd.side_effect = {"diffraction_focused_vanadium": ["ws1", "ws2"]}
             normalAlgo.initialize()
             normalAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
