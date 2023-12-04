@@ -23,6 +23,7 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
+    from snapred.backend.dao.calibration.CalibrationRecordList import CalibrationRecordList  # noqa: E402
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric  # noqa: E402
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import (
@@ -240,7 +241,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @patch(thisService + "FitMultiplePeaksIngredients")
     @patch(thisService + "FitMultiplePeaksRecipe")
     def test_assessQuality(
-        self, mockCrystalInfoService, mockCalibRecords, fitMultiplePeaksIng, fmprecipe  # noqa: ARG002
+        self, mockCrystalInfoService, mockCalibRecord, mockCalibRecords, fitMultiplePeaksIng, fmprecipe  # noqa: ARG002
     ):
         # Mock input data
         mockRequest = MagicMock()
@@ -282,6 +283,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
         self.instance.collectFocusGroupParameters = MagicMock(return_value=fakeFocusGroupParameters)
         self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=(MagicMock(), mockInstrumentState))
+
+        # mock a list of calibration records
+        mockCalibRecord1 = MagicMock("mock_calibration_record1")
+        mockCalibRecord1.focusGroupCalibrationMetrics = fakeMetrics
+        mockCalibRecord1.version = 1
+
+        mockCalibRecord2 = MagicMock("mock_calibration_record2")
+        mockCalibRecord2.focusGroupCalibrationMetrics = fakeMetrics
+        mockCalibRecord2.version = 2
+
+        mockCalibRecords.records = [mockCalibRecord1, mockCalibRecord2]
 
         # Call the method to test
         result = self.instance.assessQuality(mockRequest)

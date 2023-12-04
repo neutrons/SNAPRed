@@ -10,6 +10,7 @@ from snapred.backend.dao.calibration import (
     CalibrationIndexEntry,
     CalibrationMetric,
     CalibrationRecord,
+    CalibrationRecordList,
     FocusGroupMetric,
 )
 from snapred.backend.dao.ingredients import (
@@ -371,7 +372,7 @@ class CalibrationService(Service):
 
         # get all previous calibration records for the same run number
         prevCalibrationRecords = self.dataFactoryService.getCalibrationRecords(run.runNumber)
-        for prevCalibrationRecord in prevCalibrationRecords:
+        for prevCalibrationRecord in prevCalibrationRecords.records:
             if prevCalibrationRecord is not None:
                 GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
                     ListOfDict=list_to_raw(prevCalibrationRecord.focusGroupCalibrationMetrics.calibrationMetric),

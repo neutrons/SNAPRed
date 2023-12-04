@@ -527,7 +527,7 @@ class LocalDataService:
             record = parse_file_as(CalibrationRecord, latestFile)
         return record
 
-    def readCalibrationRecords(self, runId: str):
+    def readCalibrationRecords(self, runId: str) -> CalibrationRecordList:
         recordPath: str = self.getCalibrationRecordPath(runId, "*")
         foundFiles = self._findMatchingFileList(recordPath, throws=False)
         calibrationRecordList = []
@@ -535,7 +535,7 @@ class LocalDataService:
         for file in foundFiles:
             record = parse_file_as(CalibrationRecord, file)
             calibrationRecordList.append(record)
-        return calibrationRecordList
+        return CalibrationRecordList(records=calibrationRecordList)
 
     def writeCalibrationRecord(self, record: CalibrationRecord, version: int = None):
         """
