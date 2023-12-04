@@ -3,10 +3,11 @@ import time
 from mantid.api import *
 from mantid.kernel import *
 
-name = "DummyAlgo"
-
 
 class DummyAlgo(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Internal"
+
     def PyInit(self):
         # declare properties
         pass

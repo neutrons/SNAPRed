@@ -9,7 +9,7 @@ from typing import List
 import pytest
 from pydantic import parse_raw_as
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.meta.Config import Resource
+from snapred.meta.Config import Config, Resource
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
@@ -60,6 +60,10 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         instrumentConfig.sharedDirectory = "test"
         instrumentConfig.reducedDataDirectory = "test"
         instrumentConfig.pixelGroupingDirectory = "test"
+        instrumentConfig.delTOverT = 1
+        instrumentConfig.NBins = 1
+        instrumentConfig.nexusDirectory = "test"
+        instrumentConfig.nexusFileExtension = "test"
         return instrumentConfig
 
     def test_readStateConfig():
@@ -75,29 +79,22 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         )
         localDataService._readFocusGroups = mock.Mock()
         localDataService._readFocusGroups.return_value = []
+        localDataService._findIPTS = mock.Mock()
+        localDataService._findIPTS.return_value = "IPTS-123"
+        localDataService._readPVFile = mock.Mock()
+        fileMock = mock.Mock()
+        localDataService._readPVFile.return_value = fileMock
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
+        localDataService.readCalibrationState = mock.Mock()
+        localDataService.readCalibrationState.return_value = Calibration.parse_file(
+            Resource.getPath("inputs/calibration/CalibrationParameters.json")
+        )
         localDataService.instrumentConfig = getMockInstrumentConfig()
 
-        actual = localDataService.readStateConfig(mock.Mock())
+        actual = localDataService.readStateConfig("123")
         assert actual is not None
         assert actual.stateId == "123"
-
-    def test_readDiffractionCalibrant():
-        localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
-        reductionParameters = _readReductionParameters("test")
-        localDataService.instrumentConfig = getMockInstrumentConfig()
-        actual = localDataService._readDiffractionCalibrant(mock.Mock())
-        assert actual is not None
-        assert actual.filename == reductionParameters["calFileName"]
-
-    def test_readNormalizationCalibrant():
-        localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
-        reductionParameters = _readReductionParameters("test")
-        localDataService.instrumentConfig = getMockInstrumentConfig()
-        actual = localDataService._readNormalizationCalibrant(mock.Mock())
-        assert actual is not None
-        assert actual.mask == reductionParameters["VMsk"]
 
     def test_readFocusGroups():
         localDataService = LocalDataService()
@@ -120,7 +117,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService = LocalDataService()
         localDataService._findIPTS = mock.Mock()
         localDataService._findIPTS.return_value = "IPTS-123"
-        localDataService._readReductionParameters = _readReductionParameters
         localDataService.instrumentConfig = getMockInstrumentConfig()
         actual = localDataService._readRunConfig("57514")
         assert actual is not None
@@ -133,7 +129,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def test_readPVFile():
         localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
         localDataService.instrumentConfig = getMockInstrumentConfig()
         localDataService._constructPVFilePath = mock.Mock()
         localDataService._constructPVFilePath.return_value = Resource.getPath("./")
@@ -142,7 +137,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def test__generateStateId():
         localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
         localDataService._readPVFile = mock.Mock()
         fileMock = mock.Mock()
         localDataService._readPVFile.return_value = fileMock
@@ -152,7 +146,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def test__findMatchingFileList():
         localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
         localDataService.instrumentConfig = getMockInstrumentConfig()
         actual = localDataService._findMatchingFileList(Resource.getPath("inputs/SNAPInstPrm.json"), False)
         assert actual is not None

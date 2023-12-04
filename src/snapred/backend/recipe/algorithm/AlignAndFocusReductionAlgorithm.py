@@ -4,8 +4,6 @@ from mantid.kernel import Direction
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "AlignAndFocusReductionAlgorithm"
-
 
 class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
     def PyInit(self):
@@ -13,7 +11,7 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients.parse_raw(self.getProperty("ReductionIngredients").value)
@@ -47,9 +45,19 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         )
 
         self.mantidSnapper.executeQueue()
-        DMin = reductionIngredients.reductionState.stateConfig.focusGroups[0].dMin
-        DMax = reductionIngredients.reductionState.stateConfig.focusGroups[0].dMax
-        DeltaRagged = reductionIngredients.reductionState.stateConfig.focusGroups[0].dBin
+
+        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in reductionIngredients.pixelGroupingParameters}
+        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in reductionIngredients.pixelGroupingParameters}
+        dBin = {
+            pgp.groupID: pgp.dRelativeResolution / reductionIngredients.reductionState.instrumentConfig.NBins
+            for pgp in reductionIngredients.pixelGroupingParameters
+        }
+
+        groupIDs = [pgp.groupID for pgp in reductionIngredients.pixelGroupingParameters]
+        groupIDs.sort()
+        DMin = [dMin[groupID] for groupID in groupIDs]
+        DMax = [dMax[groupID] for groupID in groupIDs]
+        DeltaRagged = [dBin[groupID] for groupID in groupIDs]
 
         self.mantidSnapper.AlignAndFocusPowderFromFiles(
             "Executing AlignAndFocusPowder...",

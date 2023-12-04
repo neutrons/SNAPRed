@@ -22,7 +22,7 @@ class CalibrationReductionRequestView(BackendRequestView):
         self.sampleDropdown = self._sampleDropDown("Sample", samples)
         self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
 
-        self.litemodeToggle.setEnabled(False)
+        self.litemodeToggle.setEnabled(True)
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.litemodeToggle, 0, 1)
         self.layout.addWidget(self.fieldConvergnceThreshold, 1, 0)

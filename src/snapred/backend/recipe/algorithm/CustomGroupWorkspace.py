@@ -7,10 +7,11 @@ from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "CustomGroupWorkspace"
-
 
 class CustomGroupWorkspace(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Internal"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("StateConfig", defaultValue="", direction=Direction.Input)
@@ -21,7 +22,7 @@ class CustomGroupWorkspace(PythonAlgorithm):
 
         self.declareProperty("InstrumentName", defaultValue="SNAP", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="CommonRed", direction=Direction.Output)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     # TODO: This was largely copied from Malcolm's prototype and is due for a refactor
     def PyExec(self):

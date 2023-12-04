@@ -40,7 +40,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
             IPTS=Resource.getPath("inputs/"),
         )
         cls.filepath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesalgo.nxs")
-        cls.instrumentFilepath = Resource.getPath("inputs/diffcal/fakeSNAPLite.xml")
+        cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
         cls.fetchedWS = f"_{cls.runNumber}_fetched"
         # create some sample data
         cls.sampleWS = f"_{cls.runNumber}_grocery_to_fetch"
@@ -56,7 +56,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         LoadInstrument(
             Workspace=cls.sampleWS,
             Filename=cls.instrumentFilepath,
-            InstrumentName="fakeSNAPLite",
+            InstrumentName="fakeSNAP",
             RewriteSpectraMap=False,
         )
         SaveNexusProcessed(
@@ -216,7 +216,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setProperty("InstrumentFilename", "")
 
         algo.setPropertyValue("OutputWorkspace", f"_{self.runNumber}_grouping_name")
-        algo.setPropertyValue("InstrumentName", "fakeSNAPLite")
+        algo.setPropertyValue("InstrumentName", "fakeSNAP")
         assert algo.execute()
         assert CompareWorkspaces(
             Workspace1=f"_{self.runNumber}_grouping_file",

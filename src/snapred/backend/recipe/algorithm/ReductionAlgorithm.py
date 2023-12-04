@@ -8,10 +8,6 @@ from mantid.kernel import Direction
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-# from snapred.backend.recipe.algorithm.CustomGroupWorkspace import name as CustomGroupWorkspace
-
-name = "ReductionAlgorithm"
-
 
 #######################################################
 # ATTENTION: Could be replaced by alignAndFocusPowder #
@@ -19,12 +15,15 @@ name = "ReductionAlgorithm"
 # and after is equivalent                             #
 #######################################################
 class ReductionAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Reduction"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
         reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
@@ -185,15 +184,23 @@ class ReductionAlgorithm(PythonAlgorithm):
         # TODO: Refactor so excute only needs to be called once
         self.mantidSnapper.executeQueue()
 
+        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in reductionIngredients.pixelGroupingParameters}
+        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in reductionIngredients.pixelGroupingParameters}
+        dBin = {
+            pgp.groupID: pgp.dRelativeResolution / reductionIngredients.reductionState.instrumentConfig.NBins
+            for pgp in reductionIngredients.pixelGroupingParameters
+        }
+        groupIDs = [pgp.groupID for pgp in reductionIngredients.pixelGroupingParameters]
+        groupIDs.sort()
         groupedData = data
-        for workspaceIndex in range(len(focusGroups)):
+        for index, groupID in enumerate(groupIDs):
             data = self.mantidSnapper.RebinRagged(
                 "Rebinning ragged bins...",
-                InputWorkspace=mtd[groupedData].getItem(workspaceIndex),
-                XMin=focusGroups[workspaceIndex].dMin,
-                XMax=focusGroups[workspaceIndex].dMax,
-                Delta=focusGroups[workspaceIndex].dBin,
-                OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[workspaceIndex].name),
+                InputWorkspace=mtd[groupedData].getItem(index),  # or groupID
+                XMin=dMin[groupID],
+                XMax=dMax[groupID],
+                Delta=dBin[groupID],
+                OutputWorkspace="data_rebinned_ragged_" + str(focusGroups[index].name),  # or groupID
             )
         self.mantidSnapper.WashDishes(
             "Freeing workspace...",

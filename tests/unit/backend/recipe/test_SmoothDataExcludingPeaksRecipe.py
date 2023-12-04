@@ -23,7 +23,7 @@ class TestSmoothDataExcludingPeaksRecipe(unittest.TestCase):
         mock_algo.setProperty.assert_called_once_with(
             "SmoothDataExcludingPeaksIngredients", mock_SmoothDataIngredients.json()
         )
-        mock_AlgorithmManager.create.assert_called_once_with("SmoothDataExcludingPeaks")
+        mock_AlgorithmManager.create.assert_called_once_with("SmoothDataExcludingPeaksAlgo")
 
     @mock.patch("snapred.backend.recipe.SmoothDataExcludingPeaksRecipe.AlgorithmManager")
     def test_execute_unsuccessful(self, mock_AlgorithmManager):
@@ -45,4 +45,4 @@ class TestSmoothDataExcludingPeaksRecipe(unittest.TestCase):
         mock_algo.setProperty.assert_called_once_with(
             "SmoothDataExcludingPeaksIngredients", mock_SmoothDataIngredients.json()
         )
-        mock_AlgorithmManager.create.assert_called_once_with("SmoothDataExcludingPeaks")
+        mock_AlgorithmManager.create.assert_called_once_with("SmoothDataExcludingPeaksAlgo")

@@ -87,10 +87,14 @@ class DiffractionCalibrationCreationWorkflow:
         self._calibrationAssessmentView.updateRunNumber(self.runNumber)
         self._saveCalibrationView.updateRunNumber(self.runNumber)
         self.focusGroupPath = view.groupingFileDropdown.currentText()
-        self.cifPath = view.sampleDropdown.currentText()
+        with open(view.sampleDropdown.currentText()) as file:
+            self.cifPath = json.load(file)["crystallography"]["cifFile"]
 
         payload = DiffractionCalibrationRequest(
-            runNumber=self.runNumber, cifPath=self.cifPath, focusGroupPath=self.focusGroupPath
+            runNumber=self.runNumber,
+            cifPath=self.cifPath,
+            focusGroupPath=self.focusGroupPath,
+            useLiteMode=view.litemodeToggle.field.getState(),
         )
         payload.convergenceThreshold = view.fieldConvergnceThreshold.get(payload.convergenceThreshold)
         payload.peakIntensityThreshold = view.fieldPeakIntensityThreshold.get(payload.peakIntensityThreshold)

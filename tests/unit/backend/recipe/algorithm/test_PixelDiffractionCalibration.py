@@ -1,8 +1,11 @@
 import json
 import unittest
-import unittest.mock as mock
 
 import pytest
+from mantid.simpleapi import (
+    DeleteWorkspace,
+    mtd,
+)
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
@@ -29,64 +32,108 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/diffcal/fakeInstrumentState.json"))
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/diffcal/fakeFocusGroup.json"))
-        fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
+        fakeFocusGroup.definition = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
 
-        peakList3 = [
-            DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum": 0.15, "maximum": 0.25}}),
-        ]
-        peakList7 = [
-            DetectorPeak.parse_obj({"position": {"value": 0.3, "minimum": 0.20, "maximum": 0.40}}),
-        ]
-        peakList2 = [
-            DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0.10, "maximum": 0.25}}),
-        ]
-        peakList11 = [
-            DetectorPeak.parse_obj({"position": {"value": 0.24, "minimum": 0.18, "maximum": 0.30}}),
-        ]
-
+        peakLists = {
+            3: DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum": 0.15, "maximum": 0.25}}),
+            7: DetectorPeak.parse_obj({"position": {"value": 0.3, "minimum": 0.20, "maximum": 0.40}}),
+            2: DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0.10, "maximum": 0.25}}),
+            11: DetectorPeak.parse_obj({"position": {"value": 0.24, "minimum": 0.18, "maximum": 0.30}}),
+        }
         self.fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,
             focusGroup=fakeFocusGroup,
             instrumentState=fakeInstrumentState,
             groupedPeakLists=[
-                GroupPeakList(groupID=3, peaks=peakList3, maxfwhm=5),
-                GroupPeakList(groupID=7, peaks=peakList7, maxfwhm=5),
-                GroupPeakList(groupID=2, peaks=peakList2, maxfwhm=5),
-                GroupPeakList(groupID=11, peaks=peakList11, maxfwhm=5),
+                GroupPeakList(groupID=gid, peaks=[peakLists[gid]], maxfwhm=5) for gid in peakLists.keys()
             ],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
+            maxOffset=self.maxOffset,
         )
 
-    def makeFakeNeutronData(self, algo):
-        """Will cause algorithm to execute with sample data, instead of loading from file"""
+        self.fakeRawData = f"_test_pixelcal_{self.fakeRunNumber}"
+        self.fakeGroupingWorkspace = f"_test_pixelcal_difc_{self.fakeRunNumber}"
+        self.makeFakeNeutronData(self.fakeRawData, self.fakeGroupingWorkspace)
+
+    def tearDown(self) -> None:
+        for ws in mtd.getObjectNames():
+            try:
+                DeleteWorkspace(ws)
+            except:  # noqa: E722
+                pass
+        return super().tearDown()
+
+    def makeFakeNeutronData(self, rawWsName: str, focusWSname: str) -> None:
+        """Create sample data for test runs"""
         from mantid.simpleapi import (
+            ConvertUnits,
             CreateSampleWorkspace,
+            LoadDetectorsGroupingFile,
             LoadInstrument,
+            Rebin,
+            RebinRagged,
         )
+
+        TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
+        TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
+        overallDMax = min(self.fakeIngredients.focusGroup.dMax)
+        overallDMin = max(self.fakeIngredients.focusGroup.dMin)
+        dBin = min([abs(d) for d in self.fakeIngredients.focusGroup.dBin])
 
         # prepare with test data
-        midpoint = (algo.overallDMin + algo.overallDMax) / 2.0
+        midpoint = (overallDMin + overallDMax) / 2.0
         CreateSampleWorkspace(
-            OutputWorkspace=algo.inputWSdsp,
+            OutputWorkspace=rawWsName,
             # WorkspaceType="Histogram",
             Function="User Defined",
-            UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={midpoint },Sigma={midpoint /10}",
-            Xmin=algo.overallDMin,
-            Xmax=algo.overallDMax,
-            BinWidth=algo.dBin,
+            UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={midpoint},Sigma={midpoint/10}",
+            Xmin=overallDMin,
+            Xmax=overallDMax,
+            BinWidth=abs(dBin),
             XUnit="dSpacing",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
         )
         LoadInstrument(
-            Workspace=algo.inputWSdsp,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Workspace=rawWsName,
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             RewriteSpectraMap=True,
         )
+        # also load the focus grouping workspace
+        LoadDetectorsGroupingFile(
+            InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
+            InputWorkspace=rawWsName,
+            OutputWorkspace=focusWSname,
+        )
         # # rebin and convert for DSP, TOF
-        algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWSdsp, "dSpacing")
-        algo.convertUnitsAndRebin(algo.inputWSdsp, algo.inputWStof, "TOF")
+        focWS = mtd[focusWSname]
+        allXmins = [0] * 16
+        allXmaxs = [0] * 16
+        allDelta = [0] * 16
+        for i, gid in enumerate(focWS.getGroupIDs()):
+            for detid in focWS.getDetectorIDsOfGroup(int(gid)):
+                allXmins[detid] = self.fakeIngredients.focusGroup.dMin[i]
+                allXmaxs[detid] = self.fakeIngredients.focusGroup.dMax[i]
+                allDelta[detid] = self.fakeIngredients.focusGroup.dBin[i]
+        RebinRagged(
+            InputWorkspace=rawWsName,
+            OutputWorkspace=rawWsName,
+            XMin=allXmins,
+            XMax=allXmaxs,
+            Delta=allDelta,
+        )
+        ConvertUnits(
+            InputWorkspace=rawWsName,
+            OutputWorkspace=rawWsName,
+            Target="TOF",
+        )
+        Rebin(
+            InputWorkspace=rawWsName,
+            OutputWorkspace=rawWsName,
+            Params=(TOFMin, dBin, TOFMax),
+            BinningMode="Logarithmic",
+        )
 
     def test_chop_ingredients(self):
         """Test that ingredients for algo are properly processed"""
@@ -94,12 +141,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         algo.initialize()
         algo.chopIngredients(self.fakeIngredients)
         assert algo.runNumber == self.fakeRunNumber
-        assert algo.TOFMin == self.fakeIngredients.instrumentState.particleBounds.tof.minimum
-        assert algo.TOFMax == self.fakeIngredients.instrumentState.particleBounds.tof.maximum
         assert algo.overallDMin == min(self.fakeIngredients.focusGroup.dMin)
         assert algo.overallDMax == max(self.fakeIngredients.focusGroup.dMax)
-        assert algo.dBin == min([abs(db) for db in self.fakeIngredients.focusGroup.dBin])
-        assert algo.TOFBin == algo.dBin
+        assert algo.dBin == max([abs(db) for db in self.fakeIngredients.focusGroup.dBin])
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""
@@ -112,10 +156,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         """Test that the algorithm executes"""
         algo = ThisAlgo()
         algo.initialize()
+        algo.setProperty("InputWorkspace", self.fakeRawData)
+        algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("MaxOffset", self.maxOffset)
-        algo.chopIngredients(self.fakeIngredients)
-        self.makeFakeNeutronData(algo)
         assert algo.execute()
 
         data = json.loads(algo.getProperty("data").value)
@@ -131,10 +174,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
 
         algo = ThisAlgo()
         algo.initialize()
+        algo.setProperty("InputWorkspace", self.fakeRawData)
+        algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("MaxOffset", self.maxOffset)
-        algo.chopIngredients(self.fakeIngredients)
-        self.makeFakeNeutronData(algo)
         assert algo.execute()
 
         data = json.loads(algo.getProperty("data").value)
@@ -152,58 +194,6 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             data = json.loads(algo.getProperty("data").value)
             allOffsets.append(data["medianOffset"])
             assert allOffsets[-1] <= max(1.0e-4, allOffsets[-2])
-
-    def test_retrieve_from_pantry(self):
-        import os
-
-        from mantid.simpleapi import (
-            CompareWorkspaces,
-            CreateSampleWorkspace,
-            LoadInstrument,
-            SaveNexus,
-        )
-
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.chopIngredients(self.fakeIngredients)
-
-        # create a fake nexus file to load
-        fakeDataWorkspace = "_fake_sample_data"
-        fakeNexusFile = Resource.getPath("outputs/calibration/testInputData.nxs")
-        CreateSampleWorkspace(
-            OutputWorkspace=fakeDataWorkspace,
-            WorkspaceType="Event",
-            Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=algo.TOFMin,
-            Xmax=algo.TOFMax,
-            BinWidth=0.1,
-            XUnit="TOF",
-            NumMonitors=1,
-            NumBanks=4,  # must produce same number of pixels as fake instrument
-            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=True,
-        )
-        LoadInstrument(
-            Workspace=fakeDataWorkspace,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
-            InstrumentName="fakeSNAPLite",
-            RewriteSpectraMap=False,
-        )
-        SaveNexus(
-            InputWorkspace=fakeDataWorkspace,
-            Filename=fakeNexusFile,
-        )
-        algo.rawDataPath = fakeNexusFile
-        algo.raidPantry()
-        os.remove(fakeNexusFile)
-        assert CompareWorkspaces(
-            Workspace1=algo.inputWStof,
-            Workspace2=fakeDataWorkspace,
-        )
-        assert len(algo.subgroupIDs) > 0
-        assert algo.subgroupIDs == list(algo.subgroupWorkspaceIndices.keys())
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

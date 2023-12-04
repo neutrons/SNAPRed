@@ -28,7 +28,7 @@ class NameBuilder:
     def build(self):
         tokens = self.template.format(**self.props).split(",")
         tokens = [token.lower() for token in tokens if token != ""]
-        return self.delimiter.join(tokens)
+        return WorkspaceName(self.delimiter.join(tokens))
 
 
 class _WorkspaceNameGenerator:

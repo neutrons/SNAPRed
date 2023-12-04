@@ -273,6 +273,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert actualFocusGroup == mockFocusGroup.return_value
         assert actualInstrumentState == mockInstrumentState
 
+    @patch("snapred.backend.service.CalibrationService.GroceryListItem")
+    @patch("snapred.backend.service.CalibrationService.FetchGroceriesRecipe")
     @patch("snapred.backend.service.CalibrationService.CrystallographicInfoService")
     @patch("snapred.backend.service.CalibrationService.DetectorPeakPredictorRecipe")
     @patch("snapred.backend.service.CalibrationService.parse_raw_as")
@@ -285,6 +287,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockParseRawAs,
         mockDetectorPeakPredictorRecipe,
         mockCrystallographicInfoService,
+        mockFetchGroceriesRecipe,
+        mockGroceryListItem,
     ):
         runNumber = "123"
         focusGroupPath = "focus/group/path"
@@ -296,6 +300,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockDetectorPeakPredictorRecipe().executeRecipe.return_value = [MagicMock()]
         mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
 
+        mockFetchGroceriesRecipe().executeRecipe.return_value = {
+            "workspaces": [mock.Mock(), mock.Mock()],
+        }
+
         mockFocusGroupInstrumentState = (MagicMock(), MagicMock())
         self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=mockFocusGroupInstrumentState)
 
@@ -305,6 +313,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             focusGroupPath=focusGroupPath,
             nBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
             cifPath="path/to/cif",
+            useLiteMode=False,
         )
         self.instance.diffractionCalibration(request)
 
@@ -323,8 +332,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             calPath="~/tmp/",
             convergenceThreshold=request.convergenceThreshold,
         )
+        assert mockGroceryListItem.call_count == 2
+        mockGroceries = mockFetchGroceriesRecipe().executeRecipe.return_value["workspaces"]
         mockDiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
-            mockDiffractionCalibrationIngredients.return_value
+            mockDiffractionCalibrationIngredients.return_value,
+            {"inputWorkspace": mockGroceries[0], "groupingWorkspace": mockGroceries[1]},
         )
 
     @patch("snapred.backend.service.CalibrationService.CrystallographicInfoService")

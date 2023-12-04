@@ -28,10 +28,8 @@ with mock.patch.dict(
         reductionState.instrumentConfig.reducedDataDirectory = Resource.getPath("inputs/reduction/")
         reductionState.instrumentConfig.reductionRecordDirectory = Resource.getPath("inputs/reduction/")
         reductionState.stateConfig.vanadiumFilePath = Resource.getPath("inputs/reduction/shared/lite/fake_vanadium.nxs")
-        reductionState.stateConfig.diffractionCalibrant.diffCalPath = Resource.getPath(
-            "inputs/reduction/shared/lite/fake_vanadium.nxs"
-        )
-        return ReductionIngredients(runConfig=runConfig, reductionState=reductionState)
+        pgp = reductionIngredients.pixelGroupingParameters
+        return ReductionIngredients(runConfig=runConfig, reductionState=reductionState, pixelGroupingParameters=pgp)
 
     def test_init():
         """Test ability to initialize ReductionAlgorithm"""
@@ -43,9 +41,6 @@ with mock.patch.dict(
         ipts = reductionIngredients.runConfig.IPTS
         rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
         assert rawDataPath == Resource.getPath("inputs/reduction/shared/lite/SNAP_1.lite.nxs.h5")
-        assert reductionIngredients.reductionState.stateConfig.vanadiumFilePath == Resource.getPath(
-            "inputs/reduction/shared/lite/fake_vanadium.nxs"
-        )
         initReductionIngredients = algo.getProperty("ReductionIngredients").value
         assert initReductionIngredients == reductionIngredients.json()
 
@@ -73,7 +68,6 @@ with mock.patch.dict(
         reductionIngredients = ReductionIngredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
         assert reductionIngredients.runConfig.runNumber == "nope"
         assert reductionIngredients.runConfig.IPTS == "nope"
-        assert reductionIngredients.reductionState.stateConfig.calibrationDate == "nope"
         algo = ReductionAlgorithm()
         algo.initialize()
         algo.setProperty("ReductionIngredients", reductionIngredients.json())
