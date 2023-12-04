@@ -527,6 +527,16 @@ class LocalDataService:
             record = parse_file_as(CalibrationRecord, latestFile)
         return record
 
+    def readCalibrationRecords(self, runId: str):
+        recordPath: str = self.getCalibrationRecordPath(runId, "*")
+        foundFiles = self._findMatchingFileList(recordPath, throws=False)
+        calibrationRecordList = []
+        record: CalibrationRecord = None
+        for file in foundFiles:
+            record = parse_file_as(CalibrationRecord, file)
+            calibrationRecordList.append(record)
+        return calibrationRecordList
+
     def writeCalibrationRecord(self, record: CalibrationRecord, version: int = None):
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.

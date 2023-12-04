@@ -363,17 +363,22 @@ class CalibrationService(Service):
         )
         fitResults = FitMultiplePeaksRecipe().executeRecipe(FitMultiplePeaksIngredients=fitIngredients)
         metrics = self._collectMetrics(fitResults, focusGroup, pixelGroupingParam)
-        prevCalibration = self.dataFactoryService.getCalibrationRecord(run.runNumber)
         timestamp = int(round(time.time() * 1000))
         GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
             ListOfDict=list_to_raw(metrics.calibrationMetric),
             OutputWorkspace=f"{run.runNumber}_calibrationMetrics_ts{timestamp}",
         )
-        if prevCalibration is not None:
-            GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
-                ListOfDict=list_to_raw(prevCalibration.focusGroupCalibrationMetrics.calibrationMetric),
-                OutputWorkspace=f"{run.runNumber}_calibrationMetrics_v{prevCalibration.version}",
-            )
+
+        # get all previous calibration records for the same run number
+        prevCalibrationRecords = self.dataFactoryService.getCalibrationRecords(run.runNumber)
+        for prevCalibrationRecord in prevCalibrationRecords:
+            if prevCalibrationRecord is not None:
+                GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
+                    ListOfDict=list_to_raw(prevCalibrationRecord.focusGroupCalibrationMetrics.calibrationMetric),
+                    OutputWorkspace=f"{run.runNumber}_calibrationMetrics_v{prevCalibrationRecord.version}",
+                )
+
+        # return current calibration record
         outputWorkspaces = [focussedData]
         focusGroupParameters = self.collectFocusGroupParameters([focusGroup], [pixelGroupingParam])
         record = CalibrationRecord(
