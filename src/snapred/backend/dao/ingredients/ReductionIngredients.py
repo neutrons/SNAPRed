@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
@@ -12,7 +12,7 @@ class ReductionIngredients(BaseModel):
 
     runConfig: RunConfig
     reductionState: ReductionState
-    pixelGroupingParameters: List[PixelGroupingParameters]
+    pixelGroupingParameters: List[PixelGroupingParameters] = Field(min_items=1)
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

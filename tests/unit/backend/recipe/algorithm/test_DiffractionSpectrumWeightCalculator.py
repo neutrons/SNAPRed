@@ -73,5 +73,8 @@ with mock.patch.dict(
         weight_ws = mtd[weight_ws_name]
         ref_weight_ws = LoadNexusProcessed(Filename=Resource.getPath(referenceWeightFile))
 
-        result, _ = CompareWorkspaces(ref_weight_ws, weight_ws, CheckInstrument=False)
-        assert result
+        assert CompareWorkspaces(
+            Workspace1=ref_weight_ws,
+            Workspace2=weight_ws,
+            CheckInstrument=False,
+        )

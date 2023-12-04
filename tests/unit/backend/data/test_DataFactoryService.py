@@ -28,7 +28,7 @@ with mock.patch.dict(
         dataExportService.getRunConfig = mock.Mock()
         dataExportService.getRunConfig.return_value = RunConfig.construct()
 
-        pixelGroupingParameters = list(MagicMock())
+        pixelGroupingParameters = [MagicMock(spec_set=PixelGroupingParameters)]
         actual = dataExportService.getReductionIngredients(mock.Mock(), pixelGroupingParameters)
 
         assert type(actual) == ReductionIngredients
