@@ -21,13 +21,18 @@ from snapred.backend.dao.ingredients import (
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
-from snapred.backend.dao.normalization import Normalization, NormalizationRecord
+from snapred.backend.dao.normalization import (
+    Normalization,
+    NormalizationIndexEntry,
+    NormalizationRecord,
+)
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
     NormalizationCalibrationRequest,
+    NormalizationExportRequest,
     SpecifyNormalizationRequest,
 )
 from snapred.backend.dao.state import FocusGroup, FocusGroupParameters
@@ -367,56 +372,69 @@ class CalibrationService(Service):
         normalizationIngredients = NormalizationCalibrationIngredients(
             reductionIngredients=reductionIngredients,
             backgroundReductionIngredients=backgroundReductionIngredients,
-            focusGroup=focusGroup,
             calibrantSample=calibrantSample,
-            instrumentState=instrumentState,
             smoothDataIngredients=smoothDataIngredients,
         )
 
         groceryList = [
             GroceryListItem(
                 workspaceType="nexus",
+                useLiteMode=True,
                 runConfig=reductionIngredients.runConfig,
                 loader="LoadEventNexus",
             ),
             GroceryListItem(
                 workspaceType="nexus",
+                useLiteMode=True,
                 runConfig=backgroundReductionIngredients.runConfig,
                 loader="LoadEventNexus",
+            ),
+            GroceryListItem(
+                workspaceType="grouping",
+                useLiteMode=True,
+                loader="LoadGroupingDefinition",
+                groupingScheme=groupingFile,
+                instrumentSource=str(Config["instrument.lite.definition"]),
             ),
         ]
         workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
         groceries = {
             "InputWorkspace": workspaceList[0],
             "BackgroundWorkspace": workspaceList[1],
+            "GroupingWorkspace": workspaceList[2],
         }
 
         return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients, groceries)
 
     @FromString
     def normalizationAssessment(self, request: SpecifyNormalizationRequest):
-        runNumber = request.runNumber.runNumber
-        normalization = self.dataFactoryService.getNormalizationState(runNumber)
-        preSmoothedWorkspace = request.preSmoothedWorkpace
-        smoothedWorkspace = request.smoothedWorkspace
-        smoothingParameter = request.smoothingParameter
-        workspaces = [preSmoothedWorkspace, smoothedWorkspace]
-
-        self.dataFactoryService.getNormalizationRecord(runNumber)
-        int(round(time.time() * 1000))
+        normalization = self.dataFactoryService.getNormalizationState(request.runNumber)
 
         record = NormalizationRecord(
-            runNumber=runNumber,
-            crystalInfo=crystalInfo,  # noqa F821
-            smoothingParameter=smoothingParameter,  # ^^^temporary^^^
+            runNumber=request.runNumber,
+            backgroundRunNumber=request.backgroundRunNumber,
+            smoothingParameter=request.smoothingParameter,
             normalization=normalization,
-            workspaceNames=workspaces,
+            workspaceNames=request.workspaces,
         )
         return record
 
     @FromString
-    def saveNormalization(self, runID: str):
-        pass
+    def saveNormalization(self, request: NormalizationExportRequest):
+        entry = request.normalizationIndexEntry
+        normalizationRecord = request.normalizationRecord
+        normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
+        entry.version = normalizationRecord.version
+        self.saveNormalizationToIndex(entry)
+
+    @FromString
+    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
+        if entry.appliesTo is None:
+            entry.appliesTo = ">" + entry.runNumber
+        if entry.timestamp is None:
+            entry.timestamp = int(round(time.time() * 1000))
+        logger.info("Saving normalization index entry for Run Number {}".format(entry.runNumber))
+        self.dataExportService.exportNormalizationIndexEntry(entry)
 
     @FromString
     def retrievePixelGroupingParams(self, runID: str):

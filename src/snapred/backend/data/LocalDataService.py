@@ -21,6 +21,7 @@ from snapred.backend.dao import (
     StateId,
 )
 from snapred.backend.dao.calibration import Calibration, CalibrationIndexEntry, CalibrationRecord
+from snapred.backend.dao.normalization import Normalization, NormalizationIndexEntry, NormalizationRecord
 from snapred.backend.dao.state import (
     DetectorState,
     DiffractionCalibrant,
@@ -329,6 +330,16 @@ class LocalDataService:
             calibrationIndex = parse_file_as(List[CalibrationIndexEntry], indexPath)
         return calibrationIndex
 
+    def readNormalizationIndex(self, runId: str):
+        # Need to run this because of its side effect, TODO: Remove side effect
+        stateId, _ = self._generateStateId(runId)
+        normalizationPath: str = self._constructCalibrationStatePath(stateId)
+        indexPath: str = normalizationPath + "NormalizationIndex.json"
+        normalizationIndex: List[NormalizationIndexEntry] = []
+        if os.path.exists(indexPath):
+            normalizationIndex = parse_file_as(List[NormalizationIndexEntry], indexPath)
+        return normalizationIndex
+
     def _isApplicableEntry(self, calibrationIndexEntry, runId):
         """
         Checks to see if an entry in the calibration index applies to a given run id via numerical comparison.
@@ -391,6 +402,15 @@ class LocalDataService:
         calibrationIndex = self.readCalibrationIndex(entry.runNumber)
         calibrationIndex.append(entry)
         write_model_list_pretty(calibrationIndex, indexPath)
+
+    def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
+        stateId, _ = self._generateStateId(entry.runNumber)
+        normalizationPath: str = self._constructCalibrationStatePath(stateId)
+        indexPath: str = normalizationPath + "NormalizationIndex.json"
+        # append to index and write to file
+        normalizationIndex = self.readNormalizationIndex(entry.runNumber)
+        normalizationIndex.append(entry)
+        write_model_list_pretty(normalizationIndex, indexPath)
 
     def getCalibrationRecordPath(self, runId: str, version: str):
         recordPath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationRecord.json"
@@ -701,8 +721,10 @@ class LocalDataService:
 
     def readSamplePaths(self):
         sampleFolder = Config["instrument.calibration.sample.home"]
+        extensions = Config["instrument.calibration.powder.grouping.extensions"]
         # collect list of all json in folder
-        samples = self._findMatchingFileList(f"{sampleFolder}/*.json", throws=False)
+        for extension in extensions:
+            samples = self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False)
         if len(samples) < 1:
             raise RuntimeError(f"No samples found in {sampleFolder}")
         return samples

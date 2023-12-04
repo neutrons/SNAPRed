@@ -1,6 +1,8 @@
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
+from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.decorators.Singleton import Singleton
@@ -30,6 +32,12 @@ class DataExportService:
 
     def exportCalibrationState(self, runId: str, calibration: Calibration):
         return self.dataService.writeCalibrationState(runId, calibration)
+
+    def exportNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
+        self.dataService.writeNormalizationIndexEntry(entry)
+
+    def exportNormalizationRecord(self, record: NormalizationRecord):
+        return self.dataService.writeNormalizationRecord(record)
 
     def initializeState(self, runId: str, name: str):
         return self.dataService.initializeState(runId, name)

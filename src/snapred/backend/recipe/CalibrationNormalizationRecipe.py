@@ -26,9 +26,9 @@ class CalibrationNormalizationRecipe:
 
         self.rawInput = groceryList["InputWorkspace"]
         self.rawBackgroundInput = groceryList["BackgroundWorkspace"]
+        self.groupingWS = groceryList["GroupingWorkspace"]
         self.outputWS = groceryList.get("OutputWorkspace", "")
-        self.focusWS = groceryList.get("FocusWorkspace", "")
-        self.smoothWS = groceryList.get("SmoothWorkspace", "")
+        self.smoothWS = groceryList.get("SmoothedOutput", "")
 
     def chopIngredients(self, ingredients: Ingredients):
         self.runNumber = ingredients.reductionIngredients.runConfig.runNumber
@@ -41,26 +41,27 @@ class CalibrationNormalizationRecipe:
         logger.info(
             f"Executing normalization calibration for runId: {self.runNumber} and background runId: {self.backgroundRunNumber}"  # noqa: E501
         )
+
         data: Dict[str, Any] = {"result": False}
 
         calibNormAlgo = CalibrationNormalizationAlgo()
         calibNormAlgo.initialize()
         calibNormAlgo.setProperty("InputWorkspace", self.rawInput)
         calibNormAlgo.setProperty("BackgroundWorkspace", self.rawBackgroundInput)
+        calibNormAlgo.setProperty("GroupingWorkspace", self.groupingWS)
         calibNormAlgo.setProperty("OutputWorkspace", self.outputWS)
+        calibNormAlgo.setProperty("SmoothedOutput", self.smoothWS)
         calibNormAlgo.setProperty("Ingredients", ingredients.json())
-        calibNormAlgo.setProperty("FocusWorkspace", self.focusWS)
-        calibNormAlgo.setProperty("SmoothWorkspace", self.smoothWS)
+
         try:
             calibNormAlgo.execute()
-            data["FocusWorkspace"] = calibNormAlgo.getProperty("FocusWorkspace").value
-            data["SmoothWorkspace"] = calibNormAlgo.getProperty("SmoothWorkspace").value
+            data["FocusWorkspace"] = calibNormAlgo.getProperty("OutputWorkspace").value
+            data["SmoothWorkspace"] = calibNormAlgo.getProperty("SmoothedOutput").value
         except RuntimeError as e:
             errorString = str(e)
+            logger.error(errorString)
             raise Exception(errorString.split("\n")[0])
 
-        logger.info(
-            f"Finished executing normalization calibration for runId: {self.runNumber} and background runId: {self.backgroundRunNumber}"  # noqa: E501
-        )
+        logger.info("Finished executing normalization calibration")
         data["result"] = True
         return data

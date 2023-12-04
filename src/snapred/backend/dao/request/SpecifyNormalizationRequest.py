@@ -1,14 +1,12 @@
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
-from snapred.backend.dao.RunConfig import RunConfig
-
 
 class SpecifyNormalizationRequest(BaseModel):
-    runNumber: RunConfig
-    preSmoothedWorkpace: str
-    smoothedWorkspace: str
+    runNumber: str
+    backgroundRunNumber: str
     smoothingParameter: float
-    samplePath: Optional[str]
-    focusGroupPath: Optional[str]
+    samplePath: str
+    focusGroupPath: str
+    workspaces: [List[str]]

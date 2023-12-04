@@ -4,17 +4,17 @@ from PyQt5.QtCore import QObject, Qt, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao import RunConfig, SNAPRequest, SNAPResponse
-
-# from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
+from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.dao.normalization import NormalizationIndexEntry, NormalizationRecord
 from snapred.backend.dao.request import (
-    #  NormalizationExportRequest,
     NormalizationCalibrationRequest,
+    NormalizationExportRequest,
     SpecifyNormalizationRequest,
 )
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
+from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
 from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
@@ -58,9 +58,14 @@ class NormalizationCalibrationWorkflow:
 
         self._specifyNormalizationView.signalValueChanged.connect(self.onNormalizationValueChange)
 
-        # self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
-        #     "Saving Normalization Calibration", self.saveSchema, parent
-        # )
+        self.lastGroupingFile = None
+        self.lastSmoothingParameter = None
+
+        self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
+            "Saving Normalization Calibration",
+            self.saveSchema,
+            parent,
+        )
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=cancelLambda, parent=parent)
@@ -74,7 +79,7 @@ class NormalizationCalibrationWorkflow:
                 self._specifyNormalizationView,
                 "Specify Calibration",
             )
-            # .addNode(self._saveNormalizationCalibration, self._saveNormalizationCalibrationView, "Saving")
+            .addNode(self._saveNormalizationCalibration, self._saveNormalizationCalibrationView, "Saving")
             .build()
         )
 
@@ -99,47 +104,62 @@ class NormalizationCalibrationWorkflow:
         self._specifyNormalizationView.updateBackgroundRunNumber(self.backgroundRunNumber)
         self._specifyNormalizationView.updateGrouping(groupingIndex)
 
-        # self._saveNormalizationCalibrationView.updateSample(sampleIndex)
-        # self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
-        # self._saveNormalizationCalibrationView.updateBackgroundRunNumber(self.backgroundRunNumber)
-        # self._saveNormalizationCalibrationView.updateGroupingFile(groupingIndex)
-        # self._saveNormalizationCalibrationView.updateCalibrantSample(calibrantIndex)
-        # self._saveNormalizationCalibrationView.updateSmoothingParameter(self.smoothingParmameter)
+        self._saveNormalizationCalibrationView.updateSample(self.sampleIndex)
+        self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
+        self._saveNormalizationCalibrationView.updateBackgroundRunNumber(self.backgroundRunNumber)
+        self._saveNormalizationCalibrationView.updateGroupingFile(groupingIndex)
+        self._saveNormalizationCalibrationView.updateSmoothingParameter(smoothingParameter)
 
-        focusWS, smoothWS = self.callNormalizationCalibration(groupingIndex, smoothingParameter)
-        self._specifyNormalizationView.updateWorkspaces(focusWS, smoothWS)
+        payload = NormalizationCalibrationRequest(
+            runNumber=self.runNumber,
+            backgroundRunNumber=self.backgroundRunNumber,
+            samplePath=self.samplePath,
+            groupingPath=self.groupingFiles[groupingIndex],
+            smoothingParameter=smoothingParameter,
+        )
+
+        request = SNAPRequest(path="calibration/normalization", payload=payload.json())
+        response = self.interfaceController.executeRequest(request)
+        self.responses.append(response)
+        return response
 
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
-        pass
+        focusWorkspace = self.responses[-1].data["FocusWorkspace"]
+        smoothWorkspace = self.responses[-1].data["SmoothWorkspace"]
 
-        # groupPath = view.groupingFileDropDown.currentText()
-        # groupName = groupPath.split("/")[-1]
-        # send focusWorkspace to recipe to clone and smooth
-        # smoothedWorkspaces = self.createSmoothedWorkspaces(self.runNumber, focusWorkspaces, self.smoothingParameter)
+        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
-        # self._specifyNormalizationView.signalWorkspacesUpdate.emit(focusWorkspace, smoothedWorkspaces)
+        payload = SpecifyNormalizationRequest(
+            runNumber=self.runNumber,
+            backgroundRunNumber=self.backgroundRunNumber,
+            smoothingParameter=self.lastSmoothingParameter,
+            samplePath=self.samplePath,
+            focusGroupPath=self.lastGroupingFile,
+            workspaces=[focusWorkspace, smoothWorkspace],
+        )
+        request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
+        response = self.interfaceController.executeRequest(request)
 
-        # payload = SpecifyNormalizationRequest(
-        #     run=RunConfig(runNumber=self.runNumber),
-        #     workspace=,
-        #     smoothWorkspace=,
-        #     smoothingParameter=#TODO: Pull this from the view.,
-        #     samplePath=self.samplePath,
-        #     calibrantPath=self.calibrantPath,
-        #     focusGroupPath=self.groupingPath,
-        # )
-        # request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
-        # response = self.interfaceController.executeRequest(request)
+        self.responses.append(response)
+        return response
 
-        # self.responses.append(response)
-        # return response
+    def _saveNormalizationCalibration(self, workflowPresenter):
+        view = workflowPresenter.widget.tabview
 
-    # def _saveNormalizationCalibration(self, workflowPresenter):
-    #     view = workflowPresenter.widget.tabview
-
-    #     normalizationRecord = self.responses[-1].data
-    #     normalizationRecord.workspaceNames.append(self.responses[-2].data)
-    #     pass
+        normalizationRecord = self.responses[-1].data
+        normalizationIndexEntry = NormalizationIndexEntry(
+            runNumber=view.fieldRunNumber.get(),
+            backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
+            comments=view.fieldComments.get(),
+            author=view.fieldAuthor.get(),
+        )
+        payload = NormalizationExportRequest(
+            normalizationRecord=normalizationRecord, normalizationIndexEntry=normalizationIndexEntry
+        )
+        request = SNAPRequest(path="calibration/saveNormalization", payload=payload.json())
+        response = self.interfaceController.executeRequest(request)
+        self.responses.append(response)
+        return response
 
     def callNormalizationCalibration(self, groupingIndex, smoothingParameter):
         payload = NormalizationCalibrationRequest(
@@ -157,13 +177,14 @@ class NormalizationCalibrationWorkflow:
         focusWorkspace = self.responses[-1].data["FocusWorkspace"]
         smoothWorkspace = self.responses[-1].data["SmoothWorkspace"]
 
-        return focusWorkspace, smoothWorkspace
+        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
     def onNormalizationValueChange(self, index, smoothingValue):
-        # self._saveNormalizationCalibrationView.updateCalibrantSample(index)
-        # self._saveNormalizationCalibrationView.updateSmoothingParameter(smoothingValue)
-        focusWS, smoothWS = self.callNormalizationCalibration(index, smoothingValue)
-        self._specifyNormalizationView.updateWorkspaces(focusWS, smoothWS)
+        self._saveNormalizationCalibrationView.updateCalibrantSample(index)
+        self._saveNormalizationCalibrationView.updateSmoothingParameter(smoothingValue)
+        self.lastGroupingFile = str(self.groupingFiles[index])
+        self.lastSmoothingParameter = float(smoothingValue)
+        self.callNormalizationCalibration(index, smoothingValue)
 
     @property
     def widget(self):
