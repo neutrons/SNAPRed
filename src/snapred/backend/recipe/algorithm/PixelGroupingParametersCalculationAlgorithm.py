@@ -43,7 +43,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.delLOverL = instrumentState.instrumentConfig.delLOverL
         self.L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
         self.delL = self.delLOverL * self.L
-        self.delTheta = instrumentState.instrumentConfig.delTh
+        self.delTheta = instrumentState.delTh
         self.grouping_ws_name = "pgpca_grouping_ws"
         self.grouped_ws_name = "pgpca_grouped_ws"
         self.resolution_ws_name = "pgpca_resolution_ws"
