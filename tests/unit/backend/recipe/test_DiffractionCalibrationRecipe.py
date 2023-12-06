@@ -20,6 +20,7 @@ from mantid.simpleapi import (
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as TheseIngredients
+from snapred.backend.dao.PixelGroup import PixelGroup
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
@@ -62,6 +63,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             ],
             convergenceThreshold=0.5,
             calPath=Resource.getPath("outputs/calibration/"),
+            pixelGroup=PixelGroup(pixelGroupingParameters=fakeInstrumentState.pixelGroupingInstrumentParameters),
         )
 
         self.fakeRawData = "_test_diffcal_rx"
@@ -279,11 +281,18 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         allXmins = [0] * 16
         allXmaxs = [0] * 16
         allDelta = [0] * 16
+        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters}
+        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters}
+        dBin = {
+            pgp.groupID: pgp.dRelativeResolution / self.fakeIngredients.instrumentState.instrumentConfig.NBins
+            for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters
+        }
+
         for i, gid in enumerate(focWS.getGroupIDs()):
             for detid in focWS.getDetectorIDsOfGroup(int(gid)):
-                allXmins[detid] = self.fakeIngredients.focusGroup.dMin[i]
-                allXmaxs[detid] = self.fakeIngredients.focusGroup.dMax[i]
-                allDelta[detid] = self.fakeIngredients.focusGroup.dBin[i]
+                allXmins[detid] = dMin[i]
+                allXmaxs[detid] = dMax[i]
+                allDelta[detid] = dBin[i]
         RebinRagged(
             InputWorkspace=rawWS,
             OutputWorkspace=rawWS,

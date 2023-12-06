@@ -6,6 +6,7 @@ import pytest
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
+from snapred.backend.dao.PixelGroup import PixelGroup
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
@@ -37,11 +38,6 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
 
         fakeFocusGroup = FocusGroup(
             name="natural",
-            nHst=4,
-            FWHM=[5, 5, 5, 5],
-            dMin=[0.02, 0.05, 0.02, 0.03],
-            dMax=[0.36, 0.41, 0.65, 0.485],
-            dBin=[0.00086, 0.00096, 0.00130, 0.00117],
             definition=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
         )
         peakLists: Dict[int, List[Any]] = {
@@ -70,6 +66,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             groupedPeakLists=[GroupPeakList(groupID=key, peaks=peakLists[key], maxfwhm=5) for key in peakLists.keys()],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
+            pixelGroup=PixelGroup(pixelGroupingParameters=fakeInstrumentState.pixelGroupingInstrumentParameters),
         )
 
         cls.fakeRawData = f"_test_groupcal_{cls.fakeRunNumber}"

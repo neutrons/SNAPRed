@@ -61,9 +61,16 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.isLite: bool = False
 
         # from grouping parameters, read the overall min/max d-spacings
-        self.overallDMin: float = min(ingredients.focusGroup.dMin)
-        self.overallDMax: float = max(ingredients.focusGroup.dMax)
-        self.dBin: float = max([abs(d) for d in ingredients.focusGroup.dBin])
+        dMin = {pgp.dResolution.minimum for pgp in ingredients.pixelGroup.pixelGroupingParameters}
+        dMax = {pgp.dResolution.maximum for pgp in ingredients.pixelGroup.pixelGroupingParameters}
+        DBin = {
+            pgp.dRelativeResolution / ingredients.instrumentState.instrumentConfig.NBins
+            for pgp in ingredients.pixelGroup.pixelGroupingParameters
+        }
+
+        self.overallDMin: float = min(dMin)
+        self.overallDMax: float = max(dMax)
+        self.dBin: float = max([abs(d) for d in DBin])
         self.dSpaceParams = (self.overallDMin, self.dBin, self.overallDMax)
 
         # from the grouped peak lists, find the maximum shift in d-spacing
