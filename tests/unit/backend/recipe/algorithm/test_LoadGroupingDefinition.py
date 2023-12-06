@@ -72,9 +72,9 @@ class TestLoadGroupingDefinition(unittest.TestCase):
             }
 
             # workspaces containing full SNAP instrument
-            cls.remoteIDFWorkspace: Dict[Tuple[int, int], str] = {
-                (cls.isOnAnalysis, cls.isLite): "test_analysis_idf_lite",
-                (cls.isOnAnalysis, cls.isFull): "test_analysis_idf_full",
+            cls.remoteIDFWorkspace: Dict[int, str] = {
+                cls.isLite: "test_analysis_idf_lite",
+                cls.isFull: "test_analysis_idf_full",
             }
             LoadEmptyInstrument(
                 OutputWorkspace=cls.remoteIDFWorkspace[cls.isLite],
