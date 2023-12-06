@@ -68,7 +68,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
                 (cls.isLite, "nxs"): f"{pgdFolder}SNAPFocGroup_Column.lite.nxs",
                 (cls.isFull, "xml"): f"{pgdFolder}SNAPFocGroup_Column.xml",
                 (cls.isFull, "hdf"): f"{pgdFolder}SNAPFocGroup_Column.hdf",
-                (cls.isFull, "nxs"): None, # TODO make an nxs grouping file
+                (cls.isFull, "nxs"): None,  # TODO make an nxs grouping file
             }
 
             # workspaces containing full SNAP instrument
@@ -263,7 +263,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
 
     # NOTE LOADING FROM NAME IS VERY SLOW
     def do_test_load_with_instrument_name(self, ext: str):
-        outputWorkspace = f'test_ext'
+        outputWorkspace = "test_ext"
         loadingAlgo = LoadingAlgo()
         loadingAlgo.initialize()
         loadingAlgo.mantidSnapper.cleanup = mock.Mock()
