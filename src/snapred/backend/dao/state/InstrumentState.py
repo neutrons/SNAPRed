@@ -22,4 +22,8 @@ class InstrumentState(BaseModel):
 
     @property
     def delTh(self) -> float:
-        return self.detectorState.guideStat == 1 if self.hasGuide else self.instrumentConfig.delThNoGuide
+        return (
+            self.instrumentConfig.delThWithGuide
+            if self.detectorState.guideStat == 1
+            else self.instrumentConfig.delThNoGuide
+        )
