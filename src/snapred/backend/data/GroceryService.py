@@ -90,6 +90,18 @@ class GroceryService:
         instr = "lite" if useLiteMode else "native"
         return Config["grouping.workspacename." + instr] + groupingScheme
 
+    def _createDiffcalWorkspaceName(self, runId: str):
+        return wng.diffCal().runNumber(runId).build()
+
+    def _createDiffcalOutputWorkspaceName(self, runId: str):
+        return wng.diffCalOutput().runNumber(runId).build()
+
+    def _createDiffcalTableWorkspaceName(self, runId: str):
+        return wng.diffCalTable().runNumber(runId).build()
+
+    def _createDiffcalMaskWorkspaceName(self, runId: str):
+        return wng.diffCalMask().runNumber(runId).build()
+        
     ## WRITING TO DISK
 
     def writeWorkspace(self, path: str, name: WorkspaceName):
@@ -358,21 +370,34 @@ class GroceryService:
         groceries = []
         prev: WorkspaceName = ""
         for item in groceryList:
-            # for neutron data stored in a nexus file
-            if item.workspaceType == "neutron":
-                if item.keepItClean:
-                    res = self.fetchNeutronDataCached(item.runNumber, item.useLiteMode, item.loader)
-                else:
-                    res = self.fetchNeutronDataSingleUse(item.runNumber, item.useLiteMode, item.loader)
-                # save the most recently-loaded neutron data as a possible instrument donor
-                prev = res["workspace"]
-            # for grouping definitions
-            elif item.workspaceType == "grouping":
-                # this flag indicates to use most recently-loaded nexus data as the instrument donor
-                if item.instrumentSource == "prev":
-                    item.instrumentPropertySource = "InstrumentDonor"
-                    item.instrumentSource = prev
-                res = self.fetchGroupingDefinition(item)
+            match item.workspaceType:
+                # for neutron data stored in a nexus file
+                case "neutron":
+                    if item.keepItClean:
+                        res = self.fetchNeutronDataCached(item.runNumber, item.useLiteMode, item.loader)
+                    else:
+                        res = self.fetchNeutronDataSingleUse(item.runNumber, item.useLiteMode, item.loader)
+                    # save the most recently-loaded neutron data as a possible instrument donor
+                    prev = res["workspace"]
+                # for grouping definitions
+                case "grouping":
+                    # this flag indicates to use most recently-loaded nexus data as the instrument donor
+                    if item.instrumentSource == "prev":
+                        item.instrumentPropertySource = "InstrumentDonor"
+                        item.instrumentSource = prev
+                    res = self.fetchGroupingDefinition(item)
+                case "diffcal":
+                    res = {"result": True, "workspace": self._createDiffcalWorkspaceName(item.runNumber)}
+                    raise RuntimeError(f"not implemented: no path available to fetch diffcal input table workspace: \'{res['workspace']}\'")
+                # for output (i.e. special-order) workspaces
+                case "diffcal_output":
+                    res = {"result": True, "workspace": self._createDiffcalOutputWorkspaceName(item.runNumber)}
+                case "diffcal_table":   
+                    res = {"result": True, "workspace": self._createDiffcalTableWorkspaceName(item.runNumber)}
+                case "diffcal_mask":    
+                    res = {"result": True, "workspace": self._createDiffcalMaskWorkspaceName(item.runNumber)}
+                case _:
+                    raise RuntimeError(f"unrecognized \'workspaceType\': \'{item.workspaceType}\'")
             # check that the fetch operation succeeded and if so append the workspace
             if res["result"] is True:
                 groceries.append(res["workspace"])

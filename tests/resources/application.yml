@@ -71,7 +71,7 @@ calibration:
     nBinsAcrossPeakWidth: 10
     maximumIterations: 5
     maximumOffset: 10
-    maxDSpaceShift: 2.5
+    maxDSpaceShiftFactor: 2.5
   parameters:
     default:
       # degrees
@@ -93,6 +93,8 @@ mantid:
         diffCal:
           input: "_{unit},{runNumber},raw"
           table: "_DIFC,{runNumber}"
+          output: "_{unit},{runNumber},diffoc"
+          mask: "_DIFC,{runNumber},mask"
         units:
           dSpacing: dsp
           timeOfFlight: tof
@@ -107,7 +109,8 @@ localdataservice:
     verifypaths: true
 
 logging:
-  level: 40
+  # logging.NOTSET: 0, logging.DEBUG: 10, logging.INFO: 20, logging:WARNING: 30, logging.ERROR: 40, logging.CRITICAL: 50
+  level: 10 # 40
   SNAP:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
   mantid:

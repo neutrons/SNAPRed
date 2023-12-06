@@ -229,6 +229,26 @@ class TestGroceryService(unittest.TestCase):
         res = self.instance._createGroupingWorkspaceName("Lite", True)
         assert res == "lite_grouping_map"
 
+    def test_diffcal_output_workspacename(self):
+        # Test name generation for diffraction-calibration output workspace
+        res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber)
+        assert "tof" in res
+        assert "diffoc" in res
+        assert self.runNumber in res
+
+    def test_diffcal_table_workspacename(self):
+        # Test name generation for diffraction-calibration output workspace
+        res = self.instance._createDiffcalTableWorkspaceName(self.runNumber)
+        assert "difc" in res
+        assert self.runNumber in res
+
+    def test_diffcal_mask_workspacename(self):
+        # Test name generation for diffraction-calibration output workspace
+        res = self.instance._createDiffcalMaskWorkspaceName(self.runNumber)
+        assert "difc" in res
+        assert "mask" in res
+        assert self.runNumber in res
+                
     ## TESTS OF WRITING METHODS
 
     def test_writeWorkspace(self):
@@ -878,3 +898,18 @@ class TestGroceryService(unittest.TestCase):
         # assert that the lite data service was created and called
         assert mockLDS.called_once()
         assert mockLDS.reduceLiteData.called_once_with(workspacename, workspacename)
+
+
+# this at teardown removes the loggers, eliminating logger error printouts
+# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
+@pytest.fixture(autouse=True)
+def clear_loggers():  # noqa: PT004
+    """Remove handlers from all loggers"""
+    import logging
+
+    yield  # ... teardown follows:
+    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
+    for logger in loggers:
+        handlers = getattr(logger, "handlers", [])
+        for handler in handlers:
+            logger.removeHandler(handler)

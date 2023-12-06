@@ -8,17 +8,19 @@ from mantid.api import (
     PropertyMode,
     PythonAlgorithm,
 )
+from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
 class GroupDiffractionCalibration(PythonAlgorithm):
     """
-    Calculuate the group-aligned DIFC associated with a given workspace.
+    Calculate the group-aligned DIFC associated with a given workspace.
     One part of diffraction calibration.
     """
 
@@ -42,6 +44,10 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.declareProperty(
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="A diffraction-focused workspace in TOF, after calibration constants have been adjusted.",
+        )
+        self.declareProperty(
+            MaskWorkspaceProperty("MaskWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="if mask workspace exists: incoming mask values will be used (1.0 => dead-pixel, 0.0 => live-pixel)",
         )
         self.declareProperty(
             ITableWorkspaceProperty("FinalCalibrationTable", "", Direction.Output, PropertyMode.Optional),
@@ -102,6 +108,21 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.wsTOF: str = self.getPropertyValue("InputWorkspace")
         self.focusWS: str = str(self.getPropertyValue("GroupingWorkspace"))
 
+        # create string names of workspaces that will be used by algorithm
+        self.outputWStof: str = ""
+        if self.getProperty("OutputWorkspace").isDefault:
+            self.outputWStof = wng.diffCalOutput().runNumber(self.runNumber).build()
+            self.setProperty("OutputWorkspace", self.outputWStof)
+        else:
+            self.outputWStof = self.getPropertyValue("OutputWorkspace")
+
+        self.maskWS: str = ""
+        if self.getProperty("MaskWorkspace").isDefault:
+            self.maskWS = wng.diffCalMask().runNumber(self.runNumber).build()
+            self.setProperty("MaskWorkspace", self.maskWS)
+        else:
+            self.maskWS = self.getPropertyValue("MaskWorkspace")
+
         # set the previous calibration table, or create if none given
         # TODO: use workspace namer
         self.DIFCprev: str = ""
@@ -115,7 +136,8 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 BinWidth=self.TOF.binWidth,
             )
         else:
-            self.DIFCprev = str(self.getPropertyValue("PreviousCalibrationTable"))
+            self.DIFCprev = self.getPropertyValue("PreviousCalibrationTable")
+
         self.mantidSnapper.ApplyDiffCal(
             "Apply the diffraction calibration table to the input workspace",
             InstrumentWorkspace=self.wsTOF,
@@ -140,15 +162,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             OutputWorkspace=self.DIFCprev + "_before",
         )
 
-        # create string names of workspaces that will be used by algorithm
-        # TODO: use the workspace namer
-        self.outputWStof: str = ""
-        if self.getProperty("OutputWorkspace").isDefault:
-            self.outputWStof = self.wsTOF + "_diffoc"
-            self.setProperty("OutputWorkspace", self.outputWStof)
-        else:
-            self.outputWStof = self.getPropertyValue("OutputWorkspace")
-
         # process and diffraction focus the input data
         # must convert to d-spacing, diffraction focus, ragged rebin, then convert back to TOF
         self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "before")
@@ -166,6 +179,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         - PreviousCalibrationTable: str -- the name of the table workspace with previous DIFC values
         output:
         - OutputWorkspace: str -- the name of the diffraction-focussed d-spacing data after the final calibration
+        - MaskWorkspace: str -- the name of the mask workspace for detectors failing calibration (1.0 => dead-pixel, 0.0 => live-pixel)
+            when the mask workspace already exists, incoming masked values will be combined with any new masked values detected during
+            execution
         - FinalCalibrationTable: str -- the name of the final table of DIFC values
         """
         # run the algo
@@ -197,6 +213,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 CalibrationParameters="DIFC",
                 HighBackground=True,  # vanadium must use high background to FitPeaks
                 OutputCalibrationTable=DIFCpd,
+                MaskWorkspace=self.maskWS,
                 DiagnosticWorkspaces=diagnosticWSgroup,
                 # limit to specific spectrum
                 StartWorkspaceIndex=index,
@@ -243,7 +260,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 "Cleanup leftover workspaces",
                 WorkspaceList=[
                     DIFCpd,
-                    DIFCpd + "_mask",
                     diagnosticWSgroup,
                 ],
             )
@@ -262,7 +278,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         tmpWStof = f"_TOF_{self.runNumber}_diffoc_{note}"
         tmpWSdsp = f"_DSP_{self.runNumber}_diffoc_{note}"
         self.mantidSnapper.ConvertUnits(
-            "Convert thr raw TOf data to d-spacing",
+            "Convert the raw TOF data to d-spacing",
             InputWorkspace=inputWS,
             OutputWorkspace=tmpWSdsp,
             Target="dSpacing",
@@ -274,7 +290,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             OutputWorkspace=tmpWSdsp,
         )
         self.mantidSnapper.RebinRagged(
-            "Ragged rebin the diffraction-focused data",
+            "Ragged rebin the diffraction-focussed data",
             InputWorkspace=tmpWSdsp,
             OutputWorkspace=tmpWSdsp,
             XMin=self.dMin,
@@ -282,19 +298,19 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             Delta=self.dBin,
         )
         self.mantidSnapper.ConvertUnits(
-            "Convert the focused and rebined data back to TOF",
+            "Convert the focussed and rebinned data back to TOF",
             InputWorkspace=tmpWSdsp,
             OutputWorkspace=outputWS,
             Target="TOF",
         )
         # for inspection, save diffraction focused data before calculation
         self.mantidSnapper.MakeDirtyDish(
-            "save diffraction-focused TOF data",
+            "save diffraction-focussed TOF data",
             InputWorkspace=outputWS,
             OutputWorkspace=tmpWStof,
         )
         self.mantidSnapper.WashDishes(
-            "save diffraction-focused d-spacing data",
+            "save diffraction-focussed d-spacing data",
             Workspace=tmpWSdsp,
         )
         self.mantidSnapper.executeQueue()

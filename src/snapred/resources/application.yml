@@ -67,7 +67,7 @@ calibration:
     peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10
     maximumOffset: 10
-    maxDSpaceShift: 2.5
+    maxDSpaceShiftFactor: 2.5
   parameters:
     default:
       # degrees
@@ -94,6 +94,8 @@ mantid:
       diffCal:
         input: "{unit},{runNumber},raw"
         table: "DIFC,{runNumber}"
+        output: "{unit},{runNumber},diffoc"
+        mask: "DIFC,{runNumber},mask"
       normCal:
         rawVandium: "{runNumber},{backgroundRunNumber},RVC"
         focusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}"

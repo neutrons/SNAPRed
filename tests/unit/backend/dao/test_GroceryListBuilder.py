@@ -42,6 +42,24 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert item.useLiteMode is False
         assert item.workspaceType == "diffcal"
 
+    def test_diffcal_output(self):
+        item = GroceryListBuilder().specialOrder().diffcal_output(self.runNumber).lite().build()
+        assert item.runNumber == self.runNumber
+        assert item.isOutput == True
+        assert item.workspaceType == "diffcal_output"
+
+    def test_diffcal_table(self):
+        item = GroceryListBuilder().specialOrder().diffcal_table(self.runNumber).lite().build()
+        assert item.runNumber == self.runNumber
+        assert item.isOutput == True
+        assert item.workspaceType == "diffcal_table"
+
+    def test_diffcal_mask(self):
+        item = GroceryListBuilder().specialOrder().diffcal_mask(self.runNumber).lite().build()
+        assert item.runNumber == self.runNumber
+        assert item.isOutput == True
+        assert item.workspaceType == "diffcal_mask"
+
     def test_nexus_native_lite(self):
         item = GroceryListBuilder().neutron(self.runNumber).native().build()
         assert item.runNumber == self.runNumber
@@ -214,3 +232,18 @@ class TestGroceryListBuilder(unittest.TestCase):
         # test the list built correctly
         assert len(groceryDict) == 1
         assert groceryDict["TestName"]
+
+
+# this at teardown removes the loggers, eliminating logger error printouts
+# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
+@pytest.fixture(autouse=True)
+def clear_loggers():  # noqa: PT004
+    """Remove handlers from all loggers"""
+    import logging
+
+    yield  # ... teardown follows:
+    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
+    for logger in loggers:
+        handlers = getattr(logger, "handlers", [])
+        for handler in handlers:
+            logger.removeHandler(handler)

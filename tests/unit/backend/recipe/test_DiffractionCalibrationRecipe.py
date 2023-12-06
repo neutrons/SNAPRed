@@ -1,22 +1,12 @@
+from typing import List
 import json
 import unittest
-from typing import List
 from unittest import mock
 
 import pytest
 from mantid.api import PythonAlgorithm
 from mantid.kernel import Direction
-from mantid.simpleapi import (
-    ConvertUnits,
-    CreateSampleWorkspace,
-    CreateWorkspace,
-    DeleteWorkspace,
-    LoadDetectorsGroupingFile,
-    LoadInstrument,
-    Rebin,
-    RebinRagged,
-    mtd,
-)
+from mantid.simpleapi import mtd
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as TheseIngredients
@@ -24,81 +14,40 @@ from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 from snapred.meta.Config import Config, Resource
+from util.diffraction_calibration_synthetic_data import SyntheticData
+from util.helpers import deleteWorkspaceNoThrow
 
 ThisRecipe: str = "snapred.backend.recipe.DiffractionCalibrationRecipe"
 PixelCalAlgo: str = ThisRecipe + ".PixelDiffractionCalibration"
 GroupCalAlgo: str = ThisRecipe + ".GroupDiffractionCalibration"
 
 
-class TestDiffractionCalibtationRecipe(unittest.TestCase):
+class TestDiffractionCalibrationRecipe(unittest.TestCase):
     def setUp(self):
-        self.fakeRunNumber = "555"
-        fakeRunConfig = RunConfig(
-            runNumber=str(self.fakeRunNumber),
-            IPTS="",
-        )
-
-        fakePixelGroup = PixelGroup.parse_raw(Resource.read("/inputs/diffcal/fakePixelGroup.json"))
-        fakePixelGroup.focusGroup.definition = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
-
-        peakList = [
-            DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
-            DetectorPeak.parse_obj({"position": {"value": 5, "minimum": 4, "maximum": 6}}),
-        ]
-
-        self.fakeIngredients = TheseIngredients(
-            runConfig=fakeRunConfig,
-            groupedPeakLists=[
-                GroupPeakList(groupID=3, peaks=peakList, maxfwhm=0.01),
-                GroupPeakList(groupID=7, peaks=peakList, maxfwhm=0.02),
-                GroupPeakList(groupID=2, peaks=peakList, maxfwhm=0.02),
-                GroupPeakList(groupID=11, peaks=peakList, maxfwhm=0.02),
-            ],
-            convergenceThreshold=0.5,
-            calPath=Resource.getPath("outputs/calibration/"),
-            pixelGroup=fakePixelGroup,
-        )
+        self.syntheticInputs = SyntheticData()
+        self.fakeIngredients = self.syntheticInputs.ingredients
 
         self.fakeRawData = "_test_diffcal_rx"
-        CreateWorkspace(
-            OutputWorkspace=self.fakeRawData,
-            DataX=[1, 2, 3, 4, 5, 6] * 16,
-            DataY=[2, 11, 2, 2, 11, 2] * 16,
-            UnitX="TOF",
-            NSpec=16,
-        )
-        Rebin(
-            InputWorkspace=self.fakeRawData,
-            Params=(1, -0.001, 6),
-            BinningMode="Logarithmic",
-            OutputWorkspace=self.fakeRawData,
-        )
-        LoadInstrument(
-            Workspace=self.fakeRawData,
-            Filename=Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml"),
-            RewriteSpectraMap=True,
-        )
         self.fakeGroupingWorkspace = "_test_diffcal_rx_grouping"
-        LoadDetectorsGroupingFile(
-            InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
-            InputWorkspace=self.fakeRawData,
-            OutputWorkspace=self.fakeGroupingWorkspace,
-        )
+        self.fakeOutputWorkspace = "_test_diffcal_rx_output"
+        self.fakeTableWorkspace = "_test_diffcal_rx_table"
+        self.fakeMaskWorkspace = "_test_diffcal_rx_mask"
+        self.syntheticInputs.generateWorkspaces(self.fakeRawData, self.fakeGroupingWorkspace, self.fakeMaskWorkspace)
 
         self.groceryList = {
             "inputWorkspace": self.fakeRawData,
             "groupingWorkspace": self.fakeGroupingWorkspace,
+            "outputWorkspace": self.fakeOutputWorkspace,
+            "calibrationTable": self.fakeTableWorkspace,
+            "maskWorkspace": self.fakeMaskWorkspace,
         }
         self.recipe = Recipe()
 
     def tearDown(self) -> None:
         workspaces = mtd.getObjectNames()
         # remove all workspaces
-        for workspace in workspaces:
-            try:
-                DeleteWorkspace(workspace)
-            except ValueError:
-                print(f"Workspace {workspace} doesn't exist!")
+        for ws in workspaces:
+            deleteWorkspaceNoThrow(ws)
         return super().tearDown
 
     def test_chop_ingredients(self):
@@ -108,6 +57,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         self.recipe.unbagGroceries(self.groceryList)
         assert self.recipe.rawInput == self.fakeRawData
         assert self.recipe.groupingWS == self.fakeGroupingWorkspace
+        assert self.recipe.maskWS == self.fakeMaskWorkspace
 
     @mock.patch(PixelCalAlgo)
     @mock.patch(GroupCalAlgo)
@@ -122,6 +72,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         assert result["steps"] == [{"medianOffset": x} for x in [4, 2, 1, 0.5]]
         assert result["calibrationTable"] == "passed"
         assert result["outputWorkspace"] == "passed"
+        assert result["maskWorkspace"] == "passed"
 
     @mock.patch(PixelCalAlgo)
     def test_execute_unsuccessful_pixel_cal(self, mockPixelCalAlgo):
@@ -167,75 +118,27 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
                 self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
             assert str(e.value).split("\n")[0] == f"passed {i}"
 
-    def makeFakeNeutronData(self, rawWS, groupingWS):
-        """Will cause algorithm to execute with sample data, instead of loading from file"""
-
-        TOFMin = self.fakeIngredients.pixelGroup.timeOfFlight.minimum
-        TOFMax = self.fakeIngredients.pixelGroup.timeOfFlight.maximum
-
-        # prepare with test data
-        CreateSampleWorkspace(
-            OutputWorkspace=rawWS,
-            Function="Powder Diffraction",
-            Xmin=0.2,
-            Xmax=5,
-            BinWidth=0.001,
-            XUnit="dSpacing",
-            NumBanks=4,  # must produce same number of pixels as fake instrument
-            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-        )
-        LoadInstrument(
-            Workspace=rawWS,
-            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
-            RewriteSpectraMap=True,
-        )
-        LoadDetectorsGroupingFile(
-            InputFile=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
-            InputWorkspace=rawWS,
-            OutputWorkspace=groupingWS,
-        )
-        dMin = self.fakeIngredients.pixelGroup.dMin()
-        dMax = self.fakeIngredients.pixelGroup.dMax()
-        dBin = self.fakeIngredients.pixelGroup.dBin()
-        focWS = mtd[groupingWS]
-        allXmins = [0] * 16
-        allXmaxs = [0] * 16
-        allDelta = [0] * 16
-        for i, gid in enumerate(focWS.getGroupIDs()):
-            for detid in focWS.getDetectorIDsOfGroup(int(gid)):
-                allXmins[detid] = dMin[i]
-                allXmaxs[detid] = dMax[i]
-                allDelta[detid] = dBin[i]
-        RebinRagged(
-            InputWorkspace=rawWS,
-            OutputWorkspace=rawWS,
-            XMin=allXmins,
-            XMax=allXmaxs,
-            Delta=allDelta,
-        )
-        ConvertUnits(
-            InputWorkspace=rawWS,
-            OutputWorkspace=rawWS,
-            Target="TOF",
-        )
-        Rebin(
-            InputWorkspace=rawWS,
-            OutputWorkspace=rawWS,
-            Params=(TOFMin, -0.001, TOFMax),
-            BinningMode="Logarithmic",
-        )
-
     def test_execute_with_algos(self):
+        # create sample data
+        from datetime import date
+
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"
-        self.makeFakeNeutronData(rawWS, groupingWS)
+        maskWS = "_test_diffcal_mask"
+        self.syntheticInputs.generateWorkspaces(rawWS, groupingWS, maskWS)
+
         self.groceryList["inputWorkspace"] = rawWS
         self.groceryList["groupingWorkspace"] = groupingWS
+        self.groceryList["maskWorkspace"] = maskWS
         try:
             res = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         except ValueError:
             print(res)
         assert res["result"]
+
+        assert res["maskWorkspace"]
+        mask = mtd[res["maskWorkspace"]]
+        assert mask.getNumberMasked() == 0
         assert res["steps"][-1]["medianOffset"] <= self.fakeIngredients.convergenceThreshold
 
     @mock.patch(PixelCalAlgo)
@@ -251,6 +154,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         assert result["steps"] == [{"medianOffset": 11 - i} for i in range(maxIterations)]
         assert result["calibrationTable"] == "fake"
         assert result["outputWorkspace"] == "fake"
+        assert result["maskWorkspace"] == "fake"
         # change the config then run again
         maxIterations = 7
         mockAlgo.getPropertyValue.side_effect = [f'{{"medianOffset": {11-i}}}' for i in range(10)]
@@ -260,6 +164,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         assert result["steps"] == [{"medianOffset": 11 - i} for i in range(maxIterations)]
         assert result["calibrationTable"] == "fake"
         assert result["outputWorkspace"] == "fake"
+        assert result["maskWorkspace"] == "fake"
 
     @mock.patch(PixelCalAlgo)
     @mock.patch(GroupCalAlgo)
@@ -273,6 +178,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         assert result["steps"] == [{"medianOffset": i} for i in [2, 1]]
         assert result["calibrationTable"] == "fake"
         assert result["outputWorkspace"] == "fake"
+        assert result["maskWorkspace"] == "fake"
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
@@ -282,6 +188,7 @@ def clear_loggers():  # noqa: PT004
     """Remove handlers from all loggers"""
     import logging
 
+    yield  # ... teardown follows:
     loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
     for logger in loggers:
         handlers = getattr(logger, "handlers", [])
