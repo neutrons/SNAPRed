@@ -6,43 +6,56 @@ from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
-from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaks
-from snapred.backend.data.DataFactoryService import DataFactoryService
+
+# try to make the logger shutup
+from snapred.backend.log.logger import snapredLogger
+snapredLogger._level = 60
+
+# for creating the ingredients
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.CalibrationService import CalibrationService
-from snapred.backend.log.logger import snapredLogger
-snapredLogger._level = 20
 
-#diffraction calibration imports
-from typing import List
+# the algorithm to test (and its ingredients)
+from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
+
+#for loading workspaces
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
 
 #User inputs ###########################
 runNumber = "58882" #58409
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
-groupingFile = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
 #######################################
 
 
-dataFactoryService=DataFactoryService()
+## CREATE INGREDIENTS
 calibrationService = CalibrationService()
 pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
 calibration = dataFactoryService.getCalibrationState(runNumber)
-# focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
+calibration.instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters[0]
 
-reductionIngredients = dataFactoryService.getReductionIngredients(runNumber)
-ipts = reductionIngredients.runConfig.IPTS
-rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
-instrumentState = calibration.instrumentState
-crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
-instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters[0]
-ws = "raw_data"
-LoadEventNexus(Filename=rawDataPath, OutputWorkspace=ws)
+ingredients = SmoothDataExcludingPeaksIngredients(
+    instrumentState=calibration.instrumentState, 
+    crystalInfo=CrystallographicInfoService().ingest(cifPath)['crystalInfo'], 
+    smoothingParameter=0.05,
+)
 
-ingredients = SmoothDataExcludingPeaksIngredients(instrumentState=instrumentState, crystalInfo=crystalInfoDict['crystalInfo'], smoothingParameter=0.05)
 
-algo = SmoothDataExcludingPeaks()
+## FETCH GROCERIES
+grocery = FetchRx().fetchCleanNexusData(GroceryListItem.makeLiteNexusItem(runNumber))["workspace"]
+# we must convert the event data to histogram data
+# this rebin step will accomplish that, due to PreserveEvents = False
+Rebin(
+    InputWorkspace = grocery,
+    OutputWorkspace = grocery,
+    Params = (1,-0.01,1667.7),
+    PreserveEvents = False,
+)
+
+## RUN ALGORITHM
+algo = SmoothDataExcludingPeaksAlgo()
 algo.initialize()
 algo.setProperty("Ingredients", ingredients.json())
-algo.setProperty("InputWorkspace", ws)
+algo.setProperty("InputWorkspace", grocery)
 algo.execute()

@@ -1,6 +1,6 @@
 import pathlib
+from typing import Dict
 
-import h5py
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 from mantid.simpleapi import mtd
@@ -8,8 +8,6 @@ from mantid.simpleapi import mtd
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-
-name = "SaveGroupingDefinition"
 
 
 class SaveGroupingDefinition(PythonAlgorithm):
@@ -25,6 +23,9 @@ class SaveGroupingDefinition(PythonAlgorithm):
 
         OutputFilename: str -- path of an output file. Supported file name extensions: "h5", "hd5", "hdf".
     """
+
+    def category(self):
+        return "SNAPRed Data Handling"
 
     def PyInit(self) -> None:
         # declare properties
@@ -54,14 +55,14 @@ class SaveGroupingDefinition(PythonAlgorithm):
         )
 
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
         # define supported file name extensions
         self.supported_calib_file_extensions = ["H5", "HD5", "HDF"]
         self.supported_nexus_file_extensions = ["NXS", "NXS5"]
         self.supported_xml_file_extensions = ["XML"]
 
-    def validateInputs(self) -> None:
+    def validateInputs(self) -> Dict[str, str]:
         errors = {}
 
         # either file name or workspace name must be specified

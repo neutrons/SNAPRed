@@ -12,7 +12,7 @@ class TestLiteDataService(unittest.TestCase):
     ):
         mock_executeRecipe.return_value = {}
 
-        mock_runConfig = RunConfig(runNumber="12345")
+        mock_runConfig = RunConfig(runNumber="12345", IPTS="nowhere", useLiteMode=True)
 
         from snapred.backend.service.LiteDataService import LiteDataService
 
@@ -20,4 +20,4 @@ class TestLiteDataService(unittest.TestCase):
 
         liteDataService.reduceLiteData([mock_runConfig])
 
-        mock_executeRecipe.assert_called_with(inputWorkspace="SNAP_12345.nxs", Run=mock_runConfig, isLite=True)
+        mock_executeRecipe.assert_called_with(inputWorkspace="SNAP_12345.nxs", Run=mock_runConfig, useLiteMode=True)

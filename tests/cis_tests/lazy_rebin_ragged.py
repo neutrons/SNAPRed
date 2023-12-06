@@ -100,7 +100,7 @@ CreateSampleWorkspace(
 )
 LoadInstrument(
     Workspace=inputWStof,
-    Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+    Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
     RewriteSpectraMap=True,
 )
 Rebin(
@@ -113,7 +113,7 @@ Rebin(
 # load the detector groupings
 LoadDetectorsGroupingFile(
     "Loading grouping definition from detectors grouping file...",
-    InputFile=Resource.getPath("/inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
+    InputFile=Resource.getPath("/inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
     InputWorkspace=inputWStof,
     OutputWorkspace=groupingWS,
 )

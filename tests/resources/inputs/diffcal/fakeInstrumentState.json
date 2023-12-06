@@ -3,7 +3,7 @@
   "instrumentConfig": {
     "version": "1.4",
     "facility": "SNS",
-    "name": "fakeSNAPLite",
+    "name": "fakeSNAP",
     "nexusFileExtension": ".nxs.h5",
     "nexusFilePrefix": "SNAP_",
     "calibrationFileExtension": "json",

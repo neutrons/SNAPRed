@@ -34,11 +34,11 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         fakeInstrumentState.particleBounds.tof.maximum = 1000
 
         fakeFocusGroup = FocusGroup.parse_raw(Resource.read("inputs/diffcal/fakeFocusGroup.json"))
-        fakeFocusGroup.definition = Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml")
+        fakeFocusGroup.definition = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
 
         fakeFocusGroup = FocusGroup(
             name="natural",
-            definition=Resource.getPath("inputs/diffcal/fakeSNAPFocGroup_Column.xml"),
+            definition=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
         )
         peakLists: Dict[int, List[Any]] = {
             3: [
@@ -124,7 +124,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         # load the instrument and focus group
         LoadInstrument(
             Workspace=rawWSname,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             RewriteSpectraMap=True,
         )
         # also load the focus grouping workspace

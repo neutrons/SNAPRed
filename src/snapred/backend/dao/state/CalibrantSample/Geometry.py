@@ -28,8 +28,8 @@ class Geometry(BaseModel):
             ans["axis"] = list(self.axis)
         return ans
 
-    def json(self) -> str:
-        return json.dumps(self.dict())
+    def json(self, **kwargs) -> str:
+        return json.dumps(self.dict(), **kwargs)
 
     @root_validator(pre=True, allow_reuse=True)
     def validate_form(cls, v):

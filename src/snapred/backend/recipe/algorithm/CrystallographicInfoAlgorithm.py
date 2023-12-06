@@ -12,6 +12,9 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 class CrystallographicInfoAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Sample Data"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("cifPath", defaultValue="", direction=Direction.Input)

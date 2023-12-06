@@ -8,10 +8,11 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
-name = "PurgeOverlappingPeaksAlgorithm"
-
 
 class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Sample Data"
+
     def PyInit(self):
         # declare properties
         self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
@@ -25,7 +26,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         )
 
         self.setRethrows(True)
-        self.mantidSnapper = MantidSnapper(self, name)
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
         # predict detector peaks for all focus groups

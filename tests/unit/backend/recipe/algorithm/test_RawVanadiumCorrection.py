@@ -5,13 +5,10 @@ import unittest
 import pytest
 from mantid.simpleapi import (
     AddSampleLog,
-    CalculateDIFC,
     CloneWorkspace,
-    CreateEmptyTableWorkspace,
     CreateSampleWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
-    DeleteWorkspaces,
     LoadInstrument,
     Plus,
     Rebin,
@@ -102,6 +99,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
             Random=True,
         )
+
         # add proton charge for current normalization
         AddSampleLog(
             Workspace=self.backgroundWS,
@@ -109,10 +107,11 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             LogText=f"{self.sample_proton_charge}",
             LogType="Number",
         )
+
         # load an instrument into sample data
         LoadInstrument(
             Workspace=self.backgroundWS,
-            Filename=Resource.getPath("inputs/diffcal/fakeSNAPLite.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
             InstrumentName="fakeSNAPLite",
             RewriteSpectraMap=False,
         )
@@ -140,23 +139,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             OutputWorkspace=self.sampleWS,
         )
         DeleteWorkspace("_tmp_raw_vanadium")
-
-        self.difcWS = "_difc_table_raw_vanadium"
-        ws = CalculateDIFC(
-            InputWorkspace=self.sampleWS,
-            OutputWorkspace=self.difcWS,
-            OffsetMode="Signed",
-            BinWidth=TOFBinParams[1],
-        )
-        difc = CreateEmptyTableWorkspace()
-        difc.addColumn("int", "detid")
-        difc.addColumn("double", "difc")
-        difc.addColumn("double", "tzero")
-        difc.addColumn("double", "difa")
-        for i in range(ws.getNumberHistograms()):
-            difc.addRow([i + 1, ws.readY(i)[0], 0.0, 0.0])
-        DeleteWorkspace(self.difcWS)
-        self.difcWS = difc.name()
 
         Rebin(
             InputWorkspace=self.sampleWS,
@@ -186,7 +168,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.chopIngredients(self.fakeIngredients)
-        assert algo.liteMode == self.fakeIngredients.reductionState.stateConfig.isLiteMode
         assert algo.TOFPars[0] == self.fakeIngredients.reductionState.stateConfig.tofMin
         assert algo.TOFPars[1] == self.fakeIngredients.reductionState.stateConfig.tofBin
         assert algo.TOFPars[2] == self.fakeIngredients.reductionState.stateConfig.tofMax
@@ -234,17 +215,8 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             LogType="Number",
         )
 
-        difc = CreateEmptyTableWorkspace()
-        difc.addColumn("int", "detid")
-        difc.addColumn("double", "difc")
-        difc.addColumn("double", "tzero")
-        difc.addColumn("double", "difa")
-        difc.addRow([0, 7000, 0, 0])
-        difc = difc.name()
-
         algo = Algo()
         algo.initialize()
-        algo.setProperty("CalibrationWorkspace", difc)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.chopIngredients(self.fakeIngredients)
         algo.TOFPars = (2, 2, 4)
@@ -265,7 +237,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         assert ws.readX(0) == dataXrebin
         assert ws.readY(0) == dataYrebin
 
-        DeleteWorkspaces([testWS, difc])
+        DeleteWorkspace(testWS)
 
     def test_execute(self):
         """Test that the algorithm executes"""
@@ -273,7 +245,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.sampleWS)
         algo.setProperty("BackgroundWorkspace", self.backgroundWS)
-        algo.setProperty("CalibrationWorkspace", self.difcWS)
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("CalibrantSample", self.calibrantSample.json())
         algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")

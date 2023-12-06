@@ -119,7 +119,6 @@ class LocalDataService:
         return StateConfig(
             calibration=diffCalibration,
             focusGroups=self._readFocusGroups(runId),
-            isLiteMode=True,  # TODO: Support non lite mode
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
             vanadiumFilePath=str(
                 self.instrumentConfig.calibrationDirectory

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<detector-grouping idf-date="2018-05-01T00:00:01" instrument="fakeSNAP">
+	<group ID="1">
+		<detids>0,1,2,3</detids>
+	</group>
+	<group ID="2">
+		<detids>4,5,6,7</detids>
+	</group>
+	<group ID="3">
+		<detids>8,9,10,11</detids>
+	</group>
+	<group ID="4">
+		<detids>12,13,14,15</detids>
+	</group>
+</detector-grouping>
