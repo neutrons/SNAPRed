@@ -68,7 +68,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
                 (cls.isLite, "nxs"): f"{pgdFolder}SNAPFocGroup_Column.lite.nxs",
                 (cls.isFull, "xml"): f"{pgdFolder}SNAPFocGroup_Column.xml",
                 (cls.isFull, "hdf"): f"{pgdFolder}SNAPFocGroup_Column.hdf",
-                (cls.isFull, "nxs"): None,
+                (cls.isFull, "nxs"): None, # TODO make an nxs grouping file
             }
 
             # workspaces containing full SNAP instrument
@@ -86,10 +86,9 @@ class TestLoadGroupingDefinition(unittest.TestCase):
             )
 
             # make references workspaces for native and lite SNAP resolution
-            # TODO need a Lite Column grouping XML file
             cls.remoteReferenceGroupingFile = {
                 cls.isFull: Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.xml"),
-                cls.isLite: Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.lite.hdf"),
+                cls.isLite: cls.remoteGroupingFile[(cls.isLite, "xml")],
             }
             cls.remoteReferenceWorkspace = {
                 cls.isFull: "ref_ws_name_full",
@@ -97,14 +96,13 @@ class TestLoadGroupingDefinition(unittest.TestCase):
             }
             LoadDetectorsGroupingFile(
                 InputFile=cls.remoteReferenceGroupingFile[cls.isFull],
+                InputWorkspace=cls.remoteIDFWorkspace[cls.isFull],
                 OutputWorkspace=cls.remoteReferenceWorkspace[cls.isFull],
             )
-            LoadDiffCal(
-                Filename=cls.remoteReferenceGroupingFile[cls.isLite],
-                MakeGroupingWorkspace=True,
-                MakeCalWorkspace=False,
-                MakeMaskWorkspace=False,
-                WorkspaceName=cls.remoteReferenceWorkspace[cls.isLite],
+            LoadDetectorsGroupingFile(
+                InputFile=cls.remoteReferenceGroupingFile[cls.isLite],
+                InputWorkspace=cls.remoteIDFWorkspace[cls.isLite],
+                OutputWorkspace=cls.remoteReferenceWorkspace[cls.isLite],
             )
 
         cls.callsForExtension = {
@@ -187,16 +185,13 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         assert "junk".upper() in errors["GroupingFilename"]
 
     def test_with_valid_grouping_file_name(self):
-        # this is a valid filename, though the file itself is invalif
-        groupingFileOk = Resource.getPath("/inputs/pixel_grouping/abc.xml")
-
         # load the input grouping definition as a workspace
         loadingAlgo = LoadingAlgo()
         loadingAlgo.initialize()
         try:
-            loadingAlgo.setProperty("GroupingFilename", groupingFileOk)
+            loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile["xml"])
         except ValueError as e:
-            pytest.fails(str(e.value))
+            pytest.fail(str(e.value))
 
     def test_require_grouping_filename(self):
         loadingAlgo = LoadingAlgo()
@@ -207,10 +202,9 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         assert "grouping" in errors["GroupingFilename"]
 
     def test_require_output_workspace(self):
-        groupingFileOk = Resource.getPath("/inputs/pixel_grouping/abc.xml")
         loadingAlgo = LoadingAlgo()
         loadingAlgo.initialize()
-        loadingAlgo.setProperty("GroupingFilename", groupingFileOk)
+        loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile["xml"])
         errors = loadingAlgo.validateInputs()
 
         assert errors != {}
@@ -218,19 +212,17 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         assert "output" in errors["OutputWorkspace"]
 
     def test_fail_with_no_sources(self):
-        groupingFileOk = Resource.getPath("/inputs/pixel_grouping/abc.xml")
         loadingAlgo = LoadingAlgo()
         loadingAlgo.initialize()
-        loadingAlgo.setProperty("GroupingFilename", groupingFileOk)
+        loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile["xml"])
         errors = loadingAlgo.validateInputs()
         for prop in ["InstrumentFilename", "InstrumentName", "InstrumentDonor"]:
             assert "MUST specify" in errors[prop]
 
     def test_fail_with_two_sources(self):
-        groupingFileOk = Resource.getPath("/inputs/pixel_grouping/abc.xml")
         loadingAlgo = LoadingAlgo()
         loadingAlgo.initialize()
-        loadingAlgo.setProperty("GroupingFilename", groupingFileOk)
+        loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile["xml"])
 
         propertySourcePairs = [
             ("InstrumentFilename", self.localInstrumentFilename),
@@ -248,7 +240,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
             loadingAlgo.setPropertyValue(prop1, "")
             loadingAlgo.setPropertyValue(prop2, "")
 
-    # NB: MantidSnapper cannot be properly wrapped by Mock
+    # NOTE: MantidSnapper cannot be properly wrapped by Mock
     # In order to check if functions have been called through MantidSnapper
     # it is necessary to maintain a copy of its algorithm queue to inspect
 
@@ -269,23 +261,23 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         for call in self.callsForExtension[ext]:
             assert call in calls
 
-    # TODO LOADING FROM NAME IS VERY SLOW -- REMOVE?
-    # def do_test_load_with_instrument_name(self, ext: str):
-    #     outputWorkspace = f'test_ext'
-    #     loadingAlgo = LoadingAlgo()
-    #     loadingAlgo.initialize()
-    #     loadingAlgo.mantidSnapper.cleanup = mock.Mock()
-    #     loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile[ext])
-    #     loadingAlgo.setProperty("InstrumentName", "SNAP")
-    #     loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
-    #     assert loadingAlgo.execute()
-    #     assert mtd.doesExist(outputWorkspace)
-    #     assert CompareWorkspaces(outputWorkspace, self.localReferenceWorkspace)
-    #     # check the function calls made
-    #     calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
-    #     # check used correct cals
-    #     for call in self.callsForExtension[ext]:
-    #         assert call in calls
+    # NOTE LOADING FROM NAME IS VERY SLOW
+    def do_test_load_with_instrument_name(self, ext: str):
+        outputWorkspace = f'test_ext'
+        loadingAlgo = LoadingAlgo()
+        loadingAlgo.initialize()
+        loadingAlgo.mantidSnapper.cleanup = mock.Mock()
+        loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile[ext])
+        loadingAlgo.setProperty("InstrumentName", "SNAP")
+        loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
+        assert loadingAlgo.execute()
+        assert mtd.doesExist(outputWorkspace)
+        assert CompareWorkspaces(outputWorkspace, self.localReferenceWorkspace)
+        # check the function calls made
+        calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
+        # check used correct cals
+        for call in self.callsForExtension[ext]:
+            assert call in calls
 
     def do_test_load_with_instrument_donor(self, ext: str):
         outputWorkspace = f"test_{ext}"
@@ -309,36 +301,41 @@ class TestLoadGroupingDefinition(unittest.TestCase):
             assert call in calls
 
     # test xml
-    # def test_load_from_xml_file_with_instrument_name(self):
-    #     self.do_test_load_with_instrument_name("xml")
-
     def test_load_from_xml_file_with_instrument_donor(self):
         self.do_test_load_with_instrument_donor("xml")
 
     def test_load_from_xml_file_with_instrument_file(self):
         self.do_test_load_with_instrument_file("xml")
 
-    # test hdf
-    # def test_load_from_hdf_file_with_instrument_name(self):
-    #     self.do_test_load_with_instrument_name("hdf")
+    # NOTE commented out because slow
+    # def test_load_from_xml_file_with_instrument_name(self):
+    #     self.do_test_load_with_instrument_name("xml")
 
+    # test hdf
     def test_load_from_hdf_file_with_instrument_donor(self):
         self.do_test_load_with_instrument_donor("hdf")
 
     def test_load_from_hdf_file_with_instrument_file(self):
         self.do_test_load_with_instrument_file("hdf")
 
-    # test nxs
-    # def test_load_from_nxs_file_with_instrument_name(self):
-    #     self.do_test_load_with_instrument_name("nxs")
+    # NOTE commented out because slow
+    # def test_load_from_hdf_file_with_instrument_name(self):
+    #     self.do_test_load_with_instrument_name("hdf")
 
+    # test nxs
     def test_load_from_nxs_file_with_instrument_donor(self):
         self.do_test_load_with_instrument_donor("nxs")
 
     def test_load_from_nxs_file_with_instrument_file(self):
         self.do_test_load_with_instrument_file("nxs")
 
+    # NOTE commented out because slow
+    # def test_load_from_nxs_file_with_instrument_name(self):
+    #     self.do_test_load_with_instrument_name("nxs")
+
     ### BEGIN ANALYSIS TESTS
+
+    # TODO whenever Mantid's LoadDiffCal is fixed, run the Lite tests in each below
 
     def do_test_load_with_instrument_file_remote(self, ext: str, useLite: int):
         outputWorkspace = f"text_{ext}"
@@ -357,13 +354,18 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         for call in self.callsForExtension[ext]:
             assert call in calls
 
+    # NOTE only native SNAP can be loaded by name
     def do_test_load_with_instrument_name_remote(self, ext: str, useLite: int):
-        outputWorkspace = "test_ext"
+        outputWorkspace = f"test_{ext}"
+        instrumentName = {
+            self.isLite: "SNAPLite",
+            self.isFull: "SNAP",
+        }
         loadingAlgo = LoadingAlgo()
         loadingAlgo.initialize()
         loadingAlgo.mantidSnapper.cleanup = mock.Mock()
         loadingAlgo.setProperty("GroupingFilename", self.remoteGroupingFile[(useLite, ext)])
-        loadingAlgo.setProperty("InstrumentName", "SNAP")
+        loadingAlgo.setProperty("InstrumentName", instrumentName[useLite])
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
@@ -396,20 +398,18 @@ class TestLoadGroupingDefinition(unittest.TestCase):
             assert call in calls
 
     # remote test NXS
+    # NOTE only lite mode groupings have NXS files
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_load_nxs_with_instrument_file(self):
         self.do_test_load_with_instrument_file_remote("nxs", self.isLite)
-        self.do_test_load_with_instrument_file_remote("nxs", self.isFull)
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_load_nxs_with_instrument_name(self):
         self.do_test_load_with_instrument_name_remote("nxs", self.isLite)
-        self.do_test_load_with_instrument_name_remote("nxs", self.isFull)
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_load_nxs_with_instrument_donor(self):
         self.do_test_load_with_instrument_donor_remote("nxs", self.isLite)
-        self.do_test_load_with_instrument_donor_remote("nxs", self.isFull)
 
     # remote test XML
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
@@ -419,7 +419,6 @@ class TestLoadGroupingDefinition(unittest.TestCase):
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_load_xml_with_instrument_name(self):
-        self.do_test_load_with_instrument_name_remote("xml", self.isLite)
         self.do_test_load_with_instrument_name_remote("xml", self.isFull)
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
@@ -435,7 +434,6 @@ class TestLoadGroupingDefinition(unittest.TestCase):
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_load_hdf_with_instrument_name(self):
-        self.do_test_load_with_instrument_name_remote("hdf", self.isLite)
         self.do_test_load_with_instrument_name_remote("hdf", self.isFull)
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
