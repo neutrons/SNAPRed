@@ -19,3 +19,7 @@ class InstrumentState(BaseModel):
     defaultGroupingSliceValue: float
     fwhmMultiplierLimit: Limit[float]
     peakTailCoefficient: float
+
+    @property
+    def delTh(self) -> float:
+        return self.detectorState.guideStat == 1 if self.hasGuide else self.instrumentConfig.delThNoGuide
