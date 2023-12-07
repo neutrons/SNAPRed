@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import IntEnum
 from typing import Literal, Tuple
 
 from pydantic import BaseModel
@@ -6,7 +6,7 @@ from pydantic import BaseModel
 # class syntax
 
 
-class GuideState(Enum):
+class GuideState(IntEnum):
     IN = 1
     OUT = 2
 
