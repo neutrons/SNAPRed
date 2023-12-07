@@ -241,7 +241,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @patch(thisService + "FitMultiplePeaksIngredients")
     @patch(thisService + "FitMultiplePeaksRecipe")
     def test_assessQuality(
-        self, mockCrystalInfoService, mockCalibRecord, mockCalibRecords, fitMultiplePeaksIng, fmprecipe  # noqa: ARG002
+        self, mockCrystalInfoService, mockCalibRecord, fitMultiplePeaksIng, fmprecipe  # noqa: ARG002
     ):
         # Mock input data
         mockRequest = MagicMock()
@@ -283,17 +283,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
         self.instance.collectFocusGroupParameters = MagicMock(return_value=fakeFocusGroupParameters)
         self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=(MagicMock(), mockInstrumentState))
-
-        # mock a list of calibration records
-        mockCalibRecord1 = MagicMock("mock_calibration_record1")
-        mockCalibRecord1.focusGroupCalibrationMetrics = fakeMetrics
-        mockCalibRecord1.version = 1
-
-        mockCalibRecord2 = MagicMock("mock_calibration_record2")
-        mockCalibRecord2.focusGroupCalibrationMetrics = fakeMetrics
-        mockCalibRecord2.version = 2
-
-        mockCalibRecords.records = [mockCalibRecord1, mockCalibRecord2]
 
         # Call the method to test
         result = self.instance.assessQuality(mockRequest)
