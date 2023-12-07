@@ -138,7 +138,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             XMax=self.dResolutionMax,
             Delta=self.dRelativeResolution,
             OutputWorkspace=self.rawVanadiumWSName,
-            PreserveEvents=True,
+            PreserveEvents=False,
         )
 
         # make a copy of the diffraction focused data with peaks smoothed
