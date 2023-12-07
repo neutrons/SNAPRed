@@ -10,7 +10,6 @@ from snapred.backend.dao.calibration import (
     CalibrationIndexEntry,
     CalibrationMetric,
     CalibrationRecord,
-    CalibrationRecordList,
     FocusGroupMetric,
 )
 from snapred.backend.dao.ingredients import (
