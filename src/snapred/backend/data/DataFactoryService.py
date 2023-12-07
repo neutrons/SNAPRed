@@ -91,6 +91,9 @@ class DataFactoryService:
     def getNormalizationRecord(self, runId):
         return self.lookupService.readNormalizationRecord(runId)
 
+    def getCalibrationIndex(self, runId: str):
+        return self.lookupService.readCalibrationIndex(runId)
+
     def getFocusGroups(self, runId: str):
         return self.lookupService._readFocusGroups(runId)
 

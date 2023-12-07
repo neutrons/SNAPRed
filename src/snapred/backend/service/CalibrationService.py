@@ -349,6 +349,15 @@ class CalibrationService(Service):
     def assessQuality(self, request: CalibrationAssessmentRequest):
         run = request.run
 
+        # check if there is a previously approved/saved calibration record with quality metrics
+        prevCalibrationRecord = self.dataFactoryService.getIndexedRunCalibrationRecord(run.runNumber)
+        if prevCalibrationRecord:
+            GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
+                ListOfDict=list_to_raw(prevCalibrationRecord.focusGroupCalibrationMetrics.calibrationMetric),
+                OutputWorkspace=f"{run.runNumber}_calibrationMetrics_v{prevCalibrationRecord.version}",
+            )
+            return
+
         focussedData = request.workspace
         calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
@@ -370,16 +379,6 @@ class CalibrationService(Service):
             OutputWorkspace=f"{run.runNumber}_calibrationMetrics_ts{timestamp}",
         )
 
-        # get all previous calibration records for the same run number
-        prevCalibrationRecords = self.dataFactoryService.getCalibrationRecords(run.runNumber)
-        for prevCalibrationRecord in prevCalibrationRecords.records:
-            if prevCalibrationRecord is not None:
-                GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
-                    ListOfDict=list_to_raw(prevCalibrationRecord.focusGroupCalibrationMetrics.calibrationMetric),
-                    OutputWorkspace=f"{run.runNumber}_calibrationMetrics_v{prevCalibrationRecord.version}",
-                )
-
-        # return current calibration record
         outputWorkspaces = [focussedData]
         focusGroupParameters = self.collectFocusGroupParameters([focusGroup], [pixelGroupingParam])
         record = CalibrationRecord(

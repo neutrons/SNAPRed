@@ -527,15 +527,18 @@ class LocalDataService:
             record = parse_file_as(CalibrationRecord, latestFile)
         return record
 
-    def readCalibrationRecords(self, runId: str) -> CalibrationRecordList:
-        recordPath: str = self.getCalibrationRecordPath(runId, "*")
-        foundFiles = self._findMatchingFileList(recordPath, throws=False)
-        calibrationRecordList = []
+    # get a saved calibration record for the input run
+    def readIndexedRunCalibrationRecord(self, runId: str):
         record: CalibrationRecord = None
-        for file in foundFiles:
-            record = parse_file_as(CalibrationRecord, file)
-            calibrationRecordList.append(record)
-        return CalibrationRecordList(records=calibrationRecordList)
+
+        try:
+            version = self._getVersionFromCalibrationIndex(runId)
+            if version:
+                record = self.readStateCalibrationRecord(runId, version)
+        except:  # noqa: E722
+            pass
+
+        return record
 
     def writeCalibrationRecord(self, record: CalibrationRecord, version: int = None):
         """

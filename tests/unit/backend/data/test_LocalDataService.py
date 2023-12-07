@@ -318,27 +318,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             actualRecord = localDataService.readNormalizationRecord("57514")
         assert actualRecord.runNumber == "57514"
 
-    def test_readWriteCalibrationRecords():
-        localDataService = LocalDataService()
-        localDataService.instrumentConfig = mock.Mock()
-        localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("123", "456")
-        localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
-        localDataService.writeCalibrationRecord(
-            CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
-        )
-        localDataService.writeCalibrationRecord(
-            CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
-        )
-        actualRecords = localDataService.readCalibrationRecords("57514")
-        for actualRecord in actualRecords.records:
-            assert actualRecord.runNumber == "57514"
-
-        shutil.rmtree(Resource.getPath("outputs/v_1"))
-        shutil.rmtree(Resource.getPath("outputs/v_2"))
-
     def test_getCalibrationRecordPath():
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
