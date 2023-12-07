@@ -55,7 +55,7 @@
   },
   "pixelGroupingInstrumentParameters": [
     {
-      "groupID": 0,
+      "groupID": 3,
       "twoTheta": 2.1108948177427838,
       "dResolution": {
         "minimum": 0.05,
@@ -64,7 +64,7 @@
       "dRelativeResolution": 0.002771822370612031
     },
     {
-      "groupID": 1,
+      "groupID": 7,
       "twoTheta": 1.82310673131693,
       "dResolution": {
         "minimum": 0.10,
@@ -82,7 +82,7 @@
       "dRelativeResolution": 0.004014748859873182
     },
     {
-      "groupID": 3,
+      "groupID": 11,
       "twoTheta": 1.440276389170165,
       "dResolution": {
         "minimum": 0.10,

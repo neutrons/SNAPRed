@@ -27,6 +27,7 @@ from snapred.backend.dao.request import (
     InitializeStateRequest,
 )
 from snapred.backend.dao.state import FocusGroup, FocusGroupParameters
+from snapred.backend.dao.PixelGroup import PixelGroup
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -122,13 +123,11 @@ class CalibrationService(Service):
         # 2. instrument state
         # 3. focus group
         # get the pixel grouping parameters and load them into the focus group
-        nBinsAcrossPeakWidth = request.nBinsAcrossPeakWidth
         # TODO: This may be pending a refactor and a closer look,
         # based on my convos it should be a correct translation
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             request.runNumber,
             request.focusGroupPath,
-            nBinsAcrossPeakWidth,
         )
         # 4. grouped peak list
         # need to calculate these using DetectorPeakPredictor
@@ -159,6 +158,7 @@ class CalibrationService(Service):
             groupedPeakLists=detectorPeaks,
             calPath=calpath,
             convergenceThreshold=convergenceThreshold,
+            pixelGroup=PixelGroup(pixelGroupingParameters=instrumentState.pixelGroupingInstrumentParameters),
         )
         focusFile = request.focusGroupPath.split("/")[-1]
         focusName = focusFile.split(".")[0]

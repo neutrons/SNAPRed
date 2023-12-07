@@ -126,12 +126,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             pgp.groupID: pgp.dRelativeResolution / self.fakeIngredients.instrumentState.instrumentConfig.NBins
             for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters
         }
-        # groupIDs = [pgp.groupID for pgp in self.fakeIngredients.pixelGroupingParameters.pixelGroupingParameters]
-        # groupIDs.sort()
-        # allXmins = [dMin[groupID] for groupID in groupIDs]
-        # allXmaxs = [dMax[groupID] for groupID in groupIDs]
-        # allDelta = [DBin[groupID] for groupID in groupIDs]
-        for i, gid in enumerate(focWS.getGroupIDs()):
+        groupIDs = [pgp.groupID for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters]
+        groupIDs.sort()
+        for i, gid in enumerate(groupIDs):
             for detid in focWS.getDetectorIDsOfGroup(int(gid)):
                 allXmins[detid] = dMin[i]
                 allXmaxs[detid] = dMax[i]

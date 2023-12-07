@@ -15,6 +15,7 @@ from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao import RunConfig, DetectorPeak, GroupPeakList
+from snapred.backend.dao.PixelGroup import PixelGroup
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
@@ -29,7 +30,7 @@ cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
-Config._config["cis_mode"] = True
+Config._config["cis_mode"] = False
 #######################################
 
 ### CREATE INGREDIENTS ################
@@ -68,6 +69,7 @@ ingredients = DiffractionCalibrationIngredients(
     calPath=calPath,
     convergenceThreshold=offsetConvergenceLimit,
     maxOffset = 100.0,
+    pixelGroup=PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0]),
 )
 
 ### FETCH GROCERIES ##################
@@ -131,7 +133,7 @@ assert False
 
 ### RUN RECIPE
 from unittest import mock
-fetchRx = FetchRx()
+groceryList=[GroceryListItem.makeLiteNexusItem(runNumber), GroceryListItem.makeLiteGroupingItemFrom("Column", "prev")]
 groceries = fetchRx.executeRecipe(groceryList)["workspaces"]
 rx = Recipe()
 groceries = {

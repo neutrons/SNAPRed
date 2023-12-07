@@ -293,6 +293,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockParseRawAs.return_value = [MagicMock()]
         mockDetectorPeakPredictorRecipe().executeRecipe.return_value = [MagicMock()]
         mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
+        mockPixelGroup = [MagicMock(spec_set=PixelGroupingParameters)]
 
         mockFetchGroceriesRecipe().executeRecipe.return_value = {
             "workspaces": [mock.Mock(), mock.Mock()],
@@ -300,6 +301,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         mockFocusGroupInstrumentState = (MagicMock(), MagicMock())
         self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=mockFocusGroupInstrumentState)
+        mockFocusGroupInstrumentState[1].pixelGroupingInstrumentParameters=[MagicMock(spec_set=PixelGroupingParameters)]
 
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(
@@ -325,6 +327,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             groupedPeakLists=mockParseRawAs.return_value,
             calPath="~/tmp/",
             convergenceThreshold=request.convergenceThreshold,
+            pixelGroup=mockPixelGroup,
         )
         assert mockGroceryListItem.call_count == 2
         mockGroceries = mockFetchGroceriesRecipe().executeRecipe.return_value["workspaces"]
