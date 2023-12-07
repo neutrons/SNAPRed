@@ -9,7 +9,6 @@
     implement csaps
     create new workspace with csaps data
 """
-import json
 from datetime import datetime
 from typing import Dict
 
@@ -31,7 +30,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 # TODO: Rename so it matches filename
 class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
     def category(self):
-        return "SNAPRed Sample Data"
+        return "SNAPRed Data Processing"
 
     def PyInit(self):
         # declare properties
@@ -71,26 +70,29 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
         self.unbagGroceries()
+
+        # copy input to make output workspace
+        if self.inputWorkspaceName != self.outputWorkspaceName:
+            self.mantidSnapper.CloneWorkspace(
+                "Cloning new workspace for smoothed spectrum data...",
+                InputWorkspace=self.inputWorkspaceName,
+                OutputWorkspace=self.outputWorkspaceName,
+            )
         # call the diffraction spectrum weight calculator
         self.mantidSnapper.DiffractionSpectrumWeightCalculator(
             "Calculating spectrum weights...",
-            InputWorkspace=self.inputWorkspaceName,
+            InputWorkspace=self.outputWorkspaceName,
             InstrumentState=self.instrumentState.json(),
             CrystalInfo=self.crystalInfo.json(),
             WeightWorkspace=self.weightWorkspaceName,
         )
-        # This is because its a histogram
-        self.mantidSnapper.CloneWorkspace(
-            "Cloning new workspace for smoothed spectrum data...",
-            InputWorkspace=self.inputWorkspaceName,
-            OutputWorkspace=self.outputWorkspaceName,
-        )
         self.mantidSnapper.executeQueue()
 
-        # get number of spectrum to iterate over
+        # get handles to the workspaces
         inputWorkspace = self.mantidSnapper.mtd[self.inputWorkspaceName]
         outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]
         weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
+
         numSpec = weight_ws.getNumberHistograms()
         # extract x & y data for csaps
         for index in range(numSpec):
@@ -107,8 +109,8 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
             # fill in the removed data using the spline function and original datapoints
             smoothing_results = splev(xMidpoints, tck)
-
             outputWorkspace.setY(index, smoothing_results)
+
         self.mantidSnapper.WashDishes(
             "Cleaning up weight workspace...",
             Workspace=self.weightWorkspaceName,

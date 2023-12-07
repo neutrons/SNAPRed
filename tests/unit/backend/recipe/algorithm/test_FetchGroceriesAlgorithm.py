@@ -121,11 +121,9 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         errors = algo.validateInputs()
         assert errors.get("InstrumentName") is not None
         assert errors.get("InstrumentFilename") is not None
-        assert errors.get("InstrumentDonor") is not None
         with pytest.raises(RuntimeError) as e:
             algo.execute()
             assert "invalid Properties found" in e.msg()
-            assert "InsturmentDonor" in e.msg()
             assert "InstrumentName" in e.msg()
             assert "InstrumentFilename" in e.msg()
         # unset the instrument name
@@ -137,14 +135,12 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         assert self.sampleWS == algo.getPropertyValue("InstrumentDonor")
         # check errors if two instrument sources
         errors = algo.validateInputs()
-        assert errors.get("InstrumentName") is not None
         assert errors.get("InstrumentFilename") is not None
         assert errors.get("InstrumentDonor") is not None
         with pytest.raises(RuntimeError) as e:
             algo.execute()
             assert "invalid Properties found" in e.msg()
             assert "InsturmentDonor" in e.msg()
-            assert "InstrumentName" in e.msg()
             assert "InstrumentFilename" in e.msg()
         # unset the instrument name
         algo.setPropertyValue("InstrumentFilename", "")

@@ -54,7 +54,10 @@ with mock.patch.dict(
 
         # load test workspace
         input_ws_name = "input_ws"
-        LoadNexusProcessed(Filename=Resource.getPath(inputWorkspaceFile), OutputWorkspace=input_ws_name)
+        LoadNexusProcessed(
+            Filename=Resource.getPath(inputWorkspaceFile),
+            OutputWorkspace=input_ws_name,
+        )
 
         # load predicted peaks
         peaks_json = json.loads(Resource.read(inputPeaksFile))
@@ -71,7 +74,9 @@ with mock.patch.dict(
 
         # match results with reference
         weight_ws = mtd[weight_ws_name]
-        ref_weight_ws = LoadNexusProcessed(Filename=Resource.getPath(referenceWeightFile))
+        ref_weight_ws = LoadNexusProcessed(
+            Filename=Resource.getPath(referenceWeightFile),
+        )
 
         assert CompareWorkspaces(
             Workspace1=ref_weight_ws,

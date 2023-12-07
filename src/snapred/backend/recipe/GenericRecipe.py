@@ -6,10 +6,12 @@ from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm impor
 from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import CalibrationReductionAlgorithm
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
+from snapred.backend.recipe.algorithm.FocusSpectraAlgorithm import FocusSpectraAlgorithm
 from snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict import GenerateTableWorkspaceFromListOfDict
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
+from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
 from snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm import VanadiumFocussedReductionAlgorithm
@@ -91,9 +93,17 @@ class VanadiumFocussedReductionRecipe(GenericRecipe[VanadiumFocussedReductionAlg
     pass
 
 
+class RawVanadiumCorrectionRecipe(GenericRecipe[RawVanadiumCorrectionAlgorithm]):
+    pass
+
+
 class DetectorPeakPredictorRecipe(GenericRecipe[DetectorPeakPredictor]):
     pass
 
 
 class GenerateTableWorkspaceFromListOfDictRecipe(GenericRecipe[GenerateTableWorkspaceFromListOfDict]):
+    pass
+
+
+class FocusSpectraRecipe(GenericRecipe[FocusSpectraAlgorithm]):
     pass

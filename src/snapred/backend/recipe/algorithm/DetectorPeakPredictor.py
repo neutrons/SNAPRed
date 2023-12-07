@@ -13,7 +13,7 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 class DetectorPeakPredictor(PythonAlgorithm):
     def category(self):
-        return "SNAPRed Sample Data"
+        return "SNAPRed Data Processing"
 
     def PyInit(self) -> None:
         # declare properties
