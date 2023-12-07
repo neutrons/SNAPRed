@@ -17,6 +17,7 @@ from snapred.backend.dao.ingredients import (
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
     GroceryListItem,
+    NormalizationCalibrationIngredients,
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
@@ -39,6 +40,7 @@ from snapred.backend.recipe.GenericRecipe import (
     DetectorPeakPredictorRecipe,
     FitMultiplePeaksRecipe,
     GenerateTableWorkspaceFromListOfDictRecipe,
+    SmoothDataExcludingPeaksRecipe,
 )
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
@@ -54,7 +56,7 @@ logger = snapredLogger.getLogger(__name__)
 
 
 @Singleton
-class CalibrationService(Service):
+class DiffractionCalibrationService(Service):
     dataFactoryService: "DataFactoryService"
     dataExportService: "DataExportService"
 
@@ -305,7 +307,7 @@ class CalibrationService(Service):
         ]
         cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
-        # TODO: We Need to Fitt the Data
+        # TODO: We Need to Fit the Data
         fitIngredients = FitMultiplePeaksIngredients(
             instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=focussedData
         )

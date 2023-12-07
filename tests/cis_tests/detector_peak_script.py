@@ -13,7 +13,7 @@ import json
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
-from snapred.backend.service.CalibrationService import CalibrationService
+from snapred.backend.service.DiffractionDiffractionCalibrationService import DiffractionCalibrationService
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.redantic import list_to_raw_pretty
@@ -43,8 +43,8 @@ calibration = dataFactoryService.getCalibrationState(runNumber)
 instrumentState = calibration.instrumentState
 calPath = instrumentState.instrumentConfig.calibrationDirectory
 
-calibrationService = CalibrationService()
-pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
+DiffractionCalibrationService = DiffractionCalibrationService()
+pixelGroupingParameters = DiffractionCalibrationService.retrievePixelGroupingParams(runNumber)
 instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters[0]
 
 crystalInfoDict = CrystallographicInfoService().ingest(cifPath)

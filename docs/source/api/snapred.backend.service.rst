@@ -20,10 +20,10 @@ snapred.backend.service.CalibrantSampleService module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.service.CalibrationService module
+snapred.backend.service.DiffractionCalibrationService module
 -------------------------------------------------
 
-.. automodule:: snapred.backend.service.CalibrationService
+.. automodule:: snapred.backend.service.DiffractionCalibrationService
    :members:
    :undoc-members:
    :show-inheritance:

@@ -18,7 +18,7 @@ from snapred.backend.dao import RunConfig, DetectorPeak, GroupPeakList
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
-from snapred.backend.service.CalibrationService import CalibrationService
+from snapred.backend.service.DiffractionDiffractionCalibrationService import DiffractionCalibrationService
 from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
 
 from snapred.meta.Config import Config
@@ -42,8 +42,8 @@ dataFactoryService = DataFactoryService()
 focusGroup=dataFactoryService.getFocusGroups(runNumber)[0] #column
 calibration = dataFactoryService.getCalibrationState(runNumber)
 
-calibrationService = CalibrationService()
-pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
+DiffractionCalibrationService = DiffractionCalibrationService()
+pixelGroupingParameters = DiffractionCalibrationService.retrievePixelGroupingParams(runNumber)
 
 instrumentState = calibration.instrumentState
 calPath = instrumentState.instrumentConfig.calibrationDirectory
@@ -159,8 +159,8 @@ diffcalRequest = DiffractionCalibrationRequest(
     peakIntensityThreshold = peakThreshold,
 )
 
-calibrationService = CalibrationService()
+DiffractionCalibrationService = DiffractionCalibrationService()
 with mock.patch.object(Recipe, "restockShelves"):
-    res = calibrationService.diffractionCalibration(diffcalRequest)
+    res = DiffractionCalibrationService.diffractionCalibration(diffcalRequest)
 print(json.dumps(res,indent=2))
 assert False

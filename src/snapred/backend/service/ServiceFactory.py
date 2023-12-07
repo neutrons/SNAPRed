@@ -3,12 +3,12 @@
 from snapred.backend.error.UserException import UserException
 from snapred.backend.service.ApiService import ApiService
 from snapred.backend.service.CalibrantSampleService import CalibrantSampleService
-from snapred.backend.service.CalibrationService import CalibrationService
 
 # cant think of a good way around requireing the services to be imported
 # here in order to autoregister them
 from snapred.backend.service.ConfigLookupService import ConfigLookupService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
+from snapred.backend.service.DiffractionCalibrationService import DiffractionCalibrationService
 from snapred.backend.service.FitMultiplePeakService import FitMultiplePeaksService
 from snapred.backend.service.LiteDataService import LiteDataService
 from snapred.backend.service.ReductionService import ReductionService
@@ -31,7 +31,7 @@ class ServiceFactory:
         self.serviceDirectory.registerService(ConfigLookupService)
         self.serviceDirectory.registerService(ReductionService)
         self.serviceDirectory.registerService(StateIdLookupService)
-        self.serviceDirectory.registerService(CalibrationService)
+        self.serviceDirectory.registerService(DiffractionCalibrationService)
         self.serviceDirectory.registerService(CrystallographicInfoService)
         self.serviceDirectory.registerService(CalibrantSampleService)
         self.serviceDirectory.registerService(ApiService)

@@ -358,7 +358,7 @@ with mock.patch.dict(
                 groupingFile=groupingFile,
                 referenceParametersFile=referenceParametersFile,
             )
-        assert "LoadGroupingDefinition" in str(excinfo.value)
+        assert groupingFile in str(excinfo.value)
 
     def test_local_wrong_calibration_file():
         isLocalTest = True

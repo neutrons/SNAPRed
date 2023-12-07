@@ -31,7 +31,9 @@ with mock.patch.dict(
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,  # noqa: E402
     )
-    from snapred.backend.service.CalibrationService import CalibrationService  # noqa: E402
+    from snapred.backend.service.DiffractionCalibrationService import (
+        DiffractionCalibrationService as Service,  # noqa: E402
+    )
     from snapred.meta.Config import Resource  # noqa: E402
 
     def readReductionIngredientsFromFile():
@@ -40,37 +42,37 @@ with mock.patch.dict(
 
     # test export calibration
     def test_exportCalibrationIndex():
-        calibrationService = CalibrationService()
-        calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
-        calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
-        calibrationService.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""))
-        assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
-        savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
+        service = Service()
+        service.dataExportService.exportCalibrationIndexEntry = mock.Mock()
+        service.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
+        service.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""))
+        assert service.dataExportService.exportCalibrationIndexEntry.called
+        savedEntry = service.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">1"
         assert savedEntry.timestamp is not None
 
     def test_save():
-        calibrationService = CalibrationService()
-        calibrationService.dataExportService.exportCalibrationRecord = mock.Mock()
-        calibrationService.dataExportService.exportCalibrationRecord.return_value = MagicMock(version="1.0.0")
-        calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
-        calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
-        calibrationService.dataFactoryService.getReductionIngredients = mock.Mock()
-        calibrationService.dataFactoryService.getReductionIngredients.return_value = readReductionIngredientsFromFile()
-        calibrationService.save(mock.Mock())
-        assert calibrationService.dataExportService.exportCalibrationRecord.called
-        savedEntry = calibrationService.dataExportService.exportCalibrationRecord.call_args.args[0]
+        service = Service()
+        service.dataExportService.exportCalibrationRecord = mock.Mock()
+        service.dataExportService.exportCalibrationRecord.return_value = MagicMock(version="1.0.0")
+        service.dataExportService.exportCalibrationIndexEntry = mock.Mock()
+        service.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
+        service.dataFactoryService.getReductionIngredients = mock.Mock()
+        service.dataFactoryService.getReductionIngredients.return_value = readReductionIngredientsFromFile()
+        service.save(mock.Mock())
+        assert service.dataExportService.exportCalibrationRecord.called
+        savedEntry = service.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
 
     # test calculate pixel grouping parameters
     # patch datafactoryservice, pixelgroupingparameterscalculationrecipe, pixelgroupingingredients, dataExportService
-    @mock.patch("snapred.backend.service.CalibrationService.DataFactoryService", return_value=mock.Mock())
+    @mock.patch("snapred.backend.service.DiffractionCalibrationService.DataFactoryService", return_value=mock.Mock())
     @mock.patch(
-        "snapred.backend.service.CalibrationService.PixelGroupingParametersCalculationRecipe",
+        "snapred.backend.service.DiffractionCalibrationService.PixelGroupingParametersCalculationRecipe",
         return_value=MagicMock(executeRecipe=MagicMock(side_effect=[{"parameters": "mock_parameters"}])),
     )
-    @mock.patch("snapred.backend.service.CalibrationService.PixelGroupingIngredients")
-    @mock.patch("snapred.backend.service.CalibrationService.DataExportService")
+    @mock.patch("snapred.backend.service.DiffractionCalibrationService.PixelGroupingIngredients")
+    @mock.patch("snapred.backend.service.DiffractionCalibrationService.DataExportService")
     def test_calculatePixelGroupingParameters(
         mockDataFactoryService,  # noqa: ARG001
         mockPixelGroupingIngredients,  # noqa: ARG001
@@ -78,20 +80,20 @@ with mock.patch.dict(
         mockDataExportService,  # noqa: ARG001
     ):
         runs = [RunConfig(runNumber="1")]
-        calibrationService = CalibrationService()
+        service = DiffractionCalibrationService()
         groupingFile = mock.Mock()
         setattr(PixelGroupingParametersCalculationRecipe, "executeRecipe", localMock)
         localMock.return_value = mock.MagicMock()
-        calibrationService.calculatePixelGroupingParameters(runs, groupingFile)
+        service.calculatePixelGroupingParameters(runs, groupingFile)
         assert mockPixelGroupingParametersCalculationRecipe.called
 
 
-from snapred.backend.service.CalibrationService import CalibrationService  # noqa: E402, F811
+from snapred.backend.service.DiffractionCalibrationService import DiffractionCalibrationService  # noqa: E402, F811
 
 
-class TestCalibrationServiceMethods(unittest.TestCase):
+class TestDiffractionCalibrationServiceMethods(unittest.TestCase):
     def setUp(self):
-        self.instance = CalibrationService()
+        self.instance = DiffractionCalibrationService()
         self.runId = "test_run_id"
         self.outputNameFormat = "{}_calibration_reduction_result"
         # Mock the _calculatePixelGroupingParameters method to return a predefined value
@@ -144,22 +146,22 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Assert the result is an empty list
         assert result == []
 
-    @patch("snapred.backend.service.CalibrationService.GroupWorkspaceIterator", return_value=["ws1", "ws2"])
+    @patch("snapred.backend.service.DiffractionCalibrationService.GroupWorkspaceIterator", return_value=["ws1", "ws2"])
     @patch(
-        "snapred.backend.service.CalibrationService.FitCalibrationWorkspaceIngredients",
+        "snapred.backend.service.DiffractionCalibrationService.FitCalibrationWorkspaceIngredients",
         side_effect=["fit_result_1", "fit_result_2"],
     )
     @patch(
-        "snapred.backend.service.CalibrationService.FitMultiplePeaksRecipe",
+        "snapred.backend.service.DiffractionCalibrationService.FitMultiplePeaksRecipe",
         return_value=MagicMock(executeRecipe=MagicMock(side_effect=["fit_result_1", "fit_result_2"])),
     )
     @patch(
-        "snapred.backend.service.CalibrationService.CalibrationMetricExtractionRecipe",
+        "snapred.backend.service.DiffractionCalibrationService.CalibrationMetricExtractionRecipe",
         return_value=MagicMock(executeRecipe=MagicMock("dsfdfad")),
     )
-    @patch("snapred.backend.service.CalibrationService.list_to_raw", return_value="mock_metric")
-    @patch("snapred.backend.service.CalibrationService.parse_raw_as", return_value="mock_crystal_info")
-    @patch("snapred.backend.service.CalibrationService.FocusGroupMetric", return_value="mock_metric")
+    @patch("snapred.backend.service.DiffractionCalibrationService.list_to_raw", return_value="mock_metric")
+    @patch("snapred.backend.service.DiffractionCalibrationService.parse_raw_as", return_value="mock_crystal_info")
+    @patch("snapred.backend.service.DiffractionCalibrationService.FocusGroupMetric", return_value="mock_metric")
     def test_fitAndCollectMetrics(
         self,
         groupWorkspaceIterator,  # noqa: ARG002
@@ -192,12 +194,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert metric == "mock_metric"
 
     @patch(
-        "snapred.backend.service.CalibrationService.CrystallographicInfoService",
+        "snapred.backend.service.DiffractionCalibrationService.CrystallographicInfoService",
         return_value=MagicMock(ingest=MagicMock(return_value={"crystalInfo": "mock_crystal_info"})),
     )
-    @patch("snapred.backend.service.CalibrationService.CalibrationRecord", return_value="mock_calibration_record")
-    @patch("snapred.backend.service.CalibrationService.FitMultiplePeaksIngredients")
-    @patch("snapred.backend.service.CalibrationService.FitMultiplePeaksRecipe")
+    @patch(
+        "snapred.backend.service.DiffractionCalibrationService.CalibrationRecord",
+        return_value="mock_calibration_record",
+    )
+    @patch("snapred.backend.service.DiffractionCalibrationService.FitMultiplePeaksIngredients")
+    @patch("snapred.backend.service.DiffractionCalibrationService.FitMultiplePeaksRecipe")
     def test_assessQuality(
         self, mockCrystalInfoService, mockCalibRecord, fitMultiplePeaksIng, fmprecipe  # noqa: ARG002
     ):
@@ -250,7 +255,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert result == expected_record
 
     # patch FocusGroup
-    @patch("snapred.backend.service.CalibrationService.FocusGroup", return_value=MagicMock())
+    @patch("snapred.backend.service.DiffractionCalibrationService.FocusGroup", return_value=MagicMock())
     def test__generateFocusGroupAndInstrumentState(self, mockFocusGroup):
         # mock datafactoryservice.getCalibrationState
         self.instance.dataFactoryService.getCalibrationState = MagicMock()
@@ -267,13 +272,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert actualFocusGroup == mockFocusGroup.return_value
         assert actualInstrumentState == mockInstrumentState
 
-    @patch("snapred.backend.service.CalibrationService.GroceryListItem")
-    @patch("snapred.backend.service.CalibrationService.FetchGroceriesRecipe")
-    @patch("snapred.backend.service.CalibrationService.CrystallographicInfoService")
-    @patch("snapred.backend.service.CalibrationService.DetectorPeakPredictorRecipe")
-    @patch("snapred.backend.service.CalibrationService.parse_raw_as")
-    @patch("snapred.backend.service.CalibrationService.DiffractionCalibrationRecipe")
-    @patch("snapred.backend.service.CalibrationService.DiffractionCalibrationIngredients")
+    @patch("snapred.backend.service.DiffractionCalibrationService.GroceryListItem")
+    @patch("snapred.backend.service.DiffractionCalibrationService.FetchGroceriesRecipe")
+    @patch("snapred.backend.service.DiffractionCalibrationService.CrystallographicInfoService")
+    @patch("snapred.backend.service.DiffractionCalibrationService.DetectorPeakPredictorRecipe")
+    @patch("snapred.backend.service.DiffractionCalibrationService.parse_raw_as")
+    @patch("snapred.backend.service.DiffractionCalibrationService.DiffractionCalibrationRecipe")
+    @patch("snapred.backend.service.DiffractionCalibrationService.DiffractionCalibrationIngredients")
     def test_diffractionCalibration(
         self,
         mockDiffractionCalibrationIngredients,

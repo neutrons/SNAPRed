@@ -13,7 +13,7 @@ from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import 
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.service.CalibrationService import CalibrationService
+from snapred.backend.service.DiffractionCalibrationService import DiffractionCalibrationService
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.calibration import CalibrationRecord, Calibration
 
