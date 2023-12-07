@@ -86,6 +86,7 @@ class CalibrationService(Service):
         self.registerPath("normalization", self.normalization)
         self.registerPath("normalizationAssessment", self.normalizationAssessment)
         self.registerPath("saveNormalization", self.saveNormalization)
+        self.registerPath("quality", self.readQuality)
         self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
@@ -345,18 +346,18 @@ class CalibrationService(Service):
         return FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric)
 
     @FromString
+    def readQuality(self, runId: str, version: str):
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
+        if calibrationRecord is None:
+            raise ValueError(f"No calibration record found for run {runId}, version {version}.")
+        GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
+            ListOfDict=list_to_raw(calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric),
+            OutputWorkspace=f"{runId}_calibrationMetrics_v{calibrationRecord.version}",
+        )
+
+    @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
         run = request.run
-
-        # check if there is a previously approved/saved calibration record with quality metrics
-        prevCalibrationRecord = self.dataFactoryService.getIndexedRunCalibrationRecord(run.runNumber)
-        if prevCalibrationRecord:
-            GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
-                ListOfDict=list_to_raw(prevCalibrationRecord.focusGroupCalibrationMetrics.calibrationMetric),
-                OutputWorkspace=f"{run.runNumber}_calibrationMetrics_v{prevCalibrationRecord.version}",
-            )
-            return
-
         focussedData = request.workspace
         calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
