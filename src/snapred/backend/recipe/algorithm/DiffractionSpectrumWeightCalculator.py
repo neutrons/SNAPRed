@@ -57,12 +57,10 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             groupPeakList = GroupPeakList.parse_obj(prediction)
             self.groupIDs.append(groupPeakList.groupID)
             self.predictedPeaks[groupPeakList.groupID] = groupPeakList.peaks
-        print(self.groupIDs)
-        print(self.predictedPeaks)
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
-        self.outputWorkspaceName = self.getPropertyValue("WeightWorkspace")
+        self.weightWorkspaceName = self.getPropertyValue("WeightWorkspace")
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
@@ -91,12 +89,26 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         self.mantidSnapper.CloneWorkspace(
             "Cloning a weighting workspce...",
             InputWorkspace=self.inputWorkspaceName,
-            OutputWorkspace=self.outputWorkspaceName,
+            OutputWorkspace=self.weightWorkspaceName,
         )
-        print(self.groupIDs)
-        print(self.predictedPeaks)
         self.mantidSnapper.executeQueue()
-        weight_ws = self.mantidSnapper.mtd[self.outputWorkspaceName]
+        weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
+        isEventWorkspace: bool = "EventWorkspace" in weight_ws.id()
+        if isEventWorkspace:
+            self.mantidSnapper.ConvertToMatrixWorkspace(
+                "Converting event workspace to histogram workspace",
+                InputWorkspace=self.weightWorkspaceName,
+                OutputWorkspace=self.weightWorkspaceName,
+            )
+            # self.mantidSnapper.RebinToWorkspace(
+            #     "Rebin to remvoe events",
+            #     WorkspaceToRebin = self.weightWorkspaceName,
+            #     WorkspaceToMatch = self.weightWorkspaceName,
+            #     OutputWorkspace = self.weightWorkspaceName,
+            #     PreserveEvents=False,
+            # )
+            self.mantidSnapper.executeQueue()
+            weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
 
         for index, groupID in enumerate(self.groupIDs):
             # get spectrum X,Y
@@ -110,7 +122,14 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
                 weights[mask_indices] = 0.0
             weight_ws.setY(index, weights)
 
-        return weight_ws
+        if isEventWorkspace:
+            self.mantidSnapper.ConvertToEventWorkspace(
+                "Converting histogram workspace back to event workspace",
+                InputWorkspace=self.weightWorkspaceName,
+                OutputWorkspace=self.weightWorkspaceName,
+            )
+
+        self.mantidSnapper.executeQueue()
 
 
 AlgorithmFactory.subscribe(DiffractionSpectrumWeightCalculator)

@@ -48,7 +48,7 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
         cls.rawBackgroundWS: str = "_test_calibration_normalization_background_raw"
         CreateSampleWorkspace(
             OutputWorkspace=cls.rawBackgroundWS,
-            WorkspaceType="Histogram",
+            WorkspaceType="Event",
             Function="Flat background",
             Xmin=tofMin,
             Xmax=tofMax,
@@ -77,7 +77,7 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
         # now create just the signal and add it in
         CreateSampleWorkspace(
             OutputWorkspace="_tmp_sample",
-            WorkspaceType="Histogram",
+            WorkspaceType="Event",
             Function="Powder Diffraction",
             Xmin=tofMin,
             Xmax=tofMax,
@@ -87,7 +87,16 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
             BankPixelWidth=2,
             InstrumentName="fakeSNAP.xml",
         )
-        Plus(LHSWorkspace="_tmp_sample", RHSWorkspace=cls.rawInputWS, OutputWorkspace=cls.rawInputWS)
+        Plus(
+            LHSWorkspace="_tmp_sample",
+            RHSWorkspace=cls.rawInputWS,
+            OutputWorkspace=cls.rawInputWS,
+        )
+        LoadInstrument(
+            Workspace=cls.rawInputWS,
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+            RewriteSpectraMap=True,
+        )
         DeleteWorkspace("_tmp_sample")
         # create the grouping workspace
         cls.focusWS = "_test_calibration_normalization_focus"
@@ -137,6 +146,17 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
             InputWorkspace=self.rawBackgroundWS,
             OutputWorkspace=self.backgroundWS,
         )
+
+    def tearDown(self):
+        from mantid.simpleapi import DeleteWorkspaces
+
+        DeleteWorkspaces([self.inputWS, self.backgroundWS])
+
+    @classmethod
+    def tearDownClass(self):
+        from mantid.simpleapi import DeleteWorkspaces
+
+        DeleteWorkspaces([self.rawInputWS, self.rawBackgroundWS])
 
     def test_init(self):
         algo = Algo()

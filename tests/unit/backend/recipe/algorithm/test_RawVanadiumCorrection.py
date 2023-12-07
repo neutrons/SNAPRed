@@ -88,7 +88,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         self.sampleWS = "_test_data_raw_vanadium"
         CreateSampleWorkspace(
             OutputWorkspace=self.backgroundWS,
-            # WorkspaceType="Histogram",
+            WorkspaceType="Event",
             Function="User Defined",
             UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
             Xmin=TOFBinParams[0],
@@ -122,8 +122,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         )
         CreateSampleWorkspace(
             OutputWorkspace="_tmp_raw_vanadium",
-            # WorkspaceType="Histogram",
-            Function="User Defined",
+            WorkspaceType="Event",
             UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=70,Sigma=1",
             Xmin=TOFBinParams[0],
             Xmax=TOFBinParams[2],
@@ -143,14 +142,14 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         Rebin(
             InputWorkspace=self.sampleWS,
             Params=TOFBinParams,
-            PreserveEvents=False,
+            PreserveEvents=True,
             OutputWorkspace=self.sampleWS,
             BinningMode="Logarithmic",
         )
         Rebin(
             InputWorkspace=self.backgroundWS,
             Params=TOFBinParams,
-            PreserveEvents=False,
+            PreserveEvents=True,
             OutputWorkspace=self.backgroundWS,
             BinningMode="Logarithmic",
         )
@@ -167,10 +166,13 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         """Test that ingredients for algo are properly processed"""
         algo = Algo()
         algo.initialize()
-        algo.chopIngredients(self.fakeIngredients)
+        algo.chopIngredients(self.fakeIngredients, self.calibrantSample)
         assert algo.TOFPars[0] == self.fakeIngredients.reductionState.stateConfig.tofMin
         assert algo.TOFPars[1] == self.fakeIngredients.reductionState.stateConfig.tofBin
         assert algo.TOFPars[2] == self.fakeIngredients.reductionState.stateConfig.tofMax
+        assert algo.geometry == self.calibrantSample.geometry
+        assert algo.material == self.calibrantSample.material
+        assert algo.sampleShape == self.calibrantSample.geometry.shape
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""
@@ -179,7 +181,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
         # set the input workspaces
         algo.setProperty("InputWorkspace", self.sampleWS)
-        print(algo.getPropertyValue("InputWorkspace"), self.sampleWS)
         assert algo.getPropertyValue("InputWorkspace") == self.sampleWS
         algo.setPropertyValue("BackgroundWorkspace", self.backgroundWS)
         assert algo.getPropertyValue("BackgroundWorkspace") == self.backgroundWS
@@ -218,9 +219,9 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.chopIngredients(self.fakeIngredients)
+        algo.chopIngredients(self.fakeIngredients, self.calibrantSample)
         algo.TOFPars = (2, 2, 4)
-        algo.chopNeutronData(testWS)
+        algo.chopNeutronData(testWS, testWS)
 
         dataXnorm = []
         dataYnorm = []
@@ -229,7 +230,6 @@ class TestRawVanadiumCorrection(unittest.TestCase):
                 dataXnorm.append(x)
                 dataYnorm.append(y / self.sample_proton_charge)
 
-        print(dataXnorm, dataYnorm)
         dataXrebin = [sum(dataXnorm) / len(dataXnorm)]
         dataYrebin = [sum(dataYnorm[:-1])]
 

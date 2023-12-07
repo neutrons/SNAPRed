@@ -1,50 +1,40 @@
+import unittest
 import unittest.mock as mock
 
 import pytest
+from mantid.simpleapi import (
+    DeleteWorkspace,
+    LoadNexusProcessed,
+    mtd,
+)
+from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
+from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
+from snapred.meta.Config import Resource
 
-with mock.patch.dict(
-    "sys.modules",
-    {
-        "snapred.backend.log": mock.Mock(),
-        "snapred.backend.log.logger": mock.Mock(),
-    },
-):
-    from mantid.simpleapi import (
-        DeleteWorkspace,
-        LoadNexusProcessed,
-        mtd,
-    )
-    from snapred.backend.dao.calibration.Calibration import Calibration
-    from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-    from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
-    from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
-    from snapred.meta.Config import Resource
 
-    def setup():
+class TestSmoothDataAlgo(unittest.TestCase):
+    def setUp(self):
         pass
 
-    def teardown():
-        workspaces = mtd.getObjectNames()
-
-        for workspace in workspaces:
+    def tearDown(self):
+        for workspace in mtd.getObjectNames():
             try:
                 DeleteWorkspace(workspace)
             except ValueError:
                 print(f"Workspace {workspace} doesn't exist!")
 
-    @pytest.fixture(autouse=True)
-    def _setup_teardown():
-        setup()
-        yield
-        teardown()
-
-    def test_SmoothDataExcludingPeaksAlgo():
+    def test_SmoothDataExcludingPeaksAlgo(self):
         # input data
         testWorkspaceFile = "inputs/strip_peaks/DSP_58882_cal_CC_Column_spectra.nxs"
 
         # loading test workspace
         test_ws_name = "test_ws"
-        LoadNexusProcessed(Filename=Resource.getPath(testWorkspaceFile), OutputWorkspace=test_ws_name)
+        LoadNexusProcessed(
+            Filename=Resource.getPath(testWorkspaceFile),
+            OutputWorkspace=test_ws_name,
+        )
 
         # load crystal info for testing
         crystalInfo = CrystallographicInfo.parse_raw(Resource.read("inputs/purge_peaks/input_crystalInfo.json"))
