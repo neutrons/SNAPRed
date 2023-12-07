@@ -527,19 +527,6 @@ class LocalDataService:
             record = parse_file_as(CalibrationRecord, latestFile)
         return record
 
-    # get a saved calibration record for the input run
-    def readIndexedRunCalibrationRecord(self, runId: str):
-        record: CalibrationRecord = None
-
-        try:
-            version = self._getVersionFromCalibrationIndex(runId)
-            if version:
-                record = self.readStateCalibrationRecord(runId, version)
-        except:  # noqa: E722
-            pass
-
-        return record
-
     def writeCalibrationRecord(self, record: CalibrationRecord, version: int = None):
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
