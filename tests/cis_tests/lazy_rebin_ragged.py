@@ -48,21 +48,27 @@ fakeFocusGroup = FocusGroup(
 print(fakeFocusGroup.json(indent=2))
 
 peakList3 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum":0, "maximum": 2}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.370, "minimum":0.345, "maximum": 0.397}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.248, "minimum":0.225, "maximum": 0.268}}),
 ]
 group3 = GroupPeakList(groupID=3, peaks=peakList3)
 peakList7 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.35, "minimum": 0.0, "maximum": 2}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.579, "minimum": 0.538, "maximum": 0.619}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.386, "minimum": 0.352, "maximum": 0.417}}),
 ]
 group7 = GroupPeakList(groupID=7, peaks=peakList7)
 peakList2 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0, "maximum":2}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.328, "minimum": 0.306, "maximum":0.351}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.219, "minimum": 0.199, "maximum":0.237}}),
 ]
 group2 = GroupPeakList(groupID=2, peaks=peakList2)
 peakList11 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.24, "minimum": 0, "maximum": 2}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.438, "minimum": 0.406, "maximum": 0.470}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.294, "minimum": 0.269, "maximum": 0.316}}),
 ]
 group11 = GroupPeakList(groupID=11, peaks=peakList11)
+
+print(fakeInstrumentState.pixelGroup.json(indent=2))
 
 fakeIngredients = DiffractionCalibrationIngredients(
     runConfig=fakeRunConfig,
@@ -71,21 +77,15 @@ fakeIngredients = DiffractionCalibrationIngredients(
     groupedPeakLists=[group2, group3, group7, group11],
     calPath=Resource.getPath("outputs/calibration/"),
     convergenceThreshold=1.0,
-    pixelGroup=PixelGroup(pixelGroupingParameters=fakeInstrumentState.pixelGroupingInstrumentParameters)
+    pixelGroup=fakeInstrumentState.pixelGroup
 )
 
 #Set data to be used for RebinRagged
-dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in fakeIngredients.pixelGroup.pixelGroupingParameters}
-dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in fakeIngredients.pixelGroup.pixelGroupingParameters}
-dBin = {
-    pgp.groupID: pgp.dRelativeResolution / fakeIngredients.instrumentState.instrumentConfig.NBins
-    for pgp in fakeIngredients.pixelGroup.pixelGroupingParameters
-}
-groupIDs = [pgp.groupID for pgp in fakeIngredients.pixelGroup.pixelGroupingParameters]
-groupIDs.sort()
-DMin = [dMin[groupID] for groupID in groupIDs]
-DMax = [dMax[groupID] for groupID in groupIDs]
-DeltaRagged = [dBin[groupID] for groupID in groupIDs]
+dMin = fakeIngredients.pixelGroup.dMin()
+dMax = fakeIngredients.pixelGroup.dMax()
+dBin = fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+groupIDs = fakeIngredients.pixelGroup.groupID
+
 
 #### CREATE DATA
 inputWStof = f"_TOF_{fakeRunNumber}"
@@ -98,8 +98,7 @@ DIFCpixel = "DIFCpixel"
 midpoint = (TOFMax + TOFMin) / 2.0
 CreateSampleWorkspace(
     OutputWorkspace = inputWStof,
-    Function = "User Defined",
-    UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={midpoint},Sigma={midpoint/10}",
+    Function = "Powder Diffraction",
     XMin = TOFMin,
     XMax = TOFMax,
     BinWidth = 0.001,
@@ -153,9 +152,9 @@ DiffractionFocussing(
 RebinRagged(
     InputWorkspace = diffocWSdsp,
     OutputWorkspace = diffocWSdsp,
-    XMin = DMin,
-    XMax = DMax,
-    Delta = DeltaRagged,
+    XMin = dMin,
+    XMax = dMax,
+    Delta = dBin,
 )
 ConvertUnits(
     InputWorkspace = diffocWSdsp,

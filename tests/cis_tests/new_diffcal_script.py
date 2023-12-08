@@ -45,10 +45,13 @@ calibration = dataFactoryService.getCalibrationState(runNumber)
 
 calibrationService = CalibrationService()
 pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
+print(pixelGroupingParameters)
 
 instrumentState = calibration.instrumentState
 calPath = instrumentState.instrumentConfig.calibrationDirectory
-instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters[0]
+instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
+
+print(instrumentState.pixelGroup.json(indent=2))
 
 crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
 

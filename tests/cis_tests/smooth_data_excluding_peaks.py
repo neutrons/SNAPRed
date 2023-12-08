@@ -14,8 +14,10 @@ snapredLogger._level = 60
 # for creating the ingredients
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.CalibrationService import CalibrationService
+from snapred.backend.data.DataFactoryService import DataFactoryService
 
 # the algorithm to test (and its ingredients)
+from snapred.backend.dao.state import PixelGroup
 from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
 
@@ -31,9 +33,11 @@ cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
 
 ## CREATE INGREDIENTS
 calibrationService = CalibrationService()
+dataFactoryService = DataFactoryService()
 pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
 calibration = dataFactoryService.getCalibrationState(runNumber)
-calibration.instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters[0]
+print(pixelGroupingParameters)
+calibration.instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
 
 ingredients = SmoothDataExcludingPeaksIngredients(
     instrumentState=calibration.instrumentState, 
