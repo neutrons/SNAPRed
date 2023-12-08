@@ -56,10 +56,11 @@ class NormalizationCalibrationWorkflow:
             parent=parent,
         )
 
-        self._specifyNormalizationView.signalValueChanged.connect(self.onNormalizationValueChange)
-
         self.lastGroupingFile = None
         self.lastSmoothingParameter = None
+
+        self._specifyNormalizationView.signalValueChanged.connect(self.onNormalizationValueChange)
+        self._specifyNormalizationView.signalGroupingUpdate.connect(self.updateLastGroupingFile)
 
         self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
             "Saving Normalization Calibration",
@@ -93,28 +94,27 @@ class NormalizationCalibrationWorkflow:
 
         self.runNumber = view.getFieldText("runNumber")
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
-        smoothingParameter = view.getFieldText("smoothingParameter")
-        self.sampleIndex = view.sampleDropDown.currentIndex()
-        groupingIndex = view.groupingFileDropDown.currentIndex()
+        self.sampleIndex = (view.sampleDropDown.currentIndex()) - 1
+        groupingIndex = (view.groupingFileDropDown.currentIndex()) - 1
+        smoothingParameter = float(view.getFieldText("smoothingParameter"))
         self.samplePath = view.sampleDropDown.currentText()
         self.groupingPath = view.groupingFileDropDown.currentText()
 
-        self._specifyNormalizationView.updateSample(self.sampleIndex)
+        self._specifyNormalizationView.updateFields(
+            sampleIndex=self.sampleIndex, groupingIndex=groupingIndex, smoothingParameter=smoothingParameter
+        )
+
         self._specifyNormalizationView.updateRunNumber(self.runNumber)
         self._specifyNormalizationView.updateBackgroundRunNumber(self.backgroundRunNumber)
-        self._specifyNormalizationView.updateGrouping(groupingIndex)
 
-        self._saveNormalizationCalibrationView.updateSample(self.sampleIndex)
         self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
         self._saveNormalizationCalibrationView.updateBackgroundRunNumber(self.backgroundRunNumber)
-        self._saveNormalizationCalibrationView.updateGroupingFile(groupingIndex)
-        self._saveNormalizationCalibrationView.updateSmoothingParameter(smoothingParameter)
 
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
-            samplePath=self.samplePath,
-            groupingPath=self.groupingFiles[groupingIndex],
+            samplePath=str(self.samplePaths[self.sampleIndex]),
+            groupingPath=str(self.groupingFiles[groupingIndex]),
             smoothingParameter=smoothingParameter,
         )
 
@@ -124,8 +124,8 @@ class NormalizationCalibrationWorkflow:
         return response
 
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
-        focusWorkspace = self.responses[-1].data["FocusWorkspace"]
-        smoothWorkspace = self.responses[-1].data["SmoothWorkspace"]
+        focusWorkspace = self.responses[-1].data["outputWorkspace"]
+        smoothWorkspace = self.responses[-1].data["smoothedOutput"]
 
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
@@ -133,8 +133,8 @@ class NormalizationCalibrationWorkflow:
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
             smoothingParameter=self.lastSmoothingParameter,
-            samplePath=self.samplePath,
-            focusGroupPath=self.lastGroupingFile,
+            samplePath=str(self.samplePaths[self.sampleIndex]),
+            focusGroupPath=str(self.lastGroupingFile),
             workspaces=[focusWorkspace, smoothWorkspace],
         )
         request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
@@ -174,17 +174,24 @@ class NormalizationCalibrationWorkflow:
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
-        focusWorkspace = self.responses[-1].data["FocusWorkspace"]
-        smoothWorkspace = self.responses[-1].data["SmoothWorkspace"]
+        focusWorkspace = self.responses[-1].data["outputWorkspace"]
+        smoothWorkspace = self.responses[-1].data["smoothedOutput"]
 
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
-    def onNormalizationValueChange(self, index, smoothingValue):
-        self._saveNormalizationCalibrationView.updateCalibrantSample(index)
-        self._saveNormalizationCalibrationView.updateSmoothingParameter(smoothingValue)
-        self.lastGroupingFile = str(self.groupingFiles[index])
-        self.lastSmoothingParameter = float(smoothingValue)
-        self.callNormalizationCalibration(index, smoothingValue)
+    def onNormalizationValueChange(self, index, smoothingValue):  # noqa: ARG002
+        if self.responses:
+            if "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
+                focusWorkspace = self.responses[-1].data["outputWorkspace"]
+                smoothWorkspace = self.responses[-1].data["smoothedOutput"]
+                self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+            else:
+                raise Exception("Expected data not found in the last response")
+        else:
+            pass
+
+    def updateLastGroupingFile(self, groupingIndex):
+        self.lastGroupingFile = self.groupingFiles[groupingIndex]
 
     @property
     def widget(self):

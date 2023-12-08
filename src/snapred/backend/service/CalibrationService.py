@@ -351,16 +351,27 @@ class CalibrationService(Service):
 
     @FromString
     def normalization(self, request: NormalizationCalibrationRequest):
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber)
-        backgroundReductionIngredients = self.dataFactoryService.getReductionIngredients(request.backgroundRunNumber)
         groupingFile = request.groupingPath
-        calibrantSample = self.dataFactoryService.getCalibrantSample(request.samplePath.split("/")[-1].split(".")[0])
-        sampleFilePath = self.dataFactoryService.getCifFilePath(request.samplePath.split("/")[-1].split(".")[0])
+        groupingScheme = groupingFile.split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
+        calibrantSample = self.dataFactoryService.getCalibrantSample(request.samplePath)
+        sampleFilePath = self.dataFactoryService.getCifFilePath((request.samplePath).split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(sampleFilePath)["crystalInfo"]
+        runConfigs = []
+        runConfigs.append(self.dataFactoryService.getRunConfig(request.runNumber))
+        runConfigs.append(self.dataFactoryService.getRunConfig(request.backgroundRunNumber))
 
-        focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            request.runNumber,
-            groupingFile,
+        calibration = self.dataFactoryService.getCalibrationState(request.runNumber)
+        instrumentState = calibration.instrumentState
+
+        PGP = self.calculatePixelGroupingParameters(runConfigs, groupingFile, export=False)
+        pixelGroupingParameters = PGP["parameters"]
+        instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters
+
+        reductionIngredients = self.dataFactoryService.getReductionIngredients(
+            request.runNumber, pixelGroupingParameters
+        )
+        backgroundReductionIngredients = self.dataFactoryService.getReductionIngredients(
+            request.backgroundRunNumber, pixelGroupingParameters
         )
 
         smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
@@ -379,31 +390,34 @@ class CalibrationService(Service):
         groceryList = [
             GroceryListItem(
                 workspaceType="nexus",
+                runNumber=request.runNumber,
                 useLiteMode=True,
                 runConfig=reductionIngredients.runConfig,
                 loader="LoadEventNexus",
             ),
             GroceryListItem(
                 workspaceType="nexus",
+                runNumber=request.backgroundRunNumber,
                 useLiteMode=True,
                 runConfig=backgroundReductionIngredients.runConfig,
                 loader="LoadEventNexus",
             ),
             GroceryListItem(
                 workspaceType="grouping",
+                groupingScheme=groupingScheme,
                 useLiteMode=True,
-                loader="LoadGroupingDefinition",
-                groupingScheme=groupingFile,
-                instrumentSource=str(Config["instrument.lite.definition"]),
+                instrumentPropertySource="InstrumentDonor",
+                instrumentSource="prev",
             ),
         ]
         workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
         groceries = {
-            "InputWorkspace": workspaceList[0],
-            "BackgroundWorkspace": workspaceList[1],
-            "GroupingWorkspace": workspaceList[2],
+            "inputWorkspace": workspaceList[0],
+            "backgroundWorkspace": workspaceList[1],
+            "groupingWorkspace": workspaceList[2],
+            "outputWorkspace": "focussedRawVanadium",
+            "smoothedOutput": "smoothedOutput",
         }
-
         return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients, groceries)
 
     @FromString

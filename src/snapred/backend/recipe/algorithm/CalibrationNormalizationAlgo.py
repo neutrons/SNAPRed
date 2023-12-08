@@ -71,7 +71,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
         if self.getProperty("OutputWorkspace").isDefault:
             self.smoothRawVanadiumWSName = self.rawVanadiumWSName + "_smoothed"
         else:
-            self.smoothRawVanadiumWSName = self.getPropertyValue("OutputWorkspace")
+            self.smoothRawVanadiumWSName = self.getPropertyValue("SmoothedOutput")
         pass
 
     def validateInputs(self) -> Dict[str, str]:
@@ -138,7 +138,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             XMax=self.dResolutionMax,
             Delta=self.dRelativeResolution,
             OutputWorkspace=self.rawVanadiumWSName,
-            PreserveEvents=True,
+            PreserveEvents=False,
         )
 
         # make a copy of the diffraction focused data with peaks smoothed
@@ -153,6 +153,10 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             Ingredients=self.smoothDataIngredients.json(),
             OutputWorkspace=self.smoothRawVanadiumWSName,
         )
+
+        self.setProperty("OutputWorkspace", self.rawVanadiumWSName)
+        self.setProperty("SmoothedOutput", self.smoothRawVanadiumWSName)
+
         self.mantidSnapper.executeQueue()
 
 

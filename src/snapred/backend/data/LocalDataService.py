@@ -557,14 +557,22 @@ class LocalDataService:
             raise ValueError(f"the file '{filePath}' already exists")
         write_model_pretty(sample, filePath)
 
-    def readCalibrantSample(self, sampleId: str):
-        samplePath: str = Config["samples.home"]
-        fileName: str = sampleId + ".json"
-        filePath = os.path.join(samplePath, fileName)
+    def readCalibrantSample(self, filePath: str):
         if not os.path.exists(filePath):
-            raise ValueError(f"the file '{filePath}' does not exist")
-        sample = parse_file_as(CalibrantSamples, filePath)
-        return sample
+            raise ValueError(f"The file '{filePath}' does not exist")
+        with open(filePath, "r") as file:
+            sampleJson = json.load(file)
+            if "mass-density" in sampleJson and "packingFraction" in sampleJson:
+                warnings.warn(  # noqa: F821
+                    "Can't specify both mass-density and packing fraction for single-element materials"
+                )  # noqa: F821
+            del sampleJson["material"]["packingFraction"]
+            for atom in sampleJson["crystallography"]["atoms"]:
+                atom["symbol"] = atom.pop("atom_type")
+                atom["coordinates"] = atom.pop("atom_coordinates")
+                atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
+            sample = CalibrantSamples.parse_raw(json.dumps(sampleJson))
+            return sample
 
     def readCifFilePath(self, sampleId: str):
         samplePath: str = Config["samples.home"]
@@ -721,13 +729,14 @@ class LocalDataService:
 
     def readSamplePaths(self):
         sampleFolder = Config["instrument.calibration.sample.home"]
-        extensions = Config["instrument.calibration.powder.grouping.extensions"]
+        extensions = Config["instrument.calibration.sample.extensions"]
+        sampleFiles = []
         # collect list of all json in folder
         for extension in extensions:
-            samples = self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False)
-        if len(samples) < 1:
+            sampleFiles += self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False)
+        if len(sampleFiles) < 1:
             raise RuntimeError(f"No samples found in {sampleFolder}")
-        return samples
+        return sampleFiles
 
     def readGroupingFiles(self):
         groupingFolder = Config["instrument.calibration.powder.grouping.home"]

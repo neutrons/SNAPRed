@@ -15,7 +15,11 @@ class CalibrationNormalizationRecipe:
     def __init__(self):
         pass
 
-    def fetchGroceries(self, groceryList: Dict[str, Any]):
+    def chopIngredients(self, ingredients: Ingredients):
+        self.runNumber = ingredients.reductionIngredients.runConfig.runNumber
+        self.backgroundRunNumber = ingredients.backgroundReductionIngredients.runConfig.runNumber
+
+    def unbagGroceries(self, groceryList: Dict[str, Any]):
         """
         Checkout the workspace names needed for this recipe.
         It is necessary to provide the followign keys:
@@ -24,19 +28,15 @@ class CalibrationNormalizationRecipe:
          - "Ingredients": requirements for sub algo calls
         """
 
-        self.rawInput = groceryList["InputWorkspace"]
-        self.rawBackgroundInput = groceryList["BackgroundWorkspace"]
-        self.groupingWS = groceryList["GroupingWorkspace"]
-        self.outputWS = groceryList.get("OutputWorkspace", "")
-        self.smoothWS = groceryList.get("SmoothedOutput", "")
-
-    def chopIngredients(self, ingredients: Ingredients):
-        self.runNumber = ingredients.reductionIngredients.runConfig.runNumber
-        self.backgroundRunNumber = ingredients.backgroundReductionIngredients.runConfig.runNumber
+        self.rawInput = groceryList["inputWorkspace"]
+        self.rawBackgroundInput = groceryList["backgroundWorkspace"]
+        self.groupingWS = groceryList["groupingWorkspace"]
+        self.outputWS = groceryList.get("outputWorkspace", "")
+        self.smoothWS = groceryList.get("smoothedOutput", "")
 
     def executeRecipe(self, ingredients: Ingredients, groceryList: Dict[str, Any]) -> Dict[str, Any]:
         self.chopIngredients(ingredients)
-        self.fetchGroceries(groceryList)
+        self.unbagGroceries(groceryList)
 
         logger.info(
             f"Executing normalization calibration for runId: {self.runNumber} and background runId: {self.backgroundRunNumber}"  # noqa: E501
@@ -55,11 +55,10 @@ class CalibrationNormalizationRecipe:
 
         try:
             calibNormAlgo.execute()
-            data["FocusWorkspace"] = calibNormAlgo.getProperty("OutputWorkspace").value
-            data["SmoothWorkspace"] = calibNormAlgo.getProperty("SmoothedOutput").value
+            data["outputWorkspace"] = calibNormAlgo.getPropertyValue("OutputWorkspace")
+            data["smoothedOutput"] = calibNormAlgo.getPropertyValue("SmoothedOutput")
         except RuntimeError as e:
             errorString = str(e)
-            logger.error(errorString)
             raise Exception(errorString.split("\n")[0])
 
         logger.info("Finished executing normalization calibration")

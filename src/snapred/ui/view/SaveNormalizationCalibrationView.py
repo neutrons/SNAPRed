@@ -7,6 +7,7 @@ from snapred.ui.widget.LabeledField import LabeledField
 
 class SaveNormalizationCalibrationView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
+    signalBackgroundRunNumberUpdate = pyqtSignal(str)
 
     def __init__(self, name, jsonSchemaMap, parent=None):
         super().__init__(parent)
@@ -22,6 +23,12 @@ class SaveNormalizationCalibrationView(QWidget):
         )
         self.fieldRunNumber.setEnabled(False)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
+
+        self.fieldBackgroundRunNumber = LabeledField(
+            "Background Run Number :", self._jsonFormList.getField("normalizationIndexEntry.backgroundRunNumber"), self
+        )
+        self.fieldBackgroundRunNumber.setEnabled(False)
+        self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
         self.fieldVersion = LabeledField(
             "Version :", self._jsonFormList.getField("normalizationIndexEntry.version"), self
@@ -47,6 +54,7 @@ class SaveNormalizationCalibrationView(QWidget):
 
         self.layout.addWidget(self.interactionText)
         self.layout.addWidget(self.fieldRunNumber)
+        self.layout.addWidget(self.fieldBackgroundRunNumber)
         self.layout.addWidget(self.fieldVersion)
         self.layout.addWidget(self.fieldAppliesTo)
         self.layout.addWidget(self.fieldComments)
@@ -59,3 +67,9 @@ class SaveNormalizationCalibrationView(QWidget):
 
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
+
+    def _updateBackgroundRunNumber(self, backgroundRunNumber):
+        self.fieldBackgroundRunNumber.setText(backgroundRunNumber)
+
+    def updateBackgroundRunNumber(self, backgroundRunNumber):
+        self.signalBackgroundRunNumberUpdate.emit(backgroundRunNumber)
