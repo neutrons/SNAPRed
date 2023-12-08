@@ -116,3 +116,11 @@ with mock.patch.dict(
         actual = dataExportService.getNormalizationState(mock.Mock())
 
         assert actual == "expected"
+
+    def test_getCalibrationIndex():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readCalibrationIndex = mock.Mock(return_value="expected")
+        run = MagicMock()
+        actual = dataExportService.getCalibrationIndex(run)
+
+        assert actual == "expected"
