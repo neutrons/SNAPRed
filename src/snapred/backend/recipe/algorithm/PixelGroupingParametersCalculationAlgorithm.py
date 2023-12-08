@@ -55,7 +55,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.delLOverL = instrumentState.instrumentConfig.delLOverL
         self.L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
         self.delL = self.delLOverL * self.L
-        self.delTheta = instrumentState.instrumentConfig.delThWithGuide
+        self.delTheta = instrumentState.delTh
         return
 
     def unbagGroceries(self, instrumentState: InstrumentState):
