@@ -297,6 +297,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=mockCalibRecord)
         # Call the method to test
         self.instance.readQuality(run, version)
+        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
+
+        with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+            self.instance.readQuality(run, version)
+        assert str(run) in str(excinfo.value)
+        assert str(version) in str(excinfo.value)
 
     # patch FocusGroup
     @patch(thisService + "FocusGroup", return_value=FocusGroup(name="mockgroup", definition="junk/mockgroup.abc"))
