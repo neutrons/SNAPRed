@@ -1,4 +1,4 @@
- # NOTE the remote tests depend pn files in the analysis filesystem
+# NOTE the remote tests depend pn files in the analysis filesystem
 # if those are changed or moved, it could cause unexpected test failure
 
 import json
