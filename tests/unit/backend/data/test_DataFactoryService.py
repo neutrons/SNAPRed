@@ -4,9 +4,9 @@ from unittest.mock import MagicMock
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.Limit import Limit
-from snapred.backend.dao.PixelGroup import PixelGroup
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.StateConfig import StateConfig
 
 # Mock out of scope modules before importing DataFactoryService

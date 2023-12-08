@@ -2,9 +2,9 @@ from typing import List
 
 from pydantic import BaseModel
 
-from snapred.backend.dao.PixelGroup import PixelGroup
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 
 class ReductionIngredients(BaseModel):

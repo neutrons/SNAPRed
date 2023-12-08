@@ -2,9 +2,9 @@ from typing import Dict
 
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.PixelGroup import PixelGroup
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.LocalWorkspaceDataService import LocalWorkspaceDataService

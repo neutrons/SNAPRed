@@ -15,6 +15,7 @@ class InstrumentState(BaseModel):
     detectorState: DetectorState
     gsasParameters: GSASParameters
     particleBounds: ParticleBounds
+    # TODO REPLACE THIS WITH A PIXEL GROUP!!!!!
     pixelGroupingInstrumentParameters: Optional[List[PixelGroupingParameters]]
     defaultGroupingSliceValue: float
     fwhmMultiplierLimit: Limit[float]

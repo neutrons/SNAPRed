@@ -9,12 +9,12 @@ from mantid.simpleapi import (
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
-from snapred.backend.dao.PixelGroup import PixelGroup
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import (
@@ -80,12 +80,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
         TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
 
-        dMin = {pgp.dResolution.minimum for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters}
-        dMax = {pgp.dResolution.maximum for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters}
-        DBin = {
-            pgp.dRelativeResolution / self.fakeIngredients.instrumentState.instrumentConfig.NBins
-            for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters
-        }
+        dMin = self.fakeIngredients.pixelGroup.dMin()
+        dMax = self.fakeIngredients.pixelGroup.dMax()
+        DBin = self.fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
         overallDMax = max(dMax)
         overallDMin = min(dMin)
         dBin = min([abs(d) for d in DBin])
@@ -120,14 +117,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         allXmins = [0] * 16
         allXmaxs = [0] * 16
         allDelta = [0] * 16
-        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters}
-        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters}
-        DBin = {
-            pgp.groupID: pgp.dRelativeResolution / self.fakeIngredients.instrumentState.instrumentConfig.NBins
-            for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters
-        }
-        groupIDs = [pgp.groupID for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters]
-        groupIDs.sort()
+        groupIDs = self.fakeIngredients.pixelGroup.groupID
         for i, gid in enumerate(groupIDs):
             for detid in focWS.getDetectorIDsOfGroup(int(gid)):
                 allXmins[detid] = dMin[i]
@@ -158,17 +148,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         algo.initialize()
         algo.chopIngredients(self.fakeIngredients)
         assert algo.runNumber == self.fakeRunNumber
-        assert algo.overallDMin == min(
-            pgp.dResolution.minimum for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters
-        )
-        assert algo.overallDMax == max(
-            pgp.dResolution.maximum for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters
-        )
-        DBin = {
-            pgp.dRelativeResolution / self.fakeIngredients.instrumentState.instrumentConfig.NBins
-            for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters
-        }
-        assert algo.dBin == max([abs(db) for db in DBin])
+        assert algo.overallDMin == min(self.fakeIngredients.pixelGroup.dMin())
+        assert algo.overallDMax == max(self.fakeIngredients.pixelGroup.dMax())
+        assert algo.dBin == max([abs(db) for db in self.fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)])
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""

@@ -6,12 +6,12 @@ import pytest
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
-from snapred.backend.dao.PixelGroup import PixelGroup
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 
 # the algorithm to test
@@ -167,12 +167,12 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         # now run the algorithm
         algo = ThisAlgo()
         algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
-        algo.setProperty("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
-        algo.setProperty("PreviousCalibrationTable", self.difcWS)
+        algo.setPropertyValue("Ingredients", self.fakeIngredients.json())
+        algo.setPropertyValue("InputWorkspace", self.fakeRawData)
+        algo.setPropertyValue("GroupingWorkspace", self.fakeGroupingWorkspace)
+        algo.setPropertyValue("FinalCalibrationTable", "_final_DIFc_table")
+        algo.setPropertyValue("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
+        algo.setPropertyValue("PreviousCalibrationTable", self.difcWS)
         assert algo.execute()
 
     # TODO more and more better tests of behavior

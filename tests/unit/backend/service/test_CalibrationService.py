@@ -27,6 +27,7 @@ with mock.patch.dict(
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest  # noqa: E402
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
+    from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters  # noqa: E402
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,  # noqa: E402
@@ -293,7 +294,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockParseRawAs.return_value = [MagicMock()]
         mockDetectorPeakPredictorRecipe().executeRecipe.return_value = [MagicMock()]
         mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
-        mockPixelGroup = [MagicMock(spec_set=PixelGroupingParameters)]
+        mockPixelGroupingParameter = PixelGroupingParameters.parse_obj(
+            {
+                "groupID": 1,
+                "twoTheta": 3.141592,
+                "dResolution": {"minimum": 1, "maximum": 2},
+                "dRelativeResolution": 0.01,
+            }
+        )
+        mockPixelGroupingParameters = [mockPixelGroupingParameter]
+        mockPixelGroup = PixelGroup(pixelGroupingParameters=mockPixelGroupingParameters)
 
         mockFetchGroceriesRecipe().executeRecipe.return_value = {
             "workspaces": [mock.Mock(), mock.Mock()],
@@ -301,7 +311,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         mockFocusGroupInstrumentState = (MagicMock(), MagicMock())
         self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=mockFocusGroupInstrumentState)
-        mockFocusGroupInstrumentState[1].pixelGroupingInstrumentParameters=[MagicMock(spec_set=PixelGroupingParameters)]
+        mockFocusGroupInstrumentState[1].pixelGroupingInstrumentParameters = mockPixelGroupingParameters
 
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(

@@ -56,9 +56,13 @@ class DetectorPeakPredictor(PythonAlgorithm):
         thresholdA = np.max(A) * self.getProperty("PeakIntensityFractionThreshold").value
 
         allFocusGroupsPeaks = []
-        allGroupIDs = [x.groupID for x in instrumentState.pixelGroupingInstrumentParameters]
-        # numFocusGroups = len(instrumentState.pixelGroupingInstrumentParameters)
-        # for index in range(numFocusGroups):
+        # TODO replace pixelGroupingParameters list with a pixelGroup
+        # allGroupIDs = instrumentState.pixelGroup.groupID
+        # for groupID in allGroupIDs:
+        #   delDoD = instrumentState.pixelGroup[groupID].dRelativeResolution
+        #   tTheta = instrumentState.pixekGroup[groupID].twoTheta
+        # etc.
+        allGroupIDs = [p.groupID for p in instrumentState.pixelGroupingInstrumentParameters]
         for index, groupID in enumerate(allGroupIDs):
             delDoD = instrumentState.pixelGroupingInstrumentParameters[index].dRelativeResolution
             tTheta = instrumentState.pixelGroupingInstrumentParameters[index].twoTheta

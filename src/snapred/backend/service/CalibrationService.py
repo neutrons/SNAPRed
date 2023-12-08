@@ -27,7 +27,7 @@ from snapred.backend.dao.request import (
     InitializeStateRequest,
 )
 from snapred.backend.dao.state import FocusGroup, FocusGroupParameters
-from snapred.backend.dao.PixelGroup import PixelGroup
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService

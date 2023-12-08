@@ -15,7 +15,7 @@ from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao import RunConfig, DetectorPeak, GroupPeakList
-from snapred.backend.dao.PixelGroup import PixelGroup
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService

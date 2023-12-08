@@ -11,6 +11,7 @@ from mantid.api import (
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -60,20 +61,10 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # from grouping parameters, read the overall min/max d-spacings
         # NOTE these MUST be in order of increasing grouping ID
         # later work associating each with a group ID can relax this requirement
-        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in ingredients.pixelGroup.pixelGroupingParameters}
-        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in ingredients.pixelGroup.pixelGroupingParameters}
-        DBin = {
-            pgp.groupID: pgp.dRelativeResolution / ingredients.instrumentState.instrumentConfig.NBins
-            for pgp in ingredients.pixelGroup.pixelGroupingParameters
-        }
-        groupIDs = [pgp.groupID for pgp in ingredients.pixelGroup.pixelGroupingParameters]
-        groupIDs.sort()
-        DMin = [dMin[groupID] for groupID in groupIDs]
-        DMax = [dMax[groupID] for groupID in groupIDs]
-        DeltaRagged = [DBin[groupID] for groupID in groupIDs]
-        self.dMax = DMax
-        self.dMin = DMin
-        self.dBin = DeltaRagged
+        self.dMin = ingredients.pixelGroup.dMin()
+        self.dMax = ingredients.pixelGroup.dMax()
+        self.dBin = ingredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        pixelGroupIDs = ingredients.pixelGroup.groupID
 
         # from the instrument state, read the overall min/max TOF
         self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
@@ -97,9 +88,10 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 allPeakBoundaries.append(peak.maximum)
             self.groupedPeaks[peakList.groupID] = allPeaks
             self.groupedPeakBoundaries[peakList.groupID] = allPeakBoundaries
-        # NOTE: this sort is unnecessary IF dmin/dmax can be related to specific group
-        # and not merely inferred group order from their order.
+        # NOTE: this sort is necessary to correspond to the sort inside mantid's GroupingWorkspace
         self.groupIDs = sorted(self.groupIDs)
+        # TODO put in a validateInputs method
+        assert self.groupIDs == pixelGroupIDs
 
         if len(self.groupIDs) != len(ingredients.pixelGroup.pixelGroupingParameters):
             raise RuntimeError(

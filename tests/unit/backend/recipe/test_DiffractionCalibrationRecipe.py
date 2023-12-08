@@ -20,10 +20,10 @@ from mantid.simpleapi import (
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as TheseIngredients
-from snapred.backend.dao.PixelGroup import PixelGroup
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
@@ -279,17 +279,13 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             InputWorkspace=rawWS,
             OutputWorkspace=groupingWS,
         )
+        dMin = self.fakeIngredients.pixelGroup.dMin()
+        dMax = self.fakeIngredients.pixelGroup.dMax()
+        dBin = self.fakeIngredients.pixelGroup.dBin(1)
         focWS = mtd[groupingWS]
         allXmins = [0] * 16
         allXmaxs = [0] * 16
         allDelta = [0] * 16
-        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters}
-        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters}
-        dBin = {
-            pgp.groupID: pgp.dRelativeResolution / self.fakeIngredients.instrumentState.instrumentConfig.NBins
-            for pgp in self.fakeIngredients.pixelGroup.pixelGroupingParameters
-        }
-
         for i, gid in enumerate(focWS.getGroupIDs()):
             for detid in focWS.getDetectorIDsOfGroup(int(gid)):
                 allXmins[detid] = dMin[i]
