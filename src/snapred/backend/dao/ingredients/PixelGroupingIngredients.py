@@ -7,5 +7,3 @@ class PixelGroupingIngredients(BaseModel):
     """Class to hold the ingredients necessary for pixel grouping parameter calculation."""
 
     instrumentState: InstrumentState
-    instrumentDefinitionFile: str
-    groupingFile: str

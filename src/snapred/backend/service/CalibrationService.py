@@ -241,12 +241,11 @@ class CalibrationService(Service):
         else:
             return False
 
-    def _calculatePixelGroupingParameters(self, instrumentState, groupingFile: str):
+    def _calculatePixelGroupingParameters(self, instrumentState, groupingFile: str):  # noqa: ARG002
         groupingIngredients = PixelGroupingIngredients(
             instrumentState=instrumentState,
-            instrumentDefinitionFile=Config["instrument.lite.definition.file"],
-            groupingFile=groupingFile,
         )
+        Config["instrument.lite.definition.file"],
         try:
             data = PixelGroupingParametersCalculationRecipe().executeRecipe(groupingIngredients)
         except:
