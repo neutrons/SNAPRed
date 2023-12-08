@@ -11,8 +11,10 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
+    from typing import List
+
     from mantid.simpleapi import DeleteWorkspace, mtd
-    from pydantic import parse_file_as
+    from pydantic import parse_file_as, parse_raw_as
     from snapred.backend.dao.calibration.Calibration import Calibration
     from snapred.backend.dao.state.InstrumentState import InstrumentState
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
@@ -389,10 +391,10 @@ with mock.patch.dict(
         assert pixelGroupingAlgo.execute()
 
         # parse the algorithm output and create a list of PixelGroupingParameters
-        pixelGroupingParams_json = json.loads(pixelGroupingAlgo.getProperty("OutputParameters").value)
-        pixelGroupingParams_calc = []
-        for item in pixelGroupingParams_json:
-            pixelGroupingParams_calc.append(PixelGroupingParameters.parse_raw(item))
+        pixelGroupingParams_calc = parse_raw_as(
+            List[PixelGroupingParameters],
+            pixelGroupingAlgo.getProperty("OutputParameters").value,
+        )
 
         # parse the reference file. Note, in the reference file each kind of parameter is grouped into its own list
         with open(referenceParametersFile) as f:
@@ -405,22 +407,14 @@ with mock.patch.dict(
         assert len(pixelGroupingParams_ref["dMax"]) == number_of_groupings_calc
         assert len(pixelGroupingParams_ref["delDOverD"]) == number_of_groupings_calc
 
-        index = 0
-        for param in pixelGroupingParams_ref["twoTheta"]:
+        for index, param in enumerate(pixelGroupingParams_ref["twoTheta"]):
             assert abs(float(param) - pixelGroupingParams_calc[index].twoTheta) == 0
-            index += 1
 
-        index = 0
-        for param in pixelGroupingParams_ref["dMin"]:
+        for index, param in enumerate(pixelGroupingParams_ref["dMin"]):
             assert abs(float(param) - pixelGroupingParams_calc[index].dResolution.minimum) == 0
-            index += 1
 
-        index = 0
-        for param in pixelGroupingParams_ref["dMax"]:
+        for index, param in enumerate(pixelGroupingParams_ref["dMax"]):
             assert abs(float(param) - pixelGroupingParams_calc[index].dResolution.maximum) == 0
-            index += 1
 
-        index = 0
-        for param in pixelGroupingParams_ref["delDOverD"]:
+        for index, param in enumerate(pixelGroupingParams_ref["delDOverD"]):
             assert abs(float(param) - pixelGroupingParams_calc[index].dRelativeResolution) < 1.0e-3
-            index += 1
