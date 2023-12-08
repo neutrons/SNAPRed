@@ -1,4 +1,4 @@
-# NOTE the remote tests depend pn files in the analysis filesystem
+ # NOTE the remote tests depend pn files in the analysis filesystem
 # if those are changed or moved, it could cause unexpected test failure
 
 import json
@@ -147,11 +147,10 @@ class PixelGroupCalculation(unittest.TestCase):
                 cls.bank: "test_grouping_workspace_SNAPLite_bank",
                 cls.column: "test_grouping_workspace_SNAPLite_column",
             }
-            pixelGroupPath = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/"
             cls.SNAPLiteGroupingFilename = {
-                cls.all: f"{pixelGroupPath}SNAPFocGroup_All.lite.nxs",
-                cls.bank: f"{pixelGroupPath}SNAPFocGroup_Bank.lite.nxs",
-                cls.column: f"{pixelGroupPath}SNAPFocGroup_Column.lite.nxs",
+                cls.all: f"{pixelGroupPath}SNAPFocGroup_All.lite.hdf",
+                cls.bank: f"{pixelGroupPath}SNAPFocGroup_Bank.lite.hdf",
+                cls.column: f"{pixelGroupPath}SNAPFocGroup_Column.lite.hdf",
             }
 
         else:
@@ -320,6 +319,7 @@ class PixelGroupCalculation(unittest.TestCase):
 
     # LOCAL TESTS ON SNAPLITE
 
+    @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
     def test_local_SNAPLite_column(self):
         groupingScheme = self.column
         referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Column_parameters.lite.json")
@@ -330,6 +330,7 @@ class PixelGroupCalculation(unittest.TestCase):
             referenceParametersFile=referenceParametersFile,
         )
 
+    @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
     def test_local_SNAPLite_bank(self):
         groupingScheme = self.bank
         referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Bank_parameters.lite.json")
@@ -340,6 +341,7 @@ class PixelGroupCalculation(unittest.TestCase):
             referenceParametersFile=referenceParametersFile,
         )
 
+    @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
     def test_local_SNAPLite_all(self):
         groupingScheme = self.all
         referenceParametersFile = Resource.getPath("outputs/pixel_grouping/All_parameters.lite.json")
@@ -435,7 +437,7 @@ class PixelGroupCalculation(unittest.TestCase):
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_bank_lite(self):
         groupingScheme = self.bank
-        referenceParametersFile = self.referenceFileFolder + "All_parameters_newCalc.lite.json"
+        referenceParametersFile = self.referenceFileFolder + "Bank_parameters_newCalc.lite.json"
 
         LoadDiffCal(
             Filename=self.SNAPLiteGroupingFilename[groupingScheme],
@@ -460,7 +462,7 @@ class PixelGroupCalculation(unittest.TestCase):
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_column_lite(self):
         groupingScheme = self.column
-        referenceParametersFile = self.referenceFileFolder + "All_parameters_newCalc.lite.json"
+        referenceParametersFile = self.referenceFileFolder + "Column_parameters_newCalc.lite.json"
 
         LoadDiffCal(
             Filename=self.SNAPLiteGroupingFilename[groupingScheme],
