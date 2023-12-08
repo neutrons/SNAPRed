@@ -292,7 +292,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     @patch("snapred.backend.service.CalibrationService.CalibrationRecord", return_value="mock_calibration_record")
     def test_readQuality(self, mockCalibRecord):
-        MagicMock()
         run = MagicMock()
         version = MagicMock()
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=mockCalibRecord)
