@@ -125,12 +125,14 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             dMax = 3.9561e-3 * (1 / (2 * math.sin(groupMin2Theta / 2))) * self.tofMax / self.L
             delta_d_over_d = resws.readY(groupIndex)[0]
 
-            allGroupingParams.append(PixelGroupingParameters(
-                groupID=groupID,
-                twoTheta=groupAverage2Theta,
-                dResolution=Limit(minimum=dMin, maximum=dMax),
-                dRelativeResolution=delta_d_over_d,
-            ))
+            allGroupingParams.append(
+                PixelGroupingParameters(
+                    groupID=groupID,
+                    twoTheta=groupAverage2Theta,
+                    dResolution=Limit(minimum=dMin, maximum=dMax),
+                    dRelativeResolution=delta_d_over_d,
+                )
+            )
 
         self.setProperty("OutputParameters", list_to_raw(allGroupingParams))
         self.mantidSnapper.WashDishes(
