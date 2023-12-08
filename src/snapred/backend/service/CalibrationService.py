@@ -101,7 +101,7 @@ class CalibrationService(Service):
             calibration = self.dataFactoryService.getCalibrationState(runNumber)
         instrumentState = calibration.instrumentState
         pixelGroupingParams = self._calculatePixelGroupingParameters(instrumentState, definition)["parameters"]
-        instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParams
+        instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParams)
         return (
             FocusGroup(
                 name=definition.split("/")[-1],
@@ -158,7 +158,7 @@ class CalibrationService(Service):
             groupedPeakLists=detectorPeaks,
             calPath=calpath,
             convergenceThreshold=convergenceThreshold,
-            pixelGroup=PixelGroup(pixelGroupingParameters=instrumentState.pixelGroupingInstrumentParameters),
+            pixelGroup=instrumentState.pixelGroup,
         )
         focusFile = request.focusGroupPath.split("/")[-1]
         focusName = focusFile.split(".")[0]
@@ -227,7 +227,7 @@ class CalibrationService(Service):
             calibrationState = self.dataFactoryService.getCalibrationState(run.runNumber)
             try:
                 data = self._calculatePixelGroupingParameters(calibrationState.instrumentState, groupingFile)
-                calibrationState.instrumentState.pixelGroupingInstrumentParameters = data["parameters"]
+                calibrationState.instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=data["parameters"])
                 if export is True:
                     self.dataExportService.exportCalibrationState(runId=run.runNumber, calibration=calibrationState)
             except:
