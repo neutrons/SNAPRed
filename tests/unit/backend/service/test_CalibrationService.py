@@ -290,6 +290,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         expected_record = "mock_calibration_record"
         assert result == expected_record
 
+    @patch("snapred.backend.service.CalibrationService.CalibrationRecord", return_value="mock_calibration_record")
+    def test_readQuality(self, mockCalibRecord):
+        MagicMock()
+        run = MagicMock()
+        version = MagicMock()
+        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=mockCalibRecord)
+        # Call the method to test
+        self.instance.readQuality(run, version)
+
     # patch FocusGroup
     @patch(thisService + "FocusGroup", return_value=FocusGroup(name="mockgroup", definition="junk/mockgroup.abc"))
     def test__generateFocusGroupAndInstrumentState(self, mockFocusGroup):
