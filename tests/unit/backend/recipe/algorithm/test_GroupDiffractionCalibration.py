@@ -66,7 +66,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             groupedPeakLists=[GroupPeakList(groupID=key, peaks=peakLists[key], maxfwhm=5) for key in peakLists.keys()],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
-            pixelGroup=PixelGroup(pixelGroupingParameters=fakeInstrumentState.pixelGroupingInstrumentParameters),
+            pixelGroup=fakeInstrumentState.pixelGroup,
         )
 
         cls.fakeRawData = f"_test_groupcal_{cls.fakeRunNumber}"

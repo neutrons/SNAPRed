@@ -65,7 +65,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             ],
             convergenceThreshold=0.5,
             calPath=Resource.getPath("outputs/calibration/"),
-            pixelGroup=PixelGroup(pixelGroupingParameters=fakeInstrumentState.pixelGroupingInstrumentParameters),
+            pixelGroup=fakeInstrumentState.pixelGroup,
         )
 
         self.fakeRawData = "_test_diffcal_rx"

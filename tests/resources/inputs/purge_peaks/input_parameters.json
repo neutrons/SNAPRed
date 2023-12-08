@@ -59,62 +59,64 @@
         "maximum": 1.5
         },
         "peakTailCoefficient": 2.0,
-        "pixelGroupingInstrumentParameters": [
-            {
-                "groupID": 11,
-                "twoTheta": 2.1108948177427838,
-                "dResolution": {
-                    "minimum": 0.2873164190984029,
-                    "maximum": 2.1261415013281812
-                },
-                "dRelativeResolution": 0.002699865774827431
-            },
-            {
-                "groupID": 2,
-                "twoTheta": 1.82310673131693,
-                "dResolution": {
-                    "minimum": 0.31627307109869773,
-                    "maximum": 2.340420726130363
-                },
-                "dRelativeResolution": 0.0031863552001173434
-            },
-            {
-                "groupID": 7,
-                "twoTheta": 1.5352228379083572,
-                "dResolution": {
-                    "minimum": 0.36001346277099444,
-                    "maximum": 2.6640996245053588
-                },
-                "dRelativeResolution": 0.003872908058770528
-            },
-            {
-                "groupID": 8,
-                "twoTheta": 1.440276389170165,
-                "dResolution": {
-                    "minimum": 0.3790816270355628,
-                    "maximum": 2.8052040400631646
-                },
-                "dRelativeResolution": 0.004160341882643039
-            },
-            {
-              "groupID": 22,
-              "twoTheta": 1.1543988461042238,
-              "dResolution": {
-                  "minimum": 0.4581446222528327,
-                  "maximum": 3.3902702046709625
+        "pixelGroup":{
+          "pixelGroupingParameters":  [
+              {
+                  "groupID": 11,
+                  "twoTheta": 2.1108948177427838,
+                  "dResolution": {
+                      "minimum": 0.2873164190984029,
+                      "maximum": 2.1261415013281812
+                  },
+                  "dRelativeResolution": 0.002699865774827431
               },
-              "dRelativeResolution": 0.0053059972420510075
-            },
-            {
-              "groupID": 106,
-              "twoTheta": 0.8690010092470938,
-              "dResolution": {
-                  "minimum": 0.5938843544407365,
-                  "maximum": 4.39474422286145
+              {
+                  "groupID": 2,
+                  "twoTheta": 1.82310673131693,
+                  "dResolution": {
+                      "minimum": 0.31627307109869773,
+                      "maximum": 2.340420726130363
+                  },
+                  "dRelativeResolution": 0.0031863552001173434
               },
-              "dRelativeResolution": 0.007179854355740084
-            }
-        ]
+              {
+                  "groupID": 7,
+                  "twoTheta": 1.5352228379083572,
+                  "dResolution": {
+                      "minimum": 0.36001346277099444,
+                      "maximum": 2.6640996245053588
+                  },
+                  "dRelativeResolution": 0.003872908058770528
+              },
+              {
+                  "groupID": 8,
+                  "twoTheta": 1.440276389170165,
+                  "dResolution": {
+                      "minimum": 0.3790816270355628,
+                      "maximum": 2.8052040400631646
+                  },
+                  "dRelativeResolution": 0.004160341882643039
+              },
+              {
+                "groupID": 22,
+                "twoTheta": 1.1543988461042238,
+                "dResolution": {
+                    "minimum": 0.4581446222528327,
+                    "maximum": 3.3902702046709625
+                },
+                "dRelativeResolution": 0.0053059972420510075
+              },
+              {
+                "groupID": 106,
+                "twoTheta": 0.8690010092470938,
+                "dResolution": {
+                    "minimum": 0.5938843544407365,
+                    "maximum": 4.39474422286145
+                },
+                "dRelativeResolution": 0.007179854355740084
+              }
+          ]
+        }
     },
     "seedRun": 123,
     "creationDate": "2023-05-25T11:50:23.438776",

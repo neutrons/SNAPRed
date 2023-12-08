@@ -51,7 +51,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
             maxOffset=self.maxOffset,
-            pixelGroup=PixelGroup(pixelGroupingParameters=fakeInstrumentState.pixelGroupingInstrumentParameters),
+            pixelGroup=fakeInstrumentState.pixelGroup,
         )
 
         self.fakeRawData = f"_test_pixelcal_{self.fakeRunNumber}"
