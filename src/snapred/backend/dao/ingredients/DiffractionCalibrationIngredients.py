@@ -13,6 +13,7 @@ class DiffractionCalibrationIngredients(BaseModel):
     """Class to hold the ingredients to diffraction calibration"""
 
     runConfig: RunConfig
+    # TODO Potentially remove use of InstrumentState
     instrumentState: InstrumentState
     focusGroup: FocusGroup
     pixelGroup: PixelGroup

@@ -61,10 +61,10 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # from grouping parameters, read the overall min/max d-spacings
         dMin = ingredients.pixelGroup.dMin()
         dMax = ingredients.pixelGroup.dMax()
-        DBin = ingredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        dBin = ingredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
         self.overallDMin: float = min(dMin)
         self.overallDMax: float = max(dMax)
-        self.dBin: float = max([abs(d) for d in DBin])
+        self.dBin: float = max([abs(d) for d in dBin])
         self.dSpaceParams = (self.overallDMin, self.dBin, self.overallDMax)
 
         # from the grouped peak lists, find the maximum shift in d-spacing

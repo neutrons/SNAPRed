@@ -58,11 +58,11 @@ class DetectorPeakPredictor(PythonAlgorithm):
         allFocusGroupsPeaks = []
         allGroupIDs = [p for p in instrumentState.pixelGroup.pixelGroupingParameters]
         for index, groupID in enumerate(allGroupIDs):
-            delDoD = instrumentState.pixelGroup.pixelGroupingParameters[groupID].dRelativeResolution
-            tTheta = instrumentState.pixelGroup.pixelGroupingParameters[groupID].twoTheta
+            delDoD = instrumentState.pixelGroup[groupID].dRelativeResolution
+            tTheta = instrumentState.pixelGroup[groupID].twoTheta
 
-            dMin = instrumentState.pixelGroup.pixelGroupingParameters[groupID].dResolution.minimum
-            dMax = instrumentState.pixelGroup.pixelGroupingParameters[groupID].dResolution.maximum
+            dMin = instrumentState.pixelGroup[groupID].dResolution.minimum
+            dMax = instrumentState.pixelGroup[groupID].dResolution.maximum
 
             dList = [peak.dSpacing for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
             dList = [d for d in dList if dMin <= d <= dMax]
