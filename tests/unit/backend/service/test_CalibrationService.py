@@ -30,10 +30,10 @@ with mock.patch.dict(
         NormalizationCalibrationRequest,  # noqa: E402
     )
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
+    from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples  # noqa: E402
     from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry  # noqa: E402
     from snapred.backend.dao.state.CalibrantSample.Material import Material  # noqa: E402
-    from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters  # noqa: E402
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,  # noqa: E402
