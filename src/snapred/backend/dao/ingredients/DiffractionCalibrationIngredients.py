@@ -6,14 +6,17 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 
 class DiffractionCalibrationIngredients(BaseModel):
     """Class to hold the ingredients to diffraction calibration"""
 
     runConfig: RunConfig
+    # TODO Potentially remove use of InstrumentState
     instrumentState: InstrumentState
     focusGroup: FocusGroup
+    pixelGroup: PixelGroup
     groupedPeakLists: List[GroupPeakList]
     calPath: str
     convergenceThreshold: float

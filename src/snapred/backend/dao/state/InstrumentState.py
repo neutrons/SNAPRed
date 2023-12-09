@@ -7,7 +7,7 @@ from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.ParticleBounds import ParticleBounds
 from snapred.backend.dao.state.DetectorState import DetectorState, GuideState
-from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 
 class InstrumentState(BaseModel):
@@ -15,7 +15,7 @@ class InstrumentState(BaseModel):
     detectorState: DetectorState
     gsasParameters: GSASParameters
     particleBounds: ParticleBounds
-    pixelGroupingInstrumentParameters: Optional[List[PixelGroupingParameters]]
+    pixelGroup: Optional[PixelGroup]
     defaultGroupingSliceValue: float
     fwhmMultiplierLimit: Limit[float]
     peakTailCoefficient: float

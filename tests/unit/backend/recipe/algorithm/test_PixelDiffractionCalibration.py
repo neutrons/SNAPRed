@@ -14,6 +14,7 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import (
@@ -50,6 +51,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
             maxOffset=self.maxOffset,
+            pixelGroup=fakeInstrumentState.pixelGroup,
         )
 
         self.fakeRawData = f"_test_pixelcal_{self.fakeRunNumber}"
@@ -77,9 +79,13 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
 
         TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
         TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
-        overallDMax = min(self.fakeIngredients.focusGroup.dMax)
-        overallDMin = max(self.fakeIngredients.focusGroup.dMin)
-        dBin = min([abs(d) for d in self.fakeIngredients.focusGroup.dBin])
+
+        dMin = self.fakeIngredients.pixelGroup.dMin()
+        dMax = self.fakeIngredients.pixelGroup.dMax()
+        DBin = self.fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        overallDMax = max(dMax)
+        overallDMin = min(dMin)
+        dBin = min([abs(d) for d in DBin])
 
         # prepare with test data
         midpoint = (overallDMin + overallDMax) / 2.0
@@ -111,11 +117,12 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         allXmins = [0] * 16
         allXmaxs = [0] * 16
         allDelta = [0] * 16
-        for i, gid in enumerate(focWS.getGroupIDs()):
+        groupIDs = self.fakeIngredients.pixelGroup.groupID
+        for i, gid in enumerate(groupIDs):
             for detid in focWS.getDetectorIDsOfGroup(int(gid)):
-                allXmins[detid] = self.fakeIngredients.focusGroup.dMin[i]
-                allXmaxs[detid] = self.fakeIngredients.focusGroup.dMax[i]
-                allDelta[detid] = self.fakeIngredients.focusGroup.dBin[i]
+                allXmins[detid] = dMin[i]
+                allXmaxs[detid] = dMax[i]
+                allDelta[detid] = DBin[i]
         RebinRagged(
             InputWorkspace=rawWsName,
             OutputWorkspace=rawWsName,
@@ -141,9 +148,9 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         algo.initialize()
         algo.chopIngredients(self.fakeIngredients)
         assert algo.runNumber == self.fakeRunNumber
-        assert algo.overallDMin == min(self.fakeIngredients.focusGroup.dMin)
-        assert algo.overallDMax == max(self.fakeIngredients.focusGroup.dMax)
-        assert algo.dBin == max([abs(db) for db in self.fakeIngredients.focusGroup.dBin])
+        assert algo.overallDMin == min(self.fakeIngredients.pixelGroup.dMin())
+        assert algo.overallDMax == max(self.fakeIngredients.pixelGroup.dMax())
+        assert algo.dBin == max([abs(db) for db in self.fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)])
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""

@@ -23,6 +23,7 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
@@ -64,6 +65,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             ],
             convergenceThreshold=0.5,
             calPath=Resource.getPath("outputs/calibration/"),
+            pixelGroup=fakeInstrumentState.pixelGroup,
         )
 
         self.fakeRawData = "_test_diffcal_rx"
@@ -277,15 +279,18 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             InputWorkspace=rawWS,
             OutputWorkspace=groupingWS,
         )
+        dMin = self.fakeIngredients.pixelGroup.dMin()
+        dMax = self.fakeIngredients.pixelGroup.dMax()
+        dBin = self.fakeIngredients.pixelGroup.dBin(1)
         focWS = mtd[groupingWS]
         allXmins = [0] * 16
         allXmaxs = [0] * 16
         allDelta = [0] * 16
         for i, gid in enumerate(focWS.getGroupIDs()):
             for detid in focWS.getDetectorIDsOfGroup(int(gid)):
-                allXmins[detid] = self.fakeIngredients.focusGroup.dMin[i]
-                allXmaxs[detid] = self.fakeIngredients.focusGroup.dMax[i]
-                allDelta[detid] = self.fakeIngredients.focusGroup.dBin[i]
+                allXmins[detid] = dMin[i]
+                allXmaxs[detid] = dMax[i]
+                allDelta[detid] = dBin[i]
         RebinRagged(
             InputWorkspace=rawWS,
             OutputWorkspace=rawWS,

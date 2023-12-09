@@ -13,6 +13,7 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 
@@ -42,40 +43,49 @@ fakeFocusGroup = FocusGroup.parse_raw(Resource.read(fakeFocusGroupFile))
 fakeFocusGroup.definition = Resource.getPath(fakeFocusGroupFile)
 fakeFocusGroup = FocusGroup(
     name = "natural",
-    nHst = 4,
-    FWHM = [5,5,5,5],
-    dBin = [-0.00130, -0.00086, -0.00130, -0.00117],
-    dMin = [0.01, 0.05, 0.10, 0.10],
-    dMax = [0.30, 0.35, 0.50, 0.40],
     definition = Resource.getPath(fakeFocusGroupFile),
 )
 print(fakeFocusGroup.json(indent=2))
 
 peakList3 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum": 0.15, "maximum": 0.25}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.370, "minimum":0.345, "maximum": 0.397}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.248, "minimum":0.225, "maximum": 0.268}}),
 ]
 group3 = GroupPeakList(groupID=3, peaks=peakList3)
 peakList7 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.33, "minimum": 0.25, "maximum": 0.40}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.579, "minimum": 0.538, "maximum": 0.619}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.386, "minimum": 0.352, "maximum": 0.417}}),
 ]
 group7 = GroupPeakList(groupID=7, peaks=peakList7)
 peakList2 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.18, "minimum": 0.15, "maximum": 0.25}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.328, "minimum": 0.306, "maximum":0.351}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.219, "minimum": 0.199, "maximum":0.237}}),
 ]
 group2 = GroupPeakList(groupID=2, peaks=peakList2)
 peakList11 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.24, "minimum": 0.18, "maximum": 0.30}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.438, "minimum": 0.406, "maximum": 0.470}}),
+    DetectorPeak.parse_obj({"position": {"value": 0.294, "minimum": 0.269, "maximum": 0.316}}),
 ]
 group11 = GroupPeakList(groupID=11, peaks=peakList11)
+
+print(fakeInstrumentState.pixelGroup.json(indent=2))
 
 fakeIngredients = DiffractionCalibrationIngredients(
     runConfig=fakeRunConfig,
     focusGroup=fakeFocusGroup,
     instrumentState=fakeInstrumentState,
-    groupedPeakLists=[group3, group7, group2, group11],
+    groupedPeakLists=[group2, group3, group7, group11],
     calPath=Resource.getPath("outputs/calibration/"),
     convergenceThreshold=1.0,
+    pixelGroup=fakeInstrumentState.pixelGroup
 )
+
+#Set data to be used for RebinRagged
+dMin = fakeIngredients.pixelGroup.dMin()
+dMax = fakeIngredients.pixelGroup.dMax()
+dBin = fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+groupIDs = fakeIngredients.pixelGroup.groupID
+
 
 #### CREATE DATA
 inputWStof = f"_TOF_{fakeRunNumber}"
@@ -88,8 +98,7 @@ DIFCpixel = "DIFCpixel"
 midpoint = (TOFMax + TOFMin) / 2.0
 CreateSampleWorkspace(
     OutputWorkspace = inputWStof,
-    Function = "User Defined",
-    UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={midpoint},Sigma={midpoint/10}",
+    Function = "Powder Diffraction",
     XMin = TOFMin,
     XMax = TOFMax,
     BinWidth = 0.001,
@@ -143,9 +152,9 @@ DiffractionFocussing(
 RebinRagged(
     InputWorkspace = diffocWSdsp,
     OutputWorkspace = diffocWSdsp,
-    XMin = fakeFocusGroup.dMin,
-    XMax = fakeFocusGroup.dMax,
-    Delta = fakeFocusGroup.dBin,
+    XMin = dMin,
+    XMax = dMax,
+    Delta = dBin,
 )
 ConvertUnits(
     InputWorkspace = diffocWSdsp,
@@ -156,23 +165,24 @@ ConvertUnits(
 print(fakeIngredients.groupedPeakLists)
 
 # now run the algorithm
-with mock.patch.object(Algo, "raidPantry", mock.Mock()):
-    algo = Algo()
-    algo.initialize()
-    algo.setProperty("Ingredients", fakeIngredients.json())
-    algo.setProperty("InputWorkspace", inputWStof)
-    algo.setProperty("OutputWorkspace", f"_test_out_{fakeRunNumber}")
-    algo.setProperty("PreviousCalibrationTable", DIFCpixel)
-    algo.chopIngredients(fakeIngredients)
-    algo.focusWSname = groupingWS
-    assert algo.execute()
+algo = Algo()
+algo.initialize()
+algo.setProperty("Ingredients", fakeIngredients.json())
+algo.setProperty("InputWorkspace", inputWStof)
+algo.setProperty("GroupingWorkspace", groupingWS)
+algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
+algo.setProperty("OutputWorkspace", f"_test_out_{fakeRunNumber}")
+algo.setProperty("PreviousCalibrationTable", DIFCpixel)
+algo.chopIngredients(fakeIngredients)
+algo.focusWSname = groupingWS
+assert algo.execute()
 
 ## print graph, check all groups fit the peak
 fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
 ax.plot(mtd[diffocWStof], wkspIndex=0, label="original peak")
-ax.plot(mtd["_PDCal_diag_2_fitted"], wkspIndex=0, label="group2")
-ax.plot(mtd["_PDCal_diag_3_fitted"], wkspIndex=1, label="group3")
-ax.plot(mtd["_PDCal_diag_7_fitted"], wkspIndex=2, label="group7")
-ax.plot(mtd["_PDCal_diag_11_fitted"], wkspIndex=3, label="group11")
+ax.plot(mtd["_PDCal_diag"], wkspIndex=0, label="group2")
+ax.plot(mtd["_PDCal_diag"], wkspIndex=1, label="group3")
+ax.plot(mtd["_PDCal_diag"], wkspIndex=2, label="group7")
+ax.plot(mtd["_PDCal_diag"], wkspIndex=3, label="group11")
 ax.legend() # show the legend
 fig.show()

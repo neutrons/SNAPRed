@@ -142,11 +142,6 @@ class LocalDataService:
             focusGroups.append(
                 FocusGroup(
                     name=name,
-                    nHst=reductionParameters["focGroupNHst"][i],
-                    FWHM=reductionParameters["VFWHM"][i],
-                    dBin=reductionParameters["focGroupDBin"][i],
-                    dMax=reductionParameters["focGroupDMax"][i],
-                    dMin=reductionParameters["focGroupDMin"][i],
                     definition=str(
                         self.instrumentConfig.calibrationDirectory
                         / "Powder"
