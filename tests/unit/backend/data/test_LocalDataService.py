@@ -373,7 +373,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         pvFileMock.get.side_effect = [[1], [2], [1.1], [1.2], [1], [1], [2]]
         localDataService._readPVFile.return_value = pvFileMock
         testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
-        testCalibrationData.instrumentState.pixelGroupingInstrumentParameters = None
+        testCalibrationData.instrumentState.pixelGroup = None
         localDataService.readInstrumentConfig = mock.Mock()
         localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
         localDataService.writeCalibrationState = mock.Mock()

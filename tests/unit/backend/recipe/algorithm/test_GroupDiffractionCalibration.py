@@ -11,6 +11,7 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 
 # the algorithm to test
@@ -37,11 +38,6 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
 
         fakeFocusGroup = FocusGroup(
             name="natural",
-            nHst=4,
-            FWHM=[5, 5, 5, 5],
-            dMin=[0.02, 0.05, 0.02, 0.03],
-            dMax=[0.36, 0.41, 0.65, 0.485],
-            dBin=[0.00086, 0.00096, 0.00130, 0.00117],
             definition=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
         )
         peakLists: Dict[int, List[Any]] = {
@@ -70,6 +66,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
             groupedPeakLists=[GroupPeakList(groupID=key, peaks=peakLists[key], maxfwhm=5) for key in peakLists.keys()],
             calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
+            pixelGroup=fakeInstrumentState.pixelGroup,
         )
 
         cls.fakeRawData = f"_test_groupcal_{cls.fakeRunNumber}"
@@ -170,12 +167,12 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         # now run the algorithm
         algo = ThisAlgo()
         algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
-        algo.setProperty("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
-        algo.setProperty("PreviousCalibrationTable", self.difcWS)
+        algo.setPropertyValue("Ingredients", self.fakeIngredients.json())
+        algo.setPropertyValue("InputWorkspace", self.fakeRawData)
+        algo.setPropertyValue("GroupingWorkspace", self.fakeGroupingWorkspace)
+        algo.setPropertyValue("FinalCalibrationTable", "_final_DIFc_table")
+        algo.setPropertyValue("OutputWorkspace", f"_test_out_{self.fakeRunNumber}")
+        algo.setPropertyValue("PreviousCalibrationTable", self.difcWS)
         assert algo.execute()
 
     # TODO more and more better tests of behavior

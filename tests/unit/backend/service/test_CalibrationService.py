@@ -1,7 +1,7 @@
 import unittest
 import unittest.mock as mock
 from typing import List
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -33,6 +33,7 @@ with mock.patch.dict(
     from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples  # noqa: E402
     from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry  # noqa: E402
     from snapred.backend.dao.state.CalibrantSample.Material import Material  # noqa: E402
+    from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters  # noqa: E402
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,  # noqa: E402
@@ -71,10 +72,7 @@ with mock.patch.dict(
     # test calculate pixel grouping parameters
     # patch datafactoryservice, pixelgroupingparameterscalculationrecipe, pixelgroupingingredients, dataExportService
     @mock.patch("snapred.backend.service.CalibrationService.DataFactoryService", return_value=mock.Mock())
-    @mock.patch(
-        "snapred.backend.service.CalibrationService.PixelGroupingParametersCalculationRecipe",
-        return_value=MagicMock(executeRecipe=MagicMock(side_effect=[{"parameters": "mock_parameters"}])),
-    )
+    @mock.patch("snapred.backend.service.CalibrationService.PixelGroupingParametersCalculationRecipe")
     @mock.patch("snapred.backend.service.CalibrationService.PixelGroupingIngredients")
     @mock.patch("snapred.backend.service.CalibrationService.DataExportService")
     def test_calculatePixelGroupingParameters(
@@ -299,6 +297,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockParseRawAs.return_value = [MagicMock()]
         mockDetectorPeakPredictorRecipe().executeRecipe.return_value = [MagicMock()]
         mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
+        mockPixelGroupingParameter = PixelGroupingParameters.parse_obj(
+            {
+                "groupID": 1,
+                "twoTheta": 3.141592,
+                "dResolution": {"minimum": 1, "maximum": 2},
+                "dRelativeResolution": 0.01,
+            }
+        )
+        mockPixelGroupingParameters = [mockPixelGroupingParameter]
+        PixelGroup(pixelGroupingParameters=mockPixelGroupingParameters)
 
         mockFetchGroceriesRecipe().executeRecipe.return_value = {
             "workspaces": [mock.Mock(), mock.Mock()],
@@ -306,6 +314,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         mockFocusGroupInstrumentState = (MagicMock(), MagicMock())
         self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=mockFocusGroupInstrumentState)
+        mockFocusGroupInstrumentState[1].pixelGroupingInstrumentParameters = mockPixelGroupingParameters
 
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(
@@ -331,6 +340,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             groupedPeakLists=mockParseRawAs.return_value,
             calPath="~/tmp/",
             convergenceThreshold=request.convergenceThreshold,
+            pixelGroup=ANY,  # TODO
         )
         assert mockGroceryListItem.call_count == 2
         mockGroceries = mockFetchGroceriesRecipe().executeRecipe.return_value["workspaces"]

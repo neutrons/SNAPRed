@@ -110,6 +110,12 @@ Glossary
         A single collection of diffraction data that was collected at a specific point in time.
         It is identified by a unique ID, and is associated with a specific Instrument State and Calibration.
 
+    Run Number
+        The unique integer identifier of a Run.
+
+    Run ID
+        a Run Number, they are synonymous.
+
     Service Component
         The architectural Component that provides the individual units of backend fuctionality that a user may interact with.
         Examples include: Data Reduction, Calibration Quality Assessment, Instrument State Initialization, etc.

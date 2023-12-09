@@ -107,11 +107,6 @@
         "focusGroups": [
           {
             "name": "Column",
-            "FWHM": [0],
-            "nHst": 1,
-            "dBin": [0],
-            "dMax": [1],
-            "dMin": [0],
             "definition": "nope"
           }
         ],
@@ -124,60 +119,62 @@
       },
       "overrides": null
     },
-    "pixelGroupingParameters": [
-      {
-        "groupID": 0,
-        "twoTheta": 2.1108948177427838,
-        "dResolution": {
-          "minimum": 0.40224298673776404,
-          "maximum": 2.0112149336888203
+    "pixelGroup": {
+      "pixelGroupingParameters": [
+        {
+          "groupID": 1,
+          "twoTheta": 2.1108948177427838,
+          "dResolution": {
+            "minimum": 0.40224298673776404,
+            "maximum": 2.0112149336888203
+          },
+          "dRelativeResolution": 0.002771822370612031
         },
-        "dRelativeResolution": 0.002771822370612031
-      },
-      {
-        "groupID": 1,
-        "twoTheta": 1.82310673131693,
-        "dResolution": {
-          "minimum": 0.44278229953817677,
-          "maximum": 2.213911497690884
+        {
+          "groupID": 2,
+          "twoTheta": 1.82310673131693,
+          "dResolution": {
+            "minimum": 0.44278229953817677,
+            "maximum": 2.213911497690884
+          },
+          "dRelativeResolution": 0.003234525153614593
         },
-        "dRelativeResolution": 0.003234525153614593
-      },
-      {
-        "groupID": 2,
-        "twoTheta": 1.5352228379083572,
-        "dResolution": {
-          "minimum": 0.5040188478793922,
-          "maximum": 2.5200942393969608
+        {
+          "groupID": 3,
+          "twoTheta": 1.5352228379083572,
+          "dResolution": {
+            "minimum": 0.5040188478793922,
+            "maximum": 2.5200942393969608
+          },
+          "dRelativeResolution": 0.004014748859873182
         },
-        "dRelativeResolution": 0.004014748859873182
-      },
-      {
-        "groupID": 3,
-        "twoTheta": 1.440276389170165,
-        "dResolution": {
-          "minimum": 0.530714277849788,
-          "maximum": 2.6535713892489396
+        {
+          "groupID": 4,
+          "twoTheta": 1.440276389170165,
+          "dResolution": {
+            "minimum": 0.530714277849788,
+            "maximum": 2.6535713892489396
+          },
+          "dRelativeResolution": 0.004309856397320412
         },
-        "dRelativeResolution": 0.004309856397320412
-      },
-      {
-        "groupID": 4,
-        "twoTheta": 1.1543988461042238,
-        "dResolution": {
-          "minimum": 0.6414024711539658,
-          "maximum": 3.207012355769829
+        {
+          "groupID": 5,
+          "twoTheta": 1.1543988461042238,
+          "dResolution": {
+            "minimum": 0.6414024711539658,
+            "maximum": 3.207012355769829
+          },
+          "dRelativeResolution": 0.005408489642872038
         },
-        "dRelativeResolution": 0.005408489642872038
-      },
-      {
-        "groupID": 5,
-        "twoTheta": 0.8690010092470938,
-        "dResolution": {
-          "minimum": 0.831438096217031,
-          "maximum": 4.157190481085156
-        },
-        "dRelativeResolution": 0.007548513084996265
-      }
-    ]
+        {
+          "groupID": 6,
+          "twoTheta": 0.8690010092470938,
+          "dResolution": {
+            "minimum": 0.831438096217031,
+            "maximum": 4.157190481085156
+          },
+          "dRelativeResolution": 0.007548513084996265
+        }
+      ]
   }
+}

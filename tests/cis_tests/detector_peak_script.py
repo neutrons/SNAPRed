@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
@@ -45,7 +46,7 @@ calPath = instrumentState.instrumentConfig.calibrationDirectory
 
 calibrationService = CalibrationService()
 pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
-instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters[0]
+instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
 
 crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
 
@@ -133,7 +134,7 @@ for group in peakList:
 for i,group in enumerate(peakList):
     tableName = f'peakProperties{i+1}_after'
     fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
-    ax.plot(mtd[groceries[0], wkspIndex=i)# plot the initial guess with black line
+    ax.plot(mtd[groceries[0]], wkspIndex=i) # plot the initial guess with black line
     ax.vlines(peakCenter[i], ymin=1e6, ymax=1e8, color='red')
     ax.vlines(peakMin[i], ymin=1e6, ymax=1e8, color='orange')
     ax.vlines(peakMax[i], ymin=1e6, ymax=1e8, color='orange')
