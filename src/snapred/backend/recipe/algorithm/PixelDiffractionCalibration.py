@@ -12,6 +12,7 @@ from mantid.api import (
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -58,9 +59,12 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.runNumber: str = ingredients.runConfig.runNumber
 
         # from grouping parameters, read the overall min/max d-spacings
-        self.overallDMin: float = min(ingredients.focusGroup.dMin)
-        self.overallDMax: float = max(ingredients.focusGroup.dMax)
-        self.dBin: float = max([abs(d) for d in ingredients.focusGroup.dBin])
+        dMin = ingredients.pixelGroup.dMin()
+        dMax = ingredients.pixelGroup.dMax()
+        dBin = ingredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        self.overallDMin: float = min(dMin)
+        self.overallDMax: float = max(dMax)
+        self.dBin: float = max([abs(d) for d in dBin])
         self.dSpaceParams = (self.overallDMin, self.dBin, self.overallDMax)
 
         # from the grouped peak lists, find the maximum shift in d-spacing

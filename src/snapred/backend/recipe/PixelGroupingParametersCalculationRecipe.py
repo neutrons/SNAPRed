@@ -1,7 +1,8 @@
 import json
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from mantid.api import AlgorithmManager
+from pydantic import parse_raw_as
 
 from snapred.backend.dao.ingredients import PixelGroupingIngredients
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
@@ -34,10 +35,10 @@ class PixelGroupingParametersCalculationRecipe:
         try:
             data["result"] = algo.execute()
             # parse the algorithm output and create a list of calculated PixelGroupingParameters
-            pixelGroupingParams_json = json.loads(algo.getProperty("OutputParameters").value)
-            pixelGroupingParams = []
-            for item in pixelGroupingParams_json:
-                pixelGroupingParams.append(PixelGroupingParameters.parse_raw(item))
+            pixelGroupingParams = parse_raw_as(
+                List[PixelGroupingParameters],
+                algo.getProperty("OutputParameters").value,
+            )
             data["parameters"] = pixelGroupingParams
         except RuntimeError as e:
             errorString = str(e)

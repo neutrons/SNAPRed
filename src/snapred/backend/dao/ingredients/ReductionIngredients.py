@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state import PixelGroupingParameters
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 
 class ReductionIngredients(BaseModel):
@@ -12,7 +12,7 @@ class ReductionIngredients(BaseModel):
 
     runConfig: RunConfig
     reductionState: ReductionState
-    pixelGroupingParameters: List[PixelGroupingParameters]
+    pixelGroup: PixelGroup
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

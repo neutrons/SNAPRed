@@ -16,6 +16,7 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.redantic import list_to_raw
 
 
 class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
@@ -93,10 +94,10 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
         # calculate parameters for all pixel groupings and store them in json format
-        allGroupingParams_json = []
+        allGroupingParams = []
         grouping_ws = self.mantidSnapper.mtd[self.grouping_ws_name]
 
-        resws = mtd[self.resolution_ws_name]
+        resws = self.mantidSnapper.mtd[self.resolution_ws_name]
 
         groupIDs = grouping_ws.getGroupIDs()
         grouping_detInfo = grouping_ws.detectorInfo()
@@ -124,16 +125,16 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             dMax = 3.9561e-3 * (1 / (2 * math.sin(groupMin2Theta / 2))) * self.tofMax / self.L
             delta_d_over_d = resws.readY(groupIndex)[0]
 
-            groupingParams_json = PixelGroupingParameters(
-                groupID=groupID,
-                twoTheta=groupAverage2Theta,
-                dResolution=Limit(minimum=dMin, maximum=dMax),
-                dRelativeResolution=delta_d_over_d,
-            ).json()
-            allGroupingParams_json.append(groupingParams_json)
+            allGroupingParams.append(
+                PixelGroupingParameters(
+                    groupID=groupID,
+                    twoTheta=groupAverage2Theta,
+                    dResolution=Limit(minimum=dMin, maximum=dMax),
+                    dRelativeResolution=delta_d_over_d,
+                )
+            )
 
-        outputParams = json.dumps(allGroupingParams_json)
-        self.setProperty("OutputParameters", outputParams)
+        self.setProperty("OutputParameters", list_to_raw(allGroupingParams))
         self.mantidSnapper.WashDishes(
             "Cleaning up grouping, grouped, resolution workspace.",
             WorkspaceList=[

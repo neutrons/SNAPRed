@@ -4,9 +4,11 @@ import unittest.mock as mock
 import pytest
 
 with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
+    from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
     from snapred.backend.dao.Limit import Limit
     from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
+    from snapred.meta.redantic import list_to_raw
 
     mockAlgo = mock.Mock()
     MockAlgorithmManager.create.return_value = mockAlgo
@@ -17,8 +19,8 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         params = PixelGroupingParameters(
             groupID=1, twoTheta=3.14, dResolution=Limit(minimum=0.1, maximum=1.0), dRelativeResolution=0.01
         )
-        mock_output_val = [params.json()]
-        mockAlgo.getProperty("OutputParameters").value = json.dumps(mock_output_val)
+        mock_output_val = [params]
+        mockAlgo.getProperty("OutputParameters").value = list_to_raw(mock_output_val)
 
         # execute recipe with mocked input
         recipe = PixelGroupingParametersCalculationRecipe()
@@ -30,7 +32,7 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         assert data["result"] is not None
         assert data["result"] == "passed"
         assert isinstance(data["parameters"], list)
-        assert data["parameters"][0].json() == mock_output_val[0]
+        assert data["parameters"][0] == mock_output_val[0]
 
     def test_execute_unsuccessful():
         mockAlgo.execute.side_effect = RuntimeError("passed")

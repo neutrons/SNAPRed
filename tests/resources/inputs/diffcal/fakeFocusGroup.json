@@ -1,29 +1,4 @@
 {
   "name": "Column",
-  "FWHM": [
-    5,
-    5,
-    5,
-    5
-  ],
-  "nHst": 4,
-  "dBin": [
-    -0.00086,
-    -0.00096,
-    -0.0013,
-    -0.00117
-  ],
-  "dMax": [
-    0.35,
-    0.50,
-    0.30,
-    0.40
-  ],
-  "dMin": [
-    0.05,
-    0.10,
-    0.05,
-    0.10
-  ],
   "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
 }
