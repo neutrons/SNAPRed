@@ -94,18 +94,24 @@ class CalibrationService(Service):
     def _generateFocusGroupAndInstrumentState(
         self,
         runNumber,
-        definition,
+        focusGroupName,
+        useLiteMode,
+        numberBinsAcrossPeakWidth,
         calibration=None,
     ):
         if calibration is None:
             calibration = self.dataFactoryService.getCalibrationState(runNumber)
         instrumentState = calibration.instrumentState
-        pixelGroupingParams = self._calculatePixelGroupingParameters(instrumentState, definition)["parameters"]
-        instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParams)
+        focusGroupDefinition = self._magicFunctionToConstructGroupingFilename(focusGroupName)
+        pixelGroupingParams = self._calculatePixelGroupingParameters(instrumentState, focusGroupName, useLiteMode)["parameters"]
+        instrumentState.pixelGroup = PixelGroup(
+            pixelGroupingParameters=pixelGroupingParams,
+            numberBinsAcrossPeakWidth=numberBinsAcrossPeakWidth,
+        )
         return (
             FocusGroup(
-                name=definition.split("/")[-1],
-                definition=definition,
+                name=focusGroupName,
+                definition=focusGroupDefinition,
             ),
             instrumentState,
         )
@@ -127,7 +133,9 @@ class CalibrationService(Service):
         # based on my convos it should be a correct translation
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             request.runNumber,
-            request.focusGroupPath,
+            request.focusGroupName,
+            request.useLiteMode,
+            request.nBinsAcrossPeakWidth,
         )
         # 4. grouped peak list
         # need to calculate these using DetectorPeakPredictor
@@ -241,13 +249,29 @@ class CalibrationService(Service):
         else:
             return False
 
-    def _calculatePixelGroupingParameters(self, instrumentState, groupingFile: str):  # noqa: ARG002
+    def _instrumentFilenameForResolution(self, useLiteMode: bool) -> str:
+        if useLiteMode:
+            instrumentFilename = Config["instrument.native.definition.file"]
+        else:
+            instrumentFilename = Config["instrument.lite.definition.file"]
+        return instrumentFilename
+
+    def _calculatePixelGroupingParameters(self, instrumentState, focusGroupName: str, useLiteMode: bool):  # noqa: ARG002
         groupingIngredients = PixelGroupingIngredients(
             instrumentState=instrumentState,
+        )        
+        # create the grocery list and fetch the groceries
+        groceryItem = GroceryListItem(
+            workspaceType="grouping",
+            groupingScheme=focusGroupName,
+            useLiteMode=useLiteMode,
+            instrumentPropertySource="InstrumentFilename",
+            instrumentSource=self._instrumentFilenameForResolution(useLiteMode),
         )
-        Config["instrument.lite.definition.file"],
+        groupingWorkspace = FetchGroceriesRecipe().fetchGroupingDefinition(groceryItem)
+        # now execute the recipe
         try:
-            data = PixelGroupingParametersCalculationRecipe().executeRecipe(groupingIngredients)
+            data = PixelGroupingParametersCalculationRecipe().executeRecipe(groupingIngredients, groupingWorkspace)
         except:
             raise
         return data
@@ -297,7 +321,10 @@ class CalibrationService(Service):
         focussedData = request.workspace
         calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            run.runNumber, request.focusGroupPath, request.nBinsAcrossPeakWidth, calibration
+            run.runNumber, 
+            request.focusGroupName,
+            request.useLiteMode, 
+            calibration,
         )
         pixelGroupingParam = self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition)[
             "parameters"

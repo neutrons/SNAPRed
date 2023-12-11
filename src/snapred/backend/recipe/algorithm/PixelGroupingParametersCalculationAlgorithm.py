@@ -40,9 +40,6 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             defaultValue="",
             direction=Direction.Output,
         )
-
-        # self.declareProperty("InstrumentDefinitionFile", defaultValue="", direction=Direction.Input)
-
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
         return
@@ -161,7 +158,9 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                     LogType="Number Series",
                 )
 
-        # # update the instrument based on logs
+        # NOTE after adding the logs, it is necessary to update the instrument to 
+        #  factor in these new parameters, or else calculations will be inconsistent.
+        #  This is done with a call to `ws->populateInstrumentParameters()` from within mantid.
         # TODO use this sample log, after Mantid PR 36524 has gone into main
         # https://github.com/mantidproject/mantid/pull/36524
         # self.mantidSnapper.AddSampleLog(
@@ -170,7 +169,9 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         #     LogName="update_instrument",
         #     UpdateInstrumentParameters=True,
         # )
-        # TODO remove the below after uncommenting above
+        # TODO remove the below after uncommenting above.
+        # NOTE LoadParameterFile is the only mantid algorithm (2023/12/10) that will make
+        #  the needed call to `ws->populateInstrumentParemeters()` without loading a file.
         # this is the minimal XML file needed to make the below algorithm call work
         minimalXML = "<parameter-file>></parameter-file>"
         self.mantidSnapper.LoadParameterFile(
