@@ -60,7 +60,6 @@ class _SnapRedLogger:
         return logger
 
     def getLogger(self, name):
-        self._loggers.append(name)
         logger = logging.getLogger(name)
         logger.setLevel(self._level)
         self._setFormatter(logger)
