@@ -2,6 +2,7 @@
 # Date : Time : Level : Module.Class : Machine/Node : Message
 import logging
 import socket
+import sys
 
 from mantid.utils.logging import log_to_python
 
@@ -49,16 +50,20 @@ class _SnapRedLogger:
         log_to_python()
         self.getLogger("Mantid")
 
-    def getLogger(self, name):
-        logger = logging.getLogger(name)
-        logger.setLevel(self._level)
-        ch = logging.StreamHandler()
+    def _setFormatter(self, logger):
+        ch = logging.StreamHandler(sys.stdout)
 
-        # create formatter and add it to the handlers
+        # create formatter and add it to the handler
         formatter = CustomFormatter()
         ch.setFormatter(formatter)
         logger.addHandler(ch)
+        return logger
 
+    def getLogger(self, name):
+        self._loggers.append(name)
+        logger = logging.getLogger(name)
+        logger.setLevel(self._level)
+        self._setFormatter(logger)
         return logger
 
 
