@@ -356,22 +356,17 @@ class CalibrationService(Service):
         calibrantSample = self.dataFactoryService.getCalibrantSample(request.samplePath)
         sampleFilePath = self.dataFactoryService.getCifFilePath((request.samplePath).split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(sampleFilePath)["crystalInfo"]
-        runConfigs = []
-        runConfigs.append(self.dataFactoryService.getRunConfig(request.runNumber))
-        runConfigs.append(self.dataFactoryService.getRunConfig(request.backgroundRunNumber))
 
-        calibration = self.dataFactoryService.getCalibrationState(request.runNumber)
-        instrumentState = calibration.instrumentState
-
-        PGP = self.calculatePixelGroupingParameters(runConfigs, groupingFile, export=False)
-        pixelGroupingParameters = PGP["parameters"]
-        instrumentState.pixelGroupingInstrumentParameters = pixelGroupingParameters
+        focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
+            request.runNumber,
+            groupingFile,
+        )
 
         reductionIngredients = self.dataFactoryService.getReductionIngredients(
-            request.runNumber, pixelGroupingParameters
+            request.runNumber, instrumentState.pixelGroup
         )
         backgroundReductionIngredients = self.dataFactoryService.getReductionIngredients(
-            request.backgroundRunNumber, pixelGroupingParameters
+            request.backgroundRunNumber, instrumentState.pixelGroup
         )
 
         smoothDataIngredients = SmoothDataExcludingPeaksIngredients(

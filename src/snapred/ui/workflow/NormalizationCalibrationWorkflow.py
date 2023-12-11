@@ -60,7 +60,6 @@ class NormalizationCalibrationWorkflow:
         self.lastSmoothingParameter = None
 
         self._specifyNormalizationView.signalValueChanged.connect(self.onNormalizationValueChange)
-        self._specifyNormalizationView.signalGroupingUpdate.connect(self.updateLastGroupingFile)
 
         self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
             "Saving Normalization Calibration",
@@ -121,13 +120,16 @@ class NormalizationCalibrationWorkflow:
         request = SNAPRequest(path="calibration/normalization", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
+
+        focusWorkspace = self.responses[-1].data["outputWorkspace"]
+        smoothWorkspace = self.responses[-1].data["smoothedOutput"]
+
+        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
         return response
 
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
         focusWorkspace = self.responses[-1].data["outputWorkspace"]
         smoothWorkspace = self.responses[-1].data["smoothedOutput"]
-
-        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
         payload = SpecifyNormalizationRequest(
             runNumber=self.runNumber,
@@ -161,12 +163,12 @@ class NormalizationCalibrationWorkflow:
         self.responses.append(response)
         return response
 
-    def callNormalizationCalibration(self, groupingIndex, smoothingParameter):
+    def callNormalizationCalibration(self, groupingFile, smoothingParameter):
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
             samplePath=self.samplePath,
-            groupingPath=self.groupingFiles[groupingIndex],
+            groupingPath=groupingFile,
             smoothingParameter=smoothingParameter,
         )
 
@@ -180,18 +182,22 @@ class NormalizationCalibrationWorkflow:
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
     def onNormalizationValueChange(self, index, smoothingValue):  # noqa: ARG002
-        if self.responses:
-            if "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
-                focusWorkspace = self.responses[-1].data["outputWorkspace"]
-                smoothWorkspace = self.responses[-1].data["smoothedOutput"]
-                self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
-            else:
-                raise Exception("Expected data not found in the last response")
-        else:
-            pass
+        groupingFile = self.groupingFiles[index]
 
-    def updateLastGroupingFile(self, groupingIndex):
-        self.lastGroupingFile = self.groupingFiles[groupingIndex]
+        self.lastGroupingFile = groupingFile
+        self.lastSmoothingParameter = smoothingValue
+
+        self.callNormalizationCalibration(groupingFile, smoothingValue)
+
+        # if self.responses:
+        #     if "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
+        #         focusWorkspace = self.responses[-1].data["outputWorkspace"]
+        #         smoothWorkspace = self.responses[-1].data["smoothedOutput"]
+        #         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+        #     else:
+        #         raise Exception("Expected data not found in the last response")
+        # else:
+        #     pass
 
     @property
     def widget(self):

@@ -53,13 +53,9 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
         self.calibrantSample = ingredients.calibrantSample
         self.smoothDataIngredients = ingredients.smoothDataIngredients
 
-        pixelGroupingParam = self.reductionIngredients.pixelGroupingParameters
-        self.dResolutionMin = [pgp.dResolution.minimum for pgp in pixelGroupingParam]
-        self.dResolutionMax = [pgp.dResolution.maximum for pgp in pixelGroupingParam]
-        instrumentConfig = self.reductionIngredients.reductionState.instrumentConfig
-        self.dRelativeResolution = [
-            -abs(pgp.dRelativeResolution / instrumentConfig.NBins) for pgp in pixelGroupingParam
-        ]
+        self.dMin = ingredients.reductionIngredients.pixelGroup.dMin()
+        self.dMax = ingredients.reductionIngredients.pixelGroup.dMax()
+        self.dRelativeResolution = ingredients.reductionIngredients.pixelGroup.dRelativeResolution
         pass
 
     def unbagGroceries(self):
@@ -81,10 +77,10 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
 
         # TODO these validation checks should be redundant now with the extra validator
         reductionIngredientJSON = json.loads(self.getPropertyValue("Ingredients"))["reductionIngredients"]
-        if reductionIngredientJSON.get("pixelGroupingParameters") is None:
-            errors["Ingredients"] = "Pixel grouping parameters must be specified"
-        elif len(reductionIngredientJSON.get("pixelGroupingParameters")) == 0:
-            errors["Ingredients"] = "Pixel grouping parameters must have at least one set of parameters"
+        if reductionIngredientJSON.get("pixelGroup") is None:
+            errors["Ingredients"] = "Pixel group must be specified"
+        elif len(reductionIngredientJSON.get("pixelGroup")) == 0:
+            errors["Ingredients"] = "Pixel group must have at least one set of parameters"
 
         return errors
 
@@ -134,8 +130,8 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
         self.mantidSnapper.RebinRagged(
             "Rebinning ragged bins...",
             InputWorkspace=self.rawVanadiumWSName,
-            XMin=self.dResolutionMin,
-            XMax=self.dResolutionMax,
+            XMin=self.dMin,
+            XMax=self.dMax,
             Delta=self.dRelativeResolution,
             OutputWorkspace=self.rawVanadiumWSName,
             PreserveEvents=False,

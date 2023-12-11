@@ -50,8 +50,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.groupingDropDown = QComboBox()
         self.groupingDropDown.setEnabled(True)
         self.groupingDropDown.addItems(groups)
-        self.groupingDropDown.model().item(0).setEnabled(False)
-        self.signalGroupingUpdate.connect(self._updateGrouping)
         self.groupingDropDown.currentIndexChanged.connect(self.onValueChanged)
 
         self.smoothingSlider = QSlider(Qt.Horizontal)
@@ -65,9 +63,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout.addWidget(self.canvas, 0, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 1, 0)
         self.layout.addWidget(self.fieldBackgroundRunNumber, 1, 1)
-        self.layout.addWidget(LabeledField("Smoothing Parameter:", self.smoothingSlider, self), 1, 2)
-        self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 1, 3)
-        self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 1, 4)
+        self.layout.addWidget(LabeledField("Smoothing Parameter:", self.smoothingSlider, self), 2, 0)
+        self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 3, 0)
+        self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 3, 1)
 
         self.layout.setRowStretch(0, 3)
         self.layout.setRowStretch(1, 1)
@@ -89,17 +87,11 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.groupingDropDown.setCurrentIndex(groupingIndex)
         self.smoothingSlider.setValue(int(smoothingParameter * 100))
 
-    def _updateGrouping(self):
-        self.signalGroupingUpdate.emit(self.groupingDropDown.currentIndex())
-
     # def updateSample(self, sampleIndex):
     #     self.signalSampleUpdate.emit(sampleIndex)
 
     # def updateGrouping(self, groupingIndex):
     #     self.signalGroupingUpdate.emit(groupingIndex)
-
-    # def _updateSmoothingParameter(self, smoothingParameter):
-    #     self.smoothingSlider.setValue(smoothingParameter * 100)
 
     # def updateSmoothingParameter(self, smoothingParameter):
     #     self.signalUpdateSmoothingParameter.emit(smoothingParameter)
@@ -137,18 +129,25 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self._updatePlots(numGraphs)
 
     def _updatePlots(self, numGraphs):
+        self.figure.clear()
+        self.subplots = []
+
+        for i in range(numGraphs):
+            ax = self.figure.add_subplot(1, numGraphs, i + 1)
+            self.subplots.append(ax)
+
+        focusedWorkspace = mtd[self.focusWorkspace]
+        smoothedWorkspace = mtd[self.smoothedWorkspace]
         for i, ax in enumerate(self.subplots):
-            groupIndex = i // numGraphs
+            if i < focusedWorkspace.getNumberHistograms():
+                focusedData = focusedWorkspace.readY(i)
+                smoothedData = smoothedWorkspace.readY(i)
 
-            focusedWorkspace = mtd[self.focusWorkspace]
-            smoothedWorkspace = mtd[self.smoothedWorkspace]
+                ax.plot(focusedData, label="Focused Data")
+                ax.plot(smoothedData, label="Smoothed Data", linestyle="--")
+                ax.legend()
+                ax.set_title(f"Group ID: {i + 1}")
 
-            focusedData = focusedWorkspace.readY(groupIndex)
-            smoothedData = smoothedWorkspace.readY(groupIndex)
-
-            ax.plot(focusedData, label="Focused Data")
-            ax.plot(smoothedData, label="Smoothed Data", linestyle="--")
-
-            ax.legend()
+        self.figure.tight_layout()
 
         self.canvas.draw()
