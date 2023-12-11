@@ -12,6 +12,7 @@ from mantid.kernel import Direction
 from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import (
     NormalizationCalibrationIngredients as Ingredients,
 )
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo  # noqa F401
@@ -55,7 +56,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
 
         self.dMin = ingredients.reductionIngredients.pixelGroup.dMin()
         self.dMax = ingredients.reductionIngredients.pixelGroup.dMax()
-        self.dRelativeResolution = ingredients.reductionIngredients.pixelGroup.dRelativeResolution
+        self.dBin = ingredients.reductionIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
         pass
 
     def unbagGroceries(self):
@@ -100,13 +101,13 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             CalibrantSample=self.calibrantSample.json(),
             OutputWorkspace=self.rawVanadiumWSName,
         )
+
         self.mantidSnapper.MakeDirtyDish(
             "Save copy of raw vanadium correction for CIS inspection",
             Inputworkspace=self.rawVanadiumWSName,
             OutputWorkspace=self.rawVanadiumWSName + "_corr",
         )
 
-        # now convert to d-spacing and diffraction focus and rebin ragged
         self.mantidSnapper.ConvertUnits(
             "Converting to Units of dSpacing...",
             InputWorkspace=self.rawVanadiumWSName,
@@ -115,6 +116,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             OutputWorkspace=self.rawVanadiumWSName,
             ConvertFromPointData=True,
         )
+
         self.mantidSnapper.DiffractionFocussing(
             "Performing Diffraction Focusing ...",
             InputWorkspace=self.rawVanadiumWSName,
@@ -122,17 +124,19 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             OutputWorkspace=self.rawVanadiumWSName,
             PreserveEvents=True,
         )
+
         self.mantidSnapper.MakeDirtyDish(
             "Save a copy of diffraction focused raw vanadium before ragged rebin",
             InputWorkspace=self.rawVanadiumWSName,
             OutputWorkspace=self.rawVanadiumWSName + "_beforeRebin",
         )
+
         self.mantidSnapper.RebinRagged(
             "Rebinning ragged bins...",
             InputWorkspace=self.rawVanadiumWSName,
             XMin=self.dMin,
             XMax=self.dMax,
-            Delta=self.dRelativeResolution,
+            Delta=self.dBin,
             OutputWorkspace=self.rawVanadiumWSName,
             PreserveEvents=False,
         )
@@ -143,6 +147,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             InputWorkspace=self.rawVanadiumWSName,
             OutputWorkspace=self.smoothRawVanadiumWSName,
         )
+
         self.mantidSnapper.SmoothDataExcludingPeaksAlgo(
             "Fit and Smooth Peaks...",
             InputWorkspace=self.smoothRawVanadiumWSName,

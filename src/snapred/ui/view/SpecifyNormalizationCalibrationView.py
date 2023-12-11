@@ -1,10 +1,8 @@
-import matplotlib
 import matplotlib.pyplot as plt
-import numpy as np
 from mantid.simpleapi import mtd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QSlider, QWidget
+from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QSlider, QWidget
 
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
@@ -60,10 +58,17 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.smoothingSlider.setSingleStep(1)
         self.smoothingSlider.valueChanged.connect(self.onValueChanged)
 
+        # Create a layout for the smoothing parameter label and slider
+        smoothingLayout = QHBoxLayout()
+        self.smoothingValueLabel = QLabel("0.00")
+        self.smoothingValueLabel.setAlignment(Qt.AlignCenter)
+        smoothingLayout.addWidget(self.smoothingSlider)
+        smoothingLayout.addWidget(self.smoothingValueLabel)
+
         self.layout.addWidget(self.canvas, 0, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 1, 0)
         self.layout.addWidget(self.fieldBackgroundRunNumber, 1, 1)
-        self.layout.addWidget(LabeledField("Smoothing Parameter:", self.smoothingSlider, self), 2, 0)
+        self.layout.addLayout(smoothingLayout, 2, 0)
         self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 3, 0)
         self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 3, 1)
 
@@ -87,18 +92,10 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.groupingDropDown.setCurrentIndex(groupingIndex)
         self.smoothingSlider.setValue(int(smoothingParameter * 100))
 
-    # def updateSample(self, sampleIndex):
-    #     self.signalSampleUpdate.emit(sampleIndex)
-
-    # def updateGrouping(self, groupingIndex):
-    #     self.signalGroupingUpdate.emit(groupingIndex)
-
-    # def updateSmoothingParameter(self, smoothingParameter):
-    #     self.signalUpdateSmoothingParameter.emit(smoothingParameter)
-
     def onValueChanged(self):
         index = self.groupingDropDown.currentIndex()
         smoothingValue = (self.smoothingSlider.value()) / 100.0
+        self.smoothingValueLabel.setText("{:.2f}".format(smoothingValue))
         self.signalValueChanged.emit(index, smoothingValue)
 
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):
@@ -147,6 +144,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
                 ax.plot(smoothedData, label="Smoothed Data", linestyle="--")
                 ax.legend()
                 ax.set_title(f"Group ID: {i + 1}")
+
+                ax.set_xlabel("d-Spacing (Å)")
+                ax.set_ylabel("Intensity")
 
         self.figure.tight_layout()
 

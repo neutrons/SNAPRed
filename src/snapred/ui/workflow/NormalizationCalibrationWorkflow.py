@@ -23,6 +23,7 @@ class NormalizationCalibrationWorkflow:
     def __init__(self, jsonForm, parent=None):
         self.requests = []
         self.responses = []
+        self.initializationComplete = False
         self.interfaceController = InterfaceController()
         request = SNAPRequest(path="api/parameters", payload="calibration/normalizationAssessment")
         self.assessmentSchema = self.interfaceController.executeRequest(request).data
@@ -94,13 +95,15 @@ class NormalizationCalibrationWorkflow:
         self.runNumber = view.getFieldText("runNumber")
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
         self.sampleIndex = (view.sampleDropDown.currentIndex()) - 1
-        groupingIndex = (view.groupingFileDropDown.currentIndex()) - 1
-        smoothingParameter = float(view.getFieldText("smoothingParameter"))
+        self.initGroupingIndex = (view.groupingFileDropDown.currentIndex()) - 1
+        self.initSmoothingParameter = float(view.getFieldText("smoothingParameter"))
         self.samplePath = view.sampleDropDown.currentText()
         self.groupingPath = view.groupingFileDropDown.currentText()
 
         self._specifyNormalizationView.updateFields(
-            sampleIndex=self.sampleIndex, groupingIndex=groupingIndex, smoothingParameter=smoothingParameter
+            sampleIndex=self.sampleIndex,
+            groupingIndex=self.initGroupingIndex,
+            smoothingParameter=self.initSmoothingParameter,
         )
 
         self._specifyNormalizationView.updateRunNumber(self.runNumber)
@@ -113,8 +116,8 @@ class NormalizationCalibrationWorkflow:
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
             samplePath=str(self.samplePaths[self.sampleIndex]),
-            groupingPath=str(self.groupingFiles[groupingIndex]),
-            smoothingParameter=smoothingParameter,
+            groupingPath=str(self.groupingFiles[self.initGroupingIndex]),
+            smoothingParameter=self.initSmoothingParameter,
         )
 
         request = SNAPRequest(path="calibration/normalization", payload=payload.json())
@@ -125,20 +128,27 @@ class NormalizationCalibrationWorkflow:
         smoothWorkspace = self.responses[-1].data["smoothedOutput"]
 
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+        self.initializationComplete = True
         return response
 
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
-        focusWorkspace = self.responses[-1].data["outputWorkspace"]
-        smoothWorkspace = self.responses[-1].data["smoothedOutput"]
+        if self.lastGroupingFile is not None and self.lastSmoothingParameter is not None:
+            payload = SpecifyNormalizationRequest(
+                runNumber=self.runNumber,
+                backgroundRunNumber=self.backgroundRunNumber,
+                smoothingParameter=self.lastSmoothingParameter,
+                samplePath=str(self.samplePaths[self.sampleIndex]),
+                focusGroupPath=str(self.lastGroupingFile),
+            )
+        else:
+            payload = SpecifyNormalizationRequest(
+                runNumber=self.runNumber,
+                backgroundRunNumber=self.backgroundRunNumber,
+                smoothingParameter=self.initSmoothingParameter,
+                samplePath=str(self.samplePaths[self.sampleIndex]),
+                focusGroupPath=str(self.groupingFiles[self.initGroupingIndex]),
+            )
 
-        payload = SpecifyNormalizationRequest(
-            runNumber=self.runNumber,
-            backgroundRunNumber=self.backgroundRunNumber,
-            smoothingParameter=self.lastSmoothingParameter,
-            samplePath=str(self.samplePaths[self.sampleIndex]),
-            focusGroupPath=str(self.lastGroupingFile),
-            workspaces=[focusWorkspace, smoothWorkspace],
-        )
         request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
 
@@ -167,7 +177,7 @@ class NormalizationCalibrationWorkflow:
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
-            samplePath=self.samplePath,
+            samplePath=self.samplePaths[self.sampleIndex],
             groupingPath=groupingFile,
             smoothingParameter=smoothingParameter,
         )
@@ -182,22 +192,26 @@ class NormalizationCalibrationWorkflow:
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
     def onNormalizationValueChange(self, index, smoothingValue):  # noqa: ARG002
-        groupingFile = self.groupingFiles[index]
+        if not self.initializationComplete:
+            return
 
-        self.lastGroupingFile = groupingFile
+        self.lastGroupingFile = self.groupingFiles[index]
         self.lastSmoothingParameter = smoothingValue
 
-        self.callNormalizationCalibration(groupingFile, smoothingValue)
+        groupingFileChanged = self.groupingFiles[self.initGroupingIndex] != self.lastGroupingFile
+        smoothingValueChanged = self.initSmoothingParameter != self.lastSmoothingParameter
 
-        # if self.responses:
-        #     if "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
-        #         focusWorkspace = self.responses[-1].data["outputWorkspace"]
-        #         smoothWorkspace = self.responses[-1].data["smoothedOutput"]
-        #         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
-        #     else:
-        #         raise Exception("Expected data not found in the last response")
-        # else:
-        #     pass
+        if groupingFileChanged or smoothingValueChanged:
+            self.initGroupingIndex = index
+            self.initSmoothingParameter = smoothingValue
+            self.callNormalizationCalibration(self.groupingFiles[index], smoothingValue)
+        else:
+            if "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
+                focusWorkspace = self.responses[-1].data["outputWorkspace"]
+                smoothWorkspace = self.responses[-1].data["smoothedOutput"]
+                self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+            else:
+                raise Exception("Expected data not found in the last response")
 
     @property
     def widget(self):

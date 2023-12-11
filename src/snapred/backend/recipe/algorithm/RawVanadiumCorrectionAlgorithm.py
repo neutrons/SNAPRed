@@ -82,16 +82,19 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             OutputWorkspace=outputWS,
             BinningMode="Logarithmic",
         )
+
         self.mantidSnapper.NormaliseByCurrent(
             "Normalize by current",
             InputWorkspace=outputWS,
             OutputWorkspace=outputWS,
         )
+
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data after chop",
             InputWorkspace=outputWS,
             Outputworkspace=outputWS + "_afterChop",
         )
+
         self.mantidSnapper.executeQueue()
 
     def shapedAbsorption(self, inputWS: str, absorptionWS: str, sampleShape: str):
@@ -179,6 +182,7 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             OutputWorkspace=self.outputVanadiumWS,
             Target="TOF",
         )
+
         self.mantidSnapper.executeQueue()
 
 

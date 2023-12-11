@@ -76,6 +76,9 @@ class DataFactoryService:
     def getNormalizationState(self, runId):
         return self.lookupService.readNormalizationState(runId)
 
+    def writeNormalizationState(self, runId):
+        return self.lookupService.writeNormalizationState(runId)
+
     def getWorkspaceForName(self, name):
         return self.workspaceService.getWorkspaceForName(name)
 

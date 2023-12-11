@@ -179,13 +179,19 @@ class FetchGroceriesRecipe:
                 self._loadedRuns[thisKey] += 1
                 data["loader"] = "cached"  # unset to indicate no loading occurred
                 data["result"] = True
-            # create a copy of the raw data for use
-            workspaceName = self._createCopyNexusWorkspaceName(item, self._loadedRuns[thisKey])
-            CloneWorkspace(
-                InputWorkspace=rawWorkspaceName,
-                OutputWorkspace=workspaceName,
-            )
-            data["workspace"] = workspaceName
+            # Check if the raw workspace exists in ADS and retrieve it
+            if mtd.doesExist(rawWorkspaceName):
+                rawWorkspace = mtd[rawWorkspaceName]
+                workspaceName = self._createCopyNexusWorkspaceName(item, self._loadedRuns[thisKey])
+                CloneWorkspace(
+                    InputWorkspace=rawWorkspace,
+                    OutputWorkspace=workspaceName,
+                )
+                data["workspace"] = workspaceName
+            else:
+                logger.error(f"Workspace {rawWorkspaceName} does not exist in ADS.")
+                data["result"] = False
+
         return data
 
     def fetchDirtyNexusData(self, item: GroceryListItem) -> Dict[str, Any]:

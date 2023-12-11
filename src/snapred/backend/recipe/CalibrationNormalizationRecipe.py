@@ -46,12 +46,12 @@ class CalibrationNormalizationRecipe:
 
         calibNormAlgo = CalibrationNormalizationAlgo()
         calibNormAlgo.initialize()
-        calibNormAlgo.setProperty("InputWorkspace", self.rawInput)
-        calibNormAlgo.setProperty("BackgroundWorkspace", self.rawBackgroundInput)
-        calibNormAlgo.setProperty("GroupingWorkspace", self.groupingWS)
-        calibNormAlgo.setProperty("OutputWorkspace", self.outputWS)
-        calibNormAlgo.setProperty("SmoothedOutput", self.smoothWS)
-        calibNormAlgo.setProperty("Ingredients", ingredients.json())
+        calibNormAlgo.setPropertyValue("InputWorkspace", self.rawInput)
+        calibNormAlgo.setPropertyValue("BackgroundWorkspace", self.rawBackgroundInput)
+        calibNormAlgo.setPropertyValue("GroupingWorkspace", self.groupingWS)
+        calibNormAlgo.setPropertyValue("OutputWorkspace", self.outputWS)
+        calibNormAlgo.setPropertyValue("SmoothedOutput", self.smoothWS)
+        calibNormAlgo.setPropertyValue("Ingredients", ingredients.json())
 
         try:
             calibNormAlgo.execute()

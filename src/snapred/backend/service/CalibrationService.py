@@ -75,6 +75,8 @@ class CalibrationService(Service):
         super().__init__()
         self.dataFactoryService = DataFactoryService()
         self.dataExportService = DataExportService()
+        self.fetchGroceries = FetchGroceriesRecipe()
+        self.calibrationNormalizationRecipe = CalibrationNormalizationRecipe()
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
@@ -194,7 +196,7 @@ class CalibrationService(Service):
                 instrumentSource="prev",
             ),
         ]
-        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
+        workspaceList = self.fetchGroceries.executeRecipe(groceryList)["workspaces"]
         groceries = {
             "inputWorkspace": workspaceList[0],
             "groupingWorkspace": workspaceList[1],
@@ -405,7 +407,7 @@ class CalibrationService(Service):
                 instrumentSource="prev",
             ),
         ]
-        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
+        workspaceList = self.fetchGroceries.executeRecipe(groceryList)["workspaces"]
         groceries = {
             "inputWorkspace": workspaceList[0],
             "backgroundWorkspace": workspaceList[1],
@@ -413,20 +415,31 @@ class CalibrationService(Service):
             "outputWorkspace": "focussedRawVanadium",
             "smoothedOutput": "smoothedOutput",
         }
-        return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients, groceries)
+
+        return self.calibrationNormalizationRecipe.executeRecipe(normalizationIngredients, groceries)
 
     @FromString
     def normalizationAssessment(self, request: SpecifyNormalizationRequest):
-        normalization = self.dataFactoryService.getNormalizationState(request.runNumber)
+        self.dataFactoryService.getNormalizationState(request.runNumber)
+        pass
+        # if normalization is None:
+        #     calibration = self.dataFactoryService.getCalibrationState(request.runNumber)
+        #     instrumentState = calibration.instrumentState
+        #     normalization = Normalization(
+        #         instrumentState=instrumentState,
+        #         seedRun=int(request.runNumber),
+        #         creationDate=datetime,
+        #         name=str,
+        #         version=0,
+        #     )
 
-        record = NormalizationRecord(
-            runNumber=request.runNumber,
-            backgroundRunNumber=request.backgroundRunNumber,
-            smoothingParameter=request.smoothingParameter,
-            normalization=normalization,
-            workspaceNames=request.workspaces,
-        )
-        return record
+        # record = NormalizationRecord(
+        #     runNumber=request.runNumber,
+        #     backgroundRunNumber=request.backgroundRunNumber,
+        #     smoothingParameter=request.smoothingParameter,
+        #     normalization=normalization,
+        # )
+        # return record
 
     @FromString
     def saveNormalization(self, request: NormalizationExportRequest):
