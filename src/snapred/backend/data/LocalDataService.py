@@ -31,6 +31,7 @@ from snapred.backend.dao.state import (
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
 from snapred.backend.data.LocalWorkspaceDataService import LocalWorkspaceDataService
 from snapred.meta.Config import Config, Resource
+from snapred.meta.decorators.ErrorHandler import StateExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.redantic import (
@@ -203,6 +204,7 @@ class LocalDataService:
             raise FileNotFoundError("File {} does not exist".format(fName))
         return f
 
+    @StateExceptionHandler
     def _generateStateId(self, runId: str) -> Tuple[Any, Any]:
         if runId in self.stateIdCache:
             return self.stateIdCache[runId]
@@ -555,6 +557,7 @@ class LocalDataService:
         # write the file and return the calibration state
         write_model_pretty(calibration, calibrationParametersPath)
 
+    @StateExceptionHandler
     def initializeState(self, runId: str, name: str = None):
         # pull pv data similar to how we generate stateId
         pvFile = self._readPVFile(runId)
