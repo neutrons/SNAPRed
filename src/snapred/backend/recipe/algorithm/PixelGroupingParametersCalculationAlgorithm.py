@@ -158,7 +158,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                     LogType="Number Series",
                 )
 
-        # NOTE after adding the logs, it is necessary to update the instrument to 
+        # NOTE after adding the logs, it is necessary to update the instrument to
         #  factor in these new parameters, or else calculations will be inconsistent.
         #  This is done with a call to `ws->populateInstrumentParameters()` from within mantid.
         # TODO use this sample log, after Mantid PR 36524 has gone into main

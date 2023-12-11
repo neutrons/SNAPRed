@@ -103,7 +103,9 @@ class CalibrationService(Service):
             calibration = self.dataFactoryService.getCalibrationState(runNumber)
         instrumentState = calibration.instrumentState
         focusGroupDefinition = self._magicFunctionToConstructGroupingFilename(focusGroupName)
-        pixelGroupingParams = self._calculatePixelGroupingParameters(instrumentState, focusGroupName, useLiteMode)["parameters"]
+        pixelGroupingParams = self._calculatePixelGroupingParameters(instrumentState, focusGroupName, useLiteMode)[
+            "parameters"
+        ]
         instrumentState.pixelGroup = PixelGroup(
             pixelGroupingParameters=pixelGroupingParams,
             numberBinsAcrossPeakWidth=numberBinsAcrossPeakWidth,
@@ -256,10 +258,12 @@ class CalibrationService(Service):
             instrumentFilename = Config["instrument.lite.definition.file"]
         return instrumentFilename
 
-    def _calculatePixelGroupingParameters(self, instrumentState, focusGroupName: str, useLiteMode: bool):  # noqa: ARG002
+    def _calculatePixelGroupingParameters(
+        self, instrumentState, focusGroupName: str, useLiteMode: bool
+    ):  # noqa: ARG002
         groupingIngredients = PixelGroupingIngredients(
             instrumentState=instrumentState,
-        )        
+        )
         # create the grocery list and fetch the groceries
         groceryItem = GroceryListItem(
             workspaceType="grouping",
@@ -321,9 +325,9 @@ class CalibrationService(Service):
         focussedData = request.workspace
         calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            run.runNumber, 
+            run.runNumber,
             request.focusGroupName,
-            request.useLiteMode, 
+            request.useLiteMode,
             calibration,
         )
         pixelGroupingParam = self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition)[
