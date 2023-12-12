@@ -12,4 +12,3 @@ def StateExceptionHandler(func: callable):
             raise StateValidationException(e)
 
     return inner
-    # issubclass(func_annotations['request'].__args__[0], BaseModel)
