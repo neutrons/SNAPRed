@@ -145,7 +145,7 @@ class CalibrationService(Service):
         # need to calculate these using DetectorPeakPredictor
         # 4a. InstrumentState
         # 4b. CrystalInfo
-        cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
+        cifFilePath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # 4c. PeakIntensityThreshold
         peakIntensityThreshold = request.peakIntensityThreshold
@@ -342,7 +342,7 @@ class CalibrationService(Service):
         )
         data = self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition, request.useLiteMode)
         pixelGroupingParam = data["parameters"]
-        cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
+        cifFilePath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # TODO: We Need to Fitt the Data
         fitIngredients = FitMultiplePeaksIngredients(

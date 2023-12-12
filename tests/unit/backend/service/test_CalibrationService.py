@@ -211,7 +211,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Mock input data
         mockRequest = MagicMock()
         mockRun = MagicMock()
-        fakeCifPath = "mock_cif_path"
+        fakeCalibrantSamplePath = "mock_cif_path"
         mockReductionIngredients = MagicMock()
         mockCalibration = MagicMock()
         mockInstrumentState = MagicMock()
@@ -236,12 +236,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Mock the necessary method calls
         mockRequest.run = mockRun
-        mockRequest.cifPath = fakeCifPath
+        mockRequest.calibrantSamplePath = fakeCalibrantSamplePath
         mockRequest.smoothingParameter = 0.5
         self.instance.dataFactoryService.getReductionIngredients = MagicMock(return_value=mockReductionIngredients)
         self.instance.dataFactoryService.getCalibrationState = MagicMock(return_value=mockCalibration)
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=mockCalibRecord)
-        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value=fakeCifPath)
+        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value=fakeCalibrantSamplePath)
         mockCalibration.instrumentState = mockInstrumentState
         self.instance._loadFocusedData = MagicMock(return_value=fakeFocussedData)
         self.instance._getPixelGroupingParams = MagicMock(return_value=fakePixelGroupingParams)
@@ -316,7 +316,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runNumber=runNumber,
             focusGroupPath=focusGroupPath,
             nBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
-            cifPath="path/to/cif",
+            calibrantSamplePath="path/to/cif",
             useLiteMode=False,
         )
         self.instance.diffractionCalibration(request)

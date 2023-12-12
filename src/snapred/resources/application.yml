@@ -89,7 +89,7 @@ mantid:
       normCal:
         rawVandium: "{runNumber},{backgroundRunNumber},RVC"
         focusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}"
-        smoothedFocusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}{smoothingParameter}"
+        smoothedFocusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme},{smoothingParameter}"
       units:
         dSpacing: DSP
         timeOfFlight: TOF
