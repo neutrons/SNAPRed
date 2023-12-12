@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from mantid.simpleapi import mtd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QSlider, QWidget
+from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QSlider, QWidget
 
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
@@ -48,7 +48,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.groupingDropDown = QComboBox()
         self.groupingDropDown.setEnabled(True)
         self.groupingDropDown.addItems(groups)
-        self.groupingDropDown.currentIndexChanged.connect(self.onValueChanged)
+        # self.groupingDropDown.currentIndexChanged.connect(self.emitValueChange)
 
         self.smoothingSlider = QSlider(Qt.Horizontal)
         self.smoothingSlider.setMinimum(0)
@@ -56,14 +56,30 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.smoothingSlider.setValue(0)
         self.smoothingSlider.setTickInterval(1)
         self.smoothingSlider.setSingleStep(1)
-        self.smoothingSlider.valueChanged.connect(self.onValueChanged)
+        self.smoothingSlider.setStyleSheet(
+            "QSlider::groove:horizontal {"
+            "border: 1px solid #999999;"
+            "height: 8px;"
+            "background: red;"
+            "margin: 2px 0;"
+            "}"
+            "QSlider::handle:horizontal {"
+            "background: white;"
+            "border: 1px solid #5c5c5c;"
+            "width: 18px;"
+            "margin: -2px 0;"
+            "border-radius: 3px;"
+            "}"
+        )
 
-        # Create a layout for the smoothing parameter label and slider
+        self.smoothingLineEdit = QLineEdit("0.00")
+        self.smoothingLineEdit.setFixedWidth(50)
+        self.smoothingSlider.valueChanged.connect(self.updateLineEditFromSlider)
+        self.smoothingLineEdit.returnPressed.connect(self.emitValueChange)
+
         smoothingLayout = QHBoxLayout()
-        self.smoothingValueLabel = QLabel("0.00")
-        self.smoothingValueLabel.setAlignment(Qt.AlignCenter)
         smoothingLayout.addWidget(self.smoothingSlider)
-        smoothingLayout.addWidget(self.smoothingValueLabel)
+        smoothingLayout.addWidget(self.smoothingLineEdit)
 
         self.layout.addWidget(self.canvas, 0, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 1, 0)
@@ -92,10 +108,13 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.groupingDropDown.setCurrentIndex(groupingIndex)
         self.smoothingSlider.setValue(int(smoothingParameter * 100))
 
-    def onValueChanged(self):
+    def updateLineEditFromSlider(self, value):
+        smoothingValue = value / 100.0
+        self.smoothingLineEdit.setText("{:.2f}".format(smoothingValue))
+
+    def emitValueChange(self):
         index = self.groupingDropDown.currentIndex()
-        smoothingValue = (self.smoothingSlider.value()) / 100.0
-        self.smoothingValueLabel.setText("{:.2f}".format(smoothingValue))
+        smoothingValue = self.smoothingSlider.value() / 100.0
         self.signalValueChanged.emit(index, smoothingValue)
 
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):
@@ -135,6 +154,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
+
         for i, ax in enumerate(self.subplots):
             if i < focusedWorkspace.getNumberHistograms():
                 focusedData = focusedWorkspace.readY(i)
@@ -149,5 +169,4 @@ class SpecifyNormalizationCalibrationView(QWidget):
                 ax.set_ylabel("Intensity")
 
         self.figure.tight_layout()
-
         self.canvas.draw()

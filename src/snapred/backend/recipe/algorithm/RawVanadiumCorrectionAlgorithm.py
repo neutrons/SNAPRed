@@ -66,6 +66,7 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             Outputworkspace=outputWS,
             Target="TOF",
         )
+
         self.mantidSnapper.CropWorkspace(
             "Filter the workspace within bounds",
             InputWorkspace=outputWS,
@@ -146,7 +147,6 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             "Remove local vanadium background copy",
             Workspace=self.outputBackgroundWS,
         )
-
         # calculate and apply cylindrical absorption
         self.mantidSnapper.ConvertUnits(
             "Convert to wavelength",

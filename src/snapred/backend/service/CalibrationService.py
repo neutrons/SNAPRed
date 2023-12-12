@@ -75,8 +75,6 @@ class CalibrationService(Service):
         super().__init__()
         self.dataFactoryService = DataFactoryService()
         self.dataExportService = DataExportService()
-        self.fetchGroceries = FetchGroceriesRecipe()
-        self.calibrationNormalizationRecipe = CalibrationNormalizationRecipe()
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
@@ -196,7 +194,7 @@ class CalibrationService(Service):
                 instrumentSource="prev",
             ),
         ]
-        workspaceList = self.fetchGroceries.executeRecipe(groceryList)["workspaces"]
+        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
         groceries = {
             "inputWorkspace": workspaceList[0],
             "groupingWorkspace": workspaceList[1],
@@ -390,14 +388,12 @@ class CalibrationService(Service):
                 runNumber=request.runNumber,
                 useLiteMode=True,
                 runConfig=reductionIngredients.runConfig,
-                loader="LoadEventNexus",
             ),
             GroceryListItem(
                 workspaceType="nexus",
                 runNumber=request.backgroundRunNumber,
                 useLiteMode=True,
                 runConfig=backgroundReductionIngredients.runConfig,
-                loader="LoadEventNexus",
             ),
             GroceryListItem(
                 workspaceType="grouping",
@@ -407,7 +403,7 @@ class CalibrationService(Service):
                 instrumentSource="prev",
             ),
         ]
-        workspaceList = self.fetchGroceries.executeRecipe(groceryList)["workspaces"]
+        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
         groceries = {
             "inputWorkspace": workspaceList[0],
             "backgroundWorkspace": workspaceList[1],
@@ -415,8 +411,7 @@ class CalibrationService(Service):
             "outputWorkspace": "focussedRawVanadium",
             "smoothedOutput": "smoothedOutput",
         }
-
-        return self.calibrationNormalizationRecipe.executeRecipe(normalizationIngredients, groceries)
+        return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients, groceries)
 
     @FromString
     def normalizationAssessment(self, request: SpecifyNormalizationRequest):

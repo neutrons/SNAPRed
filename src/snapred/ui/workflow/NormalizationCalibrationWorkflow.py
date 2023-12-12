@@ -202,6 +202,10 @@ class NormalizationCalibrationWorkflow:
         smoothingValueChanged = self.initSmoothingParameter != self.lastSmoothingParameter
 
         if groupingFileChanged or smoothingValueChanged:
+            from mantid.simpleapi import DeleteWorkspace
+
+            DeleteWorkspace(Workspace="focussedRawVanadium")
+            DeleteWorkspace(Workspace="smoothedOutput")
             self.initGroupingIndex = index
             self.initSmoothingParameter = smoothingValue
             self.callNormalizationCalibration(self.groupingFiles[index], smoothingValue)
