@@ -16,5 +16,5 @@ class CalibrationAssessmentRequest(BaseModel):
     workspace: str
     focusGroupPath: str
     cifPath: str
-    useLiteMode: Optional[bool]  # TODO this needs to be mandatory
-    nBinsAcrossPeakWidth: Optional[int] = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
+    useLiteMode: bool
+    nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

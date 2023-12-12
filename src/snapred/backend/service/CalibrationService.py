@@ -97,6 +97,7 @@ class CalibrationService(Service):
         runNumber,
         definition: str,
         useLiteMode: bool,
+        nBinsAcrossPeakWidth: int=10,
         calibration=None,
     ) -> Tuple[FocusGroup, InstrumentState]:
         if calibration is None:
@@ -137,6 +138,7 @@ class CalibrationService(Service):
             request.runNumber,
             request.focusGroupPath,
             request.useLiteMode,
+            request.nBinsAcrossPeakWidth,
         )
         # 4. grouped peak list
         # need to calculate these using DetectorPeakPredictor
@@ -271,6 +273,7 @@ class CalibrationService(Service):
         #  Doing so requires updating the UI to display focus group names instead of files
         groupingScheme = groupingFile.split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
 
+        breakpoint()
         getGrouping = GroceryListItem(
             workspaceType="grouping",
             groupingScheme=groupingScheme,
@@ -335,7 +338,7 @@ class CalibrationService(Service):
         focussedData = request.workspace
         calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            run.runNumber, request.focusGroupPath, request.nBinsAcrossPeakWidth, request.useLiteMode, calibration
+            run.runNumber, request.focusGroupPath, request.useLiteMode, request.nBinsAcrossPeakWidth, calibration
         )
         data = self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition, request.useLiteMode)
         pixelGroupingParam = data["parameters"]

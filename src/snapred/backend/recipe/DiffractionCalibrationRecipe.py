@@ -111,8 +111,8 @@ class DiffractionCalibrationRecipe:
         groupedAlgo.setProperty("FinalCalibrationTable", self.calTable)
         try:
             groupedAlgo.execute()
-            data["calibrationTable"] = groupedAlgo.getProperty("FinalCalibrationTable").value
-            data["outputWorkspace"] = groupedAlgo.getProperty("OutputWorkspace").value
+            data["calibrationTable"] = groupedAlgo.getPropertyValue("FinalCalibrationTable")
+            data["outputWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspace")
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
