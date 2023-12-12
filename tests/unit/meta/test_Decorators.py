@@ -5,7 +5,7 @@ import pytest
 from pydantic import BaseModel
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.error.StateValidationException import StateValidationException
-from snapred.meta.decorators.ErrorHandler import StateExceptionHandler
+from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.FromString import FromString
 
 
@@ -41,7 +41,7 @@ def test_FromStringOnListOfBaseModel():
     tester.assertIsListOfModel(json.dumps([SNAPRequest(path="test").dict()]))
 
 
-@StateExceptionHandler
+@ExceptionHandler(StateValidationException)
 def throwsStateException():
     raise RuntimeError("I love exceptions!!! Ah ha ha!")
 
