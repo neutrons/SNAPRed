@@ -78,7 +78,7 @@ class NormalizationCalibrationWorkflow:
             .addNode(
                 self._specifyNormalization,
                 self._specifyNormalizationView,
-                "Specify Calibration",
+                "Tweek Parameters",
             )
             .addNode(self._saveNormalizationCalibration, self._saveNormalizationCalibrationView, "Saving")
             .build()
