@@ -721,8 +721,8 @@ class LocalDataService:
     def readSamplePaths(self):
         sampleFolder = Config["instrument.calibration.sample.home"]
         extensions = Config["instrument.calibration.sample.extensions"]
-        sampleFiles = []
         # collect list of all json in folder
+        sampleFiles = []
         for extension in extensions:
             sampleFiles += self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False)
         if len(sampleFiles) < 1:

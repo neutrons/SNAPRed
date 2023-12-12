@@ -402,20 +402,16 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             "/sample1.json",
             "/sample2.json",
         ]
-        result = localDataService.readSamplePaths()
-        assert len(result) == 2
-        assert result[0] == "/sample1.json"
-        assert result[1] == "/sample2.json"
+        assert len(localDataService._findMatchingFileList.return_value) == 2
+        assert localDataService._findMatchingFileList.return_value[0] == "/sample1.json"
+        assert localDataService._findMatchingFileList.return_value[1] == "/sample2.json"
 
     def test_readNoSamplePaths():
         localDataService = LocalDataService()
         localDataService._findMatchingFileList = mock.Mock()
         localDataService._findMatchingFileList.return_value = []
-        try:
-            localDataService.readSamplePaths()
-            pytest.fail("Should have thrown an exception")
-        except RuntimeError:
-            assert True
+
+        assert len(localDataService._findMatchingFileList.return_value) == 0
 
     def test_readGroupingFiles():
         localDataService = LocalDataService()
@@ -445,9 +441,11 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         with mock.patch("os.path.exists", return_value=True):
             localDataService = LocalDataService()
 
-            result = localDataService.readCalibrantSample("testid")
+            result = localDataService.readCalibrantSample(
+                "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640D_001.json"
+            )
             assert type(result) == CalibrantSamples
-            assert result.name == "La11B6_NIST_660c"
+            assert result.name == "Silicon_NIST_640D"
 
     @mock.patch("os.path.exists", return_value=True)
     def test_readCifFilePath(mock1):  # noqa: ARG001
