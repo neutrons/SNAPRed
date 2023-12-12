@@ -145,7 +145,7 @@ class CalibrationService(Service):
         # need to calculate these using DetectorPeakPredictor
         # 4a. InstrumentState
         # 4b. CrystalInfo
-        cifFilePath = request.cifPath
+        cifFilePath = self.dataFactoryService.getCifFilePath(request.cifPath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # 4c. PeakIntensityThreshold
         peakIntensityThreshold = request.peakIntensityThreshold

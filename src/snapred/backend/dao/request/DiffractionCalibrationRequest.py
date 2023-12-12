@@ -13,7 +13,7 @@ class DiffractionCalibrationRequest(BaseModel):
     """
 
     runNumber: str
-    cifPath: str
+    calibrantSamplePath: str
     focusGroupPath: str
     useLiteMode: bool
     focusGroupName: Optional[str]  # TODO
