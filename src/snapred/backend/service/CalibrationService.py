@@ -97,7 +97,7 @@ class CalibrationService(Service):
         runNumber,
         definition: str,
         useLiteMode: bool,
-        nBinsAcrossPeakWidth: int=10,
+        nBinsAcrossPeakWidth: int = 10,
         calibration=None,
     ) -> Tuple[FocusGroup, InstrumentState]:
         if calibration is None:
