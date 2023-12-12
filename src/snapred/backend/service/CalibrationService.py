@@ -195,6 +195,8 @@ class CalibrationService(Service):
         groceries = {
             "inputWorkspace": workspaceList[0],
             "groupingWorkspace": workspaceList[1],
+            "calibrationTable": "DIFC",  # TODO use WNG
+            "outputWorkspace": workspaceList[0] + "_out",  # TODO use WNG
         }
         return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
 
