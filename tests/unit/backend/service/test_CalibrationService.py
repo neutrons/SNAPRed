@@ -27,8 +27,7 @@ with mock.patch.dict(
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest  # noqa: E402
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
-    from snapred.backend.dao.state import PixelGroup
-    from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters  # noqa: E402
+    from snapred.backend.dao.state import FocusGroup, PixelGroup, PixelGroupingParameters  # noqa: E402
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,  # noqa: E402
     )
@@ -252,7 +251,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert result == expected_record
 
     # patch FocusGroup
-    @patch(thisService + "FocusGroup", return_value=MagicMock())
+    @patch(thisService + "FocusGroup", return_value=FocusGroup(name="mockgroup", definition="junk/mockgroup.abc"))
     def test__generateFocusGroupAndInstrumentState(self, mockFocusGroup):
         # mock datafactoryservice.getCalibrationState
         self.instance.dataFactoryService.getCalibrationState = MagicMock()

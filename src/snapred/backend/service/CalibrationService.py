@@ -108,14 +108,15 @@ class CalibrationService(Service):
             useLiteMode,
         )
         pixelGroupingParams = data["parameters"]
-        instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParams)
-        return (
-            FocusGroup(
-                name=definition.split("/")[-1],
-                definition=definition,
-            ),
-            instrumentState,
+        focusGroup = FocusGroup(
+            name=definition.split("/")[-1],
+            definition=definition,
         )
+        instrumentState.pixelGroup = PixelGroup(
+            pixelGroupingParameters=pixelGroupingParams,
+            focusGroup=focusGroup,
+        )
+        return (focusGroup, instrumentState)
 
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
@@ -264,8 +265,6 @@ class CalibrationService(Service):
     def _calculatePixelGroupingParameters(self, instrumentState, groupingFile: str, useLiteMode: bool):
         groupingIngredients = PixelGroupingIngredients(
             instrumentState=instrumentState,
-            instrumentDefinitionFile=Config["instrument.lite.definition.file"],
-            groupingFile=groupingFile,
         )
 
         # TODO replace this with grouping scheme passed instead as the parameter

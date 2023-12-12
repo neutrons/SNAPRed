@@ -7,7 +7,7 @@ from pydantic import parse_raw_as
 from snapred.backend.dao.ingredients import PixelGroupingIngredients
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm import PixelGroupingParametersCalculationAlgorithm
+from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import PixelGroupingParametersCalculationAlgorithm
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -21,7 +21,7 @@ class PixelGroupingParametersCalculationRecipe:
         pass
 
     def executeRecipe(self, ingredients: PixelGroupingIngredients, groupingWorkspace: str) -> Dict[str, Any]:
-        logger.info("Executing recipe for: %s" % ingredients.groupingFile)
+        logger.info("Executing recipe for: %s" % ingredients.groupingScheme)
         data: Dict[str, Any] = {}
 
         algo = AlgorithmManager.create(self.PixelGroupingParametersCalculationAlgorithmName)
