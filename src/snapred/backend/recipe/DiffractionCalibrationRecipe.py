@@ -22,6 +22,7 @@ class DiffractionCalibrationRecipe:
         """
         self.runNumber = ingredients.runConfig.runNumber
         self.threshold = ingredients.convergenceThreshold
+        self.calPath = ingredients.calPath
 
     def unbagGroceries(self, groceryList: Dict[str, Any]):
         """
@@ -47,13 +48,14 @@ class DiffractionCalibrationRecipe:
         For the moment this is being handled by saving at the end of the recipe.
         This in a separate method so it can be easily mocked for testing.
         """
+        from datetime import date
+
         from mantid.simpleapi import SaveDiffCal
 
         from snapred.backend.data.LocalDataService import LocalDataService
 
-        lds = LocalDataService()
-        calibrationPath = lds._getCalibrationDataPath(self.runNumber)
-        filename = calibrationPath + "/difcal.h5"
+        LocalDataService()
+        filename = f"{self.calPath}/SNAP_{self.runNumber}_difcal_{date.today().strftime('%Y%m%d')}.h5"
         SaveDiffCal(
             CalibrationWorkspace=calibrationWS,
             GroupingWorkspace=self.groupingWS,
