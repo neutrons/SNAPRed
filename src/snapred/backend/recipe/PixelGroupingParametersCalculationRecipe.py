@@ -7,7 +7,9 @@ from pydantic import parse_raw_as
 from snapred.backend.dao.ingredients import PixelGroupingIngredients
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import PixelGroupingParametersCalculationAlgorithm
+from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
+    PixelGroupingParametersCalculationAlgorithm,
+)
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)

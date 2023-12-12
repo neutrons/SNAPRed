@@ -57,7 +57,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
 
     def unbagGroceries(self, instrumentState: InstrumentState):
         self.groupingWorkspaceName: str = self.getPropertyValue("GroupingWorkspace")
-        self.resolutionWorkspaceName: str = "pgp_resolution" # TODO use WNG
+        self.resolutionWorkspaceName: str = "pgp_resolution"  # TODO use WNG
         self.partialResolutionWorkspaceName: str = self.resolutionWorkspaceName + "_partial"
         self.loadNeededLogs(self.groupingWorkspaceName, instrumentState)
 
