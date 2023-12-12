@@ -415,26 +415,14 @@ class CalibrationService(Service):
 
     @FromString
     def normalizationAssessment(self, request: SpecifyNormalizationRequest):
-        self.dataFactoryService.getNormalizationState(request.runNumber)
-        pass
-        # if normalization is None:
-        #     calibration = self.dataFactoryService.getCalibrationState(request.runNumber)
-        #     instrumentState = calibration.instrumentState
-        #     normalization = Normalization(
-        #         instrumentState=instrumentState,
-        #         seedRun=int(request.runNumber),
-        #         creationDate=datetime,
-        #         name=str,
-        #         version=0,
-        #     )
-
-        # record = NormalizationRecord(
-        #     runNumber=request.runNumber,
-        #     backgroundRunNumber=request.backgroundRunNumber,
-        #     smoothingParameter=request.smoothingParameter,
-        #     normalization=normalization,
-        # )
-        # return record
+        normalization = self.dataFactoryService.getNormalizationState(request.runNumber)
+        record = NormalizationRecord(
+            runNumber=request.runNumber,
+            backgroundRunNumber=request.backgroundRunNumber,
+            smoothingParameter=request.smoothingParameter,
+            normalization=normalization,
+        )
+        return record
 
     @FromString
     def saveNormalization(self, request: NormalizationExportRequest):
@@ -457,7 +445,5 @@ class CalibrationService(Service):
     def retrievePixelGroupingParams(self, runID: str):
         calibration = self.dataFactoryService.getCalibrationState(runID)
         focusGroups = self.dataFactoryService.getFocusGroups(runID)
-
         pixelGroupingParams = self._getPixelGroupingParams(calibration.instrumentState, focusGroups)
-
         return pixelGroupingParams

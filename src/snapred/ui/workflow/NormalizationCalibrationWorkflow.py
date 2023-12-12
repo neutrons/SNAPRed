@@ -156,7 +156,7 @@ class NormalizationCalibrationWorkflow:
         return response
 
     def _saveNormalizationCalibration(self, workflowPresenter):
-        view = workflowPresenter.widget.tabview
+        view = workflowPresenter.widget.tabView
 
         normalizationRecord = self.responses[-1].data
         normalizationIndexEntry = NormalizationIndexEntry(

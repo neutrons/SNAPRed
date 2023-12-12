@@ -10,8 +10,8 @@ class NormalizationIndexEntry(BaseModel):
     backgroundRunNumber: str
     version: Optional[str]
     appliesTo: Optional[str]
-    comments: str
-    author: str
+    comments: Optional[str]
+    author: Optional[str]
     timestamp: Optional[int]
 
     @validator("appliesTo", allow_reuse=True)
