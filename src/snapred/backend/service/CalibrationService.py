@@ -115,6 +115,7 @@ class CalibrationService(Service):
         )
         instrumentState.pixelGroup = PixelGroup(
             pixelGroupingParameters=pixelGroupingParams,
+            numberBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
             focusGroup=focusGroup,
         )
         return (focusGroup, instrumentState)
@@ -195,8 +196,6 @@ class CalibrationService(Service):
         groceries = {
             "inputWorkspace": workspaceList[0],
             "groupingWorkspace": workspaceList[1],
-            "calibrationTable": "DIFC",  # TODO use WNG
-            "outputWorkspace": workspaceList[0] + "_out",  # TODO use WNG
         }
         return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
 
@@ -275,7 +274,6 @@ class CalibrationService(Service):
         #  Doing so requires updating the UI to display focus group names instead of files
         groupingScheme = groupingFile.split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
 
-        breakpoint()
         getGrouping = GroceryListItem(
             workspaceType="grouping",
             groupingScheme=groupingScheme,
