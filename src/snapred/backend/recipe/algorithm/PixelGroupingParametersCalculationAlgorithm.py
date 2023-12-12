@@ -170,9 +170,6 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         #     UpdateInstrumentParameters=True,
         # )
         # TODO remove the below after uncommenting above.
-        # NOTE LoadParameterFile is the only mantid algorithm (2023/12/10) that will make
-        #  the needed call to `ws->populateInstrumentParemeters()` without loading a file.
-        # this is the minimal XML file needed to make the below algorithm call work
         minimalXML = "<parameter-file>></parameter-file>"
         self.mantidSnapper.LoadParameterFile(
             "Calling an algorithm that includes a populateInstrumentParamters and no file load",

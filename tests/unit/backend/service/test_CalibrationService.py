@@ -64,6 +64,12 @@ with mock.patch.dict(
         savedEntry = calibrationService.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
 
+    def test_load():
+        calibrationService = CalibrationService()
+        calibrationService.dataFactoryService.getCalibrationRecord = mock.Mock(return_value="passed")
+        res = calibrationService.load(mock.Mock())
+        assert res == calibrationService.dataFactoryService.getCalibrationRecord.return_value
+
     # test calculate pixel grouping parameters
     # patch datafactoryservice, pixelgroupingparameterscalculationrecipe, pixelgroupingingredients, dataExportService
     @mock.patch(thisService + "FetchGroceriesRecipe")

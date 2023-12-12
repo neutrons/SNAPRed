@@ -33,16 +33,7 @@ class PixelGroup(BaseModel):
     def __getitem__(self, key):
         return self.pixelGroupingParameters[key]
 
-    def __init__(
-        self,
-        **kwargs,
-        # groupID: List[int] = None,
-        # twoTheta: List[float] = None,
-        # dResolution: List[Limit[float]] = None,
-        # dRelativeResolution: List[float] = None,
-        # pixelGroupingParameters={},
-        # numberBinsAcrossPeakWidth=10,
-    ):
+    def __init__(self, **kwargs):
         if kwargs.get("pixelGroupingParameters") is None:
             groupID = kwargs["groupID"]
             kwargs["pixelGroupingParameters"] = {
