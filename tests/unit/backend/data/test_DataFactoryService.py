@@ -28,7 +28,9 @@ with mock.patch.dict(
         dataExportService.getRunConfig = mock.Mock()
         dataExportService.getRunConfig.return_value = RunConfig.construct()
 
-        pixelGroup = PixelGroup([0], [0], [Limit(minimum=0, maximum=0)], [0])
+        pixelGroup = PixelGroup(
+            groupID=[0], twoTheta=[0], dResolution=[Limit(minimum=0, maximum=0)], dRelativeResolution=[0]
+        )
         actual = dataExportService.getReductionIngredients(mock.Mock(), pixelGroup)
 
         assert type(actual) == ReductionIngredients
