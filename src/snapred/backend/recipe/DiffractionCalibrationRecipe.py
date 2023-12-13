@@ -54,7 +54,6 @@ class DiffractionCalibrationRecipe:
 
         from snapred.backend.data.LocalDataService import LocalDataService
 
-        LocalDataService()
         filename = f"{self.calPath}/SNAP_{self.runNumber}_difcal_{date.today().strftime('%Y%m%d')}.h5"
         SaveDiffCal(
             CalibrationWorkspace=calibrationWS,
