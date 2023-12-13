@@ -43,12 +43,11 @@ with mock.patch.dict(
             assert vanAlgo.getProperty("ReductionIngredients").value == self.reductionIngredients.json()
             assert vanAlgo.getProperty("SmoothDataIngredients").value == self.smoothIngredients.json()
 
-        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.mtd")
-        @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.MantidSnapper")
-        def test_execute(self, mock_MantidSnapper, mock_mtd):
+        def test_execute(self):
             vanAlgo = VanadiumFocussedReductionAlgorithm()
-            mock_mtd.side_effect = {"diffraction_focused_vanadium": ["ws1", "ws2"]}
             vanAlgo.initialize()
+            vanAlgo.mantidSnapper = mock.MagicMock()
+            vanAlgo.mantidSnapper.mtd = mock.MagicMock(side_effect={"diffraction_focused_vanadium": ["ws1", "ws2"]})
             vanAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
             vanAlgo.setProperty("SmoothDataIngredients", self.smoothIngredients.json())
             vanAlgo.execute()
@@ -56,27 +55,20 @@ with mock.patch.dict(
             wsGroupName = vanAlgo.getProperty("OutputWorkspaceGroup").value
             assert wsGroupName == "diffraction_focused_vanadium"
             expected_calls = [
-                call().LoadNexus,
-                call().CustomGroupWorkspace,
-                call().ConvertUnits,
-                call().DiffractionFocussing,
-                call().executeQueue,
-                call().WashDishes,
-                call().executeQueue,
+                call.LoadNexus,
+                call.CustomGroupWorkspace,
+                call.ConvertUnits,
+                call.DiffractionFocussing,
+                call.executeQueue,
+                call.mtd.__getitem__(),
+                call.mtd.__getitem__().getNames,
+                call.mtd.__getitem__().getNames().__iter__,
+                call.mtd.__getitem__().getNames().__len__,
+                call.WashDishes,
+                call.executeQueue,
             ]
 
-            actual_calls = [call[0] for call in mock_MantidSnapper.mock_calls if call[0]]
+            actual_calls = [call[0] for call in vanAlgo.mantidSnapper.mock_calls if call[0]]
 
             # Assertions
             assert actual_calls == [call[0] for call in expected_calls]
-
-        # @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.mtd")
-        # @mock.patch("snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm.MantidSnapper")
-        # def test_fullCoverage(self, mock_snapper, mock_mtd):  # noqa ARG002
-        #     vanAlgo = VanadiumFocussedReductionAlgorithm()
-        #     vanAlgo.PyInit()
-        #     vanAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
-        #     vanAlgo.setProperty("SmoothDataIngredients", self.smoothIngredients.json())
-        #     vanAlgo.PyExec()
-        #     wsGroupName = vanAlgo.getProperty("OutputWorkspaceGroup").value
-        #     assert wsGroupName == "diffraction_focused_vanadium"
