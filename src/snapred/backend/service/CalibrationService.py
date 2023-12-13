@@ -43,6 +43,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationNormalizationRecipe import CalibrationNormalizationRecipe
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
+from snapred.backend.recipe.GenerateCalibrationMetricsWorkspacesRecipe import GenerateCalibrationMetricsWorkspacesRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
     CalibrationReductionRecipe,
@@ -350,10 +351,8 @@ class CalibrationService(Service):
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
         if calibrationRecord is None:
             raise ValueError(f"No calibration record found for run {runId}, version {version}.")
-        GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
-            ListOfDict=list_to_raw(calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric),
-            OutputWorkspace=f"{runId}_calibrationMetrics_v{calibrationRecord.version}",
-        )
+
+        GenerateCalibrationMetricsWorkspacesRecipe().executeRecipe(calibrationRecord)
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
