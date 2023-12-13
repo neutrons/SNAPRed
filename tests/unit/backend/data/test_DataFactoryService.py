@@ -108,3 +108,11 @@ with mock.patch.dict(
         actual = dataExportService.getCifFilePath("testId")
 
         assert actual == "expected"
+
+    def test_getNormalizationState():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readNormalizationState = mock.Mock()
+        dataExportService.lookupService.readNormalizationState.return_value = "expected"
+        actual = dataExportService.getNormalizationState(mock.Mock())
+
+        assert actual == "expected"

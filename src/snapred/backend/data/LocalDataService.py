@@ -374,6 +374,27 @@ class LocalDataService:
             version = latestCalibration.version
         return version
 
+    def _getVersionFromNormalizationIndex(self, runId: str):
+        """
+        Loads normalization index and inspects all entries to attain
+        latest normalization version that applies to the run id
+        """
+        # lookup normalization index
+        normalizationIndex = self.readNormalizationIndex(runId)
+        # From the index find the latest normalization
+        latestNormalization = None
+        version = None
+        if normalizationIndex:
+            # sort by timestamp
+            normalizationIndex.sort(key=lambda x: x.timestamp)
+            # filter for latest applicable
+            relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runId), normalizationIndex))
+            if len(relevantEntries) < 1:
+                raise ValueError(f"No applicable calibration index entries found for runId {runId}")
+            latestNormalization = relevantEntries[-1]
+            version = latestNormalization.version
+        return version
+
     def _constructCalibrationDataPath(self, runId: str, version: str):
         """
         Generates the path for an instrument state's versioned calibration files.
@@ -489,7 +510,7 @@ class LocalDataService:
 
         self.writeNormalizationState(runNumber, record.normalization, version)
         for workspace in record.workspaceNames:
-            self.writeWorkspace(normalizationPath, workspace)
+            self.localWorkspaceDataService.writeWorkspace(normalizationPath, workspace)
         return record
 
     def readCalibrationRecord(self, runId: str, version: str = None):
@@ -586,6 +607,10 @@ class LocalDataService:
         version = self._getVersionFromCalibrationIndex(runId)
         return self.readCalibrationRecord(runId, version)
 
+    def _getCurrentNormalizationRecord(self, runId: str):
+        version = self._getVersionFromNormalizationIndex(runId)
+        return self.readNormalizationRecord(runId, version)
+
     def getCalibrationStatePath(self, runId: str, version: str):
         statePath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationParameters.json"
         return statePath
@@ -653,7 +678,7 @@ class LocalDataService:
         if not version:
             version = previousVersion + 1
         # check for the existenece of a calibration parameters file
-        normalizationParametersPath = self.getNormalizationStatePath(runId, version)
+        normalizationParametersPath = self.getCalibrationStatePath(runId, version)
         normalization.version = version
         normalizationPath = self._constructCalibrationDataPath(runId, version)
         if not os.path.exists(normalizationPath):
