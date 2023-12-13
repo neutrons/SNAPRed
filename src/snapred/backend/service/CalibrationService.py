@@ -480,7 +480,7 @@ class CalibrationService(Service):
         logger.info("Saving normalization index entry for Run Number {}".format(entry.runNumber))
         self.dataExportService.exportNormalizationIndexEntry(entry)
 
-    @FromString        
+    @FromString
     def retrievePixelGroupingParams(self, runID: str, useLiteMode: bool = True):
         calibration = self.dataFactoryService.getCalibrationState(runID)
         focusGroups = self.dataFactoryService.getFocusGroups(runID)
