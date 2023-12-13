@@ -69,6 +69,7 @@ with mock.patch.dict(
             savingAlgo.initialize()
             savingAlgo.setProperty("GroupingFilename", groupingFile)
             savingAlgo.setProperty("OutputFilename", outputFilePath)
+            savingAlgo.setProperty("InstrumentName", "SNAP")
             assert savingAlgo.execute()
 
             # load the saved grouping definition as a workspace
@@ -102,6 +103,7 @@ with mock.patch.dict(
             savingAlgo.initialize()
             savingAlgo.setProperty("GroupingFilename", groupingFile)
             savingAlgo.setProperty("OutputFilename", outputFilePath)
+            savingAlgo.setProperty("InstrumentName", "SNAP")
             assert savingAlgo.execute()
 
             # load the saved grouping definition as a workspace
@@ -140,6 +142,7 @@ with mock.patch.dict(
             savingAlgo.initialize()
             savingAlgo.setProperty("GroupingWorkspace", lnp_ws_name)
             savingAlgo.setProperty("OutputFilename", outputFilePath)
+            savingAlgo.setProperty("InstrumentName", "SNAP")
             assert savingAlgo.execute()
 
             # load the saved grouping definition as a workspace

@@ -1,9 +1,10 @@
 from enum import IntEnum
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, parse_obj_as
 
 from snapred.backend.dao.Limit import Limit
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 
 
@@ -11,6 +12,7 @@ class PixelGroup(BaseModel):
     # allow initializtion from either dictionary or list
     pixelGroupingParameters: Union[List[PixelGroupingParameters], Dict[int, PixelGroupingParameters]] = {}
     numberBinsAcrossPeakWidth: int = 10
+    focusGroup: Optional[FocusGroup]  # TODO this needs to be mandatory
 
     @property
     def groupID(self) -> List[int]:
@@ -31,34 +33,24 @@ class PixelGroup(BaseModel):
     def __getitem__(self, key):
         return self.pixelGroupingParameters[key]
 
-    def __init__(
-        self,
-        groupID: List[int] = None,
-        twoTheta: List[float] = None,
-        dResolution: List[Limit[float]] = None,
-        dRelativeResolution: List[float] = None,
-        pixelGroupingParameters={},
-        numberBinsAcrossPeakWidth=10,
-    ):
-        if pixelGroupingParameters != {}:
-            if isinstance(pixelGroupingParameters, list):
-                pixelGroupingParameters = {
-                    PixelGroupingParameters.parse_obj(p).groupID: p for p in pixelGroupingParameters
-                }
-        else:
-            pixelGroupingParameters = {
+    def __init__(self, **kwargs):
+        if kwargs.get("pixelGroupingParameters") is None:
+            groupID = kwargs["groupID"]
+            kwargs["pixelGroupingParameters"] = {
                 groupID[i]: PixelGroupingParameters(
                     groupID=groupID[i],
-                    twoTheta=twoTheta[i],
-                    dResolution=dResolution[i],
-                    dRelativeResolution=dRelativeResolution[i],
+                    twoTheta=kwargs["twoTheta"][i],
+                    dResolution=kwargs["dResolution"][i],
+                    dRelativeResolution=kwargs["dRelativeResolution"][i],
                 )
                 for i in range(len(groupID))
             }
-        return super().__init__(
-            pixelGroupingParameters=pixelGroupingParameters,
-            numberBinsAcrossPeakWidth=numberBinsAcrossPeakWidth,
-        )
+        elif isinstance(kwargs["pixelGroupingParameters"], list):
+            pixelGroupingParametersList = kwargs["pixelGroupingParameters"]
+            kwargs["pixelGroupingParameters"] = {
+                PixelGroupingParameters.parse_obj(p).groupID: p for p in pixelGroupingParametersList
+            }
+        return super().__init__(**kwargs)
 
     # these are not properties, but they reflect the actual data consumption
 

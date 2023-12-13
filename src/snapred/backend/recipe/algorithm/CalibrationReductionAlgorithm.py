@@ -21,7 +21,7 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
-        reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
+        reductionIngredients = ReductionIngredients.parse_raw(self.getProperty("ReductionIngredients").value)
         # run the algo
         self.log().notice("Execution of CalibrationReductionAlgorithm START!")
 
