@@ -442,7 +442,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService = LocalDataService()
 
             result = localDataService.readCalibrantSample(
-                "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640D_001.json"
+                Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
             )
             assert type(result) == CalibrantSamples
             assert result.name == "Silicon_NIST_640D"
