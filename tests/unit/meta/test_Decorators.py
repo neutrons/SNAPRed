@@ -1,8 +1,11 @@
 import json
 from typing import List
 
+import pytest
 from pydantic import BaseModel
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.error.StateValidationException import StateValidationException
+from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.FromString import FromString
 
 
@@ -36,3 +39,16 @@ def test_FromStringOnListOfString():
 def test_FromStringOnListOfBaseModel():
     tester = Tester()
     tester.assertIsListOfModel(json.dumps([SNAPRequest(path="test").dict()]))
+
+
+@ExceptionHandler(StateValidationException)
+def throwsStateException():
+    raise RuntimeError("I love exceptions!!! Ah ha ha!")
+
+
+def test_stateExceptionHandler():
+    try:
+        throwsStateException()
+        pytest.fail("should have thrown an exception")
+    except StateValidationException:
+        assert True
