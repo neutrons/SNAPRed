@@ -25,15 +25,15 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Optional),
+            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containg the raw vanadium data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("BackgroundWorkspace", "", Direction.Input, PropertyMode.Optional),
+            MatrixWorkspaceProperty("BackgroundWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace containing the raw vanadium background data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Optional),
+            MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
             doc="Workspace definingthe grouping to use in normalization",
         )
         self.declareProperty(
@@ -65,7 +65,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
         self.backgroundWSName = self.getPropertyValue("BackgroundWorkspace")
         self.groupingWSName = self.getPropertyValue("GroupingWorkspace")
         self.rawVanadiumWSName = self.getPropertyValue("OutputWorkspace")
-        if self.getProperty("OutputWorkspace").isDefault:
+        if self.getProperty("SmoothedOutput").isDefault:
             self.smoothRawVanadiumWSName = self.rawVanadiumWSName + "_smoothed"
         else:
             self.smoothRawVanadiumWSName = self.getPropertyValue("SmoothedOutput")
@@ -154,9 +154,6 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             Ingredients=self.smoothDataIngredients.json(),
             OutputWorkspace=self.smoothRawVanadiumWSName,
         )
-
-        self.setProperty("OutputWorkspace", self.rawVanadiumWSName)
-        self.setProperty("SmoothedOutput", self.smoothRawVanadiumWSName)
 
         self.mantidSnapper.executeQueue()
 

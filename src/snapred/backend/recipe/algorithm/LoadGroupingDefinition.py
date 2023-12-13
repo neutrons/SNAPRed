@@ -2,14 +2,7 @@ import pathlib
 from datetime import datetime
 from typing import Dict
 
-from mantid.api import (
-    AlgorithmFactory,
-    FileAction,
-    FileProperty,
-    MatrixWorkspaceProperty,
-    PropertyMode,
-    PythonAlgorithm,
-)
+from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.log.logger import snapredLogger
@@ -35,25 +28,12 @@ class LoadGroupingDefinition(PythonAlgorithm):
         return "SNAPRed Data Handling"
 
     def PyInit(self) -> None:
-        # define supported file name extensions
-        self.supported_calib_file_extensions = ["H5", "HD5", "HDF"]
-        self.supported_nexus_file_extensions = ["NXS", "NXS5"]
-        self.supported_xml_file_extensions = ["XML"]
-        self.all_extensions = (
-            self.supported_nexus_file_extensions
-            + self.supported_xml_file_extensions
-            + self.supported_calib_file_extensions
-        )
-
+        # declare properties
         self.declareProperty(
-            FileProperty(
-                "GroupingFilename",
-                defaultValue="",
-                action=FileAction.Load,
-                extensions=self.all_extensions,
-                direction=Direction.Input,
-            ),
-            doc="Path to the grouping file to be loaded",
+            "GroupingFilename",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="Path of an input grouping definition file",
         )
         self.declareProperty(
             "InstrumentName",
@@ -81,75 +61,65 @@ class LoadGroupingDefinition(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
+        # define supported file name extensions
+        self.supported_calib_file_extensions = ["H5", "HD5", "HDF"]
+        self.supported_nexus_file_extensions = ["NXS", "NXS5"]
+        self.supported_xml_file_extensions = ["XML"]
+
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
+        grouping_file_name = self.getPropertyValue("GroupingFilename")
+        file_extension = pathlib.Path(grouping_file_name).suffix.upper()[1:]
+        supported_extensions = (
+            self.supported_nexus_file_extensions
+            + self.supported_xml_file_extensions
+            + self.supported_calib_file_extensions
+        )
+        if file_extension not in supported_extensions:
+            msg = f"GroupingFilename has an unsupported file name extension {file_extension}"
+            errors["GroupingFilename"] = msg
 
-        if self.getProperty("GroupingFilename").isDefault:
-            errors["GroupingFilename"] = "You must specify the grouping filename to load"
-            return errors
-        if self.getProperty("OutputWorkspace").isDefault:
-            errors["OutputWorkspace"] = "You must specify the output grouping workspace"
+        if file_extension in self.supported_calib_file_extensions:
+            instrument_name = self.getPropertyValue("InstrumentName")
+            instrument_file_name = self.getPropertyValue("InstrumentFilename")
+            if instrument_name + instrument_file_name != "":
+                if not (instrument_name == "" or instrument_file_name == ""):
+                    msg = "Either InstrumentName or InstrumentFilename must be specified, but not both."
+                    errors["InstrumentName"] = msg
+                    errors["InstrumentFIlename"] = msg
 
-        groupingFilename = self.getPropertyValue("GroupingFilename")
-        groupingFileExt = pathlib.Path(groupingFilename).suffix[1:].upper()
-        # TODO this validation SHOULD occur as part of property validation
-        if groupingFileExt not in self.all_extensions:
-            errors["GroupingFilename"] = f"Grouping file extension {groupingFileExt} not supported"
-
-        if groupingFileExt not in self.supported_xml_file_extensions:
-            if not self.getProperty("InstrumentDonor").isDefault:
+        if file_extension not in self.supported_xml_file_extensions:
+            instrument_donor = self.getPropertyValue("InstrumentDonor")
+            if instrument_donor:
                 logger.warn("InstrumentDonor will only be used if GroupingFilename is in XML format.")
-
-        instrumentSources = ["InstrumentDonor", "InstrumentName", "InstrumentFilename"]
-        specifiedSources = [s for s in instrumentSources if not self.getProperty(s).isDefault]
-        if len(specifiedSources) > 1:
-            msg = "You can only declare ONE way to get an instrument.  " + f"You specified {specifiedSources}"
-            errors.update({i: msg for i in specifiedSources})
-        elif len(specifiedSources) == 0:
-            msg = f"You MUST specify an instrument source from {instrumentSources}"
-            errors.update({i: msg for i in instrumentSources})
         return errors
 
-    def chopIngredients(self, filePath: str):
-        ext = pathlib.Path(filePath).suffix[1:].upper()
-        if ext in self.supported_calib_file_extensions and not self.getProperty("InstrumentDonor").isDefault:
-            self.instrumentSource = {"InputWorkspace": self.getPropertyValue("InstrumentDonor")}
-        else:
-            instrumentSources = ["InstrumentDonor", "InstrumentName", "InstrumentFilename"]
-            self.instrumentSource = {
-                s: self.getPropertyValue(s) for s in instrumentSources if not self.getProperty(s).isDefault
-            }
-        return ext
-
-    def unbagGroceries(self):
-        pass
-
     def PyExec(self) -> None:
-        self.groupingFilePath = self.getPropertyValue("GroupingFilename")
-        self.groupingFileExt = self.chopIngredients(self.groupingFilePath)
-        self.outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
-
-        isLite: bool = ".lite" in self.groupingFilePath
+        grouping_file_name = self.getPropertyValue("GroupingFilename")
+        output_ws_name = self.getPropertyValue("OutputWorkspace")
+        file_extension = pathlib.Path(grouping_file_name).suffix.upper()[1:]
+        isLite: bool = ".lite" in grouping_file_name
         if isLite and self.getProperty("InstrumentFilename").isDefault:
             self.setProperty("InstrumentFilename", Config["instrument.lite.definition.file"])
-
-        if self.groupingFileExt in self.supported_calib_file_extensions:
+        if file_extension in self.supported_calib_file_extensions:
             self.mantidSnapper.LoadDiffCal(
                 "Loading grouping definition from calibration file...",
-                Filename=self.groupingFilePath,
+                Filename=grouping_file_name,
+                InstrumentName=self.getPropertyValue("InstrumentName"),
+                InstrumentFilename=self.getPropertyValue("InstrumentFilename"),
+                InputWorkspace=self.getPropertyValue("InstrumentDonor"),
                 MakeGroupingWorkspace=True,
                 MakeCalWorkspace=False,
                 MakeMaskWorkspace=False,
-                WorkspaceName=self.outputWorkspaceName,
-                **self.instrumentSource,
+                WorkspaceName=output_ws_name,
             )
             # Remove the "_group" suffix, which is added by LoadDiffCal to the output workspace name
             self.mantidSnapper.RenameWorkspace(
                 "Renaming grouping workspace...",
-                InputWorkspace=self.outputWorkspaceName + "_group",
-                OutputWorkspace=self.outputWorkspaceName,
+                InputWorkspace=output_ws_name + "_group",
+                OutputWorkspace=output_ws_name,
             )
-        elif self.groupingFileExt in self.supported_xml_file_extensions:
+        elif file_extension in self.supported_xml_file_extensions:
             instrument_donor = self.getPropertyValue("InstrumentDonor")
             preserve_donor = True if instrument_donor else False
             if not instrument_donor:
@@ -163,28 +133,20 @@ class LoadGroupingDefinition(PythonAlgorithm):
                 )
             self.mantidSnapper.LoadDetectorsGroupingFile(
                 "Loading grouping definition from detectors grouping file...",
-                InputFile=self.groupingFilePath,
+                InputFile=grouping_file_name,
                 InputWorkspace=instrument_donor,
-                OutputWorkspace=self.outputWorkspaceName,
+                OutputWorkspace=output_ws_name,
             )
             if not preserve_donor:
                 self.mantidSnapper.WashDishes(
                     "Deleting instrument definition workspace...",
                     Workspace=instrument_donor,
                 )
-        elif self.groupingFileExt in self.supported_nexus_file_extensions:  # must be a NEXUS file
+        else:  # must be a NEXUS file
             self.mantidSnapper.LoadNexusProcessed(
                 "Loading grouping definition from grouping workspace...",
-                Filename=self.groupingFilePath,
-                OutputWorkspace=self.outputWorkspaceName,
-            )
-        else:
-            raise RuntimeError(
-                f"""
-                Somehow you dodged the validation checks on file extensions
-                and gave a {self.groupingFileExt} file when the only allowed
-                extensions are {self.all_extensions}
-                """
+                Filename=grouping_file_name,
+                OutputWorkspace=output_ws_name,
             )
         self.mantidSnapper.executeQueue()
 
