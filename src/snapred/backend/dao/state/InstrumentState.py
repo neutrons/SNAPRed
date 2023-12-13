@@ -8,6 +8,7 @@ from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.ParticleBounds import ParticleBounds
 from snapred.backend.dao.state.DetectorState import DetectorState, GuideState
 from snapred.backend.dao.state.PixelGroup import PixelGroup
+#from snapred.backend.dao.state.GroupingMap import GroupingMap
 
 
 class InstrumentState(BaseModel):
@@ -19,6 +20,7 @@ class InstrumentState(BaseModel):
     defaultGroupingSliceValue: float
     fwhmMultiplierLimit: Limit[float]
     peakTailCoefficient: float
+    #groupingMap: GroupingMap
 
     @property
     def delTh(self) -> float:
