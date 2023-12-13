@@ -399,6 +399,7 @@ class CalibrationService(Service):
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             request.runNumber,
             groupingFile,
+            True,
         )
 
         reductionIngredients = self.dataFactoryService.getReductionIngredients(
