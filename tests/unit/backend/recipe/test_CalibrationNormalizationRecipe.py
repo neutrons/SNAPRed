@@ -58,10 +58,6 @@ class TestCalibrationNormalizationRecipe(unittest.TestCase):
 
     #     result = recipe.executeRecipe(self.ingredients_mock, self.grocery_list)
 
-    #     # Assert that the method calls chopIngredients and unbagGroceries
-    #     # These assertions depend on how you've set up your mocks
-    #     # ...
-
     #     self.calib_norm_algo_mock.initialize.assert_called_once()
     #     self.calib_norm_algo_mock.execute.assert_called_once()
     #     self.assertEqual(result["outputWorkspace"], "Mocked_OutputWorkspace")

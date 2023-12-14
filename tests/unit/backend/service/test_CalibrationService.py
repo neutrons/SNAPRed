@@ -25,6 +25,9 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric  # noqa: E402
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
+    from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import (
+        SmoothDataExcludingPeaksIngredients,  # noqa: E402
+    )
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest  # noqa: E402
     from snapred.backend.dao.request.NormalizationCalibrationRequest import (
         NormalizationCalibrationRequest,  # noqa: E402
@@ -350,22 +353,33 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             {"inputWorkspace": mockGroceries[0], "groupingWorkspace": mockGroceries[1]},
         )
 
-    @patch("snapred.backend.service.CalibrationService.CrystallographicInfoService")
-    @patch("snapred.backend.service.CalibrationService.SmoothDataExcludingPeaksIngredients")
-    @patch("snapred.backend.service.CalibrationService.CalibrationNormalizationRecipe")
+    @patch(thisService + "GroceryListItem")
+    @patch(thisService + "FetchGroceriesRecipe")
+    @patch(thisService + "CrystallographicInfoService")
+    @patch(thisService + "SmoothDataExcludingPeaksIngredients")
+    @patch(thisService + "NormalizationCalibrationIngredients")
+    @patch(thisService + "CalibrationNormalizationRecipe")
     def test_calibrationNormalization(
         self,
         mockCalibrationNormalizationRecipe,
-        mockSmoothDataExcludingPeaksIngredients,  # noqa: ARG002
+        mockNormalizationCalibrationIngredients,
+        mockSmoothDataExcludingPeaksIngredients,
         mockCrystallographicInfoService,
+        mockFetchGroceriesRecipe,
+        mockGroceryListItem,
     ):
         # Mock the necessary method calls
-        mockCalibration = MagicMock()
-        mockInstrumentState = MagicMock()
+        mockReductionIngredients = MagicMock()
+        mockBackgroundReductionIngredients = MagicMock()
+        mockCalibrantSample = MagicMock()
+        mockSampleFilePath = MagicMock()
         self.instance.dataFactoryService = MagicMock()
-        self.instance.dataFactoryService.getReductionIngredients.return_value = MagicMock()
-        self.instance.dataFactoryService.getCalibrationState = MagicMock(return_value=mockCalibration)
-        mockCalibration.instrumentState = mockInstrumentState
+        self.instance.dataFactoryService.getReductionIngredients = MagicMock(return_value=mockReductionIngredients)
+        self.instance.dataFactoryService.getReductionIngredients = MagicMock(
+            return_value=mockBackgroundReductionIngredients
+        )
+        self.instance.dataFactoryService.getCalibrantSamples = MagicMock(return_value=mockCalibrantSample)
+        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value=mockSampleFilePath)
         mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
         mockCalibrationNormalizationRecipe().executeRecipe.return_value = [MagicMock()]
         runNumber = "1"
@@ -387,7 +401,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             material=material,
         )
 
-        NormalizationCalibrationRequest(
+        request = NormalizationCalibrationRequest(
             runNumber=runNumber,
             backgroundRunNumber=backgroundRunNumber,
             samplePath="mock_cif_path",
@@ -395,17 +409,30 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             smoothingParameter=0.01,
         )
 
-        # # Call the method to test TODO
-        # self.instance.normalization(request)
+        mockFocusGroupInstrumentState = (MagicMock(), MagicMock())
+        self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=mockFocusGroupInstrumentState)
+        mockFocusGroupInstrumentState[1].pixelGroup = mock.Mock()
 
-        # # Perform assertions to check the result and method calls
-        # mockSmoothDataExcludingPeaksIngredients.assert_called_once_with(
-        #     crystalInfo=mockCrystallographicInfoService().ingest.return_value["crystalInfo"],
-        #     instrumentState=mockInstrumentState,
-        #     smoothingParameter=request.smoothingParameter,
-        # )
-        # mockCalibrationNormalizationRecipe().executeRecipe.assert_called_once_with(
-        #     self.instance.dataFactoryService.getReductionIngredients.return_value,
-        #     mockSmoothDataExcludingPeaksIngredients.return_value,
-        #     calibrantSample,
-        # )
+        # Call the method to test TODO
+        self.instance.normalization(request)
+
+        # Perform assertions to check the result and method calls
+        mockSmoothDataExcludingPeaksIngredients.assert_called_once_with(
+            crystalInfo=mockCrystallographicInfoService().ingest.return_value["crystalInfo"],
+            instrumentState=mockFocusGroupInstrumentState[1],
+            smoothingParameter=request.smoothingParameter,
+        )
+
+        assert mockGroceryListItem.call_count == 3
+        mockGroceries = mockFetchGroceriesRecipe().executeRecipe.return_value["workspaces"]
+
+        mockCalibrationNormalizationRecipe().executeRecipe.assert_called_once_with(
+            mockNormalizationCalibrationIngredients.return_value,
+            {
+                "inputWorkspace": mockGroceries[0],
+                "backgroundWorkspace": mockGroceries[1],
+                "groupingWorkspace": mockGroceries[2],
+                "outputWorkspace": "focussedRawVanadium",
+                "smoothedOutput": "smoothedOutput",
+            },
+        )
