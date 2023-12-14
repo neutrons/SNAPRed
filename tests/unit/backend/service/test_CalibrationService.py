@@ -239,11 +239,20 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         thisService + "CrystallographicInfoService",
         return_value=MagicMock(ingest=MagicMock(return_value={"crystalInfo": "mock_crystal_info"})),
     )
-    @patch(thisService + "CalibrationRecord", return_value="mock_calibration_record")
+    @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record")
     @patch(thisService + "FitMultiplePeaksIngredients")
     @patch(thisService + "FitMultiplePeaksRecipe")
+    @patch(
+        thisService + "GenerateCalibrationMetricsWorkspaceRecipe",
+        return_value=MagicMock(),
+    )
     def test_assessQuality(
-        self, mockCrystalInfoService, mockCalibRecord, fitMultiplePeaksIng, fmprecipe  # noqa: ARG002
+        self,
+        mockCrystalInfoService,  # noqa: ARG002
+        mockCalibRecord,  # noqa: ARG002
+        fitMultiplePeaksIng,  # noqa: ARG002
+        fmprecipe,  # noqa: ARG002
+        mockGenCalibMetricsWorkspacesRecipe,  # noqa: ARG002
     ):
         # Mock input data
         mockRequest = MagicMock()
@@ -288,10 +297,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Call the method to test
         result = self.instance.assessQuality(mockRequest)
-
         # Assert the result is as expected
-        expected_record = "mock_calibration_record"
-        assert result == expected_record
+        expected_record_mockId = "mock_calibration_record"
+        assert result.mockId == expected_record_mockId
 
     def test_readQuality(self):
         run = MagicMock()
