@@ -5,17 +5,29 @@
             "focusGroupMapping": [
                 {
                     "SHA": "h102923",
-                    "focusGroup": {
-                        "groupingName": "Column",
-                        "filePath": "relative/path/to/file"
-                    }
+                    "focusGroups": [
+                        {
+                            "groupingName": "Column",
+                            "filePath": "relative/path/to/Columnfile"
+                        },
+                        {
+                            "groupingName": "All",
+                            "filePath": "relative/path/to/Allfile"
+                        }
+                    ]
                 },
                 {
                     "SHA": "327948",
-                    "focusGroup": {
-                        "groupingName": "All",
-                        "filePath": "relative/path/to/file2"
-                    }
+                    "focusGroups": [
+                        {
+                            "groupingName": "Column",
+                            "filePath": "relative/path/to/Columnfile2"
+                        },
+                        {
+                            "groupingName": "All",
+                            "filePath": "relative/path/to/Allfile2"
+                        }
+                    ]
                 }
             ]
         },
@@ -24,17 +36,29 @@
             "focusGroupMapping": [
                 {
                     "SHA": "h102923",
-                    "focusGroup": {
-                        "groupingName": "Column",
-                        "filePath": "relative/path/to/liteFile"
-                    }
+                    "focusGroups": [
+                        {
+                            "groupingName": "Column",
+                            "filePath": "relative/path/to/liteColumnfile"
+                        },
+                        {
+                            "groupingName": "All",
+                            "filePath": "relative/path/to/liteAllfile"
+                        }
+                    ]
                 },
                 {
                     "SHA": "327948",
-                    "focusGroup": {
-                        "groupingName": "All",
-                        "filePath": "relative/path/to/liteFile2"
-                    }
+                    "focusGroups": [
+                        {
+                            "groupingName": "Column",
+                            "filePath": "relative/path/to/liteColumnfile2"
+                        },
+                        {
+                            "groupingName": "All",
+                            "filePath": "relative/path/to/liteAllfile2"
+                        }
+                    ]
                 }
             ]
         }
