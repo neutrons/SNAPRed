@@ -28,6 +28,8 @@ with mock.patch.dict(
     from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import (
         SmoothDataExcludingPeaksIngredients,  # noqa: E402
     )
+    from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry  # noqa: E402
+    from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord  # noqa: E402
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest  # noqa: E402
     from snapred.backend.dao.request.NormalizationCalibrationRequest import (
         NormalizationCalibrationRequest,  # noqa: E402
@@ -59,6 +61,29 @@ with mock.patch.dict(
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">1"
         assert savedEntry.timestamp is not None
+
+    def test_exportNormalizationIndexEntry():
+        calibrationService = CalibrationService()
+        calibrationService.dataExportService.exportNormalizationIndexEntry = MagicMock()
+        calibrationService.dataExportService.exportNormalizationIndexEntry.return_value = "expected"
+        calibrationService.saveNormalizationToIndex(NormalizationIndexEntry(runNumber="1", backgroundRunNumber="2"))
+        assert calibrationService.dataExportService.exportNormalizationIndexEntry.called
+        savedEntry = calibrationService.dataExportService.exportNormalizationIndexEntry.call_args.args[0]
+        assert savedEntry.appliesTo == ">1"
+        assert savedEntry.timestamp is not None
+
+    def test_saveNormalization():
+        calibrationService = CalibrationService()
+        calibrationService.dataExportService.exportNormalizationRecord = mock.Mock()
+        calibrationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version="1.0.0")
+        calibrationService.dataExportService.exportNormalizationIndexEntry = mock.Mock()
+        calibrationService.dataExportService.exportNormalizationIndexEntry.return_value = "expected"
+        calibrationService.dataFactoryService.getReductionIngredients = mock.Mock()
+        calibrationService.dataFactoryService.getReductionIngredients.return_value = readReductionIngredientsFromFile()
+        calibrationService.saveNormalization(mock.Mock())
+        assert calibrationService.dataExportService.exportNormalizationRecord.called
+        savedEntry = calibrationService.dataExportService.exportNormalizationRecord.call_args.args[0]
+        assert savedEntry.parameters is not None
 
     def test_save():
         calibrationService = CalibrationService()
@@ -436,3 +461,19 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 "smoothedOutput": "smoothedOutput",
             },
         )
+
+    @patch(thisService + "NormalizationRecord", return_value="mock_normalization_record")
+    def test_normalizationAssessment(self, mockNormalizationRecord):  # noqa: ARG002
+        mockRequest = MagicMock()
+        mockRequest.runNumber = "58810"
+        mockRequest.backgroundRunNumber = "58813"
+        mockRequest.smoothingParameter = 0.1
+        mockRequest.samplePath = "mock_cif_path"
+        mockRequest.focusGroupPath = "mock_grouping_path"
+
+        self.instance.dataFactoryService.getNormalizationState = MagicMock(return_value="mock_normalization_state")
+
+        result = self.instance.normalizationAssessment(mockRequest)
+
+        expected_record = "mock_normalization_record"
+        assert result == expected_record
