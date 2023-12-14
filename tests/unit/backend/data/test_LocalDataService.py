@@ -432,6 +432,16 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         actualRecord = localDataService._getCurrentCalibrationRecord("123")
         assert actualRecord == mockRecord
 
+    def test__getCurrentNormalizationRecord():
+        localDataService = LocalDataService()
+        localDataService._getVersionFromNormalizationIndex = mock.Mock()
+        localDataService._getVersionFromNormalizationIndex.return_value = "1"
+        localDataService.readNormalizationRecord = mock.Mock()
+        mockRecord = mock.Mock()
+        localDataService.readNormalizationRecord.return_value = mockRecord
+        actualRecord = localDataService._getCurrentNormalizationRecord("123")
+        assert actualRecord == mockRecord
+
     def test_getCalibrationStatePath():
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
@@ -455,6 +465,23 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         )
         actualState = localDataService.readCalibrationState("123")
         assert actualState == Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+
+    def test_readNormalizationState():
+        localDataService = LocalDataService()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
+        localDataService.getCalibrationStatePath = mock.Mock()
+        localDataService.getCalibrationStatePath.return_value = Resource.getPath("123/v_1/CalibrationParameters.json")
+        localDataService._getLatestFile = mock.Mock()
+        localDataService._getLatestFile.return_value = Resource.getPath("inputs/calibration/CalibrationParameters.json")
+        localDataService._getCurrentNormalizationRecord = mock.Mock()
+        localDataService._getCurrentNormalizationRecord.return_value = NormalizationRecord.parse_raw(
+            Resource.read("inputs/normalization/NormalizationRecord.json")
+        )
+        actualState = localDataService.readNormalizationState("123")
+        assert actualState == Normalization.parse_file(
+            Resource.getPath("inputs/normalization/NormalizationParameters.json")
+        )
 
     def test_writeCalibrationState():
         localDataService = LocalDataService()
