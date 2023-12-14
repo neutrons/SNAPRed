@@ -10,6 +10,7 @@ from mantid.api import (
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients as Ingredients
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
@@ -36,13 +37,10 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients):
-        pixelGroupingParam = self.ingredients.pixelGroupingParameters
-        self.dResolutionMin = [pgp.dResolution.minimum for pgp in pixelGroupingParam]
-        self.dResolutionMax = [pgp.dResolution.maximum for pgp in pixelGroupingParam]
-        instrumentConfig = ingredients.reductionState.instrumentConfig
-        self.dRelativeResolution = [
-            -abs(pgp.dRelativeResolution / instrumentConfig.NBins) for pgp in pixelGroupingParam
-        ]
+        self.pixelGroupingParam = ingredients.pixelGroup.pixelGroupingParameters
+        self.dResolutionMin = ingredients.pixelGroup.dMin()
+        self.dResolutionMax = ingredients.pixelGroup.dMax()
+        self.dRelativeResolution = ingredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
         pass
 
     def unbagGroceries(self):

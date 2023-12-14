@@ -66,7 +66,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         errors = {}
 
         if self.getProperty("WeightWorkspace").isDefault:
-            errors["WeightWorkspace"] = "Weghit calculator requires namefor weight worspace"
+            errors["WeightWorkspace"] = "Weight calculator requires name for weight workspace"
 
         if self.getProperty("DetectorPeaks").isDefault:
             noState = self.getProperty("InstrumentState").isDefault
