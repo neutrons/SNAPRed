@@ -615,6 +615,11 @@ class LocalDataService:
         statePath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationParameters.json"
         return statePath
 
+    def getNormalizationStatePath(self, runId: str, version: str):
+        # TODO make its own path?
+        statePath: str = f"{self._constructCalibrationDataPath(runId, version)}NormalizationParameters.json"
+        return statePath
+
     def readCalibrationState(self, runId: str, version: str = None):
         # get stateId and check to see if such a folder exists, if not create an initialize it
         stateId, _ = self._generateStateId(runId)
@@ -678,7 +683,7 @@ class LocalDataService:
         if not version:
             version = previousVersion + 1
         # check for the existenece of a calibration parameters file
-        normalizationParametersPath = self.getCalibrationStatePath(runId, version)
+        normalizationParametersPath = self.getNormalizationStatePath(runId, version)
         normalization.version = version
         normalizationPath = self._constructCalibrationDataPath(runId, version)
         if not os.path.exists(normalizationPath):
