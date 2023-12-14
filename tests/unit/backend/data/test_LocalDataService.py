@@ -543,16 +543,19 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             "/sample1.json",
             "/sample2.json",
         ]
-        assert len(localDataService._findMatchingFileList.return_value) == 2
-        assert localDataService._findMatchingFileList.return_value[0] == "/sample1.json"
-        assert localDataService._findMatchingFileList.return_value[1] == "/sample2.json"
+        result = localDataService.readSamplePaths()
+        assert len(result) == 2
+        assert "/sample1.json" in result
+        assert "/sample2.json" in result
 
     def test_readNoSamplePaths():
         localDataService = LocalDataService()
         localDataService._findMatchingFileList = mock.Mock()
         localDataService._findMatchingFileList.return_value = []
 
-        assert len(localDataService._findMatchingFileList.return_value) == 0
+        with pytest.raises(RuntimeError) as e:
+            localDataService.readSamplePaths()
+        assert "No samples found" in str(e.value)
 
     def test_readGroupingFiles():
         localDataService = LocalDataService()
