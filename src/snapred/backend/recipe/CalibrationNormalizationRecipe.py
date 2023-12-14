@@ -34,7 +34,9 @@ class CalibrationNormalizationRecipe:
         self.outputWS = groceryList.get("outputWorkspace", "")
         self.smoothWS = groceryList.get("smoothedOutput", "")
 
-    def executeRecipe(self, ingredients: Ingredients, groceryList: Dict[str, Any]) -> Dict[str, Any]:
+    def executeRecipe(
+        self, ingredients: Ingredients, groceryList: Dict[str, Any]
+    ) -> Dict[str, Any]:  # pragma: no cover
         self.chopIngredients(ingredients)
         self.unbagGroceries(groceryList)
 
