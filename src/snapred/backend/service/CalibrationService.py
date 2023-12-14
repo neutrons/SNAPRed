@@ -33,7 +33,6 @@ from snapred.backend.dao.request import (
     InitializeStateRequest,
     NormalizationCalibrationRequest,
     NormalizationExportRequest,
-    SpecifyNormalizationRequest,
 )
 from snapred.backend.dao.state import FocusGroup, FocusGroupParameters, InstrumentState
 from snapred.backend.dao.state.PixelGroup import PixelGroup
@@ -454,7 +453,7 @@ class CalibrationService(Service):
         return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients, groceries)
 
     @FromString
-    def normalizationAssessment(self, request: SpecifyNormalizationRequest):
+    def normalizationAssessment(self, request: NormalizationCalibrationRequest):
         normalization = self.dataFactoryService.getNormalizationState(request.runNumber)
         record = NormalizationRecord(
             runNumber=request.runNumber,

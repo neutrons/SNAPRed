@@ -10,7 +10,6 @@ from snapred.backend.dao.normalization import NormalizationIndexEntry, Normaliza
 from snapred.backend.dao.request import (
     NormalizationCalibrationRequest,
     NormalizationExportRequest,
-    SpecifyNormalizationRequest,
 )
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
@@ -133,20 +132,20 @@ class NormalizationCalibrationWorkflow:
 
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
         if self.lastGroupingFile is not None and self.lastSmoothingParameter is not None:
-            payload = SpecifyNormalizationRequest(
+            payload = NormalizationCalibrationRequest(
                 runNumber=self.runNumber,
                 backgroundRunNumber=self.backgroundRunNumber,
-                smoothingParameter=self.lastSmoothingParameter,
                 samplePath=str(self.samplePaths[self.sampleIndex]),
-                focusGroupPath=str(self.lastGroupingFile),
+                groupingPath=str(self.lastGroupingFile),
+                smoothingParameter=self.lastSmoothingParameter,
             )
         else:
-            payload = SpecifyNormalizationRequest(
+            payload = NormalizationCalibrationRequest(
                 runNumber=self.runNumber,
                 backgroundRunNumber=self.backgroundRunNumber,
-                smoothingParameter=self.initSmoothingParameter,
                 samplePath=str(self.samplePaths[self.sampleIndex]),
-                focusGroupPath=str(self.groupingFiles[self.initGroupingIndex]),
+                groupingPath=str(self.groupingFiles[self.initGroupingIndex]),
+                smoothingParameter=self.initSmoothingParameter,
             )
 
         request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
