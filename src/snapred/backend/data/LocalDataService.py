@@ -758,7 +758,7 @@ class LocalDataService:
         # collect list of all json in folder
         sampleFiles = []
         for extension in extensions:
-            sampleFiles += self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False)
+            sampleFiles.extend(self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False))
         if len(sampleFiles) < 1:
             raise RuntimeError(f"No samples found in {sampleFolder} for extensions {extensions}")
         return sampleFiles

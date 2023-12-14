@@ -407,16 +407,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value=mockSampleFilePath)
         mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
         mockCalibrationNormalizationRecipe().executeRecipe.return_value = [MagicMock()]
-        runNumber = "1"
-        backgroundRunNumber = "2"
 
-        request = NormalizationCalibrationRequest(
-            runNumber=runNumber,
-            backgroundRunNumber=backgroundRunNumber,
-            samplePath="mock_cif_path",
-            groupingPath="mock_grouping_path",
-            smoothingParameter=0.01,
-        )
+        request = mock.MagicMock()
 
         mockFocusGroupInstrumentState = (MagicMock(), MagicMock())
         self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=mockFocusGroupInstrumentState)

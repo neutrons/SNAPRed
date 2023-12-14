@@ -108,8 +108,8 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             #     PreserveEvents=False,
             # )
             self.mantidSnapper.executeQueue()
-            weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
 
+        weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
         for index, groupID in enumerate(self.groupIDs):
             # get spectrum X,Y
             x = weight_ws.readX(index)
