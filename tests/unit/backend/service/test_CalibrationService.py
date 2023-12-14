@@ -410,22 +410,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         runNumber = "1"
         backgroundRunNumber = "2"
 
-        material = Material(
-            chemicalFormula="V",
-        )
-        cylinder = Geometry(
-            shape="Cylinder",
-            radius=0.15,
-            height=0.3,
-        )
-
-        CalibrantSamples(
-            name="vanadium cylinder",
-            unique_id="435elmst",
-            geometry=cylinder,
-            material=material,
-        )
-
         request = NormalizationCalibrationRequest(
             runNumber=runNumber,
             backgroundRunNumber=backgroundRunNumber,

@@ -11,6 +11,9 @@ instrument:
     home: ${instrument.home}shared/Calibration
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
+      extensions:
+        - cif
+        - json
     powder:
       home: ${instrument.calibration.home}/Powder
       grouping:

@@ -1,6 +1,6 @@
 import unittest
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import (
     NormalizationCalibrationIngredients as Ingredients,
@@ -48,18 +48,34 @@ class TestCalibrationNormalizationRecipe(unittest.TestCase):
         assert recipe.outputWS == "OutputData"
         assert recipe.smoothWS == "SmoothedData"
 
-    # @patch('snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo', return_value=None)
-    # def test_execute_recipe(self, calib_norm_algo_mock):
-    #     calib_norm_algo_mock.return_value = self.calib_norm_algo_mock
-    #     self.calib_norm_algo_mock.execute.return_value = None
-    #     self.calib_norm_algo_mock.getPropertyValue.side_effect = lambda key: f"Mocked_{key}"
+    @patch("snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo", return_value=None)
+    def test_execute_recipe(self, calib_norm_algo_mock):
+        calib_norm_algo_mock.return_value = self.calib_norm_algo_mock
+        self.calib_norm_algo_mock.execute.return_value = None
+        self.calib_norm_algo_mock.getPropertyValue.side_effect = lambda key: f"Mocked_{key}"
 
-    #     recipe = CalibrationNormalizationRecipe()
+        recipe = CalibrationNormalizationRecipe()
+        self.calib_norm_algo_mock = MagicMock()
+        ingredients_mock = MagicMock(spec=Ingredients)
+        ingredients_mock.json.return_value = "mocked_ingredients_json"
 
-    #     result = recipe.executeRecipe(self.ingredients_mock, self.grocery_list)
+        grocery_list = {
+            "inputWorkspace": "mocked_input_workspace",
+            "backgroundWorkspace": "mocked_background_workspace",
+            "groupingWorkspace": "mocked_grouping_workspace",
+            "outputWorkspace": "mocked_output_workspace",
+            "smoothedOutput": "mocked_smoothed_output",
+        }
 
-    #     self.calib_norm_algo_mock.initialize.assert_called_once()
-    #     self.calib_norm_algo_mock.execute.assert_called_once()
-    #     self.assertEqual(result["outputWorkspace"], "Mocked_OutputWorkspace")
-    #     self.assertEqual(result["smoothedOutput"], "Mocked_SmoothedOutput")
-    #     self.assertTrue(result["result"])
+        result = recipe.executeRecipe(ingredients_mock, grocery_list)
+
+        self.calib_norm_algo_mock.initialize.assert_called_once()
+        self.calib_norm_algo_mock.execute.assert_called_once()
+        self.calib_norm_algo_mock.setPropertyValue.assert_any_call("InputWorkspace", "mocked_input_workspace")
+        self.calib_norm_algo_mock.setPropertyValue.assert_any_call("BackgroundWorkspace", "mocked_background_workspace")
+        self.calib_norm_algo_mock.setPropertyValue.assert_any_call("GroupingWorkspace", "mocked_grouping_workspace")
+        self.calib_norm_algo_mock.setPropertyValue.assert_any_call("OutputWorkspace", "mocked_output_workspace")
+        self.calib_norm_algo_mock.setPropertyValue.assert_any_call("SmoothedOutput", "mocked_smoothed_output")
+        self.calib_norm_algo_mock.setPropertyValue.assert_any_call("Ingredients", "mocked_ingredients_json")
+
+        assert result["result"]
