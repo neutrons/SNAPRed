@@ -58,8 +58,7 @@ class CalibrationNormalizationRecipe:
             data["outputWorkspace"] = calibNormAlgo.getPropertyValue("OutputWorkspace")
             data["smoothedOutput"] = calibNormAlgo.getPropertyValue("SmoothedOutput")
         except RuntimeError as e:
-            errorString = str(e)
-            raise Exception(errorString.split("\n")[0])
+            raise RuntimeError(e) from e
 
         logger.info("Finished executing normalization calibration")
         data["result"] = True
