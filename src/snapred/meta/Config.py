@@ -144,10 +144,10 @@ class _Config:
         regex = r"\$\{([a-zA-Z0-9_\.]+)\}"
         matches = [match for match in re.finditer(regex, value, re.MULTILINE)]
         # replace all keys with their values
-        if(len(remainingKeys) == 0):
+        if len(remainingKeys) == 0:
             for match in matches:
                 key = match.group()[2:-1]
-                if(isinstance(self[key], dict)):
+                if isinstance(self[key], dict):
                     return value
                 value = value.replace(f"${{{key}}}", self[key])
         else:
@@ -162,8 +162,8 @@ class _Config:
                 val = self[key]
 
             value = value.replace(f"${{{rootKey}}}", val)
-            if(len(remainingKeys) > 0):
-                value = self._replace(value, remainingKeys)
+            # if(len(remainingKeys) > 0):
+            value = self._replace(value, remainingKeys)
 
         return value
 
@@ -176,12 +176,12 @@ class _Config:
             if val is None:
                 break
             if isinstance(val, str):
-                break;
+                break
             totalProcessed += 1
             val = val[k]
 
         if val is not None:
-            val = self._replace(val, keys[1+totalProcessed:])
+            val = self._replace(val, keys[1 + totalProcessed :])
         return val
 
 

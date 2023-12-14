@@ -55,5 +55,5 @@ def test_key_substitution():
 
 
 def test_multi_level_substitution():
-    assert Config["test.data.home.write"] == f'~/{Config["test.config.home"]}{Config["test.config.name"]}'
-    assert Config["test.data.home.read"] == f'{Config["test.config.home"]}{Config["test.config.name"]}'
+    assert Config["test.data.home.write"] == f'~/{Config["test.config.home"]}/data/{Config["test.config.name"]}'
+    assert Config["test.data.home.read"] == f'{Config["test.config.home"]}/data/{Config["test.config.name"]}'

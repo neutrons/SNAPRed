@@ -116,7 +116,7 @@ test:
   config:
     name: test
     home: /some/path
-  perisistence:
+  persistence:
     read: ${test.config.home}
     write: ~/${test.config.home}
   data:
