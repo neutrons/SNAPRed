@@ -249,7 +249,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_assessQuality(
         self,
         mockCrystalInfoService,  # noqa: ARG002
-        mockCalibRecord,  # noqa: ARG002
+        mockCalibRecord,
         fitMultiplePeaksIng,  # noqa: ARG002
         fmprecipe,  # noqa: ARG002
         mockGenCalibMetricsWorkspacesRecipe,  # noqa: ARG002
