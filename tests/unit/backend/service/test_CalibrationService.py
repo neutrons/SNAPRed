@@ -4,6 +4,9 @@ from typing import List
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+from mantid.simpleapi import (
+    mtd,
+)
 
 # Mock out of scope modules before importing DataExportService
 
@@ -293,11 +296,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_readQuality(self):
         run = MagicMock()
         version = MagicMock()
-        # test with a real calibration record
+        # use a non-mocked calibration record
         calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
         self.instance.readQuality(run, version)
-        # test with a None calibration record
+        # assert expected calibration metric workspaces have been loaded
+        ws_name_stem = f"{calibRecord.runNumber}_calibrationMetrics_v{calibRecord.version}"
+        for ws_name in [ws_name_stem + "_sigma", ws_name_stem + "_strain"]:
+            assert mtd.doesExist(ws_name)
+
+        # test hadling of a None calibration record
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
         with pytest.raises(ValueError) as excinfo:  # noqa: PT011
             self.instance.readQuality(run, version)

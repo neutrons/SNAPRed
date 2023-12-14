@@ -9,9 +9,9 @@ from snapred.backend.dao import GroupPeakList, RunConfig
 from snapred.backend.dao.calibration import (
     CalibrationIndexEntry,
     CalibrationMetric,
-    CalibrationRecord,
     FocusGroupMetric,
 )
+from snapred.backend.dao.calibration import CalibrationRecord as CalibrationRecord
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
     FitCalibrationWorkspaceIngredients,
@@ -372,11 +372,6 @@ class CalibrationService(Service):
         )
         fitResults = FitMultiplePeaksRecipe().executeRecipe(FitMultiplePeaksIngredients=fitIngredients)
         metrics = self._collectMetrics(fitResults, focusGroup, pixelGroupingParam)
-        timestamp = int(round(time.time() * 1000))
-        GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
-            ListOfDict=list_to_raw(metrics.calibrationMetric),
-            OutputWorkspace=f"{run.runNumber}_calibrationMetrics_ts{timestamp}",
-        )
 
         outputWorkspaces = [focussedData]
         focusGroupParameters = self.collectFocusGroupParameters([focusGroup], [pixelGroupingParam])
@@ -388,6 +383,9 @@ class CalibrationService(Service):
             focusGroupCalibrationMetrics=metrics,
             workspaceNames=outputWorkspaces,
         )
+
+        timestamp = int(round(time.time() * 1000))
+        GenerateCalibrationMetricsWorkspacesRecipe().executeRecipe(calibrationRecord=record, timestamp=timestamp)
 
         return record
 
