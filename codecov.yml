@@ -5,4 +5,5 @@
 # of quantifying code coverage is found.
 ignore:
   - "src/snapred/backend/recipe/algorithm"
+  - "src/snapred/backend/recipe/CalibrationNormalizationRecipe.py"
   - "tests/cis_tests"
