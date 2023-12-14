@@ -1,37 +1,55 @@
-from enum import IntEnum
 from typing import Dict, List
-from pathlib import Path
 
-from pydantic import BaseModel, parse_obj_as
+from pydantic import BaseModel
 
-from snapred.backend.dao.Limit import Limit
-from snapred.backend.dao.state.GroupingFileIndex import GroupingFileIndex
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 
 
 class GroupingMap(BaseModel):
     # allow initializtion from either dictionary or list
-    groupingFileIndices: Dict[int, GroupingFileIndex] = {}
+    focusGroupMapping: Dict[str, FocusGroup] = {}
+    liteMapping: Dict[int, focusGroupMapping] = {}
+    SHAs: List[str] = []
+    isLite: int = 0
 
     @property
-    def groupingName(self) -> List[str]:
-        return sorted([p.groupingName for p in self.pixelGroupingParameters.values()])
+    def isLite(self) -> int:
+        return self.isLite
 
     @property
-    def filePath(self) -> List[Path]:
-        return [self.pixelGroupingParameters[gid].twoTheta for gid in self.groupID]
+    def names(self) -> List[str]:
+        return [self.liteMapping[self.isLite][i].name for i in self.SHAs]
+
+    @property
+    def definitions(self) -> List[str]:
+        return [self.liteMapping[self.isLite][i].definition for i in self.SHAs]
 
     def __getitem__(self, key):
-        return self.groupingFileIndices[key]
+        return self.focusGroups[key]
 
     def __init__(
         self,
-        groupingName: List[str] = None,
-        filePath: List[Path] = None,
-        groupingFileIndices={},
+        names: List[str] = None,
+        definitions: List[str] = None,
+        focusGroupMapping={},
+        liteMapping={},
+        SHAs=[],
+        isLite=0,
     ):
-        if groupingFileIndices != {}:
-            #need to figure out how to key the dict, maybe keyed on groupingName?
-            groupingFileIndices = {1 ;groupingName=groupingName[i],filePath=filePath[i],}
+        if focusGroupMapping != {}:
+            liteMapping[isLite] = focusGroupMapping
+        else:
+            focusGroupMapping = {
+                SHAs[i]: FocusGroup(
+                    name=names[i],
+                    definition=definitions[i],
+                )
+                for i in SHAs
+            }
+            liteMapping[isLite] = focusGroupMapping
         return super().__init__(
-            groupingFileIndices=groupingFileIndices,
+            focusGroupMapping=focusGroupMapping,
+            liteMapping=liteMapping,
+            SHAs=SHAs,
+            isLite=isLite,
         )
