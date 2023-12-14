@@ -7,8 +7,11 @@ orchestration:
 instrument:
   name: SNAP
   home: /SNS/SNAP/
+  persistence:
+    read: ${instrument.home}
+    write: ${instrument.home}write/${instrument}
   calibration:
-    home: ${instrument.home}shared/Calibration
+    home: ${instrument.persistence}shared/Calibration
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
     powder:
@@ -27,9 +30,9 @@ instrument:
   lite:
     pixelResolution: 18432
     definition:
-      file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
+      file: ${instrument.calibration.powder.home}/SNAPLite.xml
     map:
-      file: ${instrument.home}shared/Calibration/Powder/LiteGroupMap.hdf
+      file: ${instrument.calibration.powder.home}/LiteGroupMap.hdf
 
 nexus:
   lite:

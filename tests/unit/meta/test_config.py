@@ -52,3 +52,8 @@ def test_key_substitution():
     Config._config["test"]["key"] = "value"
     Config._config["test"]["substitution"] = testString
     assert Config["test.substitution"] == "This is a test string with a value in it"
+
+
+def test_multi_level_substitution():
+    assert Config["test.data.home.write"] == f'~/{Config["test.config.home"]}{Config["test.config.name"]}'
+    assert Config["test.data.home.read"] == f'{Config["test.config.home"]}{Config["test.config.name"]}'
