@@ -28,13 +28,14 @@ with mock.patch.dict(
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest  # noqa: E402
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
-    from snapred.backend.dao.state import PixelGroup
-    from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters  # noqa: E402
+    from snapred.backend.dao.state import FocusGroup, PixelGroup, PixelGroupingParameters  # noqa: E402
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,  # noqa: E402
     )
     from snapred.backend.service.CalibrationService import CalibrationService  # noqa: E402
     from snapred.meta.Config import Resource  # noqa: E402
+
+    thisService = "snapred.backend.service.CalibrationService."
 
     def readReductionIngredientsFromFile():
         with Resource.open("/inputs/calibration/input.json", "r") as f:
@@ -64,13 +65,21 @@ with mock.patch.dict(
         savedEntry = calibrationService.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
 
+    def test_load():
+        calibrationService = CalibrationService()
+        calibrationService.dataFactoryService.getCalibrationRecord = mock.Mock(return_value="passed")
+        res = calibrationService.load(mock.Mock())
+        assert res == calibrationService.dataFactoryService.getCalibrationRecord.return_value
+
     # test calculate pixel grouping parameters
     # patch datafactoryservice, pixelgroupingparameterscalculationrecipe, pixelgroupingingredients, dataExportService
-    @mock.patch("snapred.backend.service.CalibrationService.DataFactoryService", return_value=mock.Mock())
-    @mock.patch("snapred.backend.service.CalibrationService.PixelGroupingParametersCalculationRecipe")
-    @mock.patch("snapred.backend.service.CalibrationService.PixelGroupingIngredients")
-    @mock.patch("snapred.backend.service.CalibrationService.DataExportService")
+    @mock.patch(thisService + "GroceryService")
+    @mock.patch(thisService + "DataFactoryService", return_value=mock.Mock())
+    @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
+    @mock.patch(thisService + "PixelGroupingIngredients")
+    @mock.patch(thisService + "DataExportService")
     def test_calculatePixelGroupingParameters(
+        mockGroceryService,  # noqa: ARG001
         mockDataFactoryService,  # noqa: ARG001
         mockPixelGroupingIngredients,  # noqa: ARG001
         mockPixelGroupingParametersCalculationRecipe,
@@ -78,10 +87,12 @@ with mock.patch.dict(
     ):
         runs = [RunConfig(runNumber="1")]
         calibrationService = CalibrationService()
-        groupingFile = mock.Mock()
+        groupingFile = "junk/SNAPFocGroup_Column.abc"
+        useLiteMode = True
         setattr(PixelGroupingParametersCalculationRecipe, "executeRecipe", localMock)
         localMock.return_value = mock.MagicMock()
-        calibrationService.calculatePixelGroupingParameters(runs, groupingFile)
+        calibrationService.calculatePixelGroupingParameters(runs, groupingFile, useLiteMode)
+        assert mockGroceryService.fetchGroceryList.called
         assert mockPixelGroupingParametersCalculationRecipe.called
 
 
@@ -94,7 +105,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.runId = "test_run_id"
         self.outputNameFormat = "{}_calibration_reduction_result"
         # Mock the _calculatePixelGroupingParameters method to return a predefined value
-        self.instance._calculatePixelGroupingParameters = lambda calib, focus_def: {  # noqa: ARG005
+        self.instance._calculatePixelGroupingParameters = lambda calib, focus_def, lite_mode: {  # noqa: ARG005
             "parameters": f"params for {focus_def}"
         }
 
@@ -124,9 +135,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Mock input data
         calibration = "calibration_data"
         focusGroups = [MagicMock(definition="focus1"), MagicMock(definition="focus2"), MagicMock(definition="focus3")]
+        useLiteMode = mock.Mock()
 
         # Call the method to test
-        result = self.instance._getPixelGroupingParams(calibration, focusGroups)
+        result = self.instance._getPixelGroupingParams(calibration, focusGroups, useLiteMode)
 
         # Assert the result is as expected
         expected_result = ["params for focus1", "params for focus2", "params for focus3"]
@@ -136,29 +148,27 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Test with an empty focusGroups list
         calibration = "calibration_data"
         focusGroups = []
+        useLiteMode = mock.Mock()
 
         # Call the method to test
-        result = self.instance._getPixelGroupingParams(calibration, focusGroups)
+        result = self.instance._getPixelGroupingParams(calibration, focusGroups, useLiteMode)
 
         # Assert the result is an empty list
         assert result == []
 
-    @patch("snapred.backend.service.CalibrationService.GroupWorkspaceIterator", return_value=["ws1", "ws2"])
+    @patch(thisService + "GroupWorkspaceIterator", return_value=["ws1", "ws2"])
+    @patch(thisService + "FitCalibrationWorkspaceIngredients", side_effect=["fit_result_1", "fit_result_2"])
     @patch(
-        "snapred.backend.service.CalibrationService.FitCalibrationWorkspaceIngredients",
-        side_effect=["fit_result_1", "fit_result_2"],
-    )
-    @patch(
-        "snapred.backend.service.CalibrationService.FitMultiplePeaksRecipe",
+        thisService + "FitMultiplePeaksRecipe",
         return_value=MagicMock(executeRecipe=MagicMock(side_effect=["fit_result_1", "fit_result_2"])),
     )
     @patch(
-        "snapred.backend.service.CalibrationService.CalibrationMetricExtractionRecipe",
+        thisService + "CalibrationMetricExtractionRecipe",
         return_value=MagicMock(executeRecipe=MagicMock("dsfdfad")),
     )
-    @patch("snapred.backend.service.CalibrationService.list_to_raw", return_value="mock_metric")
-    @patch("snapred.backend.service.CalibrationService.parse_raw_as", return_value="mock_crystal_info")
-    @patch("snapred.backend.service.CalibrationService.FocusGroupMetric", return_value="mock_metric")
+    @patch(thisService + "list_to_raw", return_value="mock_metric")
+    @patch(thisService + "parse_raw_as", return_value="mock_crystal_info")
+    @patch(thisService + "FocusGroupMetric", return_value="mock_metric")
     def test_fitAndCollectMetrics(
         self,
         groupWorkspaceIterator,  # noqa: ARG002
@@ -191,19 +201,19 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert metric == "mock_metric"
 
     @patch(
-        "snapred.backend.service.CalibrationService.CrystallographicInfoService",
+        thisService + "CrystallographicInfoService",
         return_value=MagicMock(ingest=MagicMock(return_value={"crystalInfo": "mock_crystal_info"})),
     )
-    @patch("snapred.backend.service.CalibrationService.CalibrationRecord", return_value="mock_calibration_record")
-    @patch("snapred.backend.service.CalibrationService.FitMultiplePeaksIngredients")
-    @patch("snapred.backend.service.CalibrationService.FitMultiplePeaksRecipe")
+    @patch(thisService + "CalibrationRecord", return_value="mock_calibration_record")
+    @patch(thisService + "FitMultiplePeaksIngredients")
+    @patch(thisService + "FitMultiplePeaksRecipe")
     def test_assessQuality(
         self, mockCrystalInfoService, mockCalibRecord, fitMultiplePeaksIng, fmprecipe  # noqa: ARG002
     ):
         # Mock input data
         mockRequest = MagicMock()
         mockRun = MagicMock()
-        fakeCifPath = "mock_cif_path"
+        fakeCalibrantSamplePath = "mock_cif_path"
         mockReductionIngredients = MagicMock()
         mockCalibration = MagicMock()
         mockInstrumentState = MagicMock()
@@ -228,17 +238,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Mock the necessary method calls
         mockRequest.run = mockRun
-        mockRequest.cifPath = fakeCifPath
+        mockRequest.calibrantSamplePath = fakeCalibrantSamplePath
         mockRequest.smoothingParameter = 0.5
         self.instance.dataFactoryService.getReductionIngredients = MagicMock(return_value=mockReductionIngredients)
         self.instance.dataFactoryService.getCalibrationState = MagicMock(return_value=mockCalibration)
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=mockCalibRecord)
-        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value=fakeCifPath)
+        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value=fakeCalibrantSamplePath)
         mockCalibration.instrumentState = mockInstrumentState
         self.instance._loadFocusedData = MagicMock(return_value=fakeFocussedData)
         self.instance._getPixelGroupingParams = MagicMock(return_value=fakePixelGroupingParams)
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
-        self.instance.collectFocusGroupParameters = MagicMock(return_value=fakeFocusGroupParameters)
+        self.instance.collectPixelGroups = MagicMock(return_value=fakeFocusGroupParameters)
         self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=(MagicMock(), mockInstrumentState))
 
         # Call the method to test
@@ -249,7 +259,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert result == expected_record
 
     # patch FocusGroup
-    @patch("snapred.backend.service.CalibrationService.FocusGroup", return_value=MagicMock())
+    @patch(thisService + "FocusGroup", return_value=FocusGroup(name="mockgroup", definition="junk/mockgroup.abc"))
     def test__generateFocusGroupAndInstrumentState(self, mockFocusGroup):
         # mock datafactoryservice.getCalibrationState
         self.instance.dataFactoryService.getCalibrationState = MagicMock()
@@ -260,13 +270,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getCalibrationState.return_value.instrumentState = mockInstrumentState
 
         actualFocusGroup, actualInstrumentState = self.instance._generateFocusGroupAndInstrumentState(
-            MagicMock(), MagicMock()
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
         )
         assert mockFocusGroup.called
         assert actualFocusGroup == mockFocusGroup.return_value
         assert actualInstrumentState == mockInstrumentState
 
-    @patch("snapred.backend.service.CalibrationService.FetchGroceriesRecipe")
+    @patch("snapred.backend.service.CalibrationService.GroceryService")
     @patch("snapred.backend.service.CalibrationService.CrystallographicInfoService")
     @patch("snapred.backend.service.CalibrationService.DetectorPeakPredictorRecipe")
     @patch("snapred.backend.service.CalibrationService.parse_raw_as")
@@ -279,7 +291,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockParseRawAs,
         mockDetectorPeakPredictorRecipe,
         mockCrystallographicInfoService,
-        mockFetchGroceriesRecipe,
+        mockGroceryService,
     ):
         runNumber = "123"
         focusGroupPath = "focus/group/path"
@@ -291,9 +303,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockDetectorPeakPredictorRecipe().executeRecipe.return_value = [MagicMock()]
         mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
 
-        mockFetchGroceriesRecipe().executeRecipe.return_value = {
-            "groceries": [mock.Mock(), mock.Mock()],
-        }
+        mockGroceryService().fetchGroceryDict.return_value = {"grocery1": mock.Mock(), "grocery2": mock.Mock()}
 
         mockFocusGroupInstrumentState = (MagicMock(), MagicMock())
         self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=mockFocusGroupInstrumentState)
@@ -304,7 +314,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runNumber=runNumber,
             focusGroupPath=focusGroupPath,
             nBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
-            cifPath="path/to/cif",
+            calibrantSamplePath="path/to/cif",
             useLiteMode=False,
         )
         self.instance.diffractionCalibration(request)
@@ -325,8 +335,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             convergenceThreshold=request.convergenceThreshold,
             pixelGroup=mockFocusGroupInstrumentState[1].pixelGroup,
         )
-        mockGroceries = mockFetchGroceriesRecipe().executeRecipe.return_value["groceries"]
         mockDiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
             mockDiffractionCalibrationIngredients.return_value,
-            {"inputWorkspace": mockGroceries[0], "groupingWorkspace": mockGroceries[1]},
+            mockGroceryService().fetchGroceryDict.return_value,
         )

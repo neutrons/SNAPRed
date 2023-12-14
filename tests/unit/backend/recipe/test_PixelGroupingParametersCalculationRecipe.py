@@ -25,7 +25,8 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         # execute recipe with mocked input
         recipe = PixelGroupingParametersCalculationRecipe()
         ingredients = mock.Mock(return_value="good ingredients")
-        data = recipe.executeRecipe(ingredients)
+        groupingWorkspace = mock.Mock(return_value="grouping workspace")
+        data = recipe.executeRecipe(ingredients, groupingWorkspace)
 
         assert mockAlgo.execute.called
         assert isinstance(data, dict)
@@ -39,9 +40,10 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
 
         recipe = PixelGroupingParametersCalculationRecipe()
         ingredients = mock.Mock()
+        groupingWorkspace = mock.Mock(return_value="grouping workspace")
 
         try:
-            recipe.executeRecipe(ingredients)
+            recipe.executeRecipe(ingredients, groupingWorkspace)
         except Exception as e:  # noqa: E722 BLE001
             assert str(e) == "passed"  # noqa: PT017
             assert mockAlgo.execute.called

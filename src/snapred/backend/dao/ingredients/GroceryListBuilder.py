@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.meta.Config import Config
@@ -90,5 +90,10 @@ class GroceryListBuilder:
 
     def buildList(self) -> List[GroceryListItem]:
         res = self._list
+        self._list = []
+        return res
+
+    def buildDict(self) -> Dict[str, GroceryListItem]:
+        res = {item.propertyName: item for item in self._list if item.propertyName is not None}
         self._list = []
         return res

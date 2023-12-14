@@ -509,9 +509,12 @@
       "name": "test",
       "version": 0
     },
-    "focusGroupParameters": [
+    "pixelGroups":[
       {
-        "focusGroupName": "Column",
+        "focusGroup": {
+          "name": "Column",
+          "definition": ""
+        },
         "pixelGroupingParameters": [
           {
             "groupID": 0,
@@ -570,7 +573,10 @@
         ]
       },
       {
-        "focusGroupName": "Bank",
+        "focusGroup": {
+          "name": "Bank",
+          "definition": ""
+        },
         "pixelGroupingParameters": [
           {
             "groupID": 0,
@@ -593,7 +599,10 @@
         ]
       },
       {
-        "focusGroupName": "All",
+        "focusGroup": {
+          "name": "All",
+          "definition": "",
+        },
         "pixelGroupingParameters": [
           {
             "groupID": 0,

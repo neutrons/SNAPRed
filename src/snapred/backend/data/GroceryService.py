@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 from mantid.api import AlgorithmManager, mtd
 
@@ -62,12 +62,18 @@ class GroceryService:
             self.grocer.fetchCleanNexusData(GroceryListItem.makeNexusItem(runId, useLiteMode))
         pass
 
-    def fetchGroceryList(self, groceryList: List[GroceryListItem]):
+    def fetchGroceryList(self, groceryList: List[GroceryListItem]) -> List[str]:
         data = self.grocer.executeRecipe(groceryList)
         if data["result"] is not True:
             raise RuntimeError(f"Failure fetching the following grocery list:\n{list_to_raw_pretty(groceryList)}")
         else:
-            pass
+            return data["workspaces"]
+
+    def fetchGroceryDict(self, groceryDict: Dict[str, GroceryListItem]) -> Dict[str, str]:
+        groceryList = groceryDict.values()
+        groceryNames = groceryDict.keys()
+        groceries = self.fetchGroceryList(groceryList)
+        return dict(zip(groceryNames, groceries))
 
     def deleteWorkspace(self, name: WorkspaceName):
         """

@@ -101,10 +101,7 @@ class FetchGroceriesRecipe:
                 else:
                     res = self.fetchDirtyNexusData(item)
                 data["result"] &= res["result"]
-                if item.propertyName is not None:
-                    data[item.propertyName] = res["workspace"]
-                else:
-                    data["groceries"].append(res["workspace"])
+                data["groceries"].append(res["workspace"])
                 # save the most recently-loaded nexus data as a possible instrument donor for groupings
                 prev = res["workspace"]
             elif item.workspaceType == "grouping":
@@ -114,10 +111,7 @@ class FetchGroceriesRecipe:
                     item.instrumentSource = prev
                 res = self.fetchGroupingDefinition(item)
                 data["result"] &= res["result"]
-                if item.propertyName is not None:
-                    data[item.propertyName] = res["workspace"]
-                else:
-                    data["groceries"].append(res["workspace"])
+                data["groceries"].append(res["workspace"])
         return data
 
     def _fetch(self, filename: str, workspace: str, loader: str = "") -> Dict[str, Any]:

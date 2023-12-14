@@ -66,7 +66,7 @@ with mock.patch.dict(
         input_json = get_input_json()
         # create recipe
         recipe = CalibrationReductionRecipe()
-        reductionIngredients = ReductionIngredients(**json.loads(input_json))
+        reductionIngredients = ReductionIngredients.parse_raw(input_json)
         recipe.executeRecipe(ReductionIngredients=reductionIngredients, OutputWorkspace="ws")
 
         outputWorkspaces = []

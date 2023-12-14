@@ -79,28 +79,32 @@ calibration:
       peakTailCoefficient: 2.0
 
 mantid:
-    workspace:
-      nameTemplate:
-        delimiter: "_"
-        run: "{unit},{group},{lite},{runNumber},{auxilary}"
-        diffCal:
-          input: "_{unit},{runNumber},raw"
-          table: "_DIFC,{runNumber}"
-        units:
-          dSpacing: DSP
-          timeOfFlight: TOF
-        groups:
-          unfocussed: Unfoc
-          all: All
-          column: Column
-          bank: Bank
+  workspace:
+    nameTemplate:
+      delimiter: "_"
+      run: "{unit},{group},{lite},{runNumber},{auxilary}"
+      diffCal:
+        input: "{unit},{runNumber},raw"
+        table: "DIFC,{runNumber}"
+      normCal:
+        rawVandium: "{runNumber},{backgroundRunNumber},RVC"
+        focusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}"
+        smoothedFocusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme},{smoothingParameter}"
+      units:
+        dSpacing: DSP
+        timeOfFlight: TOF
+      groups:
+        unfocussed: Unfoc
+        all: All
+        column: Column
+        bank: Bank
 
 localdataservice:
   config:
     verifypaths: true
 
 logging:
-  level: 10
+  level: 20
   SNAP:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
 

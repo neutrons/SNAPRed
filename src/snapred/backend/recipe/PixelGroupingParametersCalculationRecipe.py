@@ -22,15 +22,14 @@ class PixelGroupingParametersCalculationRecipe:
     def __init__(self):
         pass
 
-    def executeRecipe(self, ingredients: PixelGroupingIngredients) -> Dict[str, Any]:
-        logger.info("Executing recipe for: %s" % ingredients.groupingFile)
+    def executeRecipe(self, ingredients: PixelGroupingIngredients, groupingWorkspace: str) -> Dict[str, Any]:
+        logger.info("Executing recipe for: %s" % ingredients.groupingScheme)
         data: Dict[str, Any] = {}
 
         algo = AlgorithmManager.create(self.PixelGroupingParametersCalculationAlgorithmName)
 
         algo.setProperty("InstrumentState", ingredients.instrumentState.json())
-        algo.setProperty("InstrumentDefinitionFile", ingredients.instrumentDefinitionFile)
-        algo.setProperty("GroupingFile", ingredients.groupingFile)
+        algo.setProperty("GroupingWorkspace", groupingWorkspace)
 
         try:
             data["result"] = algo.execute()
