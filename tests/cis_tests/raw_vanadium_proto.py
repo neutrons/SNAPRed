@@ -65,7 +65,7 @@ groceryList = [
     GroceryListItem.makeLiteNexusItem(VBRun),
     GroceryListItem.makeLiteGroupingItemFrom("Column", "prev"),
 ]
-groceries = FetchRx().executeRecipe(groceryList)["workspaces"]
+groceries = FetchRx().executeRecipe(groceryList)["groceries"]
 
 
 # CREATE MATERIAL ########################################################

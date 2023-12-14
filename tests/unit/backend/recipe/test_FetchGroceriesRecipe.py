@@ -13,6 +13,7 @@ from mantid.simpleapi import (
     SaveNexusProcessed,
     mtd,
 )
+from snapred.backend.dao.ingredients.GroceryListBuilder import GroceryListBuilder
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
 # needed to make mocked ingredients
@@ -58,24 +59,17 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         )
         assert os.path.exists(cls.filepath)
 
-        cls.liteMapGroceryItem = GroceryListItem(
-            workspaceType="grouping",
-            groupingScheme="Lite",
-            useLiteMode=False,
-        )
+        cls.liteMapGroceryItem = GroceryListBuilder().grouping().using("Lite").build()
 
     def setUp(self) -> None:
-        self.nexusItem = GroceryListItem(
-            workspaceType="nexus",
-            runNumber=self.runNumber,
-            useLiteMode=False,
-        )
-        self.groupingItem = GroceryListItem(
-            workspaceType="grouping",
-            groupingScheme=self.groupingScheme,
-            useLiteMode=False,
-            instrumentPropertySource="InstrumentDonor",
-            instrumentSource=self.sampleWS,
+        self.nexusItem = GroceryListBuilder().nexus().native().using(self.runNumber).build()
+        self.groupingItem = (
+            GroceryListBuilder()
+            .grouping()
+            .native()
+            .using(self.groupingScheme)
+            .source(InstrumentDonor=self.sampleWS)
+            .build()
         )
         self.groceryList = [self.nexusItem, self.groupingItem]
 
@@ -401,22 +395,21 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         mockNexusFilename.return_value = self.filepath
         mockGroupFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
         # add an item meant to load a dirty copy
-        dirtyItem = GroceryListItem.makeNativeNexusItem(self.runNumber + "1")
-        dirtyItem.keepItClean = False
+        dirtyItem = GroceryListBuilder().native().nexus().using(self.runNumber + "1").dirty().build()
         self.groceryList.append(dirtyItem)
         # run the recipe
         rx = Recipe()
         res = rx.executeRecipe(self.groceryList)
         assert res["result"]
-        assert res.get("workspaces") is not None
-        assert len(res["workspaces"]) == len(self.groceryList)
-        assert res["workspaces"][0] == rx._createCopyNexusWorkspaceName(self.nexusItem, 1)
-        assert res["workspaces"][1] == rx._createGroupingWorkspaceName(self.groupingItem)
-        assert self.groceryList[1].instrumentSource != res["workspaces"][1]
+        assert res.get("groceries") is not None
+        assert len(res["groceries"]) == len(self.groceryList)
+        assert res["groceries"][0] == rx._createCopyNexusWorkspaceName(self.nexusItem, 1)
+        assert res["groceries"][1] == rx._createGroupingWorkspaceName(self.groupingItem)
+        assert self.groceryList[1].instrumentSource != res["groceries"][1]
         # test the correct workspaces exist
         assert mtd.doesExist(rx._createRawNexusWorkspaceName(self.nexusItem))
-        assert mtd.doesExist(res["workspaces"][0])
-        assert mtd.doesExist(res["workspaces"][1])
+        assert mtd.doesExist(res["groceries"][0])
+        assert mtd.doesExist(res["groceries"][1])
 
     @mock.patch.object(Recipe, "_createGroupingFilename")
     @mock.patch.object(Recipe, "_createNexusFilename")
@@ -427,9 +420,9 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         rx = Recipe()
         res = rx.executeRecipe(self.groceryList)
         assert res["result"]
-        assert res.get("workspaces") is not None
-        assert len(res["workspaces"]) == len(self.groceryList)
-        assert self.groceryList[1].instrumentSource == res["workspaces"][0]
+        assert res.get("groceries") is not None
+        assert len(res["groceries"]) == len(self.groceryList)
+        assert self.groceryList[1].instrumentSource == res["groceries"][0]
 
     @mock.patch.object(Recipe, "_createNexusFilename")
     def test_fetch_grocery_list_check_ads(self, mockNexusFilename):

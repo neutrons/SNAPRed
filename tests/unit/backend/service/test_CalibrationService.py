@@ -24,6 +24,7 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric  # noqa: E402
+    from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest  # noqa: E402
     from snapred.backend.dao.RunConfig import RunConfig  # noqa: E402
@@ -265,7 +266,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert actualFocusGroup == mockFocusGroup.return_value
         assert actualInstrumentState == mockInstrumentState
 
-    @patch("snapred.backend.service.CalibrationService.GroceryListItem")
     @patch("snapred.backend.service.CalibrationService.FetchGroceriesRecipe")
     @patch("snapred.backend.service.CalibrationService.CrystallographicInfoService")
     @patch("snapred.backend.service.CalibrationService.DetectorPeakPredictorRecipe")
@@ -280,7 +280,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockDetectorPeakPredictorRecipe,
         mockCrystallographicInfoService,
         mockFetchGroceriesRecipe,
-        mockGroceryListItem,
     ):
         runNumber = "123"
         focusGroupPath = "focus/group/path"
@@ -291,24 +290,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockParseRawAs.return_value = [MagicMock()]
         mockDetectorPeakPredictorRecipe().executeRecipe.return_value = [MagicMock()]
         mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
-        mockPixelGroupingParameter = PixelGroupingParameters.parse_obj(
-            {
-                "groupID": 1,
-                "twoTheta": 3.141592,
-                "dResolution": {"minimum": 1, "maximum": 2},
-                "dRelativeResolution": 0.01,
-            }
-        )
-        mockPixelGroupingParameters = [mockPixelGroupingParameter]
-        PixelGroup(pixelGroupingParameters=mockPixelGroupingParameters)
 
         mockFetchGroceriesRecipe().executeRecipe.return_value = {
-            "workspaces": [mock.Mock(), mock.Mock()],
+            "groceries": [mock.Mock(), mock.Mock()],
         }
 
         mockFocusGroupInstrumentState = (MagicMock(), MagicMock())
         self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=mockFocusGroupInstrumentState)
-        mockFocusGroupInstrumentState[1].pixelGroupingInstrumentParameters = mockPixelGroupingParameters
+        mockFocusGroupInstrumentState[1].pixelGroup = mock.Mock()
 
         # Call the method with the provided parameters
         request = DiffractionCalibrationRequest(
@@ -334,10 +323,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             groupedPeakLists=mockParseRawAs.return_value,
             calPath="~/tmp/",
             convergenceThreshold=request.convergenceThreshold,
-            pixelGroup=ANY,  # TODO
+            pixelGroup=mockFocusGroupInstrumentState[1].pixelGroup,
         )
-        assert mockGroceryListItem.call_count == 2
-        mockGroceries = mockFetchGroceriesRecipe().executeRecipe.return_value["workspaces"]
+        mockGroceries = mockFetchGroceriesRecipe().executeRecipe.return_value["groceries"]
         mockDiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
             mockDiffractionCalibrationIngredients.return_value,
             {"inputWorkspace": mockGroceries[0], "groupingWorkspace": mockGroceries[1]},

@@ -76,7 +76,7 @@ groceryList = [
     GroceryListItem.makeLiteNexusItem(runNumber),
     GroceryListItem.makeLiteGroupingItemFrom(groupingScheme, "prev")
 ]
-groceries = FetchRx().executeRecipe(groceryList)["workspaces"]
+groceries = FetchRx().executeRecipe(groceryList)["groceries"]
 
 ConvertUnits(
     InputWorkspace = groceries[0],

@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Tuple
 
 from mantid.simpleapi import CloneWorkspace, mtd
 
+from snapred.backend.dao.ingredients.GroceryListBuilder import GroceryListBuilder
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm as FetchAlgo
@@ -84,12 +85,12 @@ class FetchGroceriesRecipe:
         - groceries -- a list of GroceryListItems indicating the workspaces to create
         outputs a dictionary with keys:
         - "result": bool, True if everything good, otherwise False
-        - "workspaces": a list of strings workspace names created in the ADS
+        - "groceries": a list of strings workspace names created in the ADS
         """
 
         data: Dict[str, Any] = {
             "result": True,
-            "workspaces": [],
+            "groceries": [],
         }
         prev: str = ""
         for item in groceries:
@@ -100,7 +101,10 @@ class FetchGroceriesRecipe:
                 else:
                     res = self.fetchDirtyNexusData(item)
                 data["result"] &= res["result"]
-                data["workspaces"].append(res["workspace"])
+                if item.propertyName is not None:
+                    data[item.propertyName] = res["workspace"]
+                else:
+                    data["groceries"].append(res["workspace"])
                 # save the most recently-loaded nexus data as a possible instrument donor for groupings
                 prev = res["workspace"]
             elif item.workspaceType == "grouping":
@@ -110,7 +114,10 @@ class FetchGroceriesRecipe:
                     item.instrumentSource = prev
                 res = self.fetchGroupingDefinition(item)
                 data["result"] &= res["result"]
-                data["workspaces"].append(res["workspace"])
+                if item.propertyName is not None:
+                    data[item.propertyName] = res["workspace"]
+                else:
+                    data["groceries"].append(res["workspace"])
         return data
 
     def _fetch(self, filename: str, workspace: str, loader: str = "") -> Dict[str, Any]:
@@ -325,7 +332,7 @@ class FetchGroceriesRecipe:
         # but native data exists in cache, clone it, then reduce it
         elif self._loadedRuns.get((item.runNumber, False)) is not None:
             # this can be accomplished by changing rawWorkspaceName to name of native workspace
-            goingNative = GroceryListItem.makeNativeNexusItem(item.runNumber)
+            goingNative = GroceryListBuilder().nexus().native().using(item.runNumber).build()
             nativeRawWorkspaceName = self._createRawNexusWorkspaceName(goingNative)
             data["result"] = True
             data["loader"] = "cached"
@@ -335,7 +342,7 @@ class FetchGroceriesRecipe:
         # then load native data, clone it, and reduce it
         else:
             # use the native resolution data
-            goingNative = GroceryListItem.makeNativeNexusItem(item.runNumber)
+            goingNative = GroceryListBuilder().nexus().native().using(item.runNumber).build()
             nativeRawWorkspaceName = self._createRawNexusWorkspaceName(goingNative)
             filename = self._createNexusFilename(goingNative)
             data = self._fetch(filename, nativeRawWorkspaceName, "")
@@ -372,14 +379,7 @@ class FetchGroceriesRecipe:
         liteAlgo.setPropertyValue("OutputWorkspace", workspacename)
         # if the lite data map is not already loaded, then load it
         if self._loadedGroupings.get(liteMapKey) is None:
-            self.fetchGroupingDefinition(
-                GroceryListItem(
-                    workspaceType="grouping",
-                    groupingScheme="Lite",
-                    useLiteMode=False,
-                    instrumentPropertySource="InstrumentFilename",
-                    instrumentSource=str(Config["instrument.native.definition.file"]),
-                )
-            )
+            item = GroceryListBuilder().grouping().using("Lite").build()
+            self.fetchGroupingDefinition(item)
         liteAlgo.setPropertyValue("LiteDataMapWorkspace", self._loadedGroupings[liteMapKey])
         liteAlgo.execute()

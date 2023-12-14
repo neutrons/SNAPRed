@@ -92,7 +92,7 @@ groceryList = [
 ]
 fetchRx = FetchRx()
 # fetchRx._loadedRuns[("58882",False)] = 1 # uncomment this line if the raw file already exists
-groceries = fetchRx.executeRecipe(groceryList)["workspaces"]
+groceries = fetchRx.executeRecipe(groceryList)["groceries"]
 print(json.dumps(groceries, indent=2))
 
 ### RUN PIXEL CALIBRATION ##########
@@ -137,7 +137,7 @@ assert False
 ### RUN RECIPE
 from unittest import mock
 groceryList=[GroceryListItem.makeLiteNexusItem(runNumber), GroceryListItem.makeLiteGroupingItemFrom("Column", "prev")]
-groceries = fetchRx.executeRecipe(groceryList)["workspaces"]
+groceries = fetchRx.executeRecipe(groceryList)["groceries"]
 rx = Recipe()
 groceries = {
     "inputWorkspace": groceries[0],

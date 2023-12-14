@@ -8,7 +8,7 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     LoadEmptyInstrument,
 )
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.meta.Config import Resource
 
@@ -112,6 +112,7 @@ class TestGroceryListItem(unittest.TestCase):
             assert "instrument source" in e.msg()
 
     def test_creation_methods(self):
+        # TODO remove these?
         item = GroceryListItem.makeNativeNexusItem(self.runNumber)
         assert item.runNumber == self.runNumber
         assert item.useLiteMode is False

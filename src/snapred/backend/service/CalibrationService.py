@@ -166,21 +166,10 @@ class CalibrationService(Service):
 
         # get the needed input data
         groceryList = [
-            GroceryListItem(
-                workspaceType="nexus",
-                runNumber=request.runNumber,
-                loader="LoadEventNexus",
-                useLiteMode=request.useLiteMode,
-            ),
-            GroceryListItem(
-                workspaceType="grouping",
-                groupingScheme=focusScheme,
-                useLiteMode=request.useLiteMode,
-                instrumentPropertySource="InstrumentDonor",
-                instrumentSource="prev",
-            ),
+            GroceryListItem.makeNexusItem(request.runNumber, request.useLiteMode),
+            GroceryListItem.makeGroupingItemFrom(focusScheme, request.useLiteMode, "prev"),
         ]
-        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
+        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["groceries"]
         groceries = {
             "inputWorkspace": workspaceList[0],
             "groupingWorkspace": workspaceList[1],
