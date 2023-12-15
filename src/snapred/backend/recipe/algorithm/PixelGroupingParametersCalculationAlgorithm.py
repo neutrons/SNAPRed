@@ -161,20 +161,11 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         # NOTE after adding the logs, it is necessary to update the instrument to
         #  factor in these new parameters, or else calculations will be inconsistent.
         #  This is done with a call to `ws->populateInstrumentParameters()` from within mantid.
-        # TODO use this sample log, after Mantid PR 36524 has gone into main
-        # https://github.com/mantidproject/mantid/pull/36524
-        # self.mantidSnapper.AddSampleLog(
-        #     "Update the instrument",
-        #     Workspace=ws_name,
-        #     LogName="update_instrument",
-        #     UpdateInstrumentParameters=True,
-        # )
-        # TODO remove the below after uncommenting above.
-        minimalXML = "<parameter-file>></parameter-file>"
-        self.mantidSnapper.LoadParameterFile(
-            "Calling an algorithm that includes a populateInstrumentParamters and no file load",
+        self.mantidSnapper.AddSampleLog(
+            "Update the instrument",
             Workspace=ws_name,
-            ParameterXML=minimalXML,
+            LogName="update_instrument",
+            UpdateInstrumentParameters=True,
         )
         self.mantidSnapper.executeQueue()
 
