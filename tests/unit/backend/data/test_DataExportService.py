@@ -11,6 +11,7 @@ with mock.patch.dict(
     },
 ):
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
+    from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry  # noqa: E402
     from snapred.backend.data.DataExportService import DataExportService  # noqa: E402
 
     # test export calibration
@@ -48,3 +49,19 @@ with mock.patch.dict(
         dataExportService.dataService.initializeState.return_value = "expected"
         dataExportService.initializeState(mock.Mock(), mock.Mock())
         assert dataExportService.dataService.initializeState.called
+
+    def test_exportNormalizationIndexEntry():
+        dataExportService = DataExportService()
+        dataExportService.dataService.writeNormalizationIndexEntry = mock.Mock()
+        dataExportService.dataService.writeNormalizationIndexEntry.return_value = "expected"
+        dataExportService.exportNormalizationIndexEntry(
+            NormalizationIndexEntry(runNumber="1", backgroundRunNumber="2", comments="", author="")
+        )
+        assert dataExportService.dataService.writeNormalizationIndexEntry.called
+
+    def test_exportNormalizationRecord():
+        dataExportService = DataExportService()
+        dataExportService.dataService.writeNormalizationRecord = mock.Mock()
+        dataExportService.dataService.writeNormalizationRecord.return_value = "expected"
+        dataExportService.exportNormalizationRecord(mock.Mock())
+        assert dataExportService.dataService.writeNormalizationRecord.called

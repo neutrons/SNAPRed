@@ -24,7 +24,7 @@ class DiffractionCalibrationRecipe:
         self.threshold = ingredients.convergenceThreshold
         self.calPath = ingredients.calPath
 
-    def unbagGroceries(self, groceryList: Dict[str, Any]):
+    def unbagGroceries(self, groceries: Dict[str, Any]):
         """
         Checkout the workspace names needed for this recipe.
         It is necessary to provide the following keys:
@@ -35,10 +35,10 @@ class DiffractionCalibrationRecipe:
         - "calibrationTable": a name for the fully calibrated DIFC table; otherwise a default is used
         """
 
-        self.rawInput = groceryList["inputWorkspace"]
-        self.groupingWS = groceryList["groupingWorkspace"]
-        self.outputWS = groceryList.get("outputWorkspace", "")
-        self.calTable = groceryList.get("calibrationTable", "")
+        self.rawInput = groceries["inputWorkspace"]
+        self.groupingWS = groceries["groupingWorkspace"]
+        self.outputWS = groceries.get("outputWorkspace", "")
+        self.calTable = groceries.get("calibrationTable", "")
 
     # TODO: move saving to inside the calibration service using TBD saving method
     def restockShelves(self, calibrationWS: str, maskWS: str = ""):
@@ -62,9 +62,9 @@ class DiffractionCalibrationRecipe:
             Filename=filename,
         )
 
-    def executeRecipe(self, ingredients: Ingredients, groceryList: Dict[str, Any]) -> Dict[str, Any]:
+    def executeRecipe(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         self.chopIngredients(ingredients)
-        self.unbagGroceries(groceryList)
+        self.unbagGroceries(groceries)
 
         logger.info(f"Executing diffraction calibration for runId: {self.runNumber}")
         data: Dict[str, Any] = {"result": False}

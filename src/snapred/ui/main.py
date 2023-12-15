@@ -78,7 +78,9 @@ class SNAPRedGUI(QMainWindow):
             self.newWindow.widget.show()
         except Exception as e:  # noqa: BLE001
             # show error message as popup
-            print(e)
+            import traceback
+
+            traceback.print_exception(e)
             from PyQt5.QtWidgets import QMessageBox
 
             errorPopup = QMessageBox()

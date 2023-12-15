@@ -74,6 +74,16 @@ class GroceryListItem(BaseModel):
         )
 
     @classmethod
+    def makeNativeGroupingItemFrom(cls, groupingScheme: str, instrumentDonor: str):
+        return GroceryListItem(
+            workspaceType="grouping",
+            groupingScheme=groupingScheme,
+            useLiteMode=False,
+            instrumentPropertySource="InstrumentDonor",
+            instrumentSource=instrumentDonor,
+        )
+
+    @classmethod
     def makeLiteGroupingItemFrom(cls, groupingScheme: str, instrumentDonor: str):
         return GroceryListItem(
             workspaceType="grouping",

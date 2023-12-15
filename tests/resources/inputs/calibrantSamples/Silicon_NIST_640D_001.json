@@ -1,0 +1,44 @@
+{
+    "name": "Silicon_NIST_640D",
+    "unique_id": "001",
+    "date": "2023-10-05 15:13:28.948884",
+    "geometry": {
+        "shape": "Cylinder",
+        "radius": 0.1,
+        "height": 1.5,
+        "center": [
+            0.0,
+            1.0,
+            0.0
+        ]
+    },
+    "material": {
+        "packingFraction": 0.7,
+        "massDensity": 2.33,
+        "chemicalFormula": "Si"
+    },
+    "crystallography": {
+        "cifFile": "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/Silicon_NIST_640d.cif",
+        "spaceGroup": "F d -3 m",
+        "latticeParameters": [
+            5.43159,
+            5.43159,
+            5.43159,
+            90.0,
+            90.0,
+            90.0
+        ],
+        "atoms": [
+            {
+                "atom_type": "Si",
+                "atom_coordinates": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "site_occupation_factor": 1.0,
+                "adp": 0.01
+            }
+        ]
+    }
+}

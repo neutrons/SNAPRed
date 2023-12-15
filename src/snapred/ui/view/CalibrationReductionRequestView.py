@@ -19,6 +19,8 @@ class CalibrationReductionRequestView(BackendRequestView):
         self.fieldNBinsAcrossPeakWidth = self._labeledField(
             "Bins Across Peak Width", jsonForm.getField("nBinsAcrossPeakWidth")
         )
+        self.sampleDropdown = self._sampleDropDown("Sample", samples)
+        self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
 
         self.litemodeToggle.setEnabled(True)
         self.layout.addWidget(self.runNumberField, 0, 0)
@@ -26,17 +28,6 @@ class CalibrationReductionRequestView(BackendRequestView):
         self.layout.addWidget(self.fieldConvergnceThreshold, 1, 0)
         self.layout.addWidget(self.fieldPeakIntensityThreshold, 1, 1)
         self.layout.addWidget(self.fieldNBinsAcrossPeakWidth, 1, 2)
-
-        self.sampleDropdown = QComboBox()
-        self.sampleDropdown.addItem("Select Sample")
-        self.sampleDropdown.addItems(samples)
-        self.sampleDropdown.model().item(0).setEnabled(False)
-
-        self.groupingFileDropdown = QComboBox()
-        self.groupingFileDropdown.addItem("Select Grouping File")
-        self.groupingFileDropdown.addItems(groups)
-        self.groupingFileDropdown.model().item(0).setEnabled(False)
-
         self.layout.addWidget(self.sampleDropdown, 2, 0)
         self.layout.addWidget(self.groupingFileDropdown, 2, 1)
 

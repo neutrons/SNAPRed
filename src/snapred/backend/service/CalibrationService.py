@@ -17,14 +17,22 @@ from snapred.backend.dao.ingredients import (
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
     GroceryListItem,
+    NormalizationCalibrationIngredients,
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
+)
+from snapred.backend.dao.normalization import (
+    Normalization,
+    NormalizationIndexEntry,
+    NormalizationRecord,
 )
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
+    NormalizationCalibrationRequest,
+    NormalizationExportRequest,
 )
 from snapred.backend.dao.state import FocusGroup, FocusGroupParameters, InstrumentState
 from snapred.backend.dao.state.PixelGroup import PixelGroup
@@ -32,6 +40,7 @@ from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.CalibrationNormalizationRecipe import CalibrationNormalizationRecipe
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.recipe.GenericRecipe import (
@@ -40,6 +49,7 @@ from snapred.backend.recipe.GenericRecipe import (
     DetectorPeakPredictorRecipe,
     FitMultiplePeaksRecipe,
     GenerateTableWorkspaceFromListOfDictRecipe,
+    SmoothDataExcludingPeaksRecipe,
 )
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
@@ -73,6 +83,9 @@ class CalibrationService(Service):
         self.registerPath("hasState", self.hasState)
         self.registerPath("checkDataExists", self.calculatePixelGroupingParameters)
         self.registerPath("assessment", self.assessQuality)
+        self.registerPath("normalization", self.normalization)
+        self.registerPath("normalizationAssessment", self.normalizationAssessment)
+        self.registerPath("saveNormalization", self.saveNormalization)
         self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
@@ -344,7 +357,7 @@ class CalibrationService(Service):
         pixelGroupingParam = data["parameters"]
         cifFilePath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
-        # TODO: We Need to Fitt the Data
+        # TODO: We Need to Fit the Data
         fitIngredients = FitMultiplePeaksIngredients(
             instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=focussedData
         )
@@ -375,10 +388,101 @@ class CalibrationService(Service):
         return record
 
     @FromString
+    def normalization(self, request: NormalizationCalibrationRequest):
+        groupingFile = request.groupingPath
+        groupingScheme = groupingFile.split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
+        calibrantSample = self.dataFactoryService.getCalibrantSample(request.samplePath)
+        sampleFilePath = self.dataFactoryService.getCifFilePath((request.samplePath).split("/")[-1].split(".")[0])
+        crystalInfo = CrystallographicInfoService().ingest(sampleFilePath)["crystalInfo"]
+
+        focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
+            request.runNumber,
+            groupingFile,
+            True,
+        )
+
+        reductionIngredients = self.dataFactoryService.getReductionIngredients(
+            request.runNumber, instrumentState.pixelGroup
+        )
+        backgroundReductionIngredients = self.dataFactoryService.getReductionIngredients(
+            request.backgroundRunNumber, instrumentState.pixelGroup
+        )
+
+        smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
+            smoothingParameter=request.smoothingParameter,
+            instrumentState=instrumentState,
+            crystalInfo=crystalInfo,
+        )
+
+        normalizationIngredients = NormalizationCalibrationIngredients(
+            reductionIngredients=reductionIngredients,
+            backgroundReductionIngredients=backgroundReductionIngredients,
+            calibrantSample=calibrantSample,
+            smoothDataIngredients=smoothDataIngredients,
+        )
+
+        groceryList = [
+            GroceryListItem(
+                workspaceType="nexus",
+                runNumber=request.runNumber,
+                useLiteMode=True,
+                runConfig=reductionIngredients.runConfig,
+            ),
+            GroceryListItem(
+                workspaceType="nexus",
+                runNumber=request.backgroundRunNumber,
+                useLiteMode=True,
+                runConfig=backgroundReductionIngredients.runConfig,
+            ),
+            GroceryListItem(
+                workspaceType="grouping",
+                groupingScheme=groupingScheme,
+                useLiteMode=True,
+                instrumentPropertySource="InstrumentDonor",
+                instrumentSource="prev",
+            ),
+        ]
+        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
+        groceries = {
+            "inputWorkspace": workspaceList[0],
+            "backgroundWorkspace": workspaceList[1],
+            "groupingWorkspace": workspaceList[2],
+            "outputWorkspace": "focussedRawVanadium",
+            "smoothedOutput": "smoothedOutput",
+        }
+        return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients, groceries)
+
+    @FromString
+    def normalizationAssessment(self, request: NormalizationCalibrationRequest):
+        normalization = self.dataFactoryService.getNormalizationState(request.runNumber)
+        record = NormalizationRecord(
+            runNumber=request.runNumber,
+            backgroundRunNumber=request.backgroundRunNumber,
+            smoothingParameter=request.smoothingParameter,
+            normalization=normalization,
+        )
+        return record
+
+    @FromString
+    def saveNormalization(self, request: NormalizationExportRequest):
+        entry = request.normalizationIndexEntry
+        normalizationRecord = request.normalizationRecord
+        normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
+        entry.version = normalizationRecord.version
+        self.saveNormalizationToIndex(entry)
+
+    @FromString
+    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
+        if entry.appliesTo is None:
+            entry.appliesTo = ">" + entry.runNumber
+        if entry.timestamp is None:
+            entry.timestamp = int(round(time.time() * 1000))
+        logger.info("Saving normalization index entry for Run Number {}".format(entry.runNumber))
+        self.dataExportService.exportNormalizationIndexEntry(entry)
+
+    @FromString
     def retrievePixelGroupingParams(self, runID: str, useLiteMode: bool = True):
         calibration = self.dataFactoryService.getCalibrationState(runID)
         focusGroups = self.dataFactoryService.getFocusGroups(runID)
-
         pixelGroupingParams = self._getPixelGroupingParams(calibration.instrumentState, focusGroups, useLiteMode)
-
         return pixelGroupingParams

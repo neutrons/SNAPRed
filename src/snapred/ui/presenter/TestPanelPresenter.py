@@ -15,6 +15,7 @@ from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibration
 from snapred.ui.view.VanadiumFocussedReductionView import VanadiumFocussedReductionView
 from snapred.ui.widget.JsonForm import JsonForm
 from snapred.ui.workflow.DiffractionCalibrationCreationWorkflow import DiffractionCalibrationCreationWorkflow
+from snapred.ui.workflow.NormalizationCalibrationWorkflow import NormalizationCalibrationWorkflow
 from snapred.ui.workflow.ReductionWorkflow import ReductionWorkflow
 
 logger = snapredLogger.getLogger(__name__)
@@ -27,7 +28,6 @@ class TestPanelPresenter(object):
     def __init__(self, view):
         reductionRequest = SNAPRequest(path="api", payload=None)
         self.apiDict = self.interfaceController.executeRequest(reductionRequest).data
-
         # self.apiComboBox = self.setupApiComboBox(self.apiDict, view)
 
         jsonSchema = json.loads(self.apiDict["config"][""]["runs"])
@@ -45,26 +45,17 @@ class TestPanelPresenter(object):
         self.diffractionCalibrationLayout.addWidget(self.calibrationCheckView)
         self.diffractionCalibrationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
 
+        self.calibrationNormalizationLayout = QGridLayout()
+        self.calibrationNormalizationWidget = QWidget()
+        self.calibrationNormalizationWidget.setLayout(self.calibrationNormalizationLayout)
+
+        self.calibrationNormalizationLayout.addWidget(self._createCalibrationNormalizationWorkflow())
+        self.calibrationNormalizationLayout.addWidget(self.calibrationCheckView)
+        self.calibrationNormalizationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
+
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
         self.view.tabWidget.addTab(ReductionWorkflow(self.view).widget, "Reduction")
-
-    def _getPaths(self, apiDict):
-        paths = []
-        for key, value in apiDict.items():
-            if isinstance(value, dict):
-                subpaths = self._getPaths(value)
-                paths.extend(["{}/{}".format(key, path) for path in subpaths])
-            else:
-                paths.append(key)
-        return paths
-
-    def setupApiComboBox(self, apiDict, parent=None):
-        comboBox = QComboBox(parent)
-        for path in self._getPaths(apiDict):
-            comboBox.addItem(path)
-
-        comboBox.currentIndexChanged.connect(self.handleApiComboSelected)
-        return comboBox
+        self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization Calibration")
 
     def _findSchemaForPath(self, path):
         currentVal = self.apiDict
@@ -101,33 +92,17 @@ class TestPanelPresenter(object):
         logger.info("loaded default json input for path: {}".format(path))
         return DiffractionCalibrationCreationWorkflow(newForm, parent=self.view).widget
 
-    def handleApiComboSelected(self, index):  # noqa: ARG002
-        selection = self.apiComboBox.currentText()
-        jsonSchema = self._getSchemaForSelection(selection)
-        # import pdb;pdb.set_trace()
-        newForm = JsonForm(selection.split("/")[-1], jsonSchema=jsonSchema, parent=self.view)
-        self._loadDefaultJsonInput(selection, newForm)
-        if selection.startswith("calibration/reduction"):
-            newWidget = DiffractionCalibrationCreationWorkflow(newForm, parent=self.view).widget
-        elif selection.startswith("fitMultiplePeaks"):
-            newWidget = FitMultiplePeaksView(newForm, parent=self.view)
-        elif selection.startswith("vanadiumReduction"):
-            newWidget = VanadiumFocussedReductionView(newForm, parent=self.view)
-        else:
-            newWidget = BackendRequestView(newForm, selection, parent=self.view)
-
-        self.view.centralWidget.layout().replaceWidget(self.comboSelectionView, newWidget)
-        self.comboSelectionView.setParent(None)
-        del self.jsonForm
-        self.jsonForm = newForm
-        self.comboSelectionView = newWidget
+    def _createCalibrationNormalizationWorkflow(self):
+        path = "calibration/normalization/request"
+        logger.info("Creating workflow for path: {}".format(path))
+        jsonSchema = self._getSchemaForSelection(path)
+        logger.info("Schema for path: {}".format(jsonSchema))
+        newForm = JsonForm(path.split("/")[-1], jsonSchema=jsonSchema, parent=self.view)
+        logger.info("Created form for path: {}".format(newForm))
+        self._loadDefaultJsonInput(path, newForm)
+        logger.info("loaded default json input for path: {}".format(path))
+        return NormalizationCalibrationWorkflow(newForm, parent=self.view).widget
 
     @property
     def widget(self):
         return self.view
-
-    def show(self):
-        self.view.show()
-
-    def printJsonData(self):
-        print(self.jsonForm.collectData())

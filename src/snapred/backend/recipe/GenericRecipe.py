@@ -10,6 +10,7 @@ from snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict impor
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
+from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
 from snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm import VanadiumFocussedReductionAlgorithm
@@ -88,6 +89,10 @@ class LiteDataRecipe(GenericRecipe[LiteDataCreationAlgo]):
 
 
 class VanadiumFocussedReductionRecipe(GenericRecipe[VanadiumFocussedReductionAlgorithm]):
+    pass
+
+
+class RawVanadiumCorrectionRecipe(GenericRecipe[RawVanadiumCorrectionAlgorithm]):
     pass
 
 

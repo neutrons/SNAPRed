@@ -31,7 +31,8 @@ class LimitedValue(GenericModel, Generic[T]):
     @root_validator(allow_reuse=True)
     def validate_scalar_fields(cls, values):
         if not values.get("minimum") <= values.get("value") <= values.get("maximum"):
-            raise ValueError("value has to be between min and max")
+            value, minV, maxV = (values["value"], values["minimum"], values["maximum"])
+            raise ValueError(f"value {value} must be between min {minV} and max {maxV}")
         return values
 
     # TODO for use in new pydantic

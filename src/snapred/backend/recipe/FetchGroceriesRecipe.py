@@ -186,6 +186,7 @@ class FetchGroceriesRecipe:
                 OutputWorkspace=workspaceName,
             )
             data["workspace"] = workspaceName
+
         return data
 
     def fetchDirtyNexusData(self, item: GroceryListItem) -> Dict[str, Any]:
