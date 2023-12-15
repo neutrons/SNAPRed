@@ -81,6 +81,6 @@ class ApiService(Service):
             if len(subpathDict) < 1:
                 subpathDict = None
             pathDict[path] = subpathDict
-        # logger.debug("Valid Paths: {}".format(pathDict))
+        logger.debug("Valid Paths: {}".format(pathDict))
         self.apiCache = pathDict
         return pathDict
