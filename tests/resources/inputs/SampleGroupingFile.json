@@ -1,32 +1,23 @@
 {
-
-    "focusGroupMap": [
+    "SHA": "h102923",
+    "liteFocusGroups": [
         {
-            "SHA": "h102923",
-            "liteMode": {
-                "focusGroups": [
-                    {
-                        "name": "Column",
-                        "definition": "relative/path/to/Columnfile"
-                    },
-                    {
-                        "name": "All",
-                        "definition": "relative/path/to/Allfile"
-                    }
-                ]
-            },
-            "nativeMode": {
-                "focusGroups": [
-                    {
-                        "name": "Column",
-                        "definition": "relative/path/to/Columnfile"
-                    },
-                    {
-                        "name": "All",
-                        "definition": "relative/path/to/Allfile"
-                    }
-                ]
-            }
+            "name": "Column",
+            "definition": "relative/path/to/Columnfile"
+        },
+        {
+            "name": "All",
+            "definition": "relative/path/to/Allfile"
+        }
+    ],
+    "nativeFocusGroups": [
+        {
+            "name": "Column",
+            "definition": "relative/path/to/Columnfile"
+        },
+        {
+            "name": "All",
+            "definition": "relative/path/to/Allfile"
         }
     ]
 }

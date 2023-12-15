@@ -25,8 +25,8 @@ class GroupingMap(BaseModel):
         SHA: str = None,
     ):
         focusGroupMapping = {
-            "native": {nfg.name: nfg for nfg in nativeFocusGroups},
-            "lite": {lfg.name: lfg for lfg in liteFocusGroups},
+            "native": {nfg["name"]: nfg for nfg in nativeFocusGroups},
+            "lite": {lfg["name"]: lfg for lfg in liteFocusGroups},
         }
         return super().__init__(
             focusGroupMapping=focusGroupMapping,
