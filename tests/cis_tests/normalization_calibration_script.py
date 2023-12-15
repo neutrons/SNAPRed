@@ -11,11 +11,15 @@ from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import 
 from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.calibration import CalibrationRecord, Calibration
+
+from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 from snapred.meta.Config import Config
@@ -26,6 +30,7 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
 
 #User input ###############################################################################################
+isLite = True
 runNumber = "58810"
 backgroundRunNumber = "58813"
 samplePath = "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/Silicon_NIST_640D_001.json"
@@ -51,15 +56,24 @@ def getCalibrantSample(samplePath):
 DFS = DataFactoryService()
 instrumentState = DFS.getCalibrationState(runNumber).instrumentState
 
+
+### FETCH GROCERIES ##################
+groceryList = [
+    GroceryListItem.makeLiteNexusItem(runNumber).toggleLiteMode(isLite),
+    GroceryListItem.makeLiteNexusItem(backgroundRunNumber).toggleLiteMode(isLite),
+    GroceryListItem.makeLiteGroupingItemFrom(groupingScheme, "prev").toggleLiteMode(isLite),
+]
+groceries = FetchRx().executeRecipe(groceryList)["workspaces"]
+
 pgpIngredients = PixelGroupingIngredients(
     instrumentState = instrumentState,
     instrumentDefinitionFile = Config["instrument.lite.definition.file"],
-    groupingFile=groupPath,
+    groupingWorkspace=groceries[2],
 )
 
-pgp = PixelGroupingParametersCalculationRecipe().executeRecipe(pgpIngredients)["parameters"]
-instrumentState.pixelGroupingInstrumentParameters = pgp
-reductionIngredients = DFS.getReductionIngredients(runNumber, pgp)
+pgp = PixelGroupingParametersCalculationRecipe().executeRecipe(pgpIngredients, groceries[2])["parameters"]
+instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pgp)
+reductionIngredients = DFS.getReductionIngredients(runNumber, instrumentState.pixelGroup)
 
 calibrantSample = getCalibrantSample(samplePath)
 
@@ -70,18 +84,17 @@ smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
     crystalInfo=crystalInfo,
 )
 
+backgroundReductionIngredients = reductionIngredients
+backgroundReductionIngredients.runConfig.runNumber = backgroundRunNumber
+
 ingredients = NormalizationCalibrationIngredients(
     reductionIngredients=reductionIngredients,
+    backgroundReductionIngredients
     calibrantSample=calibrantSample,
     smoothDataIngredients=smoothDataIngredients,
 )
 
-groceryList = [
-    GroceryListItem.makeLiteNexusItem(runNumber),
-    GroceryListItem.makeLiteNexusItem(backgroundRunNumber),
-    GroceryListItem.makeLiteGroupingItemFrom("Column", "prev"),
-]
-groceries = FetchRx().executeRecipe(groceryList)["workspaces"]
+
 
 CNA = CalibrationNormalizationAlgo()
 CNA.initialize()
