@@ -19,6 +19,7 @@ from snapred.backend.dao.ingredients import (
     GroceryListItem,
     NormalizationCalibrationIngredients,
     PixelGroupingIngredients,
+    SmoothDataExcludingPeaksIngredients,
 )
 from snapred.backend.dao.normalization import (
     Normalization,
