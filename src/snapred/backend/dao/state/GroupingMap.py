@@ -6,43 +6,29 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 
 
 class GroupingMap(BaseModel):
-    # allow initializtion from either dictionary or list
-    focusGroupMapping: Dict[str, Dict[str, str]] = {}
-    liteMapping: Dict[int, focusGroupMapping] = {}
-    SHAs: List[str] = []
-    isLite: int = 0
+    focusGroupMapping: Dict[str, Dict[str, FocusGroup]] = {}
+    SHA: str = None
 
     @property
-    def isLite(self) -> int:
-        return self.isLite
+    def lite(self) -> Dict[str, FocusGroup]:
+        return self.focusGroupMapping["lite"]
+
+    @property
+    def native(self) -> Dict[str, FocusGroup]:
+        return self.focusGroupMapping["native"]
 
     def __init__(
         self,
-        names: List[str] = None,
-        definitions: List[str] = None,
+        liteFocusGroups: List[FocusGroup] = None,
+        nativeFocusGroups: List[FocusGroup] = None,
         focusGroupMapping={},
-        liteMapping={},
-        SHAs: List[str] = None,
-        isLite=0,
+        SHA: str = None,
     ):
-        if len(names) != len(definitions):
-            raise ValueError("List of names and definitions required to have same length")
-        if focusGroupMapping != {}:
-            liteMapping[isLite] = focusGroupMapping
-        else:
-            if SHAs is None:
-                raise ValueError("No SHAs given")
-            focusGroupMapping = {SHAs[i]: {names[i]: definitions[i]} for i in SHAs}
-            liteMapping[isLite] = focusGroupMapping
+        focusGroupMapping = {
+            "native": {nfg.name: nfg for nfg in nativeFocusGroups},
+            "lite": {lfg.name: lfg for lfg in liteFocusGroups},
+        }
         return super().__init__(
             focusGroupMapping=focusGroupMapping,
-            liteMapping=liteMapping,
-            SHAs=SHAs,
-            isLite=isLite,
+            SHA=SHA,
         )
-
-    def lite(self, name: str, SHA: str) -> str:
-        return self.liteMapping[1][SHA][name]
-
-    def native(self, name: str, SHA: str) -> str:
-        return self.liteMapping[1][SHA][name]
