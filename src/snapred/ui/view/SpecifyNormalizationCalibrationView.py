@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from mantid.simpleapi import mtd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QSlider, QWidget
+from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
 
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
@@ -75,7 +75,12 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.smoothingLineEdit = QLineEdit("0.00")
         self.smoothingLineEdit.setFixedWidth(50)
         self.smoothingSlider.valueChanged.connect(self.updateLineEditFromSlider)
-        self.smoothingLineEdit.returnPressed.connect(self.emitValueChange)
+        self.smoothingLineEdit.returnPressed.connect(
+            lambda: self.updateSliderFromLineEdit(self.smoothingLineEdit.text())
+        )
+
+        self.recalculationButton = QPushButton("Recalculate")
+        self.recalculationButton.clicked.connect(self.emitValueChange)
 
         smoothingLayout = QHBoxLayout()
         smoothingLayout.addWidget(self.smoothingSlider)
@@ -87,6 +92,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout.addLayout(smoothingLayout, 2, 0)
         self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 3, 0)
         self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 3, 1)
+        self.layout.addWidget(self.recalculationButton, 4, 0, 1, 2)
 
         self.layout.setRowStretch(0, 3)
         self.layout.setRowStretch(1, 1)
@@ -111,6 +117,18 @@ class SpecifyNormalizationCalibrationView(QWidget):
     def updateLineEditFromSlider(self, value):
         smoothingValue = value / 100.0
         self.smoothingLineEdit.setText("{:.2f}".format(smoothingValue))
+
+    def updateSliderFromLineEdit(self, text):
+        try:
+            value = float(text) * 100
+            value = max(min(value, self.smoothingSlider.maximum()), self.smoothingSlider.minimum())
+            self.smoothingSlider.setValue(int(value))
+        except:  # noqa: E722
+            raise Exception("Must be a numerical value between 0.00 and 1.00")
+
+    def resizeEvent(self, event):
+        self._updateGraphs()
+        super().resizeEvent(event)
 
     def emitValueChange(self):
         index = self.groupingDropDown.currentIndex()
