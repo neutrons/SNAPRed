@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 import unittest.mock as mock
 from typing import List
@@ -5,6 +7,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
+    CreateWorkspace,
     mtd,
 )
 
@@ -143,6 +146,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance._calculatePixelGroupingParameters = lambda calib, focus_def, lite_mode: {  # noqa: ARG005
             "parameters": f"params for {focus_def}"
         }
+
+    def clearoutWorkspaces(self) -> None:
+        # Delete the workspaces created by loading
+        for ws in mtd.getObjectNames():
+            self.instance.dataFactoryService.deleteWorkspace(ws)
+
+    def tearDown(self) -> None:
+        # At the end of each test, clear out the workspaces
+        self.clearoutWorkspaces()
+        return super().tearDown()
 
     def test_LoadFocussedData_Success(self):
         # Mock the dataFactoryService.getWorkspaceForName method to return a non-None value
@@ -302,23 +315,41 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert result.mockId == expected_record_mockId
 
     def test_readQuality(self):
-        run = MagicMock()
-        version = MagicMock()
-        # use a non-mocked calibration record
-        calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
-        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
-        self.instance.readQuality(run, version)
-        # assert expected calibration metric workspaces have been loaded
-        ws_name_stem = f"{calibRecord.runNumber}_calibrationMetrics_v{calibRecord.version}"
-        for ws_name in [ws_name_stem + "_sigma", ws_name_stem + "_strain"]:
-            assert mtd.doesExist(ws_name)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Load a non-mocked calibration record and use it for mocking getCalibrationRecord
+            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
+            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 
-        # test hadling of a None calibration record
-        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
-        with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+            # Under a mocked calibration data path, create fake "persistent" workspace files
+            self.instance.dataFactoryService.constructCalibrationDataPath = MagicMock(return_value=tmpdir)
+            for ws_name in calibRecord.workspaceNames:
+                CreateWorkspace(
+                    OutputWorkspace=ws_name,
+                    DataX=1,
+                    DataY=1,
+                )
+                self.instance.dataFactoryService.writeWorkspace(os.path.join(tmpdir, ws_name + ".nxs"), ws_name)
+
+            # Call the method to test. Use a mocked run and a mocked version
+            run = MagicMock()
+            version = MagicMock()
             self.instance.readQuality(run, version)
-        assert str(run) in str(excinfo.value)
-        assert str(version) in str(excinfo.value)
+
+            # Assert the expected calibration metric workspaces have been generated
+            ws_name_stem = f"{calibRecord.runNumber}_calibrationMetrics_v{calibRecord.version}"
+            for ws_name in [ws_name_stem + "_sigma", ws_name_stem + "_strain"]:
+                assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name)
+
+            # Assert the "persistent" workspaces have been loaded
+            for ws_name in calibRecord.workspaceNames:
+                assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name)
+
+            # test how readQuality handles a None calibration record
+            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
+            with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+                self.instance.readQuality(run, version)
+            assert str(run) in str(excinfo.value)
+            assert str(version) in str(excinfo.value)
 
     # patch FocusGroup
     @patch(thisService + "FocusGroup", return_value=FocusGroup(name="mockgroup", definition="junk/mockgroup.abc"))

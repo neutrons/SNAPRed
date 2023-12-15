@@ -1,5 +1,6 @@
 from mantid.api import AlgorithmManager, mtd
 
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -7,6 +8,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 @Singleton
 class LocalWorkspaceDataService:
     def __init__(self) -> None:
+        self.mantidSnapper = MantidSnapper(self, __name__)
         pass
 
     def writeWorkspace(self, path: str, name: WorkspaceName):
@@ -30,11 +32,23 @@ class LocalWorkspaceDataService:
         except ValueError:
             return None
 
+    def doesWorkspaceExist(self, name: WorkspaceName):
+        """
+        Returns true if workspace exists under Mantid.
+        """
+        return mtd.doesExist(name)
+
     def readWorkspaceCached(self, runId, name: WorkspaceName):
         """
         Use this in the case you anticipate loading fresh data from disk over and over.
         """
         pass
+
+    def loadWorkspace(self, path: str, name: str):
+        """
+        Load a nexus workspace by full path
+        """
+        self.mantidSnapper.LoadNexusProcessed(f"Loading workspace from '{path}'", Filename=path, OutputWorkspace=name)
 
     def deleteWorkspace(self, name: WorkspaceName):
         """

@@ -82,6 +82,18 @@ class DataFactoryService:
     def getWorkspaceForName(self, name):
         return self.workspaceService.getWorkspaceForName(name)
 
+    def doesWorkspaceExist(self, name):
+        return self.workspaceService.doesWorkspaceExist(name)
+
+    def deleteWorkspace(self, name):
+        return self.workspaceService.deleteWorkspace(name)
+
+    def loadWorkspace(self, path, name):
+        return self.workspaceService.loadWorkspace(path, name)
+
+    def writeWorkspace(self, path, name):
+        return self.workspaceService.writeWorkspace(path, name)
+
     def getWorkspaceCached(self, runId: str, name: str):
         return self.workspaceService.readWorkspaceCached(runId, name)
 
@@ -105,3 +117,6 @@ class DataFactoryService:
 
     def getGroupingFiles(self):
         return self.lookupService.readGroupingFiles()
+
+    def constructCalibrationDataPath(self, runId: str, version: str):
+        return self.lookupService._constructCalibrationDataPath(runId, version)

@@ -19,7 +19,6 @@ from snapred.backend.dao.ingredients import (
     GroceryListItem,
     NormalizationCalibrationIngredients,
     PixelGroupingIngredients,
-    SmoothDataExcludingPeaksIngredients,
 )
 from snapred.backend.dao.normalization import (
     Normalization,
@@ -38,7 +37,6 @@ from snapred.backend.dao.state import FocusGroup, FocusGroupParameters, Instrume
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationNormalizationRecipe import CalibrationNormalizationRecipe
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
@@ -351,8 +349,13 @@ class CalibrationService(Service):
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
         if calibrationRecord is None:
             raise ValueError(f"No calibration record found for run {runId}, version {version}.")
-
         GenerateCalibrationMetricsWorkspacesRecipe().executeRecipe(calibrationRecord)
+        for ws_name in calibrationRecord.workspaceNames:
+            path = self.dataFactoryService.constructCalibrationDataPath(
+                calibrationRecord.runNumber, calibrationRecord.version
+            )
+            fullPath = os.path.join(path, ws_name + ".nxs")
+            self.dataFactoryService.loadWorkspace(fullPath, ws_name)
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
