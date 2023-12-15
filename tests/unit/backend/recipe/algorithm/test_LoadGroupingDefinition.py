@@ -24,7 +24,7 @@ IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 class TestLoadGroupingDefinition(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # file location for insturment definition
+        # file location for instrument definition
         cls.localInstrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
 
         # names for instrument donor workspaces
