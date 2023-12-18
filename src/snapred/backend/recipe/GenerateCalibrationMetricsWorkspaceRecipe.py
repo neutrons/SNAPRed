@@ -18,7 +18,6 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
 
     def executeRecipe(self, ingredients: Ingredients):
         runId = ingredients.calibrationRecord.runNumber
-        print("MY RUN ID: " + str(runId))
 
         if ingredients.timestamp is not None:
             logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {ingredients.timestamp}")

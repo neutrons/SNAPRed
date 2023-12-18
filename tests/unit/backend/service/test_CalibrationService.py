@@ -347,12 +347,19 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             for ws_name in calibRecord.workspaceNames:
                 assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name)
 
-            # test how readQuality handles a None calibration record
+            # test with a None calibration record
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
             with pytest.raises(ValueError) as excinfo:  # noqa: PT011
                 self.instance.readQuality(run, version)
             assert str(run) in str(excinfo.value)
             assert str(version) in str(excinfo.value)
+
+            # test with an invalid calibration record
+            calibRecord.focusGroupCalibrationMetrics = []
+            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+            with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+                self.instance.readQuality(run, version)
+            assert "focusGroupCalibrationMetrics" in str(excinfo.value)
 
     # patch FocusGroup
     @patch(thisService + "FocusGroup", return_value=FocusGroup(name="mockgroup", definition="junk/mockgroup.abc"))
