@@ -123,7 +123,7 @@ def start(options=None):
 
         if options.headcheck:
             SECONDS = 3  # arbitrarily chosen
-            logger.warn(f"Closing in {SECONDS} seconds")
+            logger.warning(f"Closing in {SECONDS} seconds")
             QTimer.singleShot(SECONDS * 1000, lambda: app.exit(0))
         return app.exec()
 
