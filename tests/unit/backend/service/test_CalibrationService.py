@@ -253,7 +253,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         thisService + "CrystallographicInfoService",
         return_value=MagicMock(ingest=MagicMock(return_value={"crystalInfo": "mock_crystal_info"})),
     )
-    @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record")
+    @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record"))
     @patch(thisService + "FitMultiplePeaksIngredients")
     @patch(thisService + "FitMultiplePeaksRecipe")
     @patch(
