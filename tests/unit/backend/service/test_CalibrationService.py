@@ -260,7 +260,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         thisService + "CalibrationMetricsWorkspaceIngredients",
         return_value=MagicMock(
             calibrationRecord=CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json")),
-            timestamp=MagicMock(),
+            timestamp="123",
         ),
     )
     def test_assessQuality(
@@ -314,9 +314,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Call the method to test
         result = self.instance.assessQuality(mockRequest)
+
         # Assert the result is as expected
         expected_record_mockId = "mock_calibration_record"
         assert result.mockId == expected_record_mockId
+
+        # Assert expected calibration metric workspaces have been generated
+        ws_name_stem = "57514_calibrationMetrics_ts123"
+        for ws_name in [ws_name_stem + "_sigma", ws_name_stem + "_strain"]:
+            assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name)
 
     @patch(thisService + "CalibrationMetricsWorkspaceIngredients", return_value=MagicMock())
     def test_readQuality_mock_metrics_workspace_ingredients(
