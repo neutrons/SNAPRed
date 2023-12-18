@@ -79,7 +79,7 @@ class TestPanelPresenter(object):
             defaults = json.loads(Resource.read(defaultFilePath))
             jsonForm.updateData(defaults)
         else:
-            logger.warn("No default values for path: {}".format(defaultFilePath))
+            logger.warning("No default values for path: {}".format(defaultFilePath))
 
     def _createDiffractionCalibrationWorkflow(self):
         path = "calibration/diffraction/request"

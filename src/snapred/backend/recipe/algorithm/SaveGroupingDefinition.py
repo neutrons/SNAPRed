@@ -1,9 +1,16 @@
+import os
 import pathlib
 from typing import Dict
 
-from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
+from mantid.api import (
+    AlgorithmFactory,
+    FileAction,
+    FileProperty,
+    MatrixWorkspaceProperty,
+    PropertyMode,
+    PythonAlgorithm,
+)
 from mantid.kernel import Direction
-from mantid.simpleapi import mtd
 
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
@@ -28,14 +35,41 @@ class SaveGroupingDefinition(PythonAlgorithm):
         return "SNAPRed Data Handling"
 
     def PyInit(self) -> None:
+        # define supported file name extensions
+        self.supported_calib_file_extensions = ["H5", "HD5", "HDF"]
+        self.supported_nexus_file_extensions = ["NXS", "NXS5"]
+        self.supported_xml_file_extensions = ["XML"]
+        self.all_extensions = (
+            self.supported_nexus_file_extensions
+            + self.supported_xml_file_extensions
+            + self.supported_calib_file_extensions
+        )
+
         # declare properties
         self.declareProperty(
-            "GroupingFilename", defaultValue="", direction=Direction.Input, doc="Path of an input grouping file"
+            FileProperty(
+                "GroupingFilename",
+                defaultValue="",
+                action=FileAction.OptionalLoad,
+                direction=Direction.Input,
+                extensions=self.all_extensions,
+            ),
+            doc="Path of an input grouping file",
         )
         self.declareProperty(
-            "GroupingWorkspace", defaultValue="", direction=Direction.Input, doc="Name of an input grouping workspace"
+            MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Optional),
+            doc="Name of an input grouping workspace.",
         )
-        self.declareProperty("OutputFilename", defaultValue="", direction=Direction.Input, doc="Path of an output file")
+        self.declareProperty(
+            FileProperty(
+                "OutputFilename",
+                defaultValue="",
+                action=FileAction.Save,
+                direction=Direction.Input,
+                extensions=self.supported_calib_file_extensions,
+            ),
+            doc="Path of an output file",
+        )
 
         self.declareProperty(
             "InstrumentName",
@@ -57,128 +91,92 @@ class SaveGroupingDefinition(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
-        # define supported file name extensions
-        self.supported_calib_file_extensions = ["H5", "HD5", "HDF"]
-        self.supported_nexus_file_extensions = ["NXS", "NXS5"]
-        self.supported_xml_file_extensions = ["XML"]
-
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
 
+        # must have an output file defined
+        if self.getProperty("OutputFilename").isDefault:
+            errors["OutputFilename"] = "Output file MUST be specified to save grouping definition"
+            return errors
+
         # either file name or workspace name must be specified
-        grouping_file_name = self.getProperty("GroupingFilename").value
-        grouping_ws_name = self.getProperty("GroupingWorkspace").value
-        absent_input_properties_count = sum(not prop for prop in [grouping_file_name, grouping_ws_name])
-        if absent_input_properties_count == 0 or absent_input_properties_count == 2:
-            msg = "Either GroupingFilename or GroupingWorkspace must be specified, but not both."
+        grouping_sources = ["GroupingFilename", "GroupingWorkspace"]
+        specifiedGrouping = [x for x in grouping_sources if not self.getProperty(x).isDefault]
+        if len(specifiedGrouping) == 0:
+            msg = "Either GroupingFilename or GroupingWorkspace MUST be specified"
+            errors["GroupingFilename"] = msg
+            errors["GroupingWorkspace"] = msg
+            return errors
+        elif len(specifiedGrouping) == 2:
+            msg = "May specify ONE of GroupingFilename or GroupingWorkspace, but not both."
             errors["GroupingFilename"] = msg
             errors["GroupingWorkspace"] = msg
             return errors
 
-        # check that the input file name has a supported extension
-        if grouping_file_name != "":
-            file_extension = pathlib.Path(grouping_file_name).suffix.upper()[1:]
-            supported_extensions = (
-                self.supported_nexus_file_extensions
-                + self.supported_xml_file_extensions
-                + self.supported_calib_file_extensions
-            )
-            if file_extension not in supported_extensions:
-                errors["GroupingFilename"] = f"GroupingFilename has an unsupported file name extension {file_extension}"
+        # check that the input filename has a supported extension
+        if not self.getProperty("GroupingFilename").isDefault:
+            groupingFilename = self.getPropertyValue("GroupingFilename")
+            if not os.path.exists(groupingFilename):
+                errors["GroupingFilename"] = f"GroupingFilename {groupingFilename} does not exist in"
+                return errors
+            groupingFileExt = pathlib.Path(groupingFilename).suffix[1:].upper()
+            if groupingFileExt not in self.all_extensions:
+                errors[
+                    "GroupingFilename"
+                ] = f"GroupingFilename has an unsupported file name extension {groupingFileExt}"
 
         # check that the output file name has a supported extension
-        outputFilename = self.getProperty("OutputFilename").value
-        file_extension = pathlib.Path(outputFilename).suffix.upper()[1:]
-        if file_extension not in self.supported_calib_file_extensions:
-            errors["OutputFilename"] = f"OutputFilename has an unsupported file name extension {file_extension}"
+        outputFilename = self.getPropertyValue("OutputFilename")
+        outputFileExt = pathlib.Path(outputFilename).suffix[1:].upper()
+        if outputFileExt not in self.supported_calib_file_extensions:
+            errors["OutputFilename"] = f"OutputFilename has an unsupported file name extension {outputFileExt}"
 
-        instrumentName = bool(self.getProperty("InstrumentName").value)
-        instrumentFileName = bool(self.getProperty("InstrumentFileName").value)
-        instrumentDonor = bool(self.getProperty("InstrumentDonor").value)
-        instrumentPropertiesCount = sum(prop for prop in [instrumentName, instrumentFileName, instrumentDonor])
-        if instrumentPropertiesCount == 0 or instrumentPropertiesCount > 1:
-            msg = "Either InstrumentName, InstrumentFileName, or InstrumentDonor must be specified, but not all three."
-            errors["InstrumentName"] = msg
-            errors["InstrumentFileName"] = msg
-            errors["InstrumentDonor"] = msg
+        # check that exactly one instrument source was specified
+        instrumentSources = ["InstrumentDonor", "InstrumentName", "InstrumentFilename"]
+        specifiedSources = [s for s in instrumentSources if not self.getProperty(s).isDefault]
+        if len(specifiedSources) > 1:
+            msg = "You can only declare ONE way to get an instrument.  " + f"You specified {specifiedSources}"
+            errors.update({i: msg for i in specifiedSources})
+        elif len(specifiedSources) == 0 and not self.getProperty("GroupingFilename").isDefault:
+            msg = f"To load grouping file, you MUST specify an instrument source from {instrumentSources}"
+            errors.update({i: msg for i in instrumentSources})
 
         # return results of checks
         return errors
 
+    def chopIngredients(self):
+        pass
+
+    def unbagGroceries(self):
+        pass
+
     def PyExec(self) -> None:
-        grouping_file_name = self.getProperty("GroupingFilename").value
-        if grouping_file_name != "":  # create grouping workspace from file
+        if self.getProperty("GroupingWorkspace").isDefault:  # create grouping workspace from file
             grouping_ws_name = "gr_ws_name"
             self.mantidSnapper.LoadGroupingDefinition(
                 "Loading grouping definition...",
-                GroupingFilename=grouping_file_name,
+                GroupingFilename=self.getPropertyValue("GroupingFilename"),
                 OutputWorkspace=grouping_ws_name,
-                InstrumentFileName=self.getProperty("InstrumentFileName").value,
-                InstrumentName=self.getProperty("InstrumentName").value,
-                InstrumentDonor=self.getProperty("InstrumentDonor").value,
+                InstrumentFileName=self.getPropertyValue("InstrumentFileName"),
+                InstrumentName=self.getPropertyValue("InstrumentName"),
+                InstrumentDonor=self.getPropertyValue("InstrumentDonor"),
             )
-            self.mantidSnapper.executeQueue()
         else:  # retrieve grouping workspace from analysis data service
-            grouping_ws_name = self.getProperty("GroupingWorkspace").value
-        self.grouping_ws = mtd[grouping_ws_name]
+            grouping_ws_name = self.getPropertyValue("GroupingWorkspace")
 
-        outputFilename = self.getProperty("OutputFilename").value
+        outputFilename = self.getPropertyValue("OutputFilename")
 
-        try:
-            self.mantidSnapper.SaveDiffCal(
-                f"Saving grouping workspace to {outputFilename}",
-                GroupingWorkspace=grouping_ws_name,
-                Filename=outputFilename,
-            )
-            self.mantidSnapper.executeQueue()
-        except AlgorithmException:
-            # In mantid without https://github.com/mantidproject/mantid/pull/36361
-            # a fake calibration table must be created
-            # this can be removed once mantid is new enough
-            self.log().information("Creating temporary calibration in order to use legacy SaveDiffCal")
-            cal_ws_name = "cal_ws"
-            self.CreateZeroCalibrationWorkspace(cal_ws_name)
-
-            self.mantidSnapper.SaveDiffCal(
-                f"Saving grouping workspace to {outputFilename}",
-                CalibrationWorkspace=cal_ws_name,
-                GroupingWorkspace=grouping_ws_name,
-                Filename=outputFilename,
-            )
-            self.mantidSnapper.WashDishes(
-                f"Cleanup the zero calibration workspace {cal_ws_name}",
-                Workspace=cal_ws_name,
-            )
-            self.mantidSnapper.executeQueue()
-        if grouping_file_name != "":
+        self.mantidSnapper.SaveDiffCal(
+            f"Saving grouping workspace to {outputFilename}",
+            GroupingWorkspace=grouping_ws_name,
+            Filename=outputFilename,
+        )
+        if not self.getProperty("GroupingFilename").isDefault:
             self.mantidSnapper.WashDishes(
                 f"Cleanup the grouping workspace {grouping_ws_name}",
                 Workspace=grouping_ws_name,
             )
         self.mantidSnapper.executeQueue()
-
-    def CreateZeroCalibrationWorkspace(self, cal_ws_name) -> None:
-        # TODO this can be removed once mantid has
-        # https://github.com/mantidproject/mantid/pull/36361
-        self.mantidSnapper.CreateEmptyTableWorkspace(
-            "Creating empty table workspace...",
-            OutputWorkspace=cal_ws_name,
-        )
-        self.mantidSnapper.executeQueue()
-        cal_ws = mtd[cal_ws_name]
-
-        cal_ws.addColumn(type="int", name="detid", plottype=6)
-        cal_ws.addColumn(type="float", name="difc", plottype=6)
-        cal_ws.addColumn(type="float", name="difa", plottype=6)
-        cal_ws.addColumn(type="float", name="tzero", plottype=6)
-        cal_ws.addColumn(type="float", name="tofmin", plottype=6)
-
-        groupIDs = self.grouping_ws.getGroupIDs()
-        for groupID in groupIDs:
-            detIDs = self.grouping_ws.getDetectorIDsOfGroup(int(groupID))
-            for detID in detIDs:
-                nextRow = {"detid": int(detID), "difc": 0, "difa": 0, "tzero": 0, "tofmin": 0}
-                cal_ws.addRow(nextRow)
 
 
 # Register algorithm with Mantid
