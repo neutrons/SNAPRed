@@ -51,9 +51,7 @@ class ToolBarView(QWidget):
                 QToolButton:hover {{
                     background-color: {}
                 }}
-            """.format(
-                    colorNormal, colorHover
-                )
+            """.format(colorNormal, colorHover)
             )
 
             signal = getattr(self, target + "Clicked")
