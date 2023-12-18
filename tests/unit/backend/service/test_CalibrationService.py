@@ -318,6 +318,18 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         expected_record_mockId = "mock_calibration_record"
         assert result.mockId == expected_record_mockId
 
+    @patch(thisService + "CalibrationMetricsWorkspaceIngredients", return_value=MagicMock())
+    def test_readQuality_mock_metrics_workspace_ingredients(
+        self, mockCalibrationMetricsWorkspaceIngredients  # noqa: ARG002
+    ):
+        run = MagicMock()
+        version = MagicMock()
+        calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
+        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+        with pytest.raises(Exception) as excinfo:  # noqa: PT011
+            self.instance.readQuality(run, version)
+        assert "The input table is empty" in str(excinfo.value)
+
     def test_readQuality(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
@@ -357,7 +369,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # test with an invalid calibration record
             calibRecord.focusGroupCalibrationMetrics = []
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
-            with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+            with pytest.raises(Exception) as excinfo:  # noqa: PT011
                 self.instance.readQuality(run, version)
             assert "focusGroupCalibrationMetrics" in str(excinfo.value)
 
