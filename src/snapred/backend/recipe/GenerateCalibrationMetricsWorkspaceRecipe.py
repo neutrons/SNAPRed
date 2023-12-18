@@ -1,4 +1,5 @@
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients as Ingredients
+from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.GenericRecipe import (
@@ -46,7 +47,7 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
                 )
 
             self.mantidSnapper.DeleteWorkspace(f"Deleting workspace {tableWS}", Workspace=tableWS)
-        except RuntimeError as e:
+        except (RuntimeError, AlgorithmException) as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
         logger.info("Finished generating calibration metrics workspace.")
