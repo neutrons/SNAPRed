@@ -118,5 +118,5 @@ class DataFactoryService:
     def getGroupingFiles(self):
         return self.lookupService.readGroupingFiles()
 
-    def constructCalibrationDataPath(self, runId: str, version: str):
+    def getCalibrationDataPath(self, runId: str, version: str):
         return self.lookupService._constructCalibrationDataPath(runId, version)

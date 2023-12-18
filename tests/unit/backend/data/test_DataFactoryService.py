@@ -124,3 +124,10 @@ with mock.patch.dict(
         actual = dataExportService.getCalibrationIndex(run)
 
         assert actual == "expected"
+
+    def test_getCalibrationDataPath():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService._constructCalibrationDataPath = mock.Mock(return_value="expected")
+        actual = dataExportService.getCalibrationDataPath(mock.Mock(), mock.Mock())
+
+        assert actual == "expected"

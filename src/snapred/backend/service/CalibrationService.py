@@ -13,6 +13,7 @@ from snapred.backend.dao.calibration import (
 )
 from snapred.backend.dao.calibration import CalibrationRecord as CalibrationRecord
 from snapred.backend.dao.ingredients import (
+    CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
@@ -42,7 +43,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationNormalizationRecipe import CalibrationNormalizationRecipe
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
-from snapred.backend.recipe.GenerateCalibrationMetricsWorkspacesRecipe import GenerateCalibrationMetricsWorkspacesRecipe
+from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
     CalibrationReductionRecipe,
@@ -350,9 +351,11 @@ class CalibrationService(Service):
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
         if calibrationRecord is None:
             raise ValueError(f"No calibration record found for run {runId}, version {version}.")
-        GenerateCalibrationMetricsWorkspacesRecipe().executeRecipe(calibrationRecord)
+        GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
+            CalibrationMetricsWorkspaceIngredients(calibrationRecord=calibrationRecord)
+        )
         for ws_name in calibrationRecord.workspaceNames:
-            path = self.dataFactoryService.constructCalibrationDataPath(
+            path = self.dataFactoryService.getCalibrationDataPath(
                 calibrationRecord.runNumber, calibrationRecord.version
             )
             fullPath = os.path.join(path, ws_name + ".nxs")
@@ -389,7 +392,9 @@ class CalibrationService(Service):
         )
 
         timestamp = int(round(time.time() * 1000))
-        GenerateCalibrationMetricsWorkspacesRecipe().executeRecipe(calibrationRecord=record, timestamp=timestamp)
+        GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
+            CalibrationMetricsWorkspaceIngredients(calibrationRecord=record, timestamp=timestamp)
+        )
 
         return record
 

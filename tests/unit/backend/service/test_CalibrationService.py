@@ -30,6 +30,7 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric  # noqa: E402
+    from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import (
         SmoothDataExcludingPeaksIngredients,  # noqa: E402
@@ -256,8 +257,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @patch(thisService + "FitMultiplePeaksIngredients")
     @patch(thisService + "FitMultiplePeaksRecipe")
     @patch(
-        thisService + "GenerateCalibrationMetricsWorkspaceRecipe",
-        return_value=MagicMock(),
+        thisService + "CalibrationMetricsWorkspaceIngredients",
+        return_value=MagicMock(
+            calibrationRecord=CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json")),
+            timestamp=MagicMock(),
+        ),
     )
     def test_assessQuality(
         self,
@@ -265,7 +269,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockCalibRecord,
         fitMultiplePeaksIng,  # noqa: ARG002
         fmprecipe,  # noqa: ARG002
-        mockGenCalibMetricsWorkspacesRecipe,  # noqa: ARG002
+        mockCalibrationMetricsWorkspaceIngredients,  # noqa: ARG002
     ):
         # Mock input data
         mockRequest = MagicMock()
@@ -316,12 +320,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_readQuality(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Load a non-mocked calibration record and use it for mocking getCalibrationRecord
             calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
-            self.instance.dataFactoryService.constructCalibrationDataPath = MagicMock(return_value=tmpdir)
+            self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
             for ws_name in calibRecord.workspaceNames:
                 CreateWorkspace(
                     OutputWorkspace=ws_name,
