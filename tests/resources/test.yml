@@ -1,5 +1,5 @@
 instrument:
-  config: inputs/SNAPInstPrm.json
+  config: ${instrument.calibration.home}/inputs/SNAPInstPrm.json
 
 localdataservice:
   config:
