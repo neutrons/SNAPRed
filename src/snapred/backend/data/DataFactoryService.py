@@ -89,7 +89,8 @@ class DataFactoryService:
         return self.workspaceService.deleteWorkspace(name)
 
     def loadCalibrationDataWorkspace(self, runId, version, name):
-        path = self.lookupService._constructCalibrationDataPath(runId, version)
+        path = self.getCalibrationDataPath(runId, version)
+        print("PATH is: " + path)
         return self.workspaceService.loadWorkspace(path, name)
 
     def writeWorkspace(self, path, name):
