@@ -1,5 +1,4 @@
 import json
-import os
 import time
 from typing import List, Tuple
 
@@ -9,9 +8,9 @@ from snapred.backend.dao import GroupPeakList, RunConfig
 from snapred.backend.dao.calibration import (
     CalibrationIndexEntry,
     CalibrationMetric,
+    CalibrationRecord,
     FocusGroupMetric,
 )
-from snapred.backend.dao.calibration import CalibrationRecord as CalibrationRecord
 from snapred.backend.dao.ingredients import (
     CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
@@ -355,11 +354,9 @@ class CalibrationService(Service):
             CalibrationMetricsWorkspaceIngredients(calibrationRecord=calibrationRecord)
         )
         for ws_name in calibrationRecord.workspaceNames:
-            path = self.dataFactoryService.getCalibrationDataPath(
-                calibrationRecord.runNumber, calibrationRecord.version
+            self.dataFactoryService.loadCalibrationDataWorkspace(
+                calibrationRecord.runNumber, calibrationRecord.version, ws_name
             )
-            fullPath = os.path.join(path, ws_name + ".nxs")
-            self.dataFactoryService.loadWorkspace(fullPath, ws_name)
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):

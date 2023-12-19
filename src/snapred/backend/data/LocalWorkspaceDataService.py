@@ -1,3 +1,5 @@
+import os
+
 from mantid.api import AlgorithmManager, mtd
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -44,11 +46,14 @@ class LocalWorkspaceDataService:
         """
         pass
 
-    def loadWorkspace(self, path: str, name: str):
+    def loadCalibrationDataWorkspace(self, path: str, name: str):
         """
-        Load a nexus workspace by full path
+        Load a calibration data workspace given a file directory and workspace name.
         """
-        self.mantidSnapper.LoadNexusProcessed(f"Loading workspace from '{path}'", Filename=path, OutputWorkspace=name)
+        fullPath = os.path.join(path, name + ".nxs")
+        self.mantidSnapper.LoadNexusProcessed(
+            f"Loading workspace from '{fullPath}'", Filename=path, OutputWorkspace=name
+        )
 
     def deleteWorkspace(self, name: WorkspaceName):
         """

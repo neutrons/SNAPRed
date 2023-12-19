@@ -321,11 +321,20 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Assert expected calibration metric workspaces have been generated
         ws_name_stem = "57514_calibrationMetrics_ts123"
-        for ws_name in [ws_name_stem + "_sigma", ws_name_stem + "_strain"]:
-            assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name)
+        for metric in ["sigma", "strain"]:
+            assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name_stem + "_" + metric)
+
+    def test_readQuality_no_calibration_record_exception(self):
+        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
+        run = MagicMock()
+        version = MagicMock()
+        with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+            self.instance.readQuality(run, version)
+        assert str(run) in str(excinfo.value)
+        assert str(version) in str(excinfo.value)
 
     @patch(thisService + "CalibrationMetricsWorkspaceIngredients", return_value=MagicMock())
-    def test_readQuality_mock_metrics_workspace_ingredients(
+    def test_readQuality_no_calibration_metrics_exception(
         self, mockCalibrationMetricsWorkspaceIngredients  # noqa: ARG002
     ):
         run = MagicMock()
@@ -364,20 +373,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Assert the "persistent" workspaces have been loaded
             for ws_name in calibRecord.workspaceNames:
                 assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name)
-
-            # test with a None calibration record
-            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
-            with pytest.raises(ValueError) as excinfo:  # noqa: PT011
-                self.instance.readQuality(run, version)
-            assert str(run) in str(excinfo.value)
-            assert str(version) in str(excinfo.value)
-
-            # test with an invalid calibration record
-            calibRecord.focusGroupCalibrationMetrics = []
-            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
-            with pytest.raises(Exception) as excinfo:  # noqa: PT011
-                self.instance.readQuality(run, version)
-            assert "calibrationMetric" in str(excinfo.value)
 
     # patch FocusGroup
     @patch(thisService + "FocusGroup", return_value=FocusGroup(name="mockgroup", definition="junk/mockgroup.abc"))
