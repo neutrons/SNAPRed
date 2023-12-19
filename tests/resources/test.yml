@@ -1,5 +1,4 @@
 instrument:
-  home: ""
   config: inputs/SNAPInstPrm.json
 
 localdataservice:
