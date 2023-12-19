@@ -335,7 +335,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     @patch(thisService + "CalibrationMetricsWorkspaceIngredients", return_value=MagicMock())
     def test_readQuality_no_calibration_metrics_exception(
-        self, mockCalibrationMetricsWorkspaceIngredients  # noqa: ARG002
+        self,
+        mockCalibrationMetricsWorkspaceIngredients,  # noqa: ARG002
     ):
         run = MagicMock()
         version = MagicMock()
