@@ -19,7 +19,7 @@ instrument:
         home: ${instrument.calibration.powder.home}/PixelGroupingDefinitions
         extensions:
           - lite.hdf
-  config: ${instrument.calibration.home}SNAPInstPrm.json
+  config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
     pixelResolution: 1179648
     definition:
