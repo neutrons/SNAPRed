@@ -46,9 +46,9 @@ class LocalWorkspaceDataService:
         """
         pass
 
-    def loadCalibrationDataWorkspace(self, path: str, name: str):
+    def loadWorkspace(self, path: str, name: str):
         """
-        Load a calibration data workspace given a file directory and workspace name.
+        Load a workspace given a file directory and workspace name.
         """
         fullPath = os.path.join(path, name + ".nxs")
         self.mantidSnapper.LoadNexusProcessed(
