@@ -240,7 +240,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @patch(thisService + "FitMultiplePeaksIngredients")
     @patch(thisService + "FitMultiplePeaksRecipe")
     def test_assessQuality(
-        self, mockCrystalInfoService, mockCalibRecord, fitMultiplePeaksIng, fmprecipe  # noqa: ARG002
+        self,
+        mockCrystalInfoService,  # noqa: ARG002
+        mockCalibRecord,
+        fitMultiplePeaksIng,  # noqa: ARG002
+        fmprecipe,  # noqa: ARG002
     ):
         # Mock input data
         mockRequest = MagicMock()

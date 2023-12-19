@@ -8,7 +8,9 @@ class TestLiteDataService(unittest.TestCase):
     @patch("snapred.backend.data.DataFactoryService.DataFactoryService", autospec=True)
     @patch("snapred.backend.recipe.GenericRecipe.GenericRecipe.executeRecipe")
     def test_reduceLiteData_calls_executeRecipe_with_correct_arguments(
-        self, mock_executeRecipe, mock_dataFactoryService  # noqa: ARG002
+        self,
+        mock_executeRecipe,
+        mock_dataFactoryService,  # noqa: ARG002
     ):
         mock_executeRecipe.return_value = {}
 
