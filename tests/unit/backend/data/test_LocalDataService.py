@@ -531,9 +531,11 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         # get a handle on the service
         service = LocalDataService()
         service.verifyPaths = True  # override test setting
+        prevInstrumentHome = Config._config["instrument"]["home"]
+        Config._config["instrument"]["home"] = "/this/path/does/not/exist"
         with pytest.raises(FileNotFoundError):
             service.readInstrumentConfig()
-
+        Config._config["instrument"]["home"] = prevInstrumentHome
         service.verifyPaths = False  # put the setting back
 
     def test_readSamplePaths():
