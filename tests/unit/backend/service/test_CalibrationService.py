@@ -30,8 +30,8 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric  # noqa: E402
-    from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
     from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
+    from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import (
         SmoothDataExcludingPeaksIngredients,  # noqa: E402
