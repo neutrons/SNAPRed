@@ -81,6 +81,11 @@ class GroceryListItem(BaseModel):
             instrumentSource=instrumentDonor,
         )
 
+    def builder():
+        from snapred.backend.dao.ingredients.GroceryListBuilder import GroceryListBuilder
+
+        return GroceryListBuilder()
+
     @root_validator(pre=True, allow_reuse=True)
     def validate_ingredients_for_groceries(cls, v):
         if v["workspaceType"] == "nexus":

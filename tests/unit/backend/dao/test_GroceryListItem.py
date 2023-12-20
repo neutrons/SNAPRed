@@ -9,6 +9,7 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
 )
 from pydantic import ValidationError
+from snapred.backend.dao.ingredients.GroceryListBuilder import GroceryListBuilder
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.meta.Config import Resource
 
@@ -132,3 +133,10 @@ class TestGroceryListItem(unittest.TestCase):
         assert item.groupingScheme == "Native"
         assert item.useLiteMode is True
         assert item.workspaceType == "grouping"
+
+    def test_builder(self):
+        builder = GroceryListItem.builder()
+        assert isinstance(builder, GroceryListBuilder)
+        item1 = GroceryListItem.builder().native().nexus().using(self.runNumber).build()
+        item2 = GroceryListBuilder().native().nexus().using(self.runNumber).build()
+        assert item1 == item2

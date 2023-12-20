@@ -24,16 +24,20 @@ class LiteDataService(Service):
         return "reduceLiteData"
 
     @FromString
-    def reduceLiteData(self, runs: List[RunConfig]) -> Dict[Any, Any]:
-        data: Dict[Any, Any] = {}
-        for run in runs:
-            inputWorkspace = "SNAP_" + str(run.runNumber) + ".nxs"
-            try:
-                data[str(run.runNumber)] = Recipe().executeRecipe(
-                    inputWorkspace=inputWorkspace,
-                    Run=run,
-                    useLiteMode=True,
-                )
-            except Exception as e:
-                raise e
+    def reduceLiteData(
+        self,
+        inputWorkspace: str,
+        liteDataMap: str,
+        outputWorkspace: str,
+        instrumentDefinition: str = "",
+    ) -> Dict[Any, Any]:
+        try:
+            data = Recipe().executeRecipe(
+                InputWorkspace=inputWorkspace,
+                LiteDataMapWorkspace=liteDataMap,
+                LiteInstrumentDefinitionFile=instrumentDefinition,
+                OutputWorkspace=outputWorkspace,
+            )
+        except Exception as e:
+            raise e
         return data
