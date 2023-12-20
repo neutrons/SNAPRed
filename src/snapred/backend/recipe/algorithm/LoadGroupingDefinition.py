@@ -98,7 +98,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
 
         if groupingFileExt not in self.supported_xml_file_extensions:
             if not self.getProperty("InstrumentDonor").isDefault:
-                logger.warn("InstrumentDonor will only be used if GroupingFilename is in XML format.")
+                logger.warning("InstrumentDonor will only be used if GroupingFilename is in XML format.")
 
         instrumentSources = ["InstrumentDonor", "InstrumentName", "InstrumentFilename"]
         specifiedSources = [s for s in instrumentSources if not self.getProperty(s).isDefault]

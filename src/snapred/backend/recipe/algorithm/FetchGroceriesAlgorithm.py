@@ -78,10 +78,10 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         if self.getProperty("OutputWorkspace").isDefault:
             issues["OutputWorkspace"] = "Must specify the Workspace to load into"
         instrumentSources = ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]
-        definedSources = [x for x in instrumentSources if not self.getProperty(x).isDefault]
-        if len(definedSources) > 1:
+        specifiedSources = [s for s in instrumentSources if not self.getProperty(s).isDefault]
+        if len(specifiedSources) > 1:
             issue = "Only one of InstrumentName, InstrumentFilename, or InstrumentDonor can be set"
-            issues.update({x: issue for x in definedSources})
+            issues.update({s: issue for s in specifiedSources})
         return issues
 
     def PyExec(self) -> None:

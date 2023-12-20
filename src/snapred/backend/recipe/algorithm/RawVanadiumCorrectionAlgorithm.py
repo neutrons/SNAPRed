@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 from mantid.api import (
@@ -38,152 +38,151 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
-    def chopIngredients(self, ingredients: Ingredients) -> None:
+    def chopIngredients(self, ingredients: Ingredients, sample: CalibrantSamples) -> None:
         stateConfig = ingredients.reductionState.stateConfig
         self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
 
-    def chopNeutronData(self, wsName: str) -> None:
+        self.geometry = sample.geometry
+        self.material = sample.material
+        self.sampleShape = self.geometry.shape
+
+    def unbagGroceries(self) -> None:
+        self.inputVanadiumWS = self.getPropertyValue("InputWorkspace")
+        self.inputBackgroundWS = self.getPropertyValue("BackgroundWorkspace")
+        self.outputVanadiumWS = self.getPropertyValue("OutputWorkspace")
+        self.absorptionWS = "raw_vanadium_absorption_factor"
+        self.outputBackgroundWS = self.inputBackgroundWS + "_out"
+
+    def chopNeutronData(self, inputWS: str, outputWS: str) -> None:
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data before chop",
-            InputWorkspace=wsName,
-            Outputworkspace=wsName + "_beforeChop",
+            InputWorkspace=inputWS,
+            Outputworkspace=inputWS + "_beforeChop",
         )
 
         self.mantidSnapper.ConvertUnits(
             "Ensure workspace is in TOF units",
-            InputWorkspace=wsName,
-            Outputworkspace=wsName,
+            InputWorkspace=inputWS,
+            Outputworkspace=outputWS,
             Target="TOF",
         )
+
         self.mantidSnapper.CropWorkspace(
             "Filter the workspace within bounds",
-            InputWorkspace=wsName,
-            OutputWorkspace=wsName,
+            InputWorkspace=outputWS,
+            OutputWorkspace=outputWS,
             XMin=self.TOFPars[0],
             XMax=self.TOFPars[2],
         )
 
         self.mantidSnapper.Rebin(
             "Rebin in log TOF",
-            InputWorkspace=wsName,
+            InputWorkspace=outputWS,
             Params=self.TOFPars,
-            PreserveEvents=False,
-            OutputWorkspace=wsName,
+            PreserveEvents=True,
+            OutputWorkspace=outputWS,
             BinningMode="Logarithmic",
         )
+
         self.mantidSnapper.NormaliseByCurrent(
             "Normalize by current",
-            InputWorkspace=wsName,
-            OutputWorkspace=wsName,
+            InputWorkspace=outputWS,
+            OutputWorkspace=outputWS,
         )
+
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data after chop",
-            InputWorkspace=wsName,
-            Outputworkspace=wsName + "_afterChop",
+            InputWorkspace=outputWS,
+            Outputworkspace=outputWS + "_afterChop",
         )
+
         self.mantidSnapper.executeQueue()
 
-    def shapedAbsorption(self, outputWS: str, wsName_cylinder: str):
-        if self.sampleShape == "Cylinder":
+    def shapedAbsorption(self, inputWS: str, absorptionWS: str, sampleShape: str):
+        if sampleShape == "Cylinder":
             self.mantidSnapper.CylinderAbsorption(
                 "Create cylinder absorption data",
-                InputWorkspace=outputWS,
-                OutputWorkspace=wsName_cylinder,
+                InputWorkspace=inputWS,
+                OutputWorkspace=absorptionWS,
             )
-        elif self.sampleShape == "Sphere":
+        elif sampleShape == "Sphere":
             self.mantidSnapper.SphericalAbsorption(
                 "Create spherical absorption data",
-                InputWorkspace=outputWS,
-                OutputWorkspace=wsName_cylinder,
+                InputWorkspace=inputWS,
+                OutputWorkspace=absorptionWS,
             )
         else:
             raise RuntimeError("Must use cylindrical or spherical calibrant samples\n")
 
+    def validateInputs(self) -> Dict[str, str]:
+        errors = {}
+        if self.getProperty("OutputWorkspace").isDefault:
+            errors["OutputWorkspace"] = "The output workspace for the raw vanadium correction must be specified"
+        return errors
+
     def PyExec(self):
-        wsNameV = self.getPropertyValue("InputWorkspace")
-        wsNameVB = self.getPropertyValue("BackgroundWorkspace")
-        wsName_cylinder = "cylAbsCalc"
-        outputWS = self.getPropertyValue("OutputWorkspace")
-        outputWSVB = wsNameVB + "_out"
-
-        # if output is same as input, overwrite it
-        # if output is not the same, clone copy of input and continue
-        # else set the name so the workspace is overwritten
-        if wsNameV != outputWS:
-            self.mantidSnapper.CloneWorkspace(
-                "Copying over input data for output",
-                InputWorkspace=wsNameV,
-                OutputWorkspace=outputWS,
-            )
-        elif outputWS == "":
-            outputWS = wsNameV
-
-        # do not mutate the background workspace
-        # instead clone it, then delete later
-        self.mantidSnapper.CloneWorkspace(
-            "Copying over background data",
-            InputWorkspace=wsNameVB,
-            OutputWorkspace=outputWSVB,
-        )
-
         # Load and pre-process vanadium and empty datasets
-        ingredients: Ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
-        self.chopIngredients(ingredients)
+        ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
+        sample = CalibrantSamples.parse_raw(self.getProperty("CalibrantSample").value)
+        self.chopIngredients(ingredients, sample)
+        self.unbagGroceries()
 
         # Process the raw vanadium and background data
-        self.chopNeutronData(outputWS)
-        self.chopNeutronData(outputWSVB)
+        self.chopNeutronData(self.inputVanadiumWS, self.outputVanadiumWS)
+        self.chopNeutronData(self.inputBackgroundWS, self.outputBackgroundWS)
 
         # take difference
         self.mantidSnapper.Minus(
             "Subtract off empty background",
-            LHSWorkspace=outputWS,
-            RHSWorkspace=outputWSVB,
-            OutputWorkspace=outputWS,
+            LHSWorkspace=self.outputVanadiumWS,
+            RHSWorkspace=self.outputBackgroundWS,
+            OutputWorkspace=self.outputVanadiumWS,
         )
         self.mantidSnapper.MakeDirtyDish(
             "create record of state after subtraction",
-            InputWorkspace=outputWS,
-            OutputWorkspace=outputWS + "_minusBackground",
+            InputWorkspace=self.outputVanadiumWS,
+            OutputWorkspace=self.outputVanadiumWS + "_minusBackground",
         )
         self.mantidSnapper.WashDishes(
             "Remove local vanadium background copy",
-            Workspace=outputWSVB,
+            Workspace=self.outputBackgroundWS,
         )
-
         # calculate and apply cylindrical absorption
         self.mantidSnapper.ConvertUnits(
             "Convert to wavelength",
-            InputWorkspace=outputWS,
-            OutputWorkspace=outputWS,
+            InputWorkspace=self.outputVanadiumWS,
+            OutputWorkspace=self.outputVanadiumWS,
             Target="Wavelength",
         )
         # set the workspace's sample
-        sample = CalibrantSamples.parse_raw(self.getProperty("CalibrantSample").value)
-        self.sampleShape = sample.geometry.shape
         self.mantidSnapper.SetSample(
             "Setting workspace with calibrant sample",
-            InputWorkspace=outputWS,
-            Geometry=sample.geometry.dict(),
-            Material=sample.material.dict(),
+            InputWorkspace=self.outputVanadiumWS,
+            Geometry=self.geometry.dict(),
+            Material=self.material.dict(),
         )
-        self.shapedAbsorption(outputWS, wsName_cylinder)
+        self.shapedAbsorption(
+            self.outputVanadiumWS,
+            self.absorptionWS,
+            self.sampleShape,
+        )
         self.mantidSnapper.Divide(
             "Divide out the cylinder absorption data",
-            LHSWorkspace=outputWS,
-            RHSWorkspace=wsName_cylinder,
-            OutputWorkspace=outputWS,
+            LHSWorkspace=self.outputVanadiumWS,
+            RHSWorkspace=self.absorptionWS,
+            OutputWorkspace=self.outputVanadiumWS,
         )
         self.mantidSnapper.WashDishes(
             "Delete cluttering workspace",
-            Workspace=wsName_cylinder,
+            Workspace=self.absorptionWS,
         )
         self.mantidSnapper.ConvertUnits(
             "Convert units back to TOF",
-            InputWorkspace=outputWS,
-            OutputWorkspace=outputWS,
+            InputWorkspace=self.outputVanadiumWS,
+            OutputWorkspace=self.outputVanadiumWS,
             Target="TOF",
         )
+
         self.mantidSnapper.executeQueue()
 
 

@@ -11,7 +11,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
     def category(self):
-        return "SNAPRed Sample Data"
+        return "SNAPRed Data Processing"
 
     def PyInit(self):
         # declare properties

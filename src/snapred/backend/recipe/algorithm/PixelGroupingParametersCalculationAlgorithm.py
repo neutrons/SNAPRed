@@ -148,6 +148,11 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         detectorState = instrumentState.detectorState
 
         # add sample logs with detector "arc" and "lin" parameters to the workspace
+        # NOTE after adding the logs, it is necessary to update the instrument to
+        #  factor in these new parameters, or else calculations will be inconsistent.
+        #  This is done with a call to `ws->populateInstrumentParameters()` from within mantid.
+        #  This call only needs to happen with the last log
+        logsAdded = 0
         for param_name in ["arc", "lin"]:
             for index in range(2):
                 self.mantidSnapper.AddSampleLog(
@@ -156,26 +161,9 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                     LogName="det_" + param_name + str(index + 1),
                     LogText=str(getattr(detectorState, param_name)[index]),
                     LogType="Number Series",
+                    UpdateInstrumentParameters=(logsAdded >= 3),
                 )
-
-        # NOTE after adding the logs, it is necessary to update the instrument to
-        #  factor in these new parameters, or else calculations will be inconsistent.
-        #  This is done with a call to `ws->populateInstrumentParameters()` from within mantid.
-        # TODO use this sample log, after Mantid PR 36524 has gone into main
-        # https://github.com/mantidproject/mantid/pull/36524
-        # self.mantidSnapper.AddSampleLog(
-        #     "Update the instrument",
-        #     Workspace=ws_name,
-        #     LogName="update_instrument",
-        #     UpdateInstrumentParameters=True,
-        # )
-        # TODO remove the below after uncommenting above.
-        minimalXML = "<parameter-file>></parameter-file>"
-        self.mantidSnapper.LoadParameterFile(
-            "Calling an algorithm that includes a populateInstrumentParamters and no file load",
-            Workspace=ws_name,
-            ParameterXML=minimalXML,
-        )
+                logsAdded += 1
         self.mantidSnapper.executeQueue()
 
 

@@ -11,6 +11,8 @@ instrument:
     home: ${instrument.home}shared/Calibration
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
+      extensions:
+        - json
     powder:
       home: ${instrument.calibration.home}/Powder
       grouping:
@@ -19,7 +21,7 @@ instrument:
           - xml
           - nxs
           - hdf
-  config: shared/Calibration/SNAPInstPrm.json
+  config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
     pixelResolution: 1179648
     definition:
@@ -27,9 +29,9 @@ instrument:
   lite:
     pixelResolution: 18432
     definition:
-      file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
+      file: ${instrument.calibration.home}/Powder/SNAPLite.xml
     map:
-      file: ${instrument.home}shared/Calibration/Powder/LiteGroupMap.hdf
+      file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
 
 nexus:
   lite:
@@ -109,7 +111,7 @@ logging:
     format: '%Y-%m-%d %H:%M:%S,%i - %p - %s - %t'
 
 samples:
-  home: /SNS/SNAP/shared/Calibration/CalibrantSamples
+  home: ${instrument.calibration.home}/CalibrantSamples
 
 
 cis_mode: true

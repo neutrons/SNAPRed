@@ -108,7 +108,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
         badGroupingWS = "junk"
         savingAlgo = SavingAlgo()
         savingAlgo.initialize()
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(ValueError) as e:  # noqa: PT011
             savingAlgo.setPropertyValue("GroupingWorkspace", badGroupingWS)
         assert badGroupingWS in str(e.value)
 
@@ -230,7 +230,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
             outputFilePath = os.path.join(self.tmp_dir, output_file_name)
 
             # will mock out the loader to simply rename the already-loaded workspaces
-            def replaceInADS(msg, **kwargs):
+            def replaceInADS(msg, **kwargs):  # noqa: ARG001
                 RenameWorkspace(
                     InputWorkspace=self.naturalGroupingWorkspace,
                     OutputWorkspace=kwargs["OutputWorkspace"],

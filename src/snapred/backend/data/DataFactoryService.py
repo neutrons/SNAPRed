@@ -64,8 +64,8 @@ class DataFactoryService:
     def constructStateId(self, runId):
         return self.lookupService._generateStateId(runId)
 
-    def getCalibrantSample(self, sampleId):
-        return self.lookupService.readCalibrantSample(sampleId)
+    def getCalibrantSample(self, filePath):
+        return self.lookupService.readCalibrantSample(filePath)
 
     def getCifFilePath(self, sampleId):
         return self.lookupService.readCifFilePath(sampleId)
@@ -73,14 +73,39 @@ class DataFactoryService:
     def getCalibrationState(self, runId):
         return self.lookupService.readCalibrationState(runId)
 
+    def getNormalizationState(self, runId):
+        return self.lookupService.readNormalizationState(runId)
+
+    def writeNormalizationState(self, runId):
+        return self.lookupService.writeNormalizationState(runId)
+
     def getWorkspaceForName(self, name):
         return self.workspaceService.getWorkspaceForName(name)
+
+    def doesWorkspaceExist(self, name):
+        return self.workspaceService.doesWorkspaceExist(name)
+
+    def deleteWorkspace(self, name):
+        return self.workspaceService.deleteWorkspace(name)
+
+    def loadCalibrationDataWorkspace(self, runId, version, name):
+        path = self.getCalibrationDataPath(runId, version)
+        return self.workspaceService.loadWorkspace(path, name)
+
+    def writeWorkspace(self, path, name):
+        return self.workspaceService.writeWorkspace(path, name)
 
     def getWorkspaceCached(self, runId: str, name: str):
         return self.workspaceService.readWorkspaceCached(runId, name)
 
     def getCalibrationRecord(self, runId):
         return self.lookupService.readCalibrationRecord(runId)
+
+    def getNormalizationRecord(self, runId):
+        return self.lookupService.readNormalizationRecord(runId)
+
+    def getCalibrationIndex(self, runId: str):
+        return self.lookupService.readCalibrationIndex(runId)
 
     def getFocusGroups(self, runId: str):
         return self.lookupService._readFocusGroups(runId)
@@ -93,3 +118,6 @@ class DataFactoryService:
 
     def getGroupingFiles(self):
         return self.lookupService.readGroupingFiles()
+
+    def getCalibrationDataPath(self, runId: str, version: str):
+        return self.lookupService._constructCalibrationDataPath(runId, version)

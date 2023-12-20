@@ -108,3 +108,26 @@ with mock.patch.dict(
         actual = dataExportService.getCifFilePath("testId")
 
         assert actual == "expected"
+
+    def test_getNormalizationState():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readNormalizationState = mock.Mock()
+        dataExportService.lookupService.readNormalizationState.return_value = "expected"
+        actual = dataExportService.getNormalizationState(mock.Mock())
+
+        assert actual == "expected"
+
+    def test_getCalibrationIndex():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readCalibrationIndex = mock.Mock(return_value="expected")
+        run = MagicMock()
+        actual = dataExportService.getCalibrationIndex(run)
+
+        assert actual == "expected"
+
+    def test_getCalibrationDataPath():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService._constructCalibrationDataPath = mock.Mock(return_value="expected")
+        actual = dataExportService.getCalibrationDataPath(mock.Mock(), mock.Mock())
+
+        assert actual == "expected"
