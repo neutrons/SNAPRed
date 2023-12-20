@@ -1,5 +1,4 @@
 import json
-import os
 import time
 from typing import List, Tuple
 
@@ -13,6 +12,7 @@ from snapred.backend.dao.calibration import (
     FocusGroupMetric,
 )
 from snapred.backend.dao.ingredients import (
+    CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
@@ -38,11 +38,11 @@ from snapred.backend.dao.state import FocusGroup, FocusGroupParameters, Instrume
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationNormalizationRecipe import CalibrationNormalizationRecipe
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
+from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
     CalibrationReductionRecipe,
@@ -86,6 +86,7 @@ class CalibrationService(Service):
         self.registerPath("normalization", self.normalization)
         self.registerPath("normalizationAssessment", self.normalizationAssessment)
         self.registerPath("saveNormalization", self.saveNormalization)
+        self.registerPath("quality", self.readQuality)
         self.registerPath("retrievePixelGroupingParams", self.retrievePixelGroupingParams)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
@@ -345,9 +346,21 @@ class CalibrationService(Service):
         return FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric)
 
     @FromString
+    def readQuality(self, runId: str, version: str):
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
+        if calibrationRecord is None:
+            raise ValueError(f"No calibration record found for run {runId}, version {version}.")
+        GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
+            CalibrationMetricsWorkspaceIngredients(calibrationRecord=calibrationRecord)
+        )
+        for ws_name in calibrationRecord.workspaceNames:
+            self.dataFactoryService.loadCalibrationDataWorkspace(
+                calibrationRecord.runNumber, calibrationRecord.version, ws_name
+            )
+
+    @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
         run = request.run
-
         focussedData = request.workspace
         calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
@@ -363,17 +376,7 @@ class CalibrationService(Service):
         )
         fitResults = FitMultiplePeaksRecipe().executeRecipe(FitMultiplePeaksIngredients=fitIngredients)
         metrics = self._collectMetrics(fitResults, focusGroup, pixelGroupingParam)
-        prevCalibration = self.dataFactoryService.getCalibrationRecord(run.runNumber)
-        timestamp = int(round(time.time() * 1000))
-        GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
-            ListOfDict=list_to_raw(metrics.calibrationMetric),
-            OutputWorkspace=f"{run.runNumber}_calibrationMetrics_ts{timestamp}",
-        )
-        if prevCalibration is not None:
-            GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
-                ListOfDict=list_to_raw(prevCalibration.focusGroupCalibrationMetrics.calibrationMetric),
-                OutputWorkspace=f"{run.runNumber}_calibrationMetrics_v{prevCalibration.version}",
-            )
+
         outputWorkspaces = [focussedData]
         focusGroupParameters = self.collectFocusGroupParameters([focusGroup], [pixelGroupingParam])
         record = CalibrationRecord(
@@ -383,6 +386,11 @@ class CalibrationService(Service):
             focusGroupParameters=focusGroupParameters,
             focusGroupCalibrationMetrics=metrics,
             workspaceNames=outputWorkspaces,
+        )
+
+        timestamp = int(round(time.time() * 1000))
+        GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
+            CalibrationMetricsWorkspaceIngredients(calibrationRecord=record, timestamp=timestamp)
         )
 
         return record

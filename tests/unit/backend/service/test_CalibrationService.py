@@ -1,9 +1,15 @@
+import os
+import tempfile
 import unittest
 import unittest.mock as mock
 from typing import List
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+from mantid.simpleapi import (
+    CreateWorkspace,
+    mtd,
+)
 
 # Mock out of scope modules before importing DataExportService
 
@@ -24,6 +30,7 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric  # noqa: E402
+    from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients  # noqa: E402
     from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import (
         SmoothDataExcludingPeaksIngredients,  # noqa: E402
@@ -141,6 +148,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             "parameters": f"params for {focus_def}"
         }
 
+    def clearoutWorkspaces(self) -> None:
+        # Delete the workspaces created by loading
+        for ws in mtd.getObjectNames():
+            self.instance.dataFactoryService.deleteWorkspace(ws)
+
+    def tearDown(self) -> None:
+        # At the end of each test, clear out the workspaces
+        self.clearoutWorkspaces()
+        return super().tearDown()
+
     def test_LoadFocussedData_Success(self):
         # Mock the dataFactoryService.getWorkspaceForName method to return a non-None value
         self.instance.dataFactoryService.getWorkspaceForName = MagicMock(return_value="mock_workspace")
@@ -236,15 +253,23 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         thisService + "CrystallographicInfoService",
         return_value=MagicMock(ingest=MagicMock(return_value={"crystalInfo": "mock_crystal_info"})),
     )
-    @patch(thisService + "CalibrationRecord", return_value="mock_calibration_record")
+    @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record"))
     @patch(thisService + "FitMultiplePeaksIngredients")
     @patch(thisService + "FitMultiplePeaksRecipe")
+    @patch(
+        thisService + "CalibrationMetricsWorkspaceIngredients",
+        return_value=MagicMock(
+            calibrationRecord=CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json")),
+            timestamp="123",
+        ),
+    )
     def test_assessQuality(
         self,
         mockCrystalInfoService,  # noqa: ARG002
         mockCalibRecord,
         fitMultiplePeaksIng,  # noqa: ARG002
         fmprecipe,  # noqa: ARG002
+        mockCalibrationMetricsWorkspaceIngredients,  # noqa: ARG002
     ):
         # Mock input data
         mockRequest = MagicMock()
@@ -291,8 +316,64 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         result = self.instance.assessQuality(mockRequest)
 
         # Assert the result is as expected
-        expected_record = "mock_calibration_record"
-        assert result == expected_record
+        expected_record_mockId = "mock_calibration_record"
+        assert result.mockId == expected_record_mockId
+
+        # Assert expected calibration metric workspaces have been generated
+        ws_name_stem = "57514_calibrationMetrics_ts123"
+        for metric in ["sigma", "strain"]:
+            assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name_stem + "_" + metric)
+
+    def test_readQuality_no_calibration_record_exception(self):
+        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
+        run = MagicMock()
+        version = MagicMock()
+        with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+            self.instance.readQuality(run, version)
+        assert str(run) in str(excinfo.value)
+        assert str(version) in str(excinfo.value)
+
+    @patch(thisService + "CalibrationMetricsWorkspaceIngredients", return_value=MagicMock())
+    def test_readQuality_no_calibration_metrics_exception(
+        self,
+        mockCalibrationMetricsWorkspaceIngredients,  # noqa: ARG002
+    ):
+        run = MagicMock()
+        version = MagicMock()
+        calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
+        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+        with pytest.raises(Exception) as excinfo:  # noqa: PT011
+            self.instance.readQuality(run, version)
+        assert "The input table is empty" in str(excinfo.value)
+
+    def test_readQuality(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
+            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+
+            # Under a mocked calibration data path, create fake "persistent" workspace files
+            self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
+            for ws_name in calibRecord.workspaceNames:
+                CreateWorkspace(
+                    OutputWorkspace=ws_name,
+                    DataX=1,
+                    DataY=1,
+                )
+                self.instance.dataFactoryService.writeWorkspace(os.path.join(tmpdir, ws_name + ".nxs"), ws_name)
+
+            # Call the method to test. Use a mocked run and a mocked version
+            run = MagicMock()
+            version = MagicMock()
+            self.instance.readQuality(run, version)
+
+            # Assert the expected calibration metric workspaces have been generated
+            ws_name_stem = f"{calibRecord.runNumber}_calibrationMetrics_v{calibRecord.version}"
+            for ws_name in [ws_name_stem + "_sigma", ws_name_stem + "_strain"]:
+                assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name)
+
+            # Assert the "persistent" workspaces have been loaded
+            for ws_name in calibRecord.workspaceNames:
+                assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name)
 
     # patch FocusGroup
     @patch(thisService + "FocusGroup", return_value=FocusGroup(name="mockgroup", definition="junk/mockgroup.abc"))
