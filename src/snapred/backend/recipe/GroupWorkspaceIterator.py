@@ -20,6 +20,6 @@ class GroupWorkspaceIterator:
         if self.index < self.groupingWorkspace.getNumberOfEntries():
             ws = self.groupingWorkspace.getItem(self.index)
             self.index += 1
-            return ws.name()
+            return ws.getName()
         else:
             raise StopIteration
