@@ -78,7 +78,7 @@ class LocalDataService:
             raise _createFileNotFoundError("Config['instrument.home']", self.dataPath)
 
         # look for the config file and verify it exists
-        self.instrumentConfigPath = self.dataPath / Config["instrument.config"]
+        self.instrumentConfigPath = Config["instrument.config"]
 
     def readInstrumentConfig(self) -> InstrumentConfig:
         self._determineInstrConfigPaths()
