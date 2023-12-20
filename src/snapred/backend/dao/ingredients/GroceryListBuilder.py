@@ -89,6 +89,8 @@ class GroceryListBuilder:
         self._tokens = {}
 
     def buildList(self) -> List[GroceryListItem]:
+        if self._tokens != {}:
+            self.add()
         res = self._list
         self._list = []
         return res

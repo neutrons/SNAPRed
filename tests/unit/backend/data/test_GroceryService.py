@@ -61,7 +61,6 @@ class TestGroceryService(unittest.TestCase):
 
     def setUp(self):
         self.instance = GroceryService()
-        self.nexusItem = GroceryListItem.builder().nexus().native().using(self.runNumber).build()
         self.groupingItem = (
             GroceryListItem.builder()
             .grouping()
@@ -70,7 +69,6 @@ class TestGroceryService(unittest.TestCase):
             .source(InstrumentDonor=self.sampleWS)
             .build()
         )
-        self.groceryList = [self.nexusItem, self.groupingItem]
         return super().setUp()
 
     def clearoutWorkspaces(self) -> None:
@@ -109,6 +107,22 @@ class TestGroceryService(unittest.TestCase):
         ws.addRow({"detid": 0})
 
     ## TESTS OF FILENAME METHODS
+
+    @mock.patch("mantid.simpleapi.GetIPTS")
+    def test_getIPTS(self, mockGetIPTS):
+        mockGetIPTS.return_value = "here/"
+        res = self.instance.getIPTS(self.runNumber)
+        assert res == mockGetIPTS.return_value
+        assert mockGetIPTS.called_with(
+            runNumber=self.runNumber,
+            instrumentName=Config["instrument.name"],
+        )
+        res = self.instance.getIPTS(self.runNumber, "CRACKLE")
+        assert res == mockGetIPTS.return_value
+        assert mockGetIPTS.called_with(
+            runNumber=self.runNumber,
+            instrumentName="CRACKLE",
+        )
 
     def test_key_neutron(self):
         """ensure the key is a unique identifier for run number and lite mode"""
@@ -290,7 +304,7 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(wsname1)
         assert not mtd.doesExist(wsname2)
         ws = self.instance.getCloneOfWorkspace(wsname1, wsname2)
-        assert ws.getName() == wsname2  # checks that the workspace pointer can be used
+        assert ws.name() == wsname2  # checks that the workspace pointer can be used
         assert mtd.doesExist(wsname2)
         assert CompareWorkspaces(
             Workspace1=wsname1,
@@ -420,7 +434,10 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(GroceryService, "_createNeutronFilename")
     def test_fetch_dirty_nexus_native(self, mockFilename, mockMakeLite):
         """Test the correct behavior when fetching raw nexus data"""
+        # patch the filename function to point to the test file
         mockFilename.return_value = self.filepath
+
+        # easier calls
         testItem = (self.runNumber, False)
 
         # ensure a clean ADS
@@ -469,7 +486,7 @@ class TestGroceryService(unittest.TestCase):
             Workspace2=res["workspace"],
         )
 
-        # test calling with Lite data, that it will call to _makeLite
+        # test calling with Lite data, that it will call to lite service
         liteItem = (self.runNumber, True)
         testKeyLite = self.instance._key(*liteItem)
         res = self.instance.fetchNeutronDataSingleUse(*liteItem)
@@ -477,3 +494,259 @@ class TestGroceryService(unittest.TestCase):
         workspaceNameLite = self.instance._createNeutronWorkspaceName(*liteItem)
         mockMakeLite.assert_called_once_with(workspaceNameLite)
         assert mtd.doesExist(workspaceNameLite)
+
+    @mock.patch.object(GroceryService, "_createNeutronFilename")
+    def test_fetch_cached_native(self, mockFilename):
+        """Test the correct behavior when fetching nexus data"""
+
+        testItem = (self.runNumber, False)
+        testKey = self.instance._key(*testItem)
+
+        workspaceNameRaw = self.instance._createRawNeutronWorkspaceName(*testItem)
+        workspaceNameCopy1 = self.instance._createCopyNeutronWorkspaceName(*testItem, 1)
+        workspaceNameCopy2 = self.instance._createCopyNeutronWorkspaceName(*testItem, 2)
+
+        # make sure the ADS is clean
+        self.clearoutWorkspaces()
+        for ws in [workspaceNameRaw, workspaceNameCopy1, workspaceNameCopy2]:
+            assert not mtd.doesExist(ws)
+        assert len(self.instance._loadedRuns) == 0
+
+        # run with nothing in cache and bad filename -- it will fail
+        mockFilename.return_value = "not/a/real/file.txt"
+        assert not os.path.isfile(mockFilename.return_value)
+        with pytest.raises(RuntimeError) as e:
+            self.instance.fetchNeutronDataCached(*testItem)
+        assert self.runNumber in str(e.value)
+        assert mockFilename.return_value in str(e.value)
+
+        # mock filename to point at test file
+        mockFilename.return_value = self.filepath
+
+        # run with nothing loaded -- it will find the file and load it
+        res = self.instance.fetchNeutronDataCached(*testItem)
+        assert res["result"]
+        assert res["loader"] == "LoadNexusProcessed"
+        assert res["workspace"] == workspaceNameCopy1
+        assert self.instance._loadedRuns == {testKey: 1}
+        # assert the correct workspaces exist: a raw and a copy
+        assert mtd.doesExist(workspaceNameRaw)
+        assert mtd.doesExist(workspaceNameCopy1)
+        # test the workspace is correct
+        assert CompareWorkspaces(
+            Workspace1=self.sampleWS,
+            Workspace2=workspaceNameCopy1,
+        )
+
+        # run with a raw workspace in cache -- it will copy it
+        res = self.instance.fetchNeutronDataCached(*testItem)
+        assert res["result"]
+        assert res["loader"] == "cached"  # indicates no loader called
+        assert res["workspace"] == workspaceNameCopy2
+        assert self.instance._loadedRuns == {testKey: 2}
+        # assert the correct workspaces exist: a raw and two copies
+        assert mtd.doesExist(workspaceNameRaw)
+        assert mtd.doesExist(workspaceNameCopy1)
+        assert mtd.doesExist(workspaceNameCopy2)
+        assert CompareWorkspaces(
+            Workspace1=self.sampleWS,
+            Workspace2=workspaceNameCopy2,
+        )
+
+    @mock.patch.object(GroceryService, "convertToLiteMode")
+    @mock.patch.object(GroceryService, "_createNeutronFilename")
+    def test_fetch_cached_lite(self, mockFilename, mockMakeLite):  # noqa: ARG002
+        """
+        Test the correct behavior when fetching nexus data in Lite mode.
+        The cases where the data is cached or the file exists are tested above.
+        This tests cases of using native-resolution data and auto-reducing.
+        """
+
+        testItem = (self.runNumber, True)
+        testKey = self.instance._key(*testItem)
+        nativeItem = (self.runNumber, False)
+        nativeKey = self.instance._key(*nativeItem)
+
+        workspaceNameNativeRaw = self.instance._createRawNeutronWorkspaceName(*nativeItem)
+        workspaceNameLiteRaw = self.instance._createRawNeutronWorkspaceName(*testItem)
+        workspaceNameLiteCopy1 = self.instance._createCopyNeutronWorkspaceName(*testItem, 1)
+
+        # make sure the ADS is clean
+        self.clearoutWorkspaces()
+        for ws in [workspaceNameNativeRaw, workspaceNameLiteRaw, workspaceNameLiteCopy1]:
+            assert not mtd.doesExist(ws)
+        assert len(self.instance._loadedRuns) == 0
+
+        # test that trying to load data from a fake file fails
+        # will reach the final "else" statement
+        fakeFilename = "not/a/real/file.txt"
+        mockFilename.return_value = fakeFilename
+        assert not os.path.isfile(mockFilename.return_value)
+        with pytest.raises(RuntimeError) as e:
+            self.instance.fetchNeutronDataCached(*testItem)
+        assert self.runNumber in str(e.value)
+        assert fakeFilename in str(e.value)
+
+        # mock filename -- create situation where Lite file does not exist, native does
+        mockFilename.side_effect = [
+            fakeFilename,  # called in the assert below
+            fakeFilename,  # called at beginning of function looking for Lite file
+            self.filepath,  # called inside elif when looking for Native file
+            self.filepath,  # called inside the block when making the filename variable
+        ]
+        assert not os.path.isfile(self.instance._createNeutronFilename(*testItem))
+
+        # there is no lite file and nothing cached
+        # load native resolution from file, then clone/reduce the native data
+        res = self.instance.fetchNeutronDataCached(*testItem)
+        assert res["result"]
+        assert res["loader"] == "LoadNexusProcessed"
+        assert res["workspace"] == workspaceNameLiteCopy1
+        for ws in [workspaceNameNativeRaw, workspaceNameLiteRaw, workspaceNameLiteCopy1]:
+            assert mtd.doesExist(ws)
+        assert self.instance._loadedRuns == {testKey: 1, nativeKey: 0}
+        # make sure it calls to convert to lite mode
+        assert self.instance.convertToLiteMode.called_once
+
+        # clear out the Lite workspaces from ADS and the cache
+        mockFilename.side_effect = [fakeFilename, self.filepath]
+        for ws in [workspaceNameLiteRaw, workspaceNameLiteCopy1]:
+            DeleteWorkspace(ws)
+            assert not mtd.doesExist(ws)
+        del self.instance._loadedRuns[testKey]
+
+        # there is no lite file and no cached lite workspace
+        # but there is a cached native workspace
+        # then clone/reduce the native workspace
+        assert mtd.doesExist(workspaceNameNativeRaw)
+        assert self.instance._loadedRuns == {nativeKey: 0}
+        res = self.instance.fetchNeutronDataCached(*testItem)
+        assert res["result"]
+        assert res["loader"] == "cached"
+        assert res["workspace"] == workspaceNameLiteCopy1
+        for ws in [workspaceNameNativeRaw, workspaceNameLiteRaw, workspaceNameLiteCopy1]:
+            assert mtd.doesExist(ws)
+        assert self.instance._loadedRuns == {testKey: 1, nativeKey: 0}
+        # make sure it calls to convert to lite mode
+        assert self.instance.convertToLiteMode.called_once
+
+    @mock.patch.object(GroceryService, "_createGroupingFilename")
+    def test_fetch_grouping(self, mockFilename):
+        mockFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
+        testItem = (self.groupingItem.groupingScheme, self.groupingItem.useLiteMode)
+
+        # call once and load
+        groupingWorkspaceName = self.instance._createGroupingWorkspaceName(*testItem)
+        groupKey = self.instance._key(*testItem)
+        res = self.instance.fetchGroupingDefinition(self.groupingItem)
+        assert res["result"]
+        assert res["loader"] == "LoadGroupingDefinition"
+        assert res["workspace"] == groupingWorkspaceName
+        assert self.instance._loadedGroupings == {groupKey: groupingWorkspaceName}
+
+        # call again and no load
+        res = self.instance.fetchGroupingDefinition(self.groupingItem)
+        assert res["result"]
+        assert res["loader"] == "cached"
+        assert res["workspace"] == groupingWorkspaceName
+        assert self.instance._loadedGroupings == {groupKey: groupingWorkspaceName}
+
+    @mock.patch.object(GroceryService, "_createGroupingFilename")
+    def test_failed_fetch_grouping(self, mockFilename):
+        # this is some file that it can't load
+        mockFilename.return_value = Resource.getPath("inputs/crystalInfo/fake_file.cif")
+        with pytest.raises(RuntimeError):
+            self.instance.fetchGroupingDefinition(self.groupingItem)
+
+    @mock.patch.object(GroceryService, "fetchNeutronDataCached")
+    @mock.patch.object(GroceryService, "fetchNeutronDataSingleUse")
+    @mock.patch.object(GroceryService, "fetchGroupingDefinition")
+    def test_fetch_grocery_list(self, mockFetchGroup, mockFetchDirty, mockFetchClean):
+        clerk = GroceryListItem.builder()
+        clerk.native().nexus().using(self.runNumber).add()
+        clerk.native().nexus().using(self.runNumber).dirty().add()
+        clerk.native().grouping().using(self.groupingScheme).source(InstrumentDonor=self.sampleWS).add()
+        groceryList = clerk.buildList()
+
+        # expected workspaces
+        cleanWorkspace = mock.Mock()
+        dirtyWorkspace = mock.Mock()
+        groupWorkspace = mock.Mock()
+
+        mockFetchClean.return_value = {"result": True, "workspace": cleanWorkspace}
+        mockFetchDirty.return_value = {"result": True, "workspace": dirtyWorkspace}
+        mockFetchGroup.return_value = {"result": True, "workspace": groupWorkspace}
+
+        res = self.instance.fetchGroceryList(groceryList)
+        assert res == [cleanWorkspace, dirtyWorkspace, groupWorkspace]
+        for i, fetchMethod in enumerate([mockFetchClean, mockFetchDirty]):
+            assert fetchMethod.called_once_with(
+                groceryList[i].runNumber,
+                groceryList[i].useLiteMode,
+                groceryList[i].loader,
+            )
+        assert mockFetchGroup.called_once_with(groceryList[2])
+
+    @mock.patch.object(GroceryService, "fetchNeutronDataSingleUse")
+    def test_fetch_grocery_list_fails(self, mockFetchDirty):
+        groceryList = GroceryListItem.builder().native().nexus().using(self.runNumber).dirty().buildList()
+        mockFetchDirty.return_value = {"result": False, "workspace": "unimportant"}
+        with pytest.raises(RuntimeError) as e:
+            self.instance.fetchGroceryList(groceryList)
+        print(str(e.value))
+
+    @mock.patch.object(GroceryService, "fetchNeutronDataCached")
+    @mock.patch.object(GroceryService, "fetchGroupingDefinition")
+    def test_fetch_grocery_list_with_prev(self, mockFetchGroup, mockFetchClean):
+        clerk = GroceryListItem.builder()
+        clerk.native().nexus().using(self.runNumber).add()
+        clerk.native().grouping().using(self.groupingScheme).fromPrev().add()
+        groceryList = clerk.buildList()
+
+        # expected workspaces
+        cleanWorkspace = "unimportant"
+        groupWorkspace = mock.Mock()
+
+        mockFetchClean.return_value = {"result": True, "workspace": cleanWorkspace}
+        mockFetchGroup.return_value = {"result": True, "workspace": groupWorkspace}
+
+        groupItemWithoutPrev = (
+            clerk.native().grouping().using(self.groupingScheme).source(InstrumentDonor=cleanWorkspace).build()
+        )
+
+        res = self.instance.fetchGroceryList(groceryList)
+        assert res == [cleanWorkspace, groupWorkspace]
+        assert mockFetchGroup.called_with(groupItemWithoutPrev)
+        assert mockFetchClean.called_with(self.runNumber, False, "")
+
+    @mock.patch.object(GroceryService, "fetchGroceryList")
+    def test_fetch_grocery_dict(self, mockFetchList):
+        clerk = GroceryListItem.builder()
+        clerk.native().nexus().using(self.runNumber).name("InputWorkspace").add()
+        clerk.native().grouping().using(self.groupingScheme).fromPrev().name("GroupingWorkspace").add()
+        groceryDict = clerk.buildDict()
+
+        # expected workspaces
+        cleanWorkspace = "unimportant"
+        groupWorkspace = "groupme"
+
+        mockFetchList.return_value = [cleanWorkspace, groupWorkspace]
+
+        res = self.instance.fetchGroceryDict(groceryDict)
+        assert res == {"InputWorkspace": cleanWorkspace, "GroupingWorkspace": groupWorkspace}
+        assert mockFetchList.called_once_with(groceryDict["InputWorkspace"], groceryDict["GroupingWorkspace"])
+
+    @mock.patch("snapred.backend.service.LiteDataService.LiteDataService")
+    def test_make_lite(self, mockLDS):
+        # mock out the fetch grouping part to make it think it fetched the ltie data map
+        liteMapWorkspace = "unimportant"
+        self.instance.fetchGroupingDefinition = mock.MagicMock(return_value={"workspace": liteMapWorkspace})
+
+        # now call to make lite
+        workspacename = self.instance._createNeutronWorkspaceName(self.runNumber, False)
+        self.instance.convertToLiteMode(workspacename)
+        # assert the call to lite data mode fetched the lite data map
+        assert self.instance.fetchGroupingDefinition.called_once_with("Lite", False)
+        # assert that the lite data service was created and called
+        assert mockLDS.called_once()
+        assert mockLDS.reduceLiteData.called_once_with(workspacename, liteMapWorkspace, workspacename)

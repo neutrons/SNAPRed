@@ -217,7 +217,7 @@ class GroceryService:
 
         return data
 
-    def fetchNeutronDataCached(self, runId: str, useLiteMode: bool, loader: str = "") -> WorkspaceName:
+    def fetchNeutronDataCached(self, runId: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
         """
         Fetch a nexus data file using a cache system to prevent double-loading from disk
         inputs:
@@ -249,21 +249,24 @@ class GroceryService:
             raise RuntimeError(f"Could not load run {runId} from file {filename}")
         # if in Lite mode, and no raw workspace and no file exists, look if native data has been loaded from cache
         # if so, then clone the native data and reduce it
-        elif self._loadedRuns(self._key(runId, False)) is not None:
-            # this can be accomplished by changing rawWorkspaceName to name of native workspace
+        elif self._loadedRuns.get(self._key(runId, False)) is not None:
             nativeRawWorkspaceName = self._createRawNeutronWorkspaceName(runId, False)
             data = {"loader": "cached"}
             loadedFromNative = True
         # neither lite nor native data in cache and lite file does not exist
         # then load native data, clone it, and reduce it
-        else:
-            # use the native resolution data
-            nativeRawWorkspaceName = self._createRawNeutronWorkspaceName(runId, False)
-            nativeFilename = self._createNeutronFilename(runId, False)
-            data = self.grocer.executeRecipe(nativeFilename, nativeFilename, loader="")
+        elif os.path.isfile(self._createNeutronFilename(runId, False)):
+            # load the native resolution data
+            goingNative = (runId, False)
+            nativeRawWorkspaceName = self._createRawNeutronWorkspaceName(*goingNative)
+            nativeFilename = self._createNeutronFilename(*goingNative)
+            data = self.grocer.executeRecipe(nativeFilename, nativeRawWorkspaceName, loader="")
             # keep track of the loaded raw native data
-            self._loadedRuns[self._key(runId, False)] = 0
+            self._loadedRuns[self._key(*goingNative)] = 0
             loadedFromNative = True
+        # the data cannot be loaded -- this is an error condition
+        else:
+            raise RuntimeError(f"Could not load run {runId} from file {filename}")
 
         if loadedFromNative:
             # clone the native raw workspace
@@ -273,7 +276,7 @@ class GroceryService:
             self.convertToLiteMode(rawWorkspaceName)
 
         # create a copy of the raw data for use
-        workspaceName = self._createCopyNeutronWorkspaceName(runId, useLiteMode, self._loadedRuns[key])
+        workspaceName = self._createCopyNeutronWorkspaceName(runId, useLiteMode, self._loadedRuns[key] + 1)
         data["result"] = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
         data["workspace"] = workspaceName
         self._loadedRuns[key] += 1
@@ -289,10 +292,11 @@ class GroceryService:
         - "loader", either "LoadGroupingDefinition" or "cached"
         - "workspace", the name of the new grouping workspace in the ADS
         """
-        workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.useLiteMode)
-        filename = self._createGroupingFilename(item.groupingScheme, item.useLiteMode)
+        itemTuple = (item.groupingScheme, item.useLiteMode)
+        workspaceName = self._createGroupingWorkspaceName(*itemTuple)
+        filename = self._createGroupingFilename(*itemTuple)
         groupingLoader = "LoadGroupingDefinition"
-        key = self._key(item.groupingScheme, item.useLiteMode)
+        key = self._key(*itemTuple)
 
         if self._loadedGroupings.get(key) is None:
             data = self.grocer.executeRecipe(
@@ -335,7 +339,7 @@ class GroceryService:
                 if item.instrumentSource == "prev":
                     item.instrumentPropertySource = "InstrumentDonor"
                     item.instrumentSource = prev
-                res = self.fetchGrouping(item)
+                res = self.fetchGroupingDefinition(item)
             # check that the fetch operation succeeded and if so append the workspace
             if res["result"] is True:
                 groceries.append(res["workspace"])
@@ -361,9 +365,10 @@ class GroceryService:
     def convertToLiteMode(self, workspace: WorkspaceName):
         from snapred.backend.service.LiteDataService import LiteDataService
 
-        liteMapKey = self._key("Lite", False)
+        liteMapItem = ("Lite", False)
+        liteMapKey = self._key(*liteMapItem)
         if self._loadedGroupings.get(liteMapKey) is None:
-            liteMap = self.fetchGroupingDefinition("Lite", False)["workspace"]
+            liteMap = self.fetchGroupingDefinition(*liteMapItem)["workspace"]
         LiteDataService().reduceLiteData(workspace, liteMap, workspace)
 
     ## CLEANUP METHODS

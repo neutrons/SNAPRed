@@ -7,6 +7,7 @@ from snapred.backend.recipe.GenericRecipe import LiteDataRecipe as Recipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 @Singleton
@@ -26,9 +27,9 @@ class LiteDataService(Service):
     @FromString
     def reduceLiteData(
         self,
-        inputWorkspace: str,
-        liteDataMap: str,
-        outputWorkspace: str,
+        inputWorkspace: WorkspaceName,
+        liteDataMap: WorkspaceName,
+        outputWorkspace: WorkspaceName,
         instrumentDefinition: str = "",
     ) -> Dict[Any, Any]:
         try:
