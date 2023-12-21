@@ -376,6 +376,20 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         filename = localDataService.writeCalibrationReductionResult("123", "ws", dryrun=True)
         assert filename.endswith("tests/resources/outputs/123/ws_v1.nxs")
 
+    def test_writeCalibrationReductionResult_notdryrun():
+        from snapred.backend.data.LocalDataService import LocalDataService as LocalDataService2
+
+        localDataService = LocalDataService2()
+        localDataService.groceryService = mock.Mock()
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("123", "456")
+        localDataService._constructCalibrationStatePath = mock.Mock()
+        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
+
+        filename = localDataService.writeCalibrationReductionResult("123", "ws", dryrun=False)
+        assert filename.endswith("tests/resources/outputs/123/ws_v1.nxs")
+        assert localDataService.groceryService.writeWorkspace.called_once_with(filename, "ws")
+
     def test__isApplicableEntry_equals():
         localDataService = LocalDataService()
         entry = mock.Mock()

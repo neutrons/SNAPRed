@@ -36,6 +36,12 @@ class TestGroceryListBuilder(unittest.TestCase):
         DeleteWorkspace(cls.instrumentDonor)
         return super().tearDownClass()
 
+    def test_diffcal(self):
+        item = GroceryListBuilder().diffcal(self.runNumber).native().build()
+        assert item.runNumber == self.runNumber
+        assert item.useLiteMode is False
+        assert item.workspaceType == "diffcal"
+
     def test_nexus_native_lite(self):
         item = GroceryListBuilder().neutron(self.runNumber).native().build()
         assert item.runNumber == self.runNumber
@@ -107,11 +113,32 @@ class TestGroceryListBuilder(unittest.TestCase):
         with pytest.raises(ValidationError):
             GroceryListBuilder().grouping(self.groupingScheme).native().source(MyBestFriend="trust me").build()
 
+    def test_fail_two_sources(self):
+        with pytest.raises(RuntimeError) as e:
+            GroceryListBuilder().grouping(self.groupingScheme).native().source(
+                MyBestFriend="trust me",
+                SusyFromClass="i heard it too",
+            ).build()
+        assert "one instrument source" in str(e.value)
+
     def test_nexus_with_instrument(self):
         item = GroceryListBuilder().neutron(self.runNumber).native().source(InstrumentName="SNAP").build()
         assert item.runNumber == self.runNumber
         assert item.useLiteMode is False
         assert item.workspaceType == "neutron"
+
+    def test_nexus_clean_and_dirty(self):
+        item = GroceryListBuilder().neutron(self.runNumber).native().clean().build()
+        assert item.runNumber == self.runNumber
+        assert item.useLiteMode is False
+        assert item.workspaceType == "neutron"
+        assert item.keepItClean is True
+
+        item = GroceryListBuilder().neutron(self.runNumber).native().dirty().build()
+        assert item.runNumber == self.runNumber
+        assert item.useLiteMode is False
+        assert item.workspaceType == "neutron"
+        assert item.keepItClean is False
 
     def test_build_list(self):
         builder = GroceryListBuilder()

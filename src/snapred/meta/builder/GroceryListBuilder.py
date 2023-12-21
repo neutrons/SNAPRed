@@ -61,7 +61,7 @@ class GroceryListBuilder:
         return self
 
     def clean(self):
-        self.tokens["keepItClean"] = True
+        self._tokens["keepItClean"] = True
         return self
 
     def dirty(self):

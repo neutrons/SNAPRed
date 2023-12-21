@@ -4,7 +4,7 @@ import tempfile
 import unittest
 import unittest.mock as mock
 from typing import List
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
 from mantid.simpleapi import (
@@ -229,6 +229,20 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         metric = self.instance._collectMetrics(fakeFocussedData, fakeFocusGroups, fakePixelGroupingParams)
 
         assert metric == "mock_metric"
+
+    @patch(thisService + "PixelGroup")
+    def test_collectPixelGroups(self, mockPixelGroup):
+        numItems = 4
+        mockPixelGroup.side_effect = range(numItems)
+        mockFocusGroups = [mock.Mock()] * numItems
+        mockPGPs = [mock.Mock()] * numItems
+        nBinsAcross = 42
+
+        pgs = self.instance.collectPixelGroups(mockFocusGroups, mockPGPs, nBinsAcross)
+        assert mockPixelGroup.call_count == numItems
+        calls = [call(mockFocusGroups[i], mockPGPs[i], nBinsAcross) for i in range(numItems)]
+        assert mockPixelGroup.has_calls(calls)
+        assert pgs == list(range(numItems))
 
     @patch(
         thisService + "CrystallographicInfoService",
