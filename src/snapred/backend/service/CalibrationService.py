@@ -138,10 +138,6 @@ class CalibrationService(Service):
 
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
-        # preload the data and copy it to cacheworkspace
-
-        diffCalInputWsName = wng.diffCalInput().runNumber(request.runNumber).build()
-        self.dataFactoryService.getWorkspaceCached(request.runNumber, diffCalInputWsName)
         # shopping list
         # 1. full runconfig
         runConfig = self.dataFactoryService.getRunConfig(request.runNumber)
@@ -192,12 +188,14 @@ class CalibrationService(Service):
         focusName = focusFile.split(".")[0]
         focusScheme = focusName.split("_")[-1]
 
-        # get the needed input data
+        # 7. the neutron data and a grouping workspace
         self.groceryClerk.name("inputWorkspace").nexus(request.runNumber).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.name("groupingWorkspace").grouping(focusScheme).useLiteMode(
             request.useLiteMode
         ).fromPrev().add()
         groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
+
+        # now have all ingredients and groceries, run recipe
         data = DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
 
         # save the calibration table
@@ -304,15 +302,6 @@ class CalibrationService(Service):
                 )
             )
         return pixelGroups
-
-    def _loadFocusedData(self, runId):
-        outputNameFormat = Config["calibration.reduction.output.format"]
-        focussedData = self.dataFactoryService.getWorkspaceForName(outputNameFormat.format(runId))
-        if focussedData is None:
-            raise ValueError(f"No focussed data found for run {runId}, Please run Calibration Reduction on this Data.")
-        else:
-            focussedData = outputNameFormat.format(runId)
-        return focussedData
 
     def _getPixelGroupingParams(
         self,

@@ -161,28 +161,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.clearoutWorkspaces()
         return super().tearDown()
 
-    def test_LoadFocussedData_Success(self):
-        # Mock the dataFactoryService.getWorkspaceForName method to return a non-None value
-        self.instance.dataFactoryService.getWorkspaceForName = MagicMock(return_value="mock_workspace")
-
-        # Call the method to test
-        result = self.instance._loadFocusedData(self.runId)
-
-        # Assert the return value is the expected one
-        expected_result = self.outputNameFormat.format(self.runId)
-        assert result == expected_result
-
-    def test_LoadFocussedData_Failure(self):
-        # Mock the dataFactoryService.getWorkspaceForName method to return None
-        self.instance.dataFactoryService.getWorkspaceForName = MagicMock(return_value=None)
-
-        # Call the method to test and expect an Exception to be raised
-        expected_message = "No focussed data found for run {}, Please run Calibration Reduction on this Data.".format(
-            self.runId
-        )
-        with pytest.raises(ValueError, match=expected_message):
-            self.instance._loadFocusedData(self.runId)
-
     def test_GetPixelGroupingParams(self):
         # Mock input data
         calibration = "calibration_data"
@@ -325,7 +303,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Assert expected calibration metric workspaces have been generated
         ws_name_stem = "57514_calibrationMetrics_ts123"
         for metric in ["sigma", "strain"]:
-            assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name_stem + "_" + metric)
+            assert self.instance.dataFactoryService.workspaceDoesExist(ws_name_stem + "_" + metric)
 
     def test_readQuality_no_calibration_record_exception(self):
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
@@ -372,11 +350,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Assert the expected calibration metric workspaces have been generated
             ws_name_stem = f"{calibRecord.runNumber}_calibrationMetrics_v{calibRecord.version}"
             for ws_name in [ws_name_stem + "_sigma", ws_name_stem + "_strain"]:
-                assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name)
+                assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
             # Assert the "persistent" workspaces have been loaded
             for ws_name in calibRecord.workspaceNames:
-                assert self.instance.dataFactoryService.doesWorkspaceExist(ws_name)
+                assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
     # patch FocusGroup
     @patch(thisService + "FocusGroup", return_value=FocusGroup(name="mockgroup", definition="junk/mockgroup.abc"))

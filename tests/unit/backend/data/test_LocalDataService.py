@@ -276,6 +276,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService._readReductionParameters = mock.Mock()
             localDataService._constructCalibrationStatePath = mock.Mock()
             localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService.groceryService = mock.Mock()
             localDataService.writeCalibrationRecord(
                 CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
             )
@@ -291,6 +292,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService._readReductionParameters = mock.Mock()
             localDataService._constructCalibrationStatePath = mock.Mock()
             localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService.groceryService = mock.Mock()
             localDataService.writeCalibrationRecord(
                 CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
             )
@@ -309,6 +311,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService._readReductionParameters = mock.Mock()
             localDataService._constructCalibrationStatePath = mock.Mock()
             localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService.groceryService = mock.Mock()
             localDataService.writeNormalizationRecord(
                 NormalizationRecord.parse_raw(Resource.read("inputs/normalization/NormalizationRecord.json"))
             )

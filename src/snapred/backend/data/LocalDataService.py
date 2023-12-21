@@ -30,7 +30,7 @@ from snapred.backend.dao.state import (
     NormalizationCalibrant,
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
-from snapred.backend.data.LocalWorkspaceDataService import LocalWorkspaceDataService
+from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
@@ -63,7 +63,7 @@ class LocalDataService:
     stateIdCache: Dict[str, str] = {}
     instrumentConfig: "InstrumentConfig"  # Optional[InstrumentConfig]
     verifyPaths: bool = True
-    localWorkspaceDataService: LocalWorkspaceDataService = LocalWorkspaceDataService()
+    groceryService: GroceryService = GroceryService()
 
     def __init__(self) -> None:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
@@ -510,7 +510,7 @@ class LocalDataService:
 
         self.writeNormalizationState(runNumber, record.normalization, version)
         for workspace in record.workspaceNames:
-            self.localWorkspaceDataService.writeWorkspace(normalizationPath, workspace)
+            self.groceryService.writeWorkspace(normalizationPath, workspace)
         return record
 
     def readCalibrationRecord(self, runId: str, version: str = None):
@@ -547,7 +547,7 @@ class LocalDataService:
 
         self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
         for workspace in record.workspaceNames:
-            self.localWorkspaceDataService.writeWorkspace(calibrationPath, workspace)
+            self.groceryService.writeWorkspace(calibrationPath, workspace)
         return record
 
     def writeCalibrationReductionResult(self, runId: str, workspaceName: WorkspaceName, dryrun: bool = False):
@@ -561,7 +561,7 @@ class LocalDataService:
 
         filename = filenameFormat.format(version)
         if not dryrun:
-            self.localWorkspaceDataService.writeWorkspace(filename, workspaceName)
+            self.groceryService.writeWorkspace(filename, workspaceName)
         return filename
 
     def writeCalibrantSample(self, sample: CalibrantSamples):
