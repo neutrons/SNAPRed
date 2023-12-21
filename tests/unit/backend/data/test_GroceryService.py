@@ -57,15 +57,14 @@ class TestGroceryService(unittest.TestCase):
         )
         assert os.path.exists(cls.filepath)
 
-        cls.liteMapGroceryItem = GroceryListItem.builder().grouping().using("Lite").build()
+        cls.liteMapGroceryItem = GroceryListItem.builder().grouping("Lite").build()
 
     def setUp(self):
         self.instance = GroceryService()
         self.groupingItem = (
             GroceryListItem.builder()
-            .grouping()
+            .grouping(self.groupingScheme)
             .native()
-            .using(self.groupingScheme)
             .source(InstrumentDonor=self.sampleWS)
             .build()
         )
@@ -663,9 +662,9 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(GroceryService, "fetchGroupingDefinition")
     def test_fetch_grocery_list(self, mockFetchGroup, mockFetchDirty, mockFetchClean):
         clerk = GroceryListItem.builder()
-        clerk.native().nexus().using(self.runNumber).add()
-        clerk.native().nexus().using(self.runNumber).dirty().add()
-        clerk.native().grouping().using(self.groupingScheme).source(InstrumentDonor=self.sampleWS).add()
+        clerk.native().nexus(self.runNumber).add()
+        clerk.native().nexus(self.runNumber).dirty().add()
+        clerk.native().grouping(self.groupingScheme).source(InstrumentDonor=self.sampleWS).add()
         groceryList = clerk.buildList()
 
         # expected workspaces
@@ -689,7 +688,7 @@ class TestGroceryService(unittest.TestCase):
 
     @mock.patch.object(GroceryService, "fetchNeutronDataSingleUse")
     def test_fetch_grocery_list_fails(self, mockFetchDirty):
-        groceryList = GroceryListItem.builder().native().nexus().using(self.runNumber).dirty().buildList()
+        groceryList = GroceryListItem.builder().native().nexus(self.runNumber).dirty().buildList()
         mockFetchDirty.return_value = {"result": False, "workspace": "unimportant"}
         with pytest.raises(RuntimeError) as e:
             self.instance.fetchGroceryList(groceryList)
@@ -699,8 +698,8 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(GroceryService, "fetchGroupingDefinition")
     def test_fetch_grocery_list_with_prev(self, mockFetchGroup, mockFetchClean):
         clerk = GroceryListItem.builder()
-        clerk.native().nexus().using(self.runNumber).add()
-        clerk.native().grouping().using(self.groupingScheme).fromPrev().add()
+        clerk.native().nexus(self.runNumber).add()
+        clerk.native().grouping(self.groupingScheme).fromPrev().add()
         groceryList = clerk.buildList()
 
         # expected workspaces
@@ -711,7 +710,7 @@ class TestGroceryService(unittest.TestCase):
         mockFetchGroup.return_value = {"result": True, "workspace": groupWorkspace}
 
         groupItemWithoutPrev = (
-            clerk.native().grouping().using(self.groupingScheme).source(InstrumentDonor=cleanWorkspace).build()
+            clerk.native().grouping(self.groupingScheme).source(InstrumentDonor=cleanWorkspace).build()
         )
 
         res = self.instance.fetchGroceryList(groceryList)
@@ -722,8 +721,8 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(GroceryService, "fetchGroceryList")
     def test_fetch_grocery_dict(self, mockFetchList):
         clerk = GroceryListItem.builder()
-        clerk.native().nexus().using(self.runNumber).name("InputWorkspace").add()
-        clerk.native().grouping().using(self.groupingScheme).fromPrev().name("GroupingWorkspace").add()
+        clerk.native().nexus(self.runNumber).name("InputWorkspace").add()
+        clerk.native().grouping(self.groupingScheme).fromPrev().name("GroupingWorkspace").add()
         groceryDict = clerk.buildDict()
 
         # expected workspaces
@@ -734,6 +733,28 @@ class TestGroceryService(unittest.TestCase):
 
         res = self.instance.fetchGroceryDict(groceryDict)
         assert res == {"InputWorkspace": cleanWorkspace, "GroupingWorkspace": groupWorkspace}
+        assert mockFetchList.called_once_with(groceryDict["InputWorkspace"], groceryDict["GroupingWorkspace"])
+
+    @mock.patch.object(GroceryService, "fetchGroceryList")
+    def test_fetch_grocery_dict_with_kwargs(self, mockFetchList):
+        clerk = GroceryListItem.builder()
+        clerk.native().nexus(self.runNumber).name("InputWorkspace").add()
+        clerk.native().grouping(self.groupingScheme).fromPrev().name("GroupingWorkspace").add()
+        groceryDict = clerk.buildDict()
+
+        # expected workspaces
+        cleanWorkspace = "unimportant"
+        groupWorkspace = "groupme"
+        otherWorkspace = "somethingelse"
+
+        mockFetchList.return_value = [cleanWorkspace, groupWorkspace]
+
+        res = self.instance.fetchGroceryDict(groceryDict, OtherWorkspace=otherWorkspace)
+        assert res == {
+            "InputWorkspace": cleanWorkspace,
+            "GroupingWorkspace": groupWorkspace,
+            "OtherWorkspace": otherWorkspace,
+        }
         assert mockFetchList.called_once_with(groceryDict["InputWorkspace"], groceryDict["GroupingWorkspace"])
 
     @mock.patch("snapred.backend.service.LiteDataService.LiteDataService")

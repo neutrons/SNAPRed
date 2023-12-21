@@ -137,6 +137,6 @@ class TestGroceryListItem(unittest.TestCase):
     def test_builder(self):
         builder = GroceryListItem.builder()
         assert isinstance(builder, GroceryListBuilder)
-        item1 = GroceryListItem.builder().native().nexus().using(self.runNumber).build()
-        item2 = GroceryListBuilder().native().nexus().using(self.runNumber).build()
+        item1 = GroceryListItem.builder().native().nexus(self.runNumber).build()
+        item2 = GroceryListBuilder().native().nexus(self.runNumber).build()
         assert item1 == item2

@@ -40,28 +40,6 @@ class DiffractionCalibrationRecipe:
         self.outputWS = groceries.get("outputWorkspace", "")
         self.calTable = groceries.get("calibrationTable", "")
 
-    # TODO: move saving to inside the calibration service using TBD saving method
-    def restockShelves(self, calibrationWS: str, maskWS: str = ""):
-        """
-        The final diffraction calibration table needs to be saved to disk,
-        This will later be handled in a more robust way with a service.
-        For the moment this is being handled by saving at the end of the recipe.
-        This in a separate method so it can be easily mocked for testing.
-        """
-        from datetime import date
-
-        from mantid.simpleapi import SaveDiffCal
-
-        from snapred.backend.data.LocalDataService import LocalDataService
-
-        filename = f"{self.calPath}/SNAP_{self.runNumber}_difcal_{date.today().strftime('%Y%m%d')}.h5"
-        SaveDiffCal(
-            CalibrationWorkspace=calibrationWS,
-            GroupingWorkspace=self.groupingWS,
-            MaskWorkspace=maskWS,
-            Filename=filename,
-        )
-
     def executeRecipe(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         self.chopIngredients(ingredients)
         self.unbagGroceries(groceries)
@@ -115,9 +93,6 @@ class DiffractionCalibrationRecipe:
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
-
-        # TODO : this should be moved into diffcal service, handled by the new saving service
-        self.restockShelves(data["calibrationTable"])
 
         logger.info(f"Finished executing diffraction calibration for runId: {self.runNumber}")
         data["result"] = True

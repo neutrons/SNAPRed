@@ -1,5 +1,6 @@
 import json
 import time
+from datetime import date
 from typing import List, Tuple
 
 from pydantic import parse_raw_as
@@ -21,7 +22,6 @@ from snapred.backend.dao.ingredients import (
     PixelGroupingIngredients,
     SmoothDataExcludingPeaksIngredients,
 )
-from snapred.backend.dao.ingredients.GroceryListBuilder import GroceryListBuilder
 from snapred.backend.dao.normalization import (
     Normalization,
     NormalizationIndexEntry,
@@ -43,7 +43,6 @@ from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationNormalizationRecipe import CalibrationNormalizationRecipe
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
-from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
@@ -77,7 +76,7 @@ class CalibrationService(Service):
         self.dataFactoryService = DataFactoryService()
         self.dataExportService = DataExportService()
         self.groceryService = GroceryService()
-        self.groceryClerk = GroceryListBuilder()
+        self.groceryClerk = GroceryListItem.builder()
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
@@ -194,12 +193,17 @@ class CalibrationService(Service):
         focusScheme = focusName.split("_")[-1]
 
         # get the needed input data
-        self.groceryClerk.name("inputWorkspace").nexus().using(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("groupingWorkspace").grouping().using(focusScheme).useLiteMode(
+        self.groceryClerk.name("inputWorkspace").nexus(request.runNumber).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.name("groupingWorkspace").grouping(focusScheme).useLiteMode(
             request.useLiteMode
         ).fromPrev().add()
         groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
-        return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
+        data = DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
+
+        # save the calibration table
+        filename = f"{calpath}/SNAP_{request.runNumber}_difcal_{date.today().strftime('%Y%m%d')}.h5"
+        self.groceryService.writeDiffCalTable(filename, data["calibrationTable"])
+        return data
 
     @FromString
     def save(self, request: CalibrationExportRequest):
@@ -275,13 +279,11 @@ class CalibrationService(Service):
         # TODO replace this with grouping scheme passed instead as the parameter
         #  Doing so requires updating the UI to display focus group names instead of files
         groupingScheme = groupingFile.split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
-
         getGrouping = (
-            self.groceryClerk.grouping()
-            .using(groupingScheme)
+            self.groceryClerk.grouping(groupingScheme)
             .useLiteMode(useLiteMode)
             .source(InstrumentFilename=self._getInstrumentDefinitionFilename(useLiteMode))
-            .build()
+            .buildList()
         )
         groupingWorkspace = self.groceryService.fetchGroceryList(getGrouping)[0]
 
@@ -418,35 +420,18 @@ class CalibrationService(Service):
             smoothDataIngredients=smoothDataIngredients,
         )
 
-        groceryList = [
-            GroceryListItem(
-                workspaceType="nexus",
-                runNumber=request.runNumber,
-                useLiteMode=True,
-                runConfig=reductionIngredients.runConfig,
-            ),
-            GroceryListItem(
-                workspaceType="nexus",
-                runNumber=request.backgroundRunNumber,
-                useLiteMode=True,
-                runConfig=backgroundReductionIngredients.runConfig,
-            ),
-            GroceryListItem(
-                workspaceType="grouping",
-                groupingScheme=groupingScheme,
-                useLiteMode=True,
-                instrumentPropertySource="InstrumentDonor",
-                instrumentSource="prev",
-            ),
-        ]
-        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
-        groceries = {
-            "inputWorkspace": workspaceList[0],
-            "backgroundWorkspace": workspaceList[1],
-            "groupingWorkspace": workspaceList[2],
-            "outputWorkspace": "focussedRawVanadium",
-            "smoothedOutput": "smoothedOutput",
-        }
+        self.groceryClerk.name("inputWorkspace").nexus(request.runNumber).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.name("backgroundWorkspace").nexus(request.backgroundRunNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(
+            request.useLiteMode
+        ).fromPrev().add()
+        groceries = self.groceryService.fetchGroceryDict(
+            self.groceryClerk.buildDict(),
+            outputWorkspace="focussedRawVanadium",
+            smoothedOutput="smoothedOutput",
+        )
         return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients, groceries)
 
     @FromString

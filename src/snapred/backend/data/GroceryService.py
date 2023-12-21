@@ -347,7 +347,7 @@ class GroceryService:
                 raise RuntimeError(f"Error fetching item {item.json(indent=2)}")
         return groceries
 
-    def fetchGroceryDict(self, groceryDict: Dict[str, GroceryListItem]) -> Dict[str, WorkspaceName]:
+    def fetchGroceryDict(self, groceryDict: Dict[str, GroceryListItem], **kwargs) -> Dict[str, WorkspaceName]:
         """
         This is the primary method you should use for fetching groceries, in almost all cases.
         Will create a dictionary matching property names to workspaces for those properties,
@@ -360,7 +360,9 @@ class GroceryService:
         groceryList = groceryDict.values()
         groceryNames = groceryDict.keys()
         groceries = self.fetchGroceryList(groceryList)
-        return dict(zip(groceryNames, groceries))
+        data = dict(zip(groceryNames, groceries))
+        data.update(kwargs)
+        return data
 
     def convertToLiteMode(self, workspace: WorkspaceName):
         from snapred.backend.service.LiteDataService import LiteDataService

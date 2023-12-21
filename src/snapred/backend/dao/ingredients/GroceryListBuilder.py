@@ -13,20 +13,19 @@ class GroceryListBuilder:
         self._list = []
         pass
 
-    def nexus(self):
+    def nexus(self, runId: str):
         self._tokens["workspaceType"] = "nexus"
+        self._tokens["runNumber"] = runId
         return self
 
-    def grouping(self):
+    def grouping(self, groupingScheme: str):
         self._tokens["workspaceType"] = "grouping"
+        self._tokens["groupingScheme"] = groupingScheme
         return self
 
-    def diffcal(self):
+    def diffcal(self, runId: str):
         self._tokens["workspaceType"] = "diffcal"
-        return self
-
-    def using(self, using: str):
-        self._tokens["using"] = using
+        self._tokens["runNumber"] = runId
         return self
 
     def native(self):
@@ -46,9 +45,9 @@ class GroceryListBuilder:
             raise RuntimeError("You can only specify one instrument source")
         else:
             self._hasInstrumentSource = True
-            key = list(kwarg.keys())[0]
-            self._tokens["instrumentPropertySource"] = key
-            self._tokens["instrumentSource"] = kwarg[key]
+            propuhdy, source = list(kwarg.items())[0]
+            self._tokens["instrumentPropertySource"] = propuhdy
+            self._tokens["instrumentSource"] = source
         return self
 
     def fromPrev(self):
@@ -70,12 +69,6 @@ class GroceryListBuilder:
         return self
 
     def build(self) -> GroceryListItem:
-        # set either run number or grouping scheme, as needed
-        if self._tokens["workspaceType"] == "grouping":
-            self._tokens["groupingScheme"] = self._tokens["using"]
-        else:
-            self._tokens["runNumber"] = self._tokens["using"]
-        del self._tokens["using"]
         # if no instrument source set, use the instrument filename
         if self._tokens["workspaceType"] == "grouping" and not self._hasInstrumentSource:
             self._tokens["instrumentPropertySource"] = "InstrumentFilename"
@@ -96,6 +89,8 @@ class GroceryListBuilder:
         return res
 
     def buildDict(self) -> Dict[str, GroceryListItem]:
+        if self._tokens != {}:
+            self.add()
         res = {item.propertyName: item for item in self._list if item.propertyName is not None}
         self._list = []
         return res
