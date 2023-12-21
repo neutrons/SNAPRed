@@ -271,7 +271,7 @@ class CalibrationService(Service):
 
         # TODO replace this with grouping scheme passed instead as the parameter
         #  Doing so requires updating the UI to display focus group names instead of files
-        groupingScheme = groupingFile.split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
+        groupingScheme = groupingFile.split("/")[-1].split(".")[0].split("_")[-1]
         getGrouping = (
             self.groceryClerk.grouping(groupingScheme)
             .useLiteMode(useLiteMode)
