@@ -282,6 +282,10 @@ class GroceryService:
         self._loadedRuns[key] += 1
         return data
 
+    def fetchLiteDataMap(self) -> WorkspaceName:
+        item = GroceryListItem.builder().grouping("Lite").build()
+        return self.fetchGroupingDefinition(item)["workspace"]
+
     def fetchGroupingDefinition(self, item: GroceryListItem) -> Dict[str, Any]:
         """
         Fetch a grouping definition.
@@ -297,7 +301,6 @@ class GroceryService:
         filename = self._createGroupingFilename(*itemTuple)
         groupingLoader = "LoadGroupingDefinition"
         key = self._key(*itemTuple)
-
         if self._loadedGroupings.get(key) is None:
             data = self.grocer.executeRecipe(
                 filename=filename,
@@ -367,11 +370,7 @@ class GroceryService:
     def convertToLiteMode(self, workspace: WorkspaceName):
         from snapred.backend.service.LiteDataService import LiteDataService
 
-        liteMapItem = ("Lite", False)
-        liteMapKey = self._key(*liteMapItem)
-        if self._loadedGroupings.get(liteMapKey) is None:
-            liteMap = self.fetchGroupingDefinition(*liteMapItem)["workspace"]
-        LiteDataService().reduceLiteData(workspace, liteMap, workspace)
+        LiteDataService().reduceLiteData(workspace, workspace)
 
     ## CLEANUP METHODS
 

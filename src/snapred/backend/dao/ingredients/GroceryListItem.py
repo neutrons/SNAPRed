@@ -28,13 +28,6 @@ class GroceryListItem(BaseModel):
     # name the property the workspace will be used for
     propertyName: Optional[str]
 
-    def toggleLiteMode(self, set_to: bool = None):
-        if set_to is not None:
-            self.useLiteMode = set_to
-        else:
-            self.useLiteMode = not self.useLiteMode
-        return self
-
     def builder():
         # NOTE this import is here to avoid circular dependencies -- don't bother trying to move it
         from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder

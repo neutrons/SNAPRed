@@ -20,14 +20,19 @@ class LiteDataService(Service):
     def name():
         return "reduceLiteData"
 
+    def _ensureLiteDataMap(self) -> str:
+        from snapred.backend.data.GroceryService import GroceryService
+
+        return GroceryService().fetchLiteDataMap()
+
     @FromString
     def reduceLiteData(
         self,
         inputWorkspace: WorkspaceName,
-        liteDataMap: WorkspaceName,
         outputWorkspace: WorkspaceName,
         instrumentDefinition: str = "",
     ) -> Dict[Any, Any]:
+        liteDataMap = self._ensureLiteDataMap(self)
         try:
             data = Recipe().executeRecipe(
                 InputWorkspace=inputWorkspace,

@@ -57,8 +57,6 @@ class TestGroceryService(unittest.TestCase):
         )
         assert os.path.exists(cls.filepath)
 
-        cls.liteMapGroceryItem = GroceryListItem.builder().grouping("Lite").build()
-
     def setUp(self):
         self.instance = GroceryService()
         self.groupingItem = (
@@ -657,6 +655,29 @@ class TestGroceryService(unittest.TestCase):
         with pytest.raises(RuntimeError):
             self.instance.fetchGroupingDefinition(self.groupingItem)
 
+    @mock.patch("snapred.backend.data.GroceryService.GroceryListItem")
+    @mock.patch.object(GroceryService, "_createGroupingWorkspaceName")
+    @mock.patch.object(GroceryService, "_createGroupingFilename")
+    def test_fetch_lite_data_map(self, mockFilename, mockWSName, mockGroceryList):
+        """
+        This is a special case of the fetch grouping method.
+        """
+        mockFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+        mockWSName.return_value = "lite_map"
+        # have to subvert the validation methods in grocerylistitem
+        mockLiteMapGroceryItem = GroceryListItem(workspaceType="grouping", groupingScheme="Lite")
+        mockLiteMapGroceryItem.instrumentSource = self.instrumentFilepath
+        mockGroceryList.builder.return_value.grouping.return_value.build.return_value = mockLiteMapGroceryItem
+
+        # call once and load
+        testItem = ("Lite", False)
+        groupingWorkspaceName = self.instance._createGroupingWorkspaceName(*testItem)
+        groupKey = self.instance._key(*testItem)
+
+        res = self.instance.fetchLiteDataMap()
+        assert res == groupingWorkspaceName
+        assert self.instance._loadedGroupings == {groupKey: groupingWorkspaceName}
+
     @mock.patch.object(GroceryService, "fetchNeutronDataCached")
     @mock.patch.object(GroceryService, "fetchNeutronDataSingleUse")
     @mock.patch.object(GroceryService, "fetchGroupingDefinition")
@@ -770,4 +791,4 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance.fetchGroupingDefinition.called_once_with("Lite", False)
         # assert that the lite data service was created and called
         assert mockLDS.called_once()
-        assert mockLDS.reduceLiteData.called_once_with(workspacename, liteMapWorkspace, workspacename)
+        assert mockLDS.reduceLiteData.called_once_with(workspacename, workspacename)

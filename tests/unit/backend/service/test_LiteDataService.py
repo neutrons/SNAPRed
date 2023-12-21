@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from snapred.backend.dao.RunConfig import RunConfig
@@ -16,17 +16,17 @@ class TestLiteDataService(unittest.TestCase):
         from snapred.backend.service.LiteDataService import LiteDataService
 
         liteDataService = LiteDataService()
+        liteDataService._ensureLiteDataMap = Mock(return_value="lite_map")
 
         inputWorkspace = "_test_liteservice_"
-        liteMap = "_lite_map_"
         outputWorkspace = "_test_output_lite_"
 
-        liteDataService.reduceLiteData(inputWorkspace, liteMap, outputWorkspace)
+        liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
 
         assert mock_executeRecipe.called_with(
             InputWorkspace=inputWorkspace,
-            LiteDataMapWorkspace=liteMap,
             OutputWorkspace=outputWorkspace,
+            LiteDataMapWorkspace=liteDataService._ensureLiteDataMap.return_value,
         )
 
     @patch("snapred.backend.recipe.GenericRecipe.GenericRecipe.executeRecipe")
@@ -37,11 +37,11 @@ class TestLiteDataService(unittest.TestCase):
         from snapred.backend.service.LiteDataService import LiteDataService
 
         liteDataService = LiteDataService()
+        liteDataService._ensureLiteDataMap = Mock(return_value="lite map")
 
         inputWorkspace = "_test_liteservice_"
-        liteMap = "_lite_map_"
         outputWorkspace = "_test_output_lite_"
 
         with pytest.raises(RuntimeError) as e:
-            liteDataService.reduceLiteData(inputWorkspace, liteMap, outputWorkspace)
+            liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
         assert "oops!" in str(e.value)

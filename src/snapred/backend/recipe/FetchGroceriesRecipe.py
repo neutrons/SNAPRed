@@ -45,9 +45,9 @@ class FetchGroceriesRecipe:
         logger.info(f"Fetching data from {filename} into {workspace}")
         algo = FetchAlgo()
         algo.initialize()
-        algo.setProperty("Filename", filename)
-        algo.setProperty("OutputWorkspace", workspace)
-        algo.setProperty("LoaderType", loader)
+        algo.setPropertyValue("Filename", filename)
+        algo.setPropertyValue("OutputWorkspace", workspace)
+        algo.setPropertyValue("LoaderType", loader)
         if instrumentPropertySource is not None:
             algo.setProperty(str(instrumentPropertySource), instrumentSource)
         try:
