@@ -36,7 +36,8 @@ class GroceryListItem(BaseModel):
         return self
 
     def builder():
-        from snapred.backend.dao.ingredients.GroceryListBuilder import GroceryListBuilder
+        # NOTE this import is here to avoid circular dependencies -- don't bother trying to move it
+        from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 
         return GroceryListBuilder()
 

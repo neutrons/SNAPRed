@@ -9,8 +9,8 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
 )
 from pydantic import ValidationError
-from snapred.backend.dao.ingredients.GroceryListBuilder import GroceryListBuilder
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource
 
 
