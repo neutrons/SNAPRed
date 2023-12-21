@@ -326,12 +326,12 @@ class GroceryService:
         prev: WorkspaceName = ""
         for item in groceryList:
             # for neutron data stored in a nexus file
-            if item.workspaceType == "nexus":
+            if item.workspaceType == "neutron":
                 if item.keepItClean:
                     res = self.fetchNeutronDataCached(item.runNumber, item.useLiteMode, item.loader)
                 else:
                     res = self.fetchNeutronDataSingleUse(item.runNumber, item.useLiteMode, item.loader)
-                # save the most recently-loaded nexus data as a possible instrument donor
+                # save the most recently-loaded neutron data as a possible instrument donor
                 prev = res["workspace"]
             # for grouping definitions
             elif item.workspaceType == "grouping":

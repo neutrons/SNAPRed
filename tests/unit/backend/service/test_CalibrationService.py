@@ -393,7 +393,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         focusGroupPath = "focus/group/path"
         nBinsAcrossPeakWidth = 10
         self.instance.dataFactoryService = MagicMock()
-        self.instance.groceryService.writeDiffCalTable = MagicMock()
         # Mocking dependencies and their return values
         self.instance.dataFactoryService.getRunConfig.return_value = MagicMock()
         mockParseRawAs.return_value = [MagicMock()]

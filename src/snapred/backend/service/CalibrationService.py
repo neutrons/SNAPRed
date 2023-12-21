@@ -189,19 +189,14 @@ class CalibrationService(Service):
         focusScheme = focusName.split("_")[-1]
 
         # 7. the neutron data and a grouping workspace
-        self.groceryClerk.name("inputWorkspace").nexus(request.runNumber).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.name("groupingWorkspace").grouping(focusScheme).useLiteMode(
             request.useLiteMode
         ).fromPrev().add()
         groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
 
         # now have all ingredients and groceries, run recipe
-        data = DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
-
-        # save the calibration table
-        filename = f"{calpath}/SNAP_{request.runNumber}_difcal_{date.today().strftime('%Y%m%d')}.h5"
-        self.groceryService.writeDiffCalTable(filename, data["calibrationTable"])
-        return data
+        return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
 
     @FromString
     def save(self, request: CalibrationExportRequest):
@@ -409,8 +404,8 @@ class CalibrationService(Service):
             smoothDataIngredients=smoothDataIngredients,
         )
 
-        self.groceryClerk.name("inputWorkspace").nexus(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("backgroundWorkspace").nexus(request.backgroundRunNumber).useLiteMode(
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
             request.useLiteMode
         ).add()
         self.groceryClerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(

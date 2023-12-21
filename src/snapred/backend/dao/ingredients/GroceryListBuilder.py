@@ -13,8 +13,8 @@ class GroceryListBuilder:
         self._list = []
         pass
 
-    def nexus(self, runId: str):
-        self._tokens["workspaceType"] = "nexus"
+    def neutron(self, runId: str):
+        self._tokens["workspaceType"] = "neutron"
         self._tokens["runNumber"] = runId
         return self
 

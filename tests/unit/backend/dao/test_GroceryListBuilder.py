@@ -37,28 +37,28 @@ class TestGroceryListBuilder(unittest.TestCase):
         return super().tearDownClass()
 
     def test_nexus_native_lite(self):
-        item = GroceryListBuilder().nexus(self.runNumber).native().build()
+        item = GroceryListBuilder().neutron(self.runNumber).native().build()
         assert item.runNumber == self.runNumber
         assert item.useLiteMode is False
-        assert item.workspaceType == "nexus"
+        assert item.workspaceType == "neutron"
 
-        item = GroceryListBuilder().nexus(self.runNumber).lite().build()
+        item = GroceryListBuilder().neutron(self.runNumber).lite().build()
         assert item.runNumber == self.runNumber
         assert item.useLiteMode is True
-        assert item.workspaceType == "nexus"
+        assert item.workspaceType == "neutron"
 
         for useLite in [True, False]:
-            item = GroceryListBuilder().nexus(self.runNumber).useLiteMode(useLite).build()
+            item = GroceryListBuilder().neutron(self.runNumber).useLiteMode(useLite).build()
             assert item.runNumber == self.runNumber
             assert item.useLiteMode == useLite
-            assert item.workspaceType == "nexus"
+            assert item.workspaceType == "neutron"
 
     def test_nexus_propname(self):
         propertyName = "inputWorkspace"
-        item = GroceryListBuilder().nexus(self.runNumber).native().name(propertyName).build()
+        item = GroceryListBuilder().neutron(self.runNumber).native().name(propertyName).build()
         assert item.runNumber == self.runNumber
         assert item.useLiteMode is False
-        assert item.workspaceType == "nexus"
+        assert item.workspaceType == "neutron"
         assert item.propertyName == propertyName
 
     def test_grouping_native_lite(self):
@@ -108,21 +108,21 @@ class TestGroceryListBuilder(unittest.TestCase):
             GroceryListBuilder().grouping(self.groupingScheme).native().source(MyBestFriend="trust me").build()
 
     def test_nexus_with_instrument(self):
-        item = GroceryListBuilder().nexus(self.runNumber).native().source(InstrumentName="SNAP").build()
+        item = GroceryListBuilder().neutron(self.runNumber).native().source(InstrumentName="SNAP").build()
         assert item.runNumber == self.runNumber
         assert item.useLiteMode is False
-        assert item.workspaceType == "nexus"
+        assert item.workspaceType == "neutron"
 
     def test_build_list(self):
         builder = GroceryListBuilder()
-        builder.nexus(self.runNumber).native().add()
+        builder.neutron(self.runNumber).native().add()
         builder.grouping(self.groupingScheme).native().source(InstrumentDonor=self.instrumentDonor).add()
         builder.grouping(self.groupingScheme).native().fromPrev().add()
         groceryList = builder.buildList()
         # test the list built correctly
         assert len(groceryList) == 3
         # first item is native nexus item
-        assert groceryList[0].workspaceType == "nexus"
+        assert groceryList[0].workspaceType == "neutron"
         assert groceryList[0].runNumber == self.runNumber
         assert groceryList[0].useLiteMode is False
         # second item is native grouping froma donor
@@ -140,27 +140,27 @@ class TestGroceryListBuilder(unittest.TestCase):
 
     def test_build_list_hanging(self):
         builder = GroceryListBuilder()
-        builder.nexus(self.runNumber).native()  # NO ADD
+        builder.neutron(self.runNumber).native()  # NO ADD
         groceryList = builder.buildList()
         # test the list built correctly
         assert len(groceryList) == 1
-        assert groceryList[0].workspaceType == "nexus"
+        assert groceryList[0].workspaceType == "neutron"
         assert groceryList[0].runNumber == self.runNumber
         assert groceryList[0].useLiteMode is False
 
     def test_build_list_oneitem(self):
         builder = GroceryListBuilder()
-        groceryList = builder.nexus(self.runNumber).native().buildList()
+        groceryList = builder.neutron(self.runNumber).native().buildList()
         # test the list built correctly
         assert len(groceryList) == 1
-        assert groceryList[0].workspaceType == "nexus"
+        assert groceryList[0].workspaceType == "neutron"
         assert groceryList[0].runNumber == self.runNumber
         assert groceryList[0].useLiteMode is False
 
     def test_build_dict_empty(self):
         # make the list with out any property names
         builder = GroceryListBuilder()
-        builder.nexus(self.runNumber).native().add()
+        builder.neutron(self.runNumber).native().add()
         builder.grouping(self.groupingScheme).native().source(InstrumentDonor=self.instrumentDonor).add()
         builder.grouping(self.groupingScheme).native().fromPrev().add()
         groceryDict = builder.buildDict()
@@ -171,10 +171,10 @@ class TestGroceryListBuilder(unittest.TestCase):
     def test_build_dict_correctly(self):
         testPropName = "TestName"
         builder = GroceryListBuilder()
-        builder.name(testPropName).nexus(self.runNumber).native().add()
+        builder.name(testPropName).neutron(self.runNumber).native().add()
         groceryList = builder.buildList()
 
-        builder.name(testPropName).nexus(self.runNumber).native().add()
+        builder.name(testPropName).neutron(self.runNumber).native().add()
         groceryDict = builder.buildDict()
         # test the list built correctly
         assert len(groceryDict) == 1
@@ -183,7 +183,7 @@ class TestGroceryListBuilder(unittest.TestCase):
 
     def test_build_dict_oneitem(self):
         builder = GroceryListBuilder()
-        groceryDict = builder.name("TestName").nexus(self.runNumber).native().buildDict()
+        groceryDict = builder.name("TestName").neutron(self.runNumber).native().buildDict()
         # test the list built correctly
         assert len(groceryDict) == 1
         assert groceryDict["TestName"]

@@ -11,13 +11,13 @@ from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDi
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
-from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.dao import RunConfig, DetectorPeak, GroupPeakList
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
+from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
@@ -26,6 +26,7 @@ from snapred.meta.Config import Config
 
 #User input ###########################
 runNumber = "58882"
+groupingScheme = "Column"
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
@@ -76,24 +77,11 @@ ingredients = DiffractionCalibrationIngredients(
 )
 
 ### FETCH GROCERIES ##################
-groceryList = [
-    GroceryListItem(
-        workspaceType="nexus",
-        useLiteMode=isLite,
-        runNumber=runNumber,
-    ),
-    GroceryListItem(
-        workspaceType="grouping",
-        useLiteMode=isLite,
-        groupingScheme="Column",
-        instrumentPropertySource="InstrumentDonor",
-        instrumentSource="prev",
-    ),
-]
-fetchRx = FetchRx()
-# fetchRx._loadedRuns[("58882",False)] = 1 # uncomment this line if the raw file already exists
-groceries = fetchRx.executeRecipe(groceryList)["groceries"]
-print(json.dumps(groceries, indent=2))
+
+clerk = GroceryListItem.builder()
+clerk.neutron(runNumber).useLiteMode(isLite).add()
+clerk.grouping(groupingScheme).useLiteMode(isLite).add()
+groceries = GroceryService.fetchGroceryList(clerk.buildList())
 
 ### RUN PIXEL CALIBRATION ##########
 pixelAlgo = PixelAlgo()
@@ -135,16 +123,16 @@ assert False
 
 
 ### RUN RECIPE
-from unittest import mock
-groceryList=[GroceryListItem.makeLiteNexusItem(runNumber), GroceryListItem.makeLiteGroupingItemFrom("Column", "prev")]
-groceries = fetchRx.executeRecipe(groceryList)["groceries"]
-rx = Recipe()
-groceries = {
-    "inputWorkspace": groceries[0],
-    "groupingWorkspace": groceries[1],
-}
-with mock.patch.object(Recipe, "restockShelves"):
-    rx.executeRecipe(ingredients, groceries)
+clerk = GroceryListItem.builder()
+clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
+clerk.name("groupingWorkspace").grouping(groupingScheme).fromPrev().add()
+
+groceries = GroceryService.fetchGroceryDict(
+    clerk.buildDict(),
+    OutputWorkspace="_output_from_diffcal_recipe",
+)
+
+rx.executeRecipe(ingredients, groceries)
 
 
 ### PAUSE
@@ -165,7 +153,6 @@ diffcalRequest = DiffractionCalibrationRequest(
 )
 
 calibrationService = CalibrationService()
-with mock.patch.object(Recipe, "restockShelves"):
-    res = calibrationService.diffractionCalibration(diffcalRequest)
+res = calibrationService.diffractionCalibration(diffcalRequest)
 print(json.dumps(res,indent=2))
 assert False
