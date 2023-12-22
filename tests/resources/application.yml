@@ -30,6 +30,8 @@ instrument:
       file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
     map:
       file: ${instrument.home}shared/Calibration/Powder/LiteGroupMap.hdf
+  state:
+    home: inputs/SampleGroupingFile.json
 
 nexus:
   lite:
@@ -79,6 +81,8 @@ calibration:
         - -2
         - 2
       peakTailCoefficient: 2.0
+  grouping:
+    home: inputs/SampleGroupingFile.json
 
 mantid:
     workspace:
