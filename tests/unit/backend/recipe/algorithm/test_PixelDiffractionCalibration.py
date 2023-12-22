@@ -1,7 +1,11 @@
 import json
+import numpy as np
+from itertools import permutations
+
 import unittest
 
 import pytest
+
 from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
@@ -202,6 +206,18 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             allOffsets.append(data["medianOffset"])
             assert allOffsets[-1] <= max(1.0e-4, allOffsets[-2])
 
+    def test_reference_pixel_selection(self):
+        """Test that the selected reference pixel is always a member of the detector group."""
+        algo = ThisAlgo()
+
+        # Test even and odd order groups;
+        #   test consecutive and non-consecutive groups.
+        # Do not test empty groups.
+        N_detectors = 10
+        dids = list(range(N_detectors))
+        for N_group in range(1, 5):
+            for gids in permutations(dids, N_group):
+                assert algo.getRefID(gids) in gids
 
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
