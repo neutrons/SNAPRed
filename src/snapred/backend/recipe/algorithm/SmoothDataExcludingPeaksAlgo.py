@@ -23,8 +23,11 @@ from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline
 
 from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients as Ingredients
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+
+logger = snapredLogger.getLogger(__name__)
 
 
 # TODO: Rename so it matches filename
@@ -49,6 +52,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
     def chopIngredients(self, ingredients: Ingredients):
         # chop off instrument state and crystal info
         self.lam = ingredients.smoothingParameter
+        self.exclusionSmoothingParameter = ingredients.exclusionSmoothingParameter
         self.instrumentState = ingredients.instrumentState
         self.crystalInfo = ingredients.crystalInfo
 
@@ -103,12 +107,17 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             weightY = weight_ws.readY(index)
 
             weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2
+            # weightYMidpoints = (weightY[:-1] + weightY[1:]) / 2
             xMidpoints = (x[:-1] + x[1:]) / 2
 
-            weightXMidpoints = weightXMidpoints[weightY != 0]
-            y = y[weightY != 0]
+            weights = np.ones_like(weightXMidpoints)
+            weights[weightY < 1] = self.exclusionSmoothingParameter
+
+            # weightXMidpoints = weightXMidpoints[weightY != 0]
+            # y = y[weightY != 0]
             # Generate spline with purged dataset
-            tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
+            logger.info(f"{weightXMidpoints} \n {weights}")
+            tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam, w=weights)
             # fill in the removed data using the spline function and original datapoints
             smoothing_results = tck(xMidpoints, extrapolate=False)
             outputWorkspace.setY(index, smoothing_results)

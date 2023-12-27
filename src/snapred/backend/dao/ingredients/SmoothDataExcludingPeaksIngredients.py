@@ -8,5 +8,6 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 class SmoothDataExcludingPeaksIngredients(BaseModel):
     smoothingParameter: Optional[float]
+    exclusionSmoothingParameter: float = 0.025
     instrumentState: InstrumentState
     crystalInfo: CrystallographicInfo
