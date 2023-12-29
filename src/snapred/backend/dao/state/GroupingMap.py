@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Dict, List
 
@@ -7,7 +8,6 @@ from pydantic import BaseModel
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config, Resource
-from snapred.meta.redantic import write_model
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -33,7 +33,8 @@ class GroupingMap(BaseModel):
     ):
         nativeMap = {}
         liteMap = {}
-        if nativeFocusGroups is None:
+        if not nativeFocusGroups:
+            print("empty")
             logger.warning("No FocusGroups for native mode given")
         else:
             for nfg in nativeFocusGroups:
@@ -41,7 +42,7 @@ class GroupingMap(BaseModel):
                     continue
                 else:
                     nativeMap[nfg["name"]] = nfg["definition"]
-        if liteFocusGroups is None:
+        if not liteFocusGroups:
             logger.warning("No FocusGroups for lite mode given")
         else:
             for lfg in liteFocusGroups:
@@ -74,17 +75,17 @@ class GroupingMap(BaseModel):
     @classmethod
     def load(cls, stateID: str):
         if stateID == "default":
-            # DefaultMap location and overwrite calibration.grouping.home
-            # write to file here
-            return GroupingMap.parse_raw(Resource.read(Config["calibration.grouping.home"]))
+            return GroupingMap.parse_raw(Resource.read(Config["calibration.grouping.home"] + "/GroupingMap.json"))
         else:
-            # load map from location
-            return GroupingMap.parse_raw(Resource.read(stateID + "/inputs/SampleGroupingFile.json"))
+            return GroupingMap.parse_raw(
+                Resource.read(Config["instrument.state.home"] + "/" + stateID + "/GroupingMap.json")
+            )
 
-    @classmethod
-    def save(cls, stateID: str):
+    def save(self, stateID: str):
         if stateID != "default":
-            print("about to write file")
-            write_model(cls, stateID + Config["instrument.state.home"])
+            print(self.json())
+            path = Config["instrument.state.home"] + "/" + stateID + "/GroupingMap.json"
+            with open(path, "w") as f:
+                f.write(self.json())
         else:
             logger.warning("cannot overwrite default mapping, change stateID")

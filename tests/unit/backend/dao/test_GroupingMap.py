@@ -1,19 +1,15 @@
 from unittest.mock import patch
 
 import pytest
-from snapred.backend.dao.state.GroupingMap import GroupingMap
-from snapred.meta.Config import Resource
+from snapred.backend.dao.state import _GroupingMap
+
+GroupingMap = _GroupingMap.GroupingMap
 
 
-class TestDiffractionCalibtationRecipe:
-    def setup_method(self):
-        self.groupingMap = GroupingMap.parse_raw(Resource.read("/inputs/SampleGroupingFile.json"))
-
-    # Tests of basic serialization: read / write to and from a JSON file on disk;
-    # Validator tests: grouping-file doesn't exist;  correct behavior is to log,
-    #  and continue to load (but _omit_ these groupings from the loaded groupingMap);
-    @patch("snapred.backend.log.logger")
-    def test_file_does_not_exist(self, mockLogger):
+class TestGroupingMap:
+    # Validator test: grouping-file doesn't exist
+    @patch.object(_GroupingMap, "logger")
+    def test_file_does_not_exist(self, logger):
         GroupingMap.parse_obj(
             {
                 "stateID": "1",
@@ -27,46 +23,43 @@ class TestDiffractionCalibtationRecipe:
                 ],
             }
         )
-        # figure out assert call to logger
-        mockLogger.assert_called_once()
+        logger.warning.assert_called_with("File NOT FOUND")
 
-    # Validator tests: grouping-file is not actually a grouping file; correct behavior is to log and continue to load;
-    def test_file_wrong_format(self):
+    # Validator test: grouping-file is not actually a grouping file
+    @patch.object(_GroupingMap, "logger")
+    def test_file_wrong_format(self, logger):
         GroupingMap.parse_obj(
             {
                 "stateID": "2",
-                "liteFocusGroups": [{"name": "Column", "definition": "wrong file format"}],
-                "nativeFocusGroups": [{"name": "Column", "definition": "wrong file format"}],
+                "liteFocusGroups": [{"name": "Column", "definition": "tests/resources/inputs/calibration/input.json"}],
+                "nativeFocusGroups": [
+                    {"name": "Column", "definition": "tests/resources/inputs/calibration/input.json"}
+                ],
             }
         )
-        # figure out assert call to logger
-        assert False
+        logger.warning.assert_called_with("not valid file")
 
-    # Validator tests: no grouping files are listed in the JSON;
-    def test_empty_list(self):
+    # Validator test: no grouping files are listed in the JSON
+    @patch.object(_GroupingMap, "logger")
+    def test_empty_list(self, logger):
         mockGroupingMap = GroupingMap.parse_obj({"stateID": "3", "liteFocusGroups": [], "nativeFocusGroups": []})
         assert len(mockGroupingMap.lite) == 0
+        logger.warning.assert_called_with("No FocusGroups for lite mode given")
 
-    # Tests of loading from the default location, with the <state ID> specified as '_default_';
-    # for the moment, use '~/_test_tmp/calibration.grouping.home' as the location, until the SNS-filesystem mock is ready;
+    # Test loading from the default location
     def test_load_default(self):
         groupingMap = GroupingMap.load("default")
         assert groupingMap.stateID == "default"
 
-    # Tests of setting the state ID (from the actual state) and writing to the 'instrument.state.root' location;
-    #  for the moment, use '~/_test_tmp/instrument.state.home/<state SHA>'  "   ";
+    # Tests of setting the state ID (from the actual state) and writing to the 'instrument.state.root' location
     def test_save_state(self):
         mockGroupingMap = GroupingMap.parse_obj(
             {
-                "stateID": "4",
+                "stateID": "stateID",
                 "liteFocusGroups": [{"name": "Column", "definition": "path"}, {"name": "All", "definition": "path"}],
                 "nativeFocusGroups": [{"name": "Column", "definition": "path"}, {"name": "All", "definition": "path"}],
             }
         )
-        mockGroupingMap.save("4")
-        loadedGroupingMap = GroupingMap.load("4")
-        assert loadedGroupingMap.stateID == "4"
-
-
-# Any logged messages should be helpful for any normal end user, and also for a CIS dealing with this system.
-# For example, if there is a JSON-format error, a log message should indicate where the example _default_ version of the file is located, for comparison.
+        mockGroupingMap.save("stateID")
+        loadedGroupingMap = GroupingMap.load("stateID")
+        assert loadedGroupingMap.stateID == "stateID"

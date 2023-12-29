@@ -31,7 +31,7 @@ instrument:
     map:
       file: ${instrument.home}shared/Calibration/Powder/LiteGroupMap.hdf
   state:
-    home: inputs/SampleGroupingFile.json
+    home: inputs
 
 nexus:
   lite:
@@ -82,7 +82,7 @@ calibration:
         - 2
       peakTailCoefficient: 2.0
   grouping:
-    home: inputs/SampleGroupingFile.json
+    home: inputs
 
 mantid:
     workspace:
