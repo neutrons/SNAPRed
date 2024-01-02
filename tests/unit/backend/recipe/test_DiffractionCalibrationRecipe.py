@@ -119,6 +119,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         assert self.recipe.groupingWS == self.fakeGroupingWorkspace
 
     # a scoped dummy algorithm to test the recipe's behavior
+    # TODO replace with mock.Mock(side_effect = [])
     class DummyCalibrationAlgorithm(PythonAlgorithm):
         def PyInit(self):
             # declare properties of both algos
@@ -150,7 +151,6 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     @mock.patch(PixelCalAlgo, DummyCalibrationAlgorithm)
     @mock.patch(GroupCalAlgo, DummyCalibrationAlgorithm)
-    @mock.patch.object(Recipe, "restockShelves", mock.Mock())
     def test_execute_successful(self):
         result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         assert result["result"]
@@ -176,7 +176,6 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             raise RuntimeError("passed")
 
     @mock.patch(PixelCalAlgo, DummyPixelCalAlgo)
-    @mock.patch.object(Recipe, "restockShelves", mock.Mock())
     def test_execute_unsuccessful_pixel_cal(self):
         try:
             self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
@@ -204,7 +203,6 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     @mock.patch(PixelCalAlgo, DummyCalibrationAlgorithm)
     @mock.patch(GroupCalAlgo, DummyGroupCalAlgo)
-    @mock.patch.object(Recipe, "restockShelves", mock.Mock())
     def test_execute_unsuccessful_group_cal(self):
         try:
             self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
@@ -215,6 +213,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             pytest.fail("Test should have raised RuntimeError, but no error raised")
 
     # a scoped dummy algorithm to test all three try/except blocks
+    # TODO replace with mock.Mock(side_effect = [])
     class DummyFailingAlgo(PythonAlgorithm):
         fails: int = 0
 
@@ -240,7 +239,6 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
     @mock.patch(PixelCalAlgo, DummyFailingAlgo)
     @mock.patch(GroupCalAlgo, DummyFailingAlgo)
-    @mock.patch.object(Recipe, "restockShelves", mock.Mock())
     def test_execute_unsuccessful_later_calls(self):
         for i in range(1, 4):
             self.DummyFailingAlgo.fails = i
@@ -310,10 +308,10 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             BinningMode="Logarithmic",
         )
 
-    @mock.patch("snapred.backend.data.LocalDataService.LocalDataService")
-    @mock.patch("mantid.simpleapi.SaveDiffCal")
-    def test_execute_with_algos(self, mockSaveDiffCal, mockLDS):
+    def test_execute_with_algos(self):
         # create sample data
+        from datetime import date
+
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"
         self.makeFakeNeutronData(rawWS, groupingWS)
@@ -325,13 +323,6 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             print(res)
         assert res["result"]
         assert res["steps"][-1]["medianOffset"] <= self.fakeIngredients.convergenceThreshold
-        mockLDS.assert_called_once()
-        mockSaveDiffCal.assert_called_once_with(
-            CalibrationWorkspace=res["calibrationTable"],
-            GroupingWorkspace=self.recipe.groupingWS,
-            MaskWorkspace="",
-            Filename=mockLDS()._getCalibrationDataPath() + "/difcal.h5",
-        )
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

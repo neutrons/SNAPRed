@@ -121,7 +121,11 @@ class CalibrationCheck(QObject):
 
             def handle_response(response: SNAPResponse):
                 if response.code == 500:
-                    self._labelView(str(response.message))
+                    errorPopup = QMessageBox()
+                    errorPopup.setIcon(QMessageBox.Critical)
+                    errorPopup.setText(response.message)
+                    errorPopup.setFixedSize(500, 200)
+                    errorPopup.exec()
                 else:
                     self.checkState.emit(response)
                     promptView.close()

@@ -21,7 +21,7 @@ from snapred.meta.redantic import list_to_raw_pretty
 
 # for loading data
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
+from snapred.backend.data.GroceryService import GroceryService
 
 snapredLogger._level = 20
 
@@ -72,11 +72,10 @@ for group in peakList:
 # Plot the found peaks on focused data
 ################################################################
 
-groceryList = [
-    GroceryListItem.makeLiteNexusItem(runNumber),
-    GroceryListItem.makeLiteGroupingItemFrom(groupingScheme, "prev")
-]
-groceries = FetchRx().executeRecipe(groceryList)["workspaces"]
+clerk = GroceryListItem.builder()
+clerk.neutron(runNumber).useLiteMode(isLite).add()
+clerk.grouping(groupingScheme).useLiteMode(isLite).fromPrev().add()
+groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 ConvertUnits(
     InputWorkspace = groceries[0],

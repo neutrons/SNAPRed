@@ -1,10 +1,10 @@
 import os
 
-from mantid.simpleapi import LoadNexusProcessed
 from qtpy.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from snapred.backend.dao.ingredients import FitMultiplePeaksIngredients
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Resource
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.FitPeaksPlot import FitPeaksPlot
@@ -17,8 +17,10 @@ class FitMultiplePeaksView(BackendRequestView):
         super(FitMultiplePeaksView, self).__init__(jsonForm, selection, parent=parent)
 
         def fitPeaksFlow():
-            LoadNexusProcessed(
-                Filename="/SNS/SNAP/shared/Malcolm/Temp/DSP_57514_calibFoc.nxs", OutputWorkspace="testWS"
+            GroceryService().fetchWorskpace(
+                path="/SNS/SNAP/shared/Malcolm/Temp/DSP_57514_calibFoc.nxs",
+                name="testWS",
+                loader="LoadNexusProcessed",
             )
             # TODO: Once jsonForm can correctly parse the input this will not be required
             ingredients = FitMultiplePeaksIngredients.parse_raw(

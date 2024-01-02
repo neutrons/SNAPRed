@@ -87,14 +87,14 @@ class DiffractionCalibrationCreationWorkflow:
         self._calibrationAssessmentView.updateRunNumber(self.runNumber)
         self._saveCalibrationView.updateRunNumber(self.runNumber)
         self.focusGroupPath = view.groupingFileDropdown.currentText()
-        with open(view.sampleDropdown.currentText()) as file:
-            self.cifPath = json.load(file)["crystallography"]["cifFile"]
+        self.useLiteMode = view.litemodeToggle.field.getState()
+        self.calibrantSamplePath = view.sampleDropdown.currentText()
 
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
-            cifPath=self.cifPath,
+            calibrantSamplePath=self.calibrantSamplePath,
             focusGroupPath=self.focusGroupPath,
-            useLiteMode=view.litemodeToggle.field.getState(),
+            useLiteMode=self.useLiteMode,
         )
         payload.convergenceThreshold = view.fieldConvergnceThreshold.get(payload.convergenceThreshold)
         payload.peakIntensityThreshold = view.fieldPeakIntensityThreshold.get(payload.peakIntensityThreshold)
@@ -114,7 +114,8 @@ class DiffractionCalibrationCreationWorkflow:
             workspace=self.responses[-1].data["outputWorkspace"],
             focusGroupPath=self.focusGroupPath,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
-            cifPath=self.cifPath,
+            useLiteMode=self.useLiteMode,
+            calibrantSamplePath=self.calibrantSamplePath,
         )
         request = SNAPRequest(path="calibration/assessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)

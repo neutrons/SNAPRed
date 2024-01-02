@@ -28,7 +28,9 @@ with mock.patch.dict(
         dataExportService.getRunConfig = mock.Mock()
         dataExportService.getRunConfig.return_value = RunConfig.construct()
 
-        pixelGroup = PixelGroup([0], [0], [Limit(minimum=0, maximum=0)], [0])
+        pixelGroup = PixelGroup(
+            groupID=[0], twoTheta=[0], dResolution=[Limit(minimum=0, maximum=0)], dRelativeResolution=[0]
+        )
         actual = dataExportService.getReductionIngredients(mock.Mock(), pixelGroup)
 
         assert type(actual) == ReductionIngredients
@@ -104,5 +106,28 @@ with mock.patch.dict(
         dataExportService.lookupService.readCifFilePath = mock.Mock()
         dataExportService.lookupService.readCifFilePath.return_value = "expected"
         actual = dataExportService.getCifFilePath("testId")
+
+        assert actual == "expected"
+
+    def test_getNormalizationState():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readNormalizationState = mock.Mock()
+        dataExportService.lookupService.readNormalizationState.return_value = "expected"
+        actual = dataExportService.getNormalizationState(mock.Mock())
+
+        assert actual == "expected"
+
+    def test_getCalibrationIndex():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readCalibrationIndex = mock.Mock(return_value="expected")
+        run = MagicMock()
+        actual = dataExportService.getCalibrationIndex(run)
+
+        assert actual == "expected"
+
+    def test_getCalibrationDataPath():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService._constructCalibrationDataPath = mock.Mock(return_value="expected")
+        actual = dataExportService.getCalibrationDataPath(mock.Mock(), mock.Mock())
 
         assert actual == "expected"

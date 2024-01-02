@@ -22,8 +22,9 @@ class DiffractionCalibrationRecipe:
         """
         self.runNumber = ingredients.runConfig.runNumber
         self.threshold = ingredients.convergenceThreshold
+        self.calPath = ingredients.calPath
 
-    def unbagGroceries(self, groceryList: Dict[str, Any]):
+    def unbagGroceries(self, groceries: Dict[str, Any]):
         """
         Checkout the workspace names needed for this recipe.
         It is necessary to provide the following keys:
@@ -34,36 +35,14 @@ class DiffractionCalibrationRecipe:
         - "calibrationTable": a name for the fully calibrated DIFC table; otherwise a default is used
         """
 
-        self.rawInput = groceryList["inputWorkspace"]
-        self.groupingWS = groceryList["groupingWorkspace"]
-        self.outputWS = groceryList.get("outputWorkspace", "")
-        self.calTable = groceryList.get("calibrationTable", "")
+        self.rawInput = groceries["inputWorkspace"]
+        self.groupingWS = groceries["groupingWorkspace"]
+        self.outputWS = groceries.get("outputWorkspace", "")
+        self.calTable = groceries.get("calibrationTable", "")
 
-    # TODO: move saving to inside the calibration service using TBD saving method
-    def restockShelves(self, calibrationWS: str, maskWS: str = ""):
-        """
-        The final diffraction calibration table needs to be saved to disk,
-        This will later be handled in a more robust way with a service.
-        For the moment this is being handled by saving at the end of the recipe.
-        This in a separate method so it can be easily mocked for testing.
-        """
-        from mantid.simpleapi import SaveDiffCal
-
-        from snapred.backend.data.LocalDataService import LocalDataService
-
-        lds = LocalDataService()
-        calibrationPath = lds._getCalibrationDataPath(self.runNumber)
-        filename = calibrationPath + "/difcal.h5"
-        SaveDiffCal(
-            CalibrationWorkspace=calibrationWS,
-            GroupingWorkspace=self.groupingWS,
-            MaskWorkspace=maskWS,
-            Filename=filename,
-        )
-
-    def executeRecipe(self, ingredients: Ingredients, groceryList: Dict[str, Any]) -> Dict[str, Any]:
+    def executeRecipe(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         self.chopIngredients(ingredients)
-        self.unbagGroceries(groceryList)
+        self.unbagGroceries(groceries)
 
         logger.info(f"Executing diffraction calibration for runId: {self.runNumber}")
         data: Dict[str, Any] = {"result": False}
@@ -109,14 +88,11 @@ class DiffractionCalibrationRecipe:
         groupedAlgo.setProperty("FinalCalibrationTable", self.calTable)
         try:
             groupedAlgo.execute()
-            data["calibrationTable"] = groupedAlgo.getProperty("FinalCalibrationTable").value
-            data["outputWorkspace"] = groupedAlgo.getProperty("OutputWorkspace").value
+            data["calibrationTable"] = groupedAlgo.getPropertyValue("FinalCalibrationTable")
+            data["outputWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspace")
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
-
-        # TODO : this should be moved into diffcal service, handled by the new saving service
-        self.restockShelves(data["calibrationTable"])
 
         logger.info(f"Finished executing diffraction calibration for runId: {self.runNumber}")
         data["result"] = True

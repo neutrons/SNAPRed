@@ -2,7 +2,7 @@
 from mantid.simpleapi import *
 
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
-from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
+from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
@@ -14,12 +14,10 @@ Config._config["cis_mode"] = False
 runNumber = "58882"
 #######################################
 
-run = GroceryListItem.makeNativeNexusItem(runNumber)
-run.keepItClean = False
-fetchRx = FetchRx()
-res = fetchRx.fetchDirtyNexusData(run)
+run = GroceryListItem.builder().neutron(runNumber).native().dirty().buildList()
+res = GroceryService().fetchGroceryList(run)
 
-workspace = res["workspace"]
+workspace = res[0]
 
 LDCA = LiteDataCreationAlgo()
 LDCA.initialize()

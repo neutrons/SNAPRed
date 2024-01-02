@@ -11,15 +11,15 @@ instrument:
     home: ${instrument.home}shared/Calibration
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
+      extensions:
+        - json
     powder:
       home: ${instrument.calibration.home}/Powder
       grouping:
         home: ${instrument.calibration.powder.home}/PixelGroupingDefinitions
         extensions:
-          - xml
-          - nxs
-          - hdf
-  config: shared/Calibration/SNAPInstPrm.json
+          - lite.hdf
+  config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
     pixelResolution: 1179648
     definition:
@@ -27,11 +27,11 @@ instrument:
   lite:
     pixelResolution: 18432
     definition:
-      file: ${instrument.home}shared/Calibration/Powder/SNAPLite.xml
+      file: ${instrument.calibration.home}/Powder/SNAPLite.xml
     map:
-      file: ${instrument.home}shared/Calibration/Powder/LiteGroupMap.hdf
+      file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
     state:
-      home: default/request/groupingMap
+        home: default/request/groupingMap
 
 nexus:
   lite:
@@ -48,7 +48,7 @@ grouping:
   filename:
     prefix: SNAPFocGroup_
     lite:
-      extension: .lite.nxs
+      extension: .lite.hdf
     native:
       extension: .xml
   workspacename:
@@ -83,32 +83,36 @@ calibration:
     home: default/request/groupingMap
 
 mantid:
-    workspace:
-      nameTemplate:
-        delimiter: "_"
-        run: "{unit},{group},{lite},{runNumber},{auxilary}"
-        diffCal:
-          input: "_{unit},{runNumber},raw"
-          table: "_DIFC,{runNumber}"
-        units:
-          dSpacing: DSP
-          timeOfFlight: TOF
-        groups:
-          unfocussed: Unfoc
-          all: All
-          column: Column
-          bank: Bank
+  workspace:
+    nameTemplate:
+      delimiter: "_"
+      run: "{unit},{group},{lite},{runNumber},{auxilary}"
+      diffCal:
+        input: "{unit},{runNumber},raw"
+        table: "DIFC,{runNumber}"
+      normCal:
+        rawVandium: "{runNumber},{backgroundRunNumber},RVC"
+        focusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}"
+        smoothedFocusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme},{smoothingParameter}"
+      units:
+        dSpacing: DSP
+        timeOfFlight: TOF
+      groups:
+        unfocussed: Unfoc
+        all: All
+        column: Column
+        bank: Bank
 
 localdataservice:
   config:
     verifypaths: true
 
 logging:
-  level: 10
+  level: 20
   SNAP:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
 
 samples:
-  home: /SNS/SNAP/shared/Calibration/CalibrantSamples
+  home: ${instrument.calibration.home}/CalibrantSamples
 
 cis_mode: true

@@ -1,6 +1,8 @@
+# TODO this is duplicated by other normalization calibration work -- delete?
+
 import json
 
-from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
+from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import (
@@ -77,7 +79,7 @@ class VanadiumFocussedReductionAlgorithm(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
 
-        diff_group = mtd["diffraction_focused_vanadium"]
+        diff_group = self.mantidSnapper.mtd["diffraction_focused_vanadium"]
         ws_list = list(diff_group.getNames())
 
         for idx, ws in enumerate(ws_list):

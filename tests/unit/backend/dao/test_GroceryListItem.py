@@ -8,8 +8,9 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     LoadEmptyInstrument,
 )
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource
 
 
@@ -41,12 +42,12 @@ class TestGroceryListItem(unittest.TestCase):
         # make a nexus item
         try:
             GroceryListItem(
-                workspaceType="nexus",
+                workspaceType="neutron",
                 runNumber=self.runNumber,
                 useLiteMode=True,
             )
         except:
-            pytest.fail("Failed to make a valid GroceryListItem for nexus")
+            pytest.fail("Failed to make a valid GroceryListItem for neutron")
         # make a grouping item
         try:
             GroceryListItem(
@@ -62,7 +63,7 @@ class TestGroceryListItem(unittest.TestCase):
     def test_nexus_needs_runNumber(self):
         with pytest.raises(ValueError) as e:
             GroceryListItem(
-                workspaceType="nexus",
+                workspaceType="neutron",
                 useLiteMode=True,
             )
             assert "you must set the run config" in e.msg()
@@ -111,23 +112,9 @@ class TestGroceryListItem(unittest.TestCase):
             )
             assert "instrument source" in e.msg()
 
-    def test_creation_methods(self):
-        item = GroceryListItem.makeNativeNexusItem(self.runNumber)
-        assert item.runNumber == self.runNumber
-        assert item.useLiteMode is False
-        assert item.workspaceType == "nexus"
-
-        item = GroceryListItem.makeLiteNexusItem(self.runNumber)
-        assert item.runNumber == self.runNumber
-        assert item.useLiteMode is True
-        assert item.workspaceType == "nexus"
-
-        item = GroceryListItem.makeNativeGroupingItem("Native")
-        assert item.groupingScheme == "Native"
-        assert item.useLiteMode is False
-        assert item.workspaceType == "grouping"
-
-        item = GroceryListItem.makeLiteGroupingItem("Native")
-        assert item.groupingScheme == "Native"
-        assert item.useLiteMode is True
-        assert item.workspaceType == "grouping"
+    def test_builder(self):
+        builder = GroceryListItem.builder()
+        assert isinstance(builder, GroceryListBuilder)
+        item1 = GroceryListItem.builder().native().neutron(self.runNumber).build()
+        item2 = GroceryListBuilder().native().neutron(self.runNumber).build()
+        assert item1 == item2

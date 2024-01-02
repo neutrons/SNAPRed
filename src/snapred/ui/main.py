@@ -78,7 +78,9 @@ class SNAPRedGUI(QMainWindow):
             self.newWindow.widget.show()
         except Exception as e:  # noqa: BLE001
             # show error message as popup
-            print(e)
+            import traceback
+
+            traceback.print_exception(e)
             from PyQt5.QtWidgets import QMessageBox
 
             errorPopup = QMessageBox()
@@ -121,7 +123,7 @@ def start(options=None):
 
         if options.headcheck:
             SECONDS = 3  # arbitrarily chosen
-            logger.warn(f"Closing in {SECONDS} seconds")
+            logger.warning(f"Closing in {SECONDS} seconds")
             QTimer.singleShot(SECONDS * 1000, lambda: app.exit(0))
         return app.exec()
 
