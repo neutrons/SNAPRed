@@ -142,6 +142,9 @@ class MantidSnapper:
                 # this line is to appease mantid properties, idk where its pulling empty string from
                 if str(val.__class__) == str(callback(int).__class__):
                     val = val.get()
+                if val is None:
+                    continue
+
                 algorithm.setProperty(prop, val)
             if not algorithm.execute():
                 raise RuntimeError(f"{name} failed to execute")
