@@ -1,0 +1,15 @@
+{
+    "stateID": "default",
+    "liteFocusGroups": [
+        {
+            "name": "name",
+            "definition": "relative/path/to/file"
+        }
+    ],
+    "nativeFocusGroups": [
+        {
+            "name": "name",
+            "definition": "relative/path/to/file"
+        }
+    ]
+}
