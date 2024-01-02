@@ -20,5 +20,8 @@ class SampleDropDown(QWidget):
     def currentIndex(self):
         return self.dropDown.currentIndex()
 
+    def setCurrentIndex(self, index):
+        self.dropDown.setCurrentIndex(index)
+
     def currentText(self):
         return self.dropDown.currentText()
