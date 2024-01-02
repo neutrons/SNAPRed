@@ -6,8 +6,9 @@ from .init import aII, localz
 # Ensures that the right modules and contents are pulled.
 def test_pullCorrectVals():
     assert "dummy" in aII
+    assert "_dummy" in aII
     assert "restricted_dummy" in aII
-    assert len(aII) == 2
+    assert len(aII) == 3
     assert "dummy" in localz
     assert "restricted_dummy" in localz
     assert "super_secret_dummy" not in localz
