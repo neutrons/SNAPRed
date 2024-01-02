@@ -62,7 +62,7 @@ clerk = GroceryListItem.builder()
 clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
 clerk.name("backgroundWorkspace").neutron(backgroundRunNumber).useLiteMode(isLite).add()
 clerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(isLite).fromPrev().add()
-groceries = GroceryService.fetchGroceryList(clerk.buildList())
+groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 pgpIngredients = PixelGroupingIngredients(
     instrumentState = instrumentState,

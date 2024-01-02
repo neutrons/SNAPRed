@@ -48,8 +48,8 @@ ingredients = SmoothDataExcludingPeaksIngredients(
 
 
 ## FETCH GROCERIES
-simpleList = GroceryListItem.builder().neutron(runNumber).useLiteMode(isLite).build()
-grocery = GroceryService().fetchCleanNeutronsData(simpleList)["workspace"]
+simpleList = GroceryListItem.builder().neutron(runNumber).useLiteMode(isLite).buildList()
+grocery = GroceryService().fetchGroceryList(simpleList)[0]
 # we must convert the event data to histogram data
 # this rebin step will accomplish that, due to PreserveEvents = False
 Rebin(

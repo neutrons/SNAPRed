@@ -28,6 +28,7 @@ from snapred.meta.Config import Config
 runNumber = "58882"
 groupingScheme = "Column"
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
+calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrationSamples/Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
@@ -81,7 +82,7 @@ ingredients = DiffractionCalibrationIngredients(
 clerk = GroceryListItem.builder()
 clerk.neutron(runNumber).useLiteMode(isLite).add()
 clerk.grouping(groupingScheme).useLiteMode(isLite).add()
-groceries = GroceryService.fetchGroceryList(clerk.buildList())
+groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 ### RUN PIXEL CALIBRATION ##########
 pixelAlgo = PixelAlgo()
@@ -145,7 +146,7 @@ assert False
 from unittest import mock
 diffcalRequest = DiffractionCalibrationRequest(
     runNumber = runNumber,
-    cifPath = cifPath,
+    calibrantSamplePath = calibrantSamplePath,
     useLiteMode = isLite,
     focusGroupPath = ingredients.focusGroup.definition,
     convergenceThreshold = offsetConvergenceLimit,
