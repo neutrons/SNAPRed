@@ -23,7 +23,7 @@ class TestGroupingMap:
                 ],
             }
         )
-        logger.warning.assert_called_with("File NOT FOUND")
+        logger.warning.assert_called_with("File not found")
 
     # Validator test: grouping-file is not actually a grouping file
     @patch.object(_GroupingMap, "logger")
@@ -37,7 +37,7 @@ class TestGroupingMap:
                 ],
             }
         )
-        logger.warning.assert_called_with("not valid file")
+        logger.warning.assert_called_with("File supplied is not valid")
 
     # Validator test: no grouping files are listed in the JSON
     @patch.object(_GroupingMap, "logger")

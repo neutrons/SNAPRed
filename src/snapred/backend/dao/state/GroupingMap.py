@@ -62,13 +62,13 @@ class GroupingMap(BaseModel):
     def validateGroupingFile(self, fp: str = None):
         supportedExtensions = ["H5", "HD5", "HDF", "NXS", "NXS5", "XML"]
         if not Path(fp).exists():
-            logger.warning("File NOT FOUND")
+            logger.warning("File not found")
             return False
         if not Path().is_file():
-            logger.warning("not valid file")
+            logger.warning("File supplied is not valid")
             return False
         if not fp.endswith(supportedExtensions):
-            logger.warning("file format is wrong")
+            logger.warning("File format is wrong")
             return False
         return True
 
@@ -83,9 +83,8 @@ class GroupingMap(BaseModel):
 
     def save(self, stateID: str):
         if stateID != "default":
-            print(self.json())
             path = Config["instrument.state.home"] + "/" + stateID + "/GroupingMap.json"
-            with open(path, "w") as f:
+            with Resource.open(path, "w") as f:
                 f.write(self.json())
         else:
-            logger.warning("cannot overwrite default mapping, change stateID")
+            logger.warning("Cannot overwrite default mapping, change stateID")
