@@ -6,23 +6,21 @@ from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.StateConfig import StateConfig
+from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.backend.data.LocalWorkspaceDataService import LocalWorkspaceDataService
 from snapred.meta.decorators.Singleton import Singleton
 
 
 @Singleton
 class DataFactoryService:
     lookupService: "LocalDataService"  # Optional[LocalDataService]
-    workspaceService: "LocalWorkspaceDataService"  # Optional[LocalWorkspaceDataService]
+    groceryService: "GroceryService"
     # TODO: rules for busting cache
     cache: Dict[str, ReductionState] = {}
 
-    def __init__(
-        self, lookupService: LocalDataService = None, workspaceService: LocalWorkspaceDataService = None
-    ) -> None:
+    def __init__(self, lookupService: LocalDataService = None, groceryService: GroceryService = None) -> None:
         self.lookupService = self.defaultClass(lookupService, LocalDataService)
-        self.workspaceService = self.defaultClass(workspaceService, LocalWorkspaceDataService)
+        self.groceryService = self.defaultClass(groceryService, GroceryService)
 
     def defaultClass(self, val, clazz):
         if val is None:
@@ -80,23 +78,32 @@ class DataFactoryService:
         return self.lookupService.writeNormalizationState(runId)
 
     def getWorkspaceForName(self, name):
-        return self.workspaceService.getWorkspaceForName(name)
+        return self.groceryService.getWorkspaceForName(name)
 
-    def doesWorkspaceExist(self, name):
-        return self.workspaceService.doesWorkspaceExist(name)
+    def getClonedofWorkspace(self, name, copy):
+        return self.groceryService.getCloneOfWorkspace(name, copy)
+
+    def workspaceDoesExist(self, name):
+        return self.groceryService.workspaceDoesExist(name)
 
     def deleteWorkspace(self, name):
-        return self.workspaceService.deleteWorkspace(name)
+        return self.groceryService.deleteWorkspace(name)
+
+    def deleteWorkspaceUnconditional(self, name):
+        return self.groceryService.deleteWorkspaceUnconditional(name)
 
     def loadCalibrationDataWorkspace(self, runId, version, name):
         path = self.getCalibrationDataPath(runId, version)
-        return self.workspaceService.loadWorkspace(path, name)
+        return self.groceryService.fetchWorkspace(path, name)
 
     def writeWorkspace(self, path, name):
-        return self.workspaceService.writeWorkspace(path, name)
+        return self.groceryService.writeWorkspace(path, name)
 
-    def getWorkspaceCached(self, runId: str, name: str):
-        return self.workspaceService.readWorkspaceCached(runId, name)
+    def getWorkspaceCached(self, runId: str, useLiteMode: bool):
+        return self.groceryService.fetchNeutronDataCached(runId, useLiteMode)
+
+    def getWorkspaceSingleUse(self, runId: str, useLiteMode: bool):
+        return self.groceryService.fetchNeutronDataSingleUse(runId, useLiteMode)
 
     def getCalibrationRecord(self, runId):
         return self.lookupService.readCalibrationRecord(runId)

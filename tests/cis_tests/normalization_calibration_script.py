@@ -18,7 +18,7 @@ from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.calibration import CalibrationRecord, Calibration
 
-from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
+from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
@@ -58,12 +58,11 @@ instrumentState = DFS.getCalibrationState(runNumber).instrumentState
 
 
 ### FETCH GROCERIES ##################
-groceryList = [
-    GroceryListItem.makeLiteNexusItem(runNumber).toggleLiteMode(isLite),
-    GroceryListItem.makeLiteNexusItem(backgroundRunNumber).toggleLiteMode(isLite),
-    GroceryListItem.makeLiteGroupingItemFrom(groupingScheme, "prev").toggleLiteMode(isLite),
-]
-groceries = FetchRx().executeRecipe(groceryList)["workspaces"]
+clerk = GroceryListItem.builder()
+clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
+clerk.name("backgroundWorkspace").neutron(backgroundRunNumber).useLiteMode(isLite).add()
+clerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(isLite).fromPrev().add()
+groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 pgpIngredients = PixelGroupingIngredients(
     instrumentState = instrumentState,
@@ -89,7 +88,7 @@ backgroundReductionIngredients.runConfig.runNumber = backgroundRunNumber
 
 ingredients = NormalizationCalibrationIngredients(
     reductionIngredients=reductionIngredients,
-    backgroundReductionIngredients
+    backgroundReductionIngredients=backgroundReductionIngredients,
     calibrantSample=calibrantSample,
     smoothDataIngredients=smoothDataIngredients,
 )

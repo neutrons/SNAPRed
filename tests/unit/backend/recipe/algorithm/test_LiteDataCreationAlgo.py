@@ -22,7 +22,6 @@ def _setup_teardown():
             print(f"Workspace {workspace} doesn't exist!")
 
 
-@pytest.mark.skipif(not HAVE_MOUNT_SNAP, reason="Mount SNAP not available")
 def test_LiteDataCreationAlgo_invalid_input():
     """Test how the algorithm handles an invalid input workspace."""
     liteDataCreationAlgo = LiteDataCreationAlgo()
@@ -211,6 +210,11 @@ def test_fail_to_validate():
     liteDataCreationAlgo.setPropertyValue("OutputWorkspace", liteInstrumentWS)
     liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
 
+    # try executing without an input workspace -- should complain
+    with pytest.raises(RuntimeError) as e:
+        liteDataCreationAlgo.execute()
+    assert "some invalid properties found" in str(e.value).lower()
+
     # try running with the incorrect number of spectra
     invalidResolution: int = fullResolution + 1
     CreateWorkspace(
@@ -220,19 +224,12 @@ def test_fail_to_validate():
         DataE=[1] * invalidResolution,
         NSpec=invalidResolution,
     )
-    # run without the lite data map set
-    # should complain it is incompatible with SNAP resolution
     liteDataCreationAlgo.setPropertyValue("InputWorkspace", invalidWorkspace)
+    # try executing without a map workspace -- should complain
     with pytest.raises(RuntimeError) as e:
         liteDataCreationAlgo.execute()
-    print(str(e))
-    assert "InputWorkspace" in str(e.value)
-    assert "LiteDataMapWorkspace" not in str(e.value)
-    assert invalidWorkspace in str(e.value)
-    assert "SNAP resolution" in str(e.value)
-    assert liteDataCreationAlgo._liteModeResolution == 18432
+    assert "some invalid properties found" in str(e.value).lower()
 
-    # set the lite data map, then try executing again
     # should complain inconsistent resolution with lite data map
     liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
     with pytest.raises(RuntimeError) as e:
@@ -243,20 +240,6 @@ def test_fail_to_validate():
     assert invalidWorkspace in str(e.value)
     assert focusWS in str(e.value)
     assert liteDataCreationAlgo._liteModeResolution == liteResolution
-
-    # make sure there is no issue if using default SNAP data map
-    # and send in a file with SNAPLite resolution
-    SNAPLiteResolution: int = 18432
-    CreateWorkspace(
-        OutputWorkspace=invalidWorkspace,
-        DataX=[1] * SNAPLiteResolution,
-        DataY=[1] * SNAPLiteResolution,
-        DataE=[1] * SNAPLiteResolution,
-        NSpec=SNAPLiteResolution,
-    )
-    liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", "")
-    assert liteDataCreationAlgo.getProperty("LiteDataMapWorkspace").isDefault
-    assert liteDataCreationAlgo.validateInputs() == {}
 
     # cleanup
     DeleteWorkspace(invalidWorkspace)

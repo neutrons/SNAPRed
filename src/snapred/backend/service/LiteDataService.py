@@ -2,20 +2,17 @@ import os
 from typing import Any, Dict, List
 
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.recipe.GenericRecipe import LiteDataRecipe as Recipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 @Singleton
 class LiteDataService(Service):
-    dataFactoryService = "DataFactoryService"
-
     def __init__(self):
         super().__init__()
-        self.dataFactoryService = DataFactoryService
         self.registerPath("createLiteData", self.reduceLiteData)
         return
 
@@ -23,17 +20,26 @@ class LiteDataService(Service):
     def name():
         return "reduceLiteData"
 
+    def _ensureLiteDataMap(self) -> str:
+        from snapred.backend.data.GroceryService import GroceryService
+
+        return GroceryService().fetchLiteDataMap()
+
     @FromString
-    def reduceLiteData(self, runs: List[RunConfig]) -> Dict[Any, Any]:
-        data: Dict[Any, Any] = {}
-        for run in runs:
-            inputWorkspace = "SNAP_" + str(run.runNumber) + ".nxs"
-            try:
-                data[str(run.runNumber)] = Recipe().executeRecipe(
-                    inputWorkspace=inputWorkspace,
-                    Run=run,
-                    useLiteMode=True,
-                )
-            except Exception as e:
-                raise e
+    def reduceLiteData(
+        self,
+        inputWorkspace: WorkspaceName,
+        outputWorkspace: WorkspaceName,
+        instrumentDefinition: str = "",
+    ) -> Dict[Any, Any]:
+        liteDataMap = self._ensureLiteDataMap(self)
+        try:
+            data = Recipe().executeRecipe(
+                InputWorkspace=inputWorkspace,
+                LiteDataMapWorkspace=liteDataMap,
+                LiteInstrumentDefinitionFile=instrumentDefinition,
+                OutputWorkspace=outputWorkspace,
+            )
+        except Exception as e:
+            raise e
         return data

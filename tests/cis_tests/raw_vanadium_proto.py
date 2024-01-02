@@ -13,7 +13,7 @@ from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
 
 # for loading data
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
+from snapred.backend.data.GroceryService import GroceryService
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm as Algo  # noqa: E402
@@ -24,6 +24,7 @@ Resource._resourcesPath = os.path.expanduser("~/SNAPRed/tests/resources/")
 # Inputs
 VRun = 57473
 VBRun = 57472
+groupingScheme = "Column"
 liteMode=True
 # File defining reduction parameters for this instrument state (Manually spec'ed for now)
 sPrmFile = '/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/057514/SNAPcalibLog57514.lite.json' 
@@ -60,13 +61,11 @@ ingredients.reductionState.stateConfig.tofMin = TOFBinParams[0]
 ingredients.reductionState.stateConfig.tofBin = TOFBinParams[1]
 ingredients.reductionState.stateConfig.tofMax = TOFBinParams[2]
 
-groceryList = [
-    GroceryListItem.makeLiteNexusItem(VRun),
-    GroceryListItem.makeLiteNexusItem(VBRun),
-    GroceryListItem.makeLiteGroupingItemFrom("Column", "prev"),
-]
-groceries = FetchRx().executeRecipe(groceryList)["workspaces"]
-
+clerk = GroceryListItem.builder()
+clerk.neutron(VRun).useLiteMode(liteMode).add()
+clerk.neutron(VBRun).useLiteMode(liteMode).add()
+clerk.grouping(groupingScheme).useLiteMode(liteMode).add()
+groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 # CREATE MATERIAL ########################################################
 material = Material(

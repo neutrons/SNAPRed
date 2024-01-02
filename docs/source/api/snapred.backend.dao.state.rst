@@ -36,14 +36,6 @@ snapred.backend.dao.state.FocusGroup module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.dao.state.FocusGroupParameters module
------------------------------------------------------
-
-.. automodule:: snapred.backend.dao.state.FocusGroupParameters
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.dao.state.InstrumentState module
 ------------------------------------------------
 

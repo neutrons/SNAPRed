@@ -23,10 +23,11 @@ from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import Smooth
 
 #for loading workspaces
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
+from snapred.backend.data.GroceryService import GroceryService
 
 #User inputs ###########################
 runNumber = "58882" #58409
+isLite = True
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
 #######################################
 
@@ -47,7 +48,8 @@ ingredients = SmoothDataExcludingPeaksIngredients(
 
 
 ## FETCH GROCERIES
-grocery = FetchRx().fetchCleanNexusData(GroceryListItem.makeLiteNexusItem(runNumber))["workspace"]
+simpleList = GroceryListItem.builder().neutron(runNumber).useLiteMode(isLite).buildList()
+grocery = GroceryService().fetchGroceryList(simpleList)[0]
 # we must convert the event data to histogram data
 # this rebin step will accomplish that, due to PreserveEvents = False
 Rebin(

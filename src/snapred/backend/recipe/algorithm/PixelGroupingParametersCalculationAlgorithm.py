@@ -15,7 +15,6 @@ from mantid.kernel import Direction
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.redantic import list_to_raw
 

@@ -1,5 +1,6 @@
 import json
 import time
+from datetime import date
 from typing import List, Tuple
 
 from pydantic import parse_raw_as
@@ -34,14 +35,14 @@ from snapred.backend.dao.request import (
     NormalizationCalibrationRequest,
     NormalizationExportRequest,
 )
-from snapred.backend.dao.state import FocusGroup, FocusGroupParameters, InstrumentState
-from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.backend.dao.state import FocusGroup, InstrumentState, PixelGroup
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
+from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.CalibrationNormalizationRecipe import CalibrationNormalizationRecipe
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
-from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
@@ -74,7 +75,8 @@ class CalibrationService(Service):
         super().__init__()
         self.dataFactoryService = DataFactoryService()
         self.dataExportService = DataExportService()
-        self.groceryService = FetchGroceriesRecipe()  # TODO replace with service
+        self.groceryService = GroceryService()
+        self.groceryClerk = GroceryListItem.builder()
         self.registerPath("reduction", self.reduction)
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
@@ -136,10 +138,6 @@ class CalibrationService(Service):
 
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
-        # preload the data and copy it to cacheworkspace
-
-        diffCalInputWsName = wng.diffCalInput().runNumber(request.runNumber).build()
-        self.dataFactoryService.getWorkspaceCached(request.runNumber, diffCalInputWsName)
         # shopping list
         # 1. full runconfig
         runConfig = self.dataFactoryService.getRunConfig(request.runNumber)
@@ -190,27 +188,14 @@ class CalibrationService(Service):
         focusName = focusFile.split(".")[0]
         focusScheme = focusName.split("_")[-1]
 
-        # get the needed input data
-        groceryList = [
-            GroceryListItem(
-                workspaceType="nexus",
-                runNumber=request.runNumber,
-                loader="LoadEventNexus",
-                useLiteMode=request.useLiteMode,
-            ),
-            GroceryListItem(
-                workspaceType="grouping",
-                groupingScheme=focusScheme,
-                useLiteMode=request.useLiteMode,
-                instrumentPropertySource="InstrumentDonor",
-                instrumentSource="prev",
-            ),
-        ]
-        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
-        groceries = {
-            "inputWorkspace": workspaceList[0],
-            "groupingWorkspace": workspaceList[1],
-        }
+        # 7. the neutron data and a grouping workspace
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.name("groupingWorkspace").grouping(focusScheme).useLiteMode(
+            request.useLiteMode
+        ).fromPrev().add()
+        groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
+
+        # now have all ingredients and groceries, run recipe
         return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
 
     @FromString
@@ -286,16 +271,14 @@ class CalibrationService(Service):
 
         # TODO replace this with grouping scheme passed instead as the parameter
         #  Doing so requires updating the UI to display focus group names instead of files
-        groupingScheme = groupingFile.split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
-
-        getGrouping = GroceryListItem(
-            workspaceType="grouping",
-            groupingScheme=groupingScheme,
-            useLiteMode=useLiteMode,
-            instrumentPropertySource="InstrumentFilename",
-            instrumentSource=self._getInstrumentDefinitionFilename(useLiteMode),
+        groupingScheme = groupingFile.split("/")[-1].split(".")[0].split("_")[-1]
+        getGrouping = (
+            self.groceryClerk.grouping(groupingScheme)
+            .useLiteMode(useLiteMode)
+            .source(InstrumentFilename=self._getInstrumentDefinitionFilename(useLiteMode))
+            .buildList()
         )
-        groupingWorkspace = self.groceryService.fetchGroupingDefinition(getGrouping)["workspace"]
+        groupingWorkspace = self.groceryService.fetchGroceryList(getGrouping)[0]
 
         try:
             data = PixelGroupingParametersCalculationRecipe().executeRecipe(groupingIngredients, groupingWorkspace)
@@ -303,25 +286,17 @@ class CalibrationService(Service):
             raise
         return data
 
-    def collectFocusGroupParameters(self, focusGroups, pixelGroupingParams):
-        focusGroupParameters = []
+    def collectPixelGroups(self, focusGroups, pixelGroupingParams, nBinsAcrossPeakWidth) -> List[PixelGroup]:
+        pixelGroups = []
         for focusGroup, pixelGroupingParam in zip(focusGroups, pixelGroupingParams):
-            focusGroupParameters.append(
-                FocusGroupParameters(
-                    focusGroupName=focusGroup.name,
+            pixelGroups.append(
+                PixelGroup(
+                    focusGroupName=focusGroup,
                     pixelGroupingParameters=pixelGroupingParam,
+                    numberBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
                 )
             )
-        return focusGroupParameters
-
-    def _loadFocusedData(self, runId):
-        outputNameFormat = Config["calibration.reduction.output.format"]
-        focussedData = self.dataFactoryService.getWorkspaceForName(outputNameFormat.format(runId))
-        if focussedData is None:
-            raise ValueError(f"No focussed data found for run {runId}, Please run Calibration Reduction on this Data.")
-        else:
-            focussedData = outputNameFormat.format(runId)
-        return focussedData
+        return pixelGroups
 
     def _getPixelGroupingParams(
         self,
@@ -378,12 +353,12 @@ class CalibrationService(Service):
         metrics = self._collectMetrics(fitResults, focusGroup, pixelGroupingParam)
 
         outputWorkspaces = [focussedData]
-        focusGroupParameters = self.collectFocusGroupParameters([focusGroup], [pixelGroupingParam])
+        pixelGroups = self.collectPixelGroups([focusGroup], [pixelGroupingParam], request.nBinsAcrossPeakWidth)
         record = CalibrationRecord(
             runNumber=run.runNumber,
             crystalInfo=crystalInfo,
             calibrationFittingIngredients=calibration,
-            focusGroupParameters=focusGroupParameters,
+            pixelGroup=pixelGroups,
             focusGroupCalibrationMetrics=metrics,
             workspaceNames=outputWorkspaces,
         )
@@ -429,35 +404,18 @@ class CalibrationService(Service):
             smoothDataIngredients=smoothDataIngredients,
         )
 
-        groceryList = [
-            GroceryListItem(
-                workspaceType="nexus",
-                runNumber=request.runNumber,
-                useLiteMode=True,
-                runConfig=reductionIngredients.runConfig,
-            ),
-            GroceryListItem(
-                workspaceType="nexus",
-                runNumber=request.backgroundRunNumber,
-                useLiteMode=True,
-                runConfig=backgroundReductionIngredients.runConfig,
-            ),
-            GroceryListItem(
-                workspaceType="grouping",
-                groupingScheme=groupingScheme,
-                useLiteMode=True,
-                instrumentPropertySource="InstrumentDonor",
-                instrumentSource="prev",
-            ),
-        ]
-        workspaceList = FetchGroceriesRecipe().executeRecipe(groceryList)["workspaces"]
-        groceries = {
-            "inputWorkspace": workspaceList[0],
-            "backgroundWorkspace": workspaceList[1],
-            "groupingWorkspace": workspaceList[2],
-            "outputWorkspace": "focussedRawVanadium",
-            "smoothedOutput": "smoothedOutput",
-        }
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(
+            request.useLiteMode
+        ).fromPrev().add()
+        groceries = self.groceryService.fetchGroceryDict(
+            self.groceryClerk.buildDict(),
+            outputWorkspace="focussedRawVanadium",
+            smoothedOutput="smoothedOutput",
+        )
         return CalibrationNormalizationRecipe().executeRecipe(normalizationIngredients, groceries)
 
     @FromString

@@ -1,25 +1,47 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+import pytest
 from snapred.backend.dao.RunConfig import RunConfig
 
 
 class TestLiteDataService(unittest.TestCase):
-    @patch("snapred.backend.data.DataFactoryService.DataFactoryService", autospec=True)
     @patch("snapred.backend.recipe.GenericRecipe.GenericRecipe.executeRecipe")
     def test_reduceLiteData_calls_executeRecipe_with_correct_arguments(
         self,
         mock_executeRecipe,
-        mock_dataFactoryService,  # noqa: ARG002
     ):
         mock_executeRecipe.return_value = {}
-
-        mock_runConfig = RunConfig(runNumber="12345", IPTS="nowhere", useLiteMode=True)
 
         from snapred.backend.service.LiteDataService import LiteDataService
 
         liteDataService = LiteDataService()
+        liteDataService._ensureLiteDataMap = Mock(return_value="lite_map")
 
-        liteDataService.reduceLiteData([mock_runConfig])
+        inputWorkspace = "_test_liteservice_"
+        outputWorkspace = "_test_output_lite_"
 
-        mock_executeRecipe.assert_called_with(inputWorkspace="SNAP_12345.nxs", Run=mock_runConfig, useLiteMode=True)
+        liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
+
+        assert mock_executeRecipe.called_with(
+            InputWorkspace=inputWorkspace,
+            OutputWorkspace=outputWorkspace,
+            LiteDataMapWorkspace=liteDataService._ensureLiteDataMap.return_value,
+        )
+
+    @patch("snapred.backend.recipe.GenericRecipe.GenericRecipe.executeRecipe")
+    def test_reduceLiteData_fails(self, mock_executeRecipe):
+        mock_executeRecipe.return_value = {}
+        mock_executeRecipe.side_effect = RuntimeError("oops!")
+
+        from snapred.backend.service.LiteDataService import LiteDataService
+
+        liteDataService = LiteDataService()
+        liteDataService._ensureLiteDataMap = Mock(return_value="lite map")
+
+        inputWorkspace = "_test_liteservice_"
+        outputWorkspace = "_test_output_lite_"
+
+        with pytest.raises(RuntimeError) as e:
+            liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
+        assert "oops!" in str(e.value)

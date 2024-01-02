@@ -16,3 +16,12 @@ class SampleDropDown(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(self.dropDown)
         self.setLayout(layout)
+
+    def currentIndex(self):
+        return self.dropDown.currentIndex()
+
+    def setCurrentIndex(self, index):
+        self.dropDown.setCurrentIndex(index)
+
+    def currentText(self):
+        return self.dropDown.currentText()
