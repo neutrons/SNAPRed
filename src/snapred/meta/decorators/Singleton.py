@@ -7,6 +7,7 @@ def Singleton(orig_cls):
 
     @wraps(orig_cls.__init__)
     def __init__(self, *args, **kwargs):
+        nonlocal instance
         if instance is not None:
             return
         orig_cls.__init__(self, *args, **kwargs)
