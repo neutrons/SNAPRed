@@ -3,14 +3,17 @@ from functools import wraps
 
 def Singleton(orig_cls):
     orig_new = orig_cls.__new__
+    orig_init = orig_cls.__init__
     instance = None
+    initialized = False
 
     @wraps(orig_cls.__init__)
     def __init__(self, *args, **kwargs):
-        nonlocal instance
-        if instance is not None:
+        nonlocal initialized
+        if initialized is True:
             return
-        orig_cls.__init__(self, *args, **kwargs)
+        initialized = True
+        orig_init(self, *args, **kwargs)
 
     @wraps(orig_cls.__new__)
     def __new__(cls, *args, **kwargs):
@@ -20,4 +23,5 @@ def Singleton(orig_cls):
         return instance
 
     orig_cls.__new__ = __new__
+    orig_cls.__init__ = __init__
     return orig_cls
