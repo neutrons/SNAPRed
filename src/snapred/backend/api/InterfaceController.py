@@ -14,11 +14,15 @@ class InterfaceController:
         # make a singleton instance if one doesnt exist
         self.logger = snapredLogger.getLogger(self.__class__.__name__)
 
+    def getWarnings(self):
+        return "\n".join(snapredLogger.getWarnings())
+
     def executeRequest(self, request: SNAPRequest) -> SNAPResponse:
         # execute the recipe
         # return the result
         try:
             self.logger.debug(f"Request Received: {request.json()}")
+            snapredLogger.clearWarnings()
             # leaving this a separate line makes stack traces make more sense
             service = self.serviceFactory.getService(request.path)
             # run the recipe
@@ -27,7 +31,7 @@ class InterfaceController:
 
             message = None
             if snapredLogger.hasWarnings():
-                message = "\n".join(snapredLogger.getWarnings())
+                message = self.getWarnings()
                 snapredLogger.clearWarnings()
             response = SNAPResponse(code=200, message=message, data=result)
         except Exception as e:  # noqa BLE001

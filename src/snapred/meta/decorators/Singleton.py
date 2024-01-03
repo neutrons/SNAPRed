@@ -5,6 +5,12 @@ def Singleton(orig_cls):
     orig_new = orig_cls.__new__
     instance = None
 
+    @wraps(orig_cls.__init__)
+    def __init__(self, *args, **kwargs):
+        if instance is not None:
+            return
+        orig_cls.__init__(self, *args, **kwargs)
+
     @wraps(orig_cls.__new__)
     def __new__(cls, *args, **kwargs):
         nonlocal instance

@@ -90,7 +90,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
             except ValueError:
                 print(f"Workspace {workspace} doesn't exist!")
 
-    def getInstrumentDefinitionFilePath(isLocalTest, isLiteInstrument):
+    def getInstrumentDefinitionFilePath(self, isLocalTest, isLiteInstrument):
         if isLocalTest:
             if isLiteInstrument:
                 return Resource.getPath("inputs/pixel_grouping/SNAPLite_Definition.xml")

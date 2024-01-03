@@ -1,5 +1,7 @@
 import unittest.mock as mock
 
+import pytest
+
 # Mock out of scope modules before importing InterfaceController
 with mock.patch.dict(
     "sys.modules",
@@ -16,6 +18,8 @@ with mock.patch.dict(
         """Mock InterfaceController"""
         interfaceController = InterfaceController()
         interfaceController.serviceFactory = mock.Mock()
+        interfaceController.getWarnings = mock.Mock()
+        interfaceController.getWarnings.return_value = None
         # when serviceFactory.getService is called with value 'Test Service', return a mock service
         mockService = mock.Mock()
         mockService.orchestrateRecipe.return_value = {"result": "Success!"}
