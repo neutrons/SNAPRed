@@ -20,7 +20,7 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction
-from scipy.interpolate import make_smoothing_spline, splev
+from scipy.interpolate import make_smoothing_spline
 
 from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients as Ingredients
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
@@ -98,8 +98,10 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         for index in range(numSpec):
             x = inputWorkspace.readX(index)
             y = inputWorkspace.readY(index)
+
             weightX = weight_ws.readX(index)
             weightY = weight_ws.readY(index)
+
             weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2
             xMidpoints = (x[:-1] + x[1:]) / 2
 
@@ -108,7 +110,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             # Generate spline with purged dataset
             tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
             # fill in the removed data using the spline function and original datapoints
-            smoothing_results = splev(xMidpoints, tck)
+            smoothing_results = tck(xMidpoints, extrapolate=False)
             outputWorkspace.setY(index, smoothing_results)
 
         self.mantidSnapper.WashDishes(
