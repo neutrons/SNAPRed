@@ -6,6 +6,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
 from snapred.backend.recipe.algorithm.WashDishes import WashDishes
+from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -23,6 +24,7 @@ class DiffractionCalibrationRecipe:
         self.runNumber = ingredients.runConfig.runNumber
         self.threshold = ingredients.convergenceThreshold
         self.calPath = ingredients.calPath
+        self.maxIterations = Config["calibration.diffraction.maximumIterations"]
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
         """
@@ -64,7 +66,7 @@ class DiffractionCalibrationRecipe:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
         counter = 1
-        while abs(medianOffsets[-1]) > self.threshold and counter < 5:
+        while abs(medianOffsets[-1]) > self.threshold and counter < self.maxIterations:
             counter = counter + 1
             logger.info(f"... converging to answer; step {counter}, {medianOffsets[-1]} > {self.threshold}")
             try:

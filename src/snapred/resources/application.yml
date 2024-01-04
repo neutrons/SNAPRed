@@ -62,6 +62,7 @@ calibration:
       extension: .nxs
       format: "{}_calibration_reduction_result"
   diffraction:
+    maximumIterations: 5
     convergenceThreshold: 0.05
     peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10

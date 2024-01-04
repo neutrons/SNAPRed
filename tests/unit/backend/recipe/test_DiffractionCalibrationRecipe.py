@@ -27,7 +27,7 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
-from snapred.meta.Config import Resource
+from snapred.meta.Config import Config, Resource
 
 PixelCalAlgo: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.PixelDiffractionCalibration"
 GroupCalAlgo: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.GroupDiffractionCalibration"
@@ -328,14 +328,21 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
     @mock.patch(GroupCalAlgo)
     def test_hard_cap_at_five(self, mockGroupAlgo, mockPixelAlgo):
         mockDict = mock.Mock()
-        mockDict.value = {"medianOffset": 1}
+        mockDict.value = '{"medianOffset": 1}'  # this could in theory continue forever
         mockAlgo = mock.Mock()
         mockAlgo.getProperty.return_value = mockDict
         mockPixelAlgo.return_value = mockAlgo
         mockGroupAlgo.getPropertyValue.return_value = "fake"
         result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         assert result["result"]
-        assert result["steps"] == [{"medianOffset": 1} for i in range(5)]
+        maxIterations = Config["calibration.diffraction.maximumIterations"]
+        assert result["steps"] == [{"medianOffset": 1} for i in range(maxIterations)]
+        # change the config then run again
+        maxIterations = 7
+        Config._config["calibration"]["diffraction"]["maximumIterations"] = maxIterations
+        result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
+        assert result["result"]
+        assert result["steps"] == [{"medianOffset": 1} for i in range(maxIterations)]
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

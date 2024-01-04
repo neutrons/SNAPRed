@@ -69,6 +69,7 @@ calibration:
     convergenceThreshold: 0.05
     peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10
+    maximumIterations: 5
   parameters:
     default:
       # degrees
