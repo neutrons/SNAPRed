@@ -83,6 +83,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
 
         # set the max offset
         self.maxOffset: float = ingredients.maxOffset
+        # keep track of previous median offsets
+        self._prevMedianOffset = self.maxOffset * 10
 
     def unbagGroceries(self, ingredients: Ingredients) -> None:  # noqa ARG002
         """
@@ -255,23 +257,25 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         offsets = [abs(x) for x in offsets]  # ignore negative
         data["medianOffset"] = abs(np.median(offsets))
 
-        # get difcal corrected by offsets
-        self.mantidSnapper.ConvertDiffCal(
-            "Correct previous calibration constants by offsets",
-            OffsetsWorkspace=totalOffsetWS,
-            PreviousCalibration=self.DIFCpixel,
-            OutputWorkspace=self.DIFCpixel,
-            OffsetMode="Signed",
-            BinWidth=self.dBin,
-        )
+        if data["medianOffset"] < self._prevMedianOffset:
+            # get difcal corrected by offsets
+            self.mantidSnapper.ConvertDiffCal(
+                "Correct previous calibration constants by offsets",
+                OffsetsWorkspace=totalOffsetWS,
+                PreviousCalibration=self.DIFCpixel,
+                OutputWorkspace=self.DIFCpixel,
+                OffsetMode="Signed",
+                BinWidth=self.dBin,
+            )
+            # apply offset correction to input workspace
+            # this improves the unit conversion in next iteration
+            self.mantidSnapper.ApplyDiffCal(
+                "Apply the diffraction calibration to the input TOF workspace",
+                InstrumentWorkspace=self.wsTOF,
+                CalibrationWorkspace=self.DIFCpixel,
+            )
+            self._prevMedianOffset = data["medianOffset"]
 
-        # apply offset correction to input workspace
-        # this improves the unit conversion in next iteration
-        self.mantidSnapper.ApplyDiffCal(
-            "Apply the diffraction calibration to the input TOF workspace",
-            InstrumentWorkspace=self.wsTOF,
-            CalibrationWorkspace=self.DIFCpixel,
-        )
         self.mantidSnapper.MakeDirtyDish(
             f"Store d-spacing data at {self._counts} iterations",
             InputWorkspace=self.wsDSP,
