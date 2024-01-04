@@ -52,12 +52,12 @@ class WorkflowPresenter(object):
         self.worker = self.worker_pool.createWorker(target=model.continueAction, args=(self))
         self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
         self.worker.finished.connect(lambda: self.view.cancelButton.setEnabled(True))
-        self.worker.result.connect(self._handleFailure)
+        self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(lambda success: self.view.advanceWorkflow() if success else None)
 
         self.worker_pool.submitWorker(self.worker)
 
-    def _handleFailure(self, result):
+    def _handleComplications(self, result):
         if result.code - 200 > 100:
             QMessageBox.critical(
                 self.view,
@@ -66,3 +66,13 @@ class WorkflowPresenter(object):
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
+        elif result.message:
+            messageBox = QMessageBox(
+                QMessageBox.Warning,
+                "Warning",
+                "Proccess completed successfully with warnings!",
+                QMessageBox.Ok,
+                self.view,
+            )
+            messageBox.setDetailedText(f"{result.message}")
+            messageBox.exec()
