@@ -1,0 +1,221 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- For help on the notation used to specify an Instrument Definition File
+     see http://www.mantidproject.org/IDF -->
+<instrument xmlns="http://www.mantidproject.org/IDF/1.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://www.mantidproject.org/IDF/1.0 http://schema.mantidproject.org/IDF/1.0/IDFSchema.xsd"
+            name="CRACKLE" valid-from="1970-01-01 00:00:00">
+  <!--
+    THIS IS A FAKE INSTRUMENT DEFINITION FOR TESTING ONLY
+    It has been designed to closely match the SNAP geometry,
+    but with a factor of 128x128 fewer pixels (16384).
+    It has East and West detectors, each with 3 Columns and 9 banks.
+    Should be possible to map SNAP data onto CRACKLE.
+  -->
+  <!--DEFAULTS-->
+  <defaults>
+    <length unit="metre"/>
+    <angle unit="degree"/>
+    <reference-frame>
+      <along-beam axis="z"/>
+      <pointing-up axis="y"/>
+      <handedness val="right"/>
+      <theta-sign axis="x"/>
+    </reference-frame>
+  </defaults>
+
+  <!--SOURCE-->
+  <component type="source">
+    <location z="-15.0"/>
+  </component>
+  <type name="source" is="Source"/>
+
+  <!--SAMPLE-->
+  <component type="sample-position">
+    <location y="0.0" x="0.0" z="0.0"/>
+  </component>
+  <type name="sample-position" is="SamplePos"/>
+
+  <!--
+    the monitor was removed due to inconsistencies with
+    loading the instrument into a created sample workspace
+  -->
+
+  <!--DETECTORS-->
+
+  <component type="East">
+    <location >
+      <parameter name="roty">
+        <logfile id="det_arc2" eq="180.0+value"/>
+      </parameter>
+      <parameter name="r-position">
+        <logfile id="det_lin2" eq="0.5+value" />
+      </parameter>
+      <parameter name="t-position">
+        <logfile id="det_arc2" />
+      </parameter>
+    </location>
+  </component>
+  <component type="West">
+    <location >
+      <parameter name="roty">
+        <logfile id="det_arc1" eq="180.0+value"/>
+      </parameter>
+      <parameter name="r-position">
+        <logfile id="det_lin1" eq="0.5+value" />
+      </parameter>
+      <parameter name="t-position">
+        <logfile id="det_arc1" />
+      </parameter>
+    </location>
+  </component>
+
+  <type name="East">
+    <component type="Column1">
+      <location/>
+    </component>
+    <component type="Column2">
+      <location/>
+    </component>
+    <component type="Column3">
+      <location/>
+    </component>
+  </type>
+  <type name="West">
+    <component type="Column4">
+      <location/>
+    </component>
+    <component type="Column5">
+      <location/>
+    </component>
+    <component type="Column6">
+      <location/>
+    </component>
+  </type>
+
+  <type name="Column1">
+    <component type="panel" idstart="8" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank13">
+        <trans x="-0.167548" y="+0.167548" />
+      </location>
+    </component>
+    <component type="panel" idstart="4" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank12">
+        <trans x="-0.167548" y="0" />
+      </location>
+    </component>
+    <component type="panel" idstart="0" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank11">
+        <trans x="-0.167548" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column2">
+    <component type="panel" idstart="20" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank23">
+        <trans x="0" y="+0.167548" />
+      </location>
+    </component>
+    <component type="panel" idstart="16" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank22">
+        <trans x="0" y="0" />
+      </location>
+    </component>
+    <component type="panel" idstart="12" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank21">
+        <trans x="0" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column3">
+    <component type="panel" idstart="32" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank33">
+        <trans x="+0.167548" y="+0.167548" />
+      </location>
+    </component>
+    <component type="panel" idstart="28" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank32">
+        <trans x="+0.167548" y="0" />
+      </location>
+    </component>
+    <component type="panel" idstart="24" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank31">
+        <trans x="+0.167548" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column4">
+    <component type="panel" idstart="44" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank63">
+        <trans x="-0.167548" y="+0.167548" />
+      </location>
+    </component>
+    <component type="panel" idstart="40" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank62">
+        <trans x="-0.167548" y="0" />
+      </location>
+    </component>
+    <component type="panel" idstart="36" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank61">
+        <trans x="-0.167548" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column5">
+    <component type="panel" idstart="56" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank53">
+        <trans x="0" y="+0.167548" />
+      </location>
+    </component>
+    <component type="panel" idstart="52" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank52">
+        <trans x="0" y="0" />
+      </location>
+    </component>
+    <component type="panel" idstart="48" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank51">
+        <trans x="0" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+  <type name="Column6">
+    <component type="panel" idstart="68" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank43">
+        <trans x="+0.167548" y="+0.167548" />
+      </location>
+    </component>
+    <component type="panel" idstart="64" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank42">
+        <trans x="+0.167548" y="0" />
+      </location>
+    </component>
+    <component type="panel" idstart="60" idfillbyfirst="y" idstepbyrow="2" >
+      <location name="bank41">
+        <trans x="+0.167548" y="-0.167548" />
+      </location>
+    </component>
+  </type>
+
+<!-- Rectangular Detector Panel -->
+<type name="panel" is="rectangular_detector" type="pixel"
+    xpixels="2" xstart="-0.079104" xstep="+0.079104"
+    ypixels="2" ystart="-0.079104" ystep="+0.079104" >
+  <properties/>
+</type>
+
+<!-- Pixel for Detectors-->
+<type name="pixel" is="detector">
+  <cuboid id="pixel-shape">
+    <left-front-bottom-point  y="-0.039552" x="-0.039552" z="0.0"/>
+    <left-front-top-point     y="+0.039552" x="-0.039552" z="0.0"/>
+    <left-back-bottom-point   y="-0.039552" x="-0.039552" z="0.0001"/>
+    <right-front-bottom-point y="-0.039552" x="+0.039552" z="0.0"/>
+  </cuboid>
+  <algebra val="pixel-shape"/>
+</type>
+</instrument>
