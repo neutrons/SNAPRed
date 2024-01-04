@@ -2,7 +2,6 @@ import json
 from typing import Dict, List
 
 import numpy as np
-
 from mantid.api import (
     AlgorithmFactory,
     ITableWorkspaceProperty,
@@ -279,7 +278,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             InputWorkspace=self.wsDSP,
             OutputWorkspace=self.wsDSP + f"_pixel{self._counts}",
         )
-        
+
         # cleanup memory usage
         self.mantidSnapper.WashDishes(
             "Deleting temporary workspaces",

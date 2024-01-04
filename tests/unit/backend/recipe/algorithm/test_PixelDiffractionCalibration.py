@@ -1,11 +1,9 @@
 import json
-import numpy as np
+import unittest
 from itertools import permutations
 
-import unittest
-
+import numpy as np
 import pytest
-
 from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
@@ -218,6 +216,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         for N_group in range(1, 5):
             for gids in permutations(dids, N_group):
                 assert algo.getRefID(gids) in gids
+
 
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
