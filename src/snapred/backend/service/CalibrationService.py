@@ -183,6 +183,7 @@ class CalibrationService(Service):
             calPath=calpath,
             convergenceThreshold=convergenceThreshold,
             pixelGroup=instrumentState.pixelGroup,
+            maxOffset=request.maximumOffset,
         )
         focusFile = request.focusGroupPath.split("/")[-1]
         focusName = focusFile.split(".")[0]
