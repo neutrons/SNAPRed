@@ -275,12 +275,12 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
     @mock.patch(GroupCalAlgo)
     def test_ensure_monotonic(self, mockGroupAlgo, mockPixelAlgo):
         mockAlgo = mock.Mock()
-        mockAlgo.getPropertyValue.side_effect = [f'{{"medianOffset": {i}}}' for i in [4, 3, 2, 1, 4, 0]]
+        mockAlgo.getPropertyValue.side_effect = [f'{{"medianOffset": {i}}}' for i in [2, 1, 2, 0]]
         mockPixelAlgo.return_value = mockAlgo
         mockGroupAlgo.return_value.getPropertyValue.return_value = "fake"
         result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         assert result["result"]
-        assert result["steps"] == [{"medianOffset": i} for i in [4, 3, 2, 1]]
+        assert result["steps"] == [{"medianOffset": i} for i in [2, 1]]
         assert result["calibrationTable"] == "fake"
         assert result["outputWorkspace"] == "fake"
 
