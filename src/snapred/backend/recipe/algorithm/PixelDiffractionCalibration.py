@@ -256,8 +256,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         offsets = list(self.mantidSnapper.mtd[totalOffsetWS].extractY().ravel())
         offsets = [abs(x) for x in offsets]  # ignore negative
         data["medianOffset"] = abs(np.median(offsets))
+        data["meanOffset"] = abs(np.mean(offsets))
 
-        if data["medianOffset"] < self._prevMedianOffset:
+        if data["medianOffset"] <= self._prevMedianOffset:
             # get difcal corrected by offsets
             self.mantidSnapper.ConvertDiffCal(
                 "Correct previous calibration constants by offsets",
