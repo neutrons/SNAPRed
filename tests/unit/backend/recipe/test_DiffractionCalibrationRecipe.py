@@ -23,14 +23,12 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 from snapred.meta.Config import Config, Resource
 
-PixelCalAlgo: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.PixelDiffractionCalibration"
-GroupCalAlgo: str = "snapred.backend.recipe.DiffractionCalibrationRecipe.GroupDiffractionCalibration"
+ThisRecipe: str = "snapred.backend.recipe.DiffractionCalibrationRecipe"
+PixelCalAlgo: str = ThisRecipe + ".PixelDiffractionCalibration"
+GroupCalAlgo: str = ThisRecipe + ".GroupDiffractionCalibration"
 
 
 class TestDiffractionCalibtationRecipe(unittest.TestCase):
@@ -118,137 +116,63 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         assert self.recipe.rawInput == self.fakeRawData
         assert self.recipe.groupingWS == self.fakeGroupingWorkspace
 
-    # a scoped dummy algorithm to test the recipe's behavior
-    # TODO replace with mock.Mock(side_effect = [])
-    class DummyCalibrationAlgorithm(PythonAlgorithm):
-        def PyInit(self):
-            # declare properties of both algos
-            self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
-            self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-            self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
-            self.declareProperty("GroupingWorkspace", defaultValue="", direction=Direction.Input)
-            # declare properties of offset algo
-            self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
-            self.declareProperty("data", defaultValue="", direction=Direction.Output)
-            # declare properties of calibration algo
-            self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.Input)
-            self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
-            self.calls: int = 0
-            self.medianOffset: float = 4.0
-
-        def PyExec(self):
-            self.reexecute()
-            self.setProperty("PreviousCalibrationTable", self.getProperty("CalibrationTable").value)
-            self.setProperty("OutputWorkspace", self.getProperty("InputWorkspace").value)
-            self.setProperty("FinalCalibrationTable", self.getProperty("PreviousCalibrationTable").value)
-
-        def reexecute(self):
-            self.calls += 1
-            self.medianOffset *= 0.5
-            data = {"medianOffset": self.medianOffset, "calls": self.calls}
-            self.setProperty("data", json.dumps(data))
-            self.setProperty("CalibrationTable", "fake calibration table")
-
-    @mock.patch(PixelCalAlgo, DummyCalibrationAlgorithm)
-    @mock.patch(GroupCalAlgo, DummyCalibrationAlgorithm)
-    def test_execute_successful(self):
+    @mock.patch(PixelCalAlgo)
+    @mock.patch(GroupCalAlgo)
+    def test_execute_successful(self, mockGroupCalAlgo, mockPixelCalAlgo):
+        # produce 4, 2, 1, 0.5
+        mockPixelAlgo = mock.Mock()
+        mockPixelAlgo.getPropertyValue.side_effect = [f'{{"medianOffset": {4 * 2**(-i)}}}' for i in range(10)]
+        mockPixelCalAlgo.return_value = mockPixelAlgo
+        mockGroupCalAlgo.return_value.getPropertyValue.return_value = "passed"
         result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         assert result["result"]
-        assert len(result["steps"]) == 3
+        assert result["steps"] == [{"medianOffset": x} for x in [4, 2, 1, 0.5]]
+        assert result["calibrationTable"] == "passed"
+        assert result["outputWorkspace"] == "passed"
 
-    # a scoped dummy algorithm to test the recipe's behavior
-    class DummyPixelCalAlgo(PythonAlgorithm):
-        def PyInit(self):
-            self.setRethrows(True)
-            # declare properties of both algos
-            self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
-            self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-            self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
-            self.declareProperty("GroupingWorkspace", defaultValue="", direction=Direction.Input)
-            # declare properties of offset algo
-            self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.Output)
-            self.declareProperty("data", defaultValue="", direction=Direction.Output)
-            self.calls: int = 0
-
-        def PyExec(self):
-            self.calls += 1
-            self.setProperty("data", json.dumps({"medianOffset": 7, "calls": self.calls}))
-            raise RuntimeError("passed")
-
-    @mock.patch(PixelCalAlgo, DummyPixelCalAlgo)
-    def test_execute_unsuccessful_pixel_cal(self):
-        try:
+    @mock.patch(PixelCalAlgo)
+    def test_execute_unsuccessful_pixel_cal(self, mockPixelCalAlgo):
+        mockPixelAlgo = mock.Mock()
+        mockPixelAlgo.execute.side_effect = RuntimeError("failure in pixel algo")
+        mockPixelCalAlgo.return_value = mockPixelAlgo
+        with pytest.raises(RuntimeError) as e:
             self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
-        except Exception as e:  # noqa: E722 BLE001
-            assert str(e) == "passed"  # noqa: PT017
-        else:
-            # fail if execute did not raise an exception
-            pytest.fail("Test should have raised RuntimeError, but no error raised")
+        assert str(e.value) == "failure in pixel algo"
 
-    # a scoped dummy algorithm to test the recipe's behavior
-    class DummyGroupCalAlgo(PythonAlgorithm):
-        def PyInit(self):
-            self.setRethrows(True)
-            # declare properties of both algos
-            self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
-            self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-            self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
-            self.declareProperty("GroupingWorkspace", defaultValue="", direction=Direction.Input)
-            # declare properties of offset algo
-            self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.Input)
-            self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.Output)
-
-        def PyExec(self):
-            raise RuntimeError("passed")
-
-    @mock.patch(PixelCalAlgo, DummyCalibrationAlgorithm)
-    @mock.patch(GroupCalAlgo, DummyGroupCalAlgo)
-    def test_execute_unsuccessful_group_cal(self):
-        try:
+    @mock.patch(PixelCalAlgo)
+    @mock.patch(GroupCalAlgo)
+    def test_execute_unsuccessful_group_cal(self, mockGroupCalAlgo, mockPixelCalAlgo):
+        mockPixelAlgo = mock.Mock()
+        mockPixelAlgo.getPropertyValue.return_value = '{"medianOffset": 0}'
+        mockPixelCalAlgo.return_value = mockPixelAlgo
+        mockGroupAlgo = mock.Mock()
+        mockGroupAlgo.execute.side_effect = RuntimeError("failure in group algo")
+        mockGroupCalAlgo.return_value = mockGroupAlgo
+        with pytest.raises(RuntimeError) as e:
             self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
-        except Exception as e:  # noqa: E722 BLE001
-            assert str(e) == "passed"  # noqa: PT017
-        else:
-            # fail if execute did not raise an exception
-            pytest.fail("Test should have raised RuntimeError, but no error raised")
+        assert str(e.value) == "failure in group algo"
 
-    # a scoped dummy algorithm to test all three try/except blocks
-    # TODO replace with mock.Mock(side_effect = [])
-    class DummyFailingAlgo(PythonAlgorithm):
-        fails: int = 0
-
-        def PyInit(self):
-            self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
-            self.declareProperty("GroupingWorkspace", defaultValue="", direction=Direction.Input)
-            self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
-            self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-            self.declareProperty("CalibrationTable", defaultValue="", direction=Direction.InOut)
-            self.declareProperty("PreviousCalibrationTable", defaultValue="", direction=Direction.InOut)
-            self.declareProperty("FinalCalibrationTable", defaultValue="", direction=Direction.InOut)
-            self.declareProperty("times", defaultValue=0, direction=Direction.InOut)
-            self.declareProperty("data", defaultValue="", direction=Direction.Output)
-            self.setRethrows(True)
-
-        def PyExec(self):
-            times = self.getProperty("times").value
-            self.setProperty("data", json.dumps({"medianOffset": 2 * 2 ** (-times)}))
-            times += 1
-            if times >= self.fails:
-                raise RuntimeError(f"passed {times} - {self.fails}")
-            self.setProperty("times", times)
-
-    @mock.patch(PixelCalAlgo, DummyFailingAlgo)
-    @mock.patch(GroupCalAlgo, DummyFailingAlgo)
-    def test_execute_unsuccessful_later_calls(self):
-        for i in range(1, 4):
-            self.DummyFailingAlgo.fails = i
-            try:
-                result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
-            except Exception as e:  # noqa: E722 BLE001
-                assert str(e) == f"passed {i} - {i}"  # noqa: PT017
-            else:
-                # fail if execute did not raise an exception
-                pytest.fail(f"Test should have raised RuntimeError, but no error raised: {len(result['steps'])} - {i}")
+    @mock.patch(PixelCalAlgo)
+    @mock.patch(GroupCalAlgo)
+    def test_execute_unsuccessful_later_calls(self, mockGroupCalAlgo, mockPixelCalAlgo):
+        # this will check that errors are raised in each of the three try-catch blocks
+        # the mocked median offset will follow pattern 1, 0.5, 0.25, etc.
+        # first time, algo fails (first try block)
+        # second time, algo succeeds with 1, then fails (second try block)
+        # second time, algo succeeds with 1, succeeds with 0.5, then fails (third try block)
+        mockAlgo = mock.Mock()
+        mockGroupCalAlgo.return_value = mockAlgo
+        mockPixelCalAlgo.return_value = mockAlgo
+        for i in range(3):
+            # algo succeeds once then raises an error
+            listOfFails = [1] * (i)
+            listOfFails.append(RuntimeError(f"passed {i}"))
+            mockAlgo.execute.side_effect = listOfFails
+            # algo will return 1, 0.5, 0.25, etc.
+            mockAlgo.getPropertyValue.side_effect = [f'{{"medianOffset": {2**(-i)}}}' for i in range(10)]
+            with pytest.raises(RuntimeError) as e:
+                self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
+            assert str(e.value).split("\n")[0] == f"passed {i}"
 
     def makeFakeNeutronData(self, rawWS, groupingWS):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
@@ -327,22 +251,38 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
     @mock.patch(PixelCalAlgo)
     @mock.patch(GroupCalAlgo)
     def test_hard_cap_at_five(self, mockGroupAlgo, mockPixelAlgo):
-        mockDict = mock.Mock()
-        mockDict.value = '{"medianOffset": 1}'  # this could in theory continue forever
         mockAlgo = mock.Mock()
-        mockAlgo.getProperty.return_value = mockDict
+        mockAlgo.getPropertyValue.side_effect = [f'{{"medianOffset": {11-i}}}' for i in range(10)]
         mockPixelAlgo.return_value = mockAlgo
-        mockGroupAlgo.getPropertyValue.return_value = "fake"
+        mockGroupAlgo.return_value.getPropertyValue.return_value = "fake"
         result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         assert result["result"]
         maxIterations = Config["calibration.diffraction.maximumIterations"]
-        assert result["steps"] == [{"medianOffset": 1} for i in range(maxIterations)]
+        assert result["steps"] == [{"medianOffset": 11 - i} for i in range(maxIterations)]
+        assert result["calibrationTable"] == "fake"
+        assert result["outputWorkspace"] == "fake"
         # change the config then run again
         maxIterations = 7
+        mockAlgo.getPropertyValue.side_effect = [f'{{"medianOffset": {11-i}}}' for i in range(10)]
         Config._config["calibration"]["diffraction"]["maximumIterations"] = maxIterations
         result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
         assert result["result"]
-        assert result["steps"] == [{"medianOffset": 1} for i in range(maxIterations)]
+        assert result["steps"] == [{"medianOffset": 11 - i} for i in range(maxIterations)]
+        assert result["calibrationTable"] == "fake"
+        assert result["outputWorkspace"] == "fake"
+
+    @mock.patch(PixelCalAlgo)
+    @mock.patch(GroupCalAlgo)
+    def test_ensure_monotonic(self, mockGroupAlgo, mockPixelAlgo):
+        mockAlgo = mock.Mock()
+        mockAlgo.getPropertyValue.side_effect = [f'{{"medianOffset": {i}}}' for i in [4, 3, 2, 1, 4, 0]]
+        mockPixelAlgo.return_value = mockAlgo
+        mockGroupAlgo.return_value.getPropertyValue.return_value = "fake"
+        result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
+        assert result["result"]
+        assert result["steps"] == [{"medianOffset": i} for i in [4, 3, 2, 1]]
+        assert result["calibrationTable"] == "fake"
+        assert result["outputWorkspace"] == "fake"
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

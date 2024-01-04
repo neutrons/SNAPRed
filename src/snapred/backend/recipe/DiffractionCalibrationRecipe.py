@@ -60,22 +60,30 @@ class DiffractionCalibrationRecipe:
         pixelAlgo.setProperty("CalibrationTable", self.calTable)
         try:
             pixelAlgo.execute()
-            dataSteps.append(json.loads(pixelAlgo.getProperty("data").value))
+            dataSteps.append(json.loads(pixelAlgo.getPropertyValue("data")))
             medianOffsets.append(dataSteps[-1]["medianOffset"])
         except RuntimeError as e:
             errorString = str(e)
-            raise Exception(errorString.split("\n")[0])
+            raise RuntimeError(errorString) from e
         counter = 1
         while abs(medianOffsets[-1]) > self.threshold and counter < self.maxIterations:
             counter = counter + 1
             logger.info(f"... converging to answer; step {counter}, {medianOffsets[-1]} > {self.threshold}")
             try:
                 pixelAlgo.execute()
-                dataSteps.append(json.loads(pixelAlgo.getProperty("data").value))
-                medianOffsets.append(dataSteps[-1]["medianOffset"])
+                newDataStep = json.loads(pixelAlgo.getPropertyValue("data"))
             except RuntimeError as e:
                 errorString = str(e)
-                raise Exception(errorString.split("\n")[0])
+                raise RuntimeError(errorString) from e
+            # ensure monotonic decrease in the median offset
+            if newDataStep["medianOffset"] < dataSteps[-1]["medianOffset"]:
+                dataSteps.append(newDataStep)
+                medianOffsets.append(newDataStep["medianOffset"])
+            else:
+                logger.warning("Offsets failed to converge monotonically")
+                break
+        if counter >= self.maxIterations:
+            logger.warning("Offset convergence reached max iterations without convergning")
         data["steps"] = dataSteps
         logger.info(f"Initial calibration converged.  Offsets: {medianOffsets}")
 
@@ -94,7 +102,7 @@ class DiffractionCalibrationRecipe:
             data["outputWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspace")
         except RuntimeError as e:
             errorString = str(e)
-            raise Exception(errorString.split("\n")[0])
+            raise RuntimeError(errorString) from e
 
         logger.info(f"Finished executing diffraction calibration for runId: {self.runNumber}")
         data["result"] = True
