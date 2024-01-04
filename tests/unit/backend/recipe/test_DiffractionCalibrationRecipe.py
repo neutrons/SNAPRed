@@ -324,6 +324,19 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         assert res["result"]
         assert res["steps"][-1]["medianOffset"] <= self.fakeIngredients.convergenceThreshold
 
+    @mock.patch(PixelCalAlgo)
+    @mock.patch(GroupCalAlgo)
+    def test_hard_cap_at_five(self, mockGroupAlgo, mockPixelAlgo):
+        mockDict = mock.Mock()
+        mockDict.value = {"medianOffset": 1}
+        mockAlgo = mock.Mock()
+        mockAlgo.getProperty.return_value = mockDict
+        mockPixelAlgo.return_value = mockAlgo
+        mockGroupAlgo.getPropertyValue.return_value = "fake"
+        result = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
+        assert result["result"]
+        assert result["steps"] == [{"medianOffset": 1} for i in range(5)]
+
 
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873

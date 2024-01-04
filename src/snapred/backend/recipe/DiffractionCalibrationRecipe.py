@@ -63,8 +63,8 @@ class DiffractionCalibrationRecipe:
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
-        counter = 0
-        while abs(medianOffsets[-1]) > self.threshold:
+        counter = 1
+        while abs(medianOffsets[-1]) > self.threshold and counter < 5:
             counter = counter + 1
             logger.info(f"... converging to answer; step {counter}, {medianOffsets[-1]} > {self.threshold}")
             try:
