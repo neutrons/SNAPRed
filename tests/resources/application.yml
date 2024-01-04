@@ -116,4 +116,14 @@ samples:
   home: ${instrument.calibration.home}/CalibrantSamples
 
 
+test:
+  config:
+    name: test
+    home: /some/path
+  persistence:
+    read: ${test.config.home}
+    write: ~/${test.config.home}
+  data:
+    home: ${test.persistence}/data/${test.config.name}
+
 cis_mode: true

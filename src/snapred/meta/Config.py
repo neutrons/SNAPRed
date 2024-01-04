@@ -135,18 +135,35 @@ class _Config:
             self.refresh(f"{env_name}.yml", clearPrevious)
 
     # method to regex for string pattern of ${key} and replace with value
-    def _replace(self, value: str) -> str:
+    def _replace(self, value: str, remainingKeys) -> str:
         # if the value is not a string, then just return it
         if not isinstance(value, str):
             return value
 
         # Regex all keys of the form ${key.subkey} and store in a list
         regex = r"\$\{([a-zA-Z0-9_\.]+)\}"
-        matches = re.finditer(regex, value, re.MULTILINE)
+        matches = [match for match in re.finditer(regex, value, re.MULTILINE)]
         # replace all keys with their values
-        for match in matches:
-            key = match.group()[2:-1]
-            value = value.replace(f"${{{key}}}", self[key])
+        if len(remainingKeys) == 0:
+            for match in matches:
+                key = match.group()[2:-1]
+                if isinstance(self[key], dict):
+                    return value
+                value = value.replace(f"${{{key}}}", self[key])
+        else:
+            match = matches[0]
+            rootKey = match.group()[2:-1]
+            key = rootKey
+            val = self[key]
+
+            # while val is a dict, keep appending keys
+            while isinstance(val, dict):
+                key = key + f".{remainingKeys.pop(0)}"
+                val = self[key]
+
+            value = value.replace(f"${{{rootKey}}}", val)
+            # if(len(remainingKeys) > 0):
+            value = self._replace(value, remainingKeys)
 
         return value
 
@@ -154,12 +171,17 @@ class _Config:
     def __getitem__(self, key):
         keys = key.split(".")
         val = self._config[keys[0]]
+        totalProcessed = 0
         for k in keys[1:]:
             if val is None:
                 break
+            if isinstance(val, str):
+                break
+            totalProcessed += 1
             val = val[k]
+
         if val is not None:
-            val = self._replace(val)
+            val = self._replace(val, keys[1 + totalProcessed :])
         return val
 
 
