@@ -20,3 +20,4 @@ class DiffractionCalibrationRequest(BaseModel):
     convergenceThreshold: Optional[float] = Config["calibration.diffraction.convergenceThreshold"]
     peakIntensityThreshold: Optional[float] = Config["calibration.diffraction.peakIntensityThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
+    maximumOffset: float = Config["calibration.diffraction.maximumOffset"]
