@@ -4,6 +4,7 @@ logger = snapredLogger.getLogger(__name__)
 
 
 def test_collectWarnings():
+    snapredLogger.clearWarnings()
     logger.warn("Warning 1")
     logger.warn("Warning 2")
     logger.warn("Warning 3")
