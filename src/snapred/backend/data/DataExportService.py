@@ -44,3 +44,6 @@ class DataExportService:
 
     def deleteWorkspace(self, workspaceName: str):
         return self.dataService.deleteWorkspace(workspaceName)
+
+    def writeGroupingMap(self, stateId: str):
+        return self.dataService.writeGroupingMap(stateId)

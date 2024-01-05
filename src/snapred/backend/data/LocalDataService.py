@@ -26,6 +26,7 @@ from snapred.backend.dao.state import (
     DetectorState,
     DiffractionCalibrant,
     FocusGroup,
+    GroupingMap,
     InstrumentState,
     NormalizationCalibrant,
 )
@@ -721,6 +722,9 @@ class LocalDataService:
         L = instrumentConfig.L1 + instrumentConfig.L2
         tofLimit = Limit(minimum=lambdaLimit.minimum * L / 3.9561e-3, maximum=lambdaLimit.maximum * L / 3.9561e-3)
         particleBounds = ParticleBounds(wavelength=lambdaLimit, tof=tofLimit)
+
+        stateId = self._generateStateId(runId)
+        groupingMap = self.readGroupingMap(stateId)
         # finally add seedRun, creation date, and a human readable name
         instrumentState = InstrumentState(
             instrumentConfig=instrumentConfig,
@@ -730,6 +734,8 @@ class LocalDataService:
             defaultGroupingSliceValue=defaultGroupSliceValue,
             fwhmMultiplierLimit=fwhmMultiplier,
             peakTailCoefficient=peakTailCoefficient,
+            stateId=stateId,
+            groupingMap=groupingMap,
         )
 
         calibration = Calibration(
@@ -773,3 +779,11 @@ class LocalDataService:
         if len(groupingFiles) < 1:
             raise RuntimeError(f"No grouping files found in {groupingFolder} for extensions {extensions}")
         return groupingFiles
+
+    def readGroupingMap(self, stateId: str):
+        GroupingMap.parse_raw(Resource.read(Config["instrument.state.home"] + "/" + stateId + "/GroupingMap.json"))
+
+    def writeGroupingMap(self, stateId: str):
+        path = Config["instrument.state.home"] + "/" + stateId + "/GroupingMap.json"
+        with Resource.open(path, "w") as f:
+            f.write(self.json(indent=2))

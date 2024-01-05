@@ -128,3 +128,6 @@ class DataFactoryService:
 
     def getCalibrationDataPath(self, runId: str, version: str):
         return self.lookupService._constructCalibrationDataPath(runId, version)
+
+    def getGroupingMap(self, stateId: str):
+        return self.lookupService.readGroupingMap(stateId)
