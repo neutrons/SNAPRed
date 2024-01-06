@@ -1,7 +1,8 @@
-from typing import List, Optional
+from typing import List, Optional, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
+from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.calibration import Calibration
 from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -15,4 +16,11 @@ class StateConfig(BaseModel):
     rawVanadiumCorrectionFileName: str  # Needs to be removed when Normalization changes go in
     vanadiumFilePath: str  # Needs to be removed when Normalization changes go in
     focusGroups: List[FocusGroup]  # PixelGroupingParameters
-    stateId: str  # generated.
+    stateId: ObjectSHA  # generated.
+            
+    @validator('stateId', pre=True, allow_reuse=True)
+    def str_to_ObjectSHA(cls, v: Any) -> Any:
+        # ObjectSHA stored in JSON as _only_ a single hex string, for the hex digest itself
+        if isinstance(v, str):
+            return ObjectSHA(hex=v)
+        return v

@@ -8,6 +8,7 @@
     "calibrationState": null
   },
   "reductionState": {
+    "id": "0a1b2c3d0a1b2c3d",
     "instrumentConfig": {
       "version": "1.4",
       "facility": "SNS",
@@ -34,6 +35,7 @@
     "stateConfig": {
       "calibration": {
         "instrumentState": {
+          "id": "04bd2c53f6bf6754",
           "instrumentConfig": {
             "version": "1.4",
             "facility": "SNS",
