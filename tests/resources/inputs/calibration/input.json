@@ -34,6 +34,7 @@
     "stateConfig": {
       "calibration": {
         "instrumentState": {
+          "id": "0a1b2c3d0a1b2c3d",
           "instrumentConfig": {
             "version": "1.4",
             "facility": "SNS",

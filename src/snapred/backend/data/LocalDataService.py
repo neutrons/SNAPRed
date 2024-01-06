@@ -1,6 +1,8 @@
+# *** DEBUG ***
+import pdb
+
 import datetime
 import glob
-import hashlib
 import json
 import os
 from errno import ENOENT as NOT_FOUND
@@ -14,6 +16,7 @@ from pydantic import parse_file_as
 from snapred.backend.dao import (
     GSASParameters,
     InstrumentConfig,
+    ObjectSHA,
     Limit,
     ParticleBounds,
     RunConfig,
@@ -26,6 +29,7 @@ from snapred.backend.dao.state import (
     DetectorState,
     DiffractionCalibrant,
     FocusGroup,
+    GroupingMap,
     InstrumentState,
     NormalizationCalibrant,
 )
@@ -60,7 +64,7 @@ def _createFileNotFoundError(msg, filename):
 class LocalDataService:
     reductionParameterCache: Dict[str, Any] = {}
     iptsCache: Dict[str, Any] = {}
-    stateIdCache: Dict[str, str] = {}
+    stateIdCache: Dict[str, ObjectSHA] = {}
     instrumentConfig: "InstrumentConfig"  # Optional[InstrumentConfig]
     verifyPaths: bool = True
     groceryService: GroceryService = GroceryService()
@@ -117,7 +121,6 @@ class LocalDataService:
         else:
             diffCalibration: Calibration = previousDiffCalRecord.calibrationFittingIngredients
         particleBounds = diffCalibration.instrumentState.particleBounds
-        stateId, _ = self._generateStateId(runId)
 
         return StateConfig(
             calibration=diffCalibration,
@@ -126,10 +129,10 @@ class LocalDataService:
             vanadiumFilePath=str(
                 self.instrumentConfig.calibrationDirectory
                 / "Powder"
-                / stateId
+                / diffCalibration.instrumentState.id.hex
                 / reductionParameters["rawVCorrFileName"]
             ),
-            stateId=stateId,
+            stateId=diffCalibration.instrumentState.id,
             tofBin=min(min(reductionParameters["focGroupDBin"])),
             tofMax=particleBounds.tof.maximum,
             tofMin=particleBounds.tof.minimum,
@@ -207,9 +210,10 @@ class LocalDataService:
         return f
 
     @ExceptionHandler(StateValidationException)
-    def _generateStateId(self, runId: str) -> Tuple[Any, Any]:
+    def _generateStateId(self, runId: str) -> Tuple[str, str]:
         if runId in self.stateIdCache:
-            return self.stateIdCache[runId]
+            SHA = self.stateIdCache[runId]
+            return SHA.hex, SHA.decodedKey
 
         f = self._readPVFile(runId)
 
@@ -229,16 +233,10 @@ class LocalDataService:
             Frequency=freq,
             Pos=GuideIn,
         )
-        hasher = hashlib.shake_256()
+        SHA = ObjectSHA.fromObject(stateID)
+        self.stateIdCache[runId] = SHA
 
-        decodedKey = json.dumps(stateID.__dict__).encode("utf-8")
-
-        hasher.update(decodedKey)
-
-        hashedKey = hasher.digest(8).hex()
-        self.stateIdCache[runId] = hashedKey, decodedKey
-
-        return hashedKey, decodedKey
+        return SHA.hex, SHA.decodedKey
 
     def _findMatchingFileList(self, pattern, throws=True) -> List[str]:
         fileList: List[str] = []
@@ -265,9 +263,9 @@ class LocalDataService:
         return fileList
 
     def _constructCalibrationStatePath(self, stateId):
-        # TODO: Propogate pathlib through codebase
+        # TODO: Propagate pathlib through codebase
         return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId}/"
-
+    
     def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
         # lookup IPTS number
         run: int = int(runId)
@@ -478,6 +476,7 @@ class LocalDataService:
         return latestVersion
 
     def readNormalizationRecord(self, runId: str, version: str = None):
+        stateId, _ = self._generateStateId(runId)
         self._readReductionParameters(runId)
         recordPath: str = self.getNormalizationRecordPath(runId, "*")
         latestFile = ""
@@ -487,12 +486,19 @@ class LocalDataService:
             latestFile = self._getLatestFile(recordPath)
         record: NormalizationRecord = None  # noqa: F821
         if latestFile:
+            print(f'reading NormalizationRecord from {latestFile}')
             record = parse_file_as(NormalizationRecord, latestFile)  # noqa: F821
+        
+            # Read the state's grouping-schema map from its separate JSON file.
+            groupingMap = self._readGroupingMap(stateId)
+            # Attach the grouping-schema map to the normalization record's state:
+            record.normalization.instrumentState.attachGroupingMap(groupingMap)
         return record
 
     def writeNormalizationRecord(self, record: NormalizationRecord, version: int = None):  # noqa: F821
         """
         Persists a `NormalizationRecord` to either a new version folder, or overwrite a specific version.
+        -- side effect: updates version numbers of incoming `NormalizationRecord` and its nested `Normalization`.
         """
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
@@ -501,6 +507,12 @@ class LocalDataService:
             version = previousVersion + 1
         recordPath: str = self.getNormalizationRecordPath(runNumber, version)
         record.version = version
+        
+        # There seems no need to write the _nested_ Normalization, because you're also saving it using 'writeNormalizationState'.
+        # However, if you really want to _nest_ it, at least mark it with the correct version.  :(
+        # (Please use pydantic Field(exclude=True) to _stop_ nesting it.)
+        record.normalization.version = version
+        
         normalizationPath = self._constructCalibrationDataPath(runNumber, version)
         # check if directory exists for runId
         if not os.path.exists(normalizationPath):
@@ -511,9 +523,11 @@ class LocalDataService:
         self.writeNormalizationState(runNumber, record.normalization, version)
         for workspace in record.workspaceNames:
             self.groceryService.writeWorkspace(normalizationPath, workspace)
+        print(f'wrote NormalizationRecord: version: {version}')
         return record
 
     def readCalibrationRecord(self, runId: str, version: str = None):
+        stateId, _ = self._generateStateId(runId)
         recordPath: str = self.getCalibrationRecordPath(runId, "*")
         # find the latest version
         latestFile = ""
@@ -524,12 +538,20 @@ class LocalDataService:
         # read the file
         record: CalibrationRecord = None
         if latestFile:
+            print(f'reading CalibrationRecord from {latestFile}')
             record = parse_file_as(CalibrationRecord, latestFile)
+        
+            # Read the state's grouping-schema map from its separate JSON file.
+            groupingMap = self._readGroupingMap(stateId)
+            # Attach the grouping-schema map to the calibration record's state:
+            record.calibrationFittingIngredients.instrumentState.attachGroupingMap(groupingMap)
+
         return record
 
     def writeCalibrationRecord(self, record: CalibrationRecord, version: int = None):
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
+        -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
         """
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
@@ -538,16 +560,24 @@ class LocalDataService:
             version = previousVersion + 1
         recordPath: str = self.getCalibrationRecordPath(runNumber, version)
         record.version = version
+        
+        # As above at 'writeNormalizationRecord':
+        # There seems no need to write the _nested_ Calibration, because you're also saving it using 'writeCalibrationState'.
+        # However, if you really want to _nest_ it, at least mark it with the correct version.  :(
+        # (Please use pydantic Field(exclude=True) to _stop_ nesting it.)
+        record.calibrationFittingIngredients.version = version
+        
         calibrationPath = self._constructCalibrationDataPath(runNumber, version)
         # check if directory exists for runId
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
-        # append to record and write to file
+        # append to record and write to file # *** DEBUG *** .version==2, .<calibration>.version==1
         write_model_pretty(record, recordPath)
 
-        self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
+        self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version) # *** DEBUG *** <calibration>.version==2
         for workspace in record.workspaceNames:
             self.groceryService.writeWorkspace(calibrationPath, workspace)
+        print(f'Wrote CalibrationRecord: version: {version}')
         return record
 
     def writeCalibrationReductionResult(self, runId: str, workspaceName: WorkspaceName, dryrun: bool = False):
@@ -621,7 +651,7 @@ class LocalDataService:
         return statePath
 
     def readCalibrationState(self, runId: str, version: str = None):
-        # get stateId and check to see if such a folder exists, if not create an initialize it
+        # get stateId and check to see if such a folder exists, if not create it and initialize it
         stateId, _ = self._generateStateId(runId)
         calibrationStatePath = self.getCalibrationStatePath(runId, "*")
 
@@ -635,6 +665,11 @@ class LocalDataService:
         calibrationState = None
         if latestFile:
             calibrationState = parse_file_as(Calibration, latestFile)
+        
+            # Read the state's grouping-schema map from its separate JSON file.
+            groupingMap = self._readGroupingMap(stateId)
+            # Attach the grouping-schema map to the normalization state:
+            calibrationState.instrumentState.attachGroupingMap(groupingMap)
 
         return calibrationState
 
@@ -652,12 +687,18 @@ class LocalDataService:
         normalizationState = None
         if latestFile:
             normalizationState = parse_file_as(Normalization, latestFile)  # noqa: F821
+        
+            # Read the state's grouping-schema map from its separate JSON file.
+            groupingMap = self._readGroupingMap(stateId)
+            # Attach the grouping-schema map to the normalization state:
+            normalizationState.instrumentState.attachGroupingMap(groupingMap)
 
         return normalizationState
 
     def writeCalibrationState(self, runId: str, calibration: Calibration, version: int = None):
         """
-        Writes a `Calibration` to either a new version folder, or overwrite a specific version.
+        Writes a `Calibration` to either a new version folder, or overwrites a specific version.
+        -- side effect: updates version number of incoming `Calibration`.
         """
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationStatePath(stateId)
@@ -670,12 +711,13 @@ class LocalDataService:
         calibrationPath = self._constructCalibrationDataPath(runId, version)
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
-        # write the file and return the calibration state
+        # write the calibration state.
         write_model_pretty(calibration, calibrationParametersPath)
 
     def writeNormalizationState(self, runId: str, normalization: Normalization, version: int = None):  # noqa: F821
         """
-        Writes a `Normalization` to either a new version folder, or overwrite a specific version.
+        Writes a `Normalization` to either a new version folder, or overwrites a specific version.
+        -- side effect: updates version number of incoming `Normalization`.
         """
         stateId, _ = self._generateStateId(runId)
         normalizationPath: str = self._constructCalibrationStatePath(stateId)
@@ -692,6 +734,8 @@ class LocalDataService:
 
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, name: str = None):
+        stateId, _ = self._generateStateId(runId)
+                    
         # pull pv data similar to how we generate stateId
         pvFile = self._readPVFile(runId)
         detectorState = DetectorState(
@@ -703,7 +747,7 @@ class LocalDataService:
         )
         # then read data from the common calibration state parameters stored at root of calibration directory
         instrumentConfig = self.readInstrumentConfig()
-        # then pull static values specified by malcolm from resources
+        # then pull static values specified by Malcolm from resources
         defaultGroupSliceValue = Config["calibration.parameters.default.groupSliceValue"]
         fwhmMultiplier = Limit(
             minimum=Config["calibration.parameters.default.FWHMMultiplier"][0],
@@ -721,8 +765,9 @@ class LocalDataService:
         L = instrumentConfig.L1 + instrumentConfig.L2
         tofLimit = Limit(minimum=lambdaLimit.minimum * L / 3.9561e-3, maximum=lambdaLimit.maximum * L / 3.9561e-3)
         particleBounds = ParticleBounds(wavelength=lambdaLimit, tof=tofLimit)
-        # finally add seedRun, creation date, and a human readable name
+
         instrumentState = InstrumentState(
+            id=stateId,
             instrumentConfig=instrumentConfig,
             detectorState=detectorState,
             gsasParameters=gsasParameters,
@@ -731,7 +776,13 @@ class LocalDataService:
             fwhmMultiplierLimit=fwhmMultiplier,
             peakTailCoefficient=peakTailCoefficient,
         )
-
+        
+        # Read the grouping-schema map from its separate JSON file, and attach it to the state:
+        #   * the 'stateId' of the grouping map is adjusted to match that of the state.
+        groupingMap = self._readGroupingMap(stateId)
+        instrumentState.attachGroupingMap(groupingMap, coerceStateId=True)
+        
+        # finally add seedRun, creation date, and a human readable name
         calibration = Calibration(
             instrumentState=instrumentState,
             name=name,
@@ -739,8 +790,12 @@ class LocalDataService:
             creationDate=datetime.datetime.now(),
             version=0,
         )
-
+        
         self.writeCalibrationState(runId, calibration)
+
+        # This is the _ONLY_ place that the grouping-schema map is written to its separate JSON file.
+        self._writeGroupingMap(stateId, instrumentState.groupingMap)
+                
         return calibration
 
     def checkCalibrationFileExists(self, runId: str):
@@ -762,6 +817,30 @@ class LocalDataService:
         if len(sampleFiles) < 1:
             raise RuntimeError(f"No samples found in {sampleFolder} for extensions {extensions}")
         return list(sampleFiles)
+
+    def _readGroupingMap(self, stateId) -> GroupingMap:
+        groupingMapPath = self._groupingMapPath(stateId)
+        if groupingMapPath.exists():
+            return parse_file_as(GroupingMap, groupingMapPath)
+        # Note: <grouping map>.stateId is updated from its default value at <instrument state>: root_validator.  _Not_ here.
+        return parse_file_as(GroupingMap, self._defaultGroupingMapPath())
+
+    def _writeGroupingMap(self, stateId: str, groupingMap: GroupingMap):
+        # Write a GroupingMap to a file in JSON format, but only if it has been modified.
+        groupingMapPath = self._groupingMapPath(stateId)
+        if not groupingMapPath.parent.exists():
+            raise FileNotFoundError(f'state-root directory "{groupingMapPath.parent}" does not exist')
+        
+        # Only write once and do not allow overwrite.
+        if groupingMap.isDirty() and not groupingMapPath.exists():         
+            write_model_pretty(groupingMap, groupingMapPath)
+            groupingMap.setDirty(false)
+    
+    def _defaultGroupingMapPath(self) -> Path:
+        return Path(Config["instrument.calibration.powder.grouping.home"]) / 'defaultGroupingMap.json'
+
+    def _groupingMapPath(self, stateId) -> Path:
+        return self.instrumentConfig.calibrationDirectory / 'Powder' / str(stateId) / 'groupingMap.json'
 
     def readGroupingFiles(self):
         groupingFolder = Config["instrument.calibration.powder.grouping.home"]
