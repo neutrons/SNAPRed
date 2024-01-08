@@ -24,11 +24,11 @@ class NormalizationCalibrationWorkflow:
         self.responses = []
         self.initializationComplete = False
         self.interfaceController = InterfaceController()
-        request = SNAPRequest(path="api/parameters", payload="calibration/normalizationAssessment")
+        request = SNAPRequest(path="api/parameters", payload="normalization/assessment")
         self.assessmentSchema = self.interfaceController.executeRequest(request).data
         self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
 
-        request = SNAPRequest(path="api/parameters", payload="calibration/saveNormalization")
+        request = SNAPRequest(path="api/parameters", payload="normalization/save")
         self.saveSchema = self.interfaceController.executeRequest(request).data
         self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
         cancelLambda = None
@@ -119,7 +119,7 @@ class NormalizationCalibrationWorkflow:
             smoothingParameter=self.initSmoothingParameter,
         )
 
-        request = SNAPRequest(path="calibration/normalization", payload=payload.json())
+        request = SNAPRequest(path="normalization", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
@@ -148,7 +148,7 @@ class NormalizationCalibrationWorkflow:
                 smoothingParameter=self.initSmoothingParameter,
             )
 
-        request = SNAPRequest(path="calibration/normalizationAssessment", payload=payload.json())
+        request = SNAPRequest(path="normalization/assessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
 
         self.responses.append(response)
@@ -167,7 +167,7 @@ class NormalizationCalibrationWorkflow:
         payload = NormalizationExportRequest(
             normalizationRecord=normalizationRecord, normalizationIndexEntry=normalizationIndexEntry
         )
-        request = SNAPRequest(path="calibration/saveNormalization", payload=payload.json())
+        request = SNAPRequest(path="normalization/save", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
         return response
@@ -181,7 +181,7 @@ class NormalizationCalibrationWorkflow:
             smoothingParameter=smoothingParameter,
         )
 
-        request = SNAPRequest(path="calibration/normalization", payload=payload.json())
+        request = SNAPRequest(path="normalization", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
@@ -203,6 +203,7 @@ class NormalizationCalibrationWorkflow:
         if groupingFileChanged or smoothingValueChanged:
             from mantid.simpleapi import DeleteWorkspace
 
+            # BAD! >:C This shouldnt be here. This should be in the backend
             DeleteWorkspace(Workspace="focussedRawVanadium")
             DeleteWorkspace(Workspace="smoothedOutput")
             self.initGroupingIndex = index

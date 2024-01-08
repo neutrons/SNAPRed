@@ -4,6 +4,7 @@ from typing import Generic, TypeVar, get_args
 from mantid.simpleapi import ConvertTableToMatrixWorkspace
 
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.FocusSpectraAlgorithm import FocusSpectraAlgorithm
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import CalibrationReductionAlgorithm
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
@@ -105,6 +106,8 @@ class DetectorPeakPredictorRecipe(GenericRecipe[DetectorPeakPredictor]):
 class GenerateTableWorkspaceFromListOfDictRecipe(GenericRecipe[GenerateTableWorkspaceFromListOfDict]):
     pass
 
+class FocusSpectraRecipe(GenericRecipe[FocusSpectraAlgorithm]):
+    pass
 
 class ConvertTableToMatrixWorkspaceRecipe(GenericRecipe[ConvertTableToMatrixWorkspace]):
     pass

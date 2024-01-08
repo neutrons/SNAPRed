@@ -1,6 +1,7 @@
 # import regex
 
 from snapred.backend.error.UserException import UserException
+from snapred.backend.service.NormalizationService import NormalizationService
 from snapred.backend.service.ApiService import ApiService
 from snapred.backend.service.CalibrantSampleService import CalibrantSampleService
 from snapred.backend.service.CalibrationService import CalibrationService
@@ -39,6 +40,7 @@ class ServiceFactory:
         self.serviceDirectory.registerService(VanadiumFocussedReductionService)
         self.serviceDirectory.registerService(SmoothDataExcludingPeaksService)
         self.serviceDirectory.registerService(LiteDataService)
+        self.serviceDirectory.registerService(NormalizationService)
 
     def getServiceNames(self):
         return self.serviceDirectory.keys()

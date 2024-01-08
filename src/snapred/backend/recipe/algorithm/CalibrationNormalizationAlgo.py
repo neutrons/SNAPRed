@@ -93,6 +93,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
         # run the algo
         self.log().notice("Execution of CalibrationNormalizationAlgo START!")
 
+        # SECTION 1111111111111111111111111111111111111111111111111111111111111111111111111111
         self.mantidSnapper.RawVanadiumCorrectionAlgorithm(
             "Correcting Vanadium Data...",
             InputWorkspace=self.inputWSName,
@@ -116,7 +117,9 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             OutputWorkspace=self.rawVanadiumWSName,
             ConvertFromPointData=True,
         )
-
+        # SECTION 1111111111111111111111111111111111111111111111111111111111111111111111111111
+        
+        # SECTION 2222222222222222222222222222222222222222222222222222222222222222222222222222
         self.mantidSnapper.DiffractionFocussing(
             "Performing Diffraction Focusing ...",
             InputWorkspace=self.rawVanadiumWSName,
@@ -140,20 +143,22 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             OutputWorkspace=self.rawVanadiumWSName,
             PreserveEvents=False,
         )
-
+        # SECTION 2222222222222222222222222222222222222222222222222222222222222222222222222222
         # make a copy of the diffraction focused data with peaks smoothed
         self.mantidSnapper.CloneWorkspace(
             "Cloning input workspace for lite data creation...",
             InputWorkspace=self.rawVanadiumWSName,
             OutputWorkspace=self.smoothRawVanadiumWSName,
         )
-
+        
+        # SECTION 3333333333333333333333333333333333333333333333333333333333333333333333333333
         self.mantidSnapper.SmoothDataExcludingPeaksAlgo(
             "Fit and Smooth Peaks...",
             InputWorkspace=self.smoothRawVanadiumWSName,
             Ingredients=self.smoothDataIngredients.json(),
             OutputWorkspace=self.smoothRawVanadiumWSName,
         )
+        # SECTION 3333333333333333333333333333333333333333333333333333333333333333333333333333
 
         self.mantidSnapper.executeQueue()
 

@@ -1,2 +1,5 @@
 instrument:
-  home: /home/wqp/SNS/SNAP/
+  name: SNAP
+  home: /SNS/SNAP/
+  calibration:
+    home: ${instrument.home}shared/Calibration_dynamic
