@@ -35,7 +35,7 @@ from snapred.backend.dao.request import (
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
-from snapred.backend.service import CalibrationService
+from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 
 from snapred.backend.log.logger import snapredLogger
