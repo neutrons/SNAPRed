@@ -121,7 +121,8 @@ class NormalizationService(Service):
             samplePath=request.samplePath,
             groupingPath=request.groupingPath,
             useLiteMode=request.useLiteMode,
-            runNumber=request.runNumber
+            runNumber=request.runNumber,
+            smoothingParameter=request.smoothingParameter
         )
         outputWorkspace = self.smoothDataExcludingPeaks(smoothRequest)
         
@@ -173,7 +174,7 @@ class NormalizationService(Service):
         return RawVanadiumCorrectionRecipe().executeRecipe(InputWorkspace=request.inputWorkspace,
                 BackgroundWorkspace=request.backgroundWorkspace,
                 Ingredients=reductionIngredients,
-                CalibrationSample=calibrantSample,
+                CalibrantSample=calibrantSample,
                 OutputWorkspace=request.outputWorkspace)
 
     @FromString
@@ -183,13 +184,10 @@ class NormalizationService(Service):
         reductionIngredients = self.dataFactoryService.getReductionIngredients(
             request.runNumber, pixelGroup
         )
-        ingredients = FocusSpectraIngredients(
-                InputWorkspace=request.outputWorkspace,
-                GroupingWorkspace=request.groupingPath,
+        return FocusSpectraRecipe().executeRecipe(InputWorkspace=request.outputWorkspace,
+                GroupingWorkspace=request.groupingWorkspace,
                 Ingredients=reductionIngredients,
-                OutputWorkspace=request.outputWorkspace
-        )
-        return FocusSpectraRecipe().executeRecipe(**ingredients.dict())
+                OutputWorkspace=request.outputWorkspace)
     
     @FromString
     def smoothDataExcludingPeaks(self, request:SmoothDataExcludingPeaksRequest):

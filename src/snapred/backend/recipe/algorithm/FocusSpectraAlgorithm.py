@@ -36,12 +36,12 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients):
-        pixelGroupingParam = self.ingredients.pixelGroupingParameters
-        self.dResolutionMin = [pgp.dResolution.minimum for pgp in pixelGroupingParam]
-        self.dResolutionMax = [pgp.dResolution.maximum for pgp in pixelGroupingParam]
-        instrumentConfig = ingredients.reductionState.instrumentConfig
+        pixelGroupingParam = self.ingredients.pixelGroup.pixelGroupingParameters
+        self.dResolutionMin = [pgp.dResolution.minimum for _,pgp in pixelGroupingParam.items()]
+        self.dResolutionMax = [pgp.dResolution.maximum for _,pgp in pixelGroupingParam.items()]
+        instrumentConfig = self.ingredients.reductionState.instrumentConfig
         self.dRelativeResolution = [
-            -abs(pgp.dRelativeResolution / instrumentConfig.NBins) for pgp in pixelGroupingParam
+            -abs(pgp.dRelativeResolution / instrumentConfig.NBins) for _,pgp in pixelGroupingParam.items()
         ]
         pass
 
@@ -75,8 +75,8 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         return errors
 
     def PyExec(self):
-        ingredients: Ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
-        self.chopIngredients(ingredients)
+        self.ingredients: Ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
+        self.chopIngredients(self.ingredients)
         self.unbagGroceries()
 
         self.log().notice("Execute of FocusSpectra START!")

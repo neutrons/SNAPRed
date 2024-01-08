@@ -15,7 +15,7 @@ class CalibrationRecord(BaseModel):
     runNumber: str
     crystalInfo: CrystallographicInfo
     calibrationFittingIngredients: Calibration
-    pixelGroups: List[PixelGroup]
+    pixelGroups: Optional[List[PixelGroup]] # TODO: really shouldnt be optional, will be when sns data fixed
     focusGroupCalibrationMetrics: FocusGroupMetric
     workspaceNames: List[WorkspaceName]
     version: Optional[int]

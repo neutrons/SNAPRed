@@ -12,3 +12,4 @@ class SmoothDataExcludingPeaksRequest(BaseModel):
     groupingPath: str
     samplePath: str
     runNumber: str
+    smoothingParameter: float
