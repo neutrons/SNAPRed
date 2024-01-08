@@ -117,7 +117,7 @@ class NormalizationService(Service):
             
         smoothRequest = SmoothDataExcludingPeaksRequest(
             inputWorkspace=outputWorkspace,
-            outputWorkspace=outputWorkspace,
+            outputWorkspace="smoothedOutput",
             samplePath=request.samplePath,
             groupingPath=request.groupingPath,
             useLiteMode=request.useLiteMode,
