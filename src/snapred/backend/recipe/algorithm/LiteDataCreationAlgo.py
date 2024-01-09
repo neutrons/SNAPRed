@@ -136,6 +136,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             el.clearDetectorIDs()
             el.addDetectorID(i)
         liteWksp.setComment(liteWksp.getComment() + "\nLite")
+        self.setProperty("OutputWorkspace", liteWksp)
 
 
 # Register algorithm with Mantid
