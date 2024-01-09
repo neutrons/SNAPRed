@@ -1,3 +1,4 @@
+from functools import lru_cache
 import json
 import time
 from datetime import date
@@ -104,6 +105,7 @@ class CalibrationService(Service):
                 raise
         return {}
 
+    @lru_cache
     def getCalibration(self,
         runNumber,
         definition: str,

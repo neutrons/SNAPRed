@@ -141,6 +141,7 @@ class NormalizationCalibrationWorkflow:
                 samplePath=str(self.samplePaths[self.sampleIndex]),
                 groupingPath=str(self.lastGroupingFile),
                 smoothingParameter=self.lastSmoothingParameter,
+                dMin=self.lastDMin,
             )
         else:
             payload = NormalizationCalibrationRequest(
@@ -149,6 +150,7 @@ class NormalizationCalibrationWorkflow:
                 samplePath=str(self.samplePaths[self.sampleIndex]),
                 groupingPath=str(self.groupingFiles[self.initGroupingIndex]),
                 smoothingParameter=self.initSmoothingParameter,
+                dMin=self.initDMin,
             )
 
         request = SNAPRequest(path="normalization/assessment", payload=payload.json())
