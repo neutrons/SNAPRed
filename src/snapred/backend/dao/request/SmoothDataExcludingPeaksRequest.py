@@ -1,8 +1,6 @@
-
+from pydantic import BaseModel
 
 from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
-
-from pydantic import BaseModel
 
 
 class SmoothDataExcludingPeaksRequest(BaseModel):
@@ -13,3 +11,4 @@ class SmoothDataExcludingPeaksRequest(BaseModel):
     samplePath: str
     runNumber: str
     smoothingParameter: float
+    dMin: float
