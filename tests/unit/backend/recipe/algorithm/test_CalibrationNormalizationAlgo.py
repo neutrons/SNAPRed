@@ -118,13 +118,14 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
         del calibrantJSON["material"]["packingFraction"]
         calibrantSample = CalibrantSamples.parse_obj(calibrantJSON)
         calibrantSample.crystallography.cifFile = fakeCIF
-        crystalInfo = CrystallographicInfoService().ingest(fakeCIF)["crystalInfo"]
+        crystalInfo = CrystallographicInfoService().ingest(fakeCIF, dMin=0.4)["crystalInfo"]
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
 
         smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
             smoothingParameter=randomSmoothingParameter,
             instrumentState=fakeInstrumentState,
             crystalInfo=crystalInfo,
+            dMin=0.4,
         )
 
         return Ingredients(

@@ -98,6 +98,7 @@ class NormalizationCalibrationWorkflow:
         self.initSmoothingParameter = float(view.getFieldText("smoothingParameter"))
         self.samplePath = view.sampleDropDown.currentText()
         self.groupingPath = view.groupingFileDropDown.currentText()
+        self.initDMin = float(self._specifyNormalizationView.fielddMin.field.text())
 
         self._specifyNormalizationView.updateFields(
             sampleIndex=self.sampleIndex,
@@ -117,6 +118,7 @@ class NormalizationCalibrationWorkflow:
             samplePath=str(self.samplePaths[self.sampleIndex]),
             groupingPath=str(self.groupingFiles[self.initGroupingIndex]),
             smoothingParameter=self.initSmoothingParameter,
+            dMin=self.initDMin,
         )
 
         request = SNAPRequest(path="normalization", payload=payload.json())
@@ -172,13 +174,14 @@ class NormalizationCalibrationWorkflow:
         self.responses.append(response)
         return response
 
-    def callNormalizationCalibration(self, groupingFile, smoothingParameter):
+    def callNormalizationCalibration(self, groupingFile, smoothingParameter, dMin):
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
             samplePath=self.samplePaths[self.sampleIndex],
             groupingPath=groupingFile,
             smoothingParameter=smoothingParameter,
+            dMin=dMin,
         )
 
         request = SNAPRequest(path="normalization", payload=payload.json())
@@ -190,7 +193,7 @@ class NormalizationCalibrationWorkflow:
 
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
-    def onNormalizationValueChange(self, index, smoothingValue):  # noqa: ARG002
+    def onNormalizationValueChange(self, index, smoothingValue, dMin):  # noqa: ARG002
         if not self.initializationComplete:
             return
 
@@ -208,7 +211,7 @@ class NormalizationCalibrationWorkflow:
             DeleteWorkspace(Workspace="smoothedOutput")
             self.initGroupingIndex = index
             self.initSmoothingParameter = smoothingValue
-            self.callNormalizationCalibration(self.groupingFiles[index], smoothingValue)
+            self.callNormalizationCalibration(self.groupingFiles[index], smoothingValue, dMin)
         else:
             if "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
                 focusWorkspace = self.responses[-1].data["outputWorkspace"]

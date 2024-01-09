@@ -4,6 +4,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
 
+from snapred.meta.Config import Config
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
@@ -14,7 +15,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
     signalCalibrantUpdate = pyqtSignal(int)
     signalUpdateSmoothingParameter = pyqtSignal(float)
-    signalValueChanged = pyqtSignal(int, float)
+    signalValueChanged = pyqtSignal(int, float, float)
     signalWorkspacesUpdate = pyqtSignal(str, str)
 
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
@@ -79,12 +80,15 @@ class SpecifyNormalizationCalibrationView(QWidget):
             lambda: self.updateSliderFromLineEdit(self.smoothingLineEdit.text())
         )
 
+        self.fielddMin = LabeledField("dMin :", QLineEdit(str(Config["normalization.parameters.default.dMin"])), self)
+
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
 
         smoothingLayout = QHBoxLayout()
         smoothingLayout.addWidget(self.smoothingSlider)
         smoothingLayout.addWidget(self.smoothingLineEdit)
+        smoothingLayout.addWidget(self.fielddMin)
 
         self.layout.addWidget(self.canvas, 0, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 1, 0)
@@ -133,7 +137,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
     def emitValueChange(self):
         index = self.groupingDropDown.currentIndex()
         smoothingValue = self.smoothingSlider.value() / 100.0
-        self.signalValueChanged.emit(index, smoothingValue)
+        dMin = float(self.fielddMin.field.text())
+        self.signalValueChanged.emit(index, smoothingValue, dMin)
 
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):
         self.focusWorkspace = focusWorkspace
