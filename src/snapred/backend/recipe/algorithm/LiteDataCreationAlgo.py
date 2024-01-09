@@ -88,7 +88,8 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             # add the word "Lite" to the comments for good measure
             outWS = self.mantidSnapper.mtd[outputWorkspaceName]
             outWS.setComment(outWS.getComment() + "\nLite")
-            return
+            self.setProperty("OutputWorkspace", outWS)
+            return  # NOTE EARLY
 
         # use group detector with specific grouping file to create lite data
         self.mantidSnapper.GroupDetectors(
@@ -121,12 +122,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
                 Workspace=inputWorkspaceName,
             )
 
-        if self.getProperty("LiteDataMapWorkspace").isDefault:
-            self.mantidSnapper.WashDishes(
-                "Removing lite map workspace",
-                Workspace=groupingWorkspaceName,
-            )
-
         # iterate over spectra in grouped workspace, delete old ids and replace
         self.mantidSnapper.executeQueue()
         liteWksp = self.mantidSnapper.mtd[outputWorkspaceName]
@@ -136,6 +131,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             el.clearDetectorIDs()
             el.addDetectorID(i)
         liteWksp.setComment(liteWksp.getComment() + "\nLite")
+        self.setProperty("OutputWorkspace", liteWksp)
 
 
 # Register algorithm with Mantid
