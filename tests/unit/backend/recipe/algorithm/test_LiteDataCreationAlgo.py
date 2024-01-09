@@ -372,6 +372,7 @@ def test_no_run_twice():
     )
     #
     liteDataCreationAlgo.mantidSnapper = mock.MagicMock()
+    liteDataCreationAlgo.setProperty = mock.MagicMock()
     liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
     assert liteDataCreationAlgo.execute()
     liteDataCreationAlgo.mantidSnapper.GroupDetectors.called_once()
