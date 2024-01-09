@@ -38,7 +38,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.fieldBackgroundRunNumber.setEnabled(False)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
-        self.figure = plt.figure()
+        self.figure = plt.figure(figsize=(50, 50))
         self.canvas = FigureCanvas(self.figure)
 
         self.sampleDropDown = QComboBox()
@@ -191,5 +191,5 @@ class SpecifyNormalizationCalibrationView(QWidget):
                 ax.set_xlabel("d-Spacing (Å)")
                 ax.set_ylabel("Intensity")
 
-        self.figure.tight_layout()
+        # self.figure.tight_layout(pad=5.0)
         self.canvas.draw()

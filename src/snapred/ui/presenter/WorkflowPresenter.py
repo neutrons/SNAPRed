@@ -70,7 +70,7 @@ class WorkflowPresenter(object):
             QMessageBox.critical(
                 self.view,
                 "Error",
-                f"Error: An error occured in the UI. Examine logs for details",
+                "Error: An error occured in the UI. Examine logs for details",
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
