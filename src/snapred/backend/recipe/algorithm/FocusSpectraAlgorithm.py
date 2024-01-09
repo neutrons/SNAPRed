@@ -1,3 +1,4 @@
+from ast import In
 import json
 from typing import Dict
 
@@ -100,9 +101,12 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             XMin=self.dMin,
             XMax=self.dMax,
             Delta=self.dBin,
-            OutputWorkspace=self.outputWSName,
-            PreserveEvents=True,
+            OutputWorkspace=self.outputWSName+"_noevents",
+            PreserveEvents=False,
         )
+        self.mantidSnapper.DeleteWorkspace("Delete intermediate ws", Workspace=self.outputWSName)
+        self.setProperty("OutputWorkspace", self.outputWSName+"_noevents")
+        
         self.mantidSnapper.executeQueue()
 
 

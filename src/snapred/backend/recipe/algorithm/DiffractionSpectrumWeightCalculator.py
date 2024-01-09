@@ -7,6 +7,7 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    IEventWorkspace
 )
 from mantid.kernel import Direction
 
@@ -93,7 +94,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
         weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
-        isEventWorkspace: bool = "EventWorkspace" in weight_ws.id()
+        isEventWorkspace: bool = isinstance(weight_ws, IEventWorkspace)
         if isEventWorkspace:
             self.mantidSnapper.ConvertToMatrixWorkspace(
                 "Converting event workspace to histogram workspace",

@@ -128,7 +128,7 @@ class GroceryService:
         else:
             return None
 
-    def getCloneOfWorkspace(self, name: WorkspaceName, copy: WorkspaceName):
+    def     getCloneOfWorkspace(self, name: WorkspaceName, copy: WorkspaceName):
         """
         Simple wrapper to clone a workspace, for the service layer.
         Returns a pointer to the cloned workspace, if the original workspace exists.

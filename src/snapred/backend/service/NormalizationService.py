@@ -99,11 +99,11 @@ class NormalizationService(Service):
         )
         outputWorkspace = self.vanadiumCorrection(vanadiumCorrectionRequest)
         # clone output correctedVanadium
-        correctedVanadiumWs = self.groceryService.getCloneOfWorkspace(outputWorkspace, "correctedVanadium")
+        correctedVanadiumWs = "correctedVanadium"
+        self.groceryService.getCloneOfWorkspace(outputWorkspace, correctedVanadiumWs)
         # 2. focus
-        # TODO: Have focus spectra lookup ingredients.
         requestFs = FocusSpectraRequest(
-                inputWorkspace=outputWorkspace,
+                inputWorkspace=correctedVanadiumWs,
                 groupingWorkspace=groceries["groupingWorkspace"],
                 runNumber=request.runNumber,
                 groupingPath=request.groupingPath,
@@ -112,11 +112,12 @@ class NormalizationService(Service):
         )
         outputWorkspace = self.focusSpectra(requestFs)
         # clone output focussedVanadium
-        focussedVanadiumWs = self.groceryService.getCloneOfWorkspace(outputWorkspace, "focussedCorrectedVanadium")
+        focussedVanadiumWs = "focussedCorrectedVanadium"
+        self.groceryService.getCloneOfWorkspace(outputWorkspace, focussedVanadiumWs)
         # 3. smooth
             
         smoothRequest = SmoothDataExcludingPeaksRequest(
-            inputWorkspace=outputWorkspace,
+            inputWorkspace=focussedVanadiumWs,
             outputWorkspace="smoothedOutput",
             samplePath=request.samplePath,
             groupingPath=request.groupingPath,
@@ -130,7 +131,7 @@ class NormalizationService(Service):
             correctedVanadium=correctedVanadiumWs,
             outputWorkspace=focussedVanadiumWs,
             smoothedOutput=outputWorkspace
-        )
+        ).dict()
         
 
     @FromString
@@ -184,7 +185,7 @@ class NormalizationService(Service):
         reductionIngredients = self.dataFactoryService.getReductionIngredients(
             request.runNumber, pixelGroup
         )
-        return FocusSpectraRecipe().executeRecipe(InputWorkspace=request.outputWorkspace,
+        return FocusSpectraRecipe().executeRecipe(InputWorkspace=request.inputWorkspace,
                 GroupingWorkspace=request.groupingWorkspace,
                 Ingredients=reductionIngredients,
                 OutputWorkspace=request.outputWorkspace)

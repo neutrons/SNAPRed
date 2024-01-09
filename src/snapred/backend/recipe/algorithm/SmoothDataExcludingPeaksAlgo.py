@@ -18,7 +18,9 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    IEventWorkspace
 )
+
 from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline
 

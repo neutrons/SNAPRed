@@ -58,11 +58,19 @@ class WorkflowPresenter(object):
         self.worker_pool.submitWorker(self.worker)
 
     def _handleFailure(self, result):
-        if result.code - 200 > 100:
+        if result and result.code - 200 > 100:
             QMessageBox.critical(
                 self.view,
                 "Error",
                 f"Error {result.code}: {result.message}",
+                QMessageBox.Ok,
+                QMessageBox.Ok,
+            )
+        else:
+            QMessageBox.critical(
+                self.view,
+                "Error",
+                f"Error: An error occured in the UI. Examine logs for details",
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
