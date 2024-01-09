@@ -122,12 +122,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
                 Workspace=inputWorkspaceName,
             )
 
-        if self.getProperty("LiteDataMapWorkspace").isDefault:
-            self.mantidSnapper.WashDishes(
-                "Removing lite map workspace",
-                Workspace=groupingWorkspaceName,
-            )
-
         # iterate over spectra in grouped workspace, delete old ids and replace
         self.mantidSnapper.executeQueue()
         liteWksp = self.mantidSnapper.mtd[outputWorkspaceName]
