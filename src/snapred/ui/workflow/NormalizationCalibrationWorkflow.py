@@ -98,7 +98,7 @@ class NormalizationCalibrationWorkflow:
         self.initSmoothingParameter = float(view.getFieldText("smoothingParameter"))
         self.samplePath = view.sampleDropDown.currentText()
         self.groupingPath = view.groupingFileDropDown.currentText()
-        self.initDMin = float(self._specifyNormalizationView.fielddMin.currentText())
+        self.initDMin = float(self._specifyNormalizationView.fielddMin.field.text())
 
         self._specifyNormalizationView.updateFields(
             sampleIndex=self.sampleIndex,

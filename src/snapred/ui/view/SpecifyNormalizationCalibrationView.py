@@ -137,7 +137,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
     def emitValueChange(self):
         index = self.groupingDropDown.currentIndex()
         smoothingValue = self.smoothingSlider.value() / 100.0
-        dMin = float(self.fielddMin.currentText())
+        dMin = float(self.fielddMin.field.text())
         self.signalValueChanged.emit(index, smoothingValue, dMin)
 
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):
