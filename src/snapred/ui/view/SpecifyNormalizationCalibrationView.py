@@ -17,6 +17,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
     signalUpdateSmoothingParameter = pyqtSignal(float)
     signalValueChanged = pyqtSignal(int, float, float)
     signalWorkspacesUpdate = pyqtSignal(str, str)
+    signalUpdateRecalculationButton = pyqtSignal(bool)
 
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
         super().__init__(parent)
@@ -100,6 +101,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
         self.layout.setRowStretch(0, 3)
         self.layout.setRowStretch(1, 1)
+        
+        self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
 
     def _updateRunNumber(self, runNumber):
         self.fieldRunNumber.setText(runNumber)
@@ -193,3 +196,12 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
         # self.figure.tight_layout(pad=5.0)
         self.canvas.draw()
+
+    def setEnableRecalculateButton(self, enable):
+        self.recalculationButton.setEnabled(enable)
+        
+    def disableRecalculateButton(self):
+        self.signalUpdateRecalculationButton.emit(False)
+        
+    def enableRecalculateButton(self):
+        self.signalUpdateRecalculationButton.emit(True)

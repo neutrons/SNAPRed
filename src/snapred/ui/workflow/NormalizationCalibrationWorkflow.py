@@ -194,7 +194,7 @@ class NormalizationCalibrationWorkflow:
 
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
-    def applySmoothingUpdate(self, dMin):
+    def applySmoothingUpdate(self, index, smoothingValue, dMin):
         from mantid.simpleapi import DeleteWorkspace
         workspaces = self.responses[-1].data
         DeleteWorkspace(Workspace=workspaces["smoothedOutput"])
@@ -217,6 +217,8 @@ class NormalizationCalibrationWorkflow:
     def onNormalizationValueChange(self, index, smoothingValue, dMin):  # noqa: ARG002
         if not self.initializationComplete:
             return
+        # disable recalculate button
+        self._specifyNormalizationView.disableRecalculateButton()
 
         self.lastGroupingFile = self.groupingFiles[index]
         self.lastSmoothingParameter = smoothingValue
@@ -227,15 +229,17 @@ class NormalizationCalibrationWorkflow:
         dMinValueChanged = self.initDMin != self.lastDMin
         if groupingFileChanged:
             from mantid.simpleapi import DeleteWorkspace
-
+            
+            workspaces = self.responses[-1].data
+    
             # BAD! >:C This shouldnt be here. This should be in the backend
-            DeleteWorkspace(Workspace="focussedRawVanadium")
-            DeleteWorkspace(Workspace="smoothedOutput")
+            DeleteWorkspace(Workspace=workspaces["outputWorkspace"])
+            DeleteWorkspace(Workspace=workspaces["smoothedOutput"])
             self.initGroupingIndex = index
             self.initSmoothingParameter = smoothingValue
             self.callNormalizationCalibration(self.groupingFiles[index], smoothingValue, dMin)
         elif smoothingValueChanged or dMinValueChanged:
-            self.applySmoothingUpdate(dMin)
+            self.applySmoothingUpdate(index, smoothingValue, dMin)
         else:
             if "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
                 focusWorkspace = self.responses[-1].data["outputWorkspace"]
@@ -243,6 +247,7 @@ class NormalizationCalibrationWorkflow:
                 self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
             else:
                 raise Exception("Expected data not found in the last response")
+        self._specifyNormalizationView.enableRecalculateButton()
 
     @property
     def widget(self):
