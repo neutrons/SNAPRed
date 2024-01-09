@@ -121,6 +121,8 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
                 mask_indices = np.where(np.logical_and(x > peak.position.minimum, x < peak.position.maximum))
                 weights[mask_indices] = 0.0
             weight_ws.setY(index, weights)
+        
+        self.setProperty("WeightWorkspace", weight_ws)
 
         if isEventWorkspace:
             self.mantidSnapper.ConvertToEventWorkspace(

@@ -88,7 +88,8 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             # add the word "Lite" to the comments for good measure
             outWS = self.mantidSnapper.mtd[outputWorkspaceName]
             outWS.setComment(outWS.getComment() + "\nLite")
-            return
+            self.setProperty("OutputWorkspace", outWS)
+            return # NOTE EARLY
 
         # use group detector with specific grouping file to create lite data
         self.mantidSnapper.GroupDetectors(
