@@ -80,11 +80,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
             lambda: self.updateSliderFromLineEdit(self.smoothingLineEdit.text())
         )
 
-        self.fielddMin: LabeledField = LabeledField(
-            "dMin :",
-            float(Config["normalization.parameters.default.dMin"]),
-            self,
-        )
+        self.fielddMin = LabeledField("dMin :", QLineEdit(str(Config["normalization.parameters.default.dMin"])), self)
 
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
