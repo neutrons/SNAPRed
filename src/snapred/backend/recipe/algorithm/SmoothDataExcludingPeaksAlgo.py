@@ -112,7 +112,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             # fill in the removed data using the spline function and original datapoints
             smoothing_results = tck(xMidpoints, extrapolate=False)
             outputWorkspace.setY(index, smoothing_results)
-            
+
         self.setProperty("OutputWorkspace", outputWorkspace)
 
         self.mantidSnapper.WashDishes(
