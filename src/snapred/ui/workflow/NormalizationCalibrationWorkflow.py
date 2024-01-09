@@ -11,6 +11,7 @@ from snapred.backend.dao.request import (
     NormalizationCalibrationRequest,
     NormalizationExportRequest,
 )
+from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
 from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
@@ -193,17 +194,38 @@ class NormalizationCalibrationWorkflow:
 
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
+    def applySmoothingUpdate(self, dMin):
+        from mantid.simpleapi import DeleteWorkspace
+        workspaces = self.responses[-1].data
+        DeleteWorkspace(Workspace=workspaces["smoothedOutput"])
+        payload = SmoothDataExcludingPeaksRequest(
+            inputWorkspace=workspaces["outputWorkspace"],
+            outputWorkspace=workspaces["smoothedOutput"],
+            samplePath=self.samplePaths[self.sampleIndex],
+            groupingPath=self.groupingFiles[index],
+            runNumber=self.runNumber,
+            smoothingParameter=smoothingValue,
+            dMin=dMin,
+        )
+        request = SNAPRequest(path="normalization/smooth", payload=payload.json())
+        response = self.interfaceController.executeRequest(request)
+        focusWorkspace = workspaces["outputWorkspace"]
+        smoothWorkspace = response.data
+        self.responses[-1].data["smoothedOutput"] = response.data
+        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+
     def onNormalizationValueChange(self, index, smoothingValue, dMin):  # noqa: ARG002
         if not self.initializationComplete:
             return
 
         self.lastGroupingFile = self.groupingFiles[index]
         self.lastSmoothingParameter = smoothingValue
+        self.lastDMin = dMin
 
         groupingFileChanged = self.groupingFiles[self.initGroupingIndex] != self.lastGroupingFile
         smoothingValueChanged = self.initSmoothingParameter != self.lastSmoothingParameter
-
-        if groupingFileChanged or smoothingValueChanged:
+        dMinValueChanged = self.initDMin != self.lastDMin
+        if groupingFileChanged:
             from mantid.simpleapi import DeleteWorkspace
 
             # BAD! >:C This shouldnt be here. This should be in the backend
@@ -212,6 +234,8 @@ class NormalizationCalibrationWorkflow:
             self.initGroupingIndex = index
             self.initSmoothingParameter = smoothingValue
             self.callNormalizationCalibration(self.groupingFiles[index], smoothingValue, dMin)
+        elif smoothingValueChanged or dMinValueChanged:
+            self.applySmoothingUpdate(dMin)
         else:
             if "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
                 focusWorkspace = self.responses[-1].data["outputWorkspace"]

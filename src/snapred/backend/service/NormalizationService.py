@@ -55,6 +55,7 @@ class NormalizationService(Service):
         self.registerPath("", self.normalization)
         self.registerPath("assessment", self.normalizationAssessment)
         self.registerPath("save", self.saveNormalization)
+        self.registerPath("smooth", self.smoothDataExcludingPeaks)
         return
 
     @staticmethod

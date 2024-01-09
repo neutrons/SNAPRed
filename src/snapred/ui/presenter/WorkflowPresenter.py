@@ -66,7 +66,7 @@ class WorkflowPresenter(object):
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
-        else:
+        elif not result:
             QMessageBox.critical(
                 self.view,
                 "Error",
