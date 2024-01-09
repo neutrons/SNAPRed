@@ -10,6 +10,10 @@ from snapred.meta.Config import Config
 
 
 class CalibrationReductionAlgorithm(PythonAlgorithm):
+    TOF_MIN = Config["constants.CalibrationReduction.tofMin"]
+    TOF_MAX = Config["constants.CalibrationReduction.tofMax"]
+    REBIN_PARAMS = Config["constants.CalibrationReduction.rebinParams"]
+
     def category(self):
         return "SNAPRed Calibration"
 
@@ -33,8 +37,8 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
         raw_data = self.mantidSnapper.LoadEventNexus(
             "Loading Event Nexus for {} ...".format(rawDataPath),
             Filename=rawDataPath,
-            FilterByTofMin=2000,
-            FilterByTofMax=14500,
+            FilterByTofMin=self.TOF_MIN,
+            FilterByTofMax=self.TOF_MAX,
             OutputWorkspace="raw_data",
         )
 
@@ -42,7 +46,7 @@ class CalibrationReductionAlgorithm(PythonAlgorithm):
             "Rebinning to 2000 bins logarithmic...",
             InputWorkspace=raw_data,
             OutputWorkspace=raw_data,
-            Params="2000,-0.001,14500",
+            Params=self.REBIN_PARAMS,
         )
 
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(

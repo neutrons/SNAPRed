@@ -10,7 +10,7 @@ from mantid.api import (
     PropertyMode,
     PythonAlgorithm,
 )
-from mantid.kernel import Direction
+from mantid.kernel import Direction, PhysicalConstants
 
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.state.InstrumentState import InstrumentState
@@ -20,6 +20,9 @@ from snapred.meta.redantic import list_to_raw
 
 
 class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
+    # conversion factor from microsecond/Angstrom to meters
+    CONVERSION_FACTOR = 10000.0 * PhysicalConstants.h / PhysicalConstants.NeutronMass
+
     def category(self):
         return "SNAPRed Internal"
 
@@ -119,8 +122,8 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                 groupAverage2Theta /= count
             del twoThetaTemp
 
-            dMin = 3.9561e-3 * (1 / (2 * math.sin(groupMax2Theta / 2))) * self.tofMin / self.L
-            dMax = 3.9561e-3 * (1 / (2 * math.sin(groupMin2Theta / 2))) * self.tofMax / self.L
+            dMin = self.CONVERSION_FACTOR * (1 / (2 * math.sin(groupMax2Theta / 2))) * self.tofMin / self.L
+            dMax = self.CONVERSION_FACTOR * (1 / (2 * math.sin(groupMin2Theta / 2))) * self.tofMax / self.L
             delta_d_over_d = resolutionWS.readY(groupIndex)[0]
 
             allGroupingParams.append(

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Tuple
 
 import h5py
 from mantid.api import AlgorithmManager, mtd
+from mantid.kernel import PhysicalConstants
 from pydantic import parse_file_as
 
 from snapred.backend.dao import (
@@ -64,6 +65,8 @@ class LocalDataService:
     instrumentConfig: "InstrumentConfig"  # Optional[InstrumentConfig]
     verifyPaths: bool = True
     groceryService: GroceryService = GroceryService()
+    # conversion factor from microsecond/Angstrom to meters
+    CONVERSION_FACTOR = 10000.0 * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def __init__(self) -> None:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
@@ -719,7 +722,10 @@ class LocalDataService:
             maximum=detectorState.wav + (instrumentConfig.bandwidth / 2),
         )
         L = instrumentConfig.L1 + instrumentConfig.L2
-        tofLimit = Limit(minimum=lambdaLimit.minimum * L / 3.9561e-3, maximum=lambdaLimit.maximum * L / 3.9561e-3)
+        tofLimit = Limit(
+            minimum=lambdaLimit.minimum * L / self.CONVERSION_FACTOR,
+            maximum=lambdaLimit.maximum * L / self.CONVERSION_FACTOR,
+        )
         particleBounds = ParticleBounds(wavelength=lambdaLimit, tof=tofLimit)
         # finally add seedRun, creation date, and a human readable name
         instrumentState = InstrumentState(

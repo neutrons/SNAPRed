@@ -16,6 +16,7 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
@@ -29,6 +30,10 @@ class PixelDiffractionCalibration(PythonAlgorithm):
     # NOTE: there is already a method for creating a copy of data from a clean version
     # therefore there is no reason not to deform the input workspace to this algorithm
     # instead, the original clean file is preserved in a separate location
+
+    MAX_DSPACE_SHIFT = Config["constants.PixelDiffractionCalibration.maxDSpaceShift"]
+    X_MIN = Config["constants.PixelDiffractionCalibration.XMin"]
+    X_MAX = Config["constants.PixelDiffractionCalibration.XMax"]
 
     def category(self):
         return "SNAPRed Diffraction Calibration"
@@ -70,7 +75,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # from the grouped peak lists, find the maximum shift in d-spacing
         self.maxDSpaceShifts: Dict[int, float] = {}
         for peakList in ingredients.groupedPeakLists:
-            self.maxDSpaceShifts[peakList.groupID] = 2.5 * peakList.maxfwhm
+            self.maxDSpaceShifts[peakList.groupID] = self.MAX_DSPACE_SHIFT * peakList.maxfwhm
 
         # create string name for output calibration table
         # TODO: use workspace namer
@@ -226,8 +231,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 f"Calculate offset workspace {wsoff}",
                 InputWorkspace=wscc + f"_group{groupID}",
                 OutputWorkspace=wsoff,
-                XMin=-100,
-                XMax=100,
+                XMin=self.X_MIN,
+                XMax=self.X_MAX,
                 OffsetMode="Signed",
                 MaxOffset=self.maxOffset,
             )
