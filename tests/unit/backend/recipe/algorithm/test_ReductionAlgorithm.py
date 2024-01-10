@@ -27,7 +27,6 @@ with mock.patch.dict(
         reductionState.instrumentConfig.nexusDirectory = Resource.getPath("inputs/reduction/")
         reductionState.instrumentConfig.reducedDataDirectory = Resource.getPath("inputs/reduction/")
         reductionState.instrumentConfig.reductionRecordDirectory = Resource.getPath("inputs/reduction/")
-        reductionState.stateConfig.vanadiumFilePath = Resource.getPath("inputs/reduction/shared/lite/fake_vanadium.nxs")
         pixelGroup = reductionIngredients.pixelGroup
         return ReductionIngredients(
             runConfig=runConfig,

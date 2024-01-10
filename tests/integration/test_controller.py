@@ -14,7 +14,6 @@ def test_excuteRequest_noop():
         "calibrant_sample",
         "api",
         "fitMultiplePeaks",
-        "vanadiumReduction",
         "smoothDataExcludingPeaks",
         "reduceLiteData",
     ]
