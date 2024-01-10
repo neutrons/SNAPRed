@@ -251,6 +251,35 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         assert algo.execute()
 
 
+# # old test from VanadiumFocussedReductionAlgorithm
+#     def test_execute(self):
+#         vanAlgo = VanadiumFocussedReductionAlgorithm()
+#         vanAlgo.initialize()
+#         vanAlgo.mantidSnapper = mock.MagicMock()
+#         vanAlgo.mantidSnapper.mtd = mock.MagicMock(side_effect={"diffraction_focused_vanadium": ["ws1", "ws2"]})
+#         vanAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
+#         vanAlgo.setProperty("SmoothDataIngredients", self.smoothIngredients.json())
+#         vanAlgo.execute()
+#         wsGroupName = vanAlgo.getProperty("OutputWorkspaceGroup").value
+#         assert wsGroupName == "diffraction_focused_vanadium"
+#         expected_calls = [
+#             call.LoadNexus,
+#             call.CustomGroupWorkspace,
+#             call.ConvertUnits,
+#             call.DiffractionFocussing,
+#             call.executeQueue,
+#             call.mtd.__getitem__(),
+#             call.mtd.__getitem__().getNames,
+#             call.mtd.__getitem__().getNames().__iter__,
+#             call.mtd.__getitem__().getNames().__len__,
+#             call.WashDishes,
+#             call.executeQueue,
+#         ]
+#         actual_calls = [call[0] for call in vanAlgo.mantidSnapper.mock_calls if call[0]]
+#         # Assertions
+#         assert actual_calls == [call[0] for call in expected_calls]
+
+
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
 @pytest.fixture(autouse=True)

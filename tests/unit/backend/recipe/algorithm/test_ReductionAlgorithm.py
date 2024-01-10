@@ -29,7 +29,11 @@ with mock.patch.dict(
         reductionState.instrumentConfig.reductionRecordDirectory = Resource.getPath("inputs/reduction/")
         reductionState.stateConfig.vanadiumFilePath = Resource.getPath("inputs/reduction/shared/lite/fake_vanadium.nxs")
         pixelGroup = reductionIngredients.pixelGroup
-        return ReductionIngredients(runConfig=runConfig, reductionState=reductionState, pixelGroup=pixelGroup)
+        return ReductionIngredients(
+            runConfig=runConfig,
+            reductionState=reductionState,
+            pixelGroup=pixelGroup,
+        )
 
     def test_init():
         """Test ability to initialize ReductionAlgorithm"""

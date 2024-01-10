@@ -21,7 +21,6 @@ with mock.patch.dict(
     {
         "snapred.backend.data.DataExportService": mock.Mock(),
         "snapred.backend.data.DataFactoryService": mock.Mock(),
-        "snapred.backend.recipe.CalibrationReductionRecipe": mock.Mock(),
         "snapred.backend.log": mock.Mock(),
         "snapred.backend.log.logger": mock.Mock(),
     },

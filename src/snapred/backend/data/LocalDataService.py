@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import h5py
-from mantid.api import AlgorithmManager, mtd
 from pydantic import parse_file_as
 
 from snapred.backend.dao import (
@@ -37,10 +36,6 @@ from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.redantic import (
-    list_to_raw,
-    list_to_raw_pretty,
-    write_model,
-    write_model_list,
     write_model_list_pretty,
     write_model_pretty,
 )
@@ -58,7 +53,6 @@ def _createFileNotFoundError(msg, filename):
 
 @Singleton
 class LocalDataService:
-    reductionParameterCache: Dict[str, Any] = {}
     iptsCache: Dict[str, Any] = {}
     stateIdCache: Dict[str, str] = {}
     instrumentConfig: "InstrumentConfig"  # Optional[InstrumentConfig]
@@ -89,6 +83,7 @@ class LocalDataService:
             instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
             instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
             instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
+            # TODO can we remove the hard-coded 10 here?  it's specified elsewhere
             instrumentParameterMap["NBins"] = 10  # default value specified by @mguthriem
             instrumentConfig = InstrumentConfig(**instrumentParameterMap)
         except KeyError as e:
@@ -122,13 +117,6 @@ class LocalDataService:
         return StateConfig(
             calibration=diffCalibration,
             focusGroups=self._readFocusGroups(runId),
-            rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=str(
-                self.instrumentConfig.calibrationDirectory
-                / "Powder"
-                / stateId
-                / reductionParameters["rawVCorrFileName"]
-            ),
             stateId=stateId,
             tofBin=min(min(reductionParameters["focGroupDBin"])),
             tofMax=particleBounds.tof.maximum,
@@ -158,25 +146,9 @@ class LocalDataService:
     def readRunConfig(self, runId: str) -> RunConfig:
         return self._readRunConfig(runId)
 
-    def _findIPTS(self, runId: str) -> str:
-        path: str
-        # lookup IPST number
-        if runId in self.iptsCache:
-            path = self.iptsCache[runId]
-        else:
-            algorithm = AlgorithmManager.create("GetIPTS")
-            algorithm.setProperty("RunNumber", runId)
-            algorithm.setProperty("Instrument", "SNAP")
-            algorithm.execute()
-            path = algorithm.getProperty("Directory").value
-
-            self.iptsCache[runId] = path
-
-        return path
-
     def _readRunConfig(self, runId: str) -> RunConfig:
         # lookup IPST number
-        iptsPath = self._findIPTS(runId)
+        iptsPath = self.groceryService.getIPTS(runId)
 
         return RunConfig(
             IPTS=iptsPath,
@@ -314,7 +286,6 @@ class LocalDataService:
             dictIn["calPath"] = fullCalPath[0 : fSlash[-1] + 1]
 
         # Now push data into DAO object
-        self.reductionParameterCache[runId] = dictIn
         dictIn["stateId"] = stateId
         return dictIn
 
@@ -478,7 +449,6 @@ class LocalDataService:
         return latestVersion
 
     def readNormalizationRecord(self, runId: str, version: str = None):
-        self._readReductionParameters(runId)
         recordPath: str = self.getNormalizationRecordPath(runId, "*")
         latestFile = ""
         if version:
