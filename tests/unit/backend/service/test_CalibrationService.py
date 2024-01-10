@@ -390,6 +390,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert actualFocusGroup == mockFocusGroup.return_value
         assert actualInstrumentState == mockInstrumentState
 
+    def test_getCalibrationRecord(self):
+        self.instance.dataFactoryService.getCalibrationState = MagicMock()
+        fakeCalibration = MagicMock()
+        self.instance.dataFactoryService.getCalibrationState.return_value = fakeCalibration
+        self.instance._generateFocusGroupAndInstrumentState = MagicMock()
+        fakeInstrumentState = MagicMock()
+        self.instance._generateFocusGroupAndInstrumentState.return_value = (MagicMock(), fakeInstrumentState)
+        result = self.instance.getCalibration("mock_run_id", "fack definition", False)
+        assert result == fakeCalibration
+        assert result.instrumentState == fakeInstrumentState
+
     @patch("snapred.backend.service.CalibrationService.CrystallographicInfoService")
     @patch("snapred.backend.service.CalibrationService.DetectorPeakPredictorRecipe")
     @patch("snapred.backend.service.CalibrationService.parse_raw_as")
