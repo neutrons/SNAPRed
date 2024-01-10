@@ -6,6 +6,7 @@ from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QStatusBar,
     QVBoxLayout,
