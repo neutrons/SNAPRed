@@ -27,7 +27,6 @@ from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.CalibrationNormalizationRecipe import CalibrationNormalizationRecipe
 from snapred.backend.recipe.GenericRecipe import (
     FocusSpectraRecipe,
     RawVanadiumCorrectionRecipe,
