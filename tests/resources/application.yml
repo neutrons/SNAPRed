@@ -66,9 +66,11 @@ calibration:
       extension: .nxs
       format: "{}_calibration_reduction_result"
   diffraction:
-    convergenceThreshold: 0.05
+    convergenceThreshold: 0.5
     peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10
+    maximumIterations: 5
+    maximumOffset: 10
   parameters:
     default:
       # degrees
@@ -113,5 +115,15 @@ logging:
 samples:
   home: ${instrument.calibration.home}/CalibrantSamples
 
+
+test:
+  config:
+    name: test
+    home: /some/path
+  persistence:
+    read: ${test.config.home}
+    write: ~/${test.config.home}
+  data:
+    home: ${test.persistence}/data/${test.config.name}
 
 cis_mode: true

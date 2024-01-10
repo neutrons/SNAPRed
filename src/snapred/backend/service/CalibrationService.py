@@ -1,7 +1,7 @@
-from functools import lru_cache
 import json
 import time
 from datetime import date
+from functools import lru_cache
 from typing import List, Tuple
 
 from pydantic import parse_raw_as
@@ -106,11 +106,13 @@ class CalibrationService(Service):
         return {}
 
     @lru_cache
-    def getCalibration(self,
+    def getCalibration(
+        self,
         runNumber,
         definition: str,
         useLiteMode: bool,
-        nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]):
+        nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"],
+    ):
         calibration = self.dataFactoryService.getCalibrationState(runNumber)
         _, instrumentState = self._generateFocusGroupAndInstrumentState(
             runNumber,
@@ -197,6 +199,7 @@ class CalibrationService(Service):
             calPath=calpath,
             convergenceThreshold=convergenceThreshold,
             pixelGroup=instrumentState.pixelGroup,
+            maxOffset=request.maximumOffset,
         )
         focusFile = request.focusGroupPath.split("/")[-1]
         focusName = focusFile.split(".")[0]

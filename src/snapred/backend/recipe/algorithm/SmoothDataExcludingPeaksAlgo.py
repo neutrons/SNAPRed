@@ -13,14 +13,7 @@ from datetime import datetime
 from typing import Dict
 
 import numpy as np
-from mantid.api import (
-    AlgorithmFactory,
-    MatrixWorkspaceProperty,
-    PropertyMode,
-    PythonAlgorithm,
-    IEventWorkspace
-)
-
+from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline
 
@@ -114,6 +107,8 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             # fill in the removed data using the spline function and original datapoints
             smoothing_results = tck(xMidpoints, extrapolate=False)
             outputWorkspace.setY(index, smoothing_results)
+
+        self.setProperty("OutputWorkspace", outputWorkspace)
 
         self.mantidSnapper.WashDishes(
             "Cleaning up weight workspace...",

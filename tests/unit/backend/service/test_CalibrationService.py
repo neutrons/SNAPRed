@@ -446,6 +446,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             calPath="~/tmp/",
             convergenceThreshold=request.convergenceThreshold,
             pixelGroup=mockFocusGroupInstrumentState[1].pixelGroup,
+            maxOffset=request.maximumOffset,
         )
         mockDiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
             mockDiffractionCalibrationIngredients.return_value,

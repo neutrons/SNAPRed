@@ -2,13 +2,7 @@ import json
 from typing import Dict
 
 import numpy as np
-from mantid.api import (
-    AlgorithmFactory,
-    MatrixWorkspaceProperty,
-    PropertyMode,
-    PythonAlgorithm,
-    IEventWorkspace
-)
+from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
@@ -122,6 +116,8 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
                 mask_indices = np.where(np.logical_and(x > peak.position.minimum, x < peak.position.maximum))
                 weights[mask_indices] = 0.0
             weight_ws.setY(index, weights)
+
+        self.setProperty("WeightWorkspace", weight_ws)
 
         if isEventWorkspace:
             self.mantidSnapper.ConvertToEventWorkspace(
