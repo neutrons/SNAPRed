@@ -118,7 +118,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             ConvertFromPointData=True,
         )
         # SECTION 1111111111111111111111111111111111111111111111111111111111111111111111111111
-        
+
         # SECTION 2222222222222222222222222222222222222222222222222222222222222222222222222222
         self.mantidSnapper.DiffractionFocussing(
             "Performing Diffraction Focusing ...",
@@ -150,7 +150,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
             InputWorkspace=self.rawVanadiumWSName,
             OutputWorkspace=self.smoothRawVanadiumWSName,
         )
-        
+
         # SECTION 3333333333333333333333333333333333333333333333333333333333333333333333333333
         self.mantidSnapper.SmoothDataExcludingPeaksAlgo(
             "Fit and Smooth Peaks...",

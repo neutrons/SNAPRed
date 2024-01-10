@@ -1,5 +1,5 @@
-
 from pydantic import BaseModel
+
 
 class DiffractionFocussingIngredients(BaseModel):
     InputWorkspace: str

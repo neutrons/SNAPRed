@@ -198,6 +198,7 @@ class NormalizationCalibrationWorkflow:
 
     def applySmoothingUpdate(self, index, smoothingValue, dMin):
         from mantid.simpleapi import DeleteWorkspace
+
         workspaces = self.responses[-1].data
         DeleteWorkspace(Workspace=workspaces["smoothedOutput"])
         payload = SmoothDataExcludingPeaksRequest(
@@ -231,9 +232,9 @@ class NormalizationCalibrationWorkflow:
         dMinValueChanged = self.initDMin != self.lastDMin
         if groupingFileChanged:
             from mantid.simpleapi import DeleteWorkspace
-            
+
             workspaces = self.responses[-1].data
-    
+
             # BAD! >:C This shouldnt be here. This should be in the backend
             DeleteWorkspace(Workspace=workspaces["outputWorkspace"])
             DeleteWorkspace(Workspace=workspaces["smoothedOutput"])

@@ -2,8 +2,8 @@ import code
 from typing import Dict, List
 
 from qtpy.QtCore import QObject, QThread, Signal
-from snapred.backend.dao.SNAPResponse import SNAPResponse
 
+from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.meta.decorators.Singleton import Singleton
 
 
@@ -34,9 +34,9 @@ class Worker(QObject):
 
             print(e)
             traceback.print_exc()
-            
+
             results = SNAPResponse(code=500, message=str(e))
-            
+
             self.result.emit(results)
             self.success.emit(False)
         self.finished.emit()

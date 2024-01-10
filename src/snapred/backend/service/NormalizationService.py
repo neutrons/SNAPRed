@@ -96,12 +96,12 @@ class NormalizationService(Service):
         self.groceryService.getCloneOfWorkspace(outputWorkspace, correctedVanadiumWs)
         # 2. focus
         requestFs = FocusSpectraRequest(
-                inputWorkspace=correctedVanadiumWs,
-                groupingWorkspace=groceries["groupingWorkspace"],
-                runNumber=request.runNumber,
-                groupingPath=request.groupingPath,
-                useLiteMode=request.useLiteMode,
-                outputWorkspace=outputWorkspace
+            inputWorkspace=correctedVanadiumWs,
+            groupingWorkspace=groceries["groupingWorkspace"],
+            runNumber=request.runNumber,
+            groupingPath=request.groupingPath,
+            useLiteMode=request.useLiteMode,
+            outputWorkspace=outputWorkspace,
         )
         outputWorkspace = self.focusSpectra(requestFs)
         # clone output focussedVanadium
@@ -122,11 +122,8 @@ class NormalizationService(Service):
         outputWorkspace = self.smoothDataExcludingPeaks(smoothRequest)
 
         return NormalizationResponse(
-            correctedVanadium=correctedVanadiumWs,
-            outputWorkspace=focussedVanadiumWs,
-            smoothedOutput=outputWorkspace
+            correctedVanadium=correctedVanadiumWs, outputWorkspace=focussedVanadiumWs, smoothedOutput=outputWorkspace
         ).dict()
-        
 
     @FromString
     def normalizationAssessment(self, request: NormalizationCalibrationRequest):
@@ -181,11 +178,13 @@ class NormalizationService(Service):
         )
         pixelGroup = calibration.instrumentState.pixelGroup
         reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber, pixelGroup)
-        return FocusSpectraRecipe().executeRecipe(InputWorkspace=request.inputWorkspace,
-                GroupingWorkspace=request.groupingWorkspace,
-                Ingredients=reductionIngredients,
-                OutputWorkspace=request.outputWorkspace)
-    
+        return FocusSpectraRecipe().executeRecipe(
+            InputWorkspace=request.inputWorkspace,
+            GroupingWorkspace=request.groupingWorkspace,
+            Ingredients=reductionIngredients,
+            OutputWorkspace=request.outputWorkspace,
+        )
+
     @FromString
     def smoothDataExcludingPeaks(self, request: SmoothDataExcludingPeaksRequest):
         sampleFilePath = self.dataFactoryService.getCifFilePath((request.samplePath).split("/")[-1].split(".")[0])

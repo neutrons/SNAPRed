@@ -101,7 +101,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
         self.layout.setRowStretch(0, 3)
         self.layout.setRowStretch(1, 1)
-        
+
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
 
     def _updateRunNumber(self, runNumber):
@@ -199,9 +199,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
     def setEnableRecalculateButton(self, enable):
         self.recalculationButton.setEnabled(enable)
-        
+
     def disableRecalculateButton(self):
         self.signalUpdateRecalculationButton.emit(False)
-        
+
     def enableRecalculateButton(self):
         self.signalUpdateRecalculationButton.emit(True)
