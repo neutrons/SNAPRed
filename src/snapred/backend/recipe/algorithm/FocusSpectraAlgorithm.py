@@ -54,6 +54,16 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             errors["OutputWorkspace"] = "You must specify the output workspace for focused data"
 
         # make sure the input workspace can be reduced by this grouping workspace
+        if not self.mantidSnapper.mtd.doesExist(self.getPropertyValue("InputWorkspace")):
+            errors["InputWorkspace"] = "Input workspace does not exist"
+            return errors
+        if not self.mantidSnapper.mtd.doesExist(self.getPropertyValue("GroupingWorkspace")):
+            errors["GroupingWorkspace"] = "Grouping workspace does not exist"
+            return errors
+        if not self.getPropertyValue("Ingredients"):
+            errors["Ingredients"] = "Ingredients are required"
+            return errors
+
         inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
         groupWS = self.mantidSnapper.mtd[self.getPropertyValue("GroupingWorkspace")]
         if "Grouping" not in groupWS.id():
