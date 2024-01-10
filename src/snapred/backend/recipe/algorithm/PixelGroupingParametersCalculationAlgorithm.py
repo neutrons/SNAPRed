@@ -16,12 +16,13 @@ from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 from snapred.meta.redantic import list_to_raw
 
 
 class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
     # conversion factor from microsecond/Angstrom to meters
-    CONVERSION_FACTOR = 10000.0 * PhysicalConstants.h / PhysicalConstants.NeutronMass
+    CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def category(self):
         return "SNAPRed Internal"
