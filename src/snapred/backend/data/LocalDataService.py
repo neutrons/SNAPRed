@@ -66,7 +66,7 @@ class LocalDataService:
     verifyPaths: bool = True
     groceryService: GroceryService = GroceryService()
     # conversion factor from microsecond/Angstrom to meters
-    CONVERSION_FACTOR = 10000.0 * PhysicalConstants.h / PhysicalConstants.NeutronMass
+    CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def __init__(self) -> None:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
