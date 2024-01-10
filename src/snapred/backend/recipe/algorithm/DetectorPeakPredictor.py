@@ -15,6 +15,7 @@ from snapred.meta.Config import Config
 class DetectorPeakPredictor(PythonAlgorithm):
     BETA_D = Config["constants.DetectorPeakPredictor.beta_d"]
     FWHM = Config["constants.DetectorPeakPredictor.fwhm"]
+    PEAK_INTENSITY_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
 
     def category(self):
         return "SNAPRed Data Processing"
@@ -35,7 +36,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         )
         self.declareProperty(
             "PeakIntensityFractionThreshold",
-            defaultValue=0.05,
+            defaultValue=self.PEAK_INTENSITY_THRESHOLD,
             direction=Direction.Input,
             doc="The input value for setting the threshold for peak intensity",
         )

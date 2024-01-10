@@ -67,6 +67,7 @@ calibration:
     peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10
     maximumOffset: 10
+    maxDSpaceShift: 2.5
   parameters:
     default:
       # degrees
@@ -117,7 +118,7 @@ cis_mode: true
 
 constants:
   millisecondsPerSecond: 1000
-  DiffractionCalibrationMaxOffset: 10
+  PeakIntensityFractionThreshold: 0.05
 
   CrystallographicInfo:
     dMin: 0.4
@@ -128,11 +129,6 @@ constants:
     tofMax: 14500
     rebinParams: [2000, -0.001, 14500]
 
-  PixelDiffractionCalibration:
-    maxDSpaceShift: 2.5
-    XMin: -100
-    XMax: 100
-
   DetectorPeakPredictor:
     beta_d: 505.548
-    fwhm: 2.35
+    fwhm: 2.35482004503 # used to convert gaussian to fwhm 2 * sqrt(2 * log_e(2))

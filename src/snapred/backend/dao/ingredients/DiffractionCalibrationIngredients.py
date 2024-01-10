@@ -21,4 +21,4 @@ class DiffractionCalibrationIngredients(BaseModel):
     groupedPeakLists: List[GroupPeakList]
     calPath: str
     convergenceThreshold: float
-    maxOffset: float = Config["constants.DiffractionCalibrationMaxOffset"]
+    maxOffset: float = Config["calibration.diffraction.maximumOffset"]

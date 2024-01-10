@@ -31,9 +31,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
     # therefore there is no reason not to deform the input workspace to this algorithm
     # instead, the original clean file is preserved in a separate location
 
-    MAX_DSPACE_SHIFT = Config["constants.PixelDiffractionCalibration.maxDSpaceShift"]
-    X_MIN = Config["constants.PixelDiffractionCalibration.XMin"]
-    X_MAX = Config["constants.PixelDiffractionCalibration.XMax"]
+    MAX_DSPACE_SHIFT = Config["calibration.diffraction.maxDSpaceShift"]
 
     def category(self):
         return "SNAPRed Diffraction Calibration"
@@ -231,8 +229,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 f"Calculate offset workspace {wsoff}",
                 InputWorkspace=wscc + f"_group{groupID}",
                 OutputWorkspace=wsoff,
-                XMin=self.X_MIN,
-                XMax=self.X_MAX,
+                XMin=-100,
+                XMax=100,
                 OffsetMode="Signed",
                 MaxOffset=self.maxOffset,
             )
