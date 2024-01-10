@@ -4,12 +4,8 @@ from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
 from qtpy.QtCore import Qt, QTimer
 from qtpy.QtWidgets import (
     QApplication,
-    QGridLayout,
-    QHBoxLayout,
-    QLayout,
     QMainWindow,
     QPushButton,
-    QSizePolicy,
     QSplitter,
     QStatusBar,
     QVBoxLayout,
