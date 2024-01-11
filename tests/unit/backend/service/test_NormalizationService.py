@@ -175,8 +175,10 @@ class TestNormalizationService(unittest.TestCase):
     @patch("snapred.backend.service.NormalizationService.CrystallographicInfoService")
     @patch("snapred.backend.service.NormalizationService.DataFactoryService")
     @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksRecipe")
+    @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksIngredients")
     def test_smoothDataExcludingPeaks(
         self,
+        mockIngredients,
         mockRecipe,
         mockDataFactoryService,
         mockCrystallographicInfoService,
@@ -203,6 +205,9 @@ class TestNormalizationService(unittest.TestCase):
         mockedCalibration = MagicMock()
         mockCalibrationService = mockCalibrationService.return_value
         mockCalibrationService.getCalibration.return_value = mockedCalibration
+        mockRecipeInst = mockRecipe.return_value
+
+        mockIngredients.return_value = MagicMock()
 
         self.instance.smoothDataExcludingPeaks(mockRequest)
 
@@ -212,6 +217,11 @@ class TestNormalizationService(unittest.TestCase):
         mockCrystallographicInfoService.ingest.assert_called_once_with(mockSamplePath, mockRequest.dMin)
         mockCalibrationService.getCalibration.assert_called_once_with(
             mockRequest.runNumber, mockRequest.groupingPath, mockRequest.useLiteMode
+        )
+        mockRecipeInst.executeRecipe.assert_called_once_with(
+            InputWorkspace=mockRequest.inputWorkspace,
+            OutputWorkspace=mockRequest.outputWorkspace,
+            Ingredients=mockIngredients.return_value,
         )
 
     @patch("snapred.backend.service.NormalizationService.DataFactoryService")
@@ -247,9 +257,9 @@ class TestNormalizationService(unittest.TestCase):
         expected_record_mockId = "mock_normalization_record"
         assert result.mockId == expected_record_mockId
 
-    @patch("snapred.backend.service.NormalizationService.vanadiumCorrection")
-    @patch("snapred.backend.service.NormalizationService.focusSpectra")
-    @patch("snapred.backend.service.NormalizationService.smoothDataExcludingPeaks")
+    @patch("snapred.backend.service.NormalizationService.NormalizationService.vanadiumCorrection")
+    @patch("snapred.backend.service.NormalizationService.NormalizationService.focusSpectra")
+    @patch("snapred.backend.service.NormalizationService.NormalizationService.smoothDataExcludingPeaks")
     @patch("snapred.backend.service.NormalizationService.GroceryService")
     def test_normalization(
         self,
