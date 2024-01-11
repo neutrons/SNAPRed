@@ -1,0 +1,188 @@
+{
+    "runConfig": {
+      "runNumber": "57514",
+      "IPTS": "/SNS/SNAP/IPTS-28913/",
+      "maskFileName": "",
+      "maskFileDirectory": "/SNS/SNAP/IPTS-28913/shared/",
+      "gsasFileDirectory": "/SNS/SNAP/IPTS-28913/shared/manualReduced/",
+      "calibrationState": null
+    },
+    "reductionState": {
+      "instrumentConfig": {
+        "version": "1.4",
+        "facility": "SNS",
+        "name": "SNAP",
+        "nexusFileExtension": ".nxs.h5",
+        "nexusFilePrefix": "SNAP_",
+        "calibrationFileExtension": "json",
+        "calibrationFilePrefix": "SNAPcalibLog",
+        "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+        "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+        "sharedDirectory": "shared/",
+        "nexusDirectory": "nexus/",
+        "reducedDataDirectory": "shared/manualReduced/",
+        "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+        "bandwidth": 0.1,
+        "maxBandwidth": 0.2,
+        "L1": 20,
+        "L2": 20,
+        "delTOverT": 0.05,
+        "delLOverL": 0.05,
+        "delThNoGuide": 0.05,
+        "delThWithGuide": 0.05
+      },
+      "stateConfig": {
+        "calibration": {
+          "instrumentState": {
+            "instrumentConfig": {
+              "version": "1.4",
+              "facility": "SNS",
+              "name": "SNAP",
+              "nexusFileExtension": ".nxs.h5",
+              "nexusFilePrefix": "SNAP_",
+              "calibrationFileExtension": "json",
+              "calibrationFilePrefix": "SNAPcalibLog",
+              "calibrationDirectory": "/SNS/SNAP/shared/Calibration",
+              "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+              "sharedDirectory": "shared/",
+              "nexusDirectory": "nexus/",
+              "reducedDataDirectory": "shared/manualReduced/",
+              "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+              "bandwidth": 3,
+              "maxBandwidth": 3.2,
+              "L1": 15,
+              "L2": 0.5,
+              "delTOverT": 0.002,
+              "delLOverL": 0.00006452,
+              "delThNoGuide": 0.0006667,
+              "delThWithGuide": 0.0032,
+              "NBins": 10
+            },
+            "detectorState": {
+              "arc": [
+                -65.3,
+                104.95
+              ],
+              "wav": 2.1,
+              "freq": 60,
+              "guideStat": 1,
+              "lin": [
+                0.045,
+                0.043
+              ]
+            },
+            "gsasParameters": {
+              "alpha": 0.1,
+              "beta": [
+                0.02,
+                0.05
+              ]
+            },
+            "particleBounds": {
+              "wavelength": {
+                "minimum": 0.6000000000000001,
+                "maximum": 3.6
+              },
+              "tof": {
+                "minimum": 2350.800030332904,
+                "maximum": 14104.800181997423
+              }
+            },
+            "pixelGroupingInstrumentParameters": null,
+            "defaultGroupingSliceValue": 5,
+            "fwhmMultiplierLimit": {
+              "minimum": 2,
+              "maximum": 2
+            },
+            "peakTailCoefficient": 2
+          },
+          "seedRun": 57514,
+          "creationDate": "2023-09-13T16:40:25.754664",
+          "name": "this is a test state initialisation",
+          "version": 49
+        },
+        "diffractionCalibrant": null,
+        "normalizationCalibrant": null,
+        "geometryCalibrationFileName": null,
+        "focusGroups": [
+          {
+            "name": "Column",
+            "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
+          },
+          {
+            "name": "Bank",
+            "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Bank.lite.xml"
+          },
+          {
+            "name": "All",
+            "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.nxs"
+          }
+        ],
+        "rawVanadiumCorrectionFileName": "RVMB57473.lite.nxs",
+        "vanadiumFilePath": "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/RVMB57473.lite.nxs",
+        "stateId": "04bd2c53f6bf6754",
+        "tofBin": 0.0002,
+        "tofMax": 14104.800181997423,
+        "tofMin": 2350.800030332904
+      },
+      "overrides": null
+    },
+    "pixelGroup": {
+      "pixelGroupingParameters": [
+        {
+          "groupID": 1,
+          "twoTheta": 2.1108948177427838,
+          "dResolution": {
+            "minimum": 0.40224298673776404,
+            "maximum": 2.0112149336888203
+          },
+          "dRelativeResolution": 0.002771822370612031
+        },
+        {
+          "groupID": 2,
+          "twoTheta": 1.82310673131693,
+          "dResolution": {
+            "minimum": 0.44278229953817677,
+            "maximum": 2.213911497690884
+          },
+          "dRelativeResolution": 0.003234525153614593
+        },
+        {
+          "groupID": 3,
+          "twoTheta": 1.5352228379083572,
+          "dResolution": {
+            "minimum": 0.5040188478793922,
+            "maximum": 2.5200942393969608
+          },
+          "dRelativeResolution": 0.004014748859873182
+        },
+        {
+          "groupID": 4,
+          "twoTheta": 1.440276389170165,
+          "dResolution": {
+            "minimum": 0.530714277849788,
+            "maximum": 2.6535713892489396
+          },
+          "dRelativeResolution": 0.004309856397320412
+        },
+        {
+          "groupID": 5,
+          "twoTheta": 1.1543988461042238,
+          "dResolution": {
+            "minimum": 0.6414024711539658,
+            "maximum": 3.207012355769829
+          },
+          "dRelativeResolution": 0.005408489642872038
+        },
+        {
+          "groupID": 6,
+          "twoTheta": 0.8690010092470938,
+          "dResolution": {
+            "minimum": 0.831438096217031,
+            "maximum": 4.157190481085156
+          },
+          "dRelativeResolution": 0.007548513084996265
+        }
+      ]
+    }
+  }

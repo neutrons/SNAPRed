@@ -3,11 +3,8 @@ import time
 from typing import Any, Dict
 
 from snapred.backend.dao.ingredients import (
-    DiffractionFocussingIngredients,
     GroceryListItem,
-    NormalizationCalibrationIngredients,
     SmoothDataExcludingPeaksIngredients,
-    VanadiumCorrectionIngredients,
 )
 from snapred.backend.dao.normalization import (
     Normalization,
@@ -15,7 +12,6 @@ from snapred.backend.dao.normalization import (
     NormalizationRecord,
 )
 from snapred.backend.dao.request import (
-    FocusSpectraIngredients,
     FocusSpectraRequest,
     NormalizationCalibrationRequest,
     NormalizationExportRequest,

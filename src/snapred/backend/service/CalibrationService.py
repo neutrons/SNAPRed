@@ -19,22 +19,13 @@ from snapred.backend.dao.ingredients import (
     FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
     GroceryListItem,
-    NormalizationCalibrationIngredients,
     PixelGroupingIngredients,
-    SmoothDataExcludingPeaksIngredients,
-)
-from snapred.backend.dao.normalization import (
-    Normalization,
-    NormalizationIndexEntry,
-    NormalizationRecord,
 )
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
-    NormalizationCalibrationRequest,
-    NormalizationExportRequest,
 )
 from snapred.backend.dao.state import FocusGroup, InstrumentState, PixelGroup
 from snapred.backend.data.DataExportService import DataExportService
@@ -49,7 +40,6 @@ from snapred.backend.recipe.GenericRecipe import (
     DetectorPeakPredictorRecipe,
     FitMultiplePeaksRecipe,
     GenerateTableWorkspaceFromListOfDictRecipe,
-    SmoothDataExcludingPeaksRecipe,
 )
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
