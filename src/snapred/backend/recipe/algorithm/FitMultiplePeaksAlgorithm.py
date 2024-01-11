@@ -10,6 +10,7 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import FitMultiplePeaksIngredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
+from snapred.meta.Config import Config
 
 
 class FitOutputEnum(Enum):
@@ -20,13 +21,17 @@ class FitOutputEnum(Enum):
 
 
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
+    PEAK_INTENSITY_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+
     def category(self):
         return "SNAPRed Data Processing"
 
     def PyInit(self):
         # declare properties
         self.declareProperty("FitMultiplePeaksIngredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("PeakIntensityFractionThreshold", defaultValue=0.05, direction=Direction.Input)
+        self.declareProperty(
+            "PeakIntensityFractionThreshold", defaultValue=self.PEAK_INTENSITY_THRESHOLD, direction=Direction.Input
+        )
         self.declareProperty("OutputWorkspaceGroup", defaultValue="fitPeaksWSGroup", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)

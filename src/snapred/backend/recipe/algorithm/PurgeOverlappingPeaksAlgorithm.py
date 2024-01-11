@@ -7,9 +7,12 @@ from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 
 
 class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
+    PEAK_INTENSITY_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+
     def category(self):
         return "SNAPRed Data Processing"
 
@@ -20,7 +23,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         self.declareProperty("OutputPeakMap", defaultValue="", direction=Direction.Output)
         self.declareProperty(
             "PeakIntensityFractionThreshold",
-            defaultValue=0.05,
+            defaultValue=self.PEAK_INTENSITY_THRESHOLD,
             direction=Direction.Input,
             doc="Fraction of max for threshold peak intensity",
         )
