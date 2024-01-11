@@ -9,9 +9,13 @@ from mantid.kernel import Direction
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 
 
 class CrystallographicInfoAlgorithm(PythonAlgorithm):
+    D_MIN = Config["constants.CrystallographicInfo.dMin"]
+    D_MAX = Config["constants.CrystallographicInfo.dMax"]
+
     def category(self):
         return "SNAPRed Sample Data"
 
@@ -20,8 +24,8 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
         self.declareProperty("cifPath", defaultValue="", direction=Direction.Input)
         self.declareProperty("crystalStructure", defaultValue="", direction=Direction.InOut)
         self.declareProperty("crystalInfo", defaultValue="", direction=Direction.Output)
-        self.declareProperty("dMin", defaultValue=0.4, direction=Direction.Input)
-        self.declareProperty("dMax", defaultValue=100.0, direction=Direction.Input)
+        self.declareProperty("dMin", defaultValue=self.D_MIN, direction=Direction.Input)
+        self.declareProperty("dMax", defaultValue=self.D_MAX, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 

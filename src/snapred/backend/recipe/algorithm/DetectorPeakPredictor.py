@@ -2,16 +2,25 @@ import json
 
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
-from mantid.kernel import Direction
+from mantid.kernel import Direction, PhysicalConstants
 
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.Limit import LimitedValue
 from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.meta.Config import Config
 
 
 class DetectorPeakPredictor(PythonAlgorithm):
+    # TODO: Change BETA_D_COEFFICIENT to
+    # BETA_D_COEFFICIENT = PhysicalConstants.h / (2 * PhysicalConstants.NeutronMass * 1e10)
+    # also the equation below that uses the coefficient should be changed to
+    # beta_d = BETA_D_COEFFICIENT*beta_T/(L*np.sin(tTheta/2))
+    BETA_D_COEFFICIENT = 1 / (PhysicalConstants.h / (2 * PhysicalConstants.NeutronMass) * Config["constants.m2cm"])
+    FWHM = Config["constants.DetectorPeakPredictor.fwhm"]
+    PEAK_INTENSITY_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+
     def category(self):
         return "SNAPRed Data Processing"
 
@@ -31,7 +40,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         )
         self.declareProperty(
             "PeakIntensityFractionThreshold",
-            defaultValue=0.05,
+            defaultValue=self.PEAK_INTENSITY_THRESHOLD,
             direction=Direction.Input,
             doc="The input value for setting the threshold for peak intensity",
         )
@@ -71,16 +80,16 @@ class DetectorPeakPredictor(PythonAlgorithm):
             for d in dList:
                 # beta terms
                 beta_T = beta_0 + beta_1 / d**4  # GSAS-I beta
-                beta_d = 505.548 * L * np.sin(tTheta / 2) * beta_T  # converted to d-space
+                beta_d = self.BETA_D_COEFFICIENT * L * np.sin(tTheta / 2) * beta_T  # converted to d-space
 
-                fwhm = 2.35 * delDoD * d
+                fwhm = self.FWHM * delDoD * d
                 widthLeft = fwhm * FWHMMultiplierLeft
                 widthRight = fwhm * FWHMMultiplierRight + peakTailCoefficient / beta_d
 
                 singleFocusGroupPeaks.append(
                     DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight))
                 )
-            maxFwhm = 2.35 * max(dList, default=0.0) * delDoD
+            maxFwhm = self.FWHM * max(dList, default=0.0) * delDoD
 
             singleFocusGroupPeakList = GroupPeakList(peaks=singleFocusGroupPeaks, groupID=groupID, maxfwhm=maxFwhm)
             self.log().notice(f"Focus group {groupID} : {len(dList)} peaks out")
