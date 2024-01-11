@@ -84,36 +84,50 @@ class TestNormalizationService(unittest.TestCase):
         self.clearoutWorkspaces()
         return super().tearDown()
 
-    @patch(thisService + "Normalization", return_value=MagicMock(mockId="mock_normalization"))
-    @patch(thisService + "NormalizationRecord", return_value=MagicMock(mockId="mock_normalization_record"))
-    def test_normalizationAssessment(
+    @patch("snapred.backend.service.NormalizationService.CalibrationService")
+    @patch("snapred.backend.service.NormalizationService.DataFactoryService")
+    @patch("snapred.backend.service.NormalizationService.FocusSpectraRecipe")
+    def test_focusSpectra(
         self,
-        mockNormalizationRecord,
-        mockNormalization,
+        mockRecipe,
+        mockDataFactoryService,
+        mockCalibrationService,
     ):
-        mockRequest = MagicMock()
-        mockRun = "12345"
-        mockBackgroundRun = "67890"
-        fakeSamplePath = "mock_sample_path"
-        mockGroupingPath = "mock_grouping_path"
+        mockRequest = FocusSpectraRequest(
+            runNumber="12345",
+            groupingPath="path/to/grouping",
+            useLiteMode=True,
+            inputWorkspace="input_ws",
+            groupingWorkspace="grouping_ws",
+            outputWorkspace="output_ws",
+        )
+        self.instance = NormalizationService()
+        mockedCalibration = MagicMock()
+        mockCalibrationService = mockCalibrationService.return_value
+        mockCalibrationService.getCalibration.return_value = mockedCalibration
+        mockedReductionIngredients = MagicMock()
+        mockDataFactoryService = mockDataFactoryService.return_value
+        mockDataFactoryService.getReductionIngredients.return_value = mockedReductionIngredients
+        self.instance.focusSpectra(mockRequest)
+        mockRecipeInst = mockRecipe.return_value
+        mockRecipeInst.executeRecipe.return_value = "expected"
 
-        mockRequest.runNumber = mockRun
-        mockRequest.backgroundRunNumber = mockBackgroundRun
-        mockRequest.samplePath = fakeSamplePath
-        mockRequest.groupingPath = mockGroupingPath
-        mockRequest.smoothingParameter = 0.5
-        mockRequest.dMin = 0.4
+        mockRecipeInst.executeRecipe.assert_called_once_with(
+            InputWorkspace=mockRequest.inputWorkspace,
+            GroupingWorkspace=mockRequest.groupingWorkspace,
+            Ingredients=mockedReductionIngredients,
+            OutputWorkspace=mockRequest.outputWorkspace,
+        )
+        mockCalibrationService.getCalibration.assert_called_once_with(
+            mockRequest.runNumber, mockRequest.groupingPath, mockRequest.useLiteMode
+        )
+        mockDataFactoryService.getReductionIngredients.assert_called_once_with(
+            mockRequest.runNumber, mockedCalibration.instrumentState.pixelGroup
+        )
 
-        self.instance.dataFactoryService.getNormalizationState = MagicMock(return_value=mockNormalization)
-
-        result = self.instance.normalizationAssessment(mockRequest)
-
-        expected_record_mockId = "mock_normalization_record"
-        assert result.mockId == expected_record_mockId
-
-    @patch("snapred.backend.data.DataFactoryService")
-    @patch("snapred.backend.service.CalibrationService")
-    @patch("snapred.backend.recipe.GenericRecipe.RawVanadiumCorrectionRecipe")
+    @patch("snapred.backend.service.NormalizationService.DataFactoryService")
+    @patch("snapred.backend.service.NormalizationService.CalibrationService")
+    @patch("snapred.backend.service.NormalizationService.RawVanadiumCorrectionRecipe")
     def test_vanadiumCorrection(
         self,
         mockRecipe,
@@ -129,17 +143,20 @@ class TestNormalizationService(unittest.TestCase):
             backgroundWorkspace="background_ws",
             outputWorkspace="output_ws",
         )
-
+        self.instance = NormalizationService()
         mockedCalibrantSample = MagicMock()
+        mockDataFactoryService = mockDataFactoryService.return_value
         mockDataFactoryService.getCalibrantSample.return_value = mockedCalibrantSample
         mockedCalibration = MagicMock()
+        mockCalibrationService = mockCalibrationService.return_value
         mockCalibrationService.getCalibration.return_value = mockedCalibration
         mockedReductionIngredients = MagicMock()
         mockDataFactoryService.getReductionIngredients.return_value = mockedReductionIngredients
-
         self.instance.vanadiumCorrection(mockRequest)
+        mockRecipeInst = mockRecipe.return_value
+        mockRecipeInst.executeRecipe.return_value = "expected"
 
-        mockRecipe.executeRecipe.assert_called_once_with(
+        mockRecipeInst.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             BackgroundWorkspace=mockRequest.backgroundWorkspace,
             Ingredients=mockedReductionIngredients,
@@ -154,48 +171,10 @@ class TestNormalizationService(unittest.TestCase):
             mockRequest.runNumber, mockedCalibration.instrumentState.pixelGroup
         )
 
-    @patch("snapred.backend.service.CalibrationService")
-    @patch("snapred.backend.data.DataFactoryService")
-    @patch("snapred.backend.recipe.GenericRecipe.FocusSpectraRecipe")
-    def test_focusSpectra(
-        self,
-        mockRecipe,
-        mockDataFactoryService,
-        mockCalibrationService,
-    ):
-        mockRequest = FocusSpectraRequest(
-            runNumber="12345",
-            groupingPath="path/to/grouping",
-            useLiteMode=True,
-            inputWorkspace="input_ws",
-            groupingWorkspace="grouping_ws",
-            outputWorkspace="output_ws",
-        )
-
-        mockedCalibration = MagicMock()
-        mockCalibrationService.getCalibration.return_value = mockedCalibration
-        mockedReductionIngredients = MagicMock()
-        mockDataFactoryService.getReductionIngredients.return_value = mockedReductionIngredients
-
-        self.instance.focusSpectra(mockRequest)
-
-        mockRecipe.executeRecipe.assert_called_once_with(
-            InputWorkspace=mockRequest.inputWorkspace,
-            GroupingWorkspace=mockRequest.groupingWorkspace,
-            Ingredients=mockedReductionIngredients,
-            OutputWorkspace=mockRequest.outputWorkspace,
-        )
-        mockCalibrationService.getCalibration.assert_called_once_with(
-            mockRequest.runNumber, mockRequest.groupingPath, mockRequest.useLiteMode
-        )
-        mockDataFactoryService.getReductionIngredients.assert_called_once_with(
-            mockRequest.runNumber, mockedCalibration.instrumentState.pixelGroup
-        )
-
-    @patch("snapred.backend.service.CalibrationService")
-    @patch("snapred.backend.service.CrystallographicInfoService")
-    @patch("snapred.backend.data.DataFactoryService")
-    @patch("snapred.backend.recipe.GenericRecipe.SmoothDataExcludingPeaksRecipe")
+    @patch("snapred.backend.service.NormalizationService.CalibrationService")
+    @patch("snapred.backend.service.NormalizationService.CrystallographicInfoService")
+    @patch("snapred.backend.service.NormalizationService.DataFactoryService")
+    @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksRecipe")
     def test_smoothDataExcludingPeaks(
         self,
         mockRecipe,
@@ -204,47 +183,74 @@ class TestNormalizationService(unittest.TestCase):
         mockCalibrationService,
     ):
         mockRequest = SmoothDataExcludingPeaksRequest(
-            samplePath="path/to/sample",
-            runNumber="12345",
-            groupingPath="path/to/grouping",
-            useLiteMode=True,
             inputWorkspace="input_ws",
             outputWorkspace="output_ws",
+            useLiteMode=True,
+            groupingPath="path/to/grouping",
+            samplePath="path/to/sample",
+            runNumber="12345",
             smoothingParameter=0.5,
-            dMin=0.1,
+            dMin=0.4,
         )
 
-        mockedSampleFilePath = "path/to/processed/sample"
-        mockDataFactoryService.getCifFilePath.return_value = mockedSampleFilePath
-        mockedCrystalInfo = {"crystalInfo": MagicMock()}
+        self.instance = NormalizationService()
+        mockSamplePath = MagicMock()
+        mockDataFactoryService = mockDataFactoryService.return_value
+        mockDataFactoryService.getCifFilePath.return_value = mockSamplePath
+        mockedCrystalInfo = MagicMock()
+        mockCrystallographicInfoService = mockCrystallographicInfoService.return_value
         mockCrystallographicInfoService.ingest.return_value = mockedCrystalInfo
         mockedCalibration = MagicMock()
+        mockCalibrationService = mockCalibrationService.return_value
         mockCalibrationService.getCalibration.return_value = mockedCalibration
 
         self.instance.smoothDataExcludingPeaks(mockRequest)
 
-        mockRecipe.executeRecipe.assert_called_once_with(
-            InputWorkspace=mockRequest.inputWorkspace,
-            OutputWorkspace=mockRequest.outputWorkspace,
-            Ingredients=MagicMock(
-                smoothingParameter=mockRequest.smoothingParameter,
-                instrumentState=mockedCalibration.instrumentState,
-                crystalInfo=mockedCrystalInfo["crystalInfo"],
-                dMin=mockRequest.dMin,
-            ),
-        )
         mockDataFactoryService.getCifFilePath.assert_called_once_with(
             mockRequest.samplePath.split("/")[-1].split(".")[0]
         )
-        mockCrystallographicInfoService.ingest.assert_called_once_with(mockedSampleFilePath, mockRequest.dMin)
+        mockCrystallographicInfoService.ingest.assert_called_once_with(mockSamplePath, mockRequest.dMin)
         mockCalibrationService.getCalibration.assert_called_once_with(
             mockRequest.runNumber, mockRequest.groupingPath, mockRequest.useLiteMode
         )
 
+    @patch("snapred.backend.service.NormalizationService.DataFactoryService")
+    @patch(
+        "snapred.backend.service.NormalizationService.NormalizationRecord",
+        return_value=MagicMock(mockId="mock_normalization_record"),
+    )
+    def test_normalizationAssessment(
+        self,
+        mockNormalizationRecord,
+        mockDataFactoryService,
+    ):
+        mockRequest = NormalizationCalibrationRequest(
+            runNumber="12345",
+            backgroundRunNumber="67890",
+            useLiteMode=True,
+            samplePath="path/to/sample",
+            groupingPath="path/to/grouping",
+            smoothingParameter=0.5,
+            dMin=0.4,
+        )
+
+        self.instance = NormalizationService()
+        mockNormalization = MagicMock()
+        mockDataFactoryService = mockDataFactoryService.return_value
+        mockDataFactoryService.getNormalizationState.return_value = mockNormalization
+
+        self.instance.dataFactoryService.getNormalizationRecord = MagicMock(return_value=mockNormalizationRecord)
+
+        result = self.instance.normalizationAssessment(mockRequest)
+
+        mockDataFactoryService.getNormalizationState.assert_called_once_with(mockRequest.runNumber)
+        expected_record_mockId = "mock_normalization_record"
+        assert result.mockId == expected_record_mockId
+
     @patch("snapred.backend.service.NormalizationService.vanadiumCorrection")
     @patch("snapred.backend.service.NormalizationService.focusSpectra")
     @patch("snapred.backend.service.NormalizationService.smoothDataExcludingPeaks")
-    @patch("snapred.backend.data.GroceryService")
+    @patch("snapred.backend.service.NormalizationService.GroceryService")
     def test_normalization(
         self,
         mockGroceryService,
@@ -262,6 +268,8 @@ class TestNormalizationService(unittest.TestCase):
             dMin=0.1,
         )
 
+        self.instance = NormalizationService()
+        mockGroceryService = mockGroceryService.return_value
         mockGroceryService.fetchGroceryDict.return_value = {
             "backgroundWorkspace": "bg_ws",
             "inputWorkspace": "input_ws",
