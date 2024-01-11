@@ -31,7 +31,7 @@ class DataFactoryService:
 
     def getReductionIngredients(self, runId: str, pixelGroup: PixelGroup = None) -> ReductionIngredients:
         if pixelGroup is None:
-            calibration = self.getCalibrationState(runId)
+            calibration = self.getCalibrationState(runId)  # noqa: F811
             if calibration is None or calibration.instrumentState.pixelGroup is None:
                 stateId = self.constructStateId(runId)
                 raise RuntimeError(f"Pixel group not found for runId {runId} and stateId {stateId}")
