@@ -1,8 +1,9 @@
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, List
 from pathlib import Path
 
 from pydantic import BaseModel, Field, validator, root_validator
 
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.log.logger import snapredLogger
 
@@ -20,17 +21,20 @@ class GroupingMap(BaseModel):
     stateId: ObjectSHA
 
     _isDirty: bool = Field(default=False, kw_only=True)
-    # availableGroups: Dict[str, Dict[str, Path]] = {}
-    nativeGroups: Dict[str, Path] = Field(default=None, exclude=True)
-    liteGroups: Dict[str, Path] = Field(default=None, exclude=True)
+
+    nativeFocusGroups: List[FocusGroup] = Field(default=None, exclude=False)
+    liteFocusGroups: List[FocusGroup] = Field(default=None, exclude=False)
+
+    _nativeMap: Dict[str, FocusGroup] = None
+    _liteMap: Dict[str, FocusGroup] = None
 
     @property
-    def lite(self) -> Dict[str, Path]:
-        return self.liteGroups
+    def lite(self) -> Dict[str, FocusGroup]:
+        return self._liteMap
 
     @property
-    def native(self) -> Dict[str, Path]:
-        return self.nativeGroups
+    def native(self) -> Dict[str, FocusGroup]:
+        return self._nativeMap
     
     @property
     def isDefault(self):
@@ -59,17 +63,18 @@ class GroupingMap(BaseModel):
     
     @root_validator(pre=False, allow_reuse=True)
     def validate_GroupingMapFile(cls, v):
-        nativeMap = {}
-        liteMap = {}
         if v.get("nativeFocusGroups"):
-            nativeMap = {nfg["name"]: nfg["definition"] for nfg in v["nativeFocusGroups"]}
+            cls._nativeMap = {nfg.name: nfg for nfg in v["nativeFocusGroups"]}
         if v.get("liteFocusGroups"):
-            liteMap = {lfg["name"]: lfg["definition"] for lfg in v["liteFocusGroups"]}
-        groups = {"native": nativeMap, "lite": liteMap}
+            cls._liteMap = {lfg.name: lfg for lfg in v["liteFocusGroups"]}   
+        groups = {"native": cls._nativeMap, "lite": cls._liteMap}
         supportedExtensions = ("H5", "HD5", "HDF", "NXS", "NXS5", "XML")
         for mode in groups.copy():
+            if groups[mode] is None:
+                logger.warning("No FocusGroups for " + mode + " given")
+                continue
             for group in groups[mode].copy():
-                fp = groups[mode][group]
+                fp = Path(groups[mode][group].definition)
                 if not fp.exists():
                     logger.warning("File:" + str(fp) + " not found")
                     del groups[mode][group]
