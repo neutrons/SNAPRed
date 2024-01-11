@@ -58,6 +58,7 @@ logger = snapredLogger.getLogger(__name__)
 class CalibrationService(Service):
     dataFactoryService: "DataFactoryService"
     dataExportService: "DataExportService"
+    MILLISECONDS_PER_SECOND = Config["constants.millisecondsPerSecond"]
 
     # register the service in ServiceFactory please!
     def __init__(self):
@@ -222,7 +223,7 @@ class CalibrationService(Service):
         if entry.appliesTo is None:
             entry.appliesTo = ">" + entry.runNumber
         if entry.timestamp is None:
-            entry.timestamp = int(round(time.time() * 1000))
+            entry.timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
         self.dataExportService.exportCalibrationIndexEntry(entry)
 
@@ -372,7 +373,7 @@ class CalibrationService(Service):
             workspaceNames=outputWorkspaces,
         )
 
-        timestamp = int(round(time.time() * 1000))
+        timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
         GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
             CalibrationMetricsWorkspaceIngredients(calibrationRecord=record, timestamp=timestamp)
         )
