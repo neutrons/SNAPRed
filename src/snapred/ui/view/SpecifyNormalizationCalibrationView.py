@@ -194,7 +194,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
                 ax.set_xlabel("d-Spacing (Å)")
                 ax.set_ylabel("Intensity")
 
-        # self.figure.tight_layout(pad=5.0)
         self.canvas.draw()
 
     def setEnableRecalculateButton(self, enable):
