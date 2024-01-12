@@ -10,10 +10,12 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
-from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+
+logger = snapredLogger.getLogger(__name__)
 
 
 class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
@@ -30,33 +32,14 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             MatrixWorkspaceProperty("WeightWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="The output workspace to be created by the algorithm",
         )
-        self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
-        self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
+        self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
 
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self):
-        # get the peak predictions from user input, or load them
-        if self.getProperty("DetectorPeaks").isDefault:
-            peakString = self.mantidSnapper.DetectorPeakPredictor(
-                "Predicting peaks...",
-                InstrumentState=self.getProperty("InstrumentState").value,
-                CrystalInfo=self.getProperty("CrystalInfo").value,
-                PeakIntensityFractionThreshold=0.0,
-            )
-            self.mantidSnapper.executeQueue()
-        else:
-            peakString = self.getPropertyValue("DetectorPeaks")
-        predictedPeaksList = json.loads(str(peakString))
-
-        self.groupIDs = []
-        self.predictedPeaks = {}
-        for prediction in predictedPeaksList:
-            groupPeakList = GroupPeakList.parse_obj(prediction)
-            self.groupIDs.append(groupPeakList.groupID)
-            self.predictedPeaks[groupPeakList.groupID] = groupPeakList.peaks
+        pass
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
@@ -68,22 +51,41 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         if self.getProperty("WeightWorkspace").isDefault:
             errors["WeightWorkspace"] = "Weight calculator requires name for weight workspace"
 
-        if self.getProperty("DetectorPeaks").isDefault:
-            noState = self.getProperty("InstrumentState").isDefault
-            noXtal = self.getProperty("CrystalInfo").isDefault
-            if noState or noXtal:
-                msg = """
-                must specify either detector peaks,
-                OR both crystal info and instrument state
-                """
-                errors["DetectorPeaks"] = msg
-                errors["InstrumentState"] = msg
-                errors["CrystalInfo"] = msg
+        waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
+        givenWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
+        if len(givenWaysToGetPeaks) == 0:
+            msg = """
+            Must specify either DetectorPeaks,
+            OR DetectorPeakIngredients to generate the peaks
+            """
+            errors["DetectorPeaks"] = msg
+            errors["DetectorPeakIngredients"] = msg
+        elif len(givenWaysToGetPeaks) == 2:
+            logger.warn("Both a peak list and ingredients were specified; ingredients will be ignore")
         return errors
 
     def PyExec(self):
         self.chopIngredients()
         self.unbagGroceries()
+
+        # get the peak predictions from user input, or load them
+        if not self.getProperty("DetectorPeaks").isDefault:
+            peakString = self.getPropertyValue("DetectorPeaks")
+        else:
+            peakString = self.mantidSnapper.DetectorPeakPredictor(
+                "Predicting peaks...",
+                Ingredients=self.getPropertyValue("DetectorPeakIngredients"),
+            )
+            self.mantidSnapper.executeQueue()
+
+        predictedPeaksList = json.loads(str(peakString))
+
+        self.groupIDs = []
+        self.predictedPeaks = {}
+        for prediction in predictedPeaksList:
+            groupPeakList = GroupPeakList.parse_obj(prediction)
+            self.groupIDs.append(groupPeakList.groupID)
+            self.predictedPeaks[groupPeakList.groupID] = groupPeakList.peaks
 
         # clone input workspace to create a weight workspace
         self.mantidSnapper.CloneWorkspace(

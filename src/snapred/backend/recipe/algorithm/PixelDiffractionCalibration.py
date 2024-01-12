@@ -61,7 +61,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # from grouping parameters, read the overall min/max d-spacings
         dMin = ingredients.pixelGroup.dMin()
         dMax = ingredients.pixelGroup.dMax()
-        dBin = ingredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        dBin = ingredients.pixelGroup.dBin()
         self.overallDMin: float = min(dMin)
         self.overallDMax: float = max(dMax)
         self.dBin: float = max([abs(d) for d in dBin])
@@ -84,7 +84,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # set the max offset
         self.maxOffset: float = ingredients.maxOffset
         # keep track of previous median offsets
-        self._prevMedianOffset = self.maxOffset * 10
+        self._prevMedianOffset = (
+            self.maxOffset * 10
+        )  # ensure it is larger than any real calculation -- ten is good factor
 
     def unbagGroceries(self, ingredients: Ingredients) -> None:  # noqa ARG002
         """

@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from snapred.meta.Config import Config
+
 
 class InstrumentConfig(BaseModel):
     """Class to hold the instrument parameters."""
@@ -25,4 +27,3 @@ class InstrumentConfig(BaseModel):
     delLOverL: float
     delThNoGuide: float
     delThWithGuide: float
-    NBins: int = 10

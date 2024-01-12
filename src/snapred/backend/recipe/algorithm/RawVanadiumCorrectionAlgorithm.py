@@ -39,8 +39,7 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients, sample: CalibrantSamples) -> None:
-        stateConfig = ingredients.reductionState.stateConfig
-        self.TOFPars: Tuple[float, float, float] = (stateConfig.tofMin, stateConfig.tofBin, stateConfig.tofMax)
+        self.TOFPars = ingredients.pixelGroup.timeOfFlight.params
 
         self.geometry = sample.geometry
         self.material = sample.material

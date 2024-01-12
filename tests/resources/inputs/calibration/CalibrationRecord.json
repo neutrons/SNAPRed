@@ -440,64 +440,6 @@
             "maximum": 13713
           }
         },
-        "pixelGroup":{
-          "pixelGroupingParameters": [
-           {
-             "groupID": 1,
-             "twoTheta": 2.1108948177427838,
-             "dResolution": {
-               "minimum": 0.40224298673776404,
-               "maximum": 2.0112149336888203
-             },
-             "dRelativeResolution": 0.002771822370612031
-           },
-           {
-             "groupID": 2,
-             "twoTheta": 1.82310673131693,
-             "dResolution": {
-               "minimum": 0.44278229953817677,
-               "maximum": 2.213911497690884
-             },
-             "dRelativeResolution": 0.003234525153614593
-           },
-           {
-             "groupID": 3,
-             "twoTheta": 1.5352228379083572,
-             "dResolution": {
-               "minimum": 0.5040188478793922,
-               "maximum": 2.5200942393969608
-             },
-             "dRelativeResolution": 0.004014748859873182
-           },
-           {
-             "groupID": 4,
-             "twoTheta": 1.440276389170165,
-             "dResolution": {
-               "minimum": 0.530714277849788,
-               "maximum": 2.6535713892489396
-             },
-             "dRelativeResolution": 0.004309856397320412
-           },
-           {
-             "groupID": 5,
-             "twoTheta": 1.1543988461042238,
-             "dResolution": {
-               "minimum": 0.6414024711539658,
-               "maximum": 3.207012355769829
-             },
-             "dRelativeResolution": 0.005408489642872038
-           },
-           {
-             "groupID": 6,
-             "twoTheta": 0.8690010092470938,
-             "dResolution": {
-               "minimum": 0.831438096217031,
-               "maximum": 4.157190481085156
-             },
-             "dRelativeResolution": 0.007548513084996265
-           }
-         ]
-        },
         "defaultGroupingSliceValue": 5,
         "fwhmMultiplierLimit": {
           "minimum": 1.3,
@@ -514,6 +456,12 @@
         "focusGroup": {
           "name": "Column",
           "definition": ""
+        },
+        "timeOfFlight": {
+          "minimum": 2742.6,
+          "maximum": 13713,
+          "binWidth": 1,
+          "binningMode": 1
         },
         "pixelGroupingParameters": [
           {
@@ -577,6 +525,12 @@
           "name": "Bank",
           "definition": ""
         },
+        "timeOfFlight": {
+          "minimum": 2742.6,
+          "maximum": 13713,
+          "binWidth": 1,
+          "binningMode": 1
+        },
         "pixelGroupingParameters": [
           {
             "groupID": 0,
@@ -603,6 +557,12 @@
           "name": "All",
           "definition": ""
         },
+        "timeOfFlight": {
+          "minimum": 2742.6,
+          "maximum": 13713,
+          "binWidth": 1,
+          "binningMode": 1
+        },
         "pixelGroupingParameters": [
           {
             "groupID": 0,
@@ -616,54 +576,53 @@
         ]
       }
     ],
-    "focusGroupCalibrationMetrics":
-      {
-        "focusGroupName": "Column",
-        "calibrationMetric": [
-          {
-            "sigmaAverage": 0.002517952998136214,
-            "sigmaStandardDeviation": 0.00000878421857231147,
-            "strainAverage": 0.1515216185900471,
-            "strainStandardDeviation": 0.013151225165758604,
-            "twoThetaAverage": 2.110894794556694
-          },
-          {
-            "sigmaAverage": 0.003176206362503416,
-            "sigmaStandardDeviation": 0.000014979115537326051,
-            "strainAverage": 0.11967297872183888,
-            "strainStandardDeviation": 0.010670589671407833,
-            "twoThetaAverage": 1.8231067294302894
-          },
-          {
-            "sigmaAverage": 0.0020173258481625943,
-            "sigmaStandardDeviation": 0.0011833789198171258,
-            "strainAverage": 2.9472523966464146,
-            "strainStandardDeviation": 1.7234726438089345,
-            "twoThetaAverage": 1.5352228117682118
-          },
-          {
-            "sigmaAverage": 0.0019681238298694874,
-            "sigmaStandardDeviation": 0.0012719855843628899,
-            "strainAverage": 2.97560355438957,
-            "strainStandardDeviation": 1.7073076840182733,
-            "twoThetaAverage": 1.440276416886144
-          },
-          {
-            "sigmaAverage": 0.002792254157654066,
-            "sigmaStandardDeviation": 0.0018788822023715769,
-            "strainAverage": 2.6968257593469005,
-            "strainStandardDeviation": 1.5521868842356747,
-            "twoThetaAverage": 1.1543988480234637
-          },
-          {
-            "sigmaAverage": 0.0035439650966407016,
-            "sigmaStandardDeviation": 0.0026213074118901255,
-            "strainAverage": 2.9942330576453013,
-            "strainStandardDeviation": 1.7458314136551056,
-            "twoThetaAverage": 0.8690010316506124
-          }
-        ]
-      },
+    "focusGroupCalibrationMetrics":{
+      "focusGroupName": "Column",
+      "calibrationMetric": [
+        {
+          "sigmaAverage": 0.002517952998136214,
+          "sigmaStandardDeviation": 0.00000878421857231147,
+          "strainAverage": 0.1515216185900471,
+          "strainStandardDeviation": 0.013151225165758604,
+          "twoThetaAverage": 2.110894794556694
+        },
+        {
+          "sigmaAverage": 0.003176206362503416,
+          "sigmaStandardDeviation": 0.000014979115537326051,
+          "strainAverage": 0.11967297872183888,
+          "strainStandardDeviation": 0.010670589671407833,
+          "twoThetaAverage": 1.8231067294302894
+        },
+        {
+          "sigmaAverage": 0.0020173258481625943,
+          "sigmaStandardDeviation": 0.0011833789198171258,
+          "strainAverage": 2.9472523966464146,
+          "strainStandardDeviation": 1.7234726438089345,
+          "twoThetaAverage": 1.5352228117682118
+        },
+        {
+          "sigmaAverage": 0.0019681238298694874,
+          "sigmaStandardDeviation": 0.0012719855843628899,
+          "strainAverage": 2.97560355438957,
+          "strainStandardDeviation": 1.7073076840182733,
+          "twoThetaAverage": 1.440276416886144
+        },
+        {
+          "sigmaAverage": 0.002792254157654066,
+          "sigmaStandardDeviation": 0.0018788822023715769,
+          "strainAverage": 2.6968257593469005,
+          "strainStandardDeviation": 1.5521868842356747,
+          "twoThetaAverage": 1.1543988480234637
+        },
+        {
+          "sigmaAverage": 0.0035439650966407016,
+          "sigmaStandardDeviation": 0.0026213074118901255,
+          "strainAverage": 2.9942330576453013,
+          "strainStandardDeviation": 1.7458314136551056,
+          "twoThetaAverage": 0.8690010316506124
+        }
+      ]
+    },
     "workspaceNames": [
       "fitted_strippedFocussedData_stripped_0",
       "fitted_strippedFocussedData_stripped_1",

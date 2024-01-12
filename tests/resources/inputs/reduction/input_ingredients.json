@@ -55,8 +55,7 @@
               "delTOverT": 0.002,
               "delLOverL": 0.00006452,
               "delThNoGuide": 0.0006667,
-              "delThWithGuide": 0.0032,
-              "NBins": 10
+              "delThWithGuide": 0.0032
             },
             "detectorState": {
               "arc": [
@@ -118,10 +117,7 @@
             "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.nxs"
           }
         ],
-        "stateId": "04bd2c53f6bf6754",
-        "tofBin": 0.0002,
-        "tofMax": 14104.800181997423,
-        "tofMin": 2350.800030332904
+        "stateId": "04bd2c53f6bf6754"
       },
       "overrides": null
     },

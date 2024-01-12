@@ -21,15 +21,12 @@ from mantid.simpleapi import (
 )
 from pydantic import parse_file_as, parse_obj_as, parse_raw_as
 from snapred.backend.dao.calibration.Calibration import Calibration
-
-# for loading
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
     PixelGroupingParametersCalculationAlgorithm as ThisAlgo,
 )
-from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
 from snapred.meta.Config import Resource
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
@@ -68,6 +65,9 @@ class PixelGroupCalculation(unittest.TestCase):
         # state corresponding to local test instrument
         cls.localInstrumentState = InstrumentState.parse_raw(
             Resource.read("inputs/calibration/sampleInstrumentState.json")
+        )
+        cls.localIngredients = PixelGroupingIngredients(
+            instrumentState=cls.localInstrumentState,
         )
 
         # the local test instrument file
@@ -207,7 +207,7 @@ class PixelGroupCalculation(unittest.TestCase):
     def test_chop_ingredients(self):
         algo = ThisAlgo()
         algo.initialize()
-        algo.chopIngredients(self.localInstrumentState)
+        algo.chopIngredients(self.localIngredients)
         notNones = ["tofMin", "tofMax", "delL", "deltaTOverT", "delTheta"]
         for notNone in notNones:
             assert getattr(algo, notNone) is not None
@@ -226,7 +226,7 @@ class PixelGroupCalculation(unittest.TestCase):
             OutputWorkspace="test_logs",
             Filename=self.localInstrumentFilename,
         )
-        algo.loadNeededLogs("test_logs", self.localInstrumentState)
+        algo.loadNeededLogs("test_logs", self.localIngredients)
         assert "" == CheckForSampleLogs(
             Workspace="test_logs",
             LogNames="det_arc1",
@@ -252,10 +252,14 @@ class PixelGroupCalculation(unittest.TestCase):
     def createPixelGroupingParameters(self, instrumentState, groupingWorkspace):
         """Test execution of PixelGroupingParametersCalculationAlgorithm"""
 
+        ingredients = PixelGroupingIngredients(
+            instrumentState=instrumentState,
+        )
+
         # run the algorithm
         pixelGroupingAlgo = ThisAlgo()
         pixelGroupingAlgo.initialize()
-        pixelGroupingAlgo.setProperty("InstrumentState", instrumentState.json())
+        pixelGroupingAlgo.setProperty("Ingredients", ingredients.json())
         pixelGroupingAlgo.setProperty("GroupingWorkspace", groupingWorkspace)
         assert pixelGroupingAlgo.execute()
 

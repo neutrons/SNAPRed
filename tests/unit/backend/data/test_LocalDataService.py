@@ -38,13 +38,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             instrumentParmaeters = json.loads(file.read())
         return instrumentParmaeters
 
-    def _readReductionParameters(runId: str):  # noqa: ARG001
-        reductionParameters = None
-        with Resource.open("inputs/ReductionParameters.json", "r") as file:
-            reductionParameters = json.loads(file.read())
-        reductionParameters["stateId"] = "123"
-        return reductionParameters
-
     def test_readInstrumentConfig():
         localDataService = LocalDataService()
         localDataService._readInstrumentParameters = _readInstrumentParameters
@@ -68,14 +61,12 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         instrumentConfig.reducedDataDirectory = "test"
         instrumentConfig.pixelGroupingDirectory = "test"
         instrumentConfig.delTOverT = 1
-        instrumentConfig.NBins = 1
         instrumentConfig.nexusDirectory = "test"
         instrumentConfig.nexusFileExtension = "test"
         return instrumentConfig
 
     def test_readStateConfig():
         localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
         localDataService._readDiffractionCalibrant = mock.Mock()
         localDataService._readDiffractionCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -84,8 +75,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._readNormalizationCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.normalizationCalibrant
         )
-        localDataService._readFocusGroups = mock.Mock()
-        localDataService._readFocusGroups.return_value = []
         localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
         localDataService._readPVFile = mock.Mock()
         fileMock = mock.Mock()
@@ -101,15 +90,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         actual = localDataService.readStateConfig("123")
         assert actual is not None
         assert actual.stateId == "123"
-
-    def test_readFocusGroups():
-        localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
-        _readReductionParameters("test")
-        localDataService.instrumentConfig = getMockInstrumentConfig()
-        actual = localDataService._readFocusGroups(mock.Mock())
-        assert actual is not None
-        assert len(actual) == 3
 
     def test_readRunConfig():
         localDataService = LocalDataService()
@@ -527,7 +507,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         pvFileMock.get.side_effect = [[1], [2], [1.1], [1.2], [1], [1], [2]]
         localDataService._readPVFile.return_value = pvFileMock
         testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
-        testCalibrationData.instrumentState.pixelGroup = None
         localDataService.readInstrumentConfig = mock.Mock()
         localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
         localDataService.writeCalibrationState = mock.Mock()

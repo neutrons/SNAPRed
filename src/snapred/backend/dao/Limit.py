@@ -1,4 +1,5 @@
-from typing import Generic, TypeVar
+from enum import IntEnum
+from typing import Generic, Literal, Tuple, TypeVar
 
 from pydantic import root_validator
 from pydantic.generics import GenericModel
@@ -40,3 +41,27 @@ class LimitedValue(GenericModel, Generic[T]):
     # def validate_scalar_fields(cls, values):
     #     assert values.get("minimum") <= values.get("value") <= values.get("maximum")
     #     return values
+
+
+class BinnedValue(GenericModel, Generic[T]):
+    minimum: T
+    binWidth: T
+    maximum: T
+
+    class BinningMode(IntEnum):
+        LOG = -1
+        LINEAR = 1
+
+    binningMode: BinningMode = BinningMode.LOG
+
+    @property
+    def params(self) -> Tuple[float, float, float]:
+        return (self.minimum, self.binningMode * abs(self.binWidth), self.maximum)
+
+    @root_validator(allow_reuse=True)
+    def validate_scalar_fields(cls, values):
+        if not values.get("minimum") < values.get("maximum"):
+            raise ValueError("min cannot be greater than max")
+        if values.get("binWidth") < 0:
+            values["binWidth"] = abs(values.get("binWidth"))
+        return values

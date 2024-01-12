@@ -115,7 +115,8 @@ class DataFactoryService:
         return self.lookupService.readCalibrationIndex(runId)
 
     def getFocusGroups(self, runId: str):
-        return self.lookupService._readFocusGroups(runId)
+        # TODO replace with method to more-betterly get focus groups, whatever it will be
+        self.dataFactoryService.getCalibrationState(runId).instrumentState.groupMap
 
     def checkCalibrationStateExists(self, runId: str):
         return self.lookupService.checkCalibrationFileExists(runId)

@@ -2,7 +2,7 @@ import os
 
 from qtpy.QtWidgets import QLabel, QVBoxLayout, QWidget
 
-from snapred.backend.dao.ingredients import FitMultiplePeaksIngredients
+from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Resource
@@ -23,7 +23,7 @@ class FitMultiplePeaksView(BackendRequestView):
                 loader="LoadNexusProcessed",
             )
             # TODO: Once jsonForm can correctly parse the input this will not be required
-            ingredients = FitMultiplePeaksIngredients.parse_raw(
+            ingredients = Ingredients.parse_raw(
                 Resource.read("default/request/fitMultiplePeaks/fitMultiplePeaks/payload.json")
             )
             request = SNAPRequest(path="fitMultiplePeaks/fitMultiplePeaks", payload=ingredients.json())

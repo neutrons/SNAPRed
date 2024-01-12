@@ -18,7 +18,7 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 
 # the algorithm to test (and its ingredients)
 from snapred.backend.dao.state import PixelGroup
-from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
 
 #for loading workspaces
@@ -37,13 +37,13 @@ calibrationService = CalibrationService()
 dataFactoryService = DataFactoryService()
 pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
 calibration = dataFactoryService.getCalibrationState(runNumber)
-print(pixelGroupingParameters)
-calibration.instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
+pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
 
-ingredients = SmoothDataExcludingPeaksIngredients(
+ingredients = Ingredients(
     instrumentState=calibration.instrumentState, 
     crystalInfo=CrystallographicInfoService().ingest(cifPath)['crystalInfo'], 
     smoothingParameter=0.05,
+    pixelGroup = pixelGroup,
 )
 
 

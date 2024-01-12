@@ -22,7 +22,7 @@ from mantid.api import (
 from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline
 
-from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients as Ingredients
+from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -47,10 +47,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients):
-        # chop off instrument state and crystal info
         self.lam = ingredients.smoothingParameter
-        self.instrumentState = ingredients.instrumentState
-        self.crystalInfo = ingredients.crystalInfo
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
@@ -67,7 +64,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         self.log().notice("Removing peaks and smoothing data")
 
         # load ingredients
-        ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
+        ingredients = Ingredients.parse_raw(self.getPropertyValue("Ingredients"))
         self.chopIngredients(ingredients)
         self.unbagGroceries()
 
@@ -82,8 +79,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         self.mantidSnapper.DiffractionSpectrumWeightCalculator(
             "Calculating spectrum weights...",
             InputWorkspace=self.outputWorkspaceName,
-            InstrumentState=self.instrumentState.json(),
-            CrystalInfo=self.crystalInfo.json(),
+            DetectorPeakIngredients=ingredients.json(),
             WeightWorkspace=self.weightWorkspaceName,
         )
         self.mantidSnapper.executeQueue()

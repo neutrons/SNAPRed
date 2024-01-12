@@ -12,8 +12,8 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
+from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.Limit import Limit
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.redantic import list_to_raw
@@ -26,7 +26,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            "InstrumentState",
+            "Ingredients",
             defaultValue="",
             direction=Direction.Input,
         )
@@ -43,30 +43,30 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
         return
 
-    def chopIngredients(self, instrumentState: InstrumentState) -> None:
+    def chopIngredients(self, ingredients: PixelGroupingIngredients) -> None:
         # define/calculate some auxiliary state-derived parameters
-        self.tofMin = instrumentState.particleBounds.tof.minimum
-        self.tofMax = instrumentState.particleBounds.tof.maximum
-        self.deltaTOverT = instrumentState.instrumentConfig.delTOverT
-        self.delLOverL = instrumentState.instrumentConfig.delLOverL
-        self.L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
+        self.tofMin = ingredients.instrumentState.particleBounds.tof.minimum
+        self.tofMax = ingredients.instrumentState.particleBounds.tof.maximum
+        self.deltaTOverT = ingredients.instrumentState.instrumentConfig.delTOverT
+        self.delLOverL = ingredients.instrumentState.instrumentConfig.delLOverL
+        self.L = ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2
         self.delL = self.delLOverL * self.L
-        self.delTheta = instrumentState.delTh
+        self.delTheta = ingredients.instrumentState.delTh
         return
 
-    def unbagGroceries(self, instrumentState: InstrumentState):
+    def unbagGroceries(self, ingredients: PixelGroupingIngredients):
         self.groupingWorkspaceName: str = self.getPropertyValue("GroupingWorkspace")
         self.resolutionWorkspaceName: str = "pgp_resolution"  # TODO use WNG
         self.partialResolutionWorkspaceName: str = self.resolutionWorkspaceName + "_partial"
-        self.loadNeededLogs(self.groupingWorkspaceName, instrumentState)
+        self.loadNeededLogs(self.groupingWorkspaceName, ingredients)
 
     def PyExec(self):
         self.log().notice("Calculate pixel grouping state-derived parameters")
 
         # define/calculate some auxiliary state-derived parameters
-        instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
-        self.chopIngredients(instrumentState)
-        self.unbagGroceries(instrumentState)
+        ingredients = PixelGroupingIngredients.parse_raw(self.getProperty("Ingredients").value)
+        self.chopIngredients(ingredients)
+        self.unbagGroceries(ingredients)
 
         # create a dummy grouped-by-detector workspace from the grouping workspace
         self.mantidSnapper.GroupDetectors(
@@ -140,11 +140,11 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
     # load SNAP instrument into a workspace
-    def loadNeededLogs(self, ws_name: str, instrumentState: InstrumentState):
+    def loadNeededLogs(self, ws_name: str, ingredients: PixelGroupingIngredients):
         self.log().notice("Add necessary logs (det_arc, det_lin) to calculate resolution")
 
         # get detector state from the input state
-        detectorState = instrumentState.detectorState
+        detectorState = ingredients.instrumentState.detectorState
 
         # add sample logs with detector "arc" and "lin" parameters to the workspace
         # NOTE after adding the logs, it is necessary to update the instrument to

@@ -9,39 +9,29 @@ with mock.patch.dict(
 ):
     import json
 
-    from snapred.backend.dao.calibration.Calibration import Calibration
     from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
+    from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
     from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import (
         PurgeOverlappingPeaksAlgorithm,  # noqa: E402
     )
     from snapred.meta.Config import Resource
 
-    def test_init():
+    def test_validate():
         """Test ability to initialize purge overlapping peaks algo"""
-        instrumentState = Calibration.parse_raw(
-            Resource.read("/inputs/purge_peaks/input_parameters.json")
-        ).instrumentState
-        crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
+        ingredients = Ingredients.parse_raw(Resource.read("inputs/predict_peaks/input_fake_ingredients.json"))
         purgeAlgo = PurgeOverlappingPeaksAlgorithm()
         purgeAlgo.initialize()
-        purgeAlgo.setProperty("InstrumentState", instrumentState.json())
-        purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
-        purgeAlgo.setProperty("PeakIntensityFractionThreshold", 0.045)
-        assert purgeAlgo.getProperty("InstrumentState").value == instrumentState.json()
-        assert CrystallographicInfo.parse_raw(purgeAlgo.getProperty("CrystalInfo").value) == crystalInfo
+        purgeAlgo.setProperty("DetectorPeakIngredients", ingredients.json())
+        res = purgeAlgo.validateInputs()
+        assert res == {}
 
     # TODO this sample data has no overlapping peaks, so that the result of DetectorPeakPredictor
     # and PurgeOverlappingPeaks are the same.  Needs data with overlapping peaks to check if purged.
     def test_execute():
-        instrumentState = Calibration.parse_raw(
-            Resource.read("/inputs/purge_peaks/input_parameters.json")
-        ).instrumentState
-        crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
+        ingredients = Ingredients.parse_raw(Resource.read("inputs/predict_peaks/input_good_ingredients.json"))
         purgeAlgo = PurgeOverlappingPeaksAlgorithm()
         purgeAlgo.initialize()
-        purgeAlgo.setProperty("InstrumentState", instrumentState.json())
-        purgeAlgo.setProperty("CrystalInfo", crystalInfo.json())
-        purgeAlgo.setProperty("PeakIntensityFractionThreshold", 0.05)
+        purgeAlgo.setProperty("DetectorPeakIngredients", ingredients.json())
         purgeAlgo.execute()
 
         actual_pos_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
@@ -51,7 +41,8 @@ with mock.patch.dict(
         assert expected_pos_json == actual_pos_json
 
         # test the threshold -- set to over-1 value and verify no peaks are found
-        purgeAlgo.setProperty("PeakIntensityFractionThreshold", 1.2)
+        ingredients.peakIntensityFractionalThreshold = 1.2
+        purgeAlgo.setProperty("DetectorPeakIngredients", ingredients.json())
         purgeAlgo.execute()
         no_pos_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)
         for x in no_pos_json:

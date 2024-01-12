@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients as Ingredients
+from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
 from snapred.backend.recipe.SmoothDataExcludingPeaksRecipe import SmoothDataExcludingPeaksRecipe as Recipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString

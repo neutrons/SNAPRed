@@ -14,13 +14,12 @@ from snapred.backend.dao.calibration import (
 )
 from snapred.backend.dao.ingredients import (
     CalibrationMetricsWorkspaceIngredients,
+    PeakIngredients,
     DiffractionCalibrationIngredients,
-    FitCalibrationWorkspaceIngredients,
-    FitMultiplePeaksIngredients,
     GroceryListItem,
     NormalizationCalibrationIngredients,
+    PeakIngredients,
     PixelGroupingIngredients,
-    SmoothDataExcludingPeaksIngredients,
 )
 from snapred.backend.dao.normalization import (
     Normalization,
@@ -105,27 +104,14 @@ class CalibrationService(Service):
         self,
         runNumber,
         definition: str,
-        useLiteMode: bool,
-        nBinsAcrossPeakWidth: int = 10,
         calibration=None,
     ) -> Tuple[FocusGroup, InstrumentState]:
         if calibration is None:
             calibration = self.dataFactoryService.getCalibrationState(runNumber)
         instrumentState = calibration.instrumentState
-        data = self._calculatePixelGroupingParameters(
-            instrumentState,
-            definition,
-            useLiteMode,
-        )
-        pixelGroupingParams = data["parameters"]
         focusGroup = FocusGroup(
             name=definition.split("/")[-1],
             definition=definition,
-        )
-        instrumentState.pixelGroup = PixelGroup(
-            pixelGroupingParameters=pixelGroupingParams,
-            numberBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
-            focusGroup=focusGroup,
         )
         return (focusGroup, instrumentState)
 
@@ -146,6 +132,13 @@ class CalibrationService(Service):
             request.useLiteMode,
             request.nBinsAcrossPeakWidth,
         )
+        data = self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition, request.useLiteMode)
+        pixelGroup = PixelGroup(
+            focusGroup=focusGroup,
+            pixelGroupingParamters=data["parameters"],
+            timeOfFlight=data["tof"],
+            nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
+        )
         # 4. grouped peak list
         # need to calculate these using DetectorPeakPredictor
         # 4a. InstrumentState
@@ -153,11 +146,14 @@ class CalibrationService(Service):
         cifFilePath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # 4c. PeakIntensityThreshold
-        peakIntensityThreshold = request.peakIntensityThreshold
+        detectorPeakIngredients = PeakIngredients(
+            instrumentState=instrumentState,
+            crystalInfo=crystalInfo,
+            peakIntensityThreshold=request.peakIntensityThreshold,
+            pixelGroup=pixelGroup,
+        )
         detectorPeaks = DetectorPeakPredictorRecipe().executeRecipe(
-            InstrumentState=instrumentState,
-            CrystalInfo=crystalInfo,
-            PeakIntensityFractionThreshold=peakIntensityThreshold,
+            Ingredients=detectorPeakIngredients,
         )
         detectorPeaks = parse_raw_as(List[GroupPeakList], detectorPeaks)
         # 5. cal path
@@ -170,12 +166,9 @@ class CalibrationService(Service):
         convergenceThreshold = request.convergenceThreshold
         ingredients = DiffractionCalibrationIngredients(
             runConfig=runConfig,
-            instrumentState=instrumentState,
-            focusGroup=focusGroup,
             groupedPeakLists=detectorPeaks,
-            calPath=calpath,
             convergenceThreshold=convergenceThreshold,
-            pixelGroup=instrumentState.pixelGroup,
+            pixelGroup=pixelGroup,
             maxOffset=request.maximumOffset,
         )
         focusFile = request.focusGroupPath.split("/")[-1]
@@ -238,7 +231,6 @@ class CalibrationService(Service):
                     groupingFile,
                     useLiteMode,
                 )
-                calibrationState.instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=data["parameters"])
                 if export is True:
                     self.dataExportService.exportCalibrationState(runId=run.runNumber, calibration=calibrationState)
             except:
@@ -258,9 +250,16 @@ class CalibrationService(Service):
         elif useLiteMode is False:
             return Config["instrument.native.definition.file"]
 
-    def _calculatePixelGroupingParameters(self, instrumentState, groupingFile: str, useLiteMode: bool):
+    def _calculatePixelGroupingParameters(
+        self, 
+        instrumentState: InstrumentState, 
+        groupingFile: str, 
+        useLiteMode: bool,
+        nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"],
+    ):
         groupingIngredients = PixelGroupingIngredients(
             instrumentState=instrumentState,
+            nBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
         )
 
         # TODO replace this with grouping scheme passed instead as the parameter
@@ -280,14 +279,15 @@ class CalibrationService(Service):
             raise
         return data
 
-    def collectPixelGroups(self, focusGroups, pixelGroupingParams, nBinsAcrossPeakWidth) -> List[PixelGroup]:
+    def collectPixelGroups(self, focusGroups, pixelGroupingParams, tofParams, nBinsAcrossPeakWidth) -> List[PixelGroup]:
         pixelGroups = []
-        for focusGroup, pixelGroupingParam in zip(focusGroups, pixelGroupingParams):
+        for focusGroup, pixelGroupingParam, tof in zip(focusGroups, pixelGroupingParams, tofParams):
             pixelGroups.append(
                 PixelGroup(
                     focusGroupName=focusGroup,
                     pixelGroupingParameters=pixelGroupingParam,
-                    numberBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
+                    timeOfFlight=tof,
+                    nBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
                 )
             )
         return pixelGroups
@@ -337,17 +337,18 @@ class CalibrationService(Service):
         )
         data = self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition, request.useLiteMode)
         pixelGroupingParam = data["parameters"]
+        timeOfFlightParam = data["tof"]
         cifFilePath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # TODO: We Need to Fit the Data
-        fitIngredients = FitMultiplePeaksIngredients(
+        fitIngredients = PeakIngredients(
             instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=focussedData
         )
-        fitResults = FitMultiplePeaksRecipe().executeRecipe(FitMultiplePeaksIngredients=fitIngredients)
+        fitResults = FitMultiplePeaksRecipe().executeRecipe(Ingredients=fitIngredients)
         metrics = self._collectMetrics(fitResults, focusGroup, pixelGroupingParam)
 
         outputWorkspaces = [focussedData]
-        pixelGroups = self.collectPixelGroups([focusGroup], [pixelGroupingParam], request.nBinsAcrossPeakWidth)
+        pixelGroups = self.collectPixelGroups([focusGroup], [pixelGroupingParam], [timeOfFlightParam], request.nBinsAcrossPeakWidth)
         record = CalibrationRecord(
             runNumber=run.runNumber,
             crystalInfo=crystalInfo,
@@ -377,18 +378,26 @@ class CalibrationService(Service):
             groupingFile,
             True,
         )
+        data = self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition, request.useLiteMode)
+        pixelGroup = PixelGroup(
+            focusGroup=focusGroup,
+            pixelGroupingParamters=data["parameters"],
+            timeOfFlight=data["tof"],
+            nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
+        )
 
         reductionIngredients = self.dataFactoryService.getReductionIngredients(
-            request.runNumber, instrumentState.pixelGroup
+            request.runNumber, pixelGroup
         )
         backgroundReductionIngredients = self.dataFactoryService.getReductionIngredients(
-            request.backgroundRunNumber, instrumentState.pixelGroup
+            request.backgroundRunNumber, pixelGroup
         )
 
-        smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
+        smoothDataIngredients = PeakIngredients(
             smoothingParameter=request.smoothingParameter,
             instrumentState=instrumentState,
             crystalInfo=crystalInfo,
+            pixelGroup=pixelGroup,
         )
 
         normalizationIngredients = NormalizationCalibrationIngredients(
@@ -443,6 +452,6 @@ class CalibrationService(Service):
     @FromString
     def retrievePixelGroupingParams(self, runID: str, useLiteMode: bool = True):
         calibration = self.dataFactoryService.getCalibrationState(runID)
-        focusGroups = self.dataFactoryService.getFocusGroups(runID)
+        focusGroups = calibration.instrumentState.groupingMap # TODO: fix to work with new group map work
         pixelGroupingParams = self._getPixelGroupingParams(calibration.instrumentState, focusGroups, useLiteMode)
         return pixelGroupingParams

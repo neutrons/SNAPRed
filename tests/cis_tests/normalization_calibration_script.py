@@ -8,7 +8,7 @@ import json
 
 from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import CalibrationNormalizationAlgo
 from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import NormalizationCalibrationIngredients
-from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.dao.ingredients.PeakIngredients import PeakIngredients
 
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
@@ -71,16 +71,17 @@ pgpIngredients = PixelGroupingIngredients(
 )
 
 pgp = PixelGroupingParametersCalculationRecipe().executeRecipe(pgpIngredients, groceries[2])["parameters"]
-instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pgp)
+pixelGroup = PixelGroup(pixelGroupingParameters=pgp)
 reductionIngredients = DFS.getReductionIngredients(runNumber, instrumentState.pixelGroup)
 
 calibrantSample = getCalibrantSample(samplePath)
 
 crystalInfo = CrystallographicInfoService().ingest(cifPath)["crystalInfo"]
-smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
+smoothDataIngredients = PeakIngredients(
     smoothingParameter=smoothingParam,
     instrumentState=instrumentState,
     crystalInfo=crystalInfo,
+    pixelGroup = pixelGroup
 )
 
 backgroundReductionIngredients = reductionIngredients
@@ -91,7 +92,7 @@ ingredients = NormalizationCalibrationIngredients(
     backgroundReductionIngredients=backgroundReductionIngredients,
     calibrantSample=calibrantSample,
     smoothDataIngredients=smoothDataIngredients,
-)
+) 
 
 
 

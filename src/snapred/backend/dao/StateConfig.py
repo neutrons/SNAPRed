@@ -12,8 +12,5 @@ class StateConfig(BaseModel):
     calibration: Calibration
     diffractionCalibrant: Optional[DiffractionCalibrant]
     normalizationCalibrant: Optional[NormalizationCalibrant]
-    focusGroups: List[FocusGroup]  # PixelGroupingParameters
+    focusGroups: List[FocusGroup]  # from the group map
     stateId: str  # generated.
-    tofBin: float  # instrConfig.delTOverT / instrConfig.NBins
-    tofMax: float  # ParticleBound
-    tofMin: float  # ParticleBound

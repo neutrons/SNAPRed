@@ -5,6 +5,7 @@ from mantid.api import AlgorithmManager
 from pydantic import parse_raw_as
 
 from snapred.backend.dao.ingredients import PixelGroupingIngredients
+from snapred.backend.dao.Limit import BinnedValue
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
@@ -28,7 +29,7 @@ class PixelGroupingParametersCalculationRecipe:
 
         algo = AlgorithmManager.create(self.PixelGroupingParametersCalculationAlgorithmName)
 
-        algo.setProperty("InstrumentState", ingredients.instrumentState.json())
+        algo.setProperty("Ingredients", ingredients.json())
         algo.setProperty("GroupingWorkspace", groupingWorkspace)
 
         try:
@@ -39,6 +40,14 @@ class PixelGroupingParametersCalculationRecipe:
                 algo.getProperty("OutputParameters").value,
             )
             data["parameters"] = pixelGroupingParams
+            data["tof"] = BinnedValue(
+                minimum=ingredients.instrumentState.particleBounds.tof.minimum,
+                maximum=ingredients.instrumentState.particleBounds.tof.maximum,
+                binWidth=min(
+                    [abs(pgp.dRelativeResolution) / ingredients.nBinsAcrossPeakWidth for pgp in pixelGroupingParams]
+                ),
+                binningMode=BinnedValue.BinningMode.LOG,
+            )
         except RuntimeError as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
