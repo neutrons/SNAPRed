@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, validator, root_validator
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import Config
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -53,6 +54,10 @@ class GroupingMap(BaseModel):
             _isDirty = True,
             availableGroups = self.availableGroups
         )
+    
+    @classmethod
+    def getPath(cls) -> Path:
+        return Path(Config["instrument.calibration.powder.grouping.home"])
             
     @validator('stateId', pre=True, allow_reuse=True)
     def str_to_ObjectSHA(cls, v: Any) -> Any:
@@ -63,18 +68,21 @@ class GroupingMap(BaseModel):
     
     @root_validator(pre=False, allow_reuse=True)
     def validate_GroupingMapFile(cls, v):
+        print(type(v))
+        _native = {}
+        _lite = {}
         if v.get("nativeFocusGroups"):
-            cls._nativeMap = {nfg.name: nfg for nfg in v["nativeFocusGroups"]}
+            _native = {nfg.name: nfg for nfg in v["nativeFocusGroups"]}
         if v.get("liteFocusGroups"):
-            cls._liteMap = {lfg.name: lfg for lfg in v["liteFocusGroups"]}   
-        groups = {"native": cls._nativeMap, "lite": cls._liteMap}
-        supportedExtensions = ("H5", "HD5", "HDF", "NXS", "NXS5", "XML")
+            _lite = {lfg.name: lfg for lfg in v["liteFocusGroups"]}   
+        groups = {'native': _native, 'lite': _lite}
+        supportedExtensions = ("H5", "HD5", "HDF", "NXS", "NXS5", "xml")
         for mode in groups.copy():
-            if groups[mode] is None:
-                logger.warning("No FocusGroups for " + mode + " given")
-                continue
             for group in groups[mode].copy():
                 fp = Path(groups[mode][group].definition)
+                #Check if path is relative
+                if str(fp) == fp.name:
+                    fp = Path.joinpath(cls.getPath(), fp)
                 if not fp.exists():
                     logger.warning("File:" + str(fp) + " not found")
                     del groups[mode][group]
@@ -87,6 +95,9 @@ class GroupingMap(BaseModel):
                     logger.warning("File format for:" + str(fp) + " is wrong")
                     del groups[mode][group]
                     continue
-            if mode == {}:
-                logger.warning("No FocusGroups for " + mode + " given")
+            if groups[mode] == {}:
+                logger.warning("No valid FocusGroups given for mode: " + mode)
+        
+        v['_nativeMap'] = groups['native']
+        v['_liteMap'] = groups['lite']
         return v
