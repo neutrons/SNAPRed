@@ -1,11 +1,18 @@
 import json
 
-from mantid.api import *
-from mantid.api import AlgorithmFactory, PythonAlgorithm
+from mantid.api import (
+    AlgorithmFactory,
+    ITableWorkspaceProperty,
+    MatrixWorkspaceProperty,
+    PropertyMode,
+    PythonAlgorithm,
+)
 from mantid.kernel import *
 from mantid.kernel import Direction
+from mantid.simpleapi import mtd
 
 from snapred.backend.dao.ingredients import ReductionIngredients
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
@@ -20,45 +27,73 @@ class ReductionAlgorithm(PythonAlgorithm):
 
     def PyInit(self):
         # declare properties
+        self.declareProperty(
+            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Input neutron data to be reduced.",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("VanadiumWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="The raw vanadium correction workspace.",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("MaskWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="A masking workspace loading from the same calibration table.",
+        )
+        self.declareProperty(
+            ITableWorkspaceProperty("CalibrationTable", "", Direction.Output, PropertyMode.Mandatory),
+            doc="The Calibration table holding DIFC values",
+        )
         self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
+        self.declareProperty(
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="The reduced data workspace.",
+        )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
+    def chopIngredients(self, ingredients: ReductionIngredients):
+        self.focusGroups = ingredients.reductionState.stateConfig.focusGroups
+        self.groupIDs = ingredients.pixelGroup.groupIDs
+        self.dMin = ingredients.pixelGroup.dMin()
+        self.dMax = ingredients.pixelGroup.dMax()
+        self.dBin = ingredients.pixelGroup.dBin()
+
+    def unbagGroceries(self):
+        self.inputWorkspace = self.getPropertyValue("InputWorkspace")
+        self.outputWorkspace = self.getPropertyValue("OutputWorkspace")
+        self.vanadiumWorkspace = self.getPropertyValue("VanadiumWorkspace")
+        self.tmpVanadium = self.vanadiumWorkspace + "_tmp"
+        self.mantidSnapper.CloneWorkspace(
+            "Setup output workspace",
+            InputWorkspace=self.inputWorkspace,
+            OutputWorkspace=self.outputWorkspace,
+        )
+        self.mantidSnapper.CloneWorkspace(
+            "Setup temporary vanadium workspace",
+            InputWorkspace=self.vanadiumWorkspace,
+            OutputWorkspace=self.tmpVanadium,
+        )
+        self.maskWorkspace = self.getPropertyValue("MaskWorkspace")
+        self.DIFC = self.getPropertyValue("CalibrationTable")
+        self.mantidSnapper.executeQueue()
+
     def PyExec(self):
-        reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
-        focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
+        ingredients = ReductionIngredients.parse_raw(self.getProperty("ReductionIngredients").value)
+        self.chopIngredients(ingredients)
         # run the algo
         self.log().notice("Execution of ReductionAlgorithm START!")
 
-        # TODO: Reorg how filepaths are stored
-        ipts = reductionIngredients.runConfig.IPTS
-        rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
-        vanadiumFilePath = reductionIngredients.reductionState.stateConfig.vanadiumFilePath
-        diffCalPath = reductionIngredients.reductionState.stateConfig.diffractionCalibrant.diffCalPath
+        # 7 Does it have a container?
+        # Apply Container Mask to Raw Vanadium and Data output from SumNeighbours
+        #     -- done to both data and vanadium
+        # self.applyContainerMask()
 
-        raw_data = self.mantidSnapper.LoadEventNexus(
-            "Loading Event for Nexus for {}...".format(rawDataPath),
-            Filename=rawDataPath,
-            OutputWorkspace="raw_data",
-        )
+        # 8 CreateGroupWorkspace
+        # TODO: Assess performance, use alternative Andrei came up with that is faster
 
-        vanadium = self.mantidSnapper.LoadNexus(
-            "Loading Nexus for {}...".format(vanadiumFilePath),
-            Filename=vanadiumFilePath,
-            OutputWorkspace="vanadium",
-        )
-
-        # 4 Not Lite? SumNeighbours  -- just apply to data
-        # self.sumNeighbours(InputWorkspace=raw_data, SumX=SuperPixEdge, SumY=SuperPixEdge, OutputWorkspace=raw_data)
-
-        # 7 Does it have a container? Apply Container Mask to Raw Vanadium and Data output from SumNeighbours
-        #                           -- done to both data and vanadium
-        # self.applyCotainerMask()
-        # 8 CreateGroupWorkspace      TODO: Assess performance, use alternative Andrei came up with that is faster
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",
-            StateConfig=reductionIngredients.reductionState.stateConfig.json(),
+            StateConfig=ingredients.reductionState.stateConfig.json(),
             InputWorkspace="vanadium",
             OutputWorkSpace="CommonRed",
         )
@@ -76,42 +111,26 @@ class ReductionAlgorithm(PythonAlgorithm):
 
         # 6 Apply Calibration Mask to Raw Vanadium and Data output from SumNeighbours
         #              -- done to both data, can be applied to vanadium per state
-        self.mantidSnapper.MaskDetectors(
-            "Applying Pixel Mask to Raw Data...",
-            Workspace=raw_data,
-            MaskedWorkspace=diffCalPrefix + "_mask",
-        )
-        self.mantidSnapper.MaskDetectors(
-            "Applying Pixel Mask to Vanadium Data...",
-            Workspace=vanadium,
-            MaskedWorkspace=diffCalPrefix + "_mask",
-        )
-        self.mantidSnapper.ApplyDiffCal(
-            "Applying Diffcal...", InstrumentWorkspace=raw_data, CalibrationWorkspace=diffCalPrefix + "_cal"
-        )
-
-        self.mantidSnapper.WashDishes(
-            "Deleting DiffCal Mask",
-            WorkspaceList=[diffCalPrefix + "_mask", diffCalPrefix + "_cal"],
-        )
-
-        # 9 Does it have a container? Apply Container Attenuation Correction
-        data = self.mantidSnapper.ConvertUnits(
-            "Converting to Units of dSpacing...",
-            InputWorkspace=raw_data,
-            EMode="Elastic",
-            Target="dSpacing",
-            OutputWorkspace="data",
-            ConvertFromPointData=True,
-        )
-        vanadium = self.mantidSnapper.ConvertUnits(
-            "Converting to Units of dSpacing...",
-            InputWorkspace=vanadium,
-            EMode="Elastic",
-            Target="dSpacing",
-            OutputWorkspace="vanadium_dspacing",
-            ConvertFromPointData=True,
-        )
+        for ws in [self.outputWorkspace, self.tmpVanadium]:
+            self.mantidSnapper.MaskDetectors(
+                "Applying Pixel Mask to Raw Data...",
+                Workspace=ws,
+                MaskedWorkspace=self.maskWorkspace,
+            )
+            self.mantidSnapper.ApplyDiffCal(
+                "Applying Diffcal...",
+                InstrumentWorkspace=ws,
+                CalibrationWorkspace=self.DIFC,
+            )
+            # 9 Does it have a container? Apply Container Attenuation Correction
+            data = self.mantidSnapper.ConvertUnits(
+                "Converting to Units of dSpacing...",
+                InputWorkspace=ws,
+                EMode="Elastic",
+                Target="dSpacing",
+                OutputWorkspace=ws,
+                ConvertFromPointData=True,
+            )
 
         # TODO: May impact performance of lite mode data
         # TODO: Params is supposed to be smallest dmin, smalled dbin, largest dmax
@@ -138,7 +157,11 @@ class ReductionAlgorithm(PythonAlgorithm):
         )
 
         # 2 NormalizeByCurrent -- just apply to data
-        self.mantidSnapper.NormaliseByCurrent("Normalizing Current ...", InputWorkspace=data, OutputWorkspace=data)
+        self.mantidSnapper.NormaliseByCurrent(
+            "Normalizing Current ...",
+            InputWorkspace=data,
+            OutputWorkspace=data,
+        )
 
         # self.deleteWorkspace(Workspace=rebinned_data_before_focus)
         self.mantidSnapper.WashDishes(
@@ -152,21 +175,19 @@ class ReductionAlgorithm(PythonAlgorithm):
         # sum chunks if files are large
         # TODO: Implement New Strip Peaks that allows for multiple FWHM, one per group,
         # for now just grab the first one to get it to run
-        peakPositions = ",".join(
-            str(s) for s in reductionIngredients.reductionState.stateConfig.normalizationCalibrant.peaks
-        )
+        peakPositions = ",".join(str(s) for s in ingredients.reductionState.stateConfig.normalizationCalibrant.peaks)
 
         vanadium = self.mantidSnapper.StripPeaks(
             "Stripping Peaks...",
             InputWorkspace=vanadium,
-            FWHM=reductionIngredients.reductionState.stateConfig.focusGroups[0].FWHM[0],
+            FWHM=ingredients.reductionState.stateConfig.focusGroups[0].FWHM[0],
             PeakPositions=peakPositions,
             OutputWorkspace="peaks_stripped_vanadium",
         )
         vanadium = self.mantidSnapper.SmoothData(
             "Smoothing Data...",
             InputWorkspace=vanadium,
-            NPoints=reductionIngredients.reductionState.stateConfig.normalizationCalibrant.smoothPoints,
+            NPoints=ingredients.reductionState.stateConfig.normalizationCalibrant.smoothPoints,
             OutputWorkspace="smoothed_data_vanadium",
         )
 
@@ -178,19 +199,22 @@ class ReductionAlgorithm(PythonAlgorithm):
             PreserveEvents=False,
         )
         data = self.mantidSnapper.Divide(
-            "Rebinning ragged bins...", LHSWorkspace=data, RHSWorkspace=vanadium, OutputWorkspace="data_minus_vanadium"
+            "Rebinning ragged bins...",
+            LHSWorkspace=data,
+            RHSWorkspace=vanadium,
+            OutputWorkspace="data_minus_vanadium",
         )
 
         # TODO: Refactor so excute only needs to be called once
         self.mantidSnapper.executeQueue()
 
-        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in reductionIngredients.pixelGroupingParameters}
-        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in reductionIngredients.pixelGroupingParameters}
+        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in ingredients.pixelGroupingParameters}
+        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in ingredients.pixelGroupingParameters}
         dBin = {
-            pgp.groupID: pgp.dRelativeResolution / reductionIngredients.reductionState.instrumentConfig.NBins
-            for pgp in reductionIngredients.pixelGroupingParameters
+            pgp.groupID: pgp.dRelativeResolution / ingredients.pixelGroup.nBinsAcrossPeakWidth
+            for pgp in ingredients.pixelGroupingParameters
         }
-        groupIDs = [pgp.groupID for pgp in reductionIngredients.pixelGroupingParameters]
+        groupIDs = [pgp.groupID for pgp in ingredients.pixelGroupingParameters]
         groupIDs.sort()
         groupedData = data
         for index, groupID in enumerate(groupIDs):

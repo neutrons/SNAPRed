@@ -5,10 +5,10 @@ import pytest
 from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import (
     NormalizationCalibrationIngredients as Ingredients,
 )
+from snapred.backend.dao.ingredients.PeakIngredients import PeakIngredients
 
 # to make ingredients
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
-from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
@@ -37,8 +37,7 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
 
         # create mock ingredients
         cls.mockIngredients: Ingredients = cls.createMockIngredients()
-        tofMin = cls.mockIngredients.reductionIngredients.reductionState.stateConfig.tofMin
-        tofMax = cls.mockIngredients.reductionIngredients.reductionState.stateConfig.tofMax
+        tofParams = cls.mockIngredients.reductionIngredients.pixelGroup.timeOfFlight.params
         cls.sample_proton_charge = 10.0
 
         # the test instrument uses 16 pixels, 4 banks of 4 pixels each
@@ -50,8 +49,8 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
             OutputWorkspace=cls.rawBackgroundWS,
             WorkspaceType="Event",
             Function="Flat background",
-            Xmin=tofMin,
-            Xmax=tofMax,
+            Xmin=tofParams[0],
+            Xmax=tofParams[2],
             BinWidth=0.01,
             XUnit="TOF",
             NumBanks=4,
@@ -79,8 +78,8 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
             OutputWorkspace="_tmp_sample",
             WorkspaceType="Event",
             Function="Powder Diffraction",
-            Xmin=tofMin,
-            Xmax=tofMax,
+            Xmin=tofParams[0],
+            Xmax=tofParams[2],
             BinWidth=0.01,
             XUnit="TOF",
             NumBanks=4,
@@ -121,7 +120,7 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
         crystalInfo = CrystallographicInfoService().ingest(fakeCIF)["crystalInfo"]
         fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
 
-        smoothDataIngredients = SmoothDataExcludingPeaksIngredients(
+        smoothDataIngredients = PeakIngredients(
             smoothingParameter=randomSmoothingParameter,
             instrumentState=fakeInstrumentState,
             crystalInfo=crystalInfo,

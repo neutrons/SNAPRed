@@ -9,7 +9,7 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
 )
 from pydantic.error_wrappers import ValidationError
-from snapred.backend.dao.Limit import Limit, BinnedValue
+from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.meta.Config import Resource
@@ -45,7 +45,7 @@ class TestPixelGroup(unittest.TestCase):
         cls.tofParams = BinnedValue(
             minimum=0,
             maximum=100,
-            binWidth=0.03/cls.nBinsAcrossPeakWidth,
+            binWidth=0.03 / cls.nBinsAcrossPeakWidth,
         )
 
         try:
@@ -141,7 +141,7 @@ class TestPixelGroup(unittest.TestCase):
             pixelGroupingParameters=self.pixelGroupingParameters,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             timeOfFlight=self.tofParams,
-            binningMode = PixelGroup.BinningMode.LOG,
+            binningMode=PixelGroup.BinningMode.LOG,
         )
         binWidths = pg.dBin()
         assert binWidths == [-abs(dl / self.nBinsAcrossPeakWidth) for dl in self.dRelativeResolution]
@@ -153,7 +153,7 @@ class TestPixelGroup(unittest.TestCase):
             pixelGroupingParameters=self.pixelGroupingParameters,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             timeOfFlight=self.tofParams,
-            binningMode = PixelGroup.BinningMode.LINEAR,
+            binningMode=PixelGroup.BinningMode.LINEAR,
         )
         binWidths = pg.dBin()
         assert binWidths == [abs(dl / 7) for dl in self.dRelativeResolution]

@@ -1,11 +1,9 @@
 import json
+from typing import Dict
 
-from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
-from mantid.kernel import Direction
-
-from snapred.backend.dao.StateConfig import StateConfig
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from mantid.api import AlgorithmFactory, PropertyMode, PythonAlgorithm, WorkspaceGroupProperty
+from mantid.kernel import Direction, StringArrayProperty
+from mantid.simpleapi import GroupWorkspaces, mtd
 
 
 class CustomGroupWorkspace(PythonAlgorithm):
@@ -13,65 +11,37 @@ class CustomGroupWorkspace(PythonAlgorithm):
         return "SNAPRed Internal"
 
     def PyInit(self):
-        # declare properties
-        self.declareProperty("StateConfig", defaultValue="", direction=Direction.Input)
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Optional),
-            doc="Workspace to take the instrument object from",
+            StringArrayProperty(
+                name="GroupingWorkspaces", values=[], direction=Direction.Input, option=PropertyMode.Mandatory
+            )
+        )
+        self.declareProperty(
+            WorkspaceGroupProperty("OutputWorkspace", "", direction=Direction.Output, optional=PropertyMode.Optional),
+            doc="The group of grouping workspaces",
         )
 
-        self.declareProperty("InstrumentName", defaultValue="SNAP", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="CommonRed", direction=Direction.Output)
-        self.mantidSnapper = MantidSnapper(self, __name__)
+    def validateInputs(self) -> Dict[str, str]:
+        allInputs = list(self.getPropertyValue("GroupingWorkspaces"))
+        bads = [x for x in allInputs if not mtd.doesExist(x)]
+        errors = {}
+        if len(bads) > 0:
+            errors["GroupingWorkspaces"] = f"Invalid workspaces: {bads}"
+        return errors
 
-    # TODO: This was largely copied from Malcolm's prototype and is due for a refactor
     def PyExec(self):
-        stateConfig = StateConfig(**json.loads(self.getProperty("StateConfig").value))
-        focusGroups = stateConfig.focusGroups
-        self.getProperty("InstrumentName").value
-        outputWorkspace = self.getProperty("OutputWorkspace").value
-
-        donorWorkspace = self.getProperty("InputWorkspace").value
-        loadEmptyInstrument = bool(not donorWorkspace)
-        if loadEmptyInstrument:
-            donorWorkspace = "idf"  # name doesn't matter
-            # TODO: THIS WILL BREAK
-            # I'm not changing it now since LoadGroupingDefinition is replacing this(I think)
-            # but this was refactored from LoadInstrument and the params were just carried over
-            # These two algos do not share the same params!!!
-            self.mantidSnapper.LoadEmptyInstrument(
-                "Loading empty instrument...",
-                Workspace=donorWorkspace,
-                Filename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
-                RewriteSpectraMap=False,
-            )
-            self.mantidSnapper.executeQueue()
-        else:
-            # convert workspace to string to avoid dangling pointers
-            donorWorkspace = str(donorWorkspace)
-
-        for grpIndx, focusGroup in enumerate(focusGroups):
-            self.mantidSnapper.LoadGroupingDefinition(
-                f"Loading grouping file for focus group {focusGroup.name}...",
-                GroupingFilename=focusGroup.definition,
-                InstrumentDonor=donorWorkspace,
-                OutputWorkspace=focusGroup.name,
-            )
-            self.mantidSnapper.executeQueue()
-
-        # cleanup temporary workspace
-        if loadEmptyInstrument:
-            self.mantidSnapper.WashDishes(
-                "Deleting empty instrument...",
-                Workspace=donorWorkspace,
-            )
-            self.mantidSnapper.executeQueue()
-
-        # create a workspace group of GroupWorkspaces
-        self.mantidSnapper.GroupWorkspaces(
-            "Grouping workspaces...",
-            InputWorkspaces=[focusGroup.name for focusGroup in focusGroups],
-            OutputWorkspace=outputWorkspace,
+        """
+        This algorithm used to orchestrate loading GroupingWorkspaces, then grouping them into a GroupedWorkspace.
+        The loading behavior is no longer needed, so removed.  However, some processes seem to anticipate a
+        GroupedWorkspaces of the focus GroupingWorkspaces.
+        This algo is retained, only to call mantid's GroupingWorkspaces, and left only to maintain conformity
+        with what used to be there.
+        It should be removed, as soon as the GroupedWorkspace functionality is covered.
+        """
+        # create a GroupWorkspace of GroupingWorkspaces
+        GroupWorkspaces(
+            InputWorkspaces=self.getPropertyValue("GroupingWorkspaces"),
+            OutputWorkspace=self.getPropertyValue("OutputWorkspace"),
         )
         self.mantidSnapper.executeQueue()
 

@@ -6,8 +6,8 @@ from mantid.kernel import Direction
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.Limit import LimitedValue
 from snapred.backend.dao.ingredients import PeakIngredients
+from snapred.backend.dao.Limit import LimitedValue
 from snapred.meta.redantic import list_to_raw
 
 
@@ -24,8 +24,8 @@ class DetectorPeakPredictor(PythonAlgorithm):
             doc="The detector peak ingredients",
         )
         self.declareProperty(
-            "DetectorPeaks", 
-            defaultValue="", 
+            "DetectorPeaks",
+            defaultValue="",
             direction=Direction.Output,
             doc="The returned list of GroupPeakList objects",
         )
@@ -38,7 +38,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         self.FWHMMultiplierRight = ingredients.instrumentState.fwhmMultiplierLimit.maximum
         self.peakTailCoefficient = ingredients.instrumentState.peakTailCoefficient
         self.L = ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2
-        
+
         # binning params
         pixelGroupParams = ingredients.pixelGroup.pixelGroupingParameters
         self.delDoD = {groupID: pgp.dRelativeResolution for groupID, pgp in pixelGroupParams.items()}
@@ -65,7 +65,9 @@ class DetectorPeakPredictor(PythonAlgorithm):
         allFocusGroupsPeaks = []
         for groupID in self.allGroupIDs:
             # select only good peaks within the d-spacing range
-            dList = [peak.dSpacing for peak in self.goodPeaks if self.dMin[groupID] <= peak.dSpacing <= self.dMax[groupID]]
+            dList = [
+                peak.dSpacing for peak in self.goodPeaks if self.dMin[groupID] <= peak.dSpacing <= self.dMax[groupID]
+            ]
 
             singleFocusGroupPeaks = []
             for d in dList:
