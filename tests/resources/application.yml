@@ -93,8 +93,11 @@ mantid:
         diffCal:
           input: "_{unit},{runNumber},raw"
           table: "_DIFC,{runNumber}"
+<<<<<<< HEAD
           output: "_{unit},{runNumber},diffoc"
           mask: "_DIFC,{runNumber},mask"
+=======
+>>>>>>> Implement calibration assessment view.
           metric: "{runNumber},{version},calibration_metrics,{metricName}"
         units:
           dSpacing: dsp

@@ -94,8 +94,11 @@ mantid:
       diffCal:
         input: "{unit},{runNumber},raw"
         table: "DIFC,{runNumber}"
+<<<<<<< HEAD
         output: "{unit},{runNumber},diffoc"
         mask: "DIFC,{runNumber},mask"
+=======
+>>>>>>> Implement calibration assessment view.
         metric: "{runNumber},{version},calibration_metrics,{metricName}"
       normCal:
         rawVandium: "{runNumber},{backgroundRunNumber},RVC"
