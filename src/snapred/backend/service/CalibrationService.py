@@ -228,8 +228,10 @@ class CalibrationService(Service):
                         wkspaceExists = True
                         break
             if wkspaceExists:
-                errorTxt = f"Calibration assessment for Run {runId} Version {version} "
-                f"is already loaded: see workspace {ws_name}."
+                errorTxt = (
+                    f"Calibration assessment for Run {runId} Version {version} "
+                    f"is already loaded: see workspace {ws_name}."
+                )
                 logger.error(errorTxt)
                 raise ValueError(errorTxt)
 
