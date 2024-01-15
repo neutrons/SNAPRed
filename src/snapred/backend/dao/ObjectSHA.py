@@ -5,14 +5,17 @@
     * Allow verification of nested objects where components may be loaded from separate JSON files:
       => SHA == SHA of parent object.
 """
-from typing import Any, Optional
 import hashlib
 import json
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, validator
 
+
 class ObjectSHA(BaseModel):
-    hex: str = Field(description='16-character lowercase hex string', min_length=16, max_length=16, pattern=r'[0-9a-f]+')
+    hex: str = Field(
+        description="16-character lowercase hex string", min_length=16, max_length=16, pattern=r"[0-9a-f]+"
+    )
     # If we still have the decoded JSON, retain it for possible re-use (, but do not require it):
     decodedKey: Optional[str]
 
@@ -27,7 +30,7 @@ class ObjectSHA(BaseModel):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-    
+
     def __str__(self):
         return self.hex
 
