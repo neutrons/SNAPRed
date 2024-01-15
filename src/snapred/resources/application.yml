@@ -96,6 +96,7 @@ mantid:
         table: "DIFC,{runNumber}"
         output: "{unit},{runNumber},diffoc"
         mask: "DIFC,{runNumber},mask"
+        metric: "{runNumber},{version},calibration_metrics,{metricName}"
       normCal:
         rawVandium: "{runNumber},{backgroundRunNumber},RVC"
         focusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}"

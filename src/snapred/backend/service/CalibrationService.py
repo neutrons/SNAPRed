@@ -4,7 +4,7 @@ from datetime import date
 from functools import lru_cache
 from typing import List, Tuple
 
-from pydantic import parse_raw_as
+from pydantic import parse_file_as, parse_raw_as
 
 from snapred.backend.dao import GroupPeakList, RunConfig
 from snapred.backend.dao.calibration import (
@@ -23,6 +23,8 @@ from snapred.backend.dao.ingredients import (
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
+    CalibrationIndexRequest,
+    CalibrationLoadAssessmentRequest,
     DiffractionCalibrationRequest,
     FarmFreshIngredients,
     InitializeStateRequest,
@@ -187,13 +189,56 @@ class CalibrationService(Service):
         return FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric)
 
     @FromString
-    def readQuality(self, runId: str, version: str):
+    def getCalibrationIndex(self, request: CalibrationIndexRequest):
+        run = request.run
+        calibrationIndex = self.dataFactoryService.getCalibrationIndex(run.runNumber)
+        return calibrationIndex
+
+    @FromString
+    def readQuality(self, request: CalibrationLoadAssessmentRequest):
+        runId = request.runId
+        version = request.version
+        print(f"*****readQuality: {runId} {version}")
+
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
         if calibrationRecord is None:
-            raise ValueError(f"No calibration record found for run {runId}, version {version}.")
+            errorTxt = f"No calibration record found for run {runId}, version {version}."
+            logger.error(errorTxt)
+            raise ValueError(errorTxt)
+
+        # check if any of the workspaces already exists
+        if request.checkExistent:
+            wkspaceExists = False
+            for metricName in ["sigma", "strain"]:
+                ws_name = (
+                    wng.diffCalMetrics()
+                    .runNumber(request.runId)
+                    .version(request.version)
+                    .metricName(metricName)
+                    .build()
+                )
+                print(f"*****CHECKING IF {ws_name} exists")
+                if self.dataFactoryService.workspaceDoesExist(ws_name):
+                    wkspaceExists = True
+                    break
+            if not wkspaceExists:
+                for ws_name in calibrationRecord.workspaceNames:
+                    print(f"*****CHECKING IF {ws_name} exists")
+                    if self.dataFactoryService.workspaceDoesExist(ws_name):
+                        wkspaceExists = True
+                        break
+            if wkspaceExists:
+                errorTxt = f"Calibration assessment for Run {runId} Version {version} "
+                f"is already loaded: see workspace {ws_name}."
+                logger.error(errorTxt)
+                raise ValueError(errorTxt)
+
+        # generate metrics workspaces
         GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
             CalibrationMetricsWorkspaceIngredients(calibrationRecord=calibrationRecord)
         )
+
+        # load persistent workspaces
         for ws_name in calibrationRecord.workspaceNames:
             self.dataFactoryService.loadCalibrationDataWorkspace(
                 calibrationRecord.runNumber, calibrationRecord.version, ws_name

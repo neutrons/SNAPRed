@@ -99,8 +99,8 @@ class DataFactoryService:
     def getWorkspaceSingleUse(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataSingleUse(runId, useLiteMode)
 
-    def getCalibrationRecord(self, runId):
-        return self.lookupService.readCalibrationRecord(runId)
+    def getCalibrationRecord(self, runId, version: str = None):
+        return self.lookupService.readCalibrationRecord(runId, version)
 
     def getNormalizationRecord(self, runId):
         return self.lookupService.readNormalizationRecord(runId)

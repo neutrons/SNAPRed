@@ -1,48 +1,86 @@
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QWidget
+from typing import List, Tuple
 
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushButton, QWidget
+
+from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentLoader
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
 class CalibrationAssessmentView(QWidget):
-    signalRunNumberUpdate = pyqtSignal(str)
-    signalSampleUpdate = pyqtSignal(int)
+    signalLoadError = pyqtSignal(str)
+    # signalLoadSuccess = pyqtSignal()
 
-    def __init__(self, name, jsonSchemaMap, samples=[], parent=None):
+    def __init__(self, name, jsonSchemaMap, parent=None):
         super().__init__(parent)
         self._jsonFormList = JsonFormList(name, jsonSchemaMap, parent=parent)
+
+        self.calibrationAssessmentLoader = CalibrationAssessmentLoader(self)
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
-        self.interactionText = QLabel("Calibration Complete! Would you like to assess the calibration now?")
+        self.interactionText = QLabel(
+            "Calibration Complete! Please examine the calibration assessment workspaces. "
+            "You can also load and examine previous calibration assessments for the same "
+            "instrument state, if available."
+        )
+        self.placeHolder = QLabel("")
 
-        self.fieldRunNumber = LabeledField("Run Number :", self._jsonFormList.getField("run.runNumber"), self)
-        self.fieldRunNumber.setEnabled(False)
-        self.signalRunNumberUpdate.connect(self._updateRunNumber)
+        self.loadButton = QPushButton("Load")
+        self.loadButton.setEnabled(True)
+        self.loadButton.clicked.connect(self.calibrationAssessmentLoader.handleLoadRequested)
 
-        self.sampleDropdown = QComboBox()
-        self.sampleDropdown.setEnabled(False)
-        self.sampleDropdown.addItem("Select Sample")
-        self.sampleDropdown.addItems(samples)
-        self.sampleDropdown.model().item(0).setEnabled(False)
-        self.signalSampleUpdate.connect(self._updateSample)
+        self.calibrationDropdown = QComboBox()
+        self.calibrationDropdown.setEnabled(True)
+        self.calibrationDropdown.addItem("Select Calibration Record")
+        self.calibrationDropdown.model().item(0).setEnabled(False)
+        self.signalCalibrationRecordUpdate.connect(self._updateCalibrationRecord)
 
-        self.layout.addWidget(self.interactionText)
-        self.layout.addWidget(self.fieldRunNumber)
-        self.layout.addWidget(LabeledField("Sample :", self.sampleDropdown, self))
+        self.signalLoadError.connect(self._displayLoadError)
+        # self.signalLoadSuccess.connect(self._updateOnLoadSuccess)
 
-    # This signal boilerplate mumbo jumbo is necessary because worker threads cant update the gui directly
-    # So we have to send a signal to the main thread to update the gui, else we get an unhelpful segfault
-    def _updateRunNumber(self, runNumber):
-        self.fieldRunNumber.setText(runNumber)
+        self.layout.addWidget(self.interactionText, 0, 0)
+        self.layout.addWidget(LabeledField("Calibration Record:", self.calibrationDropdown, self), 1, 0)
+        self.layout.addWidget(self.loadButton, 1, 1)
+        self.layout.addWidget(self.placeHolder)
 
-    def updateRunNumber(self, runNumber):
-        self.signalRunNumberUpdate.emit(runNumber)
+    def updateCalibrationList(self, calibrationIndex: List[CalibrationIndexEntry]):
+        # reset the combo-box by removing all items except for the first
+        for item in range(1, self.calibrationDropdown.count()):
+            self.calibrationDropdown.removeItem(item)
+        # populate the combo-box from the input calibration index entries
+        for entry in calibrationIndex:
+            name = f"Version: {entry.version}; Run: {entry.runNumber}"
+            self.calibrationDropdown.addItem(name, (entry.runNumber, entry.version))
 
-    def _updateSample(self, sampleIndex):
-        self.sampleDropdown.setCurrentIndex(sampleIndex)
+        self.calibrationDropdown.setCurrentIndex(0)
 
-    def updateSample(self, sampleIndex):
-        self.signalSampleUpdate.emit(sampleIndex)
+    def getCalibrationRecordCount(self):
+        return self.calibrationDropdown.count()
+
+    def getSelectedCalibrationRecordIndex(self):
+        return self.calibrationDropdown.currentIndex()
+
+    def getSelectedCalibrationRecordData(self):
+        return self.calibrationDropdown.currentData()
+
+    def onLoadError(self, msg: str):
+        self.signalLoadError.emit(msg)
+
+    def _displayLoadError(self, msg: str):
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle("Error")
+        msgBox.setIcon(QMessageBox.Critical)
+        msgBox.setText(msg)
+        msgBox.setFixedSize(500, 200)
+        msgBox.exec()
+
+    # def onLoadSuccess(self):
+    #     self.signalLoadSuccess.emit()
+
+    # def _updateOnLoadSuccess(self):
+    #     index = self.calibrationDropdown.currentIndex()
+    #     self.calibrationDropdown.model().item(index).setEnabled(False)

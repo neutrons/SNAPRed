@@ -8,6 +8,7 @@ from snapred.backend.dao.calibration import CalibrationIndexEntry, CalibrationRe
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
+    CalibrationIndexRequest,
     DiffractionCalibrationRequest,
 )
 from snapred.backend.dao.SNAPResponse import SNAPResponse
@@ -53,7 +54,7 @@ class DiffractionCalibrationCreationWorkflow:
             jsonForm, samples=self.samplePaths, groups=self.groupingFiles, parent=parent
         )
         self._calibrationAssessmentView = CalibrationAssessmentView(
-            "Assessing Calibration", self.assessmentSchema, samples=self.samplePaths, parent=parent
+            "Assessing Calibration", self.assessmentSchema, parent=parent
         )
         self._saveCalibrationView = SaveCalibrationView("Saving Calibration", self.saveSchema, parent)
 
@@ -82,10 +83,7 @@ class DiffractionCalibrationCreationWorkflow:
             return SNAPResponse(code=500, message=f"Missing Fields!{e}")
 
         self.runNumber = view.getFieldText("runNumber")
-        sampleIndex = view.sampleDropdown.currentIndex()
 
-        self._calibrationAssessmentView.updateSample(sampleIndex)
-        self._calibrationAssessmentView.updateRunNumber(self.runNumber)
         self._saveCalibrationView.updateRunNumber(self.runNumber)
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.useLiteMode = view.litemodeToggle.field.getState()
@@ -105,11 +103,7 @@ class DiffractionCalibrationCreationWorkflow:
         request = SNAPRequest(path="calibration/diffraction", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
-        return response
 
-    def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
-        # TODO Load Previous ->
-        # pull fields from view for calibration assessment
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),
             workspace=self.responses[-1].data["outputWorkspace"],
@@ -121,7 +115,20 @@ class DiffractionCalibrationCreationWorkflow:
         request = SNAPRequest(path="calibration/assessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
+
+        payload = CalibrationIndexRequest(
+            run=RunConfig(runNumber=self.runNumber),
+        )
+        request = SNAPRequest(path="calibration/index", payload=payload.json())
+        response = self.interfaceController.executeRequest(request)
+        self.responses.append(response)
+
+        self._calibrationAssessmentView.updateCalibrationList(response.data)
+
         return response
+
+    def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
+        return self.responses[-1]
 
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
