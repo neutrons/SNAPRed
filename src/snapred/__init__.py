@@ -41,7 +41,4 @@ def pullModuleMembers(file=__file__, name=__name__):
             # this assumes the FileName=ClassName pattern
             allz.append(moduleName)
             localz.update({moduleName: module.__dict__[moduleName]})
-            # append module to __all__ prepened with _
-            allz.append(f"_{moduleName}")
-            localz.update({f"_{moduleName}": module})
     return allz, localz
