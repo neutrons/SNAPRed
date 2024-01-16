@@ -54,6 +54,12 @@
     }
   },
   "pixelGroup":{
+    "timeOfFlight": {
+      "minimum": 10,
+      "maximum": 1000,
+      "binWidth": 0.0002771822370612031,
+      "binningMode": -1
+    },
     "pixelGroupingParameters": [
      {
        "groupID": 3,

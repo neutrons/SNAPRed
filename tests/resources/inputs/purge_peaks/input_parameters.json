@@ -60,6 +60,12 @@
         },
         "peakTailCoefficient": 2.0,
         "pixelGroup":{
+          "timeOfFlight": {
+            "minimum": 1959.0,
+            "maximum": 14496.6,
+            "binWidth": 0.0002699865774827431,
+            "binningMode": -1
+          },
           "pixelGroupingParameters":  [
               {
                   "groupID": 11,

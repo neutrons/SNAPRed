@@ -3,47 +3,55 @@ from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, parse_obj_as
 
-from snapred.backend.dao.Limit import Limit
+from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.meta.Config import Config
 
 
 class PixelGroup(BaseModel):
     # allow initializtion from either dictionary or list
     pixelGroupingParameters: Union[List[PixelGroupingParameters], Dict[int, PixelGroupingParameters]] = {}
-    numberBinsAcrossPeakWidth: int = 10
+    nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     focusGroup: Optional[FocusGroup]  # TODO this needs to be mandatory
+    timeOfFlight: BinnedValue[float]
+
+    class BinningMode(IntEnum):
+        LOG = -1
+        LINEAR = 1
+
+    binningMode: BinningMode = BinningMode.LOG
 
     @property
-    def groupID(self) -> List[int]:
-        return sorted([p.groupID for p in self.pixelGroupingParameters.values()])
+    def groupIDs(self) -> List[int]:
+        return sorted([p for p in self.pixelGroupingParameters.keys()])
 
     @property
     def twoTheta(self) -> List[float]:
-        return [self.pixelGroupingParameters[gid].twoTheta for gid in self.groupID]
+        return [self.pixelGroupingParameters[gid].twoTheta for gid in self.groupIDs]
 
     @property
     def dResolution(self) -> List[Limit[float]]:
-        return [self.pixelGroupingParameters[gid].dResolution for gid in self.groupID]
+        return [self.pixelGroupingParameters[gid].dResolution for gid in self.groupIDs]
 
     @property
     def dRelativeResolution(self) -> List[float]:
-        return [self.pixelGroupingParameters[gid].dRelativeResolution for gid in self.groupID]
+        return [self.pixelGroupingParameters[gid].dRelativeResolution for gid in self.groupIDs]
 
     def __getitem__(self, key):
         return self.pixelGroupingParameters[key]
 
     def __init__(self, **kwargs):
         if kwargs.get("pixelGroupingParameters") is None:
-            groupID = kwargs["groupID"]
+            groupIDs = kwargs["groupIDs"]
             kwargs["pixelGroupingParameters"] = {
-                groupID[i]: PixelGroupingParameters(
-                    groupID=groupID[i],
+                groupIDs[i]: PixelGroupingParameters(
+                    groupID=groupIDs[i],
                     twoTheta=kwargs["twoTheta"][i],
                     dResolution=kwargs["dResolution"][i],
                     dRelativeResolution=kwargs["dRelativeResolution"][i],
                 )
-                for i in range(len(groupID))
+                for i in range(len(groupIDs))
             }
         elif isinstance(kwargs["pixelGroupingParameters"], list):
             pixelGroupingParametersList = kwargs["pixelGroupingParameters"]
@@ -54,17 +62,15 @@ class PixelGroup(BaseModel):
 
     # these are not properties, but they reflect the actual data consumption
 
-    class BinningMode(IntEnum):
-        LOG = -1
-        LINEAR = 1
-
     def dMax(self) -> List[float]:
-        return [self.pixelGroupingParameters[gid].dResolution.maximum for gid in self.groupID]
+        return [self.pixelGroupingParameters[gid].dResolution.maximum for gid in self.groupIDs]
 
     def dMin(self) -> List[float]:
-        return [self.pixelGroupingParameters[gid].dResolution.minimum for gid in self.groupID]
+        return [self.pixelGroupingParameters[gid].dResolution.minimum for gid in self.groupIDs]
 
-    def dBin(self, binningMode: BinningMode):
-        sign = -1 if binningMode == self.BinningMode.LOG else 1
-        Nbin = self.numberBinsAcrossPeakWidth
-        return [sign * abs(self.pixelGroupingParameters[gid].dRelativeResolution) / Nbin for gid in self.groupID]
+    def dBin(self) -> List[float]:
+        Nbin = self.nBinsAcrossPeakWidth
+        return [
+            self.binningMode * abs(self.pixelGroupingParameters[gid].dRelativeResolution) / Nbin
+            for gid in self.groupIDs
+        ]

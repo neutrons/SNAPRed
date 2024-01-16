@@ -63,15 +63,11 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # later work associating each with a group ID can relax this requirement
         self.dMin = ingredients.pixelGroup.dMin()
         self.dMax = ingredients.pixelGroup.dMax()
-        self.dBin = ingredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
-        pixelGroupIDs = ingredients.pixelGroup.groupID
+        self.dBin = ingredients.pixelGroup.dBin()
+        pixelGroupIDs = ingredients.pixelGroup.groupIDs
 
-        # from the instrument state, read the overall min/max TOF
-        self.TOFMin: float = ingredients.instrumentState.particleBounds.tof.minimum
-        self.TOFMax: float = ingredients.instrumentState.particleBounds.tof.maximum
-        self.TOFBin: float = min([abs(db) for db in self.dBin])
-        # NOTE TOFBin MUST be negative for PDCalibration
-        self.TOFParams = (self.TOFMin, -abs(self.TOFBin), self.TOFMax)
+        # from the pixel group, read the overall min/max TOF and binning
+        self.TOF = ingredients.pixelGroup.timeOfFlight
 
         # for each group, need a list of peaks and boundaries of peaks
         # this is found from the groupedPeakList in the ingredients
@@ -116,7 +112,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=self.wsTOF,
                 CalibrationTable=self.DIFCprev,
                 OffsetMode="Signed",
-                BinWidth=self.TOFBin,
+                BinWidth=self.TOF.binWidth,
             )
         else:
             self.DIFCprev = str(self.getPropertyValue("PreviousCalibrationTable"))
@@ -193,7 +189,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             self.mantidSnapper.PDCalibration(
                 f"Perform PDCalibration on group {groupID}",
                 InputWorkspace=self.outputWStof,
-                TofBinning=self.TOFParams,
+                TofBinning=self.TOF.params,
                 PeakFunction="Gaussian",
                 BackgroundType="Linear",
                 PeakPositions=self.groupedPeaks[groupID],

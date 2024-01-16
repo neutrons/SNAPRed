@@ -10,6 +10,9 @@ from typing import List
 import pytest
 from pydantic import parse_raw_as
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+
+# NOTE this is necessary to prevent mocking out needed functions
+from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 from snapred.meta.Config import Config, Resource
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
@@ -65,7 +68,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         instrumentConfig.reducedDataDirectory = "test"
         instrumentConfig.pixelGroupingDirectory = "test"
         instrumentConfig.delTOverT = 1
-        instrumentConfig.NBins = 1
         instrumentConfig.nexusDirectory = "test"
         instrumentConfig.nexusFileExtension = "test"
         return instrumentConfig
@@ -81,10 +83,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._readNormalizationCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.normalizationCalibrant
         )
-        localDataService._readFocusGroups = mock.Mock()
-        localDataService._readFocusGroups.return_value = []
-        localDataService._findIPTS = mock.Mock()
-        localDataService._findIPTS.return_value = "IPTS-123"
+        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
         localDataService._readPVFile = mock.Mock()
         fileMock = mock.Mock()
         localDataService._readPVFile.return_value = fileMock
@@ -119,17 +118,11 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def test__readRunConfig():
         localDataService = LocalDataService()
-        localDataService._findIPTS = mock.Mock()
-        localDataService._findIPTS.return_value = "IPTS-123"
+        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
         localDataService.instrumentConfig = getMockInstrumentConfig()
         actual = localDataService._readRunConfig("57514")
         assert actual is not None
         assert actual.runNumber == "57514"
-
-    def test__findIPTS():
-        localDataService = LocalDataService()
-        localDataService.instrumentConfig = getMockInstrumentConfig()
-        assert localDataService._findIPTS("57514") is not None
 
     def test_readPVFile():
         localDataService = LocalDataService()
@@ -491,9 +484,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             Resource.read("inputs/normalization/NormalizationRecord.json")
         )
         actualState = localDataService.readNormalizationState("123")
-        assert actualState == Normalization.parse_file(
-            Resource.getPath("inputs/normalization/NormalizationParameters.json")
-        )
+        expectedState = Normalization.parse_file(Resource.getPath("inputs/normalization/NormalizationParameters.json"))
+        assert actualState == expectedState
 
     def test_writeCalibrationState():
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
@@ -531,7 +523,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         pvFileMock.get.side_effect = [[1], [2], [1.1], [1.2], [1], [1], [2]]
         localDataService._readPVFile.return_value = pvFileMock
         testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
-        testCalibrationData.instrumentState.pixelGroup = None
         localDataService.readInstrumentConfig = mock.Mock()
         localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
         localDataService.writeCalibrationState = mock.Mock()

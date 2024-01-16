@@ -21,8 +21,7 @@ from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as TheseIngredients
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.dao.state.InstrumentState import InstrumentState
+from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
 from snapred.meta.Config import Config, Resource
 
@@ -39,12 +38,8 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             IPTS="",
         )
 
-        fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/calibration/sampleInstrumentState.json"))
-        fakeInstrumentState.particleBounds.tof.minimum = 1
-        fakeInstrumentState.particleBounds.tof.maximum = 10
-
-        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/diffcal/fakeFocusGroup.json"))
-        fakeFocusGroup.definition = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
+        fakePixelGroup = PixelGroup.parse_raw(Resource.read("/inputs/diffcal/fakePixelGroup.json"))
+        fakePixelGroup.focusGroup.definition = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
 
         peakList = [
             DetectorPeak.parse_obj({"position": {"value": 2, "minimum": 1, "maximum": 3}}),
@@ -53,8 +48,6 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
 
         self.fakeIngredients = TheseIngredients(
             runConfig=fakeRunConfig,
-            focusGroup=fakeFocusGroup,
-            instrumentState=fakeInstrumentState,
             groupedPeakLists=[
                 GroupPeakList(groupID=3, peaks=peakList, maxfwhm=0.01),
                 GroupPeakList(groupID=7, peaks=peakList, maxfwhm=0.02),
@@ -63,7 +56,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
             ],
             convergenceThreshold=0.5,
             calPath=Resource.getPath("outputs/calibration/"),
-            pixelGroup=fakeInstrumentState.pixelGroup,
+            pixelGroup=fakePixelGroup,
         )
 
         self.fakeRawData = "_test_diffcal_rx"
@@ -177,8 +170,8 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
     def makeFakeNeutronData(self, rawWS, groupingWS):
         """Will cause algorithm to execute with sample data, instead of loading from file"""
 
-        TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
-        TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
+        TOFMin = self.fakeIngredients.pixelGroup.timeOfFlight.minimum
+        TOFMax = self.fakeIngredients.pixelGroup.timeOfFlight.maximum
 
         # prepare with test data
         CreateSampleWorkspace(
@@ -203,7 +196,7 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         )
         dMin = self.fakeIngredients.pixelGroup.dMin()
         dMax = self.fakeIngredients.pixelGroup.dMax()
-        dBin = self.fakeIngredients.pixelGroup.dBin(1)
+        dBin = self.fakeIngredients.pixelGroup.dBin()
         focWS = mtd[groupingWS]
         allXmins = [0] * 16
         allXmaxs = [0] * 16
@@ -233,9 +226,6 @@ class TestDiffractionCalibtationRecipe(unittest.TestCase):
         )
 
     def test_execute_with_algos(self):
-        # create sample data
-        from datetime import date
-
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"
         self.makeFakeNeutronData(rawWS, groupingWS)
