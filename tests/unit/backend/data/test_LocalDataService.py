@@ -467,9 +467,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             Resource.read("inputs/normalization/NormalizationRecord.json")
         )
         actualState = localDataService.readNormalizationState("123")
-        assert actualState == Normalization.parse_file(
-            Resource.getPath("inputs/normalization/NormalizationParameters.json")
-        )
+        expectedState = Normalization.parse_file(Resource.getPath("inputs/normalization/NormalizationParameters.json"))
+        assert actualState == expectedState
 
     def test_writeCalibrationState():
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:

@@ -33,7 +33,7 @@ fakeRunConfig = RunConfig(runNumber=str(fakeRunNumber))
 TOFMin = 10
 TOFMax = 1000
 TOFBin = 0.001
-fakePixelGroup = InstrumentState.parse_raw(Resource.read("inputs/diffcal/fakePixelGroup.json"))
+fakePixelGroup = PixelGroup.parse_raw(Resource.read("inputs/diffcal/fakePixelGroup.json"))
 fakePixelGroup.timeOfFlight.minimum = TOFMin
 fakePixelGroup.timeOfFlight.maximum = TOFMax
 fakePixelGroup.timeOfFlight.binWidth = TOFBin

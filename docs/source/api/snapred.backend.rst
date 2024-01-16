@@ -18,14 +18,6 @@ Subpackages
 Submodules
 ----------
 
-snapred.backend.shims module
-----------------------------
-
-.. automodule:: snapred.backend.shims
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

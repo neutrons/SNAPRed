@@ -87,7 +87,6 @@
                 "maximum": 14104.800181997423
               }
             },
-            "pixelGroupingInstrumentParameters": null,
             "defaultGroupingSliceValue": 5,
             "fwhmMultiplierLimit": {
               "minimum": 2,
@@ -122,6 +121,12 @@
       "overrides": null
     },
     "pixelGroup": {
+      "timeOfFlight": {
+        "minimum": 1959.0,
+        "maximum": 14496.6,
+        "binWidth": 0.0002699865774827431,
+        "binningMode": -1
+      },
       "pixelGroupingParameters": [
         {
           "groupID": 0,

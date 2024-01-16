@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import h5py
+from mantid.kernel import PhysicalConstants
 from pydantic import parse_file_as
 
 from snapred.backend.dao import (
@@ -58,6 +59,8 @@ class LocalDataService:
     instrumentConfig: "InstrumentConfig"  # Optional[InstrumentConfig]
     verifyPaths: bool = True
     groceryService: GroceryService = GroceryService()
+    # conversion factor from microsecond/Angstrom to meters
+    CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def __init__(self) -> None:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
@@ -108,7 +111,6 @@ class LocalDataService:
             diffCalibration: Calibration = self.readCalibrationState(runId)
         else:
             diffCalibration: Calibration = previousDiffCalRecord.calibrationFittingIngredients
-        particleBounds = diffCalibration.instrumentState.particleBounds
         stateId, _ = self._generateStateId(runId)
 
         return StateConfig(
@@ -116,7 +118,27 @@ class LocalDataService:
             # TODO fix group map to point to focus group
             focusGroups=diffCalibration.instrumentState.groupMap,
             stateId=stateId,
-        )
+        )  # TODO: fill with real value
+
+    def _readFocusGroups(self, runId: str) -> List[FocusGroup]:  # noqa: ARG002
+        reductionParameters = self._readReductionParameters(runId)
+        # TODO: fix hardcode reductionParameters["focGroupLst"]
+        # dont have time to figure out why its reading the wrong data
+        focusGroupNames = ["Column", "Bank", "All"]
+        focusGroups = []
+        for i, name in enumerate(focusGroupNames):
+            focusGroups.append(
+                FocusGroup(
+                    name=name,
+                    definition=str(
+                        self.instrumentConfig.calibrationDirectory
+                        / "Powder"
+                        / self.instrumentConfig.pixelGroupingDirectory
+                        / reductionParameters["focGroupDefinition"][i]
+                    ),
+                )
+            )
+        return focusGroups
 
     def readRunConfig(self, runId: str) -> RunConfig:
         return self._readRunConfig(runId)
@@ -615,7 +637,10 @@ class LocalDataService:
             maximum=detectorState.wav + (instrumentConfig.bandwidth / 2),
         )
         L = instrumentConfig.L1 + instrumentConfig.L2
-        tofLimit = Limit(minimum=lambdaLimit.minimum * L / 3.9561e-3, maximum=lambdaLimit.maximum * L / 3.9561e-3)
+        tofLimit = Limit(
+            minimum=lambdaLimit.minimum * L / self.CONVERSION_FACTOR,
+            maximum=lambdaLimit.maximum * L / self.CONVERSION_FACTOR,
+        )
         particleBounds = ParticleBounds(wavelength=lambdaLimit, tof=tofLimit)
         # finally add seedRun, creation date, and a human readable name
         instrumentState = InstrumentState(

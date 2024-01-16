@@ -124,6 +124,8 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
                 weights[mask_indices] = 0.0
             weight_ws.setY(index, weights)
 
+        self.setProperty("WeightWorkspace", weight_ws)
+
         if isEventWorkspace:
             self.mantidSnapper.ConvertToEventWorkspace(
                 "Converting histogram workspace back to event workspace",

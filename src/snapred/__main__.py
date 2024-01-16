@@ -1,7 +1,8 @@
 import sys
 
+from mantid.kernel import amend_config
+
 from snapred import __version__ as snapred_version
-from snapred.backend.shims import amend_mantid_config
 from snapred.meta.Config import Resource
 
 
@@ -54,13 +55,12 @@ def main(args=None):
     _print_text_splash()
 
     # start the gui
-    with amend_mantid_config(
-        new_config={
-            "CheckMantidVersion.OnStartup": options.checkfornewmantid,
-            "UpdateInstrumentDefinitions.OnStartup": options.updateinstruments,
-            "usagereports.enabled": options.reportusage,
-        }
-    ):
+    new_config = {
+        "CheckMantidVersion.OnStartup": options.checkfornewmantid,
+        "UpdateInstrumentDefinitions.OnStartup": options.updateinstruments,
+        "usagereports.enabled": options.reportusage,
+    }
+    with amend_config(**new_config):
         from snapred.ui.main import start
 
         return start(options)

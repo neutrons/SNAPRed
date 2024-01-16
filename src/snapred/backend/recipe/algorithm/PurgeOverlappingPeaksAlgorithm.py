@@ -9,11 +9,14 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 
 logger = snapredLogger.getLogger(__name__)
 
 
 class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
+    PEAK_INTENSITY_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+
     def category(self):
         return "SNAPRed Data Processing"
 
@@ -22,6 +25,12 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
         self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputPeakMap", defaultValue="", direction=Direction.Output)
+        self.declareProperty(
+            "PeakIntensityFractionThreshold",
+            defaultValue=self.PEAK_INTENSITY_THRESHOLD,
+            direction=Direction.Input,
+            doc="Fraction of max for threshold peak intensity",
+        )
 
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
@@ -36,7 +45,8 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             errors["DetectorPeakIngredients"] = msg
         elif definedWaysToGetPeaks == 2:
             logger.warn(
-                "Both a list of detector peaks and ingredients were given; the list will be used and ingredients ignored"
+                """Both a list of detector peaks and ingredients were given;
+                the list will be used and ingredients ignored"""
             )
         return errors
 
