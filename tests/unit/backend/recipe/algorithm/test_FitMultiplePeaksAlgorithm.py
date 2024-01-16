@@ -11,7 +11,7 @@ with mock.patch.dict(
     from mantid.simpleapi import LoadNexusProcessed, mtd
     from snapred.backend.dao.calibration.Calibration import Calibration
     from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-    from snapred.backend.dao.ingredients import FitMultiplePeaksIngredients
+    from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
     from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import (
         FitMultiplePeaksAlgorithm,  # noqa: E402
     )
@@ -24,28 +24,31 @@ with mock.patch.dict(
         ).instrumentState
         crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
         wsName = "testWS"
-        fitIngredients = FitMultiplePeaksIngredients(
-            instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=wsName
+        ingredients = Ingredients(
+            instrumentState=instrumentState,
+            crystalInfo=crystalInfo,
+            peakIntensityFractionalThreshold=0.5,
         )
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
-        fmpAlgo.setProperty("FitMultiplePeaksIngredients", fitIngredients.json())
-        assert fmpAlgo.getProperty("FitMultiplePeaksIngredients").value == fitIngredients.json()
+        fmpAlgo.setPropertyValue("InputWorkspace", wsName)
+        fmpAlgo.setProperty("Ingredients", ingredients.json())
+        assert fmpAlgo.getPropertyValue("InputWorkspace") == wsName
+        assert fmpAlgo.getPropertyValue("Ingredients") == ingredients.json()
 
     def test_execute():
         inputFile = os.path.join(Resource._resourcesPath, "inputs", "fitMultPeaks", "FitMultiplePeaksTestWS.nxs")
         LoadNexusProcessed(Filename=inputFile, OutputWorkspace="testWS")
-        instrumentState = Calibration.parse_raw(
-            Resource.read("/inputs/purge_peaks/input_parameters.json")
-        ).instrumentState
-        crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
+        # instrumentState = Calibration.parse_raw(
+        #     Resource.read("/inputs/purge_peaks/input_parameters.json")
+        # ).instrumentState
+        # crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
         wsName = "testWS"
-        fitIngredients = FitMultiplePeaksIngredients(
-            instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=wsName
-        )
+        fitIngredients = Ingredients.parse_raw(Resource.read("inputs/predict_peaks/input_good_ingredients.json"))
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
-        fmpAlgo.setProperty("FitMultiplePeaksIngredients", fitIngredients.json())
+        fmpAlgo.setPropertyValue("InputWorkspace", wsName)
+        fmpAlgo.setProperty("Ingredients", fitIngredients.json())
         fmpAlgo.execute()
         wsGroupName = fmpAlgo.getProperty("OutputWorkspaceGroup").value
         assert wsGroupName == "fitPeaksWSGroup"

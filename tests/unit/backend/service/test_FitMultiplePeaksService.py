@@ -16,7 +16,7 @@ with mock.patch.dict(
     def test_fit_multiple_peaks():
         fitPeaksService = FitMultiplePeaksService()
         FitMultiplePeaksRecipe.executeRecipe = mock.Mock()
-        FitMultiplePeaksIngredients = mock.Mock()
-        ingredients = FitMultiplePeaksIngredients()
+        PeakIngredients = mock.Mock()
+        ingredients = PeakIngredients()
         fitPeaksService.fit_multiple_peaks(ingredients)
         FitMultiplePeaksRecipe.executeRecipe.assert_called()

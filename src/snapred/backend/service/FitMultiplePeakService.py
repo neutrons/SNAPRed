@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from snapred.backend.dao.ingredients import FitMultiplePeaksIngredients
+from snapred.backend.dao.ingredients import PeakIngredients
 from snapred.backend.recipe.GenericRecipe import FitMultiplePeaksRecipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
@@ -19,10 +19,10 @@ class FitMultiplePeaksService(Service):
         return "fitMultiplePeaks"
 
     @FromString
-    def fit_multiple_peaks(self, fitMultiplePeaksIngredients: FitMultiplePeaksIngredients) -> Dict[Any, Any]:
+    def fit_multiple_peaks(self, ingredients: PeakIngredients) -> Dict[Any, Any]:
         data: Dict[Any, Any] = {}
         try:
-            data = FitMultiplePeaksRecipe().executeRecipe(fitMultiplePeaksIngredients)
+            data = FitMultiplePeaksRecipe().executeRecipe(ingredients)
         except:
             raise
         return data

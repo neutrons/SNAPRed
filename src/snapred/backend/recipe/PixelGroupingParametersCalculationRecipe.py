@@ -29,7 +29,7 @@ class PixelGroupingParametersCalculationRecipe:
 
         algo = AlgorithmManager.create(self.PixelGroupingParametersCalculationAlgorithmName)
 
-        algo.setProperty("InstrumentState", ingredients.instrumentState.json())
+        algo.setProperty("Ingredients", ingredients.json())
         algo.setProperty("GroupingWorkspace", groupingWorkspace)
 
         try:

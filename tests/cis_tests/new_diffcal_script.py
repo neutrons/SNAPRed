@@ -49,9 +49,11 @@ calibrationService = CalibrationService()
 pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
 print(pixelGroupingParameters)
 
-pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
+instrumentState = calibration.instrumentState
+calPath = instrumentState.instrumentConfig.calibrationDirectory
+instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
 
-print(pixelGroup.json(indent=2))
+print(instrumentState.pixelGroup.json(indent=2))
 
 crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
 
@@ -66,10 +68,13 @@ peakList = parse_raw_as(List[GroupPeakList], peakList)
 
 ingredients = DiffractionCalibrationIngredients(
     runConfig=runConfig,
+    instrumentState=instrumentState,
+    focusGroup=focusGroup,
     groupedPeakLists=peakList,
+    calPath=calPath,
     convergenceThreshold=offsetConvergenceLimit,
     maxOffset = 100.0,
-    pixelGroup=pixelGroup,
+    pixelGroup=PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0]),
 )
 
 ### FETCH GROCERIES ##################

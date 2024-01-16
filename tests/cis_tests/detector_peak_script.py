@@ -46,7 +46,7 @@ calPath = instrumentState.instrumentConfig.calibrationDirectory
 
 calibrationService = CalibrationService()
 pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
-instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
+pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
 
 crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
 

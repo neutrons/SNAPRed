@@ -21,7 +21,6 @@ with mock.patch.dict(
     {
         "snapred.backend.data.DataExportService": mock.Mock(),
         "snapred.backend.data.DataFactoryService": mock.Mock(),
-        "snapred.backend.recipe.CalibrationReductionRecipe": mock.Mock(),
         "snapred.backend.log": mock.Mock(),
         "snapred.backend.log.logger": mock.Mock(),
     },
@@ -33,10 +32,8 @@ with mock.patch.dict(
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
     from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
     from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+    from snapred.backend.dao.ingredients.PeakIngredients import PeakIngredients
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
-    from snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients import (
-        SmoothDataExcludingPeaksIngredients,
-    )
     from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
     from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
@@ -115,6 +112,7 @@ with mock.patch.dict(
 
     # test calculate pixel grouping parameters
     # patch datafactoryservice, pixelgroupingparameterscalculationrecipe, pixelgroupingingredients, dataExportService
+    @mock.patch(thisService + "PixelGroup")
     @mock.patch(thisService + "GroceryService")
     @mock.patch(thisService + "DataFactoryService", return_value=mock.Mock())
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
@@ -126,6 +124,7 @@ with mock.patch.dict(
         mockPixelGroupingIngredients,  # noqa: ARG001
         mockDataFactoryService,  # noqa: ARG001
         mockGroceryService,  # noqa: ARG001
+        mockPixelGroup,  # noqa: ARG001
     ):
         runs = [RunConfig(runNumber="1")]
         calibrationService = CalibrationService()
@@ -136,6 +135,7 @@ with mock.patch.dict(
         calibrationService.calculatePixelGroupingParameters(runs, groupingFile, useLiteMode)
         assert mockGroceryService.return_value.fetchGroceryList.called
         assert mockPixelGroupingParametersCalculationRecipe.called
+        assert mockPixelGroup.called
 
 
 from snapred.backend.service.CalibrationService import CalibrationService  # noqa: F811
@@ -251,7 +251,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         return_value=MagicMock(ingest=MagicMock(return_value={"crystalInfo": "mock_crystal_info"})),
     )
     @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record"))
-    @patch(thisService + "FitMultiplePeaksIngredients")
+    @patch(thisService + "PeakIngredients")
     @patch(thisService + "FitMultiplePeaksRecipe")
     @patch(
         thisService + "CalibrationMetricsWorkspaceIngredients",
@@ -465,14 +465,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     @patch(thisService + "PixelGroup")
     @patch(thisService + "CrystallographicInfoService")
-    @patch(thisService + "SmoothDataExcludingPeaksIngredients")
+    @patch(thisService + "PeakIngredients")
     @patch(thisService + "NormalizationCalibrationIngredients")
     @patch(thisService + "CalibrationNormalizationRecipe")
     def test_calibrationNormalization(
         self,
         mockCalibrationNormalizationRecipe,
         mockNormalizationCalibrationIngredients,
-        mockSmoothDataExcludingPeaksIngredients,
+        mockPeakIngredients,
         mockCrystallographicInfoService,
         mockPixelGroup,
     ):
@@ -526,7 +526,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
         )
 
-        mockSmoothDataExcludingPeaksIngredients.assert_called_once_with(
+        mockPeakIngredients.assert_called_once_with(
             crystalInfo=mockCrystallographicInfoService().ingest.return_value["crystalInfo"],
             instrumentState=mockFocusGroupInstrumentState[1],
             smoothingParameter=request.smoothingParameter,
