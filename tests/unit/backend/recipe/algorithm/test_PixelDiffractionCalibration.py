@@ -12,8 +12,6 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 # the algorithm to test
@@ -30,10 +28,8 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
-        fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/diffcal/fakeInstrumentState.json"))
-
-        fakeFocusGroup = FocusGroup.parse_raw(Resource.read("/inputs/diffcal/fakeFocusGroup.json"))
-        fakeFocusGroup.definition = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
+        fakePixelGroup = PixelGroup.parse_raw(Resource.read("/inputs/diffcal/fakePixelGroup.json"))
+        fakePixelGroup.focusGroup.definition = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
 
         peakLists = {
             3: DetectorPeak.parse_obj({"position": {"value": 0.2, "minimum": 0.15, "maximum": 0.25}}),
@@ -43,15 +39,12 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         }
         self.fakeIngredients = DiffractionCalibrationIngredients(
             runConfig=fakeRunConfig,
-            focusGroup=fakeFocusGroup,
-            instrumentState=fakeInstrumentState,
             groupedPeakLists=[
                 GroupPeakList(groupID=gid, peaks=[peakLists[gid]], maxfwhm=5) for gid in peakLists.keys()
             ],
-            calPath=Resource.getPath("outputs/calibration/"),
             convergenceThreshold=1.0,
             maxOffset=self.maxOffset,
-            pixelGroup=fakeInstrumentState.pixelGroup,
+            pixelGroup=fakePixelGroup,
         )
 
         self.fakeRawData = f"_test_pixelcal_{self.fakeRunNumber}"
@@ -77,12 +70,12 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
             RebinRagged,
         )
 
-        TOFMin = self.fakeIngredients.instrumentState.particleBounds.tof.minimum
-        TOFMax = self.fakeIngredients.instrumentState.particleBounds.tof.maximum
+        TOFMin = self.fakeIngredients.pixelGroup.timeOfFlight.minimum
+        TOFMax = self.fakeIngredients.pixelGroup.timeOfFlight.maximum
 
         dMin = self.fakeIngredients.pixelGroup.dMin()
         dMax = self.fakeIngredients.pixelGroup.dMax()
-        DBin = self.fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        DBin = self.fakeIngredients.pixelGroup.dBin()
         overallDMax = max(dMax)
         overallDMin = min(dMin)
         dBin = min([abs(d) for d in DBin])
@@ -117,7 +110,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         allXmins = [0] * 16
         allXmaxs = [0] * 16
         allDelta = [0] * 16
-        groupIDs = self.fakeIngredients.pixelGroup.groupID
+        groupIDs = self.fakeIngredients.pixelGroup.groupIDs
         for i, gid in enumerate(groupIDs):
             for detid in focWS.getDetectorIDsOfGroup(int(gid)):
                 allXmins[detid] = dMin[i]
@@ -150,7 +143,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         assert algo.runNumber == self.fakeRunNumber
         assert algo.overallDMin == min(self.fakeIngredients.pixelGroup.dMin())
         assert algo.overallDMax == max(self.fakeIngredients.pixelGroup.dMax())
-        assert algo.dBin == max([abs(db) for db in self.fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)])
+        assert algo.dBin == max([abs(db) for db in self.fakeIngredients.pixelGroup.dBin()])
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""

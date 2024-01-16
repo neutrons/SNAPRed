@@ -41,10 +41,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
         self.fakeIngredients = Ingredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
         self.fakeIngredients.runConfig = fakeRunConfig
-        TOFBinParams = (1, 1, 100)
-        self.fakeIngredients.reductionState.stateConfig.tofMin = TOFBinParams[0]
-        self.fakeIngredients.reductionState.stateConfig.tofBin = TOFBinParams[1]
-        self.fakeIngredients.reductionState.stateConfig.tofMax = TOFBinParams[2]
+        tof = self.fakeIngredients.pixelGroup.timeOfFlight
 
         # create some nonsense material and crystallography
         fakeMaterial = Material(
@@ -91,9 +88,9 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             WorkspaceType="Event",
             Function="User Defined",
             UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=TOFBinParams[0],
-            Xmax=TOFBinParams[2],
-            BinWidth=TOFBinParams[1],
+            Xmin=tof.minimum,
+            Xmax=tof.maximum,
+            BinWidth=1,
             XUnit="TOF",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
@@ -124,9 +121,9 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             OutputWorkspace="_tmp_raw_vanadium",
             WorkspaceType="Event",
             UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=70,Sigma=1",
-            Xmin=TOFBinParams[0],
-            Xmax=TOFBinParams[2],
-            BinWidth=TOFBinParams[1],
+            Xmin=tof.minimum,
+            Xmax=tof.maximum,
+            BinWidth=1,
             XUnit="TOF",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
@@ -141,14 +138,14 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
         Rebin(
             InputWorkspace=self.sampleWS,
-            Params=TOFBinParams,
+            Params=tof.params,
             PreserveEvents=True,
             OutputWorkspace=self.sampleWS,
             BinningMode="Logarithmic",
         )
         Rebin(
             InputWorkspace=self.backgroundWS,
-            Params=TOFBinParams,
+            Params=tof.params,
             PreserveEvents=True,
             OutputWorkspace=self.backgroundWS,
             BinningMode="Logarithmic",
@@ -167,9 +164,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo = Algo()
         algo.initialize()
         algo.chopIngredients(self.fakeIngredients, self.calibrantSample)
-        assert algo.TOFPars[0] == self.fakeIngredients.reductionState.stateConfig.tofMin
-        assert algo.TOFPars[1] == self.fakeIngredients.reductionState.stateConfig.tofBin
-        assert algo.TOFPars[2] == self.fakeIngredients.reductionState.stateConfig.tofMax
+        assert algo.TOFPars == self.fakeIngredients.pixelGroup.timeOfFlight.params
         assert algo.geometry == self.calibrantSample.geometry
         assert algo.material == self.calibrantSample.material
         assert algo.sampleShape == self.calibrantSample.geometry.shape
@@ -249,6 +244,35 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo.setProperty("CalibrantSample", self.calibrantSample.json())
         algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")
         assert algo.execute()
+
+
+# # old test from VanadiumFocussedReductionAlgorithm
+#     def test_execute(self):
+#         vanAlgo = VanadiumFocussedReductionAlgorithm()
+#         vanAlgo.initialize()
+#         vanAlgo.mantidSnapper = mock.MagicMock()
+#         vanAlgo.mantidSnapper.mtd = mock.MagicMock(side_effect={"diffraction_focused_vanadium": ["ws1", "ws2"]})
+#         vanAlgo.setProperty("ReductionIngredients", self.reductionIngredients.json())
+#         vanAlgo.setProperty("SmoothDataIngredients", self.smoothIngredients.json())
+#         vanAlgo.execute()
+#         wsGroupName = vanAlgo.getProperty("OutputWorkspaceGroup").value
+#         assert wsGroupName == "diffraction_focused_vanadium"
+#         expected_calls = [
+#             call.LoadNexus,
+#             call.CustomGroupWorkspace,
+#             call.ConvertUnits,
+#             call.DiffractionFocussing,
+#             call.executeQueue,
+#             call.mtd.__getitem__(),
+#             call.mtd.__getitem__().getNames,
+#             call.mtd.__getitem__().getNames().__iter__,
+#             call.mtd.__getitem__().getNames().__len__,
+#             call.WashDishes,
+#             call.executeQueue,
+#         ]
+#         actual_calls = [call[0] for call in vanAlgo.mantidSnapper.mock_calls if call[0]]
+#         # Assertions
+#         assert actual_calls == [call[0] for call in expected_calls]
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

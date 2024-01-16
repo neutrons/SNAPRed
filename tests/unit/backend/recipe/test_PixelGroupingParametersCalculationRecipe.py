@@ -13,7 +13,8 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
     mockAlgo = mock.Mock()
     MockAlgorithmManager.create.return_value = mockAlgo
 
-    def test_execute_successful():
+    @mock.patch("snapred.backend.recipe.PixelGroupingParametersCalculationRecipe.BinnedValue")
+    def test_execute_successful(mockBinnedValue):
         # mock algorithm execution result and output
         mockAlgo.execute.return_value = "passed"
         params = PixelGroupingParameters(
@@ -25,6 +26,7 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         # execute recipe with mocked input
         recipe = PixelGroupingParametersCalculationRecipe()
         ingredients = mock.Mock(return_value="good ingredients")
+        ingredients.nBinsAcrossPeakWidth = 7
         groupingWorkspace = mock.Mock(return_value="grouping workspace")
         data = recipe.executeRecipe(ingredients, groupingWorkspace)
 
@@ -34,6 +36,7 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         assert data["result"] == "passed"
         assert isinstance(data["parameters"], list)
         assert data["parameters"][0] == mock_output_val[0]
+        assert data["tof"] == mockBinnedValue.return_value
 
     def test_execute_unsuccessful():
         mockAlgo.execute.side_effect = RuntimeError("passed")

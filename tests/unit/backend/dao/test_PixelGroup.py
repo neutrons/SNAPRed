@@ -9,7 +9,7 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
 )
 from pydantic.error_wrappers import ValidationError
-from snapred.backend.dao.Limit import Limit
+from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.meta.Config import Resource
@@ -19,8 +19,8 @@ class TestPixelGroup(unittest.TestCase):
     # we only need this workspace made once for entire test suite
     @classmethod
     def setUpClass(cls):
-        cls.numberBinsAcrossPeakWidth = 7
-        cls.groupID = [2, 3, 7, 11]
+        cls.nBinsAcrossPeakWidth = 7
+        cls.groupIDs = [2, 3, 7, 11]
         cls.twoTheta = [0.1, 0.2, 0.3, 0.4]
         cls.dResolution = [
             Limit(minimum=0, maximum=1),
@@ -31,21 +31,28 @@ class TestPixelGroup(unittest.TestCase):
         cls.dRelativeResolution = [0.03, 0.05, 0.07, 0.09]
         cls.pixelGroupingParametersList = [
             PixelGroupingParameters(
-                groupID=cls.groupID[i],
+                groupID=cls.groupIDs[i],
                 twoTheta=cls.twoTheta[i],
                 dResolution=cls.dResolution[i],
                 dRelativeResolution=cls.dRelativeResolution[i],
             )
-            for i in range(len(cls.groupID))
+            for i in range(len(cls.groupIDs))
         ]
         cls.pixelGroupingParameters = {
-            cls.groupID[i]: cls.pixelGroupingParametersList[i] for i in range(len(cls.groupID))
+            cls.groupIDs[i]: cls.pixelGroupingParametersList[i] for i in range(len(cls.groupIDs))
         }
+
+        cls.tofParams = BinnedValue(
+            minimum=0,
+            maximum=100,
+            binWidth=0.03 / cls.nBinsAcrossPeakWidth,
+        )
 
         try:
             cls.reference = PixelGroup(
                 pixelGroupingParameters=cls.pixelGroupingParameters,
-                numberBinsAcrossPeakWidth=cls.numberBinsAcrossPeakWidth,
+                nBinsAcrossPeakWidth=cls.nBinsAcrossPeakWidth,
+                timeOfFlight=cls.tofParams,
             )
         except:
             pytest.fail("Failed to make a pixel group from a dictionary of PGPs")
@@ -56,7 +63,8 @@ class TestPixelGroup(unittest.TestCase):
         try:
             pg = PixelGroup(
                 pixelGroupingParameters=self.pixelGroupingParametersList,
-                numberBinsAcrossPeakWidth=self.numberBinsAcrossPeakWidth,
+                nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+                timeOfFlight=self.tofParams,
             )
         except:
             pytest.fail("Failed to make a pixel group from a list of PGPs")
@@ -65,11 +73,12 @@ class TestPixelGroup(unittest.TestCase):
     def test_init_from_lists_of_things(self):
         try:
             pg = PixelGroup(
-                groupID=self.groupID,
+                groupIDs=self.groupIDs,
                 twoTheta=self.twoTheta,
                 dResolution=self.dResolution,
                 dRelativeResolution=self.dRelativeResolution,
-                numberBinsAcrossPeakWidth=self.numberBinsAcrossPeakWidth,
+                nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+                timeOfFlight=self.tofParams,
             )
         except:
             pytest.fail("Failed to make a pixel group from base ingredients")
@@ -80,28 +89,32 @@ class TestPixelGroup(unittest.TestCase):
     def test_get_groupID(self):
         pg = PixelGroup(
             pixelGroupingParameters=self.pixelGroupingParameters,
-            numberBinsAcrossPeakWidth=self.numberBinsAcrossPeakWidth,
+            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            timeOfFlight=self.tofParams,
         )
-        assert pg.groupID == self.groupID
+        assert pg.groupIDs == self.groupIDs
 
     def test_get_twoTheta(self):
         pg = PixelGroup(
             pixelGroupingParameters=self.pixelGroupingParameters,
-            numberBinsAcrossPeakWidth=self.numberBinsAcrossPeakWidth,
+            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            timeOfFlight=self.tofParams,
         )
         assert pg.twoTheta == self.twoTheta
 
     def test_get_dResolution(self):
         pg = PixelGroup(
             pixelGroupingParameters=self.pixelGroupingParameters,
-            numberBinsAcrossPeakWidth=self.numberBinsAcrossPeakWidth,
+            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            timeOfFlight=self.tofParams,
         )
         assert pg.dResolution == self.dResolution
 
     def test_get_dRelativeResolution(self):
         pg = PixelGroup(
             pixelGroupingParameters=self.pixelGroupingParameters,
-            numberBinsAcrossPeakWidth=self.numberBinsAcrossPeakWidth,
+            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            timeOfFlight=self.tofParams,
         )
         assert pg.dRelativeResolution == self.dRelativeResolution
 
@@ -110,41 +123,47 @@ class TestPixelGroup(unittest.TestCase):
     def test_get_dMax(self):
         pg = PixelGroup(
             pixelGroupingParameters=self.pixelGroupingParameters,
-            numberBinsAcrossPeakWidth=self.numberBinsAcrossPeakWidth,
+            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            timeOfFlight=self.tofParams,
         )
         assert pg.dMax() == [dl.maximum for dl in self.dResolution]
 
     def test_get_dMin(self):
         pg = PixelGroup(
             pixelGroupingParameters=self.pixelGroupingParameters,
-            numberBinsAcrossPeakWidth=self.numberBinsAcrossPeakWidth,
+            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            timeOfFlight=self.tofParams,
         )
         assert pg.dMin() == [dl.minimum for dl in self.dResolution]
 
     def test_get_dBin_LOG(self):
         pg = PixelGroup(
             pixelGroupingParameters=self.pixelGroupingParameters,
-            numberBinsAcrossPeakWidth=self.numberBinsAcrossPeakWidth,
+            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            timeOfFlight=self.tofParams,
+            binningMode=PixelGroup.BinningMode.LOG,
         )
-        binWidths = pg.dBin(PixelGroup.BinningMode.LOG)
-        assert binWidths == [-abs(dl / 7) for dl in self.dRelativeResolution]
+        binWidths = pg.dBin()
+        assert binWidths == [-abs(dl / self.nBinsAcrossPeakWidth) for dl in self.dRelativeResolution]
         for bw in binWidths:
             assert bw <= 0.0
 
     def test_get_dBin_LINEAR(self):
         pg = PixelGroup(
             pixelGroupingParameters=self.pixelGroupingParameters,
-            numberBinsAcrossPeakWidth=self.numberBinsAcrossPeakWidth,
+            nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            timeOfFlight=self.tofParams,
+            binningMode=PixelGroup.BinningMode.LINEAR,
         )
-        binWidths = pg.dBin(PixelGroup.BinningMode.LINEAR)
+        binWidths = pg.dBin()
         assert binWidths == [abs(dl / 7) for dl in self.dRelativeResolution]
         for bw in binWidths:
             assert bw >= 0.0
 
     def test_operator_access(self):
-        for gid in self.groupID:
+        for gid in self.groupIDs:
             assert self.reference[gid] == self.reference.pixelGroupingParameters[gid]
-            assert self.reference.groupID != self.reference.pixelGroupingParameters[gid]
+            assert self.reference.groupIDs != self.reference.pixelGroupingParameters[gid]
 
     def test_init(self):
         p = PixelGroupingParameters.parse_obj(self.reference[2])

@@ -128,6 +128,12 @@
       "overrides": null
     },
     "pixelGroup": {
+      "timeOfFlight": {
+        "minimum": 2350.800030332904,
+        "maximum": 14104.800181997423,
+        "binWidth": 0.0002771822370612031,
+        "binningMode": -1
+      },
       "pixelGroupingParameters": [
         {
           "groupID": 1,

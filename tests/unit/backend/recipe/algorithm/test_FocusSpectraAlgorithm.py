@@ -55,7 +55,7 @@ class TestFocusSpectra(unittest.TestCase):
 
         dMin = self.fakeIngredients.pixelGroup.dMin()
         dMax = self.fakeIngredients.pixelGroup.dMax()
-        DBin = self.fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        DBin = self.fakeIngredients.pixelGroup.dBin()
         overallDMax = max(dMax)
         overallDMin = min(dMin)
         dBin = min([abs(d) for d in DBin])
@@ -111,11 +111,11 @@ class TestFocusSpectra(unittest.TestCase):
         focWS = mtd[focusWSname]
         dMin = self.fakeIngredients.pixelGroup.dMin()
         dMax = self.fakeIngredients.pixelGroup.dMax()
-        DBin = self.fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        DBin = self.fakeIngredients.pixelGroup.dBin()
         allXmins = [0] * 16
         allXmaxs = [0] * 16
         allDelta = [0] * 16
-        groupIDs = self.fakeIngredients.pixelGroup.groupID
+        groupIDs = self.fakeIngredients.pixelGroup.groupIDs
         for i, gid in enumerate(groupIDs):
             for detid in focWS.getDetectorIDsOfGroup(int(gid)):
                 allXmins[detid] = dMin[i]
@@ -153,7 +153,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.chopIngredients(self.fakeIngredients)
         assert algo.dMin == self.fakeIngredients.pixelGroup.dMin()
         assert algo.dMax == self.fakeIngredients.pixelGroup.dMax()
-        assert algo.dBin == self.fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        assert algo.dBin == self.fakeIngredients.pixelGroup.dBin()
 
     def test_unbagGroceries(self):
         algo = ThisAlgo()
@@ -230,7 +230,7 @@ class TestFocusSpectra(unittest.TestCase):
 
         dMin = self.fakeIngredients.pixelGroup.dMin()
         dMax = self.fakeIngredients.pixelGroup.dMax()
-        DBin = self.fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        DBin = self.fakeIngredients.pixelGroup.dBin()
         overallDMax = max(dMax)
         overallDMin = min(dMin)
         dBin = min([abs(d) for d in DBin])

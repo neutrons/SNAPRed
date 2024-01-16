@@ -40,7 +40,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
     def chopIngredients(self, ingredients: Ingredients):
         self.dMin = ingredients.pixelGroup.dMin()
         self.dMax = ingredients.pixelGroup.dMax()
-        self.dBin = ingredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        self.dBin = ingredients.pixelGroup.dBin()
         pass
 
     def unbagGroceries(self):

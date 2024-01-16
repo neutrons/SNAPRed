@@ -38,7 +38,7 @@ with mock.patch.dict(
         PixelGroupingParametersCalculationRecipe,
     )
     from snapred.backend.service.CalibrationService import CalibrationService
-    from snapred.meta.Config import Resource
+    from snapred.meta.Config import Config, Resource
 
     thisService = "snapred.backend.service.CalibrationService."
 
@@ -110,8 +110,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.runId = "test_run_id"
         self.outputNameFormat = "{}_calibration_reduction_result"
         # Mock the _calculatePixelGroupingParameters method to return a predefined value
-        self.instance._calculatePixelGroupingParameters = lambda calib, focus_def, lite_mode: {  # noqa: ARG005
-            "parameters": f"params for {focus_def}"
+        self.instance._calculatePixelGroupingParameters = lambda calib, focus_def, lite_mode, nBins: {  # noqa: ARG005
+            "parameters": f"params for {focus_def}",
+            "tof": f"tof for {focus_def}",
         }
 
     def clearoutWorkspaces(self) -> None:
@@ -131,7 +132,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         useLiteMode = mock.Mock()
 
         # Call the method to test
-        result = self.instance._getPixelGroupingParams(calibration, focusGroups, useLiteMode)
+        result = self.instance._getPixelGroupingParams(calibration, focusGroups, useLiteMode, 7)
 
         # Assert the result is as expected
         expected_result = ["params for focus1", "params for focus2", "params for focus3"]
@@ -144,7 +145,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         useLiteMode = mock.Mock()
 
         # Call the method to test
-        result = self.instance._getPixelGroupingParams(calibration, focusGroups, useLiteMode)
+        result = self.instance._getPixelGroupingParams(calibration, focusGroups, useLiteMode, 7)
 
         # Assert the result is an empty list
         assert result == []
@@ -199,9 +200,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockPixelGroup.side_effect = range(numItems)
         mockFocusGroups = [mock.Mock()] * numItems
         mockPGPs = [mock.Mock()] * numItems
+        mockTOFs = [mock.Mock()] * numItems
         nBinsAcross = 42
 
-        pgs = self.instance.collectPixelGroups(mockFocusGroups, mockPGPs, nBinsAcross)
+        pgs = self.instance.collectPixelGroups(mockFocusGroups, mockPGPs, mockTOFs, nBinsAcross)
         assert mockPixelGroup.call_count == numItems
         calls = [call(mockFocusGroups[i], mockPGPs[i], nBinsAcross) for i in range(numItems)]
         assert mockPixelGroup.has_calls(calls)
@@ -335,16 +337,19 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     # patch FocusGroup
     @patch(thisService + "FocusGroup", return_value=FocusGroup(name="mockgroup", definition="junk/mockgroup.abc"))
-    def test__generateFocusGroupAndInstrumentState(self, mockFocusGroup):
+    @patch(thisService + "PixelGroup")
+    def test__generateFocusGroupAndInstrumentState(self, mockPixelGroup, mockFocusGroup):
         # mock datafactoryservice.getCalibrationState
         self.instance.dataFactoryService.getCalibrationState = MagicMock()
         # mock self._calculatePixelGroupingParameters
         self.instance._calculatePixelGroupingParameters = MagicMock()
         # mock calibration.instrumentState from getCalibrationState
         mockInstrumentState = MagicMock()
+        mockInstrumentState.pixelGroup = mockPixelGroup
         self.instance.dataFactoryService.getCalibrationState.return_value.instrumentState = mockInstrumentState
 
         actualFocusGroup, actualInstrumentState = self.instance._generateFocusGroupAndInstrumentState(
+            MagicMock(),
             MagicMock(),
             MagicMock(),
             MagicMock(),
@@ -352,6 +357,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert mockFocusGroup.called
         assert actualFocusGroup == mockFocusGroup.return_value
         assert actualInstrumentState == mockInstrumentState
+        assert mockPixelGroup.called_once_with(
+            pixelGroupingParameters=self.instance._calculatePixelGroupingParameters.return_value["parameters"],
+            nBinsAcrossPeakWidth=Config["calibration.diffraction.nBinsAcrossPeakWidth"],
+            focusGroup=mockFocusGroup.return_value,
+            timeOfFlight=self.instance._calculatePixelGroupingParameters.return_value["tof"],
+        )
 
     def test_getCalibrationRecord(self):
         self.instance.dataFactoryService.getCalibrationState = MagicMock()
@@ -364,11 +375,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert result == fakeCalibration
         assert result.instrumentState == fakeInstrumentState
 
-    @patch("snapred.backend.service.CalibrationService.CrystallographicInfoService")
-    @patch("snapred.backend.service.CalibrationService.DetectorPeakPredictorRecipe")
-    @patch("snapred.backend.service.CalibrationService.parse_raw_as")
-    @patch("snapred.backend.service.CalibrationService.DiffractionCalibrationRecipe")
-    @patch("snapred.backend.service.CalibrationService.DiffractionCalibrationIngredients")
+    @patch(thisService + "PixelGroup")
+    @patch(thisService + "CrystallographicInfoService")
+    @patch(thisService + "DetectorPeakPredictorRecipe")
+    @patch(thisService + "parse_raw_as")
+    @patch(thisService + "DiffractionCalibrationRecipe")
+    @patch(thisService + "DiffractionCalibrationIngredients")
     def test_diffractionCalibration(
         self,
         mockDiffractionCalibrationIngredients,
@@ -376,6 +388,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockParseRawAs,
         mockDetectorPeakPredictorRecipe,
         mockCrystallographicInfoService,
+        mockPixelGroup,
     ):
         runNumber = "123"
         focusGroupPath = "focus/group/path"
@@ -414,12 +427,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         mockDiffractionCalibrationIngredients.assert_called_once_with(
             runConfig=self.instance.dataFactoryService.getRunConfig.return_value,
-            instrumentState=mockFocusGroupInstrumentState[1],
-            focusGroup=mockFocusGroupInstrumentState[0],
             groupedPeakLists=mockParseRawAs.return_value,
-            calPath="~/tmp/",
             convergenceThreshold=request.convergenceThreshold,
-            pixelGroup=mockFocusGroupInstrumentState[1].pixelGroup,
+            pixelGroup=mockPixelGroup.return_value,
             maxOffset=request.maximumOffset,
         )
         mockDiffractionCalibrationRecipe().executeRecipe.assert_called_once_with(
