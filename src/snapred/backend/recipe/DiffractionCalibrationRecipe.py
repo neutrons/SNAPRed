@@ -23,7 +23,6 @@ class DiffractionCalibrationRecipe:
         """
         self.runNumber = ingredients.runConfig.runNumber
         self.threshold = ingredients.convergenceThreshold
-        self.calPath = ingredients.calPath
         self.maxIterations = Config["calibration.diffraction.maximumIterations"]
 
     def unbagGroceries(self, groceries: Dict[str, Any]):

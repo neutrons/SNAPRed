@@ -13,3 +13,4 @@ class NormalizationCalibrationRequest(BaseModel):
     samplePath: str
     groupingPath: str
     smoothingParameter: float
+    nBinsAcrossPeakWidth: int

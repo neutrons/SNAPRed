@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import h5py
-from mantid.api import AlgorithmManager, mtd
 from mantid.kernel import PhysicalConstants
 from pydantic import parse_file_as
 
@@ -38,10 +37,6 @@ from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.redantic import (
-    list_to_raw,
-    list_to_raw_pretty,
-    write_model,
-    write_model_list,
     write_model_list_pretty,
     write_model_pretty,
 )
@@ -92,7 +87,6 @@ class LocalDataService:
             instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
             instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
             instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
-            instrumentParameterMap["NBins"] = 10  # default value specified by @mguthriem
             instrumentConfig = InstrumentConfig(**instrumentParameterMap)
         except KeyError as e:
             raise KeyError(f"{e}: while reading instrument configuration '{self.instrumentConfigPath}'") from e
@@ -119,7 +113,6 @@ class LocalDataService:
             diffCalibration: Calibration = self.readCalibrationState(runId)
         else:
             diffCalibration: Calibration = previousDiffCalRecord.calibrationFittingIngredients
-        particleBounds = diffCalibration.instrumentState.particleBounds
         stateId, _ = self._generateStateId(runId)
 
         return StateConfig(
@@ -133,9 +126,6 @@ class LocalDataService:
                 / reductionParameters["rawVCorrFileName"]
             ),
             stateId=stateId,
-            tofBin=min(min(reductionParameters["focGroupDBin"])),
-            tofMax=particleBounds.tof.maximum,
-            tofMin=particleBounds.tof.minimum,
         )  # TODO: fill with real value
 
     def _readFocusGroups(self, runId: str) -> List[FocusGroup]:  # noqa: ARG002
@@ -161,25 +151,9 @@ class LocalDataService:
     def readRunConfig(self, runId: str) -> RunConfig:
         return self._readRunConfig(runId)
 
-    def _findIPTS(self, runId: str) -> str:
-        path: str
-        # lookup IPST number
-        if runId in self.iptsCache:
-            path = self.iptsCache[runId]
-        else:
-            algorithm = AlgorithmManager.create("GetIPTS")
-            algorithm.setProperty("RunNumber", runId)
-            algorithm.setProperty("Instrument", "SNAP")
-            algorithm.execute()
-            path = algorithm.getProperty("Directory").value
-
-            self.iptsCache[runId] = path
-
-        return path
-
     def _readRunConfig(self, runId: str) -> RunConfig:
         # lookup IPST number
-        iptsPath = self._findIPTS(runId)
+        iptsPath = self.groceryService.getIPTS(runId)
 
         return RunConfig(
             IPTS=iptsPath,

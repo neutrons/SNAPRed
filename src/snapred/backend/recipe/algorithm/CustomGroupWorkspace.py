@@ -26,7 +26,7 @@ class CustomGroupWorkspace(PythonAlgorithm):
 
     # TODO: This was largely copied from Malcolm's prototype and is due for a refactor
     def PyExec(self):
-        stateConfig = StateConfig(**json.loads(self.getProperty("StateConfig").value))
+        stateConfig = StateConfig.parse_raw(self.getProperty("StateConfig").value)
         focusGroups = stateConfig.focusGroups
         self.getProperty("InstrumentName").value
         outputWorkspace = self.getProperty("OutputWorkspace").value

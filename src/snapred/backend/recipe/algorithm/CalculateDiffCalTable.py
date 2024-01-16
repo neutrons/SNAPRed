@@ -34,7 +34,7 @@ class CalculateDiffCalTable(PythonAlgorithm):
         )
         self.declareProperty(
             ITableWorkspaceProperty("CalibrationTable", "", Direction.Output, PropertyMode.Optional),
-            doc="test doc",
+            doc="The resulting calibration table",
         )
         validOffsetModes = ["Signed", "Relative", "Absolute"]
         self.declareProperty("OffsetMode", "Signed", StringListValidator(validOffsetModes), direction=Direction.Input)

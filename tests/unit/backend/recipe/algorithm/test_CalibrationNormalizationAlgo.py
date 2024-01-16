@@ -37,8 +37,7 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
 
         # create mock ingredients
         cls.mockIngredients: Ingredients = cls.createMockIngredients()
-        tofMin = cls.mockIngredients.reductionIngredients.reductionState.stateConfig.tofMin
-        tofMax = cls.mockIngredients.reductionIngredients.reductionState.stateConfig.tofMax
+        tofParams = cls.mockIngredients.reductionIngredients.pixelGroup.timeOfFlight.params
         cls.sample_proton_charge = 10.0
 
         # the test instrument uses 16 pixels, 4 banks of 4 pixels each
@@ -50,8 +49,8 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
             OutputWorkspace=cls.rawBackgroundWS,
             WorkspaceType="Event",
             Function="Flat background",
-            Xmin=tofMin,
-            Xmax=tofMax,
+            Xmin=tofParams[0],
+            Xmax=tofParams[2],
             BinWidth=0.01,
             XUnit="TOF",
             NumBanks=4,
@@ -79,8 +78,8 @@ class TestCalibrationNormalizationAlgo(unittest.TestCase):
             OutputWorkspace="_tmp_sample",
             WorkspaceType="Event",
             Function="Powder Diffraction",
-            Xmin=tofMin,
-            Xmax=tofMax,
+            Xmin=tofParams[0],
+            Xmax=tofParams[2],
             BinWidth=0.01,
             XUnit="TOF",
             NumBanks=4,

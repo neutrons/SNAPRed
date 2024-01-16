@@ -56,7 +56,7 @@ class CalibrationNormalizationAlgo(PythonAlgorithm):
 
         self.dMin = ingredients.reductionIngredients.pixelGroup.dMin()
         self.dMax = ingredients.reductionIngredients.pixelGroup.dMax()
-        self.dBin = ingredients.reductionIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
+        self.dBin = ingredients.reductionIngredients.pixelGroup.dBin()
         pass
 
     def unbagGroceries(self):

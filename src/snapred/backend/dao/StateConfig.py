@@ -16,6 +16,3 @@ class StateConfig(BaseModel):
     vanadiumFilePath: str  # Needs to be removed when Normalization changes go in
     focusGroups: List[FocusGroup]  # PixelGroupingParameters
     stateId: str  # generated.
-    tofBin: float  # instrConfig.delTOverT / instrConfig.NBins
-    tofMax: float  # ParticleBound
-    tofMin: float  # ParticleBound

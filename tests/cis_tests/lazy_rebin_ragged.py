@@ -33,19 +33,11 @@ fakeRunConfig = RunConfig(runNumber=str(fakeRunNumber))
 TOFMin = 10
 TOFMax = 1000
 TOFBin = 0.001
-fakeInstrumentState = InstrumentState.parse_raw(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
-fakeInstrumentState.particleBounds.tof.minimum = TOFMin
-fakeInstrumentState.particleBounds.tof.maximum = TOFMax
-
-# fake focus group
-fakeFocusGroupFile = "inputs/diffcal/fakeFocusGroup.json"
-fakeFocusGroup = FocusGroup.parse_raw(Resource.read(fakeFocusGroupFile))
-fakeFocusGroup.definition = Resource.getPath(fakeFocusGroupFile)
-fakeFocusGroup = FocusGroup(
-    name = "natural",
-    definition = Resource.getPath(fakeFocusGroupFile),
-)
-print(fakeFocusGroup.json(indent=2))
+fakePixelGroup = PixelGroup.parse_raw(Resource.read("inputs/diffcal/fakePixelGroup.json"))
+fakePixelGroup.timeOfFlight.minimum = TOFMin
+fakePixelGroup.timeOfFlight.maximum = TOFMax
+fakePixelGroup.timeOfFlight.binWidth = TOFBin
+fakePixelGroup.timeOfFlight.binningMode = -1 # LOG binning
 
 peakList3 = [
     DetectorPeak.parse_obj({"position": {"value": 0.370, "minimum":0.345, "maximum": 0.397}}),
@@ -68,23 +60,21 @@ peakList11 = [
 ]
 group11 = GroupPeakList(groupID=11, peaks=peakList11)
 
-print(fakeInstrumentState.pixelGroup.json(indent=2))
+print(fakePixelGroup.json(indent=2))
 
 fakeIngredients = DiffractionCalibrationIngredients(
     runConfig=fakeRunConfig,
-    focusGroup=fakeFocusGroup,
-    instrumentState=fakeInstrumentState,
     groupedPeakLists=[group2, group3, group7, group11],
     calPath=Resource.getPath("outputs/calibration/"),
     convergenceThreshold=1.0,
-    pixelGroup=fakeInstrumentState.pixelGroup
+    pixelGroup=fakePixelGroup,
 )
 
 #Set data to be used for RebinRagged
 dMin = fakeIngredients.pixelGroup.dMin()
 dMax = fakeIngredients.pixelGroup.dMax()
-dBin = fakeIngredients.pixelGroup.dBin(PixelGroup.BinningMode.LOG)
-groupIDs = fakeIngredients.pixelGroup.groupID
+dBin = fakeIngredients.pixelGroup.dBin()
+groupIDs = fakeIngredients.pixelGroup.groupIDs
 
 
 #### CREATE DATA

@@ -53,7 +53,6 @@
         "maximum": 10186.970134295134
       }
     },
-    "pixelGroupingInstrumentParameters": null,
     "defaultGroupingSliceValue": 5,
     "fwhmMultiplierLimit": {
       "minimum": -2,

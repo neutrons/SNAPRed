@@ -55,8 +55,7 @@
               "delTOverT": 0.002,
               "delLOverL": 0.00006452,
               "delThNoGuide": 0.0006667,
-              "delThWithGuide": 0.0032,
-              "NBins": 10
+              "delThWithGuide": 0.0032
             },
             "detectorState": {
               "arc": [
@@ -88,7 +87,6 @@
                 "maximum": 14104.800181997423
               }
             },
-            "pixelGroupingInstrumentParameters": null,
             "defaultGroupingSliceValue": 5,
             "fwhmMultiplierLimit": {
               "minimum": 2,
@@ -120,14 +118,17 @@
         ],
         "rawVanadiumCorrectionFileName": "RVMB57473.lite.nxs",
         "vanadiumFilePath": "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/RVMB57473.lite.nxs",
-        "stateId": "04bd2c53f6bf6754",
-        "tofBin": 0.0002,
-        "tofMax": 14104.800181997423,
-        "tofMin": 2350.800030332904
+        "stateId": "04bd2c53f6bf6754"
       },
       "overrides": null
     },
     "pixelGroup": {
+      "timeOfFlight": {
+        "minimum": 1959.0,
+        "maximum": 14496.6,
+        "binWidth": 0.0002699865774827431,
+        "binningMode": -1
+      },
       "pixelGroupingParameters": [
         {
           "groupID": 0,
