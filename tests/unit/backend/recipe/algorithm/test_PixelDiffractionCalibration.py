@@ -207,10 +207,13 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
     def test_reference_pixel_consecutive_even(self):
         """Test that the selected reference pixel is always a member of a consecutive, even-order detector group."""
         algo = ThisAlgo()
-        gidss = [\
-            (0, 1), (1, 0),
-            (0, 1, 2, 3), (0, 3, 1, 2), 
-            (1, 2, 3, 4), (1, 4, 3, 2),\
+        gidss = [
+            (0, 1),
+            (1, 0),
+            (0, 1, 2, 3),
+            (0, 3, 1, 2),
+            (1, 2, 3, 4),
+            (1, 4, 3, 2),
         ]
         for gids in gidss:
             assert algo.getRefID(gids) in gids
@@ -218,9 +221,13 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
     def test_reference_pixel_consecutive_odd(self):
         """Test that the selected reference pixel is always a member of a consecutive, odd-order detector group."""
         algo = ThisAlgo()
-        gidss = [\
-            (0,), (1,), (2,), (3,),
-            (0, 1, 2), (0, 2, 1),\
+        gidss = [
+            (0,),
+            (1,),
+            (2,),
+            (3,),
+            (0, 1, 2),
+            (0, 2, 1),
         ]
         for gids in gidss:
             assert algo.getRefID(gids) in gids
@@ -228,9 +235,13 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
     def test_reference_pixel_nonconsecutive_even(self):
         """Test that the selected reference pixel is always a member of a nonconsecutive, even-order detector group."""
         algo = ThisAlgo()
-        gidss = [\
-            (0, 2), (0, 3), (0, 4),
-            (0, 4, 6, 8), (0, 4, 7, 1), (0, 4, 7, 2),\
+        gidss = [
+            (0, 2),
+            (0, 3),
+            (0, 4),
+            (0, 4, 6, 8),
+            (0, 4, 7, 1),
+            (0, 4, 7, 2),
         ]
         for gids in gidss:
             assert algo.getRefID(gids) in gids
@@ -238,12 +249,14 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
     def test_reference_pixel_nonconsecutive_odd(self):
         """Test that the selected reference pixel is always a member of a nonconsecutive, odd-order detector group."""
         algo = ThisAlgo()
-        gidss = [\
-            (0, 1, 3), (4, 8, 3), (9, 3, 5),\
+        gidss = [
+            (0, 1, 3),
+            (4, 8, 3),
+            (9, 3, 5),
         ]
         for gids in gidss:
             assert algo.getRefID(gids) in gids
-                 
+
     def test_reference_pixel_selection(self):
         """Test that the selected reference pixel is always a member of the detector group."""
         algo = ThisAlgo()
