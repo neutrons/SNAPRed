@@ -410,7 +410,7 @@ class CalibrationService(Service):
             runNumber=run.runNumber,
             crystalInfo=crystalInfo,
             calibrationFittingIngredients=calibration,
-            pixelGroup=pixelGroups,
+            pixelGroups=pixelGroups,
             focusGroupCalibrationMetrics=metrics,
             workspaceNames=outputWorkspaces,
         )
