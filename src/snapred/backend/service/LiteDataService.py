@@ -30,9 +30,9 @@ class LiteDataService(Service):
         self,
         inputWorkspace: WorkspaceName,
         outputWorkspace: WorkspaceName,
-        instrumentDefinition: str = "",
+        instrumentDefinition: str = None,
     ) -> Dict[Any, Any]:
-        liteDataMap = self._ensureLiteDataMap(self)
+        liteDataMap = self._ensureLiteDataMap()
         try:
             data = Recipe().executeRecipe(
                 InputWorkspace=inputWorkspace,

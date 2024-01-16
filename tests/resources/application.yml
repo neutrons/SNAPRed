@@ -71,6 +71,7 @@ calibration:
     nBinsAcrossPeakWidth: 10
     maximumIterations: 5
     maximumOffset: 10
+    maxDSpaceShift: 2.5
   parameters:
     default:
       # degrees
@@ -116,4 +117,31 @@ samples:
   home: ${instrument.calibration.home}/CalibrantSamples
 
 
+test:
+  config:
+    name: test
+    home: /some/path
+  persistence:
+    read: ${test.config.home}
+    write: ~/${test.config.home}
+  data:
+    home: ${test.persistence}/data/${test.config.name}
+
 cis_mode: true
+
+constants:
+  millisecondsPerSecond: 1000
+  PeakIntensityFractionThreshold: 0.05
+  m2cm: 10000.0 # conversion factor for m^2 to cm^2
+
+  CrystallographicInfo:
+    dMin: 0.4
+    dMax: 100.0
+
+  CalibrationReduction:
+    tofMin: 2000
+    tofMax: 14500
+    rebinParams: [2000, -0.001, 14500]
+
+  DetectorPeakPredictor:
+    fwhm: 2.35482004503 # used to convert gaussian to fwhm 2 * sqrt(2 * log_e(2))

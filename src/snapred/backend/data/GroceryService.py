@@ -21,9 +21,9 @@ class GroceryService:
     Just send me a list.
     """
 
-    def __init__(self) -> None:
-        self._loadedRuns: Dict[(str, bool), int] = {}
-        self._loadedGroupings: Dict[(str, bool), str] = {}
+    def __init__(self):
+        self._loadedRuns: Dict[Tuple[str, bool], int] = {}
+        self._loadedGroupings: Dict[Tuple[str, bool], str] = {}
         self.grocer = FetchGroceriesRecipe()
 
     def _key(self, using: str, useLiteMode: bool) -> Tuple[str, bool]:

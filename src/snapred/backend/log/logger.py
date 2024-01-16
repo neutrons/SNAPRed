@@ -44,6 +44,7 @@ class CustomFormatter(logging.Formatter):
 @Singleton
 class _SnapRedLogger:
     _level = Config["logging.level"]
+    _warnings = []
 
     def __init__(self):
         # Configure Mantid to send messages to Python
@@ -59,10 +60,26 @@ class _SnapRedLogger:
         logger.addHandler(ch)
         return logger
 
+    def _warning(self, message, vanillaWarn):
+        self._warnings.append(message)
+        vanillaWarn(message)
+
+    def getWarnings(self):
+        return self._warnings
+
+    def hasWarnings(self):
+        return len(self._warnings) > 0
+
+    def clearWarnings(self):
+        self._warnings = []
+
     def getLogger(self, name):
         logger = logging.getLogger(name)
         logger.setLevel(self._level)
         self._setFormatter(logger)
+        vanillaWarn = logger.warning
+        logger.warning = lambda message: self._warning(message, vanillaWarn)
+        logger.warn = lambda message: self._warning(message, vanillaWarn)
         return logger
 
 
