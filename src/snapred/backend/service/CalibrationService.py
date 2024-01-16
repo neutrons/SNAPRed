@@ -138,8 +138,6 @@ class CalibrationService(Service):
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             request.runNumber,
             request.focusGroupPath,
-            request.useLiteMode,
-            request.nBinsAcrossPeakWidth,
         )
         data = self._calculatePixelGroupingParameters(
             instrumentState,
@@ -355,7 +353,9 @@ class CalibrationService(Service):
         focussedData = request.workspace
         calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            run.runNumber, request.focusGroupPath, request.useLiteMode, request.nBinsAcrossPeakWidth, calibration
+            run.runNumber,
+            request.focusGroupPath,
+            calibration,
         )
         data = self._calculatePixelGroupingParameters(
             instrumentState,
@@ -405,7 +405,6 @@ class CalibrationService(Service):
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             request.runNumber,
             groupingFile,
-            True,
         )
         data = self._calculatePixelGroupingParameters(
             instrumentState,

@@ -16,6 +16,7 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
@@ -29,6 +30,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
     # NOTE: there is already a method for creating a copy of data from a clean version
     # therefore there is no reason not to deform the input workspace to this algorithm
     # instead, the original clean file is preserved in a separate location
+
+    MAX_DSPACE_SHIFT = Config["calibration.diffraction.maxDSpaceShift"]
 
     def category(self):
         return "SNAPRed Diffraction Calibration"
@@ -70,7 +73,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # from the grouped peak lists, find the maximum shift in d-spacing
         self.maxDSpaceShifts: Dict[int, float] = {}
         for peakList in ingredients.groupedPeakLists:
-            self.maxDSpaceShifts[peakList.groupID] = 2.5 * peakList.maxfwhm
+            self.maxDSpaceShifts[peakList.groupID] = self.MAX_DSPACE_SHIFT * peakList.maxfwhm
 
         # create string name for output calibration table
         # TODO: use workspace namer
@@ -84,9 +87,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # set the max offset
         self.maxOffset: float = ingredients.maxOffset
         # keep track of previous median offsets
-        self._prevMedianOffset = (
-            self.maxOffset * 10
-        )  # ensure it is larger than any real calculation -- ten is good factor
+        self._prevMedianOffset = self.maxOffset * 10
 
     def unbagGroceries(self, ingredients: Ingredients) -> None:  # noqa ARG002
         """

@@ -13,4 +13,4 @@ class PixelGroupingIngredients(BaseModel):
 
     instrumentState: InstrumentState
     groupingScheme: Optional[str]
-    nBinsAcrossPeakWidth: float = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
+    nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
