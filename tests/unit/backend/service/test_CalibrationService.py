@@ -232,10 +232,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 self.instance.dataFactoryService.writeWorkspace(os.path.join(tmpdir, ws_name + ".nxs"), ws_name)
 
             # Call the method to test. Use a mocked run and a mocked version
-            mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
+            runId = MagicMock()
+            version = MagicMock()
+            mockRequest = MagicMock(runId=runId, version=version, checkExistent=False)
             self.instance.readQuality(mockRequest)
             with pytest.raises(ValueError) as excinfo:  # noqa: PT011
-                self.instance.readQuality(MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=True))
+                self.instance.readQuality(MagicMock(runId=runId, version=version, checkExistent=True))
             assert "is already loaded" in str(excinfo.value)
 
     def test_readQuality(self):

@@ -206,7 +206,7 @@ class CalibrationService(Service):
             logger.error(errorTxt)
             raise ValueError(errorTxt)
 
-        # check if any of the workspaces already exists
+        # check if any of the workspaces already exist
         if request.checkExistent:
             wkspaceExists = False
             for metricName in ["sigma", "strain"]:
