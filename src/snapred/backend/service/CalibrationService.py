@@ -109,10 +109,20 @@ class CalibrationService(Service):
                 raise
         return {}
 
+    # TODO when pixelGroup fully removed from instrumentState
+    # then remove its calculation here
+    # also remove useLiteMode and nBinsAcrossPeakWidth as inputs
+    # further remove these inputs when used in below methods:
+    # - diffractionCalibration
+    # - assessQuality
+    # - normalization
+    # Must also remove L385 from associated unit test
     def _generateFocusGroupAndInstrumentState(
         self,
         runNumber,
         definition: str,
+        useLiteMode: bool,  # TODO delete this variable
+        nBinsAcrossPeakWidth: int,  # TODO delete this variable
         calibration=None,
     ) -> Tuple[FocusGroup, InstrumentState]:
         if calibration is None:
@@ -122,6 +132,20 @@ class CalibrationService(Service):
             name=definition.split("/")[-1],
             definition=definition,
         )
+        # TODO REMOVE THE PIXEL GROUP
+        data = self._calculatePixelGroupingParameters(
+            instrumentState,
+            focusGroup.definition,
+            useLiteMode,
+            nBinsAcrossPeakWidth,
+        )
+        pixelGroup = PixelGroup(
+            focusGroup=focusGroup,
+            pixelGroupingParameters=data["parameters"],
+            timeOfFlight=data["tof"],
+            nBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
+        )
+        instrumentState.pixelGroup = pixelGroup
         return (focusGroup, instrumentState)
 
     @FromString
@@ -138,6 +162,8 @@ class CalibrationService(Service):
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             request.runNumber,
             request.focusGroupPath,
+            request.useLiteMode,  # TODO delete
+            request.nBinsAcrossPeakWidth,  # TODO delete
         )
         data = self._calculatePixelGroupingParameters(
             instrumentState,
@@ -355,6 +381,8 @@ class CalibrationService(Service):
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             run.runNumber,
             request.focusGroupPath,
+            request.useLiteMode,  # TODO delete
+            request.nBinsAcrossPeakWidth,  # TODO delete
             calibration,
         )
         data = self._calculatePixelGroupingParameters(
@@ -405,6 +433,8 @@ class CalibrationService(Service):
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             request.runNumber,
             groupingFile,
+            request.useLiteMode,  # TODO delete
+            request.nBinsAcrossPeakWidth,  # TODO delete
         )
         data = self._calculatePixelGroupingParameters(
             instrumentState,
