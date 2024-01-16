@@ -237,6 +237,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             mockRequest = MagicMock(runId=runId, version=version, checkExistent=False)
             self.instance.readQuality(mockRequest)
             with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+                self.instance.readQuality(MagicMock(runId=runId, version=version, checkExistent=True))
+            assert "is already loaded" in str(excinfo.value)
+            with pytest.raises(ValueError) as excinfo:  # noqa: PT011
                 self.instance.readQuality(MagicMock(runId="57514", version="7", checkExistent=True))
             assert "is already loaded" in str(excinfo.value)
 
