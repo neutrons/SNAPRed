@@ -58,10 +58,10 @@ class CalibrationAssessmentView(QWidget):
         self.calibrationDropdown.setCurrentIndex(0)
 
     def getCalibrationRecordCount(self):
-        return self.calibrationDropdown.count()
+        return self.calibrationDropdown.count() - 1  # the first item is a label
 
     def getSelectedCalibrationRecordIndex(self):
-        return self.calibrationDropdown.currentIndex()
+        return self.calibrationDropdown.currentIndex() - 1  # the first item is a label
 
     def getSelectedCalibrationRecordData(self):
         return self.calibrationDropdown.currentData()

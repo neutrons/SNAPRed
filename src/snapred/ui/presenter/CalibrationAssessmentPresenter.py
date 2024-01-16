@@ -23,11 +23,11 @@ class CalibrationAssessmentLoader(QObject):
         self.view = view
 
     def handleLoadRequested(self):
-        if self.view.getCalibrationRecordCount() <= 1:
+        if self.view.getCalibrationRecordCount() < 1:
             self.view.onLoadError("No calibration records available.")
             return
 
-        if self.view.getSelectedCalibrationRecordIndex() == 0:
+        if self.view.getSelectedCalibrationRecordIndex() < 0:
             self.view.onLoadError("No calibration record selected.")
             return
 

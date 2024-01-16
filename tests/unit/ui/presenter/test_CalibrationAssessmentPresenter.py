@@ -14,10 +14,10 @@ def calibrationAssessmentLoader():
     return CalibrationAssessmentLoader(view=view)
 
 
-def test_handleLoadButtonClicked(calibrationAssessmentLoader):
+def test_handleLoad(calibrationAssessmentLoader):
     view = calibrationAssessmentLoader.view
-    view.getCalibrationRecordCount = MagicMock(return_value=2)
-    view.getSelectedCalibrationRecordIndex = MagicMock(return_value=1)
+    view.getCalibrationRecordCount = MagicMock(return_value=1)
+    view.getSelectedCalibrationRecordIndex = MagicMock(return_value=0)
     view.getSelectedCalibrationRecordData = MagicMock(return_value=("12345", "1"))
 
     with patch.object(calibrationAssessmentLoader, "worker_pool") as worker_pool, patch.object(
