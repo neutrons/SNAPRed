@@ -37,7 +37,6 @@ class CalibrationAssessmentView(QWidget):
         self.calibrationDropdown.setEnabled(True)
         self.calibrationDropdown.addItem("Select Calibration Record")
         self.calibrationDropdown.model().item(0).setEnabled(False)
-        self.signalCalibrationRecordUpdate.connect(self._updateCalibrationRecord)
 
         self.signalLoadError.connect(self._displayLoadError)
         # self.signalLoadSuccess.connect(self._updateOnLoadSuccess)
