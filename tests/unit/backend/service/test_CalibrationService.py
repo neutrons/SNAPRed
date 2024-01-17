@@ -430,3 +430,23 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             mockDiffractionCalibrationIngredients.return_value,
             mockGroceryDict,
         )
+
+    def test_retrievePixelGroupingParams(self):
+        self.instance.dataFactoryService.getCalibrationState = MagicMock()
+        self.instance.dataFactoryService.getFocusGroups = MagicMock()
+        self.instance._getPixelGroupingParams = MagicMock()
+        runID = MagicMock()
+        useLiteMode = MagicMock()
+        pixelGroupingParams = self.instance.retrievePixelGroupingParams(runID, useLiteMode)
+        assert self.instance.dataFactoryService.getCalibrationState.called_once_with(runID)
+        assert self.instance.dataFactoryService.getFocusGroups.called_once_with(runID)
+        assert self.instance._getPixelGroupingParams.called_once_with(
+            self.instance.dataFactoryService.getCalibrationState.return_value.instrumentState,
+            self.instance.dataFactoryService.getFocusGroups.return_value,
+            useLiteMode,
+        )
+        assert pixelGroupingParams == self.instance._getPixelGroupingParams.return_value
+
+    # TODO this is testing an apparently dead function
+    def test_reduction(self):
+        assert self.instance.reduction([None]) == {}
