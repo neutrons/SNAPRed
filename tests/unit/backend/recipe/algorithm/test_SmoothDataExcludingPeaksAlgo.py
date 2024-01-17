@@ -45,4 +45,11 @@ class TestSmoothDataAlgo(unittest.TestCase):
         smoothDataAlgo.setPropertyValue("InputWorkspace", test_ws_name)
         smoothDataAlgo.setProperty("OutputWorkspace", "_output")
         smoothDataAlgo.setPropertyValue("DetectorPeakIngredients", ingredients.json())
+        with pytest.raises(RuntimeError) as e:
+            smoothDataAlgo.execute()
+        assert "DetectorPeakIngredients" in str(e.value)
+        assert "SmoothingParameter" in str(e.value)
+
+        ingredients.smoothingParameter = 0.9
+        smoothDataAlgo.setProperty("DetectorPeakIngredients", ingredients.json())
         assert smoothDataAlgo.execute()

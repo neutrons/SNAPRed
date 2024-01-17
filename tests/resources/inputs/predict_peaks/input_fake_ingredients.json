@@ -60,7 +60,7 @@
     },
     "peakTailCoefficient": 2.0
   },
-  "peakIntensityFractionalThreshold": 1,
+  "peakIntensityThreshold": 1,
   "pixelGroup": {
     "timeOfFlight": {
       "minimum": 2350.800030332904,

@@ -53,16 +53,19 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             errors["WeightWorkspace"] = "Weight calculator requires name for weight workspace"
 
         waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
-        givenWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
-        if len(givenWaysToGetPeaks) == 0:
+        definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
+        if len(definedWaysToGetPeaks) == 0:
             msg = """
             Must specify either DetectorPeaks,
             OR DetectorPeakIngredients to generate the peaks
             """
             errors["DetectorPeaks"] = msg
             errors["DetectorPeakIngredients"] = msg
-        elif len(givenWaysToGetPeaks) == 2:
-            logger.warn("Both a peak list and ingredients were specified; ingredients will be ignored")
+        elif len(definedWaysToGetPeaks) == 2:
+            logger.warn(
+                """Both a list of detector peaks and ingredients were given;
+                the list will be used and ingredients ignored"""
+            )
         return errors
 
     def PyExec(self):
@@ -104,7 +107,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
                 OutputWorkspace=self.weightWorkspaceName,
             )
             # self.mantidSnapper.RebinToWorkspace(
-            #     "Rebin to remvoe events",
+            #     "Rebin to remove events",
             #     WorkspaceToRebin = self.weightWorkspaceName,
             #     WorkspaceToMatch = self.weightWorkspaceName,
             #     OutputWorkspace = self.weightWorkspaceName,

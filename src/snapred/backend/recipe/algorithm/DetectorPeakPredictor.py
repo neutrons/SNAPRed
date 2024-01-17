@@ -39,12 +39,12 @@ class DetectorPeakPredictor(PythonAlgorithm):
             direction=Direction.Output,
             doc="The returned list of GroupPeakList objects",
         )
-        self.declareProperty(
-            "PeakIntensityFractionThreshold",
-            defaultValue=self.PEAK_INTENSITY_THRESHOLD,
-            direction=Direction.Input,
-            doc="The input value for setting the threshold for peak intensity",
-        )
+        # self.declareProperty(
+        #     "PeakIntensityFractionThreshold",
+        #     defaultValue=self.PEAK_INTENSITY_THRESHOLD,
+        #     direction=Direction.Input,
+        #     doc="The input value for setting the threshold for peak intensity",
+        # )
         self.setRethrows(True)
 
     def chopIngredients(self, ingredients: PeakIngredients) -> None:
@@ -61,11 +61,6 @@ class DetectorPeakPredictor(PythonAlgorithm):
         self.tTheta = dict(zip(groupIDs, ingredients.pixelGroup.twoTheta))
         self.dMin = dict(zip(groupIDs, ingredients.pixelGroup.dMin()))
         self.dMax = dict(zip(groupIDs, ingredients.pixelGroup.dMax()))
-        # pixelGroupParams = ingredients.pixelGroup.pixelGroupingParameters
-        # self.delDoD = {groupID: pgp.dRelativeResolution for groupID, pgp in pixelGroupParams.items()}
-        # self.tTheta = {groupID: pgp.twoTheta for groupID, pgp in pixelGroupParams.items()}
-        # self.dMin = {groupID: pgp.dResolution.minimum for groupID, pgp in pixelGroupParams.items()}
-        # self.dMax = {groupID: pgp.dResolution.maximum for groupID, pgp in pixelGroupParams.items()}
 
         # select only peaks above the amplitude threshold
         crystalInfo = ingredients.crystalInfo
@@ -74,7 +69,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         multiplicity = np.array(crystalInfo.multiplicities)
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
-        thresholdA = np.max(A) * ingredients.peakIntensityFractionalThreshold
+        thresholdA = np.max(A) * ingredients.peakIntensityThreshold
         self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
 
         self.allGroupIDs = ingredients.pixelGroup.groupIDs

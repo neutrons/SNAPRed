@@ -9,6 +9,7 @@
     implement csaps
     create new workspace with csaps data
 """
+import json
 from datetime import datetime
 from typing import Dict
 
@@ -23,8 +24,11 @@ from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline
 
 from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+
+logger = snapredLogger.getLogger(__name__)
 
 
 # TODO: Rename so it matches filename
@@ -44,11 +48,15 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         )
         self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
+        self.declareProperty("SmoothingParameter", defaultValue="", direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients):
-        self.lam = ingredients.smoothingParameter
+        if self.getProperty("SmoothingParameter").isDefault:
+            self.lam = ingredients.smoothingParameter
+        else:
+            self.lam = float(self.getPropertyValue("SmoothingParameter"))
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
@@ -59,6 +67,32 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         errors = {}
         if self.getProperty("OutputWorkspace").isDefault:
             errors["Outputworkspace"] = "must specify output workspace with smoothed peaks"
+        # validate source of peak lists
+        waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
+        definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
+        if len(definedWaysToGetPeaks) == 0:
+            msg = "Purse peaks requires either a list of peaks, or ingredients to detect peaks"
+            errors["DetectorPeaks"] = msg
+            errors["DetectorPeakIngredients"] = msg
+        elif len(definedWaysToGetPeaks) == 2:
+            logger.warn(
+                """Both a list of detector peaks and ingredients were given;
+                the list will be used and ingredients ignored"""
+            )
+        # validate sources of smoothing parameter
+        ingredientSmoothingParameter = json.loads(self.getPropertyValue("DetectorPeakIngredients")).get(
+            "smoothingParameter"
+        )
+        inputSmoothingParameter = not self.getProperty("SmoothingParameter").isDefault
+        if ingredientSmoothingParameter is None and not inputSmoothingParameter:
+            msg = "You must specify smoothing parameter through either ingredients or property"
+            errors["DetectorPeakIngredients"] = msg
+            errors["SmoothingParameter"] = msg
+        if ingredientSmoothingParameter is not None and ingredientSmoothingParameter:
+            logger.warn(
+                """Smoothing parameter was specified through both property and ingredients;
+                The value in ingredients will be ignored."""
+            )
         return errors
 
     def PyExec(self):
@@ -80,6 +114,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         self.mantidSnapper.DiffractionSpectrumWeightCalculator(
             "Calculating spectrum weights...",
             InputWorkspace=self.outputWorkspaceName,
+            DetectorPeaks=self.getPropertyValue("DetectorPeaks"),
             DetectorPeakIngredients=ingredients.json(),
             WeightWorkspace=self.weightWorkspaceName,
         )

@@ -8,9 +8,7 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from mantid.simpleapi import LoadNexusProcessed, mtd
-    from snapred.backend.dao.calibration.Calibration import Calibration
-    from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
+    from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, LoadNexusProcessed, mtd
     from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
     from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import (
         FitMultiplePeaksAlgorithm,  # noqa: E402
@@ -20,6 +18,7 @@ with mock.patch.dict(
     def test_init():
         """Test ability to initialize fit multiple peaks algo"""
         wsName = "testWS"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsName, DataValue=1)
         ingredients = Ingredients.parse_file(Resource.getPath("/inputs/predict_peaks/input_good_ingredients.json"))
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
@@ -32,6 +31,12 @@ with mock.patch.dict(
         inputFile = os.path.join(Resource._resourcesPath, "inputs", "fitMultPeaks", "FitMultiplePeaksTestWS.nxs")
         LoadNexusProcessed(Filename=inputFile, OutputWorkspace="testWS")
         wsName = "testWS"
+        CreateWorkspace(
+            OutputWorkspace=wsName,
+            DataX=[1] * 6,
+            DataY=[1] * 6,
+            NSpec=6,
+        )
         fitIngredients = Ingredients.parse_file(Resource.getPath("inputs/predict_peaks/input_good_ingredients.json"))
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()

@@ -356,5 +356,5 @@
       }
     ]
   },
-  "peakIntensityFractionalThreshold": 0.05
+  "peakIntensityThreshold": 0.05
 }

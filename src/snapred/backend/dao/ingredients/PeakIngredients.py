@@ -13,5 +13,5 @@ class PeakIngredients(BaseModel):
     instrumentState: InstrumentState
     crystalInfo: CrystallographicInfo
     pixelGroup: PixelGroup
-    peakIntensityFractionalThreshold: float
+    peakIntensityThreshold: float
     smoothingParameter: Optional[float]

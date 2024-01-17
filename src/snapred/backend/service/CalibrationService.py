@@ -380,7 +380,7 @@ class CalibrationService(Service):
             instrumentState=instrumentState,
             crystalInfo=crystalInfo,
             pixelGroup=pixelGroup,
-            peakIntensityFractionalThreshold=request.peakIntensityFractionalThreshold,
+            peakIntensityThreshold=request.peakIntensityThreshold,
         )
         fitResults = FitMultiplePeaksRecipe().executeRecipe(
             InputWorkspace=focussedData,
