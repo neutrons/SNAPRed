@@ -399,6 +399,6 @@ class CalibrationService(Service):
     @FromString
     def retrievePixelGroupingParams(self, runID: str, useLiteMode: bool = True):
         calibration = self.dataFactoryService.getCalibrationState(runID)
-        focusGroups = calibration.instrumentState.groupingMap  # TODO: fix to work with new group map work
+        focusGroups = self.dataFactoryService.getFocusGroups(runID)  # TODO: fix to work with new group map work
         pixelGroupingParams = self._getPixelGroupingParams(calibration.instrumentState, focusGroups, useLiteMode)
         return pixelGroupingParams

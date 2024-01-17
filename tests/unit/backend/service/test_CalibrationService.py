@@ -353,7 +353,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance._calculatePixelGroupingParameters = MagicMock()
         # mock calibration.instrumentState from getCalibrationState
         mockInstrumentState = MagicMock()
-        mockInstrumentState.pixelGroup = mockPixelGroup
         self.instance.dataFactoryService.getCalibrationState.return_value.instrumentState = mockInstrumentState
 
         actualFocusGroup, actualInstrumentState = self.instance._generateFocusGroupAndInstrumentState(

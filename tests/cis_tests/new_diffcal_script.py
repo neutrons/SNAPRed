@@ -51,7 +51,7 @@ print(pixelGroupingParameters)
 
 instrumentState = calibration.instrumentState
 calPath = instrumentState.instrumentConfig.calibrationDirectory
-instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
+pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
 
 print(instrumentState.pixelGroup.json(indent=2))
 
