@@ -33,9 +33,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="The diffraction-focused data",
         )
-        self.declareProperty(
-            "Ingredients", defaultValue="", direction=Direction.Input, propertyMode=PropertyMode.Mandatory
-        )
+        self.declareProperty("Ingredients", "", Direction.Input, PropertyMode.Mandatory)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
