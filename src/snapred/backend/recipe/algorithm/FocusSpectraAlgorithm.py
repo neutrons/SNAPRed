@@ -1,5 +1,6 @@
 import json
 from ast import In
+from pydoc import doc
 from typing import Dict
 
 from mantid.api import (
@@ -33,7 +34,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="The diffraction-focused data",
         )
-        self.declareProperty("Ingredients", "", Direction.Input, PropertyMode.Mandatory)
+        self.declareProperty("Ingredients", "", Direction.Input, PropertyMode.Mandatory, doc="The spice of life")
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
