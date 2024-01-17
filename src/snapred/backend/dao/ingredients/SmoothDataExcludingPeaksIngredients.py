@@ -10,4 +10,3 @@ class SmoothDataExcludingPeaksIngredients(BaseModel):
     smoothingParameter: Optional[float]
     instrumentState: InstrumentState
     crystalInfo: CrystallographicInfo
-    dMin: Optional[float]

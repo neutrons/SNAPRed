@@ -191,10 +191,7 @@ class NormalizationService(Service):
 
         instrumentState = calibration.instrumentState
         ingredients = SmoothDataExcludingPeaksIngredients(
-            smoothingParameter=request.smoothingParameter,
-            instrumentState=instrumentState,
-            crystalInfo=crystalInfo,
-            dMin=request.dMin,
+            smoothingParameter=request.smoothingParameter, instrumentState=instrumentState, crystalInfo=crystalInfo
         )
         return SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace, OutputWorkspace=request.outputWorkspace, Ingredients=ingredients
