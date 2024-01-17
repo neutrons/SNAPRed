@@ -32,9 +32,9 @@ with mock.patch.dict(
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
         fmpAlgo.setPropertyValue("InputWorkspace", wsName)
-        fmpAlgo.setProperty("Ingredients", ingredients.json())
+        fmpAlgo.setProperty("DetectorPeakIngredients", ingredients.json())
         assert fmpAlgo.getPropertyValue("InputWorkspace") == wsName
-        assert fmpAlgo.getPropertyValue("Ingredients") == ingredients.json()
+        assert fmpAlgo.getPropertyValue("DetectorPeakIngredients") == ingredients.json()
 
     def test_execute():
         inputFile = os.path.join(Resource._resourcesPath, "inputs", "fitMultPeaks", "FitMultiplePeaksTestWS.nxs")
@@ -48,7 +48,7 @@ with mock.patch.dict(
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
         fmpAlgo.setPropertyValue("InputWorkspace", wsName)
-        fmpAlgo.setProperty("Ingredients", fitIngredients.json())
+        fmpAlgo.setProperty("DetectorPeakIngredients", fitIngredients.json())
         fmpAlgo.execute()
         wsGroupName = fmpAlgo.getProperty("OutputWorkspaceGroup").value
         assert wsGroupName == "fitPeaksWSGroup"

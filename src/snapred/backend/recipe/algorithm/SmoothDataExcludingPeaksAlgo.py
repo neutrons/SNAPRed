@@ -42,7 +42,8 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="Workspace with removed peaks",
         )
-        self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -64,7 +65,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         self.log().notice("Removing peaks and smoothing data")
 
         # load ingredients
-        ingredients = Ingredients.parse_raw(self.getPropertyValue("Ingredients"))
+        ingredients = Ingredients.parse_raw(self.getPropertyValue("DetectorPeakIngredients"))
         self.chopIngredients(ingredients)
         self.unbagGroceries()
 

@@ -34,12 +34,7 @@ with mock.patch.dict(
     from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
     from snapred.backend.dao.ingredients.PeakIngredients import PeakIngredients
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
-    from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
-    from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
-    from snapred.backend.dao.request.NormalizationCalibrationRequest import (
-        NormalizationCalibrationRequest,
-    )
     from snapred.backend.dao.RunConfig import RunConfig
     from snapred.backend.dao.state import FocusGroup, PixelGroup, PixelGroupingParameters
     from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -67,29 +62,6 @@ with mock.patch.dict(
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">1"
         assert savedEntry.timestamp is not None
-
-    def test_exportNormalizationIndexEntry():
-        calibrationService = CalibrationService()
-        calibrationService.dataExportService.exportNormalizationIndexEntry = MagicMock()
-        calibrationService.dataExportService.exportNormalizationIndexEntry.return_value = "expected"
-        calibrationService.saveNormalizationToIndex(NormalizationIndexEntry(runNumber="1", backgroundRunNumber="2"))
-        assert calibrationService.dataExportService.exportNormalizationIndexEntry.called
-        savedEntry = calibrationService.dataExportService.exportNormalizationIndexEntry.call_args.args[0]
-        assert savedEntry.appliesTo == ">1"
-        assert savedEntry.timestamp is not None
-
-    def test_saveNormalization():
-        calibrationService = CalibrationService()
-        calibrationService.dataExportService.exportNormalizationRecord = mock.Mock()
-        calibrationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version="1.0.0")
-        calibrationService.dataExportService.exportNormalizationIndexEntry = mock.Mock()
-        calibrationService.dataExportService.exportNormalizationIndexEntry.return_value = "expected"
-        calibrationService.dataFactoryService.getReductionIngredients = mock.Mock()
-        calibrationService.dataFactoryService.getReductionIngredients.return_value = readReductionIngredientsFromFile()
-        calibrationService.saveNormalization(mock.Mock())
-        assert calibrationService.dataExportService.exportNormalizationRecord.called
-        savedEntry = calibrationService.dataExportService.exportNormalizationRecord.call_args.args[0]
-        assert savedEntry.parameters is not None
 
     def test_save():
         calibrationService = CalibrationService()
@@ -135,7 +107,6 @@ with mock.patch.dict(
         calibrationService.calculatePixelGroupingParameters(runs, groupingFile, useLiteMode)
         assert mockGroceryService.return_value.fetchGroceryList.called
         assert mockPixelGroupingParametersCalculationRecipe.called
-        assert mockPixelGroup.called
 
 
 from snapred.backend.service.CalibrationService import CalibrationService  # noqa: F811
@@ -188,7 +159,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert result == []
 
     @patch(thisService + "GroupWorkspaceIterator", return_value=["ws1", "ws2"])
-    @patch(thisService + "FitCalibrationWorkspaceIngredients", side_effect=["fit_result_1", "fit_result_2"])
+    @patch(thisService + "PeakIngredients", side_effect=["fit_result_1", "fit_result_2"])
     @patch(
         thisService + "FitMultiplePeaksRecipe",
         return_value=MagicMock(executeRecipe=MagicMock(side_effect=["fit_result_1", "fit_result_2"])),
@@ -388,8 +359,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         actualFocusGroup, actualInstrumentState = self.instance._generateFocusGroupAndInstrumentState(
             MagicMock(),
             MagicMock(),
-            MagicMock(),
-            MagicMock(),
         )
         assert mockFocusGroup.called
         assert actualFocusGroup == mockFocusGroup.return_value
@@ -401,6 +370,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             timeOfFlight=self.instance._calculatePixelGroupingParameters.return_value["tof"],
         )
 
+    @patch(thisService + "PeakIngredients")
     @patch(thisService + "PixelGroup")
     @patch(thisService + "CrystallographicInfoService")
     @patch(thisService + "DetectorPeakPredictorRecipe")
@@ -415,6 +385,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockDetectorPeakPredictorRecipe,
         mockCrystallographicInfoService,
         mockPixelGroup,
+        mockPeakIngredients,
     ):
         runNumber = "123"
         focusGroupPath = "focus/group/path"
@@ -447,9 +418,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Perform assertions to check the result and method calls
         self.instance.dataFactoryService.getRunConfig.assert_called_once_with(runNumber)
         mockDetectorPeakPredictorRecipe().executeRecipe.assert_called_once_with(
-            InstrumentState=mockFocusGroupInstrumentState[1],
-            CrystalInfo=mockCrystallographicInfoService().ingest.return_value["crystalInfo"],
-            PeakIntensityFractionThreshold=request.peakIntensityThreshold,
+            Ingredients=mockPeakIngredients.return_value,
         )
         mockDiffractionCalibrationIngredients.assert_called_once_with(
             runConfig=self.instance.dataFactoryService.getRunConfig.return_value,
@@ -462,93 +431,3 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             mockDiffractionCalibrationIngredients.return_value,
             mockGroceryDict,
         )
-
-    @patch(thisService + "PixelGroup")
-    @patch(thisService + "CrystallographicInfoService")
-    @patch(thisService + "PeakIngredients")
-    @patch(thisService + "NormalizationCalibrationIngredients")
-    @patch(thisService + "CalibrationNormalizationRecipe")
-    def test_calibrationNormalization(
-        self,
-        mockCalibrationNormalizationRecipe,
-        mockNormalizationCalibrationIngredients,
-        mockPeakIngredients,
-        mockCrystallographicInfoService,
-        mockPixelGroup,
-    ):
-        runNumber = "123"
-        backgroundRunNumber = "124"
-        useLiteMode = False
-
-        # Mock the necessary method calls
-        mockReductionIngredients = MagicMock()
-        mockBackgroundReductionIngredients = MagicMock()
-        mockCalibrantSample = MagicMock()
-        mockSampleFilePath = MagicMock()
-        self.instance.dataFactoryService = MagicMock()
-        self.instance.dataFactoryService.getReductionIngredients = MagicMock(return_value=mockReductionIngredients)
-        self.instance.dataFactoryService.getReductionIngredients = MagicMock(
-            return_value=mockBackgroundReductionIngredients
-        )
-        self.instance.dataFactoryService.getCalibrantSamples = MagicMock(return_value=mockCalibrantSample)
-        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value=mockSampleFilePath)
-        mockCrystallographicInfoService().ingest.return_value = {"crystalInfo": MagicMock()}
-        mockCalibrationNormalizationRecipe().executeRecipe.return_value = [MagicMock()]
-
-        request = NormalizationCalibrationRequest(
-            runNumber=runNumber,
-            backgroundRunNumber=backgroundRunNumber,
-            useLiteMode=useLiteMode,
-            samplePath="",
-            groupingPath="",
-            smoothingParameter=0.5,
-            nBinsAcrossPeakWidth=7,
-        )
-
-        mockFocusGroupInstrumentState = (MagicMock(), MagicMock())
-        self.instance._generateFocusGroupAndInstrumentState = MagicMock(return_value=mockFocusGroupInstrumentState)
-        self.instance._calculatePixelGroupingParameters = MagicMock(
-            return_value={"parameters": MagicMock(), "tof": MagicMock()}
-        )
-
-        mockGroceries = {"inputWorkspace": "fake1", "backgroundWorkspace": "fake2", "groupingWorkspace": "fake3"}
-        self.instance.groceryService = mock.Mock()
-        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value=mockGroceries)
-
-        # Call the method to test TODO
-        self.instance.normalization(request)
-
-        # Perform assertions to check the result and method calls
-        mockPixelGroup.assert_called_once_with(
-            focusGroup=mockFocusGroupInstrumentState[0],
-            pixelGroupingParameters=self.instance._calculatePixelGroupingParameters.return_value["parameters"],
-            timeOfFlight=self.instance._calculatePixelGroupingParameters.return_value["tof"],
-            nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
-        )
-
-        mockPeakIngredients.assert_called_once_with(
-            crystalInfo=mockCrystallographicInfoService().ingest.return_value["crystalInfo"],
-            instrumentState=mockFocusGroupInstrumentState[1],
-            smoothingParameter=request.smoothingParameter,
-        )
-
-        mockCalibrationNormalizationRecipe().executeRecipe.assert_called_once_with(
-            mockNormalizationCalibrationIngredients.return_value,
-            self.instance.groceryService.fetchGroceryDict.return_value,
-        )
-
-    @patch(thisService + "NormalizationRecord", return_value="mock_normalization_record")
-    def test_normalizationAssessment(self, mockNormalizationRecord):
-        mockRequest = MagicMock()
-        mockRequest.runNumber = "58810"
-        mockRequest.backgroundRunNumber = "58813"
-        mockRequest.smoothingParameter = 0.1
-        mockRequest.samplePath = "mock_cif_path"
-        mockRequest.focusGroupPath = "mock_grouping_path"
-
-        self.instance.dataFactoryService.getNormalizationState = MagicMock(return_value="mock_normalization_state")
-
-        result = self.instance.normalizationAssessment(mockRequest)
-
-        expected_record = "mock_normalization_record"
-        assert result == expected_record

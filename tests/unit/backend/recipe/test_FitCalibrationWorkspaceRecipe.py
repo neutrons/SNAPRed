@@ -1,22 +1,19 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from snapred.backend.dao.ingredients import PeakIngredients
+from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
 from snapred.backend.recipe.FitCalibrationWorkspaceRecipe import FitCalibrationWorkspaceRecipe
+
+thisRecipe = "snapred.backend.recipe.FitCalibrationWorkspaceRecipe."
 
 
 class TestFitCalibrationWorkspaceRecipe(unittest.TestCase):
-    @patch("snapred.backend.recipe.FitCalibrationWorkspaceRecipe.PeakIngredients")
-    @patch(
-        "snapred.backend.recipe.FitCalibrationWorkspaceRecipe.SmoothDataExcludingPeaksRecipe",
-        return_value=MagicMock(executeRecipe=MagicMock()),
-    )
-    @patch("snapred.backend.recipe.FitCalibrationWorkspaceRecipe.FitMultiplePeaksRecipe")
+    @patch(thisRecipe + "SmoothDataExcludingPeaksRecipe", return_value=MagicMock(executeRecipe=MagicMock()))
+    @patch(thisRecipe + "FitMultiplePeaksRecipe")
     def test_executeRecipe(
         self,
         FitMultiplePeaksRecipe,
         SmoothDataExcludingPeaksRecipe,
-        PeakIngredients,
     ):
         # Mock input data
         ingredients = MagicMock()
@@ -35,11 +32,11 @@ class TestFitCalibrationWorkspaceRecipe(unittest.TestCase):
         # Assert the method calls and return value
         SmoothDataExcludingPeaksRecipe().executeRecipe.assert_called_once_with(
             InputWorkspace="mock_workspace_name",
-            Ingredients=PeakIngredients(),
-            OutputWorkspace=PeakIngredients().InputWorkspace,
+            DetectorPeakIngredients=ingredients,
+            OutputWorkspace="mock_workspace_name",
         )
         FitMultiplePeaksRecipe().executeRecipe.assert_called_once_with(
             InputWorkspace="mock_workspace_name",
-            Ingredients=PeakIngredients(),
+            DetectorPeakIngredients=ingredients,
             OutputWorkspaceGroup="fitted_mock_workspace_name",
         )

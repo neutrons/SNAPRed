@@ -1,5 +1,5 @@
 import json
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 from mantid.api import (
@@ -9,6 +9,7 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction
+from pydantic import parse_raw_as
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.log.logger import snapredLogger
@@ -61,7 +62,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             errors["DetectorPeaks"] = msg
             errors["DetectorPeakIngredients"] = msg
         elif len(givenWaysToGetPeaks) == 2:
-            logger.warn("Both a peak list and ingredients were specified; ingredients will be ignore")
+            logger.warn("Both a peak list and ingredients were specified; ingredients will be ignored")
         return errors
 
     def PyExec(self):
@@ -78,7 +79,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             )
             self.mantidSnapper.executeQueue()
 
-        predictedPeaksList = json.loads(str(peakString))
+        predictedPeaksList = parse_raw_as(List[GroupPeakList], str(peakString))
 
         self.groupIDs = []
         self.predictedPeaks = {}

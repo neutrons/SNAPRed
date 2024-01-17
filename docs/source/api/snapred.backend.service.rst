@@ -108,14 +108,6 @@ snapred.backend.service.StateIdLookupService module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.service.VanadiumFocussedReductionService module
----------------------------------------------------------------
-
-.. automodule:: snapred.backend.service.VanadiumFocussedReductionService
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Module contents
 ---------------
 

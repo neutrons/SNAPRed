@@ -43,7 +43,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         ]
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-        self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("PeakType", "Gaussian", StringListValidator(allowed_peak_types), direction=Direction.Input)
         self.declareProperty("OutputWorkspaceGroup", defaultValue="fitPeaksWSGroup", direction=Direction.Output)
         self.setRethrows(True)
@@ -57,7 +57,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         return ws
 
     def PyExec(self):
-        ingredients = Ingredients.parse_raw(self.getPropertyValue("Ingredients"))
+        ingredients = Ingredients.parse_raw(self.getPropertyValue("DetectorPeakIngredients"))
         inputWorkspaceName = self.getPropertyValue("Inputworkspace")
         outputWorkspaceName = self.getProperty("OutputWorkspaceGroup").value
         peakType = self.getPropertyValue("PeakType")

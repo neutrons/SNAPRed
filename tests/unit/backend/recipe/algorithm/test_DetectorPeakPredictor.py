@@ -68,7 +68,6 @@ with mock.patch.dict(
         threshold = ingredients.peakIntensityFractionalThreshold * max([peak.fSquared for peak in peaks])
         goodPeaks = [peak for peak in peaks if peak.fSquared >= threshold]
         assert algo.goodPeaks == goodPeaks
-
         assert algo.allGroupIDs == ingredients.pixelGroup.groupIDs
 
     def test_execute():
@@ -84,7 +83,6 @@ with mock.patch.dict(
 
         peaks_cal = parse_raw_as(List[GroupPeakList], peakPredictorAlgo.getProperty("DetectorPeaks").value)
         peaks_ref = parse_raw_as(List[GroupPeakList], Resource.read(peaksRefFile))
-
         assert peaks_cal == peaks_ref
 
     def test_bad_ingredients():

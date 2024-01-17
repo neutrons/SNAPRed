@@ -62,6 +62,6 @@ Rebin(
 ## RUN ALGORITHM
 algo = SmoothDataExcludingPeaksAlgo()
 algo.initialize()
-algo.setProperty("Ingredients", ingredients.json())
+algo.setProperty("DetectorPeakIngredients", ingredients.json())
 algo.setProperty("InputWorkspace", grocery)
 algo.execute()

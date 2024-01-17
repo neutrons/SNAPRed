@@ -15,7 +15,6 @@ from snapred.backend.service.ReductionService import ReductionService
 from snapred.backend.service.ServiceDirectory import ServiceDirectory
 from snapred.backend.service.SmoothDataExcludingPeaksService import SmoothDataExcludingPeaksService
 from snapred.backend.service.StateIdLookupService import StateIdLookupService
-from snapred.backend.service.VanadiumFocussedReductionService import VanadiumFocussedReductionService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
@@ -36,7 +35,6 @@ class ServiceFactory:
         self.serviceDirectory.registerService(CalibrantSampleService)
         self.serviceDirectory.registerService(ApiService)
         self.serviceDirectory.registerService(FitMultiplePeaksService)
-        self.serviceDirectory.registerService(VanadiumFocussedReductionService)
         self.serviceDirectory.registerService(SmoothDataExcludingPeaksService)
         self.serviceDirectory.registerService(LiteDataService)
 

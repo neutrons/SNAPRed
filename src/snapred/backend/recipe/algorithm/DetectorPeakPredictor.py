@@ -45,7 +45,6 @@ class DetectorPeakPredictor(PythonAlgorithm):
             direction=Direction.Input,
             doc="The input value for setting the threshold for peak intensity",
         )
-        self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
 
     def chopIngredients(self, ingredients: PeakIngredients) -> None:
@@ -57,11 +56,16 @@ class DetectorPeakPredictor(PythonAlgorithm):
         self.L = ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2
 
         # binning params
-        pixelGroupParams = ingredients.pixelGroup.pixelGroupingParameters
-        self.delDoD = {groupID: pgp.dRelativeResolution for groupID, pgp in pixelGroupParams.items()}
-        self.tTheta = {groupID: pgp.twoTheta for groupID, pgp in pixelGroupParams.items()}
-        self.dMin = {groupID: pgp.dResolution.minimum for groupID, pgp in pixelGroupParams.items()}
-        self.dMax = {groupID: pgp.dResolution.maximum for groupID, pgp in pixelGroupParams.items()}
+        groupIDs = ingredients.pixelGroup.groupIDs
+        self.delDoD = dict(zip(groupIDs, ingredients.pixelGroup.dRelativeResolution))
+        self.tTheta = dict(zip(groupIDs, ingredients.pixelGroup.twoTheta))
+        self.dMin = dict(zip(groupIDs, ingredients.pixelGroup.dMin()))
+        self.dMax = dict(zip(groupIDs, ingredients.pixelGroup.dMax()))
+        # pixelGroupParams = ingredients.pixelGroup.pixelGroupingParameters
+        # self.delDoD = {groupID: pgp.dRelativeResolution for groupID, pgp in pixelGroupParams.items()}
+        # self.tTheta = {groupID: pgp.twoTheta for groupID, pgp in pixelGroupParams.items()}
+        # self.dMin = {groupID: pgp.dResolution.minimum for groupID, pgp in pixelGroupParams.items()}
+        # self.dMax = {groupID: pgp.dResolution.maximum for groupID, pgp in pixelGroupParams.items()}
 
         # select only peaks above the amplitude threshold
         crystalInfo = ingredients.crystalInfo

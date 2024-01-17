@@ -24,18 +24,18 @@ class FitCalibrationWorkspaceRecipe:
 
     # would be nice to have a from kwarg decorator...
     def executeRecipe(self, ingredients: Ingredients, grocery: WorkspaceName) -> Dict[str, Any]:
-        logger.info(f"Executing recipe for: {ingredients.workspaceName}")
+        logger.info(f"Executing recipe for: {grocery}")
 
         SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=grocery,
-            Ingredients=ingredients,
+            DetectorPeakIngredients=ingredients,
             OutputWorkspace=grocery,
         )
 
         fitResult = FitMultiplePeaksRecipe().executeRecipe(
             InputWorkspace=grocery,
-            Ingredients=ingredients,
+            DetectorPeakIngredients=ingredients,
             OutputWorkspaceGroup=f"fitted_{grocery}",
         )
-        logger.info(f"Finished smoothing and fitting workspace: {self.workspaceName}")
+        logger.info(f"Finished smoothing and fitting workspace: {grocery}")
         return fitResult
