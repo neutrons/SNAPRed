@@ -80,7 +80,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
             for d in dList:
                 # beta terms
                 beta_T = beta_0 + beta_1 / d**4  # GSAS-I beta
-                beta_d = self.BETA_D_COEFFICIENT * L * np.sin(tTheta / 2) * beta_T  # converted to d-space
+                beta_d = self.BETA_D_COEFFICIENT * L * (np.sin(tTheta / 2) ** -1) * beta_T  # converted to d-space
 
                 fwhm = self.FWHM * delDoD * d
                 widthLeft = fwhm * FWHMMultiplierLeft
