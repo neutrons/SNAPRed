@@ -19,16 +19,8 @@ with mock.patch.dict(
 
     def test_init():
         """Test ability to initialize fit multiple peaks algo"""
-        instrumentState = Calibration.parse_raw(
-            Resource.read("/inputs/purge_peaks/input_parameters.json")
-        ).instrumentState
-        crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
         wsName = "testWS"
-        ingredients = Ingredients(
-            instrumentState=instrumentState,
-            crystalInfo=crystalInfo,
-            peakIntensityFractionalThreshold=0.5,
-        )
+        ingredients = Ingredients.parse_file(Resource.getPath("/inputs/predict_peaks/input_good_ingredients.json"))
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
         fmpAlgo.setPropertyValue("InputWorkspace", wsName)
@@ -39,12 +31,8 @@ with mock.patch.dict(
     def test_execute():
         inputFile = os.path.join(Resource._resourcesPath, "inputs", "fitMultPeaks", "FitMultiplePeaksTestWS.nxs")
         LoadNexusProcessed(Filename=inputFile, OutputWorkspace="testWS")
-        # instrumentState = Calibration.parse_raw(
-        #     Resource.read("/inputs/purge_peaks/input_parameters.json")
-        # ).instrumentState
-        # crystalInfo = CrystallographicInfo.parse_raw(Resource.read("/inputs/purge_peaks/input_crystalInfo.json"))
         wsName = "testWS"
-        fitIngredients = Ingredients.parse_raw(Resource.read("inputs/predict_peaks/input_good_ingredients.json"))
+        fitIngredients = Ingredients.parse_file(Resource.getPath("inputs/predict_peaks/input_good_ingredients.json"))
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
         fmpAlgo.setPropertyValue("InputWorkspace", wsName)

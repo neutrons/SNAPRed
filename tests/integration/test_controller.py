@@ -13,8 +13,6 @@ def test_excuteRequest_noop():
         "ingestion",
         "calibrant_sample",
         "api",
-        "fitMultiplePeaks",
-        "smoothDataExcludingPeaks",
         "reduceLiteData",
     ]
     expected_keys.sort()

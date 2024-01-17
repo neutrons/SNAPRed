@@ -173,13 +173,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @patch(thisService + "FocusGroupMetric", return_value="mock_metric")
     def test_fitAndCollectMetrics(
         self,
-        groupWorkspaceIterator,
-        fitCalibrationWorkspaceIngredients,
-        fitCalibrationWorkspaceRecipe,
-        calibrationMetricExtractionRecipe,
-        list_to_raw_mock,
-        parse_raw_as_mock,
         metricTypeMock,
+        parse_raw_as_mock,
+        list_to_raw_mock,
+        calibrationMetricExtractionRecipe,
+        fitMultiplePeakseRecipe,
+        peakIngredients,
+        groupWorkspaceIterator,
     ):
         fakeFocussedData = "mock_focussed_data"
         fakeFocusGroups = MagicMock(name="group1")
@@ -191,8 +191,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Mock the necessary method calls
         mockGroupWorkspaceIterator = MagicMock(return_value=["ws1", "ws2"])
-        # FitCalibrationWorkspaceRecipe = MagicMock(side_effect=["fit_result_1", "fit_result_2"])
-        # fitCalibrationWorkspaceRecipe.executeRecipe = MagicMock(return_value="fit_result")
         mockCalibrationMetricExtractionRecipe = MagicMock(return_value="mock_metric")
         self.instance.GroupWorkspaceIterator = mockGroupWorkspaceIterator
         self.instance.CalibrationMetricExtractionRecipe = mockCalibrationMetricExtractionRecipe
@@ -218,23 +216,25 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert pgs == list(range(numItems))
 
     @patch(
-        thisService + "CrystallographicInfoService",
-        return_value=MagicMock(ingest=MagicMock(return_value={"crystalInfo": "mock_crystal_info"})),
-    )
-    @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record"))
-    @patch(thisService + "PeakIngredients")
-    @patch(thisService + "FitMultiplePeaksRecipe")
-    @patch(
         thisService + "CalibrationMetricsWorkspaceIngredients",
         return_value=MagicMock(
             calibrationRecord=CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json")),
             timestamp="123",
         ),
     )
+    @patch(thisService + "FitMultiplePeaksRecipe")
+    @patch(thisService + "PeakIngredients")
+    @patch(thisService + "PixelGroup")
+    @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record"))
+    @patch(
+        thisService + "CrystallographicInfoService",
+        return_value=MagicMock(ingest=MagicMock(return_value={"crystalInfo": "mock_crystal_info"})),
+    )
     def test_assessQuality(
         self,
         mockCrystalInfoService,
         mockCalibRecord,
+        mockPixelGroup,
         fitMultiplePeaksIng,
         fmprecipe,
         mockCalibrationMetricsWorkspaceIngredients,

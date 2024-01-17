@@ -46,7 +46,6 @@ from snapred.backend.recipe.GenericRecipe import (
     DetectorPeakPredictorRecipe,
     FitMultiplePeaksRecipe,
     GenerateTableWorkspaceFromListOfDictRecipe,
-    SmoothDataExcludingPeaksRecipe,
 )
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
@@ -133,8 +132,6 @@ class CalibrationService(Service):
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             request.runNumber,
             request.focusGroupPath,
-            request.useLiteMode,  # TODO delete
-            request.nBinsAcrossPeakWidth,  # TODO delete
         )
         data = self._calculatePixelGroupingParameters(
             instrumentState,
@@ -158,8 +155,8 @@ class CalibrationService(Service):
         detectorPeakIngredients = PeakIngredients(
             instrumentState=instrumentState,
             crystalInfo=crystalInfo,
-            peakIntensityThreshold=request.peakIntensityThreshold,
             pixelGroup=pixelGroup,
+            peakIntensityThreshold=request.peakIntensityThreshold,
         )
         detectorPeaks = DetectorPeakPredictorRecipe().executeRecipe(
             Ingredients=detectorPeakIngredients,
@@ -349,11 +346,13 @@ class CalibrationService(Service):
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
-        run = request.run
+        # TODO this needs work
+        # it seems like this is expeced to run in a loop over grouping schemas,
+        # but instead is only running on a single grouping schema with one pixelGroup
         focussedData = request.workspace
-        calibration = self.dataFactoryService.getCalibrationState(run.runNumber)
+        calibration = self.dataFactoryService.getCalibrationState(request.run.runNumber)
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
-            run.runNumber,
+            request.run.runNumber,
             request.focusGroupPath,
             request.useLiteMode,  # TODO delete
             request.nBinsAcrossPeakWidth,  # TODO delete
@@ -367,26 +366,36 @@ class CalibrationService(Service):
         )
         pixelGroupingParam = data["parameters"]
         timeOfFlightParam = data["tof"]
+        pixelGroup = PixelGroup(
+            instrumentState=instrumentState,
+            focusGroup=focusGroup,
+            pixelGroupingParameters=pixelGroupingParam,
+            timeOfFlight=timeOfFlightParam,
+            nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
+        )
         cifFilePath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         crystalInfo = CrystallographicInfoService().ingest(cifFilePath)["crystalInfo"]
         # TODO: We Need to Fit the Data
         fitIngredients = PeakIngredients(
-            instrumentState=instrumentState, crystalInfo=crystalInfo, inputWorkspace=focussedData
+            instrumentState=instrumentState,
+            crystalInfo=crystalInfo,
+            pixelGroup=pixelGroup,
+            peakIntensityFractionalThreshold=request.peakIntensityFractionalThreshold,
         )
-        fitResults = FitMultiplePeaksRecipe().executeRecipe(Ingredients=fitIngredients)
+        fitResults = FitMultiplePeaksRecipe().executeRecipe(
+            InputWorkspace=focussedData,
+            DetectorPeakIngredients=fitIngredients,
+            PeakType=request.peakType,
+        )
         metrics = self._collectMetrics(fitResults, focusGroup, pixelGroupingParam)
 
-        outputWorkspaces = [focussedData]
-        pixelGroups = self.collectPixelGroups(
-            [focusGroup], [pixelGroupingParam], [timeOfFlightParam], request.nBinsAcrossPeakWidth
-        )
         record = CalibrationRecord(
-            runNumber=run.runNumber,
+            runNumber=request.run.runNumber,
             crystalInfo=crystalInfo,
             calibrationFittingIngredients=calibration,
-            pixelGroups=pixelGroups,
+            pixelGroups=[pixelGroup],
             focusGroupCalibrationMetrics=metrics,
-            workspaceNames=outputWorkspaces,
+            workspaceNames=[focussedData],
         )
 
         timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))

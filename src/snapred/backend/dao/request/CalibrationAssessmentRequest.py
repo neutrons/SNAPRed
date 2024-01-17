@@ -18,3 +18,5 @@ class CalibrationAssessmentRequest(BaseModel):
     calibrantSamplePath: str
     useLiteMode: bool
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
+    peakIntensityFractionalThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
+    peakType: str = "Gaussian"
