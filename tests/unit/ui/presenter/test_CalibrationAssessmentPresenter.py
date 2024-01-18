@@ -23,20 +23,18 @@ def test_handleLoad(calibrationAssessmentLoader):
     with patch.object(calibrationAssessmentLoader, "worker_pool") as worker_pool, patch.object(
         calibrationAssessmentLoader, "interfaceController"
     ) as interfaceController:
-        payload = CalibrationLoadAssessmentRequest(
-            runId="12345",
-            version="1",
-            checkExistent=True,
-        )
-
-        request = SNAPRequest(path="/calibration/loadAssessment", payload=payload.json())
-
         calibrationAssessmentLoader.handleLoadRequested()
 
         view.getCalibrationRecordCount.assert_called_once()
         view.getSelectedCalibrationRecordIndex.assert_called_once()
         view.getSelectedCalibrationRecordData.assert_called_once()
 
+        payload = CalibrationLoadAssessmentRequest(
+            runId="12345",
+            version="1",
+            checkExistent=True,
+        )
+        request = SNAPRequest(path="/calibration/loadQualityAssessment", payload=payload.json())
         worker_pool.createWorker.assert_called_once_with(target=interfaceController.executeRequest, args=(request))
         worker_pool.submitWorker.assert_called_once()
 

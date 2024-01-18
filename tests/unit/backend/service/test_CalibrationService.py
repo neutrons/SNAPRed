@@ -196,16 +196,16 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             ws_name = wng.diffCalMetrics().runNumber("57514").version("ts123").metricName(metric).build()
             assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
-    def test_readQuality_no_calibration_record_exception(self):
+    def test_load_quality_assessment_no_calibration_record_exception(self):
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
         mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
         with pytest.raises(ValueError) as excinfo:  # noqa: PT011
-            self.instance.readQuality(mockRequest)
+            self.instance.loadQualityAssessment(mockRequest)
         assert str(mockRequest.runId) in str(excinfo.value)
         assert str(mockRequest.version) in str(excinfo.value)
 
     @patch(thisService + "CalibrationMetricsWorkspaceIngredients", return_value=MagicMock())
-    def test_readQuality_no_calibration_metrics_exception(
+    def test_load_quality_assessment_no_calibration_metrics_exception(
         self,
         mockCalibrationMetricsWorkspaceIngredients,
     ):
@@ -213,10 +213,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
         with pytest.raises(Exception) as excinfo:  # noqa: PT011
-            self.instance.readQuality(mockRequest)
+            self.instance.loadQualityAssessment(mockRequest)
         assert "The input table is empty" in str(excinfo.value)
 
-    def test_readQuality_check_existent(self):
+    def test_load_quality_assessment_check_existent(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
@@ -235,15 +235,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             runId = MagicMock()
             version = MagicMock()
             mockRequest = MagicMock(runId=runId, version=version, checkExistent=False)
-            self.instance.readQuality(mockRequest)
+            self.instance.loadQualityAssessment(mockRequest)
             with pytest.raises(ValueError) as excinfo:  # noqa: PT011
-                self.instance.readQuality(MagicMock(runId=runId, version=version, checkExistent=True))
+                self.instance.loadQualityAssessment(MagicMock(runId=runId, version=version, checkExistent=True))
             assert "is already loaded" in str(excinfo.value)
             with pytest.raises(ValueError) as excinfo:  # noqa: PT011
-                self.instance.readQuality(MagicMock(runId="57514", version="7", checkExistent=True))
+                self.instance.loadQualityAssessment(MagicMock(runId="57514", version="7", checkExistent=True))
             assert "is already loaded" in str(excinfo.value)
 
-    def test_readQuality(self):
+    def test_load_quality_assessment(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
@@ -260,7 +260,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Call the method to test. Use a mocked run and a mocked version
             mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
-            self.instance.readQuality(mockRequest)
+            self.instance.loadQualityAssessment(mockRequest)
 
             # Assert the expected calibration metric workspaces have been generated
             for metric in ["sigma", "strain"]:

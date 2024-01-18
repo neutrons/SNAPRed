@@ -195,7 +195,7 @@ class CalibrationService(Service):
         return calibrationIndex
 
     @FromString
-    def readQuality(self, request: CalibrationLoadAssessmentRequest):
+    def loadQualityAssessment(self, request: CalibrationLoadAssessmentRequest):
         runId = request.runId
         version = request.version
 

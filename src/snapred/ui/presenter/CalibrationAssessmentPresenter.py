@@ -33,7 +33,7 @@ class CalibrationAssessmentLoader(QObject):
 
         runId, version = self.view.getSelectedCalibrationRecordData()
         payload = CalibrationLoadAssessmentRequest(runId=runId, version=version, checkExistent=True)
-        loadAssessmentRequest = SNAPRequest(path="/calibration/loadAssessment", payload=payload.json())
+        loadAssessmentRequest = SNAPRequest(path="/calibration/loadQualityAssessment", payload=payload.json())
 
         self.worker = self.worker_pool.createWorker(
             target=self.interfaceController.executeRequest, args=(loadAssessmentRequest)
