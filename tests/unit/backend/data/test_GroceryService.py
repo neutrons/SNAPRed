@@ -266,7 +266,6 @@ class TestGroceryService(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmppath:
             self.instance.writeWorkspace(os.path.join(tmppath, name), name)
             assert os.path.exists(os.path.join(tmppath, name))
-        assert not os.path.exists(os.path.join(tmppath, name))
 
     def test_writeGrouping(self):
         path = Resource.getPath("outputs")

@@ -444,7 +444,6 @@ class LocalDataService:
         else:
             recordPath: str = self.getCalibrationRecordPath(runId, "*")
             recordFile = self._getLatestFile(recordPath)
-        print(f"*****RECORD PATH: {recordPath}")
         record: CalibrationRecord = None
         if recordFile:
             logger.info(f"reading CalibrationRecord from {recordFile}")
