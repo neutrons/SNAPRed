@@ -13,6 +13,7 @@ def test_excuteRequest_noop():
         "ingestion",
         "calibrant_sample",
         "api",
+        "normalization",
         "reduceLiteData",
     ]
     expected_keys.sort()

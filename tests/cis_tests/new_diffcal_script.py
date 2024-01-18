@@ -124,15 +124,17 @@ assert False
 
 
 ### RUN RECIPE
+
 clerk = GroceryListItem.builder()
 clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
-clerk.name("groupingWorkspace").grouping(groupingScheme).fromPrev().add()
+clerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(isLite).fromPrev().add()
 
-groceries = GroceryService.fetchGroceryDict(
-    clerk.buildDict(),
+groceries = GroceryService().fetchGroceryDict(
+    groceryDict=clerk.buildDict(),
     OutputWorkspace="_output_from_diffcal_recipe",
 )
 
+rx = Recipe()
 rx.executeRecipe(ingredients, groceries)
 
 

@@ -25,21 +25,15 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from snapred.backend.dao import GroupPeakList, Limit
+    from snapred.backend.dao import Limit
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
-    from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
-    from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-    from snapred.backend.dao.ingredients.PeakIngredients import PeakIngredients
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
     from snapred.backend.dao.RunConfig import RunConfig
-    from snapred.backend.dao.state import FocusGroup, PixelGroup, PixelGroupingParameters
-    from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-    from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
-    from snapred.backend.dao.state.CalibrantSample.Material import Material
+    from snapred.backend.dao.state import FocusGroup, PixelGroupingParameters
     from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
         PixelGroupingParametersCalculationRecipe,
     )
@@ -368,6 +362,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             focusGroup=mockFocusGroup.return_value,
             timeOfFlight=self.instance._calculatePixelGroupingParameters.return_value["tof"],
         )
+
+    def test_getCalibrationRecord(self):
+        self.instance.dataFactoryService.getCalibrationState = MagicMock()
+        fakeCalibration = MagicMock()
+        self.instance.dataFactoryService.getCalibrationState.return_value = fakeCalibration
+        self.instance._generateFocusGroupAndInstrumentState = MagicMock()
+        fakeInstrumentState = MagicMock()
+        self.instance._generateFocusGroupAndInstrumentState.return_value = (MagicMock(), fakeInstrumentState)
+        result = self.instance.getCalibration("mock_run_id", "fack definition", False)
+        assert result == fakeCalibration
+        assert result.instrumentState == fakeInstrumentState
 
     @patch(thisService + "PeakIngredients")
     @patch(thisService + "PixelGroup")

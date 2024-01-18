@@ -93,7 +93,7 @@ class TestPanelPresenter(object):
         return DiffractionCalibrationCreationWorkflow(newForm, parent=self.view).widget
 
     def _createCalibrationNormalizationWorkflow(self):
-        path = "calibration/normalization/request"
+        path = "normalization//request"
         logger.info("Creating workflow for path: {}".format(path))
         jsonSchema = self._getSchemaForSelection(path)
         logger.info("Schema for path: {}".format(jsonSchema))

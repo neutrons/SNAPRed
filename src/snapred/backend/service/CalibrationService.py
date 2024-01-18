@@ -1,6 +1,7 @@
 import json
 import time
 from datetime import date
+from functools import lru_cache
 from typing import List, Tuple
 
 from pydantic import parse_raw_as
@@ -16,28 +17,19 @@ from snapred.backend.dao.ingredients import (
     CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
     GroceryListItem,
-    NormalizationCalibrationIngredients,
     PeakIngredients,
     PixelGroupingIngredients,
-)
-from snapred.backend.dao.normalization import (
-    Normalization,
-    NormalizationIndexEntry,
-    NormalizationRecord,
 )
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     DiffractionCalibrationRequest,
     InitializeStateRequest,
-    NormalizationCalibrationRequest,
-    NormalizationExportRequest,
 )
 from snapred.backend.dao.state import FocusGroup, InstrumentState, PixelGroup
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
-from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
@@ -94,6 +86,25 @@ class CalibrationService(Service):
     def reduction(self, runs: List[RunConfig]):  #  noqa: ARG002
         # TODO this is apparently dead code -- remove
         return {}
+
+    @lru_cache
+    def getCalibration(
+        self,
+        runNumber,
+        definition: str,
+        useLiteMode: bool,
+        nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"],
+    ):
+        calibration = self.dataFactoryService.getCalibrationState(runNumber)
+        _, instrumentState = self._generateFocusGroupAndInstrumentState(
+            runNumber,
+            definition,
+            useLiteMode,
+            nBinsAcrossPeakWidth,
+            calibration,
+        )
+        calibration.instrumentState = instrumentState
+        return calibration
 
     # TODO when pixelGroup fully removed from instrumentState
     # then remove its calculation here
@@ -236,6 +247,9 @@ class CalibrationService(Service):
         for run in runs:
             calibrationState = self.dataFactoryService.getCalibrationState(run.runNumber)
             try:
+                # TODO: Extract out to pixelgroupingservice which calculates pixelgroups
+                # if none are found on instrumentState, and then saves them to the instrumentState(?)
+                # there are N groups, they should really be stored separately
                 data = self._calculatePixelGroupingParameters(
                     calibrationState.instrumentState,
                     groupingFile,
