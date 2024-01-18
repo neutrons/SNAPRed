@@ -39,3 +39,25 @@ def test_handleLoad(calibrationAssessmentLoader):
 
         worker_pool.createWorker.assert_called_once_with(target=interfaceController.executeRequest, args=(request))
         worker_pool.submitWorker.assert_called_once()
+
+
+def test_handleLoad_no_records_available(calibrationAssessmentLoader):
+    view = calibrationAssessmentLoader.view
+    view.getCalibrationRecordCount = MagicMock(return_value=0)
+
+    calibrationAssessmentLoader.handleLoadRequested()
+
+    view.getCalibrationRecordCount.assert_called_once()
+    view.onLoadError.assert_called_once_with("No calibration records available.")
+
+
+def test_handleLoad_no_record_selected(calibrationAssessmentLoader):
+    view = calibrationAssessmentLoader.view
+    view.getCalibrationRecordCount = MagicMock(return_value=1)
+    view.getSelectedCalibrationRecordIndex = MagicMock(return_value=-1)
+
+    calibrationAssessmentLoader.handleLoadRequested()
+
+    view.getCalibrationRecordCount.assert_called_once()
+    view.getSelectedCalibrationRecordIndex.assert_called_once()
+    view.onLoadError.assert_called_once_with("No calibration record selected.")
