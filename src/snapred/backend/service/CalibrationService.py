@@ -92,28 +92,38 @@ class CalibrationService(Service):
         self,
         runNumber,
         definition: str,
-        useLiteMode: bool,
-        nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"],
     ):
         calibration = self.dataFactoryService.getCalibrationState(runNumber)
         _, instrumentState = self._generateFocusGroupAndInstrumentState(
             runNumber,
             definition,
-            useLiteMode,
-            nBinsAcrossPeakWidth,
             calibration,
         )
         calibration.instrumentState = instrumentState
         return calibration
 
-    # TODO when pixelGroup fully removed from instrumentState
-    # then remove its calculation here
-    # also remove useLiteMode and nBinsAcrossPeakWidth as inputs
-    # further remove these inputs when used in below methods:
-    # - diffractionCalibration
-    # - assessQuality
-    # - normalization
-    # Must also remove L385 from associated unit test
+    def getPixelGroup(
+        self,
+        runNumber: str,
+        definition: str,
+        useLiteMode: bool,
+        nBinsAcrossPeakWidth: int,
+        calibration=None,
+    ):
+        focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(runNumber, definition, calibration)
+        data = self._calculatePixelGroupingParameters(
+            instrumentState,
+            focusGroup.definition,
+            useLiteMode,
+            nBinsAcrossPeakWidth,
+        )
+        return PixelGroup(
+            focusGroup=focusGroup,
+            pixelGroupingParameters=data["parameters"],
+            timeOfFlight=data["tof"],
+            nBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
+        )
+
     def _generateFocusGroupAndInstrumentState(
         self,
         runNumber,
@@ -368,8 +378,6 @@ class CalibrationService(Service):
         focusGroup, instrumentState = self._generateFocusGroupAndInstrumentState(
             request.run.runNumber,
             request.focusGroupPath,
-            request.useLiteMode,  # TODO delete
-            request.nBinsAcrossPeakWidth,  # TODO delete
             calibration,
         )
         data = self._calculatePixelGroupingParameters(

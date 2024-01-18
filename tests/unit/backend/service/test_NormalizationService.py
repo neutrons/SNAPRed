@@ -23,8 +23,8 @@ with mock.patch.dict(
 ):
     from snapred.backend.dao.ingredients import (
         GroceryListItem,
+        PeakIngredients,
         ReductionIngredients,
-        SmoothDataExcludingPeaksIngredients,
     )
     from snapred.backend.dao.normalization import Normalization, NormalizationIndexEntry, NormalizationRecord
     from snapred.backend.dao.request import (
@@ -175,7 +175,7 @@ class TestNormalizationService(unittest.TestCase):
     @patch("snapred.backend.service.NormalizationService.CrystallographicInfoService")
     @patch("snapred.backend.service.NormalizationService.DataFactoryService")
     @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksRecipe")
-    @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksIngredients")
+    @patch("snapred.backend.service.NormalizationService.PeakIngredients")
     def test_smoothDataExcludingPeaks(
         self,
         mockIngredients,
@@ -215,13 +215,11 @@ class TestNormalizationService(unittest.TestCase):
             mockRequest.samplePath.split("/")[-1].split(".")[0]
         )
         mockCrystallographicInfoService.ingest.assert_called_once_with(mockSamplePath, mockRequest.dMin)
-        mockCalibrationService.getCalibration.assert_called_once_with(
-            mockRequest.runNumber, mockRequest.groupingPath, mockRequest.useLiteMode
-        )
+        mockCalibrationService.getCalibration.assert_called_once_with(mockRequest.runNumber, mockRequest.groupingPath)
         mockRecipeInst.executeRecipe.assert_called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             OutputWorkspace=mockRequest.outputWorkspace,
-            Ingredients=mockIngredients.return_value,
+            DetectorPeakIngredients=mockIngredients.return_value.json(),
         )
 
     @patch("snapred.backend.service.NormalizationService.DataFactoryService")

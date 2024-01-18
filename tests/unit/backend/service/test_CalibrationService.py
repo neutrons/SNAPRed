@@ -370,7 +370,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance._generateFocusGroupAndInstrumentState = MagicMock()
         fakeInstrumentState = MagicMock()
         self.instance._generateFocusGroupAndInstrumentState.return_value = (MagicMock(), fakeInstrumentState)
-        result = self.instance.getCalibration("mock_run_id", "fack definition", False)
+        result = self.instance.getCalibration("mock_run_id", "fack definition")
         assert result == fakeCalibration
         assert result.instrumentState == fakeInstrumentState
 

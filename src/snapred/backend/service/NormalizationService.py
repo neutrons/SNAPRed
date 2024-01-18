@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
-    SmoothDataExcludingPeaksIngredients,
+    PeakIngredients,
 )
 from snapred.backend.dao.normalization import (
     Normalization,
@@ -208,14 +208,19 @@ class NormalizationService(Service):
         sampleFilePath = self.dataFactoryService.getCifFilePath((request.samplePath).split("/")[-1].split(".")[0])
         crystalInfo = self.crystallographicInfoService.ingest(sampleFilePath, request.dMin)["crystalInfo"]
 
-        calibration = self.diffractionCalibrationService.getCalibration(
-            request.runNumber, request.groupingPath, request.useLiteMode
+        calibration = self.diffractionCalibrationService.getCalibration(request.runNumber, request.groupingPath)
+        pixelGroup = self.diffractionCalibrationService.getPixelGroup(
+            request.runNumber, request.groupingPath, request.useLiteMode, request.nBinsAcrossPeakWidth, calibration
         )
 
-        instrumentState = calibration.instrumentState
-        ingredients = SmoothDataExcludingPeaksIngredients(
-            smoothingParameter=request.smoothingParameter, instrumentState=instrumentState, crystalInfo=crystalInfo
+        ingredients = PeakIngredients(
+            smoothingParameter=request.smoothingParameter,
+            instrumentState=calibration.instrumentState,
+            pixelGroup=pixelGroup,
+            crystalInfo=crystalInfo,
         )
         return SmoothDataExcludingPeaksRecipe().executeRecipe(
-            InputWorkspace=request.inputWorkspace, OutputWorkspace=request.outputWorkspace, Ingredients=ingredients
+            InputWorkspace=request.inputWorkspace,
+            OutputWorkspace=request.outputWorkspace,
+            DetectorPeakIngredients=ingredients.json(),
         )

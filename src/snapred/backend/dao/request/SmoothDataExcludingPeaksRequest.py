@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
+from snapred.meta.Config import Config
 
 
 class SmoothDataExcludingPeaksRequest(BaseModel):
@@ -12,3 +12,4 @@ class SmoothDataExcludingPeaksRequest(BaseModel):
     runNumber: str
     smoothingParameter: float
     dMin: float
+    nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
