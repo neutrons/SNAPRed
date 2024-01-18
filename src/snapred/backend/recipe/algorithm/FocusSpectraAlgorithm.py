@@ -113,13 +113,13 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             XMin=self.dMin,
             XMax=self.dMax,
             Delta=self.dBin,
-            OutputWorkspace=self.outputWSName + "_noevents",
+            OutputWorkspace=self.outputWSName,
             PreserveEvents=False,
         )
-        self.mantidSnapper.DeleteWorkspace("Delete intermediate ws", Workspace=self.outputWSName)
-        self.setProperty("OutputWorkspace", self.outputWSName + "_noevents")
 
         self.mantidSnapper.executeQueue()
+
+        self.setProperty("OutputWorkspace", self.mantidSnapper.mtd[self.outputWSName])
 
 
 # Register algorithm with Mantid

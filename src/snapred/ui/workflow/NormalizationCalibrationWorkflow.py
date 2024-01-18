@@ -197,10 +197,7 @@ class NormalizationCalibrationWorkflow:
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
 
     def applySmoothingUpdate(self, index, smoothingValue, dMin):
-        from mantid.simpleapi import DeleteWorkspace
-
         workspaces = self.responses[-1].data
-        DeleteWorkspace(Workspace=workspaces["smoothedOutput"])
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=workspaces["outputWorkspace"],
             outputWorkspace=workspaces["smoothedOutput"],
@@ -231,25 +228,17 @@ class NormalizationCalibrationWorkflow:
         smoothingValueChanged = self.initSmoothingParameter != self.lastSmoothingParameter
         dMinValueChanged = self.initDMin != self.lastDMin
         if groupingFileChanged:
-            from mantid.simpleapi import DeleteWorkspace
-
-            workspaces = self.responses[-1].data
-
-            # BAD! >:C This shouldnt be here. This should be in the backend
-            DeleteWorkspace(Workspace=workspaces["outputWorkspace"])
-            DeleteWorkspace(Workspace=workspaces["smoothedOutput"])
             self.initGroupingIndex = index
             self.initSmoothingParameter = smoothingValue
             self.callNormalizationCalibration(self.groupingFiles[index], smoothingValue, dMin)
         elif smoothingValueChanged or dMinValueChanged:
             self.applySmoothingUpdate(index, smoothingValue, dMin)
+        elif "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
+            focusWorkspace = self.responses[-1].data["outputWorkspace"]
+            smoothWorkspace = self.responses[-1].data["smoothedOutput"]
+            self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
         else:
-            if "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
-                focusWorkspace = self.responses[-1].data["outputWorkspace"]
-                smoothWorkspace = self.responses[-1].data["smoothedOutput"]
-                self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
-            else:
-                raise Exception("Expected data not found in the last response")
+            raise Exception("Expected data not found in the last response")
         self._specifyNormalizationView.enableRecalculateButton()
 
     @property
