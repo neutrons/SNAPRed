@@ -33,6 +33,7 @@ from snapred.backend.service.CrystallographicInfoService import Crystallographic
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -69,10 +70,32 @@ class NormalizationService(Service):
         self.groceryClerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(
             request.useLiteMode
         ).fromPrev().add()
+
+        outputWorkspace = wng.run().runNumber(request.runNumber).group(groupingScheme).auxilary("S+F-Vanadium").build()
+        correctedVanadium = wng.run().runNumber(request.runNumber).group(groupingScheme).auxilary("C-Vanadium").build()
+        smoothedOutput = (
+            wng.run()
+            .runNumber(request.runNumber)
+            .group(groupingScheme)
+            .auxilary(f"{request.smoothingParameter}-s_{request.dMin}-dmin")
+            .build()
+        )
+
+        if (
+            self.groceryService.workspaceDoesExist(outputWorkspace)
+            and self.groceryService.workspaceDoesExist(correctedVanadium)
+            and self.groceryService.workspaceDoesExist(smoothedOutput)
+        ):
+            return NormalizationResponse(
+                correctedVanadium=correctedVanadium,
+                outputWorkspace=outputWorkspace,
+                smoothedOutput=smoothedOutput,
+            ).dict()
+
         groceries = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
-            outputWorkspace="smoothedFocussedCorrectedVanadium",
-            smoothedOutput="smoothedOutput",
+            outputWorkspace=outputWorkspace,
+            smoothedOutput=smoothedOutput,
         )
 
         # 1. correction
@@ -87,7 +110,7 @@ class NormalizationService(Service):
         )
         outputWorkspace = self.vanadiumCorrection(vanadiumCorrectionRequest)
         # clone output correctedVanadium
-        correctedVanadiumWs = "correctedVanadium"
+        correctedVanadiumWs = correctedVanadium
         self.groceryService.getCloneOfWorkspace(outputWorkspace, correctedVanadiumWs)
         # 2. focus
         requestFs = FocusSpectraRequest(
@@ -106,7 +129,7 @@ class NormalizationService(Service):
 
         smoothRequest = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focussedVanadiumWs,
-            outputWorkspace="smoothedOutput",
+            outputWorkspace=smoothedOutput,
             samplePath=request.samplePath,
             groupingPath=request.groupingPath,
             useLiteMode=request.useLiteMode,
