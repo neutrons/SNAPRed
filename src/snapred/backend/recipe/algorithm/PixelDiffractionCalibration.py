@@ -181,16 +181,17 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
     # TODO: replace the median with some better method, to be determined
-    # for choosing a reference pixel (and not using brightest pixel)
+    #   for choosing a reference pixel (and not using brightest pixel)
     def getRefID(self, detectorIDs: List[int]) -> int:
         """
-        Calculate a unique reference pixel for a pixel grouping, based in the pixel geometry.
+        Calculate a unique reference pixel for a pixel grouping, based on the pixel geometry.
         input:
-        - detectorIDs: List[int] -- a list of all of the detector IDs in that group
+        - detectorIDs: List[int] -- a list of all of the detector IDs in that group.
         output:
-        - the median pixel ID (to be replaced with angular COM pixel)
+        - the median pixel ID (to be replaced with angular COM pixel).
         """
-        return int(np.median(detectorIDs))
+        # For the present method: either detector-ids or detector workspace indices may be used as input.
+        return sorted(detectorIDs)[int(np.round((len(detectorIDs) - 1) / 2.0))]
 
     def reexecute(self) -> None:
         """
