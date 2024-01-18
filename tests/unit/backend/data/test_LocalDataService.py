@@ -99,13 +99,15 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService.readCalibrationState.return_value = Calibration.parse_file(
             Resource.getPath("inputs/calibration/CalibrationParameters.json")
         )
-        
+
         localDataService._groupingMapPath = mock.Mock()
-        localDataService._groupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
+        localDataService._groupingMapPath.return_value = Path(
+            Resource.getPath("inputs/pixel_grouping/groupingMap.json")
+        )
         stateGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
         localDataService._readGroupingMap = mock.Mock()
         localDataService._readGroupingMap.return_value = stateGroupingMap
-                
+
         localDataService.instrumentConfig = getMockInstrumentConfig()
 
         actual = localDataService.readStateConfig("57514")
@@ -134,14 +136,16 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService.readCalibrationState.return_value = Calibration.parse_file(
             Resource.getPath("inputs/calibration/CalibrationParameters.json")
         )
-        
+
         localDataService._groupingMapPath = mock.Mock()
-        localDataService._groupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
-        
+        localDataService._groupingMapPath.return_value = Path(
+            Resource.getPath("inputs/pixel_grouping/groupingMap.json")
+        )
+
         stateGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
         localDataService._readGroupingMap = mock.Mock()
         localDataService._readGroupingMap.return_value = stateGroupingMap
-                
+
         localDataService.instrumentConfig = getMockInstrumentConfig()
 
         actual = localDataService.readStateConfig("57514")
@@ -170,17 +174,19 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService.readCalibrationState.return_value = Calibration.parse_file(
             Resource.getPath("inputs/calibration/CalibrationParameters.json")
         )
-        
+
         # `GroupingMap` JSON file doesn't exist => read default `GroupingMap`
         localDataService._groupingMapPath = mock.Mock()
-        localDataService._groupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/does_not_exist.json"))
-        
+        localDataService._groupingMapPath.return_value = Path(
+            Resource.getPath("inputs/pixel_grouping/does_not_exist.json")
+        )
+
         defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
         localDataService._readDefaultGroupingMap = mock.Mock()
         localDataService._readDefaultGroupingMap.return_value = defaultGroupingMap
-        
+
         localDataService._writeGroupingMap = mock.Mock()
-                
+
         localDataService.instrumentConfig = getMockInstrumentConfig()
 
         actual = localDataService.readStateConfig("57514")
@@ -209,14 +215,16 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService.readCalibrationState.return_value = Calibration.parse_file(
             Resource.getPath("inputs/calibration/CalibrationParameters.json")
         )
-        
+
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
             localDataService._groupingMapPath = mock.Mock()
             groupingMapOutputPath = Path(f"{tempdir}/groupingMap.json")
             assert not groupingMapOutputPath.exists()
             localDataService._groupingMapPath.return_value = groupingMapOutputPath
 
-            defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+            defaultGroupingMap = GroupingMap.parse_file(
+                Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
+            )
             localDataService._readDefaultGroupingMap = mock.Mock()
             localDataService._readDefaultGroupingMap.return_value = defaultGroupingMap
 
@@ -230,7 +238,10 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def test_readStateConfig_invalid_grouping_map():
         # Test that the attached grouping-schema map's 'stateId' is checked.
-        with pytest.raises(RuntimeError, match='the state configuration\'s grouping map must have the same \'stateId\' as the configuration'):
+        with pytest.raises(
+            RuntimeError,
+            match="the state configuration's grouping map must have the same 'stateId' as the configuration",
+        ):
             localDataService = LocalDataService()
             localDataService._readReductionParameters = _readReductionParameters
             localDataService._readDiffractionCalibrant = mock.Mock()
@@ -254,7 +265,9 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
             localDataService._groupingMapPath = mock.Mock()
             # 'GroupingMap.defaultStateId' is _not_ a valid grouping-map 'stateId' for an existing `StateConfig`.
-            localDataService._groupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+            localDataService._groupingMapPath.return_value = Path(
+                Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
+            )
             stateGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
             localDataService._readGroupingMap = mock.Mock()
             localDataService._readGroupingMap.return_value = stateGroupingMap
@@ -323,13 +336,15 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService.readCalibrationState.return_value = Calibration.parse_file(
             Resource.getPath("inputs/calibration/CalibrationParameters.json")
         )
-        
+
         localDataService._groupingMapPath = mock.Mock()
-        localDataService._groupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
+        localDataService._groupingMapPath.return_value = Path(
+            Resource.getPath("inputs/pixel_grouping/groupingMap.json")
+        )
         stateGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
         localDataService._readGroupingMap = mock.Mock()
         localDataService._readGroupingMap.return_value = stateGroupingMap
-                
+
         localDataService.instrumentConfig = getMockInstrumentConfig()
 
         actual = localDataService.readStateConfig("57514")
@@ -341,7 +356,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             with open(stateConfigPath, "r") as file:
                 stateConfig = parse_raw_as(StateConfig, file.read())
             assert stateConfig.groupingMap == None
-                
+
     def test_readFocusGroups():
         localDataService = LocalDataService()
         localDataService._readReductionParameters = _readReductionParameters

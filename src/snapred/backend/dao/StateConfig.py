@@ -16,12 +16,12 @@ class StateConfig(BaseModel):
     normalizationCalibrant: Optional[NormalizationCalibrant]
     rawVanadiumCorrectionFileName: str  # Needs to be removed when Normalization changes go in
     vanadiumFilePath: str  # Needs to be removed when Normalization changes go in
-                           # PixelGroupingParameters
+    # PixelGroupingParameters
 
     # 'groupingMap' (not really Optional), has its own separate JSON file:
     #   * Optional: allows it to temporarily be `None` after `__init__` but prior to `attachGroupingMap`.
     groupingMap: Optional[GroupingMap] = Field(default=None, exclude=True)
-    
+
     stateId: ObjectSHA  # generated.
 
     def _validate(self: BaseModel):
@@ -48,8 +48,8 @@ class StateConfig(BaseModel):
         calibration = v.get("calibration")
         if not calibration.instrumentState.id == thisStateId:
             raise RuntimeError(
-                f'the state configuration\'s calibration must have the same \'stateId\' as the configuration: "{thisStateId}", not "{calibration.instrumentState.id}"'            
-            ) 
+                f'the state configuration\'s calibration must have the same \'stateId\' as the configuration: "{thisStateId}", not "{calibration.instrumentState.id}"'
+            )
         groupingMap = v.get("groupingMap")
         if groupingMap:
             if not groupingMap.stateId == thisStateId:

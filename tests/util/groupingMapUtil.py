@@ -16,8 +16,12 @@ class GroupingMapTestFactory:
     def invalidFileFormat(self):
         return {
             "stateId": "deadbeef00000002",
-            "liteFocusGroups": [{"name": "Column", "definition": "tests/resources/inputs/calibration/ReductionIngredients.json"}],
-            "nativeFocusGroups": [{"name": "Column", "definition": "tests/resources/inputs/calibration/ReductionIngredients.json"}],
+            "liteFocusGroups": [
+                {"name": "Column", "definition": "tests/resources/inputs/calibration/ReductionIngredients.json"}
+            ],
+            "nativeFocusGroups": [
+                {"name": "Column", "definition": "tests/resources/inputs/calibration/ReductionIngredients.json"}
+            ],
         }
 
     def emptyGroups(self):

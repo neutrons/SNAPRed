@@ -10,7 +10,6 @@ import h5py
 from mantid.kernel import PhysicalConstants
 from pydantic import parse_file_as
 
-from snapred.backend.log.logger import snapredLogger
 from snapred.backend.dao import (
     GSASParameters,
     InstrumentConfig,
@@ -34,6 +33,7 @@ from snapred.backend.dao.state import (
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.StateValidationException import StateValidationException
+from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
@@ -119,7 +119,7 @@ class LocalDataService:
             diffCalibration: Calibration = previousDiffCalRecord.calibrationFittingIngredients
 
         stateId = diffCalibration.instrumentState.id
-        
+
         # Read the grouping-schema map associated with this `StateConfig`.
         groupingMap = None
         if self._groupingMapPath(str(stateId)).exists():
@@ -132,7 +132,7 @@ class LocalDataService:
             groupingMap.coerceStateId(stateId)
             # This is the _ONLY_ place that the grouping-schema map is written to its separate JSON file at <state root>.
             self._writeGroupingMap(stateId, groupingMap)
-        
+
         return StateConfig(
             calibration=diffCalibration,
             focusGroups=self._readFocusGroups(runId),
@@ -558,9 +558,7 @@ class LocalDataService:
         # append to record and write to file
         write_model_pretty(record, recordPath)
 
-        self.writeCalibrationState(
-            runNumber, record.calibrationFittingIngredients, version
-        )
+        self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
         for workspace in record.workspaceNames:
             self.groceryService.writeWorkspace(calibrationPath, workspace)
         logger.info(f"Wrote CalibrationRecord: version: {version}")
