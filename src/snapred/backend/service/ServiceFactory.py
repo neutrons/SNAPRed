@@ -11,6 +11,7 @@ from snapred.backend.service.ConfigLookupService import ConfigLookupService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.FitMultiplePeakService import FitMultiplePeaksService
 from snapred.backend.service.LiteDataService import LiteDataService
+from snapred.backend.service.NormalizationService import NormalizationService
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.backend.service.ServiceDirectory import ServiceDirectory
 from snapred.backend.service.SmoothDataExcludingPeaksService import SmoothDataExcludingPeaksService
@@ -39,6 +40,7 @@ class ServiceFactory:
         self.serviceDirectory.registerService(VanadiumFocussedReductionService)
         self.serviceDirectory.registerService(SmoothDataExcludingPeaksService)
         self.serviceDirectory.registerService(LiteDataService)
+        self.serviceDirectory.registerService(NormalizationService)
 
     def getServiceNames(self):
         return self.serviceDirectory.keys()

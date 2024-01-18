@@ -2,12 +2,7 @@ import json
 from typing import Dict
 
 import numpy as np
-from mantid.api import (
-    AlgorithmFactory,
-    MatrixWorkspaceProperty,
-    PropertyMode,
-    PythonAlgorithm,
-)
+from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
@@ -93,7 +88,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
         weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
-        isEventWorkspace: bool = "EventWorkspace" in weight_ws.id()
+        isEventWorkspace: bool = isinstance(weight_ws, IEventWorkspace)
         if isEventWorkspace:
             self.mantidSnapper.ConvertToMatrixWorkspace(
                 "Converting event workspace to histogram workspace",
@@ -118,7 +113,8 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             weights = np.ones(len(y))
             # for each peak extent, set zeros to the weights array
             for peak in self.predictedPeaks[groupID]:
-                mask_indices = np.where(np.logical_and(x > peak.position.minimum, x < peak.position.maximum))
+                mask_indices = np.where(np.logical_and(x > peak.position.minimum, x < peak.position.maximum))[0]
+                mask_indices = mask_indices[mask_indices < len(weights)]
                 weights[mask_indices] = 0.0
             weight_ws.setY(index, weights)
 

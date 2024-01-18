@@ -183,6 +183,7 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         )
 
         self.mantidSnapper.executeQueue()
+        self.setProperty("OutputWorkspace", self.mantidSnapper.mtd[self.outputVanadiumWS])
 
 
 # Register algorithm with Mantid

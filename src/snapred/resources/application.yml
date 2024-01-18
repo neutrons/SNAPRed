@@ -81,6 +81,11 @@ calibration:
         - 2.0
       peakTailCoefficient: 2.0
 
+normalization:
+  parameters:
+    default:
+      dMin: 0.4
+
 mantid:
   workspace:
     nameTemplate:

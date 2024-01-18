@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
@@ -14,4 +12,5 @@ class NormalizationCalibrationRequest(BaseModel):
     samplePath: str
     groupingPath: str
     smoothingParameter: float
+    dMin: float
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

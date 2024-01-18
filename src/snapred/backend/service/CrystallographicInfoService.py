@@ -19,11 +19,11 @@ class CrystallographicInfoService(Service):
         return "ingestion"
 
     @FromString
-    def ingest(self, cifPath: str) -> Dict[Any, Any]:
+    def ingest(self, cifPath: str, dMin: float) -> Dict[Any, Any]:
         data: Dict[Any, Any] = {}
         # TODO: collect runs by state then by calibration of state, execute sets of runs by calibration of thier state
         try:
-            data = CrystallographicInfoRecipe().executeRecipe(cifPath)
+            data = CrystallographicInfoRecipe().executeRecipe(cifPath, dMin=dMin)
         except:
             raise
         return data

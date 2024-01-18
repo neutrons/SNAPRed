@@ -1,5 +1,7 @@
+from pdb import run
 from typing import Dict
 
+from snapred.backend.dao import calibration
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
@@ -27,7 +29,15 @@ class DataFactoryService:
             val = clazz()
         return val
 
-    def getReductionIngredients(self, runId: str, pixelGroup: PixelGroup) -> ReductionIngredients:
+    def getReductionIngredients(self, runId: str, pixelGroup: PixelGroup = None) -> ReductionIngredients:
+        if pixelGroup is None:
+            calibration = self.getCalibrationState(runId)  # noqa: F811
+            if calibration is None or calibration.instrumentState.pixelGroup is None:
+                stateId = self.constructStateId(runId)
+                raise RuntimeError(f"Pixel group not found for runId {runId} and stateId {stateId}")
+
+            pixelGroup = calibration.instrumentState.pixelGroup
+
         return ReductionIngredients(
             reductionState=self.getReductionState(runId),
             runConfig=self.getRunConfig(runId),
