@@ -21,6 +21,7 @@ IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
 # Mock out of scope modules before importing DataExportService
 with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Mock()}):
+    from snapred.backend.dao import StateConfig
     from snapred.backend.dao.calibration.Calibration import Calibration  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: E402
@@ -34,7 +35,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
     from snapred.backend.data.LocalDataService import LocalDataService  # noqa: E402
 
     reductionIngredients = None
-    with Resource.open("inputs/calibration/input.json", "r") as file:
+    with Resource.open("inputs/calibration/ReductionIngredients.json", "r") as file:
         reductionIngredients = parse_raw_as(ReductionIngredients, file.read())
 
     def _readInstrumentParameters():
@@ -98,12 +99,249 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService.readCalibrationState.return_value = Calibration.parse_file(
             Resource.getPath("inputs/calibration/CalibrationParameters.json")
         )
+        
+        localDataService._groupingMapPath = mock.Mock()
+        localDataService._groupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
+        stateGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
+        localDataService._readGroupingMap = mock.Mock()
+        localDataService._readGroupingMap.return_value = stateGroupingMap
+                
         localDataService.instrumentConfig = getMockInstrumentConfig()
 
         actual = localDataService.readStateConfig("57514")
         assert actual is not None
         assert actual.stateId == "ab8704b0bc2a2342"
 
+    def test_readStateConfig_attaches_grouping_map():
+        # test that `readStateConfig` reads the `GroupingMap` from its separate JSON file.
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        localDataService._readDiffractionCalibrant = mock.Mock()
+        localDataService._readDiffractionCalibrant.return_value = (
+            reductionIngredients.reductionState.stateConfig.diffractionCalibrant
+        )
+        localDataService._readNormalizationCalibrant = mock.Mock()
+        localDataService._readNormalizationCalibrant.return_value = (
+            reductionIngredients.reductionState.stateConfig.normalizationCalibrant
+        )
+        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+        localDataService._readPVFile = mock.Mock()
+        fileMock = mock.Mock()
+        localDataService._readPVFile.return_value = fileMock
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+        localDataService.readCalibrationState = mock.Mock()
+        localDataService.readCalibrationState.return_value = Calibration.parse_file(
+            Resource.getPath("inputs/calibration/CalibrationParameters.json")
+        )
+        
+        localDataService._groupingMapPath = mock.Mock()
+        localDataService._groupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
+        
+        stateGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
+        localDataService._readGroupingMap = mock.Mock()
+        localDataService._readGroupingMap.return_value = stateGroupingMap
+                
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+
+        actual = localDataService.readStateConfig("57514")
+        assert actual.groupingMap == stateGroupingMap
+
+    def test_readStateConfig_sets_grouping_map_stateid():
+        # Test that the first time a `StateConfig` is initialized,
+        #   the 'stateId' of the `StateConfig.groupingMap` is set to match that of the `StateConfig`.
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        localDataService._readDiffractionCalibrant = mock.Mock()
+        localDataService._readDiffractionCalibrant.return_value = (
+            reductionIngredients.reductionState.stateConfig.diffractionCalibrant
+        )
+        localDataService._readNormalizationCalibrant = mock.Mock()
+        localDataService._readNormalizationCalibrant.return_value = (
+            reductionIngredients.reductionState.stateConfig.normalizationCalibrant
+        )
+        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+        localDataService._readPVFile = mock.Mock()
+        fileMock = mock.Mock()
+        localDataService._readPVFile.return_value = fileMock
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+        localDataService.readCalibrationState = mock.Mock()
+        localDataService.readCalibrationState.return_value = Calibration.parse_file(
+            Resource.getPath("inputs/calibration/CalibrationParameters.json")
+        )
+        
+        # `GroupingMap` JSON file doesn't exist => read default `GroupingMap`
+        localDataService._groupingMapPath = mock.Mock()
+        localDataService._groupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/does_not_exist.json"))
+        
+        defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+        localDataService._readDefaultGroupingMap = mock.Mock()
+        localDataService._readDefaultGroupingMap.return_value = defaultGroupingMap
+        
+        localDataService._writeGroupingMap = mock.Mock()
+                
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+
+        actual = localDataService.readStateConfig("57514")
+        assert actual.groupingMap.stateId == actual.stateId
+
+    def test_readStateConfig_writes_grouping_map():
+        # Test that the first time a `StateConfig` is initialized,
+        #   the `StateConfig.groupingMap` is written to the <state root> directory.
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        localDataService._readDiffractionCalibrant = mock.Mock()
+        localDataService._readDiffractionCalibrant.return_value = (
+            reductionIngredients.reductionState.stateConfig.diffractionCalibrant
+        )
+        localDataService._readNormalizationCalibrant = mock.Mock()
+        localDataService._readNormalizationCalibrant.return_value = (
+            reductionIngredients.reductionState.stateConfig.normalizationCalibrant
+        )
+        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+        localDataService._readPVFile = mock.Mock()
+        fileMock = mock.Mock()
+        localDataService._readPVFile.return_value = fileMock
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+        localDataService.readCalibrationState = mock.Mock()
+        localDataService.readCalibrationState.return_value = Calibration.parse_file(
+            Resource.getPath("inputs/calibration/CalibrationParameters.json")
+        )
+        
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+            localDataService._groupingMapPath = mock.Mock()
+            groupingMapOutputPath = Path(f"{tempdir}/groupingMap.json")
+            assert not groupingMapOutputPath.exists()
+            localDataService._groupingMapPath.return_value = groupingMapOutputPath
+
+            defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+            localDataService._readDefaultGroupingMap = mock.Mock()
+            localDataService._readDefaultGroupingMap.return_value = defaultGroupingMap
+
+            localDataService.instrumentConfig = getMockInstrumentConfig()
+
+            actual = localDataService.readStateConfig("57514")
+            assert groupingMapOutputPath.exists()
+            with open(groupingMapOutputPath, "r") as file:
+                groupingMap = parse_raw_as(GroupingMap, file.read())
+            assert groupingMap.stateId == actual.stateId
+
+    def test_readStateConfig_invalid_grouping_map():
+        # Test that the attached grouping-schema map's 'stateId' is checked.
+        with pytest.raises(RuntimeError, match='the state configuration\'s grouping map must have the same \'stateId\' as the configuration'):
+            localDataService = LocalDataService()
+            localDataService._readReductionParameters = _readReductionParameters
+            localDataService._readDiffractionCalibrant = mock.Mock()
+            localDataService._readDiffractionCalibrant.return_value = (
+                reductionIngredients.reductionState.stateConfig.diffractionCalibrant
+            )
+            localDataService._readNormalizationCalibrant = mock.Mock()
+            localDataService._readNormalizationCalibrant.return_value = (
+                reductionIngredients.reductionState.stateConfig.normalizationCalibrant
+            )
+            localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+            localDataService._readPVFile = mock.Mock()
+            fileMock = mock.Mock()
+            localDataService._readPVFile.return_value = fileMock
+            localDataService._generateStateId = mock.Mock()
+            localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+            localDataService.readCalibrationState = mock.Mock()
+            localDataService.readCalibrationState.return_value = Calibration.parse_file(
+                Resource.getPath("inputs/calibration/CalibrationParameters.json")
+            )
+
+            localDataService._groupingMapPath = mock.Mock()
+            # 'GroupingMap.defaultStateId' is _not_ a valid grouping-map 'stateId' for an existing `StateConfig`.
+            localDataService._groupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+            stateGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+            localDataService._readGroupingMap = mock.Mock()
+            localDataService._readGroupingMap.return_value = stateGroupingMap
+
+            localDataService.instrumentConfig = getMockInstrumentConfig()
+
+            actual = localDataService.readStateConfig("57514")
+
+    def test_readStateConfig_grouping_map_JSON_file_not_found():
+        # Test that a grouping-schema map is required during the `readStateConfig` method:
+        #   * note that a non-existing 'groupingMap.json' at the <state root> triggers a fallback to 'defaultGroupingMap.json'
+        #       at Config['instrument.calibration.powder.grouping.home'].
+        localDataService = LocalDataService()
+        nonExistentPath = Path(Resource.getPath("inputs/pixel_grouping/does_not_exist.json"))
+        localDataService._groupingMapPath = mock.Mock()
+        localDataService._groupingMapPath.return_value = nonExistentPath
+        localDataService._defaultGroupingMapPath = mock.Mock()
+        localDataService._defaultGroupingMapPath.return_value = nonExistentPath
+        with pytest.raises(
+            FileNotFoundError,
+            match=f'required default grouping-schema map "{nonExistentPath}" does not exist',
+        ):
+            localDataService._readReductionParameters = _readReductionParameters
+            localDataService._readDiffractionCalibrant = mock.Mock()
+            localDataService._readDiffractionCalibrant.return_value = (
+                reductionIngredients.reductionState.stateConfig.diffractionCalibrant
+            )
+            localDataService._readNormalizationCalibrant = mock.Mock()
+            localDataService._readNormalizationCalibrant.return_value = (
+                reductionIngredients.reductionState.stateConfig.normalizationCalibrant
+            )
+            localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+            localDataService._readPVFile = mock.Mock()
+            fileMock = mock.Mock()
+            localDataService._readPVFile.return_value = fileMock
+            localDataService._generateStateId = mock.Mock()
+            localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+            localDataService.readCalibrationState = mock.Mock()
+            localDataService.readCalibrationState.return_value = Calibration.parse_file(
+                Resource.getPath("inputs/calibration/CalibrationParameters.json")
+            )
+            localDataService.instrumentConfig = getMockInstrumentConfig()
+            actual = localDataService.readStateConfig("57514")
+
+    def test_write_model_pretty_StateConfig_excludes_grouping_map():
+        # At present there is no `writeStateConfig` method, and there is no `readStateConfig` that doesn't
+        #   actually build up the `StateConfig` from its components.
+        # This test verifies that `GroupingMap` is excluded from any future `StateConfig` JSON serialization.
+        localDataService = LocalDataService()
+        localDataService._readReductionParameters = _readReductionParameters
+        localDataService._readDiffractionCalibrant = mock.Mock()
+        localDataService._readDiffractionCalibrant.return_value = (
+            reductionIngredients.reductionState.stateConfig.diffractionCalibrant
+        )
+        localDataService._readNormalizationCalibrant = mock.Mock()
+        localDataService._readNormalizationCalibrant.return_value = (
+            reductionIngredients.reductionState.stateConfig.normalizationCalibrant
+        )
+        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+        localDataService._readPVFile = mock.Mock()
+        fileMock = mock.Mock()
+        localDataService._readPVFile.return_value = fileMock
+        localDataService._generateStateId = mock.Mock()
+        localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+        localDataService.readCalibrationState = mock.Mock()
+        localDataService.readCalibrationState.return_value = Calibration.parse_file(
+            Resource.getPath("inputs/calibration/CalibrationParameters.json")
+        )
+        
+        localDataService._groupingMapPath = mock.Mock()
+        localDataService._groupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
+        stateGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
+        localDataService._readGroupingMap = mock.Mock()
+        localDataService._readGroupingMap.return_value = stateGroupingMap
+                
+        localDataService.instrumentConfig = getMockInstrumentConfig()
+
+        actual = localDataService.readStateConfig("57514")
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+            stateConfigPath = Path(tempdir) / "stateConfig.json"
+            write_model_pretty(actual, stateConfigPath)
+            # read it back in:
+            stateConfig = None
+            with open(stateConfigPath, "r") as file:
+                stateConfig = parse_raw_as(StateConfig, file.read())
+            assert stateConfig.groupingMap == None
+                
     def test_readFocusGroups():
         localDataService = LocalDataService()
         localDataService._readReductionParameters = _readReductionParameters
@@ -262,22 +500,16 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert actualEntries[0].runNumber == "57514"
 
     def readReductionIngredientsFromFile():
-        with Resource.open("/inputs/calibration/input.json", "r") as f:
+        with Resource.open("/inputs/calibration/ReductionIngredients.json", "r") as f:
             return ReductionIngredients.parse_raw(f.read())
 
     def test_readWriteCalibrationRecord_version_numbers():
-        testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
         testCalibrationRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
-        testCalibrationRecord.calibrationFittingIngredients.instrumentState.groupingMap = testGroupingMap
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
             localDataService = LocalDataService()
             localDataService.instrumentConfig = mock.Mock()
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-            localDataService._groupingMapPath = mock.Mock()
-            localDataService._groupingMapPath.return_value = Path(
-                Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-            )
             localDataService._readReductionParameters = mock.Mock()
             localDataService._constructCalibrationStatePath = mock.Mock()
             localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
@@ -297,43 +529,30 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert actualRecord == testCalibrationRecord
 
     def test_readWriteCalibrationRecord():
-        testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
         testCalibrationRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
-        testCalibrationRecord.calibrationFittingIngredients.instrumentState.groupingMap = testGroupingMap
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
             localDataService = LocalDataService()
             localDataService.instrumentConfig = mock.Mock()
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-            localDataService._groupingMapPath = mock.Mock()
-            localDataService._groupingMapPath.return_value = Path(
-                Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-            )
             localDataService._readReductionParameters = mock.Mock()
             localDataService._constructCalibrationStatePath = mock.Mock()
             localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
             localDataService.groceryService = mock.Mock()
-            # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version and <incoming record>.calibrationFittingIngredients.version.
             localDataService.writeCalibrationRecord(testCalibrationRecord)
             actualRecord = localDataService.readCalibrationRecord("57514")
         assert actualRecord.runNumber == "57514"
         assert actualRecord == testCalibrationRecord
 
     def test_readWriteNormalizationRecord_version_numbers():
-        testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
         testNormalizationRecord = NormalizationRecord.parse_raw(
             Resource.read("inputs/normalization/NormalizationRecord.json")
         )
-        testNormalizationRecord.normalization.instrumentState.groupingMap = testGroupingMap
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
             localDataService = LocalDataService()
             localDataService.instrumentConfig = mock.Mock()
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-            localDataService._groupingMapPath = mock.Mock()
-            localDataService._groupingMapPath.return_value = Path(
-                Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-            )
             localDataService._readReductionParameters = mock.Mock()
             localDataService._constructCalibrationStatePath = mock.Mock()
             localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
@@ -353,25 +572,18 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert actualRecord == testNormalizationRecord
 
     def test_readWriteNormalizationRecord():
-        testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
         testNormalizationRecord = NormalizationRecord.parse_raw(
             Resource.read("inputs/normalization/NormalizationRecord.json")
         )
-        testNormalizationRecord.normalization.instrumentState.groupingMap = testGroupingMap
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
             localDataService = LocalDataService()
             localDataService.instrumentConfig = mock.Mock()
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-            localDataService._groupingMapPath = mock.Mock()
-            localDataService._groupingMapPath.return_value = Path(
-                Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-            )
             localDataService._readReductionParameters = mock.Mock()
             localDataService._constructCalibrationStatePath = mock.Mock()
             localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
             localDataService.groceryService = mock.Mock()
-            # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version, and <incoming record>.normalization.version.
             localDataService.writeNormalizationRecord(testNormalizationRecord)
             actualRecord = localDataService.readNormalizationRecord("57514")
         assert actualRecord.runNumber == "57514"
@@ -523,10 +735,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._groupingMapPath = mock.Mock()
-        localDataService._groupingMapPath.return_value = Path(
-            Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-        )
         localDataService.getCalibrationStatePath = mock.Mock()
         localDataService.getCalibrationStatePath.return_value = Resource.getPath(
             "ab8704b0bc2a2342/v_1/CalibrationParameters.json"
@@ -534,70 +742,14 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._getLatestFile = mock.Mock()
         localDataService._getLatestFile.return_value = Resource.getPath("inputs/calibration/CalibrationParameters.json")
         testCalibrationState = Calibration.parse_raw(Resource.read("inputs/calibration/CalibrationParameters.json"))
-        testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
-        testCalibrationState.instrumentState.groupingMap = testGroupingMap
         actualState = localDataService.readCalibrationState("57514")
 
         assert actualState == testCalibrationState
-
-    def test_readCalibrationState_invalid_grouping_map():
-        # Test that the attached grouping-schema map's 'stateId' is checked.
-        with pytest.raises(RuntimeError, match="a state's grouping map must have the same 'stateId' as the state"):
-            localDataService = LocalDataService()
-            localDataService._generateStateId = mock.Mock()
-            localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-            localDataService._groupingMapPath = mock.Mock()
-            # 'GroupingMap.defaultStateId' is _not_ a valid grouping-map 'stateId' for an existing state.
-            localDataService._groupingMapPath.return_value = Path(
-                Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
-            )
-            localDataService.getCalibrationStatePath = mock.Mock()
-            localDataService.getCalibrationStatePath.return_value = Resource.getPath(
-                "ab8704b0bc2a2342/v_1/CalibrationParameters.json"
-            )
-            localDataService._getLatestFile = mock.Mock()
-            localDataService._getLatestFile.return_value = Resource.getPath(
-                "inputs/calibration/CalibrationParameters.json"
-            )
-            testCalibrationState = Calibration.parse_raw(Resource.read("inputs/calibration/CalibrationParameters.json"))
-            testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
-            testCalibrationState.instrumentState.groupingMap = testGroupingMap
-            actualState = localDataService.readCalibrationState("57514")
-
-    def test_readCalibrationState_grouping_map_JSON_file_not_found():
-        # Test that the grouping-schema map is required during the read-state method.
-        stateId = "ab8704b0bc2a2342"
-        groupingMapPath = Path(Resource.getPath("inputs/pixel_grouping/groupingMap_.json"))
-        with pytest.raises(
-            FileNotFoundError,
-            match=f'required grouping-schema map for state "{stateId}" at "{groupingMapPath}" does not exist',
-        ):
-            localDataService = LocalDataService()
-            localDataService._generateStateId = mock.Mock()
-            localDataService._generateStateId.return_value = (stateId, None)
-            localDataService._groupingMapPath = mock.Mock()
-            localDataService._groupingMapPath.return_value = groupingMapPath
-            localDataService.getCalibrationStatePath = mock.Mock()
-            localDataService.getCalibrationStatePath.return_value = Resource.getPath(
-                "ab8704b0bc2a2342/v_1/CalibrationParameters.json"
-            )
-            localDataService._getLatestFile = mock.Mock()
-            localDataService._getLatestFile.return_value = Resource.getPath(
-                "inputs/calibration/CalibrationParameters.json"
-            )
-            testCalibrationState = Calibration.parse_raw(Resource.read("inputs/calibration/CalibrationParameters.json"))
-            testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
-            testCalibrationState.instrumentState.groupingMap = testGroupingMap
-            actualState = localDataService.readCalibrationState("57514")
 
     def test_readNormalizationState():
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._groupingMapPath = mock.Mock()
-        localDataService._groupingMapPath.return_value = Path(
-            Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-        )
         localDataService.getNormalizationStatePath = mock.Mock()
         localDataService.getNormalizationStatePath.return_value = Resource.getPath(
             "ab8704b0bc2a2342/v_1/NormalizationParameters.json"
@@ -610,8 +762,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         testNormalizationState = Normalization.parse_raw(
             Resource.read("inputs/normalization/NormalizationParameters.json")
         )
-        testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
-        testNormalizationState.instrumentState.groupingMap = testGroupingMap
         actualState = localDataService.readNormalizationState("57514")
         assert actualState == testNormalizationState
 
@@ -653,99 +803,14 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         pvFileMock.get.side_effect = [[1], [2], [1.1], [1.2], [1], [1], [2], [1.1], [1.2], [1], [1], [2]]
         localDataService._readPVFile.return_value = pvFileMock
         testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
-        testCalibrationData.instrumentState.pixelGroup = None
-        testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
 
         localDataService.readInstrumentConfig = mock.Mock()
         localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
-
-        localDataService._readDefaultGroupingMap = mock.Mock()
-        localDataService._readDefaultGroupingMap.return_value = testGroupingMap
-        localDataService._writeGroupingMap = mock.Mock()
         localDataService.writeCalibrationState = mock.Mock()
         actual = localDataService.initializeState("123", "test")
         actual.creationDate = testCalibrationData.creationDate
 
         assert actual == testCalibrationData
-
-    def test_initializeState_attaches_grouping_map():
-        # Test 'initializeState':
-        # * test that a grouping-schema map is attached correctly to the new state.
-        localDataService = LocalDataService()
-        localDataService._readPVFile = mock.Mock()
-        pvFileMock = mock.Mock()
-        pvFileMock.get.side_effect = [[1], [2], [1.1], [1.2], [1], [1], [2], [1.1], [1.2], [1], [1], [2]]
-        localDataService._readPVFile.return_value = pvFileMock
-        testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
-        testCalibrationData.instrumentState.pixelGroup = None
-        testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
-
-        localDataService.readInstrumentConfig = mock.Mock()
-        localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
-
-        localDataService._readDefaultGroupingMap = mock.Mock()
-        localDataService._readDefaultGroupingMap.return_value = testGroupingMap
-        localDataService._writeGroupingMap = mock.Mock()
-        localDataService.writeCalibrationState = mock.Mock()
-        actual = localDataService.initializeState("123", "test")
-        actual.creationDate = testCalibrationData.creationDate
-        assert actual.instrumentState.groupingMap is not None
-
-    def test_initializeState_sets_grouping_map_stateId():
-        # Test 'initializeState':
-        # * test that the attached grouping-schema map 'stateId' is updated to match the new state's 'id'.
-        localDataService = LocalDataService()
-        localDataService._readPVFile = mock.Mock()
-        pvFileMock = mock.Mock()
-        pvFileMock.get.side_effect = [[1], [2], [1.1], [1.2], [1], [1], [2], [1.1], [1.2], [1], [1], [2]]
-        localDataService._readPVFile.return_value = pvFileMock
-        testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
-        testCalibrationData.instrumentState.pixelGroup = None
-        testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
-
-        localDataService.readInstrumentConfig = mock.Mock()
-        localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
-
-        localDataService._readDefaultGroupingMap = mock.Mock()
-        localDataService._readDefaultGroupingMap.return_value = testGroupingMap
-        localDataService._writeGroupingMap = mock.Mock()
-        localDataService.writeCalibrationState = mock.Mock()
-        actual = localDataService.initializeState("123", "test")
-        actual.creationDate = testCalibrationData.creationDate
-        testCalibrationData.instrumentState.groupingMap = actual.instrumentState.groupingMap
-
-        assert actual.instrumentState.groupingMap.stateId == actual.instrumentState.id
-
-    def test_initializeState_writes_grouping_map():
-        # Test 'initializeState':
-        # * test that the grouping-schema map is written to the state's root directory.
-        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
-            service = LocalDataService()
-            service._readPVFile = mock.Mock()
-            pvFileMock = mock.Mock()
-            pvFileMock.get.side_effect = [[1], [2], [1.1], [1.2], [1], [1], [2], [1.1], [1.2], [1], [1], [2]]
-            service._readPVFile.return_value = pvFileMock
-            testCalibrationData = Calibration.parse_file(
-                Resource.getPath("inputs/calibration/CalibrationParameters.json")
-            )
-            testCalibrationData.instrumentState.pixelGroup = None
-            testGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
-
-            service.readInstrumentConfig = mock.Mock()
-            service.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
-
-            service._readDefaultGroupingMap = mock.Mock()
-            service._readDefaultGroupingMap.return_value = testGroupingMap
-            service._groupingMapPath = mock.Mock()
-            groupingMapOutputPath = Path(f"{tempdir}/groupingMap.json")
-            assert not groupingMapOutputPath.exists()
-            service._groupingMapPath.return_value = groupingMapOutputPath
-            service.writeCalibrationState = mock.Mock()
-            actual = service.initializeState("123", "test")
-            assert groupingMapOutputPath.exists()
-            with open(groupingMapOutputPath, "r") as file:
-                groupingMap = parse_raw_as(GroupingMap, file.read())
-            assert groupingMap.stateId == actual.instrumentState.id
 
     # NOTE: This test fails on analysis because the instrument home actually does exist!
     @pytest.mark.skipif(
@@ -816,22 +881,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             shutil.copy(Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json")), stateRoot)
             groupingMap = service._readGroupingMap(stateId)
             assert groupingMap.stateId == stateId
-
-    def test_writeState_excludes_grouping_map():
-        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
-            state = None
-            with Resource.open("inputs/calibration/sampleInstrumentState.json", "r") as file:
-                state = parse_raw_as(InstrumentState, file.read())
-            groupingMap = None
-            with Resource.open("inputs/pixel_grouping/defaultGroupingMap.json", "r") as file:
-                groupingMap = parse_raw_as(GroupingMap, file.read())
-            state.attachGroupingMap(groupingMap, coerceStateId=True)
-            statePath = Path(tempdir) / "state.json"
-            write_model_pretty(state, statePath)
-            # read it back in:
-            with open(statePath, "r") as file:
-                state = parse_raw_as(InstrumentState, file.read())
-            assert state.groupingMap == None
 
     def test_readGroupingFiles():
         localDataService = LocalDataService()

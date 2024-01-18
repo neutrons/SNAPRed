@@ -10,6 +10,7 @@ import h5py
 from mantid.kernel import PhysicalConstants
 from pydantic import parse_file_as
 
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.dao import (
     GSASParameters,
     InstrumentConfig,
@@ -41,6 +42,8 @@ from snapred.meta.redantic import (
     write_model_list_pretty,
     write_model_pretty,
 )
+
+logger = snapredLogger.getLogger(__name__)
 
 """
     Looks up data on disk
@@ -115,6 +118,21 @@ class LocalDataService:
         else:
             diffCalibration: Calibration = previousDiffCalRecord.calibrationFittingIngredients
 
+        stateId = diffCalibration.instrumentState.id
+        
+        # Read the grouping-schema map associated with this `StateConfig`.
+        groupingMap = None
+        if self._groupingMapPath(str(stateId)).exists():
+            groupingMap = self._readGroupingMap(stateId)
+        else:
+            # If no `GroupingMap` JSON file is present at the <state root>,
+            #   it is assumed that this is the first time that this state configuration has been initialized.
+            # Any `StateConfig`'s `GroupingMap` always starts as a copy of the default `GroupingMap`.
+            groupingMap = self._readDefaultGroupingMap()
+            groupingMap.coerceStateId(stateId)
+            # This is the _ONLY_ place that the grouping-schema map is written to its separate JSON file at <state root>.
+            self._writeGroupingMap(stateId, groupingMap)
+        
         return StateConfig(
             calibration=diffCalibration,
             focusGroups=self._readFocusGroups(runId),
@@ -125,8 +143,9 @@ class LocalDataService:
                 / diffCalibration.instrumentState.id.hex
                 / reductionParameters["rawVCorrFileName"]
             ),
+            groupingMap=groupingMap,
             stateId=diffCalibration.instrumentState.id,
-        )  # TODO: fill with real value
+        )
 
     def _readFocusGroups(self, runId: str) -> List[FocusGroup]:  # noqa: ARG002
         reductionParameters = self._readReductionParameters(runId)
@@ -460,13 +479,9 @@ class LocalDataService:
             latestFile = self._getLatestFile(recordPath)
         record: NormalizationRecord = None  # noqa: F821
         if latestFile:
-            print(f"reading NormalizationRecord from {latestFile}")
+            logger.info(f"reading NormalizationRecord from {latestFile}")
             record = parse_file_as(NormalizationRecord, latestFile)  # noqa: F821
 
-            # Read the state's grouping-schema map from its separate JSON file.
-            groupingMap = self._readGroupingMap(stateId)
-            # Attach the grouping-schema map to the normalization record's state:
-            record.normalization.instrumentState.attachGroupingMap(groupingMap)
         return record
 
     def writeNormalizationRecord(self, record: NormalizationRecord, version: int = None):  # noqa: F821
@@ -497,7 +512,7 @@ class LocalDataService:
         self.writeNormalizationState(runNumber, record.normalization, version)
         for workspace in record.workspaceNames:
             self.groceryService.writeWorkspace(normalizationPath, workspace)
-        print(f"wrote NormalizationRecord: version: {version}")
+        logger.info(f"wrote NormalizationRecord: version: {version}")
         return record
 
     def readCalibrationRecord(self, runId: str, version: str = None):
@@ -512,13 +527,8 @@ class LocalDataService:
         # read the file
         record: CalibrationRecord = None
         if latestFile:
-            print(f"reading CalibrationRecord from {latestFile}")
+            logger.info(f"reading CalibrationRecord from {latestFile}")
             record = parse_file_as(CalibrationRecord, latestFile)
-
-            # Read the state's grouping-schema map from its separate JSON file.
-            groupingMap = self._readGroupingMap(stateId)
-            # Attach the grouping-schema map to the calibration record's state:
-            record.calibrationFittingIngredients.instrumentState.attachGroupingMap(groupingMap)
 
         return record
 
@@ -545,15 +555,15 @@ class LocalDataService:
         # check if directory exists for runId
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
-        # append to record and write to file # *** DEBUG *** .version==2, .<calibration>.version==1
+        # append to record and write to file
         write_model_pretty(record, recordPath)
 
         self.writeCalibrationState(
             runNumber, record.calibrationFittingIngredients, version
-        )  # *** DEBUG *** <calibration>.version==2
+        )
         for workspace in record.workspaceNames:
             self.groceryService.writeWorkspace(calibrationPath, workspace)
-        print(f"Wrote CalibrationRecord: version: {version}")
+        logger.info(f"Wrote CalibrationRecord: version: {version}")
         return record
 
     def writeCalibrationReductionResult(self, runId: str, workspaceName: WorkspaceName, dryrun: bool = False):
@@ -642,11 +652,6 @@ class LocalDataService:
         if latestFile:
             calibrationState = parse_file_as(Calibration, latestFile)
 
-            # Read the state's grouping-schema map from its separate JSON file.
-            groupingMap = self._readGroupingMap(stateId)
-            # Attach the grouping-schema map to the normalization state:
-            calibrationState.instrumentState.attachGroupingMap(groupingMap)
-
         return calibrationState
 
     def readNormalizationState(self, runId: str, version: str = None):
@@ -663,11 +668,6 @@ class LocalDataService:
         normalizationState = None
         if latestFile:
             normalizationState = parse_file_as(Normalization, latestFile)  # noqa: F821
-
-            # Read the state's grouping-schema map from its separate JSON file.
-            groupingMap = self._readGroupingMap(stateId)
-            # Attach the grouping-schema map to the normalization state:
-            normalizationState.instrumentState.attachGroupingMap(groupingMap)
 
         return normalizationState
 
@@ -756,11 +756,6 @@ class LocalDataService:
             peakTailCoefficient=peakTailCoefficient,
         )
 
-        # Read the grouping-schema map from its separate JSON file, and attach it to the state:
-        #   * the 'stateId' of the grouping map is adjusted to match that of the state.
-        groupingMap = self._readDefaultGroupingMap()
-        instrumentState.attachGroupingMap(groupingMap, coerceStateId=True)
-
         # finally add seedRun, creation date, and a human readable name
         calibration = Calibration(
             instrumentState=instrumentState,
@@ -769,11 +764,7 @@ class LocalDataService:
             creationDate=datetime.datetime.now(),
             version=0,
         )
-
         self.writeCalibrationState(runId, calibration)
-
-        # This is the _ONLY_ place that the grouping-schema map is written to its separate JSON file.
-        self._writeGroupingMap(stateId, instrumentState.groupingMap)
 
         return calibration
 
@@ -801,14 +792,12 @@ class LocalDataService:
         path = self._groupingMapPath(stateId)
         if not path.exists():
             raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
-        # IMPORTANT: <grouping map>.stateId is updated from its default value at <instrument state>: root_validator.  _Not_ here.
         return parse_file_as(GroupingMap, path)
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
         path = self._defaultGroupingMapPath()
         if not path.exists():
             raise FileNotFoundError(f'required default grouping-schema map "{path}" does not exist')
-        # IMPORTANT: <grouping map>.stateId is updated from its default value at <instrument state>: root_validator.  _Not_ here.
         return parse_file_as(GroupingMap, path)
 
     def _writeGroupingMap(self, stateId: str, groupingMap: GroupingMap):
