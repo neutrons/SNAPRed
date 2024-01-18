@@ -286,6 +286,7 @@ class TestNormalizationService(unittest.TestCase):
             "groupingWorkspace": "grouping_ws",
             "outputWorkspace": "output_ws",
         }
+        mockGroceryService.workspaceDoesExist.return_value = False
         mockVanadiumCorrection.return_value = "corrected_vanadium_ws"
         mockFocusSpectra.return_value = "focussed_vanadium_ws"
         mockSmoothDataExcludingPeaks.return_value = "smoothed_output_ws"
@@ -300,3 +301,23 @@ class TestNormalizationService(unittest.TestCase):
         mockVanadiumCorrection.assert_called_once()
         mockFocusSpectra.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
+
+    @patch("snapred.backend.service.NormalizationService.GroceryService")
+    def test_cachedNormalization(self, mockGroceryService):
+        mockRequest = NormalizationCalibrationRequest(
+            runNumber="12345",
+            backgroundRunNumber="67890",
+            samplePath="path/to/sample",
+            groupingPath="path/to/grouping",
+            useLiteMode=True,
+            smoothingParameter=0.5,
+            dMin=0.1,
+        )
+
+        self.instance = NormalizationService()
+        result = self.instance.normalization(mockRequest)
+        assert result == {
+            "correctedVanadium": "tof_grouping_12345_c-vanadium",
+            "outputWorkspace": "tof_grouping_12345_s+f-vanadium",
+            "smoothedOutput": "tof_grouping_12345_0.5-s_0.1-dmin",
+        }
