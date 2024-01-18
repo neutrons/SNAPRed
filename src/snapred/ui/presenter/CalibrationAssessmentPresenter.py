@@ -32,8 +32,6 @@ class CalibrationAssessmentLoader(QObject):
             return
 
         runId, version = self.view.getSelectedCalibrationRecordData()
-        print(f"*****handleLoadRequested: {runId} {version}")
-
         payload = CalibrationLoadAssessmentRequest(runId=runId, version=version, checkExistent=True)
         loadAssessmentRequest = SNAPRequest(path="/calibration/loadAssessment", payload=payload.json())
 
@@ -44,7 +42,6 @@ class CalibrationAssessmentLoader(QObject):
         self.worker_pool.submitWorker(self.worker)
 
     def handleLoadAssessmentResult(self, response: SNAPResponse):
-        print(f"*****handleLoadAssessmentResult response code: {response.code}; message:{response.message} ")
         if response.code == 500:
             self.view.onLoadError(response.message)
 

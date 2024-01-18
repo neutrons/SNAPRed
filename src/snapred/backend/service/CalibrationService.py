@@ -198,7 +198,6 @@ class CalibrationService(Service):
     def readQuality(self, request: CalibrationLoadAssessmentRequest):
         runId = request.runId
         version = request.version
-        print(f"*****readQuality: {runId} {version}")
 
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
         if calibrationRecord is None:
@@ -217,13 +216,11 @@ class CalibrationService(Service):
                     .metricName(metricName)
                     .build()
                 )
-                print(f"*****CHECKING IF {ws_name} exists")
                 if self.dataFactoryService.workspaceDoesExist(ws_name):
                     wkspaceExists = True
                     break
             if not wkspaceExists:
                 for ws_name in calibrationRecord.workspaceNames:
-                    print(f"*****CHECKING IF {ws_name} exists")
                     if self.dataFactoryService.workspaceDoesExist(ws_name):
                         wkspaceExists = True
                         break
