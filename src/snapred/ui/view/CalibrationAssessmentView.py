@@ -32,37 +32,36 @@ class CalibrationAssessmentView(QWidget):
         self.loadButton.setEnabled(True)
         self.loadButton.clicked.connect(self.calibrationAssessmentLoader.handleLoadRequested)
 
-        self.calibrationDropdown = QComboBox()
-        self.calibrationDropdown.setEnabled(True)
-        self.calibrationDropdown.addItem("Select Calibration Record")
-        self.calibrationDropdown.model().item(0).setEnabled(False)
+        self.calibrationRecordDropdown = QComboBox()
+        self.calibrationRecordDropdown.setEnabled(True)
+        self.calibrationRecordDropdown.addItem("Select Calibration Record")
+        self.calibrationRecordDropdown.model().item(0).setEnabled(False)
 
         self.signalLoadError.connect(self._displayLoadError)
 
         self.layout.addWidget(self.interactionText, 0, 0)
-        self.layout.addWidget(LabeledField("Calibration Record:", self.calibrationDropdown, self), 1, 0)
+        self.layout.addWidget(LabeledField("Calibration Record:", self.calibrationRecordDropdown, self), 1, 0)
         self.layout.addWidget(self.loadButton, 1, 1)
         self.layout.addWidget(self.placeHolder)
 
-    def updateCalibrationList(self, calibrationIndex: List[CalibrationIndexEntry]):
+    def updateCalibrationRecordList(self, calibrationIndex: List[CalibrationIndexEntry]):
         # reset the combo-box by removing all items except for the first, which is a label
-        for item in range(1, self.calibrationDropdown.count()):
-            self.calibrationDropdown.removeItem(item)
+        for item in range(1, self.calibrationRecordDropdown.count()):
+            self.calibrationRecordDropdown.removeItem(item)
         # populate the combo-box from the input calibration index entries
         for entry in calibrationIndex:
             name = f"Version: {entry.version}; Run: {entry.runNumber}"
-            self.calibrationDropdown.addItem(name, (entry.runNumber, entry.version))
-
-        self.calibrationDropdown.setCurrentIndex(0)
+            self.calibrationRecordDropdown.addItem(name, (entry.runNumber, entry.version))
+        self.calibrationRecordDropdown.setCurrentIndex(0)
 
     def getCalibrationRecordCount(self):
-        return self.calibrationDropdown.count() - 1  # the first item is a label
+        return self.calibrationRecordDropdown.count() - 1  # the first item is a label
 
     def getSelectedCalibrationRecordIndex(self):
-        return self.calibrationDropdown.currentIndex() - 1  # the first item (index 0) is a label
+        return self.calibrationRecordDropdown.currentIndex() - 1  # the first item (index 0) is a label
 
     def getSelectedCalibrationRecordData(self):
-        return self.calibrationDropdown.currentData()
+        return self.calibrationRecordDropdown.currentData()
 
     def onLoadError(self, msg: str):
         self.signalLoadError.emit(msg)

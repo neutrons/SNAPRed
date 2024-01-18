@@ -31,6 +31,7 @@ class DiffractionCalibrationCreationWorkflow:
         self.requests = []
         self.responses = []
         self.interfaceController = InterfaceController()
+
         request = SNAPRequest(path="api/parameters", payload="calibration/assessment")
         self.assessmentSchema = self.interfaceController.executeRequest(request).data
         # for each key, read string and convert to json
@@ -122,7 +123,7 @@ class DiffractionCalibrationCreationWorkflow:
         request = SNAPRequest(path="calibration/index", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
-        self._calibrationAssessmentView.updateCalibrationList(response.data)
+        self._calibrationAssessmentView.updateCalibrationRecordList(response.data)
 
         return response
 
