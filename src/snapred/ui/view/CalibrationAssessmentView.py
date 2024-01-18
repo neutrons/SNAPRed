@@ -11,7 +11,6 @@ from snapred.ui.widget.LabeledField import LabeledField
 
 class CalibrationAssessmentView(QWidget):
     signalLoadError = pyqtSignal(str)
-    # signalLoadSuccess = pyqtSignal()
 
     def __init__(self, name, jsonSchemaMap, parent=None):
         super().__init__(parent)
@@ -39,7 +38,6 @@ class CalibrationAssessmentView(QWidget):
         self.calibrationDropdown.model().item(0).setEnabled(False)
 
         self.signalLoadError.connect(self._displayLoadError)
-        # self.signalLoadSuccess.connect(self._updateOnLoadSuccess)
 
         self.layout.addWidget(self.interactionText, 0, 0)
         self.layout.addWidget(LabeledField("Calibration Record:", self.calibrationDropdown, self), 1, 0)
@@ -47,7 +45,7 @@ class CalibrationAssessmentView(QWidget):
         self.layout.addWidget(self.placeHolder)
 
     def updateCalibrationList(self, calibrationIndex: List[CalibrationIndexEntry]):
-        # reset the combo-box by removing all items except for the first
+        # reset the combo-box by removing all items except for the first, which is a label
         for item in range(1, self.calibrationDropdown.count()):
             self.calibrationDropdown.removeItem(item)
         # populate the combo-box from the input calibration index entries
@@ -76,10 +74,3 @@ class CalibrationAssessmentView(QWidget):
         msgBox.setText(msg)
         msgBox.setFixedSize(500, 200)
         msgBox.exec()
-
-    # def onLoadSuccess(self):
-    #     self.signalLoadSuccess.emit()
-
-    # def _updateOnLoadSuccess(self):
-    #     index = self.calibrationDropdown.currentIndex()
-    #     self.calibrationDropdown.model().item(index).setEnabled(False)
