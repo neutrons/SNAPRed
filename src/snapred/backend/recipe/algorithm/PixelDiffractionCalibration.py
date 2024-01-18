@@ -231,8 +231,8 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=wscc + f"_group{groupID}",
                 OutputWorkspace=wsoff,
                 # Scale the fitting ROI using the expected peak width (including a few possible peaks):
-                XMin=-min(5, (self.maxDSpaceShifts[groupID] / self.dBin) * 2.0),
-                XMax=min(5, (self.maxDSpaceShifts[groupID] / self.dBin) * 2.0),
+                XMin=-(self.maxDSpaceShifts[groupID] / self.dBin) * 2.0,
+                XMax=(self.maxDSpaceShifts[groupID] / self.dBin) * 2.0,
                 OffsetMode="Signed",
                 MaxOffset=self.maxOffset,
             )
