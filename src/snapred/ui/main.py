@@ -4,9 +4,9 @@ from mantidqt.widgets.algorithmprogress import AlgorithmProgressWidget
 from qtpy.QtCore import Qt, QTimer
 from qtpy.QtWidgets import (
     QApplication,
-    QHBoxLayout,
     QMainWindow,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QStatusBar,
     QVBoxLayout,
@@ -41,13 +41,9 @@ class SNAPRedGUI(QMainWindow):
         # myiv.show_view()
 
         # import pdb; pdb.set_trace()
-        workspaceWidgetWrapper = QWidget()
-        workspaceWidgetWrapperLayout = QHBoxLayout()
         workspaceWidget = WorkspaceWidget(self)
-        workspaceWidgetWrapper.setObjectName("workspaceTreeWidget")
-        workspaceWidgetWrapperLayout.addWidget(workspaceWidget, alignment=Qt.AlignCenter)
-        workspaceWidgetWrapper.setLayout(workspaceWidgetWrapperLayout)
-        splitter.addWidget(workspaceWidgetWrapper)
+        splitter.addWidget(workspaceWidget)
+
         splitter.addWidget(AlgorithmProgressWidget())
 
         centralWidget = QWidget()
