@@ -39,12 +39,6 @@ class DetectorPeakPredictor(PythonAlgorithm):
             direction=Direction.Output,
             doc="The returned list of GroupPeakList objects",
         )
-        # self.declareProperty(
-        #     "PeakIntensityFractionThreshold",
-        #     defaultValue=self.PEAK_INTENSITY_THRESHOLD,
-        #     direction=Direction.Input,
-        #     doc="The input value for setting the threshold for peak intensity",
-        # )
         self.setRethrows(True)
 
     def chopIngredients(self, ingredients: PeakIngredients) -> None:
