@@ -426,13 +426,6 @@ class CalibrationService(Service):
             timeOfFlight=data["tof"],
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
         )
-        data = self._calculatePixelGroupingParameters(instrumentState, focusGroup.definition, request.useLiteMode)
-        pixelGroup = PixelGroup(
-            focusGroup=focusGroup,
-            pixelGroupingParamters=data["parameters"],
-            timeOfFlight=data["tof"],
-            nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
-        )
 
         reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber, pixelGroup)
         backgroundReductionIngredients = self.dataFactoryService.getReductionIngredients(
