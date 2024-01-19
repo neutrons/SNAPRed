@@ -65,3 +65,8 @@ def test_builder():
     apple = Apple.builder().color("red").size(5).build()
     assert apple.color == "red"
     assert apple.size == 5
+
+
+def test_memberIncorrect():
+    with pytest.raises(RuntimeError):
+        Apple.builder().color("red").size(5).seeds(2).build()
