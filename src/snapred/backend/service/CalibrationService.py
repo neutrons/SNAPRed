@@ -77,7 +77,7 @@ class CalibrationService(Service):
         self.registerPath("hasState", self.hasState)
         self.registerPath("checkDataExists", self.fakeMethod)
         self.registerPath("assessment", self.assessQuality)
-        self.registerPath("quality", self.readQuality)
+        self.registerPath("loadQualityAssessment", self.loadQualityAssessment)
         self.registerPath("retrievePixelGroupingParams", self.fakeMethod)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
