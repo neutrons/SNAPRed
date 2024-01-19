@@ -118,8 +118,10 @@ class TestNormalizationService(unittest.TestCase):
             Ingredients=mockedReductionIngredients,
             OutputWorkspace=mockRequest.outputWorkspace,
         )
-        mockCalibrationService.getCalibration.assert_called_once_with(
-            mockRequest.runNumber, mockRequest.groupingPath, mockRequest.useLiteMode
+        mockCalibrationService.getPixelGroup.assert_called_once_with(
+            mockRequest.runNumber, 
+            mockRequest.groupingPath, 
+            mockRequest.useLiteMode,  
         )
         mockDataFactoryService.getReductionIngredients.assert_called_once_with(
             mockRequest.runNumber, mockedCalibration.instrumentState.pixelGroup

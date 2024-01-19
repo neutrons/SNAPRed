@@ -99,7 +99,6 @@ with mock.patch.dict(
             dRelativeResolution=[0],
             timeOfFlight={"minimum": 1, "maximum": 3, "binWidth": 1, "binningMode": 1},
         )
-        mockInstrumentState.pixelGroup = pixelGroup
         dataExportService.getCalibrationState = mockCalibration
 
         dataExportService.getCalibrationState.return_value = mockCalibration

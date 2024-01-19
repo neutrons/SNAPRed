@@ -29,14 +29,18 @@ class DataFactoryService:
             val = clazz()
         return val
 
+    # TODO this method of getting the pixel group feels hacky
+    # it was just as hacky before, and still hacky now
+    # rather than relying on some other object to maybe have a pixel group,
+    # the pixel group should actually be calculated here
     def getReductionIngredients(self, runId: str, pixelGroup: PixelGroup = None) -> ReductionIngredients:
         if pixelGroup is None:
-            calibration = self.getCalibrationState(runId)  # noqa: F811
-            if calibration is None or calibration.instrumentState.pixelGroup is None:
+            calibrationRecord = self.getCalibrationRecord(runId)  # noqa: F811
+            if calibrationRecord is None or calibrationRecord.pixelGroup is None:
                 stateId = self.constructStateId(runId)
                 raise RuntimeError(f"Pixel group not found for runId {runId} and stateId {stateId}")
 
-            pixelGroup = calibration.instrumentState.pixelGroup
+            pixelGroup = calibrationRecord.pixelGroup
 
         return ReductionIngredients(
             reductionState=self.getReductionState(runId),

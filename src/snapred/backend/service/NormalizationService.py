@@ -175,10 +175,12 @@ class NormalizationService(Service):
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
         calibrantSample = self.dataFactoryService.getCalibrantSample(request.samplePath)
 
-        calibration = self.diffractionCalibrationService.getCalibration(
-            request.runNumber, request.groupingPath, request.useLiteMode
+        pixelGroup = self.diffractionCalibrationService.getPixelGroup(
+            request.runNumber,
+            request.definition,
+            request.useLiteMode,
+            request.nBinsAcrossPeakWidth,
         )
-        pixelGroup = calibration.instrumentState.pixelGroup
         reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber, pixelGroup)
 
         return RawVanadiumCorrectionRecipe().executeRecipe(
@@ -191,10 +193,12 @@ class NormalizationService(Service):
 
     @FromString
     def focusSpectra(self, request: FocusSpectraRequest):
-        calibration = self.diffractionCalibrationService.getCalibration(
-            request.runNumber, request.groupingPath, request.useLiteMode
+        pixelGroup = self.diffractionCalibrationService.getPixelGroup(
+            request.runNumber,
+            request.definition,
+            request.useLiteMode,
+            request.nBinsAcrossPeakWidth,
         )
-        pixelGroup = calibration.instrumentState.pixelGroup
         reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber, pixelGroup)
         return FocusSpectraRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
