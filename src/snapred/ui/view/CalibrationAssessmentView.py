@@ -48,10 +48,11 @@ class CalibrationAssessmentView(QWidget):
         # reset the combo-box by removing all items except for the first, which is a label
         for item in range(1, self.calibrationRecordDropdown.count()):
             self.calibrationRecordDropdown.removeItem(item)
-        # populate the combo-box from the input calibration index entries
-        for entry in calibrationIndex:
-            name = f"Version: {entry.version}; Run: {entry.runNumber}"
-            self.calibrationRecordDropdown.addItem(name, (entry.runNumber, entry.version))
+        if calibrationIndex:
+            # populate the combo-box from the input calibration index entries
+            for entry in calibrationIndex:
+                name = f"Version: {entry.version}; Run: {entry.runNumber}"
+                self.calibrationRecordDropdown.addItem(name, (entry.runNumber, entry.version))
         self.calibrationRecordDropdown.setCurrentIndex(0)
 
     def getCalibrationRecordCount(self):

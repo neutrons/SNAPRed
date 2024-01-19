@@ -4,7 +4,7 @@ from datetime import date
 from functools import lru_cache
 from typing import List, Tuple
 
-from pydantic import parse_raw_as
+from pydantic import parse_file_as, parse_raw_as
 
 from snapred.backend.dao import GroupPeakList, RunConfig
 from snapred.backend.dao.calibration import (
@@ -78,6 +78,7 @@ class CalibrationService(Service):
         self.registerPath("checkDataExists", self.fakeMethod)
         self.registerPath("assessment", self.assessQuality)
         self.registerPath("loadQualityAssessment", self.loadQualityAssessment)
+        self.registerPath("index", self.getCalibrationIndex)
         self.registerPath("retrievePixelGroupingParams", self.fakeMethod)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
