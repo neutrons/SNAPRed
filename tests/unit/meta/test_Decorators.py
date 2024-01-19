@@ -28,16 +28,6 @@ class Apple(BaseModel):
     size: int
 
 
-@Builder
-class Banana:
-    color: str
-    size: int
-
-    def __init__(self, color: str, size: int):
-        self.color = color
-        self.size = size
-
-
 def test_FromStringOnBaseModel():
     tester = Tester()
     tester.assertIsModel(SNAPRequest(path="test"))
