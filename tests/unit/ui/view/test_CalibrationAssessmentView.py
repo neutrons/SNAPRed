@@ -23,3 +23,11 @@ def test_calibrationrecord_dropdown(qtbot):
     qtbot.keyClicks(view.calibrationRecordDropdown, "Version: 1; Run: 1234")
     assert view.getSelectedCalibrationRecordIndex() == 0
     assert view.getSelectedCalibrationRecordData() == (runNumber, version)
+
+
+def test_on_load_error(qtbot):
+    view = CalibrationAssessmentView(name="Test", jsonSchemaMap=MagicMock())
+    qtbot.addWidget(view.loadButton)
+    view.onLoadError = MagicMock()
+    view.loadButton.click()
+    view.onLoadError.assert_called_once()
