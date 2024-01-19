@@ -1,10 +1,6 @@
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import ClassVar
-
-from pydantic import Field
-
 
 # https://docs.python.org/3/library/dataclasses.html
 @dataclass

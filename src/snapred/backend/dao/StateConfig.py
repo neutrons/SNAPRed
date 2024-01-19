@@ -31,7 +31,7 @@ class StateConfig(BaseModel):
             raise validation_error
 
     def attachGroupingMap(self, groupingMap: GroupingMap, coerceStateId=False):
-        # Attach a grouping map to the InstrumentState:
+        # Attach a grouping map to the StateConfig:
         #   * optionally, adjust the GroupingMap.stateId to match that of the state.
         #
         # At present: `StateConfig` is never read or written:

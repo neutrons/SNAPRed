@@ -135,7 +135,6 @@ class LocalDataService:
 
         return StateConfig(
             calibration=diffCalibration,
-            focusGroups=self._readFocusGroups(runId),
             rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
             vanadiumFilePath=str(
                 self.instrumentConfig.calibrationDirectory
