@@ -201,11 +201,8 @@ class NormalizationCalibrationWorkflow:
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=workspaces["outputWorkspace"],
             outputWorkspace=workspaces["smoothedOutput"],
-            samplePath=self.samplePaths[self.sampleIndex],
-            groupingPath=self.groupingFiles[index],
-            runNumber=self.runNumber,
             smoothingParameter=smoothingValue,
-            dMin=dMin,
+            detectorPeaks=
         )
         request = SNAPRequest(path="normalization/smooth", payload=payload.json())
         response = self.interfaceController.executeRequest(request)

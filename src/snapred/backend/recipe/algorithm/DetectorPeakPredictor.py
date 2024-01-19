@@ -8,7 +8,6 @@ from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import PeakIngredients
 from snapred.backend.dao.Limit import LimitedValue
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.meta.Config import Config
 from snapred.meta.redantic import list_to_raw
 

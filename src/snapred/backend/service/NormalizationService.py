@@ -4,6 +4,7 @@ from typing import Any, Dict
 
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
+    NormalizationIngredients,
     PeakIngredients,
 )
 from snapred.backend.dao.normalization import (
@@ -24,6 +25,7 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.GenericRecipe import (
+    DetectorPeakPredictorRecipe,
     FocusSpectraRecipe,
     RawVanadiumCorrectionRecipe,
     SmoothDataExcludingPeaksRecipe,
@@ -31,9 +33,11 @@ from snapred.backend.recipe.GenericRecipe import (
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.Service import Service
+from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -47,6 +51,7 @@ class NormalizationService(Service):
         self.groceryService = GroceryService()
         self.crystallographicInfoService = CrystallographicInfoService()
         self.groceryClerk = GroceryListItem.builder()
+        self.sousChef = SousChef()
         self.diffractionCalibrationService = CalibrationService()
         self.registerPath("", self.normalization)
         self.registerPath("assessment", self.normalizationAssessment)
@@ -98,15 +103,15 @@ class NormalizationService(Service):
             smoothedOutput=smoothedOutput,
         )
 
+        # 0. get normalization ingredients
+        ingredients = self.sousChef.getNormalizationIngredients()
+
         # 1. correction
         vanadiumCorrectionRequest = VanadiumCorrectionRequest(
-            samplePath=request.samplePath,
-            runNumber=request.runNumber,
-            groupingPath=request.groupingPath,
-            useLiteMode=request.useLiteMode,
             backgroundWorkspace=groceries["backgroundWorkspace"],
             inputWorkspace=groceries["inputWorkspace"],
             outputWorkspace=groceries["outputWorkspace"],
+            ingredients=ingredients,
         )
         outputWorkspace = self.vanadiumCorrection(vanadiumCorrectionRequest)
         # clone output correctedVanadium
@@ -115,11 +120,9 @@ class NormalizationService(Service):
         # 2. focus
         requestFs = FocusSpectraRequest(
             inputWorkspace=correctedVanadiumWs,
-            groupingWorkspace=groceries["groupingWorkspace"],
-            runNumber=request.runNumber,
-            groupingPath=request.groupingPath,
-            useLiteMode=request.useLiteMode,
             outputWorkspace=outputWorkspace,
+            groupingWorkspace=groceries["groupingWorkspace"],
+            pixelGroup=ingredients.pixelGroup,
         )
         outputWorkspace = self.focusSpectra(requestFs)
         # clone output focussedVanadium
@@ -130,12 +133,8 @@ class NormalizationService(Service):
         smoothRequest = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focussedVanadiumWs,
             outputWorkspace=smoothedOutput,
-            samplePath=request.samplePath,
-            groupingPath=request.groupingPath,
-            useLiteMode=request.useLiteMode,
-            runNumber=request.runNumber,
             smoothingParameter=request.smoothingParameter,
-            dMin=request.dMin,
+            detectorPeaks=ingredients.detectorPeaks,
         )
         outputWorkspace = self.smoothDataExcludingPeaks(smoothRequest)
 
@@ -173,42 +172,23 @@ class NormalizationService(Service):
 
     @FromString
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
-        calibrantSample = self.dataFactoryService.getCalibrantSample(request.samplePath)
-
-        pixelGroup = self.diffractionCalibrationService.getPixelGroup(
-            request.runNumber,
-            request.definition,
-            request.useLiteMode,
-            request.nBinsAcrossPeakWidth,
-        )
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber, pixelGroup)
-
         return RawVanadiumCorrectionRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             BackgroundWorkspace=request.backgroundWorkspace,
-            Ingredients=reductionIngredients,
-            CalibrantSample=calibrantSample,
+            Ingredients=request.ingredients,
             OutputWorkspace=request.outputWorkspace,
         )
 
     @FromString
     def focusSpectra(self, request: FocusSpectraRequest):
-        pixelGroup = self.diffractionCalibrationService.getPixelGroup(
-            request.runNumber,
-            request.definition,
-            request.useLiteMode,
-            request.nBinsAcrossPeakWidth,
-        )
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber, pixelGroup)
         return FocusSpectraRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             GroupingWorkspace=request.groupingWorkspace,
-            Ingredients=reductionIngredients,
+            Ingredients=request.pixelGroup,
             OutputWorkspace=request.outputWorkspace,
         )
 
-    @FromString
-    def smoothDataExcludingPeaks(self, request: SmoothDataExcludingPeaksRequest):
+    def _getDetectorPeaks(self, x):
         sampleFilePath = self.dataFactoryService.getCifFilePath((request.samplePath).split("/")[-1].split(".")[0])
         crystalInfo = self.crystallographicInfoService.ingest(sampleFilePath, request.dMin)["crystalInfo"]
 
@@ -223,8 +203,13 @@ class NormalizationService(Service):
             pixelGroup=pixelGroup,
             crystalInfo=crystalInfo,
         )
+        return DetectorPeakPredictorRecipe().executeRecipe(Ingredients=ingredients)
+
+    @FromString
+    def smoothDataExcludingPeaks(self, request: SmoothDataExcludingPeaksRequest):
         return SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             OutputWorkspace=request.outputWorkspace,
-            DetectorPeakIngredients=ingredients.json(),
+            DetectorPeaks=request.detectorPeaks,
+            SmoothingParameter=request.smoothingParameter,
         )

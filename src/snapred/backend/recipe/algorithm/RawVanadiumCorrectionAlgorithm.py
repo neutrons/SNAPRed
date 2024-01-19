@@ -9,7 +9,7 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
-from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
+from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -34,15 +34,14 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             doc="Workspace containing corrected data; if none given, the InputWorkspace will be overwritten",
         )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("CalibrantSample", defaultValue="", direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
-    def chopIngredients(self, ingredients: Ingredients, sample: CalibrantSamples) -> None:
+    def chopIngredients(self, ingredients: Ingredients) -> None:
         self.TOFPars = ingredients.pixelGroup.timeOfFlight.params
 
-        self.geometry = sample.geometry
-        self.material = sample.material
+        self.geometry = ingredients.sample.geometry
+        self.material = ingredients.sample.material
         self.sampleShape = self.geometry.shape
 
     def unbagGroceries(self) -> None:
@@ -122,8 +121,7 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
     def PyExec(self):
         # Load and pre-process vanadium and empty datasets
         ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
-        sample = CalibrantSamples.parse_raw(self.getProperty("CalibrantSample").value)
-        self.chopIngredients(ingredients, sample)
+        self.chopIngredients(ingredients)
         self.unbagGroceries()
 
         # Process the raw vanadium and background data
