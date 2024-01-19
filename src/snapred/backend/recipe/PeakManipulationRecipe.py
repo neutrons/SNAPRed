@@ -3,14 +3,14 @@ from typing import Generic, TypeVar, get_args
 
 from mantid.simpleapi import ConvertTableToMatrixWorkspace
 
-from snapred.backend.log.logger import snapredLogger
 from snapred.backend.dao.ingredients import PeakIngredients
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
-from snapred.backend.recipe.GenericRecipe import GenericRecipe, DetectorPeakPredictor
+from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictor, GenericRecipe
 from snapred.meta.decorators.FromString import isBaseModel, isListOfBaseModel
 
 logger = snapredLogger.getLogger(__name__)
@@ -71,4 +71,3 @@ class SmoothDataExcludingPeaksRecipe(PeakManipulationRecipe[SmoothDataExcludingP
 
 class DetectorPeakPredictorRecipe(PeakManipulationRecipe[DetectorPeakPredictor]):
     pass
-
