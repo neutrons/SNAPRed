@@ -4,7 +4,7 @@ from datetime import date
 from functools import lru_cache
 from typing import List, Tuple
 
-from pydantic import parse_raw_as
+from pydantic import parse_file_as, parse_raw_as
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.calibration import (
