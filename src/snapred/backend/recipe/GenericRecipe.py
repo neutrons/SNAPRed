@@ -5,7 +5,6 @@ from mantid.simpleapi import ConvertTableToMatrixWorkspace
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
-from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import CalibrationReductionAlgorithm
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
 from snapred.backend.recipe.algorithm.FocusSpectraAlgorithm import FocusSpectraAlgorithm
@@ -16,7 +15,6 @@ from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import Purg
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
 from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
-from snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm import VanadiumFocussedReductionAlgorithm
 from snapred.meta.decorators.FromString import isBaseModel, isListOfBaseModel
 
 logger = snapredLogger.getLogger(__name__)
@@ -67,10 +65,6 @@ class CalibrationMetricExtractionRecipe(GenericRecipe[CalibrationMetricExtractio
     pass
 
 
-class CalibrationReductionRecipe(GenericRecipe[CalibrationReductionAlgorithm]):
-    pass
-
-
 class FitMultiplePeaksRecipe(GenericRecipe[FitMultiplePeaksAlgorithm]):
     pass
 
@@ -88,10 +82,6 @@ class SmoothDataExcludingPeaksRecipe(GenericRecipe[SmoothDataExcludingPeaksAlgo]
 
 
 class LiteDataRecipe(GenericRecipe[LiteDataCreationAlgo]):
-    pass
-
-
-class VanadiumFocussedReductionRecipe(GenericRecipe[VanadiumFocussedReductionAlgorithm]):
     pass
 
 

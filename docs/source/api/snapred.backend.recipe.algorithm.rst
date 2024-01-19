@@ -28,14 +28,6 @@ snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm module
----------------------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.recipe.algorithm.CustomGroupWorkspace module
 ------------------------------------------------------------
 
@@ -160,14 +152,6 @@ snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo module
 --------------------------------------------------------------------
 
 .. automodule:: snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm module
---------------------------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.algorithm.VanadiumFocussedReductionAlgorithm
    :members:
    :undoc-members:
    :show-inheritance:

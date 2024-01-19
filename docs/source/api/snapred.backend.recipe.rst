@@ -36,14 +36,6 @@ snapred.backend.recipe.FetchGroceriesRecipe module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.FitCalibrationWorkspaceRecipe module
------------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.FitCalibrationWorkspaceRecipe
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.recipe.GenericRecipe module
 -------------------------------------------
 
@@ -64,14 +56,6 @@ snapred.backend.recipe.PixelGroupingParametersCalculationRecipe module
 ----------------------------------------------------------------------
 
 .. automodule:: snapred.backend.recipe.PixelGroupingParametersCalculationRecipe
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-snapred.backend.recipe.SmoothDataExcludingPeaksRecipe module
-------------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.SmoothDataExcludingPeaksRecipe
    :members:
    :undoc-members:
    :show-inheritance:

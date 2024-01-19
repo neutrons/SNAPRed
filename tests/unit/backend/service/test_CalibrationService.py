@@ -151,7 +151,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert result == []
 
     @patch(thisService + "GroupWorkspaceIterator", return_value=["ws1", "ws2"])
-    @patch(thisService + "FitCalibrationWorkspaceIngredients", side_effect=["fit_result_1", "fit_result_2"])
     @patch(
         thisService + "FitMultiplePeaksRecipe",
         return_value=MagicMock(executeRecipe=MagicMock(side_effect=["fit_result_1", "fit_result_2"])),
@@ -166,7 +165,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_fitAndCollectMetrics(
         self,
         groupWorkspaceIterator,
-        fitCalibrationWorkspaceIngredients,
         fitCalibrationWorkspaceRecipe,
         calibrationMetricExtractionRecipe,
         list_to_raw_mock,
