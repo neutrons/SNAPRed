@@ -40,6 +40,7 @@ class DataFactoryService:
                 stateId = self.constructStateId(runId)
                 raise RuntimeError(f"Pixel group not found for runId {runId} and stateId {stateId}")
 
+            # TODOD bad!
             pixelGroup = calibrationRecord.pixelGroup
 
         return ReductionIngredients(

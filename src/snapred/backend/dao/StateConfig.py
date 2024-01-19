@@ -12,7 +12,6 @@ class StateConfig(BaseModel):
     calibration: Calibration
     diffractionCalibrant: Optional[DiffractionCalibrant]
     normalizationCalibrant: Optional[NormalizationCalibrant]
-    rawVanadiumCorrectionFileName: str  # Needs to be removed when Normalization changes go in
     vanadiumFilePath: str  # Needs to be removed when Normalization changes go in
     focusGroups: List[FocusGroup]  # PixelGroupingParameters
     stateId: str  # generated.

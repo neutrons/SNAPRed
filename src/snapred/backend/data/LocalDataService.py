@@ -107,7 +107,6 @@ class LocalDataService:
             raise _createFileNotFoundError("Instrument configuration file", self.instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str) -> StateConfig:
-        reductionParameters = self._readReductionParameters(runId)
         previousDiffCalRecord: CalibrationRecord = self.readCalibrationRecord(runId)
         if previousDiffCalRecord is None:
             diffCalibration: Calibration = self.readCalibrationState(runId)
@@ -118,13 +117,7 @@ class LocalDataService:
         return StateConfig(
             calibration=diffCalibration,
             focusGroups=self._readFocusGroups(runId),
-            rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=str(
-                self.instrumentConfig.calibrationDirectory
-                / "Powder"
-                / stateId
-                / reductionParameters["rawVCorrFileName"]
-            ),
+            vanadiumFilePath="",  # TODO to be removed
             stateId=stateId,
         )  # TODO: fill with real value
 

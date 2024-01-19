@@ -118,7 +118,6 @@
             "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.nxs"
           }
         ],
-        "rawVanadiumCorrectionFileName": "RVMB57473.lite.nxs",
         "vanadiumFilePath": "/SNS/SNAP/shared/Calibration/Powder/04bd2c53f6bf6754/RVMB57473.lite.nxs",
         "stateId": "04bd2c53f6bf6754",
         "tofBin": 0.0002,
