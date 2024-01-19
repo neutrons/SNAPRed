@@ -28,14 +28,6 @@ snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm module
----------------------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.recipe.algorithm.CustomGroupWorkspace module
 ------------------------------------------------------------
 

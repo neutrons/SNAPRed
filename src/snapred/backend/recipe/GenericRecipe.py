@@ -5,7 +5,6 @@ from mantid.simpleapi import ConvertTableToMatrixWorkspace
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
-from snapred.backend.recipe.algorithm.CalibrationReductionAlgorithm import CalibrationReductionAlgorithm
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
 from snapred.backend.recipe.algorithm.FocusSpectraAlgorithm import FocusSpectraAlgorithm
@@ -63,10 +62,6 @@ class GenericRecipe(Generic[T]):
 
 
 class CalibrationMetricExtractionRecipe(GenericRecipe[CalibrationMetricExtractionAlgorithm]):
-    pass
-
-
-class CalibrationReductionRecipe(GenericRecipe[CalibrationReductionAlgorithm]):
     pass
 
 

@@ -83,8 +83,9 @@ class CalibrationService(Service):
         return "calibration"
 
     @FromString
-    def reduction(self, runs: List[RunConfig]):  #  noqa: ARG002
-        # TODO this is apparently dead code -- remove
+    def reduction(self, runs: List[RunConfig]):  # noqa: ARG002
+        # TODO this is apparently dead code -- REMOVE
+        # this stub is here just in case
         return {}
 
     @lru_cache
