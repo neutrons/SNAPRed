@@ -53,10 +53,15 @@ class SousChef(Service):
     def name():
         return "souschef"
 
-    def getInstrumentState(self, runNumber) -> InstrumentState:
+    def getCalibration(self, runNumber) -> Calibration:
+        from snapred.backend.data.DataFactoryService import DataFactoryService
+
         if runNumber not in self.__calibrationCache:
-            self.__calibrationCache[runNumber] = self.dataFactoryService.getCalibrationState(runNumber)
-        return self.__calibrationCache[runNumber].instrumentState
+            self.__calibrationCache[runNumber] = DataFactoryService().getCalibrationState(runNumber)
+        return self.__calibrationCache[runNumber]
+
+    def getInstrumentState(self, runNumber) -> InstrumentState:
+        return self.getCalibration(runNumber).instrumentState
 
     def groupingSchemaFromPath(self, path: str) -> str:
         return path.split("/")[-1].split("_")[-1].split(".")[0]
