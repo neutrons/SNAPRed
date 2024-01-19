@@ -11,5 +11,7 @@ def test_CrystallographicInfoService(mockRecipe):
     assert service.name() == "ingestion"
 
     result = service.ingest("cifPath", 1.0)
-    mockRecipe.executeRecipe.assert_called_once_with("cifPath", dMin=1.0, dMax=Config["constants.CrystallographicInfo.dMax"])
+    mockRecipe.executeRecipe.assert_called_once_with(
+        "cifPath", dMin=1.0, dMax=Config["constants.CrystallographicInfo.dMax"]
+    )
     assert result == mockRecipe.executeRecipe.return_value
