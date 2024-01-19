@@ -16,7 +16,6 @@ from snapred.backend.dao.calibration import (
 from snapred.backend.dao.ingredients import (
     CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
-    FitCalibrationWorkspaceIngredients,
     FitMultiplePeaksIngredients,
     GroceryListItem,
     PixelGroupingIngredients,
@@ -36,7 +35,6 @@ from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalib
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
-    CalibrationReductionRecipe,
     DetectorPeakPredictorRecipe,
     FitMultiplePeaksRecipe,
     GenerateTableWorkspaceFromListOfDictRecipe,
@@ -85,14 +83,9 @@ class CalibrationService(Service):
         return "calibration"
 
     @FromString
-    def reduction(self, runs: List[RunConfig]):
-        # TODO: collect runs by state then by calibration of state, execute sets of runs by calibration of their state
-        for run in runs:
-            reductionIngredients = self.dataFactoryService.getReductionIngredients(run.runNumber)
-            try:
-                CalibrationReductionRecipe().executeRecipe(ReductionIngredients=reductionIngredients)
-            except:
-                raise
+    def reduction(self, runs: List[RunConfig]):  # noqa: ARG002
+        # TODO this is apparently dead code -- REMOVE
+        # this stub is here just in case
         return {}
 
     @lru_cache

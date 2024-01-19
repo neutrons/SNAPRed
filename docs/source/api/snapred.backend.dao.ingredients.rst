@@ -12,14 +12,6 @@ snapred.backend.dao.ingredients.DiffractionCalibrationIngredients module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.dao.ingredients.FitCalibrationWorkspaceIngredients module
--------------------------------------------------------------------------
-
-.. automodule:: snapred.backend.dao.ingredients.FitCalibrationWorkspaceIngredients
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.dao.ingredients.FitMultiplePeaksIngredients module
 ------------------------------------------------------------------
 

@@ -13,9 +13,6 @@ def test_excuteRequest_noop():
         "ingestion",
         "calibrant_sample",
         "api",
-        "fitMultiplePeaks",
-        "vanadiumReduction",
-        "smoothDataExcludingPeaks",
         "normalization",
         "reduceLiteData",
     ]
