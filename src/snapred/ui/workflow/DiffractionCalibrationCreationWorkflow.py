@@ -122,7 +122,6 @@ class DiffractionCalibrationCreationWorkflow:
         )
         request = SNAPRequest(path="calibration/index", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
-        self.responses.append(response)
         self._calibrationAssessmentView.updateCalibrationRecordList(response.data)
 
         return response
