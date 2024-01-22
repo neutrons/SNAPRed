@@ -4,19 +4,20 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushButton, QWidget
 
 from snapred.backend.dao.calibration import CalibrationIndexEntry
-from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentLoader
+from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentPresenter
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
 class CalibrationAssessmentView(QWidget):
-    signalLoadError = pyqtSignal(str)
+    signalRunNumberUpdate = pyqtSignal(str)
+    signalError = pyqtSignal(str)
 
     def __init__(self, name, jsonSchemaMap, parent=None):
         super().__init__(parent)
         self._jsonFormList = JsonFormList(name, jsonSchemaMap, parent=parent)
 
-        self.calibrationAssessmentLoader = CalibrationAssessmentLoader(self)
+        self.presenter = CalibrationAssessmentPresenter(self)
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
@@ -30,19 +31,21 @@ class CalibrationAssessmentView(QWidget):
 
         self.loadButton = QPushButton("Load")
         self.loadButton.setEnabled(True)
-        self.loadButton.clicked.connect(self.calibrationAssessmentLoader.handleLoadRequested)
+        self.loadButton.clicked.connect(self.presenter.loadSelectedCalibrationAssessment)
 
         self.calibrationRecordDropdown = QComboBox()
         self.calibrationRecordDropdown.setEnabled(True)
         self.calibrationRecordDropdown.addItem("Select Calibration Record")
         self.calibrationRecordDropdown.model().item(0).setEnabled(False)
 
-        self.signalLoadError.connect(self._displayLoadError)
+        self.signalError.connect(self._displayError)
 
         self.layout.addWidget(self.interactionText, 0, 0)
         self.layout.addWidget(LabeledField("Calibration Record:", self.calibrationRecordDropdown, self), 1, 0)
         self.layout.addWidget(self.loadButton, 1, 1)
         self.layout.addWidget(self.placeHolder)
+
+        self.signalRunNumberUpdate.connect(self.presenter.loadCalibrationIndex)
 
     def updateCalibrationRecordList(self, calibrationIndex: List[CalibrationIndexEntry]):
         # reset the combo-box by removing all items except for the first, which is a label
@@ -64,13 +67,16 @@ class CalibrationAssessmentView(QWidget):
     def getSelectedCalibrationRecordData(self):
         return self.calibrationRecordDropdown.currentData()
 
-    def onLoadError(self, msg: str):
-        self.signalLoadError.emit(msg)
+    def onError(self, msg: str):
+        self.signalError.emit(msg)
 
-    def _displayLoadError(self, msg: str):
+    def _displayError(self, msg: str):
         msgBox = QMessageBox()
         msgBox.setWindowTitle("Error")
         msgBox.setIcon(QMessageBox.Critical)
         msgBox.setText(msg)
         msgBox.setFixedSize(500, 200)
         msgBox.exec()
+
+    def updateRunNumber(self, runNumber):
+        self.signalRunNumberUpdate.emit(runNumber)

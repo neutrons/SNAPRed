@@ -8,7 +8,6 @@ from snapred.backend.dao.calibration import CalibrationIndexEntry, CalibrationRe
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
-    CalibrationIndexRequest,
     DiffractionCalibrationRequest,
 )
 from snapred.backend.dao.SNAPResponse import SNAPResponse
@@ -84,8 +83,8 @@ class DiffractionCalibrationCreationWorkflow:
             return SNAPResponse(code=500, message=f"Missing Fields!{e}")
 
         self.runNumber = view.getFieldText("runNumber")
-
         self._saveCalibrationView.updateRunNumber(self.runNumber)
+
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.useLiteMode = view.litemodeToggle.field.getState()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
@@ -117,12 +116,7 @@ class DiffractionCalibrationCreationWorkflow:
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
-        payload = CalibrationIndexRequest(
-            run=RunConfig(runNumber=self.runNumber),
-        )
-        request = SNAPRequest(path="calibration/index", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
-        self._calibrationAssessmentView.updateCalibrationRecordList(response.data)
+        self._calibrationAssessmentView.updateRunNumber(self.runNumber)
 
         return response
 

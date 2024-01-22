@@ -6,7 +6,7 @@ from snapred.backend.dao.calibration import CalibrationIndexEntry
 from snapred.ui.view.CalibrationAssessmentView import CalibrationAssessmentView
 
 
-def test_calibrationrecord_dropdown(qtbot):
+def test_calibration_record_dropdown(qtbot):
     view = CalibrationAssessmentView(name="Test", jsonSchemaMap=MagicMock())
     assert view.getCalibrationRecordCount() == 0
 
@@ -25,9 +25,9 @@ def test_calibrationrecord_dropdown(qtbot):
     assert view.getSelectedCalibrationRecordData() == (runNumber, version)
 
 
-def test_on_load_error(qtbot):
+def test_error_on_load_calibration_record(qtbot):
     view = CalibrationAssessmentView(name="Test", jsonSchemaMap=MagicMock())
     qtbot.addWidget(view.loadButton)
-    view.onLoadError = MagicMock()
+    view.onError = MagicMock()
     view.loadButton.click()
-    view.onLoadError.assert_called_once()
+    view.onError.assert_called_once()

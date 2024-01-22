@@ -5,25 +5,25 @@ from PyQt5.QtWidgets import QMessageBox
 from snapred.backend.dao.request.CalibrationLoadAssessmentRequest import CalibrationLoadAssessmentRequest
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import SNAPResponse
-from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentLoader
+from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentPresenter
 
 
 @pytest.fixture()
-def calibrationAssessmentLoader():
+def calibrationAssessmentPresenter():
     view = MagicMock()
-    return CalibrationAssessmentLoader(view=view)
+    return CalibrationAssessmentPresenter(view=view)
 
 
-def test_handleLoad(calibrationAssessmentLoader):
-    view = calibrationAssessmentLoader.view
+def test_load_record(calibrationAssessmentPresenter):
+    view = calibrationAssessmentPresenter.view
     view.getCalibrationRecordCount = MagicMock(return_value=1)
     view.getSelectedCalibrationRecordIndex = MagicMock(return_value=0)
     view.getSelectedCalibrationRecordData = MagicMock(return_value=("12345", "1"))
 
-    with patch.object(calibrationAssessmentLoader, "worker_pool") as worker_pool, patch.object(
-        calibrationAssessmentLoader, "interfaceController"
+    with patch.object(calibrationAssessmentPresenter, "worker_pool") as worker_pool, patch.object(
+        calibrationAssessmentPresenter, "interfaceController"
     ) as interfaceController:
-        calibrationAssessmentLoader.handleLoadRequested()
+        calibrationAssessmentPresenter.handleLoadRequested()
 
         view.getCalibrationRecordCount.assert_called_once()
         view.getSelectedCalibrationRecordIndex.assert_called_once()
@@ -39,23 +39,23 @@ def test_handleLoad(calibrationAssessmentLoader):
         worker_pool.submitWorker.assert_called_once()
 
 
-def test_handleLoad_no_records_available(calibrationAssessmentLoader):
-    view = calibrationAssessmentLoader.view
+def test_load_record_with_no_records_available(calibrationAssessmentPresenter):
+    view = calibrationAssessmentPresenter.view
     view.getCalibrationRecordCount = MagicMock(return_value=0)
 
-    calibrationAssessmentLoader.handleLoadRequested()
+    calibrationAssessmentPresenter.handleLoadRequested()
 
     view.getCalibrationRecordCount.assert_called_once()
-    view.onLoadError.assert_called_once_with("No calibration records available.")
+    view.onError.assert_called_once_with("No calibration records available.")
 
 
-def test_handleLoad_no_record_selected(calibrationAssessmentLoader):
-    view = calibrationAssessmentLoader.view
+def test_load_record_with_no_record_selected(calibrationAssessmentPresenter):
+    view = calibrationAssessmentPresenter.view
     view.getCalibrationRecordCount = MagicMock(return_value=1)
     view.getSelectedCalibrationRecordIndex = MagicMock(return_value=-1)
 
-    calibrationAssessmentLoader.handleLoadRequested()
+    calibrationAssessmentPresenter.handleLoadRequested()
 
     view.getCalibrationRecordCount.assert_called_once()
     view.getSelectedCalibrationRecordIndex.assert_called_once()
-    view.onLoadError.assert_called_once_with("No calibration record selected.")
+    view.onError.assert_called_once_with("No calibration record selected.")
