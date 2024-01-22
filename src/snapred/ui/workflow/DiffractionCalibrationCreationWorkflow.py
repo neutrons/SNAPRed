@@ -8,7 +8,6 @@ from snapred.backend.dao.calibration import CalibrationIndexEntry, CalibrationRe
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
-    CalibrationIndexRequest,
     DiffractionCalibrationRequest,
 )
 from snapred.backend.dao.SNAPResponse import SNAPResponse

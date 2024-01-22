@@ -62,6 +62,20 @@ class CalibrationAssessmentPresenter(QObject):
         else:
             self.view.updateCalibrationRecordList(response.data)
 
-    @property
-    def widget(self):
-        return self.view
+    def loadCalibrationIndex(self, runNumber: str):
+        payload = CalibrationIndexRequest(
+            run=RunConfig(runNumber=runNumber),
+        )
+        loadCalibrationIndexRequest = SNAPRequest(path="calibration/index", payload=payload.json())
+
+        self.worker = self.worker_pool.createWorker(
+            target=self.interfaceController.executeRequest, args=(loadCalibrationIndexRequest)
+        )
+        self.worker.result.connect(self.handleLoadCalibrationIndexResult)
+        self.worker_pool.submitWorker(self.worker)
+
+    def handleLoadCalibrationIndexResult(self, response: SNAPResponse):
+        if response.code == 500:
+            self.view.onError(response.message)
+        else:
+            self.view.updateCalibrationRecordList(response.data)
