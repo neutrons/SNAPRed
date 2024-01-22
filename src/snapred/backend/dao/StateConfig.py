@@ -48,15 +48,15 @@ class StateConfig(BaseModel):
         calibration = v.get("calibration")
         if not calibration.instrumentState.id == thisStateId:
             raise RuntimeError(
-                f'the state configuration\'s calibration must have the same \'stateId\' as the configuration: ' +
-                f'"{thisStateId}", not "{calibration.instrumentState.id}"'
+                "the state configuration's calibration must have the same 'stateId' as the configuration: "
+                + f'"{thisStateId}", not "{calibration.instrumentState.id}"'
             )
         groupingMap = v.get("groupingMap")
         if groupingMap:
             if not groupingMap.stateId == thisStateId:
                 raise RuntimeError(
-                    f'the state configuration\'s grouping map must have the same \'stateId\' as the configuration: ' +
-                    f'"{thisStateId}", not "{groupingMap.stateId}"'
+                    "the state configuration's grouping map must have the same 'stateId' as the configuration: "
+                    + f'"{thisStateId}", not "{groupingMap.stateId}"'
                 )
         return v
 

@@ -239,7 +239,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def test_readStateConfig_invalid_grouping_map():
         # Test that the attached grouping-schema map's 'stateId' is checked.
-        with pytest.raises( # noqa: PT012
+        with pytest.raises(  # noqa: PT012
             RuntimeError,
             match="the state configuration's grouping map must have the same 'stateId' as the configuration",
         ):
@@ -288,7 +288,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._groupingMapPath.return_value = nonExistentPath
         localDataService._defaultGroupingMapPath = mock.Mock()
         localDataService._defaultGroupingMapPath.return_value = nonExistentPath
-        with pytest.raises( # noqa: PT012
+        with pytest.raises(  # noqa: PT012
             FileNotFoundError,
             match=f'required default grouping-schema map "{nonExistentPath}" does not exist',
         ):
@@ -533,7 +533,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService.groceryService = mock.Mock()
             # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
             #   and <incoming record>.calibrationFittingIngredients.version.
-            
+
             # write: version == 1
             localDataService.writeCalibrationRecord(testCalibrationRecord)
             actualRecord = localDataService.readCalibrationRecord("57514")
@@ -578,7 +578,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService.groceryService = mock.Mock()
             # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
             # and <incoming record>.normalization.version.
-            
+
             # write: version == 1
             localDataService.writeNormalizationRecord(testNormalizationRecord)
             actualRecord = localDataService.readNormalizationRecord("57514")
