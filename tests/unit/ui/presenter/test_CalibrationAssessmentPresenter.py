@@ -23,7 +23,7 @@ def test_load_record(calibrationAssessmentPresenter):
     with patch.object(calibrationAssessmentPresenter, "worker_pool") as worker_pool, patch.object(
         calibrationAssessmentPresenter, "interfaceController"
     ) as interfaceController:
-        calibrationAssessmentPresenter.handleLoadRequested()
+        calibrationAssessmentPresenter.loadSelectedCalibrationAssessment()
 
         view.getCalibrationRecordCount.assert_called_once()
         view.getSelectedCalibrationRecordIndex.assert_called_once()
@@ -43,7 +43,7 @@ def test_load_record_with_no_records_available(calibrationAssessmentPresenter):
     view = calibrationAssessmentPresenter.view
     view.getCalibrationRecordCount = MagicMock(return_value=0)
 
-    calibrationAssessmentPresenter.handleLoadRequested()
+    calibrationAssessmentPresenter.loadSelectedCalibrationAssessment()
 
     view.getCalibrationRecordCount.assert_called_once()
     view.onError.assert_called_once_with("No calibration records available.")
@@ -54,7 +54,7 @@ def test_load_record_with_no_record_selected(calibrationAssessmentPresenter):
     view.getCalibrationRecordCount = MagicMock(return_value=1)
     view.getSelectedCalibrationRecordIndex = MagicMock(return_value=-1)
 
-    calibrationAssessmentPresenter.handleLoadRequested()
+    calibrationAssessmentPresenter.loadSelectedCalibrationAssessment()
 
     view.getCalibrationRecordCount.assert_called_once()
     view.getSelectedCalibrationRecordIndex.assert_called_once()
