@@ -577,7 +577,10 @@
       }
     ],
     "focusGroupCalibrationMetrics":{
-      "focusGroupName": "Column",
+      "focusGroup": {
+        "name": "Column",
+        "definition": "nope!"
+      },
       "calibrationMetric": [
         {
           "sigmaAverage": 0.002517952998136214,

@@ -9,48 +9,42 @@ from snapred.backend.service.SousChef import SousChef
 
 
 class TestSousChef(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.instance = SousChef()
-
     def setUp(self):
-        self.instance.__pixelGroupCache = {}
-        self.instance.__calibrationCache = {}
-        self.instance.__peaksCache = {}
-        self.instance.__xtalCache = {}
+        self.instance = SousChef()
+
+    def tearDown(self):
+        del self.instance
 
     @classmethod
     def tearDownClass(cls):
         for ws in mtd.getObjectNames():
             DeleteWorkspace(ws)
 
-    @mock.patch("snapred.backend.data.DataFactoryService")
-    def test_getCalibration_nocache(self, mockDataService):
+    def test_getCalibration_nocache(self):
         runNumber = "123"
-        assert self.instance.__calibrationCache == {}
-        res = self.instance.getCalibration(runNumber)
-        assert mockDataService.called
-        assert mockDataService.return_value.getCalibrationState.called_once_with(runNumber)
-        assert res == mockDataService.return_value.getCalibrationState.return_value
+        assert self.instance._calibrationCache == {}
+
+        mockCalibration = mock.Mock()
+        self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
+
+        res = self.instance.prepCalibration(runNumber)
+
+        assert self.instance.dataFactoryService.getCalibrationState.called_once_with(runNumber)
+        assert res == self.instance.dataFactoryService.getCalibrationState.return_value
 
     def test_getCalibration_cached(self):
         runNumber = "123"
-        self.instance.__calibrationCache[runNumber] = mock.Mock(spec_set=Calibration)
-        res = self.instance.getCalibration(runNumber)
-        assert res == self.instance.__calibrationCache[runNumber]
+        self.instance._calibrationCache = {runNumber: mock.Mock()}
+        self.instance.dataFactoryService.getCalibrationState = mock.Mock()
+
+        res = self.instance.prepCalibration(runNumber)
+        assert not self.instance.dataFactoryService.getCalibrationState.called
+        assert res == self.instance._calibrationCache[runNumber]
 
     def test_getInstrumentState(self):
         runNumber = "123"
-        self.instance.getCalibration = mock.Mock(return_value=mock.Mock(spec_set=Calibration))
-        res = self.instance.getInstrumentState(runNumber)
-        assert self.instance.getCalibration.called_once_with(runNumber)
-        assert res == self.instance.getCalibration.return_value.instrumentState
-
-    def test_groupingSchemaFromPath(self):
-        apple = "apple"
-        path = f"path/to/file_{apple}.biscuit"
-        res = self.instance.groupingSchemaFromPath(path)
-        assert res == apple
-
-    def test_getFocusGroup(self):
-        pass
+        mockCalibration = mock.Mock(instrumentState=mock.Mock())
+        self.instance.prepCalibration = mock.Mock(return_value=mockCalibration)
+        res = self.instance.prepInstrumentState(runNumber)
+        assert self.instance.prepCalibration.called_once_with(runNumber)
+        assert res == self.instance.prepCalibration.return_value.instrumentState

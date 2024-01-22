@@ -22,18 +22,16 @@ with mock.patch.dict(
     },
 ):
     from snapred.backend.dao.ingredients import (
-        GroceryListItem,
         ReductionIngredients,
-        SmoothDataExcludingPeaksIngredients,
     )
-    from snapred.backend.dao.normalization import Normalization, NormalizationIndexEntry, NormalizationRecord
+    from snapred.backend.dao.normalization import NormalizationIndexEntry
     from snapred.backend.dao.request import (
         FocusSpectraRequest,
         NormalizationCalibrationRequest,
-        NormalizationExportRequest,
         SmoothDataExcludingPeaksRequest,
         VanadiumCorrectionRequest,
     )
+    from snapred.backend.dao.state import FocusGroup
     from snapred.backend.service.NormalizationService import NormalizationService
     from snapred.meta.Config import Resource
 
@@ -74,7 +72,15 @@ from snapred.backend.service.NormalizationService import NormalizationService  #
 
 class TestNormalizationService(unittest.TestCase):
     def setUp(self):
-        self.instance = NormalizationService()
+        self.request = NormalizationCalibrationRequest(
+            runNumber="12345",
+            backgroundRunNumber="67890",
+            useLiteMode=True,
+            samplePath="path/to/sample",
+            focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
+            smoothingParameter=0.5,
+            dMin=0.4,
+        )
 
     def clearoutWorkspaces(self) -> None:
         for ws in mtd.getObjectNames():
@@ -84,144 +90,102 @@ class TestNormalizationService(unittest.TestCase):
         self.clearoutWorkspaces()
         return super().tearDown()
 
-    @patch("snapred.backend.service.NormalizationService.CalibrationService")
-    @patch("snapred.backend.service.NormalizationService.DataFactoryService")
+    @patch("snapred.backend.service.NormalizationService.FarmFreshIngredients")
     @patch("snapred.backend.service.NormalizationService.FocusSpectraRecipe")
     def test_focusSpectra(
         self,
         mockRecipe,
-        mockDataFactoryService,
-        mockCalibrationService,
+        FarmFreshIngredients,
     ):
         mockRequest = FocusSpectraRequest(
             runNumber="12345",
-            groupingPath="path/to/grouping",
+            focusGroup=self.request.focusGroup,
             useLiteMode=True,
             inputWorkspace="input_ws",
             groupingWorkspace="grouping_ws",
             outputWorkspace="output_ws",
         )
+
+        mockReductionIngredients = MagicMock()
         self.instance = NormalizationService()
-        mockedCalibration = MagicMock()
-        mockCalibrationService = mockCalibrationService.return_value
-        mockCalibrationService.getCalibration.return_value = mockedCalibration
-        mockedReductionIngredients = MagicMock()
-        mockDataFactoryService = mockDataFactoryService.return_value
-        mockDataFactoryService.getReductionIngredients.return_value = mockedReductionIngredients
-        self.instance.focusSpectra(mockRequest)
+        self.instance.sousChef.prepReductionIngredients = MagicMock(return_value=mockReductionIngredients)
         mockRecipeInst = mockRecipe.return_value
         mockRecipeInst.executeRecipe.return_value = "expected"
 
-        mockRecipeInst.executeRecipe.assert_called_once_with(
+        res = self.instance.focusSpectra(mockRequest)
+
+        assert self.instance.sousChef.prepReductionIngredients.called_once_with(FarmFreshIngredients.return_value)
+        assert mockRecipeInst.executeRecipe.called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             GroupingWorkspace=mockRequest.groupingWorkspace,
-            Ingredients=mockedReductionIngredients,
+            Ingredients=self.instance.sousChef.prepReductionIngredients.return_value,
             OutputWorkspace=mockRequest.outputWorkspace,
         )
-        mockCalibrationService.getCalibration.assert_called_once_with(
-            mockRequest.runNumber, mockRequest.groupingPath, mockRequest.useLiteMode
-        )
-        mockDataFactoryService.getReductionIngredients.assert_called_once_with(
-            mockRequest.runNumber, mockedCalibration.instrumentState.pixelGroup
-        )
+        assert res == mockRecipeInst.executeRecipe.return_value
 
-    @patch("snapred.backend.service.NormalizationService.DataFactoryService")
-    @patch("snapred.backend.service.NormalizationService.CalibrationService")
+    @patch("snapred.backend.service.NormalizationService.FarmFreshIngredients")
     @patch("snapred.backend.service.NormalizationService.RawVanadiumCorrectionRecipe")
-    def test_vanadiumCorrection(
-        self,
-        mockRecipe,
-        mockCalibrationService,
-        mockDataFactoryService,
-    ):
+    def test_vanadiumCorrection(self, RawVanadiumCorrectionRecipe, FarmFreshIngredients):
         mockRequest = VanadiumCorrectionRequest(
-            samplePath="path/to/sample",
             runNumber="12345",
-            groupingPath="path/to/grouping",
             useLiteMode=True,
+            focusGroup=self.request.focusGroup,
+            calibrantSamplePath="path/to/sample",
             inputWorkspace="input_ws",
             backgroundWorkspace="background_ws",
             outputWorkspace="output_ws",
         )
         self.instance = NormalizationService()
-        mockedCalibrantSample = MagicMock()
-        mockDataFactoryService = mockDataFactoryService.return_value
-        mockDataFactoryService.getCalibrantSample.return_value = mockedCalibrantSample
-        mockedCalibration = MagicMock()
-        mockCalibrationService = mockCalibrationService.return_value
-        mockCalibrationService.getCalibration.return_value = mockedCalibration
-        mockedReductionIngredients = MagicMock()
-        mockDataFactoryService.getReductionIngredients.return_value = mockedReductionIngredients
-        self.instance.vanadiumCorrection(mockRequest)
-        mockRecipeInst = mockRecipe.return_value
-        mockRecipeInst.executeRecipe.return_value = "expected"
+        self.instance.dataFactoryService.getCalibrantSample = MagicMock()
+        self.instance.sousChef.prepReductionIngredients = MagicMock()
 
-        mockRecipeInst.executeRecipe.assert_called_once_with(
+        res = self.instance.vanadiumCorrection(mockRequest)
+
+        mockRecipeInst = RawVanadiumCorrectionRecipe.return_value
+        assert self.instance.dataFactoryService.getCalibrantSample.called_once_with(mockRequest.calibrantSamplePath)
+        assert self.instance.sousChef.prepReductionIngredients.called_once_with(FarmFreshIngredients.return_value)
+        assert mockRecipeInst.executeRecipe.called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             BackgroundWorkspace=mockRequest.backgroundWorkspace,
-            Ingredients=mockedReductionIngredients,
-            CalibrantSample=mockedCalibrantSample,
+            Ingredients=self.instance.sousChef.prepReductionIngredients.return_value,
+            CalibrantSample=self.instance.dataFactoryService.getCalibrantSample.return_value,
             OutputWorkspace=mockRequest.outputWorkspace,
         )
-        mockDataFactoryService.getCalibrantSample.assert_called_once_with(mockRequest.samplePath)
-        mockCalibrationService.getCalibration.assert_called_once_with(
-            mockRequest.runNumber, mockRequest.groupingPath, mockRequest.useLiteMode
-        )
-        mockDataFactoryService.getReductionIngredients.assert_called_once_with(
-            mockRequest.runNumber, mockedCalibration.instrumentState.pixelGroup
-        )
+        assert res == mockRecipeInst.executeRecipe.return_value
 
-    @patch("snapred.backend.service.NormalizationService.CalibrationService")
-    @patch("snapred.backend.service.NormalizationService.CrystallographicInfoService")
-    @patch("snapred.backend.service.NormalizationService.DataFactoryService")
+    @patch("snapred.backend.service.NormalizationService.FarmFreshIngredients")
     @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksRecipe")
     @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksIngredients")
     def test_smoothDataExcludingPeaks(
         self,
-        mockIngredients,
+        SmoothDataExcludingPeaksIngredients,
         mockRecipe,
-        mockDataFactoryService,
-        mockCrystallographicInfoService,
-        mockCalibrationService,
+        FarmFreshIngredients,
     ):
         mockRequest = SmoothDataExcludingPeaksRequest(
+            runNumber="12345",
+            useLiteMode=True,
+            focusGroup=self.request.focusGroup,
+            calibrantSamplePath="path/to/sample",
             inputWorkspace="input_ws",
             outputWorkspace="output_ws",
-            useLiteMode=True,
-            groupingPath="path/to/grouping",
-            samplePath="path/to/sample",
-            runNumber="12345",
             smoothingParameter=0.5,
             dMin=0.4,
         )
 
         self.instance = NormalizationService()
-        mockSamplePath = MagicMock()
-        mockDataFactoryService = mockDataFactoryService.return_value
-        mockDataFactoryService.getCifFilePath.return_value = mockSamplePath
-        mockedCrystalInfo = MagicMock()
-        mockCrystallographicInfoService = mockCrystallographicInfoService.return_value
-        mockCrystallographicInfoService.ingest.return_value = mockedCrystalInfo
-        mockedCalibration = MagicMock()
-        mockCalibrationService = mockCalibrationService.return_value
-        mockCalibrationService.getCalibration.return_value = mockedCalibration
-        mockRecipeInst = mockRecipe.return_value
+        self.instance.sousChef.prepPeakIngredients = MagicMock()
+        SmoothDataExcludingPeaksIngredients.return_value = self.instance.sousChef.prepPeakIngredients.return_value
 
-        mockIngredients.return_value = MagicMock()
+        mockRecipeInst = mockRecipe.return_value
 
         self.instance.smoothDataExcludingPeaks(mockRequest)
 
-        mockDataFactoryService.getCifFilePath.assert_called_once_with(
-            mockRequest.samplePath.split("/")[-1].split(".")[0]
-        )
-        mockCrystallographicInfoService.ingest.assert_called_once_with(mockSamplePath, mockRequest.dMin)
-        mockCalibrationService.getCalibration.assert_called_once_with(
-            mockRequest.runNumber, mockRequest.groupingPath, mockRequest.useLiteMode
-        )
-        mockRecipeInst.executeRecipe.assert_called_once_with(
+        assert self.instance.sousChef.prepPeakIngredients.called_once_with(FarmFreshIngredients.return_value)
+        assert mockRecipeInst.executeRecipe.called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             OutputWorkspace=mockRequest.outputWorkspace,
-            Ingredients=mockIngredients.return_value,
+            Ingredients=self.instance.sousChef.prepPeakIngredients.return_value,
         )
 
     @patch("snapred.backend.service.NormalizationService.DataFactoryService")
@@ -234,26 +198,16 @@ class TestNormalizationService(unittest.TestCase):
         mockNormalizationRecord,
         mockDataFactoryService,
     ):
-        mockRequest = NormalizationCalibrationRequest(
-            runNumber="12345",
-            backgroundRunNumber="67890",
-            useLiteMode=True,
-            samplePath="path/to/sample",
-            groupingPath="path/to/grouping",
-            smoothingParameter=0.5,
-            dMin=0.4,
-        )
-
-        self.instance = NormalizationService()
         mockNormalization = MagicMock()
         mockDataFactoryService = mockDataFactoryService.return_value
         mockDataFactoryService.getNormalizationState.return_value = mockNormalization
 
+        self.instance = NormalizationService()
         self.instance.dataFactoryService.getNormalizationRecord = MagicMock(return_value=mockNormalizationRecord)
 
-        result = self.instance.normalizationAssessment(mockRequest)
+        result = self.instance.normalizationAssessment(self.request)
 
-        mockDataFactoryService.getNormalizationState.assert_called_once_with(mockRequest.runNumber)
+        mockDataFactoryService.getNormalizationState.assert_called_once_with(self.request.runNumber)
         expected_record_mockId = "mock_normalization_record"
         assert result.mockId == expected_record_mockId
 
@@ -268,17 +222,6 @@ class TestNormalizationService(unittest.TestCase):
         mockFocusSpectra,
         mockVanadiumCorrection,
     ):
-        mockRequest = NormalizationCalibrationRequest(
-            runNumber="12345",
-            backgroundRunNumber="67890",
-            samplePath="path/to/sample",
-            groupingPath="path/to/grouping",
-            useLiteMode=True,
-            smoothingParameter=0.5,
-            dMin=0.1,
-        )
-
-        self.instance = NormalizationService()
         mockGroceryService = mockGroceryService.return_value
         mockGroceryService.fetchGroceryDict.return_value = {
             "backgroundWorkspace": "bg_ws",
@@ -291,7 +234,8 @@ class TestNormalizationService(unittest.TestCase):
         mockFocusSpectra.return_value = "focussed_vanadium_ws"
         mockSmoothDataExcludingPeaks.return_value = "smoothed_output_ws"
 
-        result = self.instance.normalization(mockRequest)
+        self.instance = NormalizationService()
+        result = self.instance.normalization(self.request)
 
         self.assertIsInstance(result, dict)  # noqa: PT009
         self.assertIn("correctedVanadium", result)  # noqa: PT009
@@ -304,20 +248,10 @@ class TestNormalizationService(unittest.TestCase):
 
     @patch("snapred.backend.service.NormalizationService.GroceryService")
     def test_cachedNormalization(self, mockGroceryService):
-        mockRequest = NormalizationCalibrationRequest(
-            runNumber="12345",
-            backgroundRunNumber="67890",
-            samplePath="path/to/sample",
-            groupingPath="path/to/grouping",
-            useLiteMode=True,
-            smoothingParameter=0.5,
-            dMin=0.1,
-        )
-
         self.instance = NormalizationService()
-        result = self.instance.normalization(mockRequest)
+        result = self.instance.normalization(self.request)
         assert result == {
-            "correctedVanadium": "tof_grouping_12345_c-vanadium",
-            "outputWorkspace": "tof_grouping_12345_s+f-vanadium",
-            "smoothedOutput": "tof_grouping_12345_0.5-s_0.1-dmin",
+            "correctedVanadium": f"tof_{self.request.focusGroup.name}_12345_c-vanadium",
+            "outputWorkspace": f"tof_{self.request.focusGroup.name}_12345_s+f-vanadium",
+            "smoothedOutput": f"tof_{self.request.focusGroup.name}_12345_0.5-s_{self.request.dMin}-dmin",
         }
