@@ -50,8 +50,8 @@ class GroupingMap(BaseModel):
     def setDirty(self, flag: bool):
         object.__setattr__(self, "_isDirty", flag)
 
-    def coerceStateId(self, id: ObjectSHA):
-        self.stateId = id
+    def coerceStateId(self, stateId: ObjectSHA):
+        self.stateId = stateId
         self.setDirty(True)
 
     @validator("stateId", pre=True, allow_reuse=True)

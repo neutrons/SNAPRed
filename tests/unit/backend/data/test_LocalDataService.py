@@ -48,7 +48,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         reductionParameters = None
         with Resource.open("inputs/ReductionParameters.json", "r") as file:
             reductionParameters = json.loads(file.read())
-        reductionParameters["stateId"] = "04bd2c53f6bf6754"  # make sure it's actually a valid SHA
+        # make sure it's actually a valid SHA:
+        reductionParameters["stateId"] = "04bd2c53f6bf6754"
         return reductionParameters
 
     def test_readInstrumentConfig():
@@ -238,7 +239,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def test_readStateConfig_invalid_grouping_map():
         # Test that the attached grouping-schema map's 'stateId' is checked.
-        with pytest.raises(
+        with pytest.raises( # noqa: PT012
             RuntimeError,
             match="the state configuration's grouping map must have the same 'stateId' as the configuration",
         ):
@@ -274,19 +275,20 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
             localDataService.instrumentConfig = getMockInstrumentConfig()
 
-            actual = localDataService.readStateConfig("57514")
+            localDataService.readStateConfig("57514")
 
     def test_readStateConfig_grouping_map_JSON_file_not_found():
         # Test that a grouping-schema map is required during the `readStateConfig` method:
-        #   * note that a non-existing 'groupingMap.json' at the <state root> triggers a fallback to 'defaultGroupingMap.json'
-        #       at Config['instrument.calibration.powder.grouping.home'].
+        #   * note that a non-existing 'groupingMap.json' at the <state root>
+        #     triggers a fallback to 'defaultGroupingMap.json'
+        #     at Config['instrument.calibration.powder.grouping.home'].
         localDataService = LocalDataService()
         nonExistentPath = Path(Resource.getPath("inputs/pixel_grouping/does_not_exist.json"))
         localDataService._groupingMapPath = mock.Mock()
         localDataService._groupingMapPath.return_value = nonExistentPath
         localDataService._defaultGroupingMapPath = mock.Mock()
         localDataService._defaultGroupingMapPath.return_value = nonExistentPath
-        with pytest.raises(
+        with pytest.raises( # noqa: PT012
             FileNotFoundError,
             match=f'required default grouping-schema map "{nonExistentPath}" does not exist',
         ):
@@ -310,7 +312,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
                 Resource.getPath("inputs/calibration/CalibrationParameters.json")
             )
             localDataService.instrumentConfig = getMockInstrumentConfig()
-            actual = localDataService.readStateConfig("57514")
+            localDataService.readStateConfig("57514")
 
     def test_write_model_pretty_StateConfig_excludes_grouping_map():
         # At present there is no `writeStateConfig` method, and there is no `readStateConfig` that doesn't
@@ -355,7 +357,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             stateConfig = None
             with open(stateConfigPath, "r") as file:
                 stateConfig = parse_raw_as(StateConfig, file.read())
-            assert stateConfig.groupingMap == None
+            assert stateConfig.groupingMap is None
 
     def test_readFocusGroups():
         localDataService = LocalDataService()
@@ -529,7 +531,9 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService._constructCalibrationStatePath = mock.Mock()
             localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
             localDataService.groceryService = mock.Mock()
-            # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version and <incoming record>.calibrationFittingIngredients.version.
+            # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
+            #   and <incoming record>.calibrationFittingIngredients.version.
+            
             # write: version == 1
             localDataService.writeCalibrationRecord(testCalibrationRecord)
             actualRecord = localDataService.readCalibrationRecord("57514")
@@ -572,7 +576,9 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService._constructCalibrationStatePath = mock.Mock()
             localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
             localDataService.groceryService = mock.Mock()
-            # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version, and <incoming record>.normalization.version.
+            # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
+            # and <incoming record>.normalization.version.
+            
             # write: version == 1
             localDataService.writeNormalizationRecord(testNormalizationRecord)
             actualRecord = localDataService.readNormalizationRecord("57514")
@@ -880,8 +886,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         savePath = Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"]
         Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = Resource.getPath("inputs/")
         with pytest.raises(FileNotFoundError) as x:
-            groupingMap = service._readDefaultGroupingMap()
-        assert "default grouping-schema map" in str(x.value)
+            service._readDefaultGroupingMap()
+            assert "default grouping-schema map" in str(x.value)
         Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = savePath
 
     def test_readGroupingMap_initialized_state():

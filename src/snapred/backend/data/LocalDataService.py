@@ -130,7 +130,8 @@ class LocalDataService:
             # Any `StateConfig`'s `GroupingMap` always starts as a copy of the default `GroupingMap`.
             groupingMap = self._readDefaultGroupingMap()
             groupingMap.coerceStateId(stateId)
-            # This is the _ONLY_ place that the grouping-schema map is written to its separate JSON file at <state root>.
+            # This is the _ONLY_ place that the grouping-schema map is written
+            #   to its separate JSON file at <state root>.
             self._writeGroupingMap(stateId, groupingMap)
 
         return StateConfig(
@@ -496,7 +497,8 @@ class LocalDataService:
         recordPath: str = self.getNormalizationRecordPath(runNumber, version)
         record.version = version
 
-        # There seems no need to write the _nested_ Normalization, because it's written to a separate file during 'writeNormalizationState'.
+        # There seems no need to write the _nested_ Normalization,
+        # because it's written to a separate file during 'writeNormalizationState'.
         # However, if it is going to be _nested_, this marks it with the correct version.
         # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
         record.normalization.version = version
@@ -545,7 +547,8 @@ class LocalDataService:
         record.version = version
 
         # As above at 'writeNormalizationRecord':
-        # There seems no need to write the _nested_ Calibration, because it's written to a separate file during 'writeCalibrationState'.
+        # There seems no need to write the _nested_ Calibration,
+        # because it's written to a separate file during 'writeCalibrationState'.
         # However, if it is going to be _nested_, this marks it with the correct version.
         # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
         record.calibrationFittingIngredients.version = version
