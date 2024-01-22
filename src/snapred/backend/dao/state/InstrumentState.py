@@ -49,4 +49,3 @@ class InstrumentState(BaseModel):
         if isinstance(v, str):
             return ObjectSHA(hex=v, decodedKey=None)
         return v
-
