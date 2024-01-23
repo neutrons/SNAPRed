@@ -749,7 +749,20 @@ class LocalDataService:
         # collect list of all files in folder that are applicable extensions
         groupingFiles = []
         for extension in extensions:
-            groupingFiles += self._findMatchingFileList(f"{groupingFolder}/*.{extension}", throws=False)
+            groupingFiles.extend(self._findMatchingFileList(f"{groupingFolder}/*.{extension}", throws=False))
         if len(groupingFiles) < 1:
             raise RuntimeError(f"No grouping files found in {groupingFolder} for extensions {extensions}")
         return groupingFiles
+
+    def readFocusGroups(self):
+        groupingFiles = self.readGroupingFiles()
+        focusGroups = {}
+        for file in groupingFiles:
+            focusGroups[file] = FocusGroup(
+                name=self.groupingSchemaFromPath(file),
+                definition=file,
+            )
+        return focusGroups
+
+    def groupingSchemaFromPath(self, path: str) -> str:
+        return path.split("/")[-1].split("_")[-1].split(".")[0]

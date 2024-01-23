@@ -6,7 +6,7 @@ from mantid.api import AlgorithmManager
 from mantid.kernel import Direction
 from pydantic import parse_raw_as
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
-from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.backend.dao.state import PixelGroup, PixelGroupingParameters
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import list_to_raw
@@ -46,12 +46,16 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
                 groupID=2, twoTheta=50, dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1
             ),
         ]
+        fakePixelGroup = PixelGroup(
+            pixelGroupingParameters=fakePixelGroupingParameter,
+            timeOfFlight={"minimum": 1, "maximum": 10, "binWidth": 1, "binningMode": 1},
+        )
 
         # Create the algorithm instance and set properties
         algorithm = CalibrationMetricExtractionAlgorithm()
         algorithm.initialize()
         algorithm.setProperty("InputWorkspace", fakeInputWorkspace)
-        algorithm.setProperty("PixelGroupingParameter", list_to_raw(fakePixelGroupingParameter))
+        algorithm.setProperty("PixelGroup", fakePixelGroup.json())
         algorithm.mantidSnapper.mtd = {
             fakeInputWorkspace: MagicMock(
                 getNumberOfEntries=MagicMock(return_value=4),

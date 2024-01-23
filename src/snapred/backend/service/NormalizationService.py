@@ -12,6 +12,7 @@ from snapred.backend.dao.normalization import (
     NormalizationRecord,
 )
 from snapred.backend.dao.request import (
+    FarmFreshIngredients,
     FocusSpectraRequest,
     NormalizationCalibrationRequest,
     NormalizationExportRequest,
@@ -29,8 +30,8 @@ from snapred.backend.recipe.GenericRecipe import (
     SmoothDataExcludingPeaksRecipe,
 )
 from snapred.backend.service.CalibrationService import CalibrationService
-from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.Service import Service
+from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -45,9 +46,9 @@ class NormalizationService(Service):
         self.dataFactoryService = DataFactoryService()
         self.dataExportService = DataExportService()
         self.groceryService = GroceryService()
-        self.crystallographicInfoService = CrystallographicInfoService()
         self.groceryClerk = GroceryListItem.builder()
         self.diffractionCalibrationService = CalibrationService()
+        self.sousChef = SousChef()
         self.registerPath("", self.normalization)
         self.registerPath("assessment", self.normalizationAssessment)
         self.registerPath("save", self.saveNormalization)
@@ -60,8 +61,7 @@ class NormalizationService(Service):
 
     @FromString
     def normalization(self, request: NormalizationCalibrationRequest):
-        groupingFile = request.groupingPath
-        groupingScheme = groupingFile.split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
+        groupingScheme = request.focusGroup.name
 
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
@@ -100,12 +100,12 @@ class NormalizationService(Service):
 
         # 1. correction
         vanadiumCorrectionRequest = VanadiumCorrectionRequest(
-            samplePath=request.samplePath,
             runNumber=request.runNumber,
-            groupingPath=request.groupingPath,
             useLiteMode=request.useLiteMode,
-            backgroundWorkspace=groceries["backgroundWorkspace"],
+            focusGroup=request.focusGroup,
+            calibrantSamplePath=request.calibrantSamplePath,
             inputWorkspace=groceries["inputWorkspace"],
+            backgroundWorkspace=groceries["backgroundWorkspace"],
             outputWorkspace=groceries["outputWorkspace"],
         )
         outputWorkspace = self.vanadiumCorrection(vanadiumCorrectionRequest)
@@ -117,7 +117,7 @@ class NormalizationService(Service):
             inputWorkspace=correctedVanadiumWs,
             groupingWorkspace=groceries["groupingWorkspace"],
             runNumber=request.runNumber,
-            groupingPath=request.groupingPath,
+            focusGroup=request.focusGroup,
             useLiteMode=request.useLiteMode,
             outputWorkspace=outputWorkspace,
         )
@@ -130,8 +130,8 @@ class NormalizationService(Service):
         smoothRequest = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focussedVanadiumWs,
             outputWorkspace=smoothedOutput,
-            samplePath=request.samplePath,
-            groupingPath=request.groupingPath,
+            calibrantSamplePath=request.calibrantSamplePath,
+            focusGroup=request.focusGroup,
             useLiteMode=request.useLiteMode,
             runNumber=request.runNumber,
             smoothingParameter=request.smoothingParameter,
@@ -173,13 +173,14 @@ class NormalizationService(Service):
 
     @FromString
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
-        calibrantSample = self.dataFactoryService.getCalibrantSample(request.samplePath)
+        calibrantSample = self.sousChef.prepCalibrantSample(request.calibrantSamplePath)
 
-        calibration = self.diffractionCalibrationService.getCalibration(
-            request.runNumber, request.groupingPath, request.useLiteMode
+        farmFresh = FarmFreshIngredients(
+            runNumber=request.runNumber,
+            useLiteMode=request.useLiteMode,
+            focusGroup=request.focusGroup,
         )
-        pixelGroup = calibration.instrumentState.pixelGroup
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber, pixelGroup)
+        reductionIngredients = self.sousChef.prepReductionIngredients(farmFresh)
 
         return RawVanadiumCorrectionRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
@@ -191,11 +192,12 @@ class NormalizationService(Service):
 
     @FromString
     def focusSpectra(self, request: FocusSpectraRequest):
-        calibration = self.diffractionCalibrationService.getCalibration(
-            request.runNumber, request.groupingPath, request.useLiteMode
+        farmFresh = FarmFreshIngredients(
+            runNumber=request.runNumber,
+            useLiteMode=request.useLiteMode,
+            focusGroup=request.focusGroup,
         )
-        pixelGroup = calibration.instrumentState.pixelGroup
-        reductionIngredients = self.dataFactoryService.getReductionIngredients(request.runNumber, pixelGroup)
+        reductionIngredients = self.sousChef.prepReductionIngredients(farmFresh)
         return FocusSpectraRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             GroupingWorkspace=request.groupingWorkspace,
@@ -205,16 +207,21 @@ class NormalizationService(Service):
 
     @FromString
     def smoothDataExcludingPeaks(self, request: SmoothDataExcludingPeaksRequest):
-        sampleFilePath = self.dataFactoryService.getCifFilePath((request.samplePath).split("/")[-1].split(".")[0])
-        crystalInfo = self.crystallographicInfoService.ingest(sampleFilePath, request.dMin)["crystalInfo"]
-
-        calibration = self.diffractionCalibrationService.getCalibration(
-            request.runNumber, request.groupingPath, request.useLiteMode
+        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        farmFresh = FarmFreshIngredients(
+            runNumber=request.runNumber,
+            useLiteMode=request.useLiteMode,
+            focusGroup=request.focusGroup,
+            cifPath=cifPath,
+            calibrantSamplePath=request.calibrantSamplePath,
         )
+        peakIngredients = self.sousChef.prepPeakIngredients(farmFresh)
 
-        instrumentState = calibration.instrumentState
+        # TODO this will be replaced with simply PeakIngredients
         ingredients = SmoothDataExcludingPeaksIngredients(
-            smoothingParameter=request.smoothingParameter, instrumentState=instrumentState, crystalInfo=crystalInfo
+            smoothingParameter=request.smoothingParameter,
+            instrumentState=peakIngredients.instrumentState,
+            crystalInfo=peakIngredients.crystalInfo,
         )
         return SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace, OutputWorkspace=request.outputWorkspace, Ingredients=ingredients
