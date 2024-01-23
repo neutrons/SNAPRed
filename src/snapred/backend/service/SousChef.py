@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple
 
 from pydantic import parse_raw_as
 
-from snapred.backend.dao import CrystallographicInfo, GroupPeakList
+from snapred.backend.dao import CrystallographicInfo, GroupPeakList, RunConfig
 from snapred.backend.dao.calibration import Calibration
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
@@ -18,6 +18,7 @@ from snapred.backend.dao.ingredients import (
 )
 from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.dao.state import FocusGroup, InstrumentState, PixelGroup
+from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.recipe.GenericRecipe import (
@@ -54,31 +55,37 @@ class SousChef(Service):
     def name():
         return "souschef"
 
-    def prepCalibration(self, runNumber) -> Calibration:
+    def prepCalibration(self, runNumber: str) -> Calibration:
         if runNumber not in self._calibrationCache:
             self._calibrationCache[runNumber] = self.dataFactoryService.getCalibrationState(runNumber)
         return self._calibrationCache[runNumber]
 
-    def prepInstrumentState(self, runNumber) -> InstrumentState:
+    def prepInstrumentState(self, runNumber: str) -> InstrumentState:
         return self.prepCalibration(runNumber).instrumentState
+
+    def prepRunConfig(self, runNumber: str) -> RunConfig:
+        return self.dataFactoryService.getRunConfig(runNumber)
+
+    def prepCalibrantSample(self, calibrantSamplePath: str) -> CalibrantSamples:
+        return self.dataFactoryService.getCalibrantSample(calibrantSamplePath)
 
     def prepPixelGroup(self, ingredients: FarmFreshIngredients):
         groupingSchema = ingredients.focusGroup.name
         key = (ingredients.runNumber, ingredients.useLiteMode, groupingSchema)
         if key not in self._pixelGroupCache:
             instrumentState = self.prepInstrumentState(ingredients.runNumber)
-            ingredients = PixelGroupingIngredients(
+            pixelIngredients = PixelGroupingIngredients(
                 instrumentState=instrumentState,
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
             getGrouping = (
-                self.groceryClerk.grouping(ingredients.groupingSchema)
+                self.groceryClerk.grouping(ingredients.focusGroup.name)
                 .useLiteMode(ingredients.useLiteMode)
                 .source(InstrumentFilename=self._getInstrumentDefinitionFilename(ingredients.useLiteMode))
                 .buildList()
             )
             groupingWS = self.groceryService.fetchGroceryList(getGrouping)[0]
-            data = PixelGroupingParametersCalculationRecipe().executeRecipe(ingredients, groupingWS)
+            data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelIngredients, groupingWS)
             self._pixelGroupCache[key] = PixelGroup(
                 focusGroup=ingredients.focusGroup,
                 pixelGroupingParameters=data["parameters"],
@@ -111,7 +118,7 @@ class SousChef(Service):
         key = (
             ingredients.runNumber,
             ingredients.useLiteMode,
-            ingredients.groupingSchema,
+            ingredients.focusGroup.name,
             ingredients.peakIntensityThreshold,
         )
         if key not in self._peaksCache:
@@ -123,19 +130,24 @@ class SousChef(Service):
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
         return ReductionIngredients(
             reductionState=self.dataFactoryService.getReductionState(ingredients.runNumber),
-            runConfig=self.dataFactoryService.getRunConfig(ingredients.runNumber),
+            runConfig=self.prepRunConfig(ingredients.runNumber),
             pixelGroup=self.prepPixelGroup(),
         )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
-        calibrantSample = self.dataFactoryService.getCalibrantSample(ingredients.calibrantSamplePath)
         return NormalizationIngredients(
             pixelGroup=self.prepPixelGroup(ingredients),
-            calibrantSample=calibrantSample,
+            calibrantSample=self.prepCalibrantSample(ingredients.calibrantSamplePath),
             detectorPeaks=self.prepDetectorPeaks(ingredients),
         )
 
     def prepDiffractionCalibrationIngredients(
         self, ingredients: FarmFreshIngredients
     ) -> DiffractionCalibrationIngredients:
-        pass
+        return DiffractionCalibrationIngredients(
+            runConfig=self.prepRunConfig(ingredients.runNumber),
+            pixelGroup=self.prepPixelGroup(ingredients),
+            groupedPeakLists=self.prepDetectorPeaks(ingredients),
+            convergenceThreshold=ingredients.convergenceThreshold,
+            maxOffset=ingredients.maxOffset,
+        )

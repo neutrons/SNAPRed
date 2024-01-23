@@ -10,6 +10,10 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 class ReductionIngredients(BaseModel):
     """Class to hold the instrument configuration."""
 
+    # NOTE these depend on lite mode and focus group through PixelGroup
+    # it is therefore necessary for the reduction service to have
+    # access to the focus group to properly create these
+
     runConfig: RunConfig
     reductionState: ReductionState
     pixelGroup: PixelGroup

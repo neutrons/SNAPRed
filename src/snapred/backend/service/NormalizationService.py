@@ -175,7 +175,7 @@ class NormalizationService(Service):
 
     @FromString
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
-        calibrantSample = self.dataFactoryService.getCalibrantSample(request.calibrantSamplePath)
+        calibrantSample = self.sousChef.prepCalibrantSample(request.calibrantSamplePath)
 
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,

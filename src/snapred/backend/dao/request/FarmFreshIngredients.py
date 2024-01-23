@@ -29,6 +29,7 @@ class FarmFreshIngredients(BaseModel):
     convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
+    maxOffset: float = Config["calibration.diffraction.maximumOffset"]
     dBounds: Limit[float] = Limit(
         minimum=Config["constants.CrystallographicInfo.dMin"],
         maximum=Config["constants.CrystallographicInfo.dMax"],

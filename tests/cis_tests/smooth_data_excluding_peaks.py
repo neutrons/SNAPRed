@@ -12,40 +12,40 @@ from snapred.backend.log.logger import snapredLogger
 snapredLogger._level = 60
 
 # for creating the ingredients
-from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
-from snapred.backend.service.CalibrationService import CalibrationService
-from snapred.backend.data.DataFactoryService import DataFactoryService
-
-# the algorithm to test (and its ingredients)
-from snapred.backend.dao.state import PixelGroup
-from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
-from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
+from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+from snapred.backend.service.SousChef import SousChef
 
 #for loading workspaces
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
+# the algorithm to test (and its ingredients)
+from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
+
 #User inputs ###########################
 runNumber = "58882" #58409
 isLite = True
+groupingScheme = "Column"
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
 #######################################
 
 
-## CREATE INGREDIENTS
-calibrationService = CalibrationService()
-dataFactoryService = DataFactoryService()
-pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
-calibration = dataFactoryService.getCalibrationState(runNumber)
-print(pixelGroupingParameters)
-calibration.instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
+## PREP INGREDIENTS
+farmFresh = FarmFreshIngredients(
+  runNumber = runNumber,
+  useLiteMode=isLite,
+  focusGroup={"name": groupingScheme, "definition": ""},
+  cifPath=cifPath,
+)
+peakIngredients = SousChef().prepPeakIngredients(farmFresh)
+peakIngredients.instrumentState.pixelGroup = peakIngredients.pixelGroup
 
 ingredients = SmoothDataExcludingPeaksIngredients(
-    instrumentState=calibration.instrumentState, 
-    crystalInfo=CrystallographicInfoService().ingest(cifPath)['crystalInfo'], 
+    instrumentState=peakIngredients.instrumentState, 
+    crystalInfo=peakIngredients.cryatalInfo, 
     smoothingParameter=0.05,
 )
-
 
 ## FETCH GROCERIES
 simpleList = GroceryListItem.builder().neutron(runNumber).useLiteMode(isLite).buildList()

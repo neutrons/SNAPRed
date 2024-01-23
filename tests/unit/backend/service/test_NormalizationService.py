@@ -47,10 +47,8 @@ with mock.patch.dict(
         normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version="1.0.0")
         normalizationService.dataExportService.exportNormalizationIndexEntry = mock.Mock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = MagicMock("expected")
-        normalizationService.dataFactoryService.getReductionIngredients = mock.Mock()
-        normalizationService.dataFactoryService.getReductionIngredients.return_value = (
-            readReductionIngredientsFromFile()
-        )  # noqa: E501
+        normalizationService.sousChef.prepReductionIngredients = mock.Mock()
+        normalizationService.sousChef.prepReductionIngredients.return_value = readReductionIngredientsFromFile()  # noqa: E501
         normalizationService.saveNormalization(mock.Mock())
         assert normalizationService.dataExportService.exportNormalizationRecord.called
         savedEntry = normalizationService.dataExportService.exportNormalizationRecord.call_args.args[0]
@@ -136,19 +134,19 @@ class TestNormalizationService(unittest.TestCase):
             outputWorkspace="output_ws",
         )
         self.instance = NormalizationService()
-        self.instance.dataFactoryService.getCalibrantSample = MagicMock()
+        self.instance.sousChef.prepCalibrantSample = MagicMock()
         self.instance.sousChef.prepReductionIngredients = MagicMock()
 
         res = self.instance.vanadiumCorrection(mockRequest)
 
         mockRecipeInst = RawVanadiumCorrectionRecipe.return_value
-        assert self.instance.dataFactoryService.getCalibrantSample.called_once_with(mockRequest.calibrantSamplePath)
+        assert self.instance.sousChef.prepCalibrantSample.called_once_with(mockRequest.calibrantSamplePath)
         assert self.instance.sousChef.prepReductionIngredients.called_once_with(FarmFreshIngredients.return_value)
         assert mockRecipeInst.executeRecipe.called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             BackgroundWorkspace=mockRequest.backgroundWorkspace,
             Ingredients=self.instance.sousChef.prepReductionIngredients.return_value,
-            CalibrantSample=self.instance.dataFactoryService.getCalibrantSample.return_value,
+            CalibrantSample=self.instance.sousChef.prepCalibrantSample.return_value,
             OutputWorkspace=mockRequest.outputWorkspace,
         )
         assert res == mockRecipeInst.executeRecipe.return_value
