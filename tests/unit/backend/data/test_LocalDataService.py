@@ -359,7 +359,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
                 stateConfig = parse_raw_as(StateConfig, file.read())
             assert stateConfig.groupingMap is None
 
-    def test_readFocusGroups():
+    def test__readFocusGroups():
+        # test of `LocalDataService._readFocusGroups`
         localDataService = LocalDataService()
         localDataService._readReductionParameters = _readReductionParameters
         _readReductionParameters("test")
@@ -928,6 +929,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             assert True
 
     def test_readFocusGroups():
+        # test of `LocalDataService.readFocusGroups`
         localDataService = LocalDataService()
         localDataService._findMatchingFileList = mock.Mock()
         localDataService._findMatchingFileList.side_effect = lambda path, throws: [  # noqa: ARG005
