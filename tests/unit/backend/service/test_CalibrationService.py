@@ -113,7 +113,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # mock the inputs to the function
         focussedData = MagicMock(spec_set=str)
         focusGroup = MagicMock(spec=FocusGroup)
-        focusGroup.name="group1"
+        focusGroup.name = "group1"
         pixelGroup = MagicMock(spec_set=PixelGroup)
 
         # mock external method calls
