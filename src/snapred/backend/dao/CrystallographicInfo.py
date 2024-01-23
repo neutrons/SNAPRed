@@ -28,10 +28,10 @@ class CrystallographicInfo(BaseModel):
 
     def __init__(
         self,
-        hkl: List[Tuple[int, int, int]] = None,
-        dSpacing: List[float] = None,
-        fSquared: List[float] = None,
-        multiplicities: List[int] = None,
+        hkl: List[Tuple[int, int, int]] = [],
+        dSpacing: List[float] = [],
+        fSquared: List[float] = [],
+        multiplicities: List[int] = [],
         peaks=[],
     ):
         if peaks != []:
@@ -41,7 +41,6 @@ class CrystallographicInfo(BaseModel):
             raise ValueError("Structure factors and hkl required to have same length")
         if len(multiplicities) != len(hkl):
             raise ValueError("Multiplicities and hkl required to have same length")
-
         if len(dSpacing) != len(hkl):
             raise ValueError("Spacings and hkl required to have same length")
         peaks = [
