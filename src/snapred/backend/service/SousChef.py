@@ -126,7 +126,7 @@ class SousChef(Service):
             ingredients.instrumentState.pixelGroup = ingredients.pixelGroup
             res = DetectorPeakPredictorRecipe().executeRecipe(
                 InstrumentState=ingredients.instrumentState,
-                CrystalInfo = ingredients.crystalInfo,
+                CrystalInfo=ingredients.crystalInfo,
             )
             self._peaksCache[key] = parse_raw_as(List[GroupPeakList], res)
         return self._peaksCache[key]
