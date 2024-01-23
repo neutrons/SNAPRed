@@ -116,30 +116,30 @@ class LocalDataService:
 
         return StateConfig(
             calibration=diffCalibration,
-            focusGroups=self._readFocusGroups(runId),
+            focusGroups=list(self.readFocusGroups().values()),
             vanadiumFilePath="",  # TODO remove vanadiumFilePath
             stateId=stateId,
         )  # TODO: fill with real value
 
-    def _readFocusGroups(self, runId: str) -> List[FocusGroup]:  # noqa: ARG002
-        reductionParameters = self._readReductionParameters(runId)
-        # TODO: fix hardcode reductionParameters["focGroupLst"]
-        # dont have time to figure out why its reading the wrong data
-        focusGroupNames = ["Column", "Bank", "All"]
-        focusGroups = []
-        for i, name in enumerate(focusGroupNames):
-            focusGroups.append(
-                FocusGroup(
-                    name=name,
-                    definition=str(
-                        self.instrumentConfig.calibrationDirectory
-                        / "Powder"
-                        / self.instrumentConfig.pixelGroupingDirectory
-                        / reductionParameters["focGroupDefinition"][i]
-                    ),
-                )
-            )
-        return focusGroups
+    # def _readFocusGroups(self, runId: str) -> List[FocusGroup]:  # noqa: ARG002
+    #     reductionParameters = self._readReductionParameters(runId)
+    #     # TODO: fix hardcode reductionParameters["focGroupLst"]
+    #     # dont have time to figure out why its reading the wrong data
+    #     focusGroupNames = ["Column", "Bank", "All"]
+    #     focusGroups = []
+    #     for i, name in enumerate(focusGroupNames):
+    #         focusGroups.append(
+    #             FocusGroup(
+    #                 name=name,
+    #                 definition=str(
+    #                     self.instrumentConfig.calibrationDirectory
+    #                     / "Powder"
+    #                     / self.instrumentConfig.pixelGroupingDirectory
+    #                     / reductionParameters["focGroupDefinition"][i]
+    #                 ),
+    #             )
+    #         )
+    #     return focusGroups
 
     def readRunConfig(self, runId: str) -> RunConfig:
         return self._readRunConfig(runId)
@@ -238,55 +238,55 @@ class LocalDataService:
         # TODO: Propogate pathlib through codebase
         return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId}/"
 
-    def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
-        # lookup IPTS number
-        run: int = int(runId)
-        stateId, _ = self._generateStateId(runId)
+    # def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
+    #     # lookup IPTS number
+    #     run: int = int(runId)
+    #     stateId, _ = self._generateStateId(runId)
 
-        calibrationPath: str = self._constructCalibrationStatePath(stateId)
-        calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"  # noqa: E501
+    #     calibrationPath: str = self._constructCalibrationStatePath(stateId)
+    #     calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"  # noqa: E501
 
-        foundFiles = self._findMatchingFileList(calibSearchPattern)
+    #     foundFiles = self._findMatchingFileList(calibSearchPattern)
 
-        calibFileList = []
+    #     calibFileList = []
 
-        # TODO: Allow non lite files
-        for file in foundFiles:
-            if "lite" in file:
-                calibFileList.append(file)
+    #     # TODO: Allow non lite files
+    #     for file in foundFiles:
+    #         if "lite" in file:
+    #             calibFileList.append(file)
 
-        calibRunList = []
-        # TODO: Why are we overwriting dictIn every iteration?
-        for string in calibFileList:
-            runStr = string[
-                string.find(self.instrumentConfig.calibrationFilePrefix)
-                + len(self.instrumentConfig.calibrationFilePrefix) :
-            ].split(".")[0]
-            if not runStr.isnumeric():
-                continue
-            calibRunList.append(int(runStr))
+    #     calibRunList = []
+    #     # TODO: Why are we overwriting dictIn every iteration?
+    #     for string in calibFileList:
+    #         runStr = string[
+    #             string.find(self.instrumentConfig.calibrationFilePrefix)
+    #             + len(self.instrumentConfig.calibrationFilePrefix) :
+    #         ].split(".")[0]
+    #         if not runStr.isnumeric():
+    #             continue
+    #         calibRunList.append(int(runStr))
 
-            relRuns = [x - run != 0 for x in calibRunList]
+    #         relRuns = [x - run != 0 for x in calibRunList]
 
-            pos = [i for i, val in enumerate(relRuns) if val >= 0]
-            [i for i, val in enumerate(relRuns) if val <= 0]
+    #         pos = [i for i, val in enumerate(relRuns) if val >= 0]
+    #         [i for i, val in enumerate(relRuns) if val <= 0]
 
-            # TODO: Account for errors
-            closestAfter = min([calibRunList[i] for i in pos])
-            calIndx = calibRunList.index(closestAfter)
+    #         # TODO: Account for errors
+    #         closestAfter = min([calibRunList[i] for i in pos])
+    #         calIndx = calibRunList.index(closestAfter)
 
-            with open(calibFileList[calIndx], "r") as json_file:
-                dictIn = json.load(json_file)
+    #         with open(calibFileList[calIndx], "r") as json_file:
+    #             dictIn = json.load(json_file)
 
-            # useful to also path location of calibration directory
-            fullCalPath = calibFileList[calIndx]
-            fSlash = [pos for pos, char in enumerate(fullCalPath) if char == "/"]
-            dictIn["calPath"] = fullCalPath[0 : fSlash[-1] + 1]
+    #         # useful to also path location of calibration directory
+    #         fullCalPath = calibFileList[calIndx]
+    #         fSlash = [pos for pos, char in enumerate(fullCalPath) if char == "/"]
+    #         dictIn["calPath"] = fullCalPath[0 : fSlash[-1] + 1]
 
-        # Now push data into DAO object
-        self.reductionParameterCache[runId] = dictIn
-        dictIn["stateId"] = stateId
-        return dictIn
+    #     # Now push data into DAO object
+    #     self.reductionParameterCache[runId] = dictIn
+    #     dictIn["stateId"] = stateId
+    #     return dictIn
 
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect

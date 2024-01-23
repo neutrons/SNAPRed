@@ -75,7 +75,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def test_readStateConfig():
         localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
+        localDataService.readGroupingFiles = mock.Mock(return_value=["/grouping1.json"])
+        # localDataService._readReductionParameters = _readReductionParameters
         localDataService._readDiffractionCalibrant = mock.Mock()
         localDataService._readDiffractionCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -100,14 +101,15 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert actual is not None
         assert actual.stateId == "123"
 
-    def test_readFocusGroups():
-        localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
-        _readReductionParameters("test")
-        localDataService.instrumentConfig = getMockInstrumentConfig()
-        actual = localDataService._readFocusGroups(mock.Mock())
-        assert actual is not None
-        assert len(actual) == 3
+    # def test_readFocusGroups():
+    #     localDataService = LocalDataService()
+    #     localDataService.readGroupingFiles = mock.Mock(return_value=["/grouping1.json"])
+    #     # localDataService._readReductionParameters = _readReductionParameters
+    #     # _readReductionParameters("test")
+    #     localDataService.instrumentConfig = getMockInstrumentConfig()
+    #     actual = localDataService.readFocusGroups(mock.Mock())
+    #     assert actual is not None
+    #     assert len(actual) == 3
 
     def test_readRunConfig():
         localDataService = LocalDataService()
@@ -590,7 +592,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         except RuntimeError:
             assert True
 
-    def test_reaFocusGroups():
+    def test_readFocusGroups():
         localDataService = LocalDataService()
         localDataService._findMatchingFileList = mock.Mock()
         localDataService._findMatchingFileList.side_effect = lambda path, throws: [  # noqa: ARG005
