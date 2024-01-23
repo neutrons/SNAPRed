@@ -606,20 +606,45 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         ]
 
     @mock.patch("os.path.exists", return_value=True)
-    def test_readCalibrantSample(mock1):  # noqa: ARG001
-        with mock.patch("os.path.exists", return_value=True):
-            localDataService = LocalDataService()
+    def test_writeCalibrantSample_failure(mock1):  # noqa: ARG001
+        localDataService = LocalDataService()
+        sample = mock.MagicMock()
+        sample.name = "apple"
+        sample.unique_id = "banana"
+        with pytest.raises(ValueError) as e:  # noqa: PT011
+            localDataService.writeCalibrantSample(sample)
+        assert sample.name in str(e.value)
+        assert sample.unique_id in str(e.value)
+        assert Config["samples.home"] in str(e.value)
 
-            result = localDataService.readCalibrantSample(
-                Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
-            )
-            assert type(result) == CalibrantSamples
-            assert result.name == "Silicon_NIST_640D"
+    def test_writeCalibrantSample_success():  # noqa: ARG002
+        localDataService = LocalDataService()
+        sample = mock.MagicMock()
+        sample.name = "apple"
+        sample.unique_id = "banana"
+        sample.json.return_value = "I like to eat, eat, eat"
+        temp = Config._config["samples"]["home"]
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+            Config._config["samples"]["home"] = tempdir
+            # mock_os_join.return_value = f"{tempdir}{sample.name}_{sample.unique_id}"
+            filePath = f"{tempdir}/{sample.name}_{sample.unique_id}.json"
+            localDataService.writeCalibrantSample(sample)
+            assert os.path.exists(filePath)
+        Config._config["samples"]["home"] = temp
+
+    @mock.patch("os.path.exists", return_value=True)
+    def test_readCalibrantSample(mock1):  # noqa: ARG001
+        localDataService = LocalDataService()
+
+        result = localDataService.readCalibrantSample(
+            Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
+        )
+        assert type(result) == CalibrantSamples
+        assert result.name == "Silicon_NIST_640D"
 
     @mock.patch("os.path.exists", return_value=True)
     def test_readCifFilePath(mock1):  # noqa: ARG001
-        with mock.patch("os.path.exists", return_value=True):
-            localDataService = LocalDataService()
+        localDataService = LocalDataService()
 
-            result = localDataService.readCifFilePath("testid")
-            assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif"
+        result = localDataService.readCifFilePath("testid")
+        assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif"

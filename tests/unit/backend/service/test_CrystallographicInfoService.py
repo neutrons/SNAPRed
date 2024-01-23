@@ -1,15 +1,35 @@
-from unittest.mock import patch
+import unittest
+from unittest.mock import Mock, patch
 
+import pytest
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.meta.Config import Config
 
+thisService = "snapred.backend.service.CrystallographicInfoService."
 
-@patch("snapred.backend.service.CrystallographicInfoService.CrystallographicInfoRecipe")
-def test_CrystallographicInfoService(mockRecipe):
-    mockRecipe = mockRecipe.return_value
-    service = CrystallographicInfoService()
-    assert service.name() == "ingestion"
 
-    result = service.ingest("cifPath", 1.0)
-    mockRecipe.executeRecipe.assert_called_once_with(cifPath="cifPath", dMin=1.0, dMax=100.0)
-    assert result == mockRecipe.executeRecipe.return_value
+class TestXtalService(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.instance = CrystallographicInfoService()
+        super().setUpClass()
+
+    def test_name(self):
+        assert "ingestion" == self.instance.name()
+
+    @patch(thisService + "CrystallographicInfoRecipe")
+    def test_ingest_good(self, xtalRx):
+        xtalRx.return_value.executeRecipe.return_value = {"good": "yup"}
+        cifPath = "apples"
+        data = self.instance.ingest(cifPath)
+        assert xtalRx.called_once
+        assert xtalRx.return_value.executeRecipe.called_once_with(cifPath)
+        assert data == xtalRx.return_value.executeRecipe.return_value
+
+    @patch(thisService + "CrystallographicInfoRecipe")
+    def test_ingest_bad(self, xtalRx):
+        xtalRx.side_effect = RuntimeError("nope!")
+        cifPath = "bananas"
+        with pytest.raises(RuntimeError) as e:
+            self.instance.ingest(cifPath)
+        assert "nope!" == str(e.value)

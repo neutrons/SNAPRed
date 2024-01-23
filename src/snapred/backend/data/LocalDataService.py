@@ -107,7 +107,6 @@ class LocalDataService:
             raise _createFileNotFoundError("Instrument configuration file", self.instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str) -> StateConfig:
-        reductionParameters = self._readReductionParameters(runId)
         previousDiffCalRecord: CalibrationRecord = self.readCalibrationRecord(runId)
         if previousDiffCalRecord is None:
             diffCalibration: Calibration = self.readCalibrationState(runId)
@@ -118,13 +117,7 @@ class LocalDataService:
         return StateConfig(
             calibration=diffCalibration,
             focusGroups=self._readFocusGroups(runId),
-            rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=str(
-                self.instrumentConfig.calibrationDirectory
-                / "Powder"
-                / stateId
-                / reductionParameters["rawVCorrFileName"]
-            ),
+            vanadiumFilePath="",  # TODO remove vanadiumFilePath
             stateId=stateId,
         )  # TODO: fill with real value
 
@@ -455,7 +448,6 @@ class LocalDataService:
         return latestVersion
 
     def readNormalizationRecord(self, runId: str, version: str = None):
-        self._readReductionParameters(runId)
         recordPath: str = self.getNormalizationRecordPath(runId, "*")
         latestFile = ""
         if version:
@@ -544,11 +536,7 @@ class LocalDataService:
     def writeCalibrantSample(self, sample: CalibrantSamples):
         samplePath: str = Config["samples.home"]
         fileName: str = sample.name + "_" + sample.unique_id
-        # TODO: Test code should not pollute production code, why is this here?
-        if fileName == "test_id123":
-            filePath = os.path.join(Resource._resourcesPath + fileName) + ".json"
-        else:
-            filePath = os.path.join(samplePath, fileName) + ".json"
+        filePath = os.path.join(samplePath, fileName) + ".json"
         if os.path.exists(filePath):
             raise ValueError(f"the file '{filePath}' already exists")
         write_model_pretty(sample, filePath)

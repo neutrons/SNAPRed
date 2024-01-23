@@ -85,14 +85,6 @@ snapred.ui.view.ToolBarView module
    :undoc-members:
    :show-inheritance:
 
-snapred.ui.view.VanadiumFocussedReductionView module
-----------------------------------------------------
-
-.. automodule:: snapred.ui.view.VanadiumFocussedReductionView
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.ui.view.WorkflowNodeView module
 ---------------------------------------
 

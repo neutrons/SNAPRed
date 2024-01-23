@@ -12,10 +12,18 @@ snapred.backend.dao.ingredients.DiffractionCalibrationIngredients module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.dao.ingredients.FitMultiplePeaksIngredients module
+snapred.backend.dao.ingredients.NormalizationIngredients module
 ------------------------------------------------------------------
 
-.. automodule:: snapred.backend.dao.ingredients.FitMultiplePeaksIngredients
+.. automodule:: snapred.backend.dao.ingredients.NormalizationIngredients
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.dao.ingredients.PeakIngredients module
+------------------------------------------------------------------
+
+.. automodule:: snapred.backend.dao.ingredients.PeakIngredients
    :members:
    :undoc-members:
    :show-inheritance:
@@ -32,22 +40,6 @@ snapred.backend.dao.ingredients.ReductionIngredients module
 -----------------------------------------------------------
 
 .. automodule:: snapred.backend.dao.ingredients.ReductionIngredients
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients module
---------------------------------------------------------------------------
-
-.. automodule:: snapred.backend.dao.ingredients.SmoothDataExcludingPeaksIngredients
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-snapred.backend.dao.ingredients.VanadiumReductionIngredients module
--------------------------------------------------------------------
-
-.. automodule:: snapred.backend.dao.ingredients.VanadiumReductionIngredients
    :members:
    :undoc-members:
    :show-inheritance:

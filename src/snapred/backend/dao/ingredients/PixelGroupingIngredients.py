@@ -5,8 +5,6 @@ from pydantic import BaseModel
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.meta.Config import Config
 
-# TODO does this class need to exist?
-
 
 class PixelGroupingIngredients(BaseModel):
     """Class to hold the ingredients necessary for pixel grouping parameter calculation."""

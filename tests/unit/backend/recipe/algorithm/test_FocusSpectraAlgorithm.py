@@ -5,7 +5,6 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.dao.ingredients import ReductionIngredients
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 # the algorithm to test
@@ -21,11 +20,11 @@ class TestFocusSpectra(unittest.TestCase):
         self.maxOffset = 2
         self.fakeRunNumber = "555"
 
-        self.fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/diffcal/fakeInstrumentState.json"))
+        self.pixelGroup = PixelGroup.parse_file(Resource.getPath("/inputs/diffcal/fakePixelGroup.json"))
 
         self.fakeIngredients = Resource.read("/inputs/reduction/input_ingredients.json")
         self.fakeIngredients = ReductionIngredients.parse_raw(self.fakeIngredients)
-        self.fakeIngredients.pixelGroup = self.fakeInstrumentState.pixelGroup
+        self.fakeIngredients.pixelGroup = self.pixelGroup
 
         self.fakeRawData = f"_test_focusSpectra_{self.fakeRunNumber}"
         self.fakeGroupingWorkspace = f"_test_focusSpectra_difc_{self.fakeRunNumber}"
@@ -50,12 +49,12 @@ class TestFocusSpectra(unittest.TestCase):
             RebinRagged,
         )
 
-        TOFMin = self.fakeInstrumentState.particleBounds.tof.minimum
-        TOFMax = self.fakeInstrumentState.particleBounds.tof.maximum
+        TOFMin = self.pixelGroup.timeOfFlight.minimum
+        TOFMax = self.pixelGroup.timeOfFlight.maximum
 
-        dMin = self.fakeIngredients.pixelGroup.dMin()
-        dMax = self.fakeIngredients.pixelGroup.dMax()
-        DBin = self.fakeIngredients.pixelGroup.dBin()
+        dMin = self.pixelGroup.dMin()
+        dMax = self.pixelGroup.dMax()
+        DBin = self.pixelGroup.dBin()
         overallDMax = max(dMax)
         overallDMin = min(dMin)
         dBin = min([abs(d) for d in DBin])
