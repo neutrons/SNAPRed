@@ -39,13 +39,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             instrumentParmaeters = json.loads(file.read())
         return instrumentParmaeters
 
-    def _readReductionParameters(runId: str):  # noqa: ARG001
-        reductionParameters = None
-        with Resource.open("inputs/ReductionParameters.json", "r") as file:
-            reductionParameters = json.loads(file.read())
-        reductionParameters["stateId"] = "123"
-        return reductionParameters
-
     def test_readInstrumentConfig():
         localDataService = LocalDataService()
         localDataService._readInstrumentParameters = _readInstrumentParameters
@@ -76,7 +69,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
     def test_readStateConfig():
         localDataService = LocalDataService()
         localDataService.readGroupingFiles = mock.Mock(return_value=["/grouping1.json"])
-        # localDataService._readReductionParameters = _readReductionParameters
         localDataService._readDiffractionCalibrant = mock.Mock()
         localDataService._readDiffractionCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -100,16 +92,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         actual = localDataService.readStateConfig("123")
         assert actual is not None
         assert actual.stateId == "123"
-
-    # def test_readFocusGroups():
-    #     localDataService = LocalDataService()
-    #     localDataService.readGroupingFiles = mock.Mock(return_value=["/grouping1.json"])
-    #     # localDataService._readReductionParameters = _readReductionParameters
-    #     # _readReductionParameters("test")
-    #     localDataService.instrumentConfig = getMockInstrumentConfig()
-    #     actual = localDataService.readFocusGroups(mock.Mock())
-    #     assert actual is not None
-    #     assert len(actual) == 3
 
     def test_readRunConfig():
         localDataService = LocalDataService()
