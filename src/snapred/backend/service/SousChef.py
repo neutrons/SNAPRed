@@ -107,12 +107,10 @@ class SousChef(Service):
         return self._xtalCache[key]
 
     def prepPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
-        instrumentState = self.prepInstrumentState(ingredients.runNumber)
-        instrumentState.pixelGroup = self.prepPixelGroup(ingredients)
         return PeakIngredients(
             crystalInfo=self.prepCrystallographicInfo(ingredients),
-            instrumentState=instrumentState,
-            pixelGroup=instrumentState.pixelGroup,
+            instrumentState=self.prepInstrumentState(ingredients.runNumber),
+            pixelGroup=self.prepPixelGroup(ingredients),
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
         )
 
