@@ -885,9 +885,9 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         service = LocalDataService()
         savePath = Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"]
         Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = Resource.getPath("inputs/")
-        with pytest.raises( # noqa: PT012
+        with pytest.raises(  # noqa: PT012
             FileNotFoundError,
-            match='default grouping-schema map',
+            match="default grouping-schema map",
         ):
             service._readDefaultGroupingMap()
         Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = savePath
