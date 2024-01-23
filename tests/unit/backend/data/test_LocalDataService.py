@@ -30,7 +30,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
     from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry  # noqa: E402
     from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord  # noqa: E402
     from snapred.backend.dao.state.FocusGroup import FocusGroup
-    from snapred.backend.dao.state import InstrumentState
+    from snapred.backend.dao.state.InstrumentState import InstrumentState
     from snapred.backend.dao.state.GroupingMap import GroupingMap
     from snapred.backend.data.LocalDataService import LocalDataService  # noqa: E402
 
