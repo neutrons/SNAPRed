@@ -26,6 +26,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
     from snapred.backend.dao.normalization.Normalization import Normalization  # noqa: E402
     from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry  # noqa: E402
     from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord  # noqa: E402
+    from snapred.backend.dao.state.FocusGroup import FocusGroup
     from snapred.backend.data.LocalDataService import LocalDataService  # noqa: E402
 
     reductionIngredients = None
@@ -570,15 +571,17 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
     def test_readGroupingFiles():
         localDataService = LocalDataService()
         localDataService._findMatchingFileList = mock.Mock()
-        localDataService._findMatchingFileList.return_value = [
-            "/group1.json",
-            "/group2.json",
+        localDataService._findMatchingFileList.side_effect = lambda path, throws: [  # noqa: ARG005
+            f"/group1.{path.split('/')[-1].split('.')[-1]}",
+            f"/group2.{path.split('/')[-1].split('.')[-1]}",
         ]
         result = localDataService.readGroupingFiles()
         # 6 because there are 3 file types and the mock returns 2 files per
         assert len(result) == 6
-        assert result[0] == "/group1.json"
-        assert result[1] == "/group2.json"
+        assert list(result.keys()) == [f"/group{x}.{ext}" for ext in ["xml", "nxs", "hdf"] for x in [1, 2]]
+        assert list(result.values()) == [
+            FocusGroup(name=x.split("/")[-1].split(".")[0], definition=x) for x in list(result.keys())
+        ]
 
     def test_readNoGroupingFiles():
         localDataService = LocalDataService()

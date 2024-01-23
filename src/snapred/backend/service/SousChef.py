@@ -128,7 +128,7 @@ class SousChef(Service):
         )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
-        calibrantSample = self.dataFactoryService.getCalibrantSample(ingredients.samplePath)
+        calibrantSample = self.dataFactoryService.getCalibrantSample(ingredients.calibrantSamplePath)
         return NormalizationIngredients(
             pixelGroup=self.prepPixelGroup(ingredients),
             calibrantSample=calibrantSample,

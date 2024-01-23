@@ -105,7 +105,7 @@ class NormalizationService(Service):
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroup,
-            calibrantSamplePath=request.samplePath,
+            calibrantSamplePath=request.calibrantSamplePath,
             inputWorkspace=groceries["inputWorkspace"],
             backgroundWorkspace=groceries["backgroundWorkspace"],
             outputWorkspace=groceries["outputWorkspace"],
@@ -132,7 +132,7 @@ class NormalizationService(Service):
         smoothRequest = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focussedVanadiumWs,
             outputWorkspace=smoothedOutput,
-            calibrantSamplePath=request.samplePath,
+            calibrantSamplePath=request.calibrantSamplePath,
             focusGroup=request.focusGroup,
             useLiteMode=request.useLiteMode,
             runNumber=request.runNumber,

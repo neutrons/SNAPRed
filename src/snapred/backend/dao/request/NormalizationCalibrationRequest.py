@@ -11,7 +11,7 @@ class NormalizationCalibrationRequest(BaseModel):
     backgroundRunNumber: str
     useLiteMode: bool = True  # TODO turn this on inside the view and workflow
     focusGroup: FocusGroup
-    samplePath: str
+    calibrantSamplePath: str
     smoothingParameter: float
     dMin: float
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

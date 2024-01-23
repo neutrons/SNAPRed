@@ -46,7 +46,8 @@ class DiffractionCalibrationCreationWorkflow:
         self.samplePaths = self.interfaceController.executeRequest(request).data
 
         request = SNAPRequest(path="config/groupingFiles")
-        self.groupingFiles = self.interfaceController.executeRequest(request).data
+        self.focusGroups = self.interfaceController.executeRequest(request).data
+        self.groupingFiles = list(self.focusGroups.keys())
 
         self._calibrationReductionView = CalibrationReductionRequestView(
             jsonForm, samples=self.samplePaths, groups=self.groupingFiles, parent=parent
@@ -93,7 +94,7 @@ class DiffractionCalibrationCreationWorkflow:
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             calibrantSamplePath=self.calibrantSamplePath,
-            focusGroupPath=self.focusGroupPath,
+            focusGroup=self.focusGroups[self.focusGroupPath],
             useLiteMode=self.useLiteMode,
         )
         payload.convergenceThreshold = view.fieldConvergnceThreshold.get(payload.convergenceThreshold)
@@ -112,7 +113,7 @@ class DiffractionCalibrationCreationWorkflow:
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),
             workspace=self.responses[-1].data["outputWorkspace"],
-            focusGroupPath=self.focusGroupPath,
+            focusGroup=self.focusGroups[self.focusGroupPath],
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             useLiteMode=self.useLiteMode,
             calibrantSamplePath=self.calibrantSamplePath,

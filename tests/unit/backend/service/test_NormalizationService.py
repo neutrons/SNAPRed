@@ -76,7 +76,7 @@ class TestNormalizationService(unittest.TestCase):
             runNumber="12345",
             backgroundRunNumber="67890",
             useLiteMode=True,
-            samplePath="path/to/sample",
+            calibrantSamplePath="path/to/sample",
             focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
             smoothingParameter=0.5,
             dMin=0.4,
