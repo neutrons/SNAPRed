@@ -15,7 +15,6 @@ def test_excuteRequest_noop():
         "api",
         "normalization",
         "reduceLiteData",
-        "souschef",
     ]
     expected_keys.sort()
 

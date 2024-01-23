@@ -112,7 +112,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     ):
         # mock the inputs to the function
         focussedData = MagicMock(spec_set=str)
-        focusGroup = MagicMock(spec=FocusGroup, name="group1")
+        focusGroup = MagicMock(spec=FocusGroup)
+        focusGroup.name="group1"
         pixelGroup = MagicMock(spec_set=PixelGroup)
 
         # mock external method calls
@@ -130,7 +131,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert parse_raw_as.called_once_with(List[CalibrationMetric], mockMetric)
         assert FocusGroupMetric.called_once_with(
-            focusGroup=focusGroup,
+            focusGroupName=focusGroup.name,
             calibrationMetric=mockMetric,  # NOTE this is because of above lambda
         )
         assert metric == FocusGroupMetric.return_value
@@ -163,7 +164,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             strainStandardDeviation=0.0,
             twoThetaAverage=0.0,
         )
-        fakeMetrics = FocusGroupMetric(focusGroup=fakeFocusGroup, calibrationMetric=[fakeMetrics])
+        fakeMetrics = FocusGroupMetric(focusGroupName=fakeFocusGroup.name, calibrationMetric=[fakeMetrics])
 
         # Mock the necessary method calls
         self.instance.sousChef.prepPeakIngredients = MagicMock()
@@ -176,7 +177,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             workspace="mock workspace",
             run=RunConfig(runNumber="123"),
             useLiteMode=True,
-            focusGroup=fakeMetrics.focusGroup,
+            focusGroup={"name": fakeMetrics.focusGroupName, "definition": ""},
             calibrantSamplePath="egg/muffin/biscuit",
         )
         record = self.instance.assessQuality(request)

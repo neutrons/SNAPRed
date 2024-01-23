@@ -39,7 +39,6 @@ farmFresh = FarmFreshIngredients(
   cifPath=cifPath,
 )
 peakIngredients = SousChef().prepPeakIngredients(farmFresh)
-peakIngredients.instrumentState.pixelGroup = peakIngredients.pixelGroup
 
 ingredients = SmoothDataExcludingPeaksIngredients(
     instrumentState=peakIngredients.instrumentState, 

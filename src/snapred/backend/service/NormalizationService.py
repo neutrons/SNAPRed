@@ -30,7 +30,6 @@ from snapred.backend.recipe.GenericRecipe import (
     SmoothDataExcludingPeaksRecipe,
 )
 from snapred.backend.service.CalibrationService import CalibrationService
-from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
@@ -47,7 +46,6 @@ class NormalizationService(Service):
         self.dataFactoryService = DataFactoryService()
         self.dataExportService = DataExportService()
         self.groceryService = GroceryService()
-        self.crystallographicInfoService = CrystallographicInfoService()
         self.groceryClerk = GroceryListItem.builder()
         self.diffractionCalibrationService = CalibrationService()
         self.sousChef = SousChef()
@@ -209,10 +207,12 @@ class NormalizationService(Service):
 
     @FromString
     def smoothDataExcludingPeaks(self, request: SmoothDataExcludingPeaksRequest):
+        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroup,
+            cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
         )
         peakIngredients = self.sousChef.prepPeakIngredients(farmFresh)

@@ -11,5 +11,5 @@ class FocusGroupMetric(BaseModel):
     Join object that maps a list of Calibration Metrics to a focus group.
     """
 
-    focusGroup: FocusGroup
+    focusGroupName: str
     calibrationMetric: List[CalibrationMetric]

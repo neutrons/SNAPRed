@@ -173,6 +173,7 @@ class TestNormalizationService(unittest.TestCase):
 
         self.instance = NormalizationService()
         self.instance.sousChef.prepPeakIngredients = MagicMock()
+        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         SmoothDataExcludingPeaksIngredients.return_value = self.instance.sousChef.prepPeakIngredients.return_value
 
         mockRecipeInst = mockRecipe.return_value

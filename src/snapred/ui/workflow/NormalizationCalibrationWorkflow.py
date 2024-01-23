@@ -183,7 +183,7 @@ class NormalizationCalibrationWorkflow:
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
-            fpcusGroup=self.focusGroups[groupingFile],
+            focusGroup=self.focusGroups[groupingFile],
             smoothingParameter=smoothingParameter,
             dMin=dMin,
         )

@@ -107,10 +107,12 @@ class SousChef(Service):
         return self._xtalCache[key]
 
     def prepPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
+        instrumentState = self.prepInstrumentState(ingredients.runNumber)
+        instrumentState.pixelGroup = self.prepPixelGroup(ingredients)
         return PeakIngredients(
             crystalInfo=self.prepCrystallographicInfo(ingredients),
-            instrumentState=self.prepInstrumentState(ingredients.runNumber),
-            pixelGroup=self.prepPixelGroup(ingredients),
+            instrumentState=instrumentState,
+            pixelGroup=instrumentState.pixelGroup,
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
         )
 
@@ -123,7 +125,6 @@ class SousChef(Service):
         )
         if key not in self._peaksCache:
             ingredients = self.prepPeakIngredients(ingredients)
-            ingredients.instrumentState.pixelGroup = ingredients.pixelGroup
             res = DetectorPeakPredictorRecipe().executeRecipe(
                 InstrumentState=ingredients.instrumentState,
                 CrystalInfo = ingredients.crystalInfo,
@@ -135,7 +136,7 @@ class SousChef(Service):
         return ReductionIngredients(
             reductionState=self.dataFactoryService.getReductionState(ingredients.runNumber),
             runConfig=self.prepRunConfig(ingredients.runNumber),
-            pixelGroup=self.prepPixelGroup(),
+            pixelGroup=self.prepPixelGroup(ingredients),
         )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:

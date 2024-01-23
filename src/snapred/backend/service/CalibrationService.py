@@ -42,7 +42,6 @@ from snapred.backend.recipe.GenericRecipe import (
 )
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
-from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
@@ -175,7 +174,7 @@ class CalibrationService(Service):
                 PixelGroup=pixelGroup.json(),
             ),
         )
-        return FocusGroupMetric(focusGroup=focusGroup, calibrationMetric=metric)
+        return FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric)
 
     @FromString
     def readQuality(self, runId: str, version: str):
