@@ -578,10 +578,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         result = localDataService.readGroupingFiles()
         # 6 because there are 3 file types and the mock returns 2 files per
         assert len(result) == 6
-        assert list(result.keys()) == [f"/group{x}.{ext}" for ext in ["xml", "nxs", "hdf"] for x in [1, 2]]
-        assert list(result.values()) == [
-            FocusGroup(name=x.split("/")[-1].split(".")[0], definition=x) for x in list(result.keys())
-        ]
+        assert result == [f"/group{x}.{ext}" for ext in ["xml", "nxs", "hdf"] for x in [1, 2]]
 
     def test_readNoGroupingFiles():
         localDataService = LocalDataService()
@@ -592,6 +589,21 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             pytest.fail("Should have thrown an exception")
         except RuntimeError:
             assert True
+
+    def test_reaFocusGroups():
+        localDataService = LocalDataService()
+        localDataService._findMatchingFileList = mock.Mock()
+        localDataService._findMatchingFileList.side_effect = lambda path, throws: [  # noqa: ARG005
+            f"/group1.{path.split('/')[-1].split('.')[-1]}",
+            f"/group2.{path.split('/')[-1].split('.')[-1]}",
+        ]
+        result = localDataService.readFocusGroups()
+        # 6 because there are 3 file types and the mock returns 2 files per
+        assert len(result) == 6
+        assert list(result.keys()) == [f"/group{x}.{ext}" for ext in ["xml", "nxs", "hdf"] for x in [1, 2]]
+        assert list(result.values()) == [
+            FocusGroup(name=x.split("/")[-1].split(".")[0], definition=x) for x in list(result.keys())
+        ]
 
     @mock.patch("os.path.exists", return_value=True)
     def test_readCalibrantSample(mock1):  # noqa: ARG001

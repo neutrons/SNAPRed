@@ -45,7 +45,7 @@ class DiffractionCalibrationCreationWorkflow:
         request = SNAPRequest(path="config/samplePaths")
         self.samplePaths = self.interfaceController.executeRequest(request).data
 
-        request = SNAPRequest(path="config/groupingFiles")
+        request = SNAPRequest(path="config/focusGroups")
         self.focusGroups = self.interfaceController.executeRequest(request).data
         self.groupingFiles = list(self.focusGroups.keys())
 

@@ -108,8 +108,9 @@ class DataFactoryService:
     def getCalibrationIndex(self, runId: str):
         return self.lookupService.readCalibrationIndex(runId)
 
-    def getFocusGroups(self, runId: str):
-        return self.lookupService._readFocusGroups(runId)
+    def getFocusGroups(self):
+        # return self.lookupService._readFocusGroups(runId)
+        return self.lookupService.readFocusGroups()
 
     def checkCalibrationStateExists(self, runId: str):
         return self.lookupService.checkCalibrationFileExists(runId)

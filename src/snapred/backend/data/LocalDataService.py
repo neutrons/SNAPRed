@@ -752,6 +752,10 @@ class LocalDataService:
             groupingFiles.extend(self._findMatchingFileList(f"{groupingFolder}/*.{extension}", throws=False))
         if len(groupingFiles) < 1:
             raise RuntimeError(f"No grouping files found in {groupingFolder} for extensions {extensions}")
+        return groupingFiles
+
+    def readFocusGroups(self):
+        groupingFiles = self.readGroupingFiles()
         focusGroups = {}
         for file in groupingFiles:
             focusGroups[file] = FocusGroup(
