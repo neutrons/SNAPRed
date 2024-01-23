@@ -307,12 +307,12 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         )
         # for inspection, save diffraction focused data before calculation
         self.mantidSnapper.MakeDirtyDish(
-            "save diffraction-focussed TOF data",
+            "Save diffraction-focused TOF data",
             InputWorkspace=outputWS,
             OutputWorkspace=tmpWStof,
         )
         self.mantidSnapper.WashDishes(
-            "save diffraction-focussed d-spacing data",
+            "Delete diffraction-focused d-spacing data",
             Workspace=tmpWSdsp,
         )
         self.mantidSnapper.executeQueue()

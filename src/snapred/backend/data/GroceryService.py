@@ -110,7 +110,8 @@ class GroceryService:
         """
         saveAlgo = AlgorithmManager.create("SaveNexus")
         saveAlgo.setProperty("InputWorkspace", name)
-        saveAlgo.setProperty("Filename", path)
+        saveAlgo.setProperty("Filename", os.path.join(path, name) + ".nxs")
+
         saveAlgo.execute()
 
     def writeGrouping(self, path: str, name: WorkspaceName):
