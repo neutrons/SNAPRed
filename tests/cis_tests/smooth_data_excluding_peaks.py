@@ -43,7 +43,7 @@ peakIngredients.instrumentState.pixelGroup = peakIngredients.pixelGroup
 
 ingredients = SmoothDataExcludingPeaksIngredients(
     instrumentState=peakIngredients.instrumentState, 
-    crystalInfo=peakIngredients.cryatalInfo, 
+    crystalInfo=peakIngredients.crystalInfo, 
     smoothingParameter=0.05,
 )
 
@@ -64,4 +64,5 @@ algo = SmoothDataExcludingPeaksAlgo()
 algo.initialize()
 algo.setProperty("Ingredients", ingredients.json())
 algo.setProperty("InputWorkspace", grocery)
+algo.setProperty("OutputWorkspace", "out_ws")
 algo.execute()
