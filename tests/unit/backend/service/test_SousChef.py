@@ -63,6 +63,16 @@ class TestSousChef(unittest.TestCase):
         assert self.instance.prepCalibration.called_once_with(runNumber)
         assert res == self.instance.prepCalibration.return_value.instrumentState
 
+    def test_prepRunConfig(self):
+        self.instance.dataFactoryService.lookupService.readRunConfig = mock.Mock()
+        res = self.instance.prepRunConfig(self.ingredients.runNumber)
+        assert res == self.instance.dataFactoryService.lookupService.readRunConfig.return_value
+
+    def test_prepCalibrantSample(self):
+        self.instance.dataFactoryService.lookupService.readCalibrantSample = mock.Mock()
+        res = self.instance.prepCalibrantSample(self.ingredients)
+        assert res == self.instance.dataFactoryService.lookupService.readCalibrantSample.return_value
+
     @mock.patch(thisService + "PixelGroup")
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     @mock.patch(thisService + "PixelGroupingIngredients")
