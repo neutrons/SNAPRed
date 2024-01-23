@@ -121,12 +121,13 @@ class DiffractionCalibrationCreationWorkflow:
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
-        return self.responses[-1]
+        return self.responses[-1]  # [-1]: response from CalibrationAssessmentRequest for the calibration in progress
 
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration save
-        calibrationRecord = self.responses[-1].data
+        calibrationRecord = self.responses[-1].data  # [-1]: response from CalibrationAssessmentRequest
+        # [-2]: response from DiffractionCalibrationRequest
         calibrationRecord.workspaceNames.append(self.responses[-2].data["calibrationTable"])
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
