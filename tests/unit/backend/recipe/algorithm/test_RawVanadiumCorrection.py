@@ -14,9 +14,10 @@ from mantid.simpleapi import (
     Rebin,
     mtd,
 )
-from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
+from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
 
 # needed to make mocked ingredients
+from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -39,9 +40,9 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         self.fakeRunNumber = "555"
         fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
 
-        self.fakeIngredients = Ingredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
-        self.fakeIngredients.runConfig = fakeRunConfig
-        tof = self.fakeIngredients.pixelGroup.timeOfFlight
+        fakeIngredients = ReductionIngredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
+        fakeIngredients.runConfig = fakeRunConfig
+        tof = fakeIngredients.pixelGroup.timeOfFlight
 
         # create some nonsense material and crystallography
         fakeMaterial = Material(
@@ -76,6 +77,11 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             geometry=cylinder,
             material=fakeMaterial,
             crystallography=fakeXtal,
+        )
+
+        self.ingredients = Ingredients(
+            pixelGroup=fakeIngredients.pixelGroup,
+            calibrantSample=self.calibrantSample,
         )
 
         self.sample_proton_charge = 10.0
@@ -163,8 +169,8 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         """Test that ingredients for algo are properly processed"""
         algo = Algo()
         algo.initialize()
-        algo.chopIngredients(self.fakeIngredients, self.calibrantSample)
-        assert algo.TOFPars == self.fakeIngredients.pixelGroup.timeOfFlight.params
+        algo.chopIngredients(self.ingredients)
+        assert algo.TOFPars == self.ingredients.pixelGroup.timeOfFlight.params
         assert algo.geometry == self.calibrantSample.geometry
         assert algo.material == self.calibrantSample.material
         assert algo.sampleShape == self.calibrantSample.geometry.shape
@@ -181,12 +187,8 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         assert algo.getPropertyValue("BackgroundWorkspace") == self.backgroundWS
 
         # set the ingredients
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        assert algo.getProperty("Ingredients").value == self.fakeIngredients.json()
-
-        # set the calibrant sample
-        algo.setProperty("CalibrantSample", self.calibrantSample.json())
-        assert algo.getProperty("CalibrantSample").value == self.calibrantSample.json()
+        algo.setProperty("Ingredients", self.ingredients.json())
+        assert algo.getProperty("Ingredients").value == self.ingredients.json()
 
         # set the output workspace
         goodOutputWSName = "_test_raw_vanadium_corr"
@@ -213,8 +215,8 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
         algo = Algo()
         algo.initialize()
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.chopIngredients(self.fakeIngredients, self.calibrantSample)
+        algo.setProperty("Ingredients", self.ingredients.json())
+        algo.chopIngredients(self.ingredients)
         algo.TOFPars = (2, 2, 4)
         algo.chopNeutronData(testWS, testWS)
 
@@ -240,8 +242,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.sampleWS)
         algo.setProperty("BackgroundWorkspace", self.backgroundWS)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
-        algo.setProperty("CalibrantSample", self.calibrantSample.json())
+        algo.setProperty("Ingredients", self.ingredients.json())
         algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")
         assert algo.execute()
 

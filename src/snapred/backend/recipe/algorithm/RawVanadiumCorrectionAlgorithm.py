@@ -40,8 +40,8 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
     def chopIngredients(self, ingredients: Ingredients) -> None:
         self.TOFPars = ingredients.pixelGroup.timeOfFlight.params
 
-        self.geometry = ingredients.sample.geometry
-        self.material = ingredients.sample.material
+        self.geometry = ingredients.calibrantSample.geometry
+        self.material = ingredients.calibrantSample.material
         self.sampleShape = self.geometry.shape
 
     def unbagGroceries(self) -> None:
