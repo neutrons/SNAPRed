@@ -1,4 +1,7 @@
-# import mantid algorithms, numpy and matplotlib
+### NOTE this is dead code
+### The algorithm it tests has been deleted.
+### This is being retained for possible future testing of other parts of normalization
+
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,28 +9,18 @@ import numpy as np
 from pydantic import parse_file_as
 import json
 
+## The code to be tested
 from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import CalibrationNormalizationAlgo
-from snapred.backend.dao.ingredients.NormalizationCalibrationIngredients import NormalizationCalibrationIngredients
-from snapred.backend.dao.ingredients.PeakIngredients import PeakIngredients
 
-from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
-from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
-from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.service.CalibrationService import CalibrationService
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.dao.calibration import CalibrationRecord, Calibration
+## For creating ingredients
+from snapred.backend.dao.request.FarmFreshIngredients import FarkFreshIngredients
+from snapred.backend.service.SousChef import SousChef
 
+# for retrieving data
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
-from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 from snapred.meta.Config import Config
-
-# for loading data
-from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe as FetchRx
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-
 
 #User input ###############################################################################################
 isLite = True
@@ -56,6 +49,15 @@ def getCalibrantSample(samplePath):
 DFS = DataFactoryService()
 instrumentState = DFS.getCalibrationState(runNumber).instrumentState
 
+### PREP INGREDIENTS ################
+farmFresh = FarmFreshIngredients(
+    runNumber=runNumber,
+    useLiteMode=isLite,
+    focusGroup={"name": groupingScheme, "definition": groupPath},
+    cifPath=cifPath,
+    calibrantSamplePath=samplePath,
+)
+ingredients = SousChef().getNormalizationIngredients(farmFresh)
 
 ### FETCH GROCERIES ##################
 clerk = GroceryListItem.builder()
@@ -63,38 +65,6 @@ clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
 clerk.name("backgroundWorkspace").neutron(backgroundRunNumber).useLiteMode(isLite).add()
 clerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(isLite).fromPrev().add()
 groceries = GroceryService().fetchGroceryList(clerk.buildList())
-
-pgpIngredients = PixelGroupingIngredients(
-    instrumentState = instrumentState,
-    instrumentDefinitionFile = Config["instrument.lite.definition.file"],
-    groupingWorkspace=groceries[2],
-)
-
-pgp = PixelGroupingParametersCalculationRecipe().executeRecipe(pgpIngredients, groceries[2])["parameters"]
-pixelGroup = PixelGroup(pixelGroupingParameters=pgp)
-reductionIngredients = DFS.getReductionIngredients(runNumber, instrumentState.pixelGroup)
-
-calibrantSample = getCalibrantSample(samplePath)
-
-crystalInfo = CrystallographicInfoService().ingest(cifPath)["crystalInfo"]
-smoothDataIngredients = PeakIngredients(
-    smoothingParameter=smoothingParam,
-    instrumentState=instrumentState,
-    crystalInfo=crystalInfo,
-    pixelGroup = pixelGroup
-)
-
-backgroundReductionIngredients = reductionIngredients
-backgroundReductionIngredients.runConfig.runNumber = backgroundRunNumber
-
-ingredients = NormalizationCalibrationIngredients(
-    reductionIngredients=reductionIngredients,
-    backgroundReductionIngredients=backgroundReductionIngredients,
-    calibrantSample=calibrantSample,
-    smoothDataIngredients=smoothDataIngredients,
-) 
-
-
 
 CNA = CalibrationNormalizationAlgo()
 CNA.initialize()

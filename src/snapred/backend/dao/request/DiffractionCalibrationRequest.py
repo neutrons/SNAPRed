@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
 
 
@@ -14,9 +15,8 @@ class DiffractionCalibrationRequest(BaseModel):
 
     runNumber: str
     calibrantSamplePath: str
-    focusGroupPath: str
+    focusGroup: FocusGroup
     useLiteMode: bool
-    focusGroupName: Optional[str]  # TODO
     convergenceThreshold: Optional[float] = Config["calibration.diffraction.convergenceThreshold"]
     peakIntensityThreshold: Optional[float] = Config["calibration.diffraction.peakIntensityThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

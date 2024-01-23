@@ -22,94 +22,6 @@ with mock.patch.dict(
 ):
     from snapred.backend.data.DataFactoryService import DataFactoryService
 
-    def test_getReductionIngredients():
-        dataExportService = DataFactoryService()
-        dataExportService.getReductionState = mock.Mock()
-        dataExportService.getReductionState.return_value = ReductionState.construct()
-        dataExportService.getRunConfig = mock.Mock()
-        dataExportService.getRunConfig.return_value = RunConfig.construct()
-
-        tof = BinnedValue(
-            minimum=1,
-            maximum=100,
-            binWidth=1,
-            binningMode=1,  # LINEAR
-        )
-        pixelGroup = PixelGroup(
-            groupIDs=[0],
-            twoTheta=[0],
-            dResolution=[Limit(minimum=0, maximum=0)],
-            dRelativeResolution=[0],
-            timeOfFlight=tof,
-        )
-        actual = dataExportService.getReductionIngredients(mock.Mock(), pixelGroup)
-
-        assert type(actual) == ReductionIngredients
-
-    def test_getReductionIngredients_noCalibration_noPixelGroup():
-        dataExportService = DataFactoryService()
-        dataExportService.getReductionState = mock.Mock()
-        dataExportService.getReductionState.return_value = ReductionState.construct()
-        dataExportService.getRunConfig = mock.Mock()
-        dataExportService.getRunConfig.return_value = RunConfig.construct()
-        dataExportService.getCalibrationState = mock.Mock()
-        dataExportService.getCalibrationState.return_value = None
-        dataExportService.constructStateId = mock.Mock()
-        dataExportService.constructStateId.return_value = "expected"
-
-        # assert exception is thrown
-        pytest.raises(RuntimeError, dataExportService.getReductionIngredients, mock.Mock())
-
-    def test_getReductionIngredients_noCalibration_pixelGroup():
-        dataExportService = DataFactoryService()
-        dataExportService.getReductionState = mock.Mock()
-        dataExportService.getReductionState.return_value = ReductionState.construct()
-        dataExportService.getRunConfig = mock.Mock()
-        dataExportService.getRunConfig.return_value = RunConfig.construct()
-        dataExportService.getCalibrationState = mock.Mock()
-        dataExportService.getCalibrationState.return_value = None
-        dataExportService.constructStateId = mock.Mock()
-        dataExportService.constructStateId.return_value = "expected"
-
-        pixelGroup = PixelGroup(
-            groupIDs=[0],
-            twoTheta=[0],
-            dResolution=[Limit(minimum=0, maximum=0)],
-            dRelativeResolution=[0],
-            timeOfFlight={"minimum": 1, "maximum": 3, "binWidth": 1, "binningMode": 1},
-        )
-        actual = dataExportService.getReductionIngredients(mock.Mock(), pixelGroup)
-
-        assert type(actual) == ReductionIngredients
-        assert actual.pixelGroup == pixelGroup
-
-    def test_getReductionIngredients_calibration_noPixelGroup():
-        dataExportService = DataFactoryService()
-        dataExportService.getReductionState = mock.Mock()
-        dataExportService.getReductionState.return_value = ReductionState.construct()
-        dataExportService.getRunConfig = mock.Mock()
-        dataExportService.getRunConfig.return_value = RunConfig.construct()
-        mockCalibration = MagicMock()
-        mockInstrumentState = MagicMock()
-        mockCalibration.instrumentState = mockInstrumentState
-        pixelGroup = PixelGroup(
-            groupIDs=[0],
-            twoTheta=[0],
-            dResolution=[Limit(minimum=0, maximum=0)],
-            dRelativeResolution=[0],
-            timeOfFlight={"minimum": 1, "maximum": 3, "binWidth": 1, "binningMode": 1},
-        )
-        dataExportService.getCalibrationState = mockCalibration
-
-        dataExportService.getCalibrationState.return_value = mockCalibration
-        dataExportService.constructStateId = mock.Mock()
-        dataExportService.constructStateId.return_value = "expected"
-
-        actual = dataExportService.getReductionIngredients(mock.Mock())
-
-        assert type(actual) == ReductionIngredients
-        assert actual.pixelGroup == pixelGroup
-
     def test_getReductionState():
         dataExportService = DataFactoryService()
         dataExportService.getInstrumentConfig = mock.Mock()
@@ -165,6 +77,14 @@ with mock.patch.dict(
         dataExportService.lookupService.readGroupingFiles = mock.Mock()
         dataExportService.lookupService.readGroupingFiles.return_value = "expected"
         actual = dataExportService.getGroupingFiles()
+
+        assert actual == "expected"
+
+    def test_getFocusGroups():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readFocusGroups = mock.Mock()
+        dataExportService.lookupService.readFocusGroups.return_value = "expected"
+        actual = dataExportService.getFocusGroups()
 
         assert actual == "expected"
 

@@ -7,7 +7,7 @@ from mantid.kernel import Direction
 from pydantic import parse_raw_as
 
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
-from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.backend.dao.state import PixelGroup
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -25,7 +25,7 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
-        self.declareProperty("PixelGroupingParameter", defaultValue="", direction=Direction.Input)
+        self.declareProperty("PixelGroup", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputMetrics", defaultValue="", direction=Direction.Output)
         self.mantidSnapper = MantidSnapper(self, __name__)
         self.setRethrows(True)
@@ -42,9 +42,8 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
                     Did you use FitMultiplePeaksAlgorithm to get InputWorkspace?"
             )
 
-        pixelGroupingParameters = parse_raw_as(
-            List[PixelGroupingParameters], self.getProperty("PixelGroupingParameter").value
-        )
+        pixelGroup = PixelGroup.parse_raw(self.getPropertyValue("PixelGroup"))
+        pixelGroupingParameters = list(pixelGroup.pixelGroupingParameters.values())
         # collect all params and peak positions
         fitDataList = []
         for increment in range(0, inputWorkspace.getNumberOfEntries(), len(FitOutputEnum)):

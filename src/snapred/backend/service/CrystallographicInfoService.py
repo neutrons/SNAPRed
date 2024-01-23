@@ -28,7 +28,7 @@ class CrystallographicInfoService(Service):
         data: Dict[Any, Any] = {}
         # TODO: collect runs by state then by calibration of state, execute sets of runs by calibration of thier state
         try:
-            data = CrystallographicInfoRecipe().executeRecipe(cifPath, dMin=dMin, dMax=dMax)
+            data = CrystallographicInfoRecipe().executeRecipe(cifPath=cifPath, dMin=dMin, dMax=dMax)
         except:
             raise
         return data

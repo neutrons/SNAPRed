@@ -6,18 +6,20 @@ from typing import Dict, List, Tuple
 
 from pydantic import parse_raw_as
 
-from snapred.backend.dao import CrystallographicInfo, GroupPeakList
+from snapred.backend.dao import CrystallographicInfo, GroupPeakList, RunConfig
 from snapred.backend.dao.calibration import Calibration
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
-    FarmFreshIngredients,
     GroceryListItem,
     NormalizationIngredients,
     PeakIngredients,
     PixelGroupingIngredients,
     ReductionIngredients,
 )
+from snapred.backend.dao.request import FarmFreshIngredients
 from snapred.backend.dao.state import FocusGroup, InstrumentState, PixelGroup
+from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
+from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.recipe.GenericRecipe import (
     DetectorPeakPredictorRecipe,
@@ -42,58 +44,55 @@ class SousChef(Service):
         super().__init__()
         self.groceryService = GroceryService()
         self.groceryClerk = GroceryListItem.builder()
-        self.__pixelGroupCache: Dict[Tuple[str, bool, str], PixelGroup] = {}
-        self.__calibrationCache: Dict[str, Calibration] = {}
-        self.__peaksCache: Dict[Tuple[str, bool, str, float], List[GroupPeakList]] = {}
-        self.__xtalCache: Dict[Tuple[str, float, float], CrystallographicInfo] = {}
-        self.registerPath("reduction", self.reduction)
+        self.dataFactoryService = DataFactoryService()
+        self._pixelGroupCache: Dict[Tuple[str, bool, str], PixelGroup] = {}
+        self._calibrationCache: Dict[str, Calibration] = {}
+        self._peaksCache: Dict[Tuple[str, bool, str, float], List[GroupPeakList]] = {}
+        self._xtalCache: Dict[Tuple[str, float, float], CrystallographicInfo] = {}
         return
 
     @staticmethod
     def name():
         return "souschef"
 
-    def getInstrumentState(self, runNumber) -> InstrumentState:
-        if runNumber not in self.__calibrationCache:
-            self.__calibrationCache[runNumber] = self.dataFactoryService.getCalibrationState(runNumber)
-        return self.__calibrationCache[runNumber].instrumentState
+    def prepCalibration(self, runNumber: str) -> Calibration:
+        if runNumber not in self._calibrationCache:
+            self._calibrationCache[runNumber] = self.dataFactoryService.getCalibrationState(runNumber)
+        return self._calibrationCache[runNumber]
 
-    def groupingSchemaFromPath(self, path: str) -> str:
-        return path.split("/")[-1].split("_")[-1].split(".")[0]
+    def prepInstrumentState(self, runNumber: str) -> InstrumentState:
+        return self.prepCalibration(runNumber).instrumentState
 
-    def getFocusGroup(self, ingredients: FarmFreshIngredients) -> FocusGroup:
-        definition = ingredients.groupingSchemaFilepath
-        if not definition:
-            definition = f'{Config["instrument.calibration.powder.grouping.home"]}/{ingredients.name}'
-        return FocusGroup(
-            name=ingredients.groupingSchema,
-            definition=definition,
-        )
+    def prepRunConfig(self, runNumber: str) -> RunConfig:
+        return self.dataFactoryService.getRunConfig(runNumber)
 
-    def getPixelGroup(self, ingredients: FarmFreshIngredients):
-        focusGroup = self.getFocusGroup(ingredients)
-        key = (ingredients.runNumber, ingredients.useLiteMode, ingredients.groupingSchema)
-        if key not in self.__pixelGroupCache:
-            instrumentState = self.getInstrumentState(ingredients.runNumber)
-            ingredients = PixelGroupingIngredients(
+    def prepCalibrantSample(self, calibrantSamplePath: str) -> CalibrantSamples:
+        return self.dataFactoryService.getCalibrantSample(calibrantSamplePath)
+
+    def prepPixelGroup(self, ingredients: FarmFreshIngredients):
+        groupingSchema = ingredients.focusGroup.name
+        key = (ingredients.runNumber, ingredients.useLiteMode, groupingSchema)
+        if key not in self._pixelGroupCache:
+            instrumentState = self.prepInstrumentState(ingredients.runNumber)
+            pixelIngredients = PixelGroupingIngredients(
                 instrumentState=instrumentState,
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
             getGrouping = (
-                self.groceryClerk.grouping(ingredients.groupingSchema)
+                self.groceryClerk.grouping(ingredients.focusGroup.name)
                 .useLiteMode(ingredients.useLiteMode)
                 .source(InstrumentFilename=self._getInstrumentDefinitionFilename(ingredients.useLiteMode))
                 .buildList()
             )
             groupingWS = self.groceryService.fetchGroceryList(getGrouping)[0]
-            data = PixelGroupingParametersCalculationRecipe().executeRecipe(ingredients, groupingWS)
-            self.__pixelGroupCache[key] = PixelGroup(
-                focusGroup=focusGroup,
+            data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelIngredients, groupingWS)
+            self._pixelGroupCache[key] = PixelGroup(
+                focusGroup=ingredients.focusGroup,
                 pixelGroupingParameters=data["parameters"],
                 timeOfFlight=data["tof"],
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
-        return self.__pixelGroupCache[key]
+        return self._pixelGroupCache[key]
 
     def _getInstrumentDefinitionFilename(self, useLiteMode: bool):
         if useLiteMode is True:
@@ -101,54 +100,59 @@ class SousChef(Service):
         elif useLiteMode is False:
             return Config["instrument.native.definition.file"]
 
-    def getCrystallographicInfo(self, ingredients: FarmFreshIngredients):
+    def prepCrystallographicInfo(self, ingredients: FarmFreshIngredients):
         key = (ingredients.cifPath, ingredients.dBounds.minimum, ingredients.dBounds.maximum)
-        if key not in self.__xtalCache:
-            self.__xtalCache[key] = CrystallographicInfoService().ingest(*key)["crystalInfo"]
-        return self.__xtalCache[key]
+        if key not in self._xtalCache:
+            self._xtalCache[key] = CrystallographicInfoService().ingest(*key)["crystalInfo"]
+        return self._xtalCache[key]
 
-    def getPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
+    def prepPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
+        instrumentState = self.prepInstrumentState(ingredients.runNumber)
+        instrumentState.pixelGroup = self.prepPixelGroup(ingredients)
         return PeakIngredients(
-            crystalInfo=self.getCrystallographicInfo(ingredients),
-            instrumentState=self.getInstrumentState(ingredients.runNumber),
-            pixelGroup=self.getPixelGroup(ingredients),
+            crystalInfo=self.prepCrystallographicInfo(ingredients),
+            instrumentState=instrumentState,
+            pixelGroup=instrumentState.pixelGroup,
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
         )
 
-    def getDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[GroupPeakList]:
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[GroupPeakList]:
         key = (
             ingredients.runNumber,
             ingredients.useLiteMode,
-            ingredients.groupingSchema,
+            ingredients.focusGroup.name,
             ingredients.peakIntensityThreshold,
         )
-        if key not in self.__peaksCache:
-            ingredients = self.getPeakIngredients(ingredients)
-            res = DetectorPeakPredictorRecipe().executeRecipe(Ingredients=ingredients)
-            self.__peaksCache[key] = parse_raw_as(List[GroupPeakList], res)
-        return self.__peaksCache[key]
+        if key not in self._peaksCache:
+            ingredients = self.prepPeakIngredients(ingredients)
+            res = DetectorPeakPredictorRecipe().executeRecipe(
+                InstrumentState=ingredients.instrumentState,
+                CrystalInfo=ingredients.crystalInfo,
+            )
+            self._peaksCache[key] = parse_raw_as(List[GroupPeakList], res)
+        return self._peaksCache[key]
 
-    def getReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
-        from snapred.backend.data.DataFactoryService import DataFactoryService
-
-        dataFactoryService = DataFactoryService()
+    def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
         return ReductionIngredients(
-            reductionState=dataFactoryService.getReductionState(ingredients.runNumber),
-            runConfig=dataFactoryService.getRunConfig(ingredients.runNumber),
-            pixelGroup=self.getPixelGroup(),
+            reductionState=self.dataFactoryService.getReductionState(ingredients.runNumber),
+            runConfig=self.prepRunConfig(ingredients.runNumber),
+            pixelGroup=self.prepPixelGroup(ingredients),
         )
 
-    def getNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
-        from snapred.backend.data.DataFactoryService import DataFactoryService
-
-        calibrantSample = DataFactoryService().getCalibrantSample(ingredients.samplePath)
+    def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
         return NormalizationIngredients(
-            pixelGroup=self.getPixelGroup(ingredients),
-            calibrantSample=calibrantSample,
-            detectorPeaks=self.getDetectorPeaks(ingredients),
+            pixelGroup=self.prepPixelGroup(ingredients),
+            calibrantSample=self.prepCalibrantSample(ingredients.calibrantSamplePath),
+            detectorPeaks=self.prepDetectorPeaks(ingredients),
         )
 
-    def getDiffractionCalibrationIngredients(
+    def prepDiffractionCalibrationIngredients(
         self, ingredients: FarmFreshIngredients
     ) -> DiffractionCalibrationIngredients:
-        pass
+        return DiffractionCalibrationIngredients(
+            runConfig=self.prepRunConfig(ingredients.runNumber),
+            pixelGroup=self.prepPixelGroup(ingredients),
+            groupedPeakLists=self.prepDetectorPeaks(ingredients),
+            convergenceThreshold=ingredients.convergenceThreshold,
+            maxOffset=ingredients.maxOffset,
+        )

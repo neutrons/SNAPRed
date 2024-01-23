@@ -5,6 +5,7 @@ import pytest
 from pydantic import BaseModel
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.error.StateValidationException import StateValidationException
+from snapred.meta.decorators.Builder import Builder
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.FromString import FromString
 
@@ -19,6 +20,12 @@ class Tester:
     def assertIsListOfModel(self, listOfModel: List[SNAPRequest]):
         assert isinstance(listOfModel, List)
         self.assertIsModel(listOfModel[0])
+
+
+@Builder
+class Apple(BaseModel):
+    color: str
+    size: int
 
 
 def test_FromStringOnBaseModel():
@@ -52,3 +59,14 @@ def test_stateExceptionHandler():
         pytest.fail("should have thrown an exception")
     except StateValidationException:
         assert True
+
+
+def test_builder():
+    apple = Apple.builder().color("red").size(5).build()
+    assert apple.color == "red"
+    assert apple.size == 5
+
+
+def test_memberIncorrect():
+    with pytest.raises(RuntimeError):
+        Apple.builder().color("red").size(5).seeds(2).build()

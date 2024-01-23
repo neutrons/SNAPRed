@@ -48,9 +48,9 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         self.fakeIngredients = Ingredients.parse_raw(Resource.read("inputs/reduction/fake_file.json"))
         self.fakeIngredients.runConfig = fakeRunConfig
         TOFBinParams = (1, 0.01, 100)
-        self.fakeIngredients.reductionState.stateConfig.tofMin = TOFBinParams[0]
-        self.fakeIngredients.reductionState.stateConfig.tofBin = TOFBinParams[1]
-        self.fakeIngredients.reductionState.stateConfig.tofMax = TOFBinParams[2]
+        self.fakeIngredients.pixelGroup.timeOfFlight.minimum = TOFBinParams[0]
+        self.fakeIngredients.pixelGroup.timeOfFlight.binWidth = TOFBinParams[1]
+        self.fakeIngredients.pixelGroup.timeOfFlight.maximum = TOFBinParams[2]
 
         # create some nonsense material and crystallography
         fakeMaterial = Material(

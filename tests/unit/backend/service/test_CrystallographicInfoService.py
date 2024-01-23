@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
+from snapred.meta.Config import Config
 
 thisService = "snapred.backend.service.CrystallographicInfoService."
 

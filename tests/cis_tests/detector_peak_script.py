@@ -10,18 +10,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 
-from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
-from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
-from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
-from snapred.meta.redantic import list_to_raw_pretty
 
 # for loading data
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
+
+# for creating ingredients
+from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+from snapred.backend.service.SousChef import SousChef
 
 snapredLogger._level = 20
 
@@ -37,23 +36,25 @@ isLite = True
 Config._config['cis_mode'] = False
 #######################################
 
-dataFactoryService=DataFactoryService()
-runConfig = dataFactoryService.getRunConfig(runNumber)
-focusGroup = dataFactoryService.getFocusGroups(runNumber)[0] #
-calibration = dataFactoryService.getCalibrationState(runNumber)
-instrumentState = calibration.instrumentState
-calPath = instrumentState.instrumentConfig.calibrationDirectory
 
-calibrationService = CalibrationService()
-pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
-pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
+### PREP INGREDIENTS
+farmFresh = FarmFreshIngredients(
+    runNumber=runNumber,
+    useLiteMode=isLite,
+    focusGroup={"name":groupingScheme, "definition":""},
+    cifPath=cifPath,
+    peakIntensityThreshold=peakFractionalThreshold,
+)
+peakIngredients = SousChef().prepPeakIngredients(farmFresh)
+instrumentState = peakIngredients.instrumentState
+crystalInfo = peakIngredients.crystalInfo
 
-crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
 
+### RUN ALGORITHM
 detectorAlgo = DetectorPeakPredictor()
 detectorAlgo.initialize()
 detectorAlgo.setProperty("InstrumentState", instrumentState.json())
-detectorAlgo.setProperty("CrystalInfo", crystalInfoDict['crystalInfo'].json())
+detectorAlgo.setProperty("CrystalInfo", crystalInfo.json())
 detectorAlgo.setProperty("PeakIntensityFractionThreshold", peakFractionalThreshold)
 detectorAlgo.execute()
 

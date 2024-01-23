@@ -2,7 +2,6 @@ from pdb import run
 from typing import Dict
 
 from snapred.backend.dao import calibration
-from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
@@ -28,26 +27,6 @@ class DataFactoryService:
         if val is None:
             val = clazz()
         return val
-
-    # TODO this method of getting the pixel group feels hacky
-    # it was just as hacky before, and still hacky now
-    # rather than relying on some other object to maybe have a pixel group,
-    # the pixel group should actually be calculated here
-    def getReductionIngredients(self, runId: str, pixelGroup: PixelGroup = None) -> ReductionIngredients:
-        if pixelGroup is None:
-            calibrationRecord = self.getCalibrationRecord(runId)  # noqa: F811
-            if calibrationRecord is None or calibrationRecord.pixelGroup is None:
-                stateId = self.constructStateId(runId)
-                raise RuntimeError(f"Pixel group not found for runId {runId} and stateId {stateId}")
-
-            # TODOD bad!
-            pixelGroup = calibrationRecord.pixelGroup
-
-        return ReductionIngredients(
-            reductionState=self.getReductionState(runId),
-            runConfig=self.getRunConfig(runId),
-            pixelGroup=pixelGroup,
-        )
 
     def getReductionState(self, runId: str) -> ReductionState:
         reductionState: ReductionState
@@ -129,8 +108,9 @@ class DataFactoryService:
     def getCalibrationIndex(self, runId: str):
         return self.lookupService.readCalibrationIndex(runId)
 
-    def getFocusGroups(self, runId: str):
-        return self.lookupService._readFocusGroups(runId)
+    def getFocusGroups(self):
+        # return self.lookupService._readFocusGroups(runId)
+        return self.lookupService.readFocusGroups()
 
     def checkCalibrationStateExists(self, runId: str):
         return self.lookupService.checkCalibrationFileExists(runId)

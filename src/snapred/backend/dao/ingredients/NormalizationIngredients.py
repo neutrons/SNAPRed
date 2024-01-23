@@ -8,7 +8,7 @@ from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 
-class NormalizationCalibrationIngredients(BaseModel):
+class NormalizationIngredients(BaseModel):
     """Class to hold the ingredients necessary for normalization calibration workflow"""
 
     pixelGroup: PixelGroup

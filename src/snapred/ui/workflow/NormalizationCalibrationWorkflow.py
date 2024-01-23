@@ -39,8 +39,9 @@ class NormalizationCalibrationWorkflow:
         request = SNAPRequest(path="config/samplePaths")
         self.samplePaths = self.interfaceController.executeRequest(request).data
 
-        request = SNAPRequest(path="config/groupingFiles")
-        self.groupingFiles = self.interfaceController.executeRequest(request).data
+        request = SNAPRequest(path="config/focusGroups")
+        self.focusGroups = self.interfaceController.executeRequest(request).data
+        self.groupingFiles = list(self.focusGroups.keys())
 
         self._normalizationCalibrationView = NormalizationCalibrationRequestView(
             jsonForm,
@@ -116,8 +117,8 @@ class NormalizationCalibrationWorkflow:
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
-            samplePath=str(self.samplePaths[self.sampleIndex]),
-            groupingPath=str(self.groupingFiles[self.initGroupingIndex]),
+            calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
+            focusGroup=self.focusGroups[str(self.groupingFiles[self.initGroupingIndex])],
             smoothingParameter=self.initSmoothingParameter,
             dMin=self.initDMin,
         )
@@ -138,8 +139,8 @@ class NormalizationCalibrationWorkflow:
             payload = NormalizationCalibrationRequest(
                 runNumber=self.runNumber,
                 backgroundRunNumber=self.backgroundRunNumber,
-                samplePath=str(self.samplePaths[self.sampleIndex]),
-                groupingPath=str(self.lastGroupingFile),
+                calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
+                focusGroup=self.focusGroups[str(self.lastGroupingFile)],
                 smoothingParameter=self.lastSmoothingParameter,
                 dMin=self.lastDMin,
             )
@@ -147,8 +148,8 @@ class NormalizationCalibrationWorkflow:
             payload = NormalizationCalibrationRequest(
                 runNumber=self.runNumber,
                 backgroundRunNumber=self.backgroundRunNumber,
-                samplePath=str(self.samplePaths[self.sampleIndex]),
-                groupingPath=str(self.groupingFiles[self.initGroupingIndex]),
+                calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
+                focusGroup=self.focusGroups[str(self.groupingFiles[self.initGroupingIndex])],
                 smoothingParameter=self.initSmoothingParameter,
                 dMin=self.initDMin,
             )
@@ -181,8 +182,8 @@ class NormalizationCalibrationWorkflow:
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
-            samplePath=self.samplePaths[self.sampleIndex],
-            groupingPath=groupingFile,
+            calibrantSamplePath=self.samplePaths[self.sampleIndex],
+            focusGroup=self.focusGroups[groupingFile],
             smoothingParameter=smoothingParameter,
             dMin=dMin,
         )
@@ -201,8 +202,10 @@ class NormalizationCalibrationWorkflow:
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=workspaces["outputWorkspace"],
             outputWorkspace=workspaces["smoothedOutput"],
+            calibrantSamplePath=self.samplePaths[self.sampleIndex],
+            focusGroup=self.focusGroups[self.groupingFiles[index]],
+            runNumber=self.runNumber,
             smoothingParameter=smoothingValue,
-            detectorPeaks=
         )
         request = SNAPRequest(path="normalization/smooth", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
