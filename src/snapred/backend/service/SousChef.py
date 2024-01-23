@@ -127,7 +127,7 @@ class SousChef(Service):
             ingredients = self.prepPeakIngredients(ingredients)
             res = DetectorPeakPredictorRecipe().executeRecipe(
                 InstrumentState=ingredients.instrumentState,
-                CrystalInfo = ingredients.crystalInfo,
+                CrystalInfo=ingredients.crystalInfo,
             )
             self._peaksCache[key] = parse_raw_as(List[GroupPeakList], res)
         return self._peaksCache[key]
