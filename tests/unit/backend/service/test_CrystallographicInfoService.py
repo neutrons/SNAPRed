@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
+from snapred.meta.Config import Config
 
 
 @patch("snapred.backend.service.CrystallographicInfoService.CrystallographicInfoRecipe")

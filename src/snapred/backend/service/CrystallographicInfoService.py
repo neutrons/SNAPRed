@@ -13,6 +13,7 @@ class CrystallographicInfoService(Service):
     D_MAX = Config["constants.CrystallographicInfo.dMax"]
 
     # register the service in ServiceFactory please!
+    # NEVER!
     def __init__(self):
         super().__init__()
         self.registerPath("", self.ingest)
