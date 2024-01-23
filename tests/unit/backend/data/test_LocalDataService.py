@@ -10,12 +10,12 @@ from typing import List
 import pytest
 from pydantic import parse_raw_as
 from pydantic.error_wrappers import ValidationError
-from snapred.meta.redantic import write_model_pretty
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 
 # NOTE this is necessary to prevent mocking out needed functions
 from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 from snapred.meta.Config import Config, Resource
+from snapred.meta.redantic import write_model_pretty
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
@@ -30,8 +30,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
     from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry  # noqa: E402
     from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord  # noqa: E402
     from snapred.backend.dao.state.FocusGroup import FocusGroup
-    from snapred.backend.dao.state.InstrumentState import InstrumentState
     from snapred.backend.dao.state.GroupingMap import GroupingMap
+    from snapred.backend.dao.state.InstrumentState import InstrumentState
     from snapred.backend.data.LocalDataService import LocalDataService  # noqa: E402
 
     reductionIngredients = None
