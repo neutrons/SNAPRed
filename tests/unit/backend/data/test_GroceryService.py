@@ -17,10 +17,10 @@ from mantid.simpleapi import (
     mtd,
 )
 from pydantic import ValidationError
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config, Resource
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 ThisService = "snapred.backend.data.GroceryService."
 
@@ -243,7 +243,7 @@ class TestGroceryService(unittest.TestCase):
         assert "tof" in res
         assert self.runNumber in res
         assert "diffoc" in res
-        
+
     def test_diffcal_table_workspacename(self):
         # Test name generation for diffraction-calibration output workspace
         res = self.instance._createDiffcalTableWorkspaceName(self.runNumber)
