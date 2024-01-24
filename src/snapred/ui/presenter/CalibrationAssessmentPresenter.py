@@ -32,9 +32,11 @@ class CalibrationAssessmentPresenter(QObject):
         payload = CalibrationLoadAssessmentRequest(runId=runId, version=version, checkExistent=True)
         loadAssessmentRequest = SNAPRequest(path="/calibration/loadQualityAssessment", payload=payload.json())
 
+        self.view.loadButton.setEnabled(False)
         self.worker = self.worker_pool.createWorker(
             target=self.interfaceController.executeRequest, args=(loadAssessmentRequest)
         )
+        self.worker.finished.connect(lambda: self.view.loadButton.setEnabled(True))
         self.worker.result.connect(self.handleLoadAssessmentResult)
         self.worker_pool.submitWorker(self.worker)
 
@@ -59,3 +61,7 @@ class CalibrationAssessmentPresenter(QObject):
             self.view.onError(response.message)
         else:
             self.view.updateCalibrationRecordList(response.data)
+
+    @property
+    def widget(self):
+        return self.view
