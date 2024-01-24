@@ -20,6 +20,7 @@ class ConfigLookupService(Service):
         self.registerPath("", self.getConfigs)
         self.registerPath("samplePaths", self.getSamplePaths)
         self.registerPath("groupingFiles", self.getGroupingFiles)
+        self.registerPath("focusGroups", self.getFocusGroups)
 
         return
 
@@ -32,6 +33,9 @@ class ConfigLookupService(Service):
 
     def getGroupingFiles(self):
         return self.dataFactoryService.getGroupingFiles()
+
+    def getFocusGroups(self):
+        return self.dataFactoryService.getFocusGroups()
 
     @FromString
     def getConfigs(self, runs: List[RunConfig]):

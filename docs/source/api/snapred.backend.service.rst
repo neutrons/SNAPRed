@@ -44,14 +44,6 @@ snapred.backend.service.CrystallographicInfoService module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.service.FitMultiplePeakService module
------------------------------------------------------
-
-.. automodule:: snapred.backend.service.FitMultiplePeakService
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.service.LiteDataService module
 ----------------------------------------------
 
@@ -88,14 +80,6 @@ snapred.backend.service.ServiceFactory module
 ---------------------------------------------
 
 .. automodule:: snapred.backend.service.ServiceFactory
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-snapred.backend.service.SmoothDataExcludingPeaksService module
---------------------------------------------------------------
-
-.. automodule:: snapred.backend.service.SmoothDataExcludingPeaksService
    :members:
    :undoc-members:
    :show-inheritance:

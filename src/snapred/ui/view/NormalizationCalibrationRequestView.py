@@ -6,7 +6,7 @@ from snapred.ui.widget.Toggle import Toggle
 
 class NormalizationCalibrationRequestView(BackendRequestView):
     def __init__(self, jsonForm, samplePaths=[], groups=[], parent=None):
-        selection = "calibration/reduction"
+        selection = "calibration/diffractionCalibration"
         super(NormalizationCalibrationRequestView, self).__init__(jsonForm, selection, parent=parent)
         self.runNumberField = self._labeledField("Run Number:", jsonForm.getField("runNumber"))
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
@@ -41,4 +41,10 @@ class NormalizationCalibrationRequestView(BackendRequestView):
             raise ValueError("Please select a sample")
         if self.groupingFileDropDown.currentIndex() == 0:
             raise ValueError("Please select a grouping file")
+        if self.smoothingParameterField.text() == "":
+            raise ValueError("Please enter a smoothing parameter")
+        if self.runNumberField.text() == "":
+            raise ValueError("Please enter a run number")
+        if self.backgroundRunNumberField.text() == "":
+            raise ValueError("Please enter a background run number")
         return True

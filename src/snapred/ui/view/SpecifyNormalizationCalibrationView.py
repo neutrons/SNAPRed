@@ -4,6 +4,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
 
+from snapred.meta.Config import Config
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
@@ -14,8 +15,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
     signalCalibrantUpdate = pyqtSignal(int)
     signalUpdateSmoothingParameter = pyqtSignal(float)
-    signalValueChanged = pyqtSignal(int, float)
+    signalValueChanged = pyqtSignal(int, float, float)
     signalWorkspacesUpdate = pyqtSignal(str, str)
+    signalUpdateRecalculationButton = pyqtSignal(bool)
 
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
         super().__init__(parent)
@@ -37,7 +39,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.fieldBackgroundRunNumber.setEnabled(False)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
-        self.figure = plt.figure()
+        self.figure = plt.figure(figsize=(50, 50))
         self.canvas = FigureCanvas(self.figure)
 
         self.sampleDropDown = QComboBox()
@@ -79,12 +81,15 @@ class SpecifyNormalizationCalibrationView(QWidget):
             lambda: self.updateSliderFromLineEdit(self.smoothingLineEdit.text())
         )
 
+        self.fielddMin = LabeledField("dMin :", QLineEdit(str(Config["normalization.parameters.default.dMin"])), self)
+
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
 
         smoothingLayout = QHBoxLayout()
         smoothingLayout.addWidget(self.smoothingSlider)
         smoothingLayout.addWidget(self.smoothingLineEdit)
+        smoothingLayout.addWidget(self.fielddMin)
 
         self.layout.addWidget(self.canvas, 0, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 1, 0)
@@ -96,6 +101,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
         self.layout.setRowStretch(0, 3)
         self.layout.setRowStretch(1, 1)
+
+        self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
 
     def _updateRunNumber(self, runNumber):
         self.fieldRunNumber.setText(runNumber)
@@ -133,7 +140,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
     def emitValueChange(self):
         index = self.groupingDropDown.currentIndex()
         smoothingValue = self.smoothingSlider.value() / 100.0
-        self.signalValueChanged.emit(index, smoothingValue)
+        dMin = float(self.fielddMin.field.text())
+        self.signalValueChanged.emit(index, smoothingValue, dMin)
 
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):
         self.focusWorkspace = focusWorkspace
@@ -186,5 +194,13 @@ class SpecifyNormalizationCalibrationView(QWidget):
                 ax.set_xlabel("d-Spacing (Å)")
                 ax.set_ylabel("Intensity")
 
-        self.figure.tight_layout()
         self.canvas.draw()
+
+    def setEnableRecalculateButton(self, enable):
+        self.recalculationButton.setEnabled(enable)
+
+    def disableRecalculateButton(self):
+        self.signalUpdateRecalculationButton.emit(False)
+
+    def enableRecalculateButton(self):
+        self.signalUpdateRecalculationButton.emit(True)

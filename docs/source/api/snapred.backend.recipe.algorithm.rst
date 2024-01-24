@@ -28,6 +28,14 @@ snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.recipe.algorithm.CustomGroupWorkspace module
+------------------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.CustomGroupWorkspace
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.recipe.algorithm.DetectorPeakPredictor module
 -------------------------------------------------------------
 

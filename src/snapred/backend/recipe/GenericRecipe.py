@@ -7,6 +7,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
+from snapred.backend.recipe.algorithm.FocusSpectraAlgorithm import FocusSpectraAlgorithm
 from snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict import GenerateTableWorkspaceFromListOfDict
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -93,6 +94,10 @@ class DetectorPeakPredictorRecipe(GenericRecipe[DetectorPeakPredictor]):
 
 
 class GenerateTableWorkspaceFromListOfDictRecipe(GenericRecipe[GenerateTableWorkspaceFromListOfDict]):
+    pass
+
+
+class FocusSpectraRecipe(GenericRecipe[FocusSpectraAlgorithm]):
     pass
 
 

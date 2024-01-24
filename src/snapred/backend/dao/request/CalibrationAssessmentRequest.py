@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
 
 
@@ -14,7 +15,7 @@ class CalibrationAssessmentRequest(BaseModel):
 
     run: RunConfig
     workspace: str
-    focusGroupPath: str
+    focusGroup: FocusGroup
     calibrantSamplePath: str
     useLiteMode: bool
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

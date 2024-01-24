@@ -1,6 +1,7 @@
 import unittest.mock as mock
 from unittest.mock import MagicMock
 
+import pytest
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.Limit import BinnedValue, Limit
@@ -20,30 +21,6 @@ with mock.patch.dict(
     },
 ):
     from snapred.backend.data.DataFactoryService import DataFactoryService
-
-    def test_getReductionIngredients():
-        dataExportService = DataFactoryService()
-        dataExportService.getReductionState = mock.Mock()
-        dataExportService.getReductionState.return_value = ReductionState.construct()
-        dataExportService.getRunConfig = mock.Mock()
-        dataExportService.getRunConfig.return_value = RunConfig.construct()
-
-        tof = BinnedValue(
-            minimum=1,
-            maximum=100,
-            binWidth=1,
-            binningMode=1,  # LINEAR
-        )
-        pixelGroup = PixelGroup(
-            groupIDs=[0],
-            twoTheta=[0],
-            dResolution=[Limit(minimum=0, maximum=0)],
-            dRelativeResolution=[0],
-            timeOfFlight=tof,
-        )
-        actual = dataExportService.getReductionIngredients(mock.Mock(), pixelGroup)
-
-        assert type(actual) == ReductionIngredients
 
     def test_getReductionState():
         dataExportService = DataFactoryService()
@@ -100,6 +77,14 @@ with mock.patch.dict(
         dataExportService.lookupService.readGroupingFiles = mock.Mock()
         dataExportService.lookupService.readGroupingFiles.return_value = "expected"
         actual = dataExportService.getGroupingFiles()
+
+        assert actual == "expected"
+
+    def test_getFocusGroups():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readFocusGroups = mock.Mock()
+        dataExportService.lookupService.readFocusGroups.return_value = "expected"
+        actual = dataExportService.getFocusGroups()
 
         assert actual == "expected"
 
