@@ -389,7 +389,8 @@ class GroceryService:
                 case "diffcal":
                     res = {"result": True, "workspace": self._createDiffcalWorkspaceName(item.runNumber)}
                     raise RuntimeError(
-                        f"not implemented: no path available to fetch diffcal input table workspace: '{res['workspace']}'"
+                        f"not implemented: no path available to fetch diffcal " + 
+                        f"input table workspace: \'{res['workspace']}\'"
                     )
                 # for output (i.e. special-order) workspaces
                 case "diffcal_output":

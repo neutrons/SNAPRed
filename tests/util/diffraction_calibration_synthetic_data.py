@@ -83,9 +83,8 @@ class SyntheticData(object):
 
         self.workspaceType = workspaceType
 
-        # TOF-domain used to convert from the original `CreateSampleWorkspace` 'Powder Diffraction' predefined function:
-        #   In general, <particle bounds>: TOF-domain converted to d-spacing may be a larger interval than <pixel group>: d-spacing domain.
-        #   For the purposes of this initialization this doesn't matter, but these values should not be used elsewhere without keeping this in mind.
+        # The pixel group's TOF-domain will be used to convert the original `CreateSampleWorkspace` 'Powder Diffraction'
+        #   predefined function: this allows peak widths to be properly scaled to generate data for a d-spacing domain.
         TOFMin = self.fakePixelGroup.timeOfFlight.minimum
         TOFMax = self.fakePixelGroup.timeOfFlight.maximum
         self.peaks, self.background_function = SyntheticData._fakePowderDiffractionPeakList(
@@ -141,18 +140,19 @@ class SyntheticData(object):
         """
         # 'mantid/Framework/Algorithms/src/CreateSampleWorkspace.cpp': lines 85-94:
         """
-          m_preDefinedFunctionmap.emplace("Powder Diffraction", "name= LinearBackground,A0=0.0850208,A1=-4.89583e-06;"
-                                                            "name=Gaussian,Height=0.584528,PeakCentre=$PC1$,Sigma=14.3772;"
-                                                            "name=Gaussian,Height=1.33361,PeakCentre=$PC2$,Sigma=15.2516;"
-                                                            "name=Gaussian,Height=1.74691,PeakCentre=$PC3$,Sigma=15.8395;"
-                                                            "name=Gaussian,Height=0.950388,PeakCentre=$PC4$,Sigma=19.8408;"
-                                                            "name=Gaussian,Height=1.92185,PeakCentre=$PC5$,Sigma=18.0844;"
-                                                            "name=Gaussian,Height=3.64069,PeakCentre=$PC6$,Sigma=19.2404;"
-                                                            "name=Gaussian,Height=2.8998,PeakCentre=$PC7$,Sigma=21.1127;"
-                                                            "name=Gaussian,Height=2.05237,PeakCentre=$PC8$,Sigma=21.9932;"
-                                                            "name=Gaussian,Height=8.40976,PeakCentre=$PC9$,Sigma=25.2751;");
+          m_preDefinedFunctionmap.emplace("Powder Diffraction",
+                                          "name= LinearBackground,A0=0.0850208,A1=-4.89583e-06;"
+                                          "name=Gaussian,Height=0.584528,PeakCentre=$PC1$,Sigma=14.3772;"
+                                          "name=Gaussian,Height=1.33361,PeakCentre=$PC2$,Sigma=15.2516;"
+                                          "name=Gaussian,Height=1.74691,PeakCentre=$PC3$,Sigma=15.8395;"
+                                          "name=Gaussian,Height=0.950388,PeakCentre=$PC4$,Sigma=19.8408;"
+                                          "name=Gaussian,Height=1.92185,PeakCentre=$PC5$,Sigma=18.0844;"
+                                          "name=Gaussian,Height=3.64069,PeakCentre=$PC6$,Sigma=19.2404;"
+                                          "name=Gaussian,Height=2.8998,PeakCentre=$PC7$,Sigma=21.1127;"
+                                          "name=Gaussian,Height=2.05237,PeakCentre=$PC8$,Sigma=21.9932;"
+                                          "name=Gaussian,Height=8.40976,PeakCentre=$PC9$,Sigma=25.2751;");
         """
-        # In practice: due to some type of rebinning issue in `PDCalibration`:
+        # Due to (what is felt to be) some type of rebinning issue in `PDCalibration`:
         #   it was found necessary to apply an additional magnitude scale factor to the generated data.
         # TODO: track down the reason for this and create an associated DEFECT.
 
@@ -179,35 +179,40 @@ class SyntheticData(object):
         -- groupingWS: the associated grouping workspace;
         -- maskWS: a compatible mask workspace
         """
-        # IMPORTANT: why does this method exist as a public method, rather than just immediately generating these workspaces in the '__init__'?
-        #   In order to avoid collisions in the Analysis Data Service during _parallel_ test runs, especially when input workspaces
-        #     are modified: unique workspace names must be used.
-        #   This means that best practice is to generate (or clone) workspace data at point-of-use for each test method.
-        #   Either a per-test setup method can be used (with unique names), or a per-class setup method can be used, with cloning
-        #     to new workspaces with unique names.
+        # IMPORTANT:
+        #   Q: Why does this `generateWorkspaces` method exist as a public method,
+        #        rather than just immediately generating these workspaces in the '__init__' and saving them?
+        #   A: In order to avoid collisions in the Analysis Data Service during _parallel_ test runs,
+        #        especially when input workspaces are modified: unique workspace names must be used.
+        #      This means that best practice would be to either generate (or clone) workspace data at point-of-use
+        #        for each test method.
+        #      Then, either a per-test setup method can be used (assuming unique names are used),
+        #        or a per-class setup method can be used, with cloning to new workspaces with unique names.
 
         # Notes:
         #   * The design idea behind this data initialization is to start with _perfectly_ calibrated data,
-        #       and then work backwards.  In d-spacing, spectra from such data will have zero relative offsets (between pixels).
-        #   * A random normal distribution (with a known seed) is used to modify the starting data, with the offset shifts limited to
-        #       physically meaningful values.
-        #   * The actual modification used corresponds precisely to the d-space to TOF scaling (using DIFC).  This is more
-        #       physically relevant than just shifting the data by the offsets.
+        #       and then work backwards.
+        #     In d-spacing, spectra from such data will have zero relative offsets (between pixels).
+        #   * A random normal distribution (with a known seed) is used to modify the starting data,
+        #       with the offset shifts limited to physically-meaningful values.
+        #   * The actual modification used corresponds precisely to the d-space to TOF scaling (using DIFC).
+        #       This is more physically relevant than just shifting the data by the offset-shifts.
         #       (However, as random offset shifts are used, this is probably a fine point.)
-        #   * Note that for many of the diffraction-calibration processing steps, units are in BINs, and not in d-spacing or TOF.
+        #   * Note that for many of the diffraction-calibration processing steps, units are in BINs,
+        #       and not in d-spacing or TOF.
         #   * Diffraction-calibration methods expect logarithmically binned input data in TOF units;
         #   * Mathematically: since TOF is largely a scale-factor (DIFC) conversion from d-spacing,
-        #       properly logarithmically-binned d-spacing data, converted to TOF, will automatically have the proper TOF binning;
-        #   * Regardless, any rebinning must use the fact that for converted data,
+        #       properly logarithmically-binned d-spacing data, converted to TOF,
+        #       in many cases will automatically have the proper TOF binning; However, this will _only_ be true
+        #       if the TOF-domain itself has been properly converted from the d-spacing domain.
+        #   * It's quite important that any rebinning use the fact that for converted data,
         #       the appropriate bin size for logarithmic binning will be _exactly_ the _same_
         #       for both d-spacing and converted-to-TOF units.  If this requirement is not satisfied _rigorously_,
-        #       the following rebinning artifacts can be induced:
+        #       the following rebinning artifacts may be induced, to the specifics of the rebinning process:
         #         - artificial piecewise-linear smoothing (or interpolation) of the data;
         #         - rebinning aliasing (and associated oscillation) in the calibration convergence loop;
         #         - data rescaling issues: i.e. data magnitudes are much smaller (or larger) than expected.
 
-        TOFMin = self.ingredients.pixelGroup.timeOfFlight.minimum
-        TOFMax = self.ingredients.pixelGroup.timeOfFlight.maximum
         dMin = self.ingredients.pixelGroup.dMin()
         dMax = self.ingredients.pixelGroup.dMax()
         dBin = self.ingredients.pixelGroup.dBin()
@@ -215,7 +220,6 @@ class SyntheticData(object):
         overallDMax = max(dMax)
 
         dBin_abs = max([abs(d) for d in dBin])
-        nominalBinCount = int((overallDMax - overallDMin) / dBin_abs)
 
         functionString = self.background_function
         for p in self.peaks:

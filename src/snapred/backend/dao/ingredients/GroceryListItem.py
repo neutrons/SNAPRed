@@ -66,8 +66,7 @@ class GroceryListItem(BaseModel):
             case "diffcal_output" | "diffcal_table" | "diffcal_mask":
                 if v.get("runNumber") is None:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} output requires a run number")
-                if v.get("isOutput") == False:
-                    raise ValueError(f"diffraction-calibration {v['workspaceType']} output is special-order only")
-            case _:
-                raise ValueError(f"unrecognized 'workspaceType': '{v['workspaceType']}'")
+                if v.get("isOutput") is False:
+                    raise ValueError(f"diffraction-calibration {v['workspaceType']} is special-order only")
+            case _: raise ValueError(f"unrecognized \'workspaceType\': \'{v['workspaceType']}\'")
         return v

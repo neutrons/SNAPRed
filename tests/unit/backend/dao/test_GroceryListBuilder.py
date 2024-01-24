@@ -45,19 +45,19 @@ class TestGroceryListBuilder(unittest.TestCase):
     def test_diffcal_output(self):
         item = GroceryListBuilder().specialOrder().diffcal_output(self.runNumber).lite().build()
         assert item.runNumber == self.runNumber
-        assert item.isOutput == True
+        assert item.isOutput is True
         assert item.workspaceType == "diffcal_output"
 
     def test_diffcal_table(self):
         item = GroceryListBuilder().specialOrder().diffcal_table(self.runNumber).lite().build()
         assert item.runNumber == self.runNumber
-        assert item.isOutput == True
+        assert item.isOutput is True
         assert item.workspaceType == "diffcal_table"
 
     def test_diffcal_mask(self):
         item = GroceryListBuilder().specialOrder().diffcal_mask(self.runNumber).lite().build()
         assert item.runNumber == self.runNumber
-        assert item.isOutput == True
+        assert item.isOutput is True
         assert item.workspaceType == "diffcal_mask"
 
     def test_nexus_native_lite(self):
