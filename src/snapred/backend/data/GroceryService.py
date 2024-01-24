@@ -32,6 +32,18 @@ class GroceryService:
         """
         return (using, useLiteMode)
 
+    def rebuildCache(self):
+        self.rebuildNeutronCache()
+        self.rebuildGroupingCache()
+
+    def rebuildNeutronCache(self):
+        for loadedRun in self._loadedRuns.copy():
+            self._updateNeutronCacheFromADS(*loadedRun)
+
+    def rebuildGroupingCache(self):
+        for loadedGrouping in self._loadedGroupings.copy():
+            self._updateGroupingCacheFromADS(loadedGrouping, self._loadedGroupings[loadedGrouping])
+
     ## FILENAME METHODS
 
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
@@ -156,6 +168,16 @@ class GroceryService:
         # if the raw data has not been loaded but the cache thinks it has
         if self._loadedRuns.get(key) is not None and not self.workspaceDoesExist(workspace):
             del self._loadedRuns[key]
+
+    def _updateGroupingCacheFromADS(self, key, workspace):
+        """
+        If the workspace has been loaded, but is not represented in the cache
+        then update the cache to represent this condition
+        """
+        if self.workspaceDoesExist(workspace) and self._loadedGroupings.get(key) is None:
+            self._loadedGroupings[key] = workspace
+        if self._loadedGroupings.get(key) is not None and not self.workspaceDoesExist(workspace):
+            del self._loadedGroupings[key]
 
     ## FETCH METHODS
     """
@@ -301,7 +323,20 @@ class GroceryService:
         filename = self._createGroupingFilename(*itemTuple)
         groupingLoader = "LoadGroupingDefinition"
         key = self._key(*itemTuple)
-        if self._loadedGroupings.get(key) is None:
+
+        groupingIsLoaded = self._loadedGroupings.get(key) is not None and self.workspaceDoesExist(
+            self._loadedGroupings.get(key)
+        )
+
+        if groupingIsLoaded:
+            data = {
+                "result": True,
+                "loader": "cached",
+                "workspace": workspaceName,
+            }
+        else:
+            if self._loadedGroupings.get(key) is not None:
+                self.rebuildCache()
             data = self.grocer.executeRecipe(
                 filename=filename,
                 workspace=workspaceName,
@@ -310,12 +345,7 @@ class GroceryService:
                 instrumentSource=item.instrumentSource,
             )
             self._loadedGroupings[key] = data["workspace"]
-        else:
-            data = {
-                "result": True,
-                "loader": "cached",
-                "workspace": workspaceName,
-            }
+
         return data
 
     def fetchGroceryList(self, groceryList: List[GroceryListItem]) -> List[WorkspaceName]:

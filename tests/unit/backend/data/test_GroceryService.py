@@ -359,6 +359,92 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._createRawNeutronWorkspaceName.called_once_with(runId, useLiteMode)
         assert self.instance._loadedRuns == {(runId, useLiteMode): 0}
 
+    def test_updateGroupingCacheFromADS_noop(self):
+        """ws is not in cache and not in ADS"""
+        groupingScheme = "555"
+        useLiteMode = True
+        wsname = "_test_ws_"
+        key = (groupingScheme, useLiteMode)
+        self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
+        assert self.instance._loadedGroupings == {}
+        assert not mtd.doesExist(wsname)
+        self.instance._updateGroupingCacheFromADS(key, wsname)
+        assert self.instance._createGroupingWorkspaceName.called_once_with(groupingScheme, wsname)
+        assert self.instance._loadedGroupings == {}
+        assert not mtd.doesExist(wsname)
+
+    def test_updateGroupingCacheFromADS_both(self):
+        """ws is in cache and in ADS"""
+        groupingScheme = "555"
+        useLiteMode = True
+        wsname = "_test_ws_"
+        key = (groupingScheme, useLiteMode)
+        self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
+        self.instance._loadedGroupings[key] = wsname
+        self.create_dumb_workspace(wsname)
+        assert mtd.doesExist(wsname)
+        self.instance._updateGroupingCacheFromADS(key, wsname)
+        assert self.instance._createGroupingWorkspaceName.called_once_with(groupingScheme, wsname)
+        assert self.instance._loadedGroupings == {key: wsname}
+
+    def test_updateGroupingCacheFromADS_cache_no_ADS(self):
+        """ws is in cache but not ADS"""
+        groupingScheme = "555"
+        useLiteMode = True
+        wsname = "_test_ws_"
+        key = (groupingScheme, useLiteMode)
+        self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
+        self.instance._loadedGroupings[key] = wsname
+        assert not mtd.doesExist(wsname)
+        self.instance._updateGroupingCacheFromADS(key, wsname)
+        assert self.instance._createGroupingWorkspaceName.called_once_with(groupingScheme, wsname)
+        assert self.instance._loadedGroupings == {}
+
+    def test_updateGroupingCacheFromADS_ADS_no_cache(self):
+        """ws is in ADS and not in cache"""
+        groupingScheme = "555"
+        useLiteMode = True
+        wsname = "_test_ws_"
+        key = (groupingScheme, useLiteMode)
+        self.instance._createGroupingWorkspaceName = mock.Mock(return_value=wsname)
+        self.create_dumb_workspace(wsname)
+        assert self.instance._loadedGroupings == {}
+        assert mtd.doesExist(wsname)
+        self.instance._updateGroupingCacheFromADS(key, wsname)
+        assert self.instance._createGroupingWorkspaceName.called_once_with(groupingScheme, wsname)
+        assert self.instance._loadedGroupings == {key: wsname}
+
+    def test_rebuildGroupingCache(self):
+        """Test the correct behavior of the rebuildGroupingCache method"""
+        groupingScheme = "555"
+        useLiteMode = True
+        wsname = "_test_ws_"
+        key = (groupingScheme, useLiteMode)
+        self.instance._loadedGroupings[key] = wsname
+        self.instance.rebuildGroupingCache()
+        assert self.instance._loadedGroupings == {}
+
+    def test_rebuildNeutronCache(self):
+        """Test the correct behavior of the rebuildNeutronCache method"""
+        runId = "555"
+        useLiteMode = True
+        key = (runId, useLiteMode)
+        self.instance._loadedRuns[key] = 1
+        self.instance.rebuildNeutronCache()
+        assert self.instance._loadedRuns == {}
+
+    def test_rebuildCache(self):
+        """Test the correct behavior of the rebuildCache method"""
+        runId = "555"
+        useLiteMode = True
+        wsname = "_test_ws_"
+        key = (runId, useLiteMode)
+        self.instance._loadedRuns[key] = 1
+        self.instance._loadedGroupings[key] = wsname
+        self.instance.rebuildCache()
+        assert self.instance._loadedRuns == {}
+        assert self.instance._loadedGroupings == {}
+
     ## TEST CLEANUP METHODS
 
     @mock.patch(ThisService + "AlgorithmManager")
