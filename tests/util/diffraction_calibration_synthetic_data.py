@@ -135,7 +135,8 @@ class SyntheticData(object):
     def _fakePowderDiffractionPeakList(
         tofMin: float, tofMax: float, dMin: float, dMax: float, scale: float
     ) -> Tuple[List[Tuple[float, float, float]], str]:
-        """Duplicate the `CreateSampleWorkspace` 'Powder Diffraction' predefined function, but in d-spacing instead of TOF units.
+        """Duplicate the `CreateSampleWorkspace` 'Powder Diffraction' predefined function,
+             but in d-spacing instead of TOF units.
         -- returns (List[Peak(centre, sigma, height)], <background function string>)
         """
         # 'mantid/Framework/Algorithms/src/CreateSampleWorkspace.cpp': lines 85-94:
