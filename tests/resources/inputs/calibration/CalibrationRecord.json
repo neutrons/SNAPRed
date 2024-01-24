@@ -386,6 +386,7 @@
 },
     "calibrationFittingIngredients": {
       "instrumentState": {
+        "id": "ab8704b0bc2a2342",
         "peakTailCoefficient": 1.1,
         "instrumentConfig": {
           "version": "1.4",
