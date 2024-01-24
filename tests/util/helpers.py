@@ -40,15 +40,11 @@ def createCompatibleMask(maskWSName: str, templateWSName: str, instrumentFilePat
     )
     if mask.getInstrument().getNumberDetectors(True) != templateWS.getInstrument().getNumberDetectors(True):
         raise RuntimeError(
-            f'Instrument file resource "{instrumentFilePath}" does not describe the template workspace'
-            "s instrument"
+            f'Instrument file resource "{instrumentFilePath}" does not describe the template workspace' "s instrument"
         )
     # Copy any configurable instrument parameters from the template workspace.
-    CopyInstrumentParameters(
-        InputWorkspace=templateWSName,
-        OutputWorkspace=maskWSName
-    )
-    
+    CopyInstrumentParameters(InputWorkspace=templateWSName, OutputWorkspace=maskWSName)
+
     # Rebuild the spectra map "by hand" to exclude detectors which are monitors.
     info = mask.detectorInfo()
     ids = info.detectorIDs()
@@ -71,7 +67,7 @@ def createCompatibleMask(maskWSName: str, templateWSName: str, instrumentFilePat
 
 def setSpectraToZero(inputWS: MatrixWorkspace, nss: Sequence[int]):
     # Zero out all spectra in the list of spectra
-    if not 'EventWorkspace' in inputWS.id():
+    if "EventWorkspace" not in inputWS.id():
         for ns in nss:
             # allow "ragged" case
             zs = np.zeros_like(inputWS.readY(ns))
@@ -79,7 +75,8 @@ def setSpectraToZero(inputWS: MatrixWorkspace, nss: Sequence[int]):
     else:
         for ns in nss:
             inputWS.getSpectrum(ns).clear(False)
-    
+
+
 def maskSpectra(maskWS: MaskWorkspace, inputWS: MatrixWorkspace, nss: Sequence[int]):
     # Set mask flags for all detectors contributing to each spectrum in the list of spectra
     for ns in nss:
@@ -87,12 +84,13 @@ def maskSpectra(maskWS: MaskWorkspace, inputWS: MatrixWorkspace, nss: Sequence[i
         for det in dets:
             maskWS.setValue(det, True)
 
+
 def setGroupSpectraToZero(ws: MatrixWorkspace, groupingWS: GroupingWorkspace, gids: Sequence[int]):
     # Zero out all spectra contributing to each group in the list of groups
     detInfo = ws.detectorInfo()
     for gid in gids:
         dets = groupingWS.getDetectorIDsOfGroup(gid)
-        if not 'EventWorkspace' in ws.id():
+        if "EventWorkspace" not in ws.id():
             for det in dets:
                 ns = detInfo.indexOf(int(det))
                 # allow "ragged" case
@@ -102,6 +100,7 @@ def setGroupSpectraToZero(ws: MatrixWorkspace, groupingWS: GroupingWorkspace, gi
             for det in dets:
                 ns = detInfo.indexOf(int(det))
                 ws.getSpectrum(ns).clear(False)
+
 
 def maskGroups(maskWS: MaskWorkspace, groupingWS: GroupingWorkspace, gs: Sequence[int]):
     # Set mask flags for all detectors contributing to each group in the list of groups
@@ -139,7 +138,7 @@ def mutableWorkspaceClones(
 def deleteWorkspaceNoThrow(wsName: str):
     try:
         DeleteWorkspace(wsName)
-    except: # noqa: E722
+    except:  # noqa: E722
         pass
 
 

@@ -68,5 +68,6 @@ class GroceryListItem(BaseModel):
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} output requires a run number")
                 if v.get("isOutput") is False:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} is special-order only")
-            case _: raise ValueError(f"unrecognized \'workspaceType\': \'{v['workspaceType']}\'")
+            case _:
+                raise ValueError(f"unrecognized 'workspaceType': '{v['workspaceType']}'")
         return v
