@@ -90,8 +90,8 @@ class GroceryService:
         instr = "lite" if useLiteMode else "native"
         return Config["grouping.workspacename." + instr] + groupingScheme
 
-    def _createDiffcalWorkspaceName(self, runId: str):
-        return wng.diffCal().runNumber(runId).build()
+    def _createDiffcalInputWorkspaceName(self, runId: str):
+        return wng.diffCalInput().runNumber(runId).build()
 
     def _createDiffcalOutputWorkspaceName(self, runId: str):
         return wng.diffCalOutput().runNumber(runId).build()
@@ -387,7 +387,7 @@ class GroceryService:
                         item.instrumentSource = prev
                     res = self.fetchGroupingDefinition(item)
                 case "diffcal":
-                    res = {"result": True, "workspace": self._createDiffcalWorkspaceName(item.runNumber)}
+                    res = {"result": True, "workspace": self._createDiffcalInputWorkspaceName(item.runNumber)}
                     raise RuntimeError(
                         "not implemented: no path available to fetch diffcal "
                         + f"input table workspace: '{res['workspace']}'"

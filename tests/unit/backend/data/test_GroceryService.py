@@ -17,6 +17,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from pydantic import ValidationError
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config, Resource
@@ -229,13 +230,20 @@ class TestGroceryService(unittest.TestCase):
         res = self.instance._createGroupingWorkspaceName("Lite", True)
         assert res == "lite_grouping_map"
 
+    def test_diffcal_input_workspacename(self):
+        # Test name generation for diffraction-calibration focussed-data workspace
+        res = self.instance._createDiffcalInputWorkspaceName(self.runNumber)
+        assert "tof" in res
+        assert self.runNumber in res
+        assert "raw" in res
+
     def test_diffcal_output_workspacename(self):
         # Test name generation for diffraction-calibration output workspace
         res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber)
         assert "tof" in res
-        assert "diffoc" in res
         assert self.runNumber in res
-
+        assert "diffoc" in res
+        
     def test_diffcal_table_workspacename(self):
         # Test name generation for diffraction-calibration output workspace
         res = self.instance._createDiffcalTableWorkspaceName(self.runNumber)
@@ -246,8 +254,8 @@ class TestGroceryService(unittest.TestCase):
         # Test name generation for diffraction-calibration output workspace
         res = self.instance._createDiffcalMaskWorkspaceName(self.runNumber)
         assert "difc" in res
-        assert "mask" in res
         assert self.runNumber in res
+        assert "mask" in res
 
     ## TESTS OF WRITING METHODS
 
@@ -820,6 +828,37 @@ class TestGroceryService(unittest.TestCase):
         with pytest.raises(RuntimeError) as e:
             self.instance.fetchGroceryList(groceryList)
         print(str(e.value))
+
+    @mock.patch.object(GroceryService, "fetchNeutronDataSingleUse")
+    def test_fetch_grocery_list_fails(self, mockFetchDirty):
+        groceryList = GroceryListItem.builder().native().neutron(self.runNumber).dirty().buildList()
+        mockFetchDirty.return_value = {"result": False, "workspace": "unimportant"}
+        with pytest.raises(RuntimeError) as e:
+            self.instance.fetchGroceryList(groceryList)
+        print(str(e.value))
+
+    def test_fetch_grocery_list_diffcal_fails(self):
+        groceryList = GroceryListItem.builder().native().diffcal(self.runNumber).buildList()
+        with pytest.raises(
+            RuntimeError,
+            match="not implemented: no path available to fetch diffcal",
+        ):
+            self.instance.fetchGroceryList(groceryList)
+
+    def test_fetch_grocery_list_diffcal_output(self):
+        groceryList = GroceryListItem.builder().native().diffcal_output(self.runNumber).buildList()
+        items = self.instance.fetchGroceryList(groceryList)
+        assert items[0] == wng.diffCalOutput().runNumber(self.runNumber).build()
+
+    def test_fetch_grocery_list_diffcal_table(self):
+        groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber).buildList()
+        items = self.instance.fetchGroceryList(groceryList)
+        assert items[0] == wng.diffCalTable().runNumber(self.runNumber).build()
+
+    def test_fetch_grocery_list_diffcal_mask(self):
+        groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber).buildList()
+        items = self.instance.fetchGroceryList(groceryList)
+        assert items[0] == wng.diffCalMask().runNumber(self.runNumber).build()
 
     @mock.patch.object(GroceryService, "fetchNeutronDataCached")
     @mock.patch.object(GroceryService, "fetchGroupingDefinition")
