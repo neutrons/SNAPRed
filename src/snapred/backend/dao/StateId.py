@@ -1,3 +1,5 @@
+import hashlib
+import json
 from dataclasses import dataclass
 
 
@@ -10,7 +12,7 @@ class StateId:
     Frequency: int
     Pos: int
 
-    # Round inputs to reduced number of possible states
+    # Round inputs to reduce number of possible states
     def __init__(self, vdet_arc1: float, vdet_arc2: float, WavelengthUserReq: float, Frequency: float, Pos: int):
         self.vdet_arc1 = float(round(vdet_arc1 * 2) / 2)
         self.vdet_arc2 = float(round(vdet_arc2 * 2) / 2)

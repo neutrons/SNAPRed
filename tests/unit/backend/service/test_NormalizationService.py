@@ -38,7 +38,7 @@ with mock.patch.dict(
     thisService = "snapred.backend.service.NormalizationService."
 
     def readReductionIngredientsFromFile():
-        with Resource.open("/inputs/normalization/input.json", "r") as f:
+        with Resource.open("/inputs/normalization/ReductionIngredients.json", "r") as f:
             return ReductionIngredients.parse_raw(f.read())
 
     def test_saveNormalization():
