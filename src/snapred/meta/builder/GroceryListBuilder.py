@@ -26,22 +26,22 @@ class GroceryListBuilder:
     def specialOrder(self):
         self._tokens["isOutput"] = True
         return self
-        
+
     def diffcal(self, runId: str):
         self._tokens["workspaceType"] = "diffcal"
         self._tokens["runNumber"] = runId
         return self
-        
+
     def diffcal_output(self, runId: str):
         self._tokens["workspaceType"] = "diffcal_output"
         self._tokens["runNumber"] = runId
         return self
-        
+
     def diffcal_table(self, runId: str):
         self._tokens["workspaceType"] = "diffcal_table"
         self._tokens["runNumber"] = runId
         return self
-        
+
     def diffcal_mask(self, runId: str):
         self._tokens["workspaceType"] = "diffcal_mask"
         self._tokens["runNumber"] = runId

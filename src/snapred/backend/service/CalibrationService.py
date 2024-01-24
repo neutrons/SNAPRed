@@ -113,10 +113,16 @@ class CalibrationService(Service):
         self.groceryClerk.name("groupingWorkspace").grouping(request.focusGroup.name).useLiteMode(
             request.useLiteMode
         ).fromPrev().add()
-        self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.specialOrder().name("calibrationTable").diffcal_table(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.specialOrder().name("maskWorkspace").diffcal_mask(request.runNumber).useLiteMode(request.useLiteMode).add()
-        
+        self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.specialOrder().name("calibrationTable").diffcal_table(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.specialOrder().name("maskWorkspace").diffcal_mask(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+
         groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
 
         # now have all ingredients and groceries, run recipe

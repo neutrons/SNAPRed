@@ -1,6 +1,6 @@
-from typing import List
 import json
 import unittest
+from typing import List
 from unittest import mock
 
 import pytest

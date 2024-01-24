@@ -1,37 +1,29 @@
-from typing import Any, Dict, List, Tuple
-from collections.abc import Sequence
-
 import unittest
+from collections.abc import Sequence
+from typing import Any, Dict, List, Tuple
 from unittest import mock
-import pytest
 
+import pytest
 from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
-
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
-from snapred.meta.Config import Resource
-from snapred.backend.log.logger import snapredLogger
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import (
     GroupDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
-
-from util.helpers import (
-    deleteWorkspaceNoThrow,
-    mutableWorkspaceClones,
-    setGroupSpectraToZero,
-    maskGroups
-)
+from snapred.meta.Config import Resource
 from util.diffraction_calibration_synthetic_data import SyntheticData
+from util.helpers import deleteWorkspaceNoThrow, maskGroups, mutableWorkspaceClones, setGroupSpectraToZero
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -69,7 +61,6 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         for ws in [cls.fakeRawData, cls.fakeGroupingWorkspace, cls.fakeMaskWorkspace, cls.difcWS]:
             deleteWorkspaceNoThrow(ws)
         return super().tearDownClass()
-
 
     def test_chop_ingredients(self):
         """Test that ingredients for algo are properly processed"""
@@ -141,7 +132,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         mask = mtd[maskWSName]
         assert mask.getNumberMasked() == 0
         deleteWorkspaceNoThrow(maskWSName)
-        
+
     def test_existing_mask_is_used(self):
         """Test that an existing mask workspace is not overwritten"""
         from mantid.simpleapi import mtd
@@ -219,7 +210,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
                 assert maskWS.isMasked(int(det))
         deleteWorkspaceNoThrow(inputWSName)
         deleteWorkspaceNoThrow(maskWSName)
-            
+
     def test_masks_stay_masked(self):
         """Test that incoming masked spectra are still masked at output"""
         from mantid.simpleapi import mtd
@@ -256,7 +247,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
                 assert maskWS.isMasked(int(det))
         deleteWorkspaceNoThrow(inputWSName)
         deleteWorkspaceNoThrow(maskWSName)
-            
+
     def test_masks_are_combined(self):
         """Test that masks for failing spectra are combined with any input mask"""
         from mantid.simpleapi import mtd
@@ -311,8 +302,8 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
 def clear_loggers():  # noqa: PT004
     """Remove handlers from all loggers"""
     import logging
-    
-    yield # ... teardown follows:     
+
+    yield  # ... teardown follows:
     loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
     for logger in loggers:
         handlers = getattr(logger, "handlers", [])

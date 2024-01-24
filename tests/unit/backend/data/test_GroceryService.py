@@ -248,7 +248,7 @@ class TestGroceryService(unittest.TestCase):
         assert "difc" in res
         assert "mask" in res
         assert self.runNumber in res
-                
+
     ## TESTS OF WRITING METHODS
 
     def test_writeWorkspace(self):

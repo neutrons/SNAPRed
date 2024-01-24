@@ -60,7 +60,7 @@ class SyntheticData(object):
     SNAPInstrumentFilePath = str(Path(mantid.__file__).parent / "instrument" / "SNAP_Definition.xml")
     SNAPLiteInstrumentFilePath = Resource.getPath("inputs/pixel_grouping/SNAPLite_Definition.xml")
 
-    def __init__(self, workspaceType: str='Histogram', scale: float=1000.0):
+    def __init__(self, workspaceType: str = "Histogram", scale: float = 1000.0):
         fakeRunNumber = "555"
         self.fakeRunConfig = RunConfig(
             runNumber=str(fakeRunNumber),
@@ -73,14 +73,14 @@ class SyntheticData(object):
         self.fakeFocusGroup.definition = SyntheticData.fakeGroupingFilePath
 
         self.fakePixelGroup = PixelGroup.parse_raw(SyntheticData.fakePixelGroupPath)
-        
+
         # Place all peaks within the _minimum_ d-space range of any pixel group.
         dMin = max(self.fakePixelGroup.dMin())
         dMax = min(self.fakePixelGroup.dMax())
 
         # Overall _magnitude_ scale factor:
         self.scale = scale
-        
+
         self.workspaceType = workspaceType
 
         # TOF-domain used to convert from the original `CreateSampleWorkspace` 'Powder Diffraction' predefined function:

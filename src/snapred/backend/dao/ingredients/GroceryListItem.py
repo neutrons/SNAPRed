@@ -61,12 +61,13 @@ class GroceryListItem(BaseModel):
                         raise ValueError("a grouping workspace requires an instrument source")
             case "diffcal":
                 if v.get("runNumber") is None:
-                    raise ValueError(f"diffraction-calibration input table workspace requires a run number")            
+                    raise ValueError("diffraction-calibration input table workspace requires a run number")
             # output (i.e. special-order) workspaces
             case "diffcal_output" | "diffcal_table" | "diffcal_mask":
                 if v.get("runNumber") is None:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} output requires a run number")
                 if v.get("isOutput") == False:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} output is special-order only")
-            case _: raise ValueError(f"unrecognized \'workspaceType\': \'{v['workspaceType']}\'")
+            case _:
+                raise ValueError(f"unrecognized 'workspaceType': '{v['workspaceType']}'")
         return v

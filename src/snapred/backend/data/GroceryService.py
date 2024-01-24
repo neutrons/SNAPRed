@@ -101,7 +101,7 @@ class GroceryService:
 
     def _createDiffcalMaskWorkspaceName(self, runId: str):
         return wng.diffCalMask().runNumber(runId).build()
-        
+
     ## WRITING TO DISK
 
     def writeWorkspace(self, path: str, name: WorkspaceName):
@@ -388,16 +388,18 @@ class GroceryService:
                     res = self.fetchGroupingDefinition(item)
                 case "diffcal":
                     res = {"result": True, "workspace": self._createDiffcalWorkspaceName(item.runNumber)}
-                    raise RuntimeError(f"not implemented: no path available to fetch diffcal input table workspace: \'{res['workspace']}\'")
+                    raise RuntimeError(
+                        f"not implemented: no path available to fetch diffcal input table workspace: '{res['workspace']}'"
+                    )
                 # for output (i.e. special-order) workspaces
                 case "diffcal_output":
                     res = {"result": True, "workspace": self._createDiffcalOutputWorkspaceName(item.runNumber)}
-                case "diffcal_table":   
+                case "diffcal_table":
                     res = {"result": True, "workspace": self._createDiffcalTableWorkspaceName(item.runNumber)}
-                case "diffcal_mask":    
+                case "diffcal_mask":
                     res = {"result": True, "workspace": self._createDiffcalMaskWorkspaceName(item.runNumber)}
                 case _:
-                    raise RuntimeError(f"unrecognized \'workspaceType\': \'{item.workspaceType}\'")
+                    raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
             # check that the fetch operation succeeded and if so append the workspace
             if res["result"] is True:
                 groceries.append(res["workspace"])

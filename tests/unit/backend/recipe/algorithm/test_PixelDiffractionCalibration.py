@@ -1,17 +1,14 @@
-from typing import Any, Dict, List, Tuple
-from collections.abc import Sequence
 import json
-
 import unittest
-import pytest
-
+from collections.abc import Sequence
 from itertools import permutations
-import numpy as np
+from typing import Any, Dict, List, Tuple
 
+import numpy as np
+import pytest
 from mantid.api import MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import mtd
-
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
@@ -19,19 +16,14 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.meta.Config import Resource
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import (
     PixelDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
-
-from util.helpers import (
-  deleteWorkspaceNoThrow,
-  setSpectraToZero,
-  maskSpectra
-)
+from snapred.meta.Config import Resource
 from util.diffraction_calibration_synthetic_data import SyntheticData
+from util.helpers import deleteWorkspaceNoThrow, maskSpectra, setSpectraToZero
 
 
 class TestPixelDiffractionCalibration(unittest.TestCase):
@@ -184,7 +176,7 @@ class TestPixelDiffractionCalibration(unittest.TestCase):
         for N_group in range(1, 5):
             for gids in permutations(dids, N_group):
                 assert algo.getRefID(gids) in gids
-    
+
     def test_mask_is_created(self):
         """Test that a mask workspace is created if it doesn't already exist"""
 
