@@ -45,7 +45,7 @@ with mock.patch.dict(
     thisService = "snapred.backend.service.CalibrationService."
 
     def readReductionIngredientsFromFile():
-        with Resource.open("/inputs/calibration/input.json", "r") as f:
+        with Resource.open("/inputs/calibration/ReductionIngredients.json", "r") as f:
             return ReductionIngredients.parse_raw(f.read())
 
     # test export calibration
