@@ -9,7 +9,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 
-logger = snapredLogger.getLogger(__name__)
+# logger = snapredLogger.getLogger(__name__)
 
 
 class GroupingMap(BaseModel):
@@ -78,19 +78,19 @@ class GroupingMap(BaseModel):
                 if str(fp) == fp.name:
                     fp = Path.joinpath(cls.calibrationGroupingHome(), fp)
                 if not fp.exists():
-                    logger.warning("File:" + str(fp) + " not found")
+                    # logger.warning("File:" + str(fp) + " not found")
                     del groups[mode][group]
                     continue
                 if not fp.is_file():
-                    logger.warning("File:" + str(fp) + " is not valid")
+                    # logger.warning("File:" + str(fp) + " is not valid")
                     del groups[mode][group]
                     continue
                 if not str(fp).endswith(supportedExtensions):
-                    logger.warning('File format for: "' + str(fp) + '" is not a valid grouping-schema map format')
+                    # logger.warning('File format for: "' + str(fp) + '" is not a valid grouping-schema map format')
                     del groups[mode][group]
                     continue
-            if groups[mode] == {}:
-                logger.warning("No valid FocusGroups were specified for mode: '" + mode + "'")
+            # if groups[mode] == {}:
+            # logger.warning("No valid FocusGroups were specified for mode: '" + mode + "'")
 
         v["_nativeMap"] = groups["native"]
         v["_liteMap"] = groups["lite"]
