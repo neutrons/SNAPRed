@@ -1,3 +1,5 @@
+import math
+
 import matplotlib.pyplot as plt
 from mantid.simpleapi import mtd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -53,9 +55,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
         # self.groupingDropDown.currentIndexChanged.connect(self.emitValueChange)
 
         self.smoothingSlider = QSlider(Qt.Horizontal)
-        self.smoothingSlider.setMinimum(0)
-        self.smoothingSlider.setMaximum(100)
-        self.smoothingSlider.setValue(0)
+        self.smoothingSlider.setMinimum(-1000)
+        self.smoothingSlider.setMaximum(-20)
+        self.smoothingSlider.setValue(-1000)
         self.smoothingSlider.setTickInterval(1)
         self.smoothingSlider.setSingleStep(1)
         self.smoothingSlider.setStyleSheet(
@@ -74,7 +76,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
             "}"
         )
 
-        self.smoothingLineEdit = QLineEdit("0.00")
+        self.smoothingLineEdit = QLineEdit("1e-9")
         self.smoothingLineEdit.setFixedWidth(50)
         self.smoothingSlider.valueChanged.connect(self.updateLineEditFromSlider)
         self.smoothingLineEdit.returnPressed.connect(
@@ -122,16 +124,18 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.smoothingSlider.setValue(int(smoothingParameter * 100))
 
     def updateLineEditFromSlider(self, value):
-        smoothingValue = value / 100.0
-        self.smoothingLineEdit.setText("{:.2f}".format(smoothingValue))
+        v = value / 100.0
+        s = 10**v
+        self.smoothingLineEdit.setText("{:.2e}".format(s))
 
     def updateSliderFromLineEdit(self, text):
         try:
-            value = float(text) * 100
-            value = max(min(value, self.smoothingSlider.maximum()), self.smoothingSlider.minimum())
-            self.smoothingSlider.setValue(int(value))
+            s = float(text)
+            v = math.log10(s)
+            sliderValue = int(v * 100)
+            self.smoothingSlider.setValue(sliderValue)
         except:  # noqa: E722
-            raise Exception("Must be a numerical value between 0.00 and 1.00")
+            raise Exception("Must be a numerical value.")
 
     def resizeEvent(self, event):
         self._updateGraphs()
@@ -139,7 +143,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
     def emitValueChange(self):
         index = self.groupingDropDown.currentIndex()
-        smoothingValue = self.smoothingSlider.value() / 100.0
+        v = self.smoothingSlider.value() / 100.0
+        smoothingValue = 10**v
         dMin = float(self.fielddMin.field.text())
         self.signalValueChanged.emit(index, smoothingValue, dMin)
 
