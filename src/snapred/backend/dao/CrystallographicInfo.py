@@ -41,7 +41,6 @@ class CrystallographicInfo(BaseModel):
             raise ValueError("Structure factors and hkl required to have same length")
         if len(multiplicities) != len(hkl):
             raise ValueError("Multiplicities and hkl required to have same length")
-
         if len(dSpacing) != len(hkl):
             raise ValueError("Spacings and hkl required to have same length")
         peaks = [

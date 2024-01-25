@@ -19,9 +19,9 @@
     "L1": 15.0,
     "L2": 0.5,
     "delToT": 0.002,
-    "delLoL": 6.452e-5,
-    "delThNoGuide": 6.667e-4,
-    "delThWithGuide": 3.200e-3,
+    "delLoL": 0.003226,
+    "delThNoGuide": 2.13e-3,
+    "delThWithGuide": 6.40e-3,
     "alpha": 0.1,
     "beta_0": 0.02,
     "beta_1": 0.05
