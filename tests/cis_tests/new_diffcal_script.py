@@ -70,10 +70,12 @@ assert False
 median = json.loads(pixelAlgo.getPropertyValue("data"))["medianOffset"]
 print(median)
 
-while median > offsetConvergenceLimit:
+count = 0
+while median > offsetConvergenceLimit or count < 5:
     pixelAlgo.execute()
     median = json.loads(pixelAlgo.getPropertyValue("data"))["medianOffset"]
-
+    count += 1
+    
 ### RUN GROUP CALIBRATION
 
 DIFCprev = pixelAlgo.getPropertyValue("CalibrationTable")
