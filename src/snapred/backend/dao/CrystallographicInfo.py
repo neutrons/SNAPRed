@@ -28,10 +28,10 @@ class CrystallographicInfo(BaseModel):
 
     def __init__(
         self,
-        hkl: List[Tuple[int, int, int]] = [],
-        dSpacing: List[float] = [],
-        fSquared: List[float] = [],
-        multiplicities: List[int] = [],
+        hkl: List[Tuple[int, int, int]] = None,
+        dSpacing: List[float] = None,
+        fSquared: List[float] = None,
+        multiplicities: List[int] = None,
         peaks=[],
     ):
         if peaks != []:
