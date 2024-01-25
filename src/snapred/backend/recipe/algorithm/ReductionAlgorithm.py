@@ -1,8 +1,6 @@
 import json
 
-from mantid.api import *
-from mantid.api import AlgorithmFactory, PythonAlgorithm
-from mantid.kernel import *
+from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import ReductionIngredients
