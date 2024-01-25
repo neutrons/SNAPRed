@@ -1,8 +1,12 @@
 import json
 from typing import Dict
 
-from mantid.api import *
-from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
+from mantid.api import (
+    AlgorithmFactory,
+    MatrixWorkspaceProperty,
+    PropertyMode,
+    PythonAlgorithm,
+)
 from mantid.kernel import Direction
 
 from snapred.backend.dao.RunConfig import RunConfig

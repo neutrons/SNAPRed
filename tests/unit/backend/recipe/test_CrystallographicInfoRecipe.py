@@ -1,7 +1,6 @@
 import unittest.mock as mock
 
 import pytest
-from mantid.simpleapi import *
 
 with mock.patch.dict(
     "sys.modules",
