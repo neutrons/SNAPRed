@@ -185,7 +185,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         with any new masked pixels detected during execution
         - FinalCalibrationTable: str -- the name of the final table of DIFC values
         """
-        
+
         # run the algo
         self.log().notice("Execution of group diffraction calibration START!")
 
