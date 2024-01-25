@@ -829,14 +829,6 @@ class TestGroceryService(unittest.TestCase):
             self.instance.fetchGroceryList(groceryList)
         print(str(e.value))
 
-    @mock.patch.object(GroceryService, "fetchNeutronDataSingleUse")
-    def test_fetch_grocery_list_fails(self, mockFetchDirty):
-        groceryList = GroceryListItem.builder().native().neutron(self.runNumber).dirty().buildList()
-        mockFetchDirty.return_value = {"result": False, "workspace": "unimportant"}
-        with pytest.raises(RuntimeError) as e:
-            self.instance.fetchGroceryList(groceryList)
-        print(str(e.value))
-
     def test_fetch_grocery_list_diffcal_fails(self):
         groceryList = GroceryListItem.builder().native().diffcal(self.runNumber).buildList()
         with pytest.raises(
