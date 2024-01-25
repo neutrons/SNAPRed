@@ -852,6 +852,15 @@ class TestGroceryService(unittest.TestCase):
         items = self.instance.fetchGroceryList(groceryList)
         assert items[0] == wng.diffCalMask().runNumber(self.runNumber).build()
 
+    def test_fetch_grocery_list_unknown_type(self):
+        groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber).buildList()
+        groceryList[0].workspaceType = "banana"
+        with pytest.raises(
+            RuntimeError,
+            match="unrecognized 'workspaceType': 'banana'",
+        ):
+            self.instance.fetchGroceryList(groceryList)
+
     @mock.patch.object(GroceryService, "fetchNeutronDataCached")
     @mock.patch.object(GroceryService, "fetchGroupingDefinition")
     def test_fetch_grocery_list_with_prev(self, mockFetchGroup, mockFetchClean):
