@@ -1,3 +1,6 @@
+# For the purposes of the state-id transition: bypass normal SNAPRed logging.
+import logging
+
 from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field, root_validator, validate_model, validator
@@ -9,6 +12,8 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.GroupingMap import GroupingMap
 from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class StateConfig(BaseModel):
     calibration: Calibration
@@ -47,6 +52,18 @@ class StateConfig(BaseModel):
         thisStateId = v.get("stateId")
         calibration = v.get("calibration")
         if not calibration.instrumentState.id == thisStateId:
+            logger.warning(\
+f"""
+The stateConfig \'stateID\' field: {thisStateId}
+    does not match the calibration.instrumentState \'id\' field: {calibration.instrumentState.id.hex}.
+Correct only _one_ of \'stateConfig.stateId\' or \'calibration.instrumentState.id\'
+   in the corresponding JSON file:
+   *  add to the \'stateConfig\' JSON the line: \' \"stateId\": \"{calibration.instrumentState.id.hex}\", \'
+   *  OR add to the \'state\' (usually called \'instrumentState\' in a nested file) JSON
+      the line: \' \"id\": \"{thisStateId}\", \'.
+Note that \"0101010101010101\" is _not_ a _real_ hex-digest value!
+"""
+            )
             raise RuntimeError(
                 "the state configuration's calibration must have the same 'stateId' as the configuration: "
                 + f'"{thisStateId}", not "{calibration.instrumentState.id}"'
@@ -54,6 +71,17 @@ class StateConfig(BaseModel):
         groupingMap = v.get("groupingMap")
         if groupingMap:
             if not groupingMap.stateId == thisStateId:
+                logger.warning(\
+f"""
+The stateConfig's \'stateID\': {thisStateId}
+    does not match the groupingMap's \'stateId\': {groupingMap.stateId.hex}.
+Correct only _one_ of \'stateConfig.stateId\' or \'groupingMap.stateId\'
+   in the corresponding JSON file:
+   *  add to the \'stateConfig\' JSON the line: \' \"stateId\": \"{groupingMap.stateId.hex}\", \'
+   *  OR add to the \'groupingMap\' JSON the line: \' \"stateId\": \"{thisStateId}\", \'
+Note that \"0101010101010101\" is _not_ a _real_ hex-digest value!
+"""
+                )
                 raise RuntimeError(
                     "the state configuration's grouping map must have the same 'stateId' as the configuration: "
                     + f'"{thisStateId}", not "{groupingMap.stateId}"'

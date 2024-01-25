@@ -1,3 +1,6 @@
+# For the purposes of the state-id transition: bypass normal SNAPRed logging.
+import logging
+
 import datetime
 import glob
 import json
@@ -43,7 +46,11 @@ from snapred.meta.redantic import (
     write_model_pretty,
 )
 
-logger = snapredLogger.getLogger(__name__)
+
+# For the purposes of the state-id transition: bypass normal SNAPRed logging.
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 
 """
     Looks up data on disk
@@ -651,6 +658,16 @@ class LocalDataService:
         calibrationState = None
         if latestFile:
             calibrationState = parse_file_as(Calibration, latestFile)
+            if calibrationState.instrumentState.id == InstrumentState.transitionStateId:
+                logger.warning(\
+f"""
+------------------------------------------------------------------------------
+The file: '{latestFile}' does not have the correct 'instrumentState.id' field.
+Please insert the following line in the 'instrumentState' section of the JSON file:
+' "id" : "{stateId}", '
+------------------------------------------------------------------------------
+"""\
+                )
 
         return calibrationState
 
@@ -668,7 +685,16 @@ class LocalDataService:
         normalizationState = None
         if latestFile:
             normalizationState = parse_file_as(Normalization, latestFile)  # noqa: F821
-
+            if normalizationState.instrumentState.id == InstrumentState.transitionStateId:
+                logger.warning(\
+f"""
+------------------------------------------------------------------------------
+The file: '{latestFile}' does not have the correct 'instrumentState.id' field.
+Please insert the following line in the 'instrumentState' section of the JSON file:
+' "id" : "{stateId}", '
+------------------------------------------------------------------------------
+"""\
+                )
         return normalizationState
 
     def writeCalibrationState(self, runId: str, calibration: Calibration, version: int = None):
