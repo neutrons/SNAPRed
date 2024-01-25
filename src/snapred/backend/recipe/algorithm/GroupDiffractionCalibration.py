@@ -180,11 +180,12 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         output:
         - OutputWorkspace: str -- the name of the diffraction-focussed d-spacing data after the final calibration
         - MaskWorkspace: str -- the name of the mask workspace for detectors failing calibration
-          (1.0 => dead-pixel, 0.0 => live-pixel)
-          when the mask workspace already exists, the incoming pixel mask will be combined
-          with any new masked pixels detected during execution
+        (1.0 => dead-pixel, 0.0 => live-pixel)
+        when the mask workspace already exists, the incoming pixel mask will be combined
+        with any new masked pixels detected during execution
         - FinalCalibrationTable: str -- the name of the final table of DIFC values
         """
+        
         # run the algo
         self.log().notice("Execution of group diffraction calibration START!")
 
