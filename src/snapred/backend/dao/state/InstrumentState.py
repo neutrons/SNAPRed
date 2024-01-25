@@ -1,9 +1,8 @@
 # For the purposes of the state-id transition: bypass normal SNAPRed logging.
 import logging
+from typing import Any, ClassVar, List, Optional
 
-from typing import Any, List, Optional, ClassVar
-
-from pydantic import BaseModel, Field, validator, root_validator
+from pydantic import BaseModel, Field, root_validator, validator
 
 from snapred.backend.dao.GSASParameters import GSASParameters
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
@@ -19,10 +18,11 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
 class InstrumentState(BaseModel):
     # State id associated with the state-id transition period:
     transitionStateId: ClassVar[ObjectSHA] = ObjectSHA(hex="0101010101010101", decodedKey=None)
-    
+
     # Use the StateId hash to enforce filesystem-as-database integrity requirements:
     # * verify that this InstrumentState's file is at its expected location (e.g. it hasn't been moved);
     # * verify that any nested JSON components that are in separate files are at their expected locations.
@@ -59,15 +59,15 @@ class InstrumentState(BaseModel):
         if thisStateId == cls.transitionStateId.hex:
             # a valid 16-character hex digest,
             #   gauranteed to otherwise _fail_:
-            logger.warning(\
-f"""
+            logger.warning(
+                f"""
 The instrumentStates\'s \'id\' field is not present in the JSON file.
     This field is now _mandatory_.
 A temporary id has been inserted: \'{cls.transitionStateId.hex}\'.
 This is likely to _fail_ later in the validation chain.
 """
             )
- 
+
         return v
 
     @validator("id", pre=True, allow_reuse=True)

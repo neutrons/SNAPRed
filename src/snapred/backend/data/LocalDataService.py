@@ -1,9 +1,8 @@
 # For the purposes of the state-id transition: bypass normal SNAPRed logging.
-import logging
-
 import datetime
 import glob
 import json
+import logging
 import os
 from errno import ENOENT as NOT_FOUND
 from pathlib import Path
@@ -45,7 +44,6 @@ from snapred.meta.redantic import (
     write_model_list_pretty,
     write_model_pretty,
 )
-
 
 # For the purposes of the state-id transition: bypass normal SNAPRed logging.
 logger = logging.getLogger(__name__)
@@ -659,14 +657,14 @@ class LocalDataService:
         if latestFile:
             calibrationState = parse_file_as(Calibration, latestFile)
             if calibrationState.instrumentState.id == InstrumentState.transitionStateId:
-                logger.warning(\
-f"""
+                logger.warning(
+                    f"""
 ------------------------------------------------------------------------------
 The file: '{latestFile}' does not have the correct 'instrumentState.id' field.
 Please insert the following line in the 'instrumentState' section of the JSON file:
 ' "id" : "{stateId}", '
 ------------------------------------------------------------------------------
-"""\
+"""
                 )
 
         return calibrationState
@@ -686,14 +684,14 @@ Please insert the following line in the 'instrumentState' section of the JSON fi
         if latestFile:
             normalizationState = parse_file_as(Normalization, latestFile)  # noqa: F821
             if normalizationState.instrumentState.id == InstrumentState.transitionStateId:
-                logger.warning(\
-f"""
+                logger.warning(
+                    f"""
 ------------------------------------------------------------------------------
 The file: '{latestFile}' does not have the correct 'instrumentState.id' field.
 Please insert the following line in the 'instrumentState' section of the JSON file:
 ' "id" : "{stateId}", '
 ------------------------------------------------------------------------------
-"""\
+"""
                 )
         return normalizationState
 

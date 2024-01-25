@@ -1,6 +1,5 @@
 # For the purposes of the state-id transition: bypass normal SNAPRed logging.
 import logging
-
 from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field, root_validator, validate_model, validator
@@ -14,6 +13,7 @@ from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibr
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
 
 class StateConfig(BaseModel):
     calibration: Calibration
@@ -52,8 +52,8 @@ class StateConfig(BaseModel):
         thisStateId = v.get("stateId")
         calibration = v.get("calibration")
         if not calibration.instrumentState.id == thisStateId:
-            logger.warning(\
-f"""
+            logger.warning(
+                f"""
 The stateConfig \'stateID\' field: {thisStateId}
     does not match the calibration.instrumentState \'id\' field: {calibration.instrumentState.id.hex}.
 Correct only _one_ of \'stateConfig.stateId\' or \'calibration.instrumentState.id\'
@@ -71,8 +71,8 @@ Note that \"0101010101010101\" is _not_ a _real_ hex-digest value!
         groupingMap = v.get("groupingMap")
         if groupingMap:
             if not groupingMap.stateId == thisStateId:
-                logger.warning(\
-f"""
+                logger.warning(
+                    f"""
 The stateConfig's \'stateID\': {thisStateId}
     does not match the groupingMap's \'stateId\': {groupingMap.stateId.hex}.
 Correct only _one_ of \'stateConfig.stateId\' or \'groupingMap.stateId\'
