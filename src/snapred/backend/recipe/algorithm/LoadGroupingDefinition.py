@@ -72,9 +72,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
             doc="Workspace to optionally take the instrument from, when GroupingFilename is in XML format",
         )
         self.declareProperty(
-            "OutputWorkspace",
-            defaultValue="",
-            direction=Direction.Output,
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="Name of an output grouping workspace",
         )
 
@@ -87,8 +85,6 @@ class LoadGroupingDefinition(PythonAlgorithm):
         if self.getProperty("GroupingFilename").isDefault:
             errors["GroupingFilename"] = "You must specify the grouping filename to load"
             return errors
-        if self.getProperty("OutputWorkspace").isDefault:
-            errors["OutputWorkspace"] = "You must specify the output grouping workspace"
 
         groupingFilename = self.getPropertyValue("GroupingFilename")
         groupingFileExt = pathlib.Path(groupingFilename).suffix[1:].upper()
@@ -187,6 +183,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
                 """
             )
         self.mantidSnapper.executeQueue()
+        self.setPropertyValue("OutputWorkspace", self.outputWorkspaceName)
 
 
 # Register algorithm with Mantid

@@ -204,12 +204,11 @@ class TestLoadGroupingDefinition(unittest.TestCase):
     def test_require_output_workspace(self):
         loadingAlgo = LoadingAlgo()
         loadingAlgo.initialize()
+        loadingAlgo.validateInputs = mock.Mock()
         loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile["xml"])
-        errors = loadingAlgo.validateInputs()
-
-        assert errors != {}
-        assert errors.get("OutputWorkspace") is not None
-        assert "output" in errors["OutputWorkspace"]
+        with pytest.raises(RuntimeError):
+            loadingAlgo.execute()
+        assert not loadingAlgo.validateInputs.called
 
     def test_fail_with_no_sources(self):
         loadingAlgo = LoadingAlgo()

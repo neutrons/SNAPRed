@@ -25,7 +25,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             doc="Workspace peaks to be weighted",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("WeightWorkspace", "", Direction.Output, PropertyMode.Optional),
+            MatrixWorkspaceProperty("WeightWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="The output workspace to be created by the algorithm",
         )
         self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
@@ -43,10 +43,6 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
-
-        if self.getProperty("WeightWorkspace").isDefault:
-            errors["WeightWorkspace"] = "Weight calculator requires name for weight workspace"
-
         waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
         definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
         if len(definedWaysToGetPeaks) == 0:
@@ -124,16 +120,14 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
                 weights[mask_indices] = 0.0
             weight_ws.setY(index, weights)
 
-        self.setProperty("WeightWorkspace", weight_ws)
-
         if isEventWorkspace:
             self.mantidSnapper.ConvertToEventWorkspace(
                 "Converting histogram workspace back to event workspace",
                 InputWorkspace=self.weightWorkspaceName,
                 OutputWorkspace=self.weightWorkspaceName,
             )
-
         self.mantidSnapper.executeQueue()
+        self.setPropertyValue("WeightWorkspace", self.weightWorkspaceName)
 
 
 AlgorithmFactory.subscribe(DiffractionSpectrumWeightCalculator)

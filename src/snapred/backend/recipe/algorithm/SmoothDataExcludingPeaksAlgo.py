@@ -38,7 +38,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             doc="Workspace containing the peaks to be removed",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="Workspace with removed peaks",
         )
         self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
@@ -60,8 +60,6 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
-        if self.getProperty("OutputWorkspace").isDefault:
-            errors["Outputworkspace"] = "must specify output workspace with smoothed peaks"
         # validate source of peak lists
         waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
         definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
@@ -139,13 +137,12 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             smoothing_results = tck(xMidpoints, extrapolate=False)
             outputWorkspace.setY(index, smoothing_results)
 
-        self.setProperty("OutputWorkspace", outputWorkspace)
-
         self.mantidSnapper.WashDishes(
             "Cleaning up weight workspace...",
             Workspace=self.weightWorkspaceName,
         )
         self.mantidSnapper.executeQueue()
+        self.setProperty("OutputWorkspace", outputWorkspace)
 
 
 # Register algorithm with Mantid

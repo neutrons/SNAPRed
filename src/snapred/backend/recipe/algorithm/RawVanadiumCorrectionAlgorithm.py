@@ -7,7 +7,7 @@ from mantid.api import (
     PropertyMode,
     PythonAlgorithm,
 )
-from mantid.kernel import Direction
+from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -30,10 +30,12 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             doc="Workspace containing the raw vanadium background data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="Workspace containing corrected data; if none given, the InputWorkspace will be overwritten",
         )
-        self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty(
+            "Ingredients", defaultValue="", validator=StringMandatoryValidator(), direction=Direction.Input
+        )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -112,12 +114,6 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         else:
             raise RuntimeError("Must use cylindrical or spherical calibrant samples\n")
 
-    def validateInputs(self) -> Dict[str, str]:
-        errors = {}
-        if self.getProperty("OutputWorkspace").isDefault:
-            errors["OutputWorkspace"] = "The output workspace for the raw vanadium correction must be specified"
-        return errors
-
     def PyExec(self):
         # Load and pre-process vanadium and empty datasets
         ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
@@ -181,7 +177,7 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         )
 
         self.mantidSnapper.executeQueue()
-        self.setProperty("OutputWorkspace", self.mantidSnapper.mtd[self.outputVanadiumWS])
+        self.setPropertyValue("OutputWorkspace", self.outputVanadiumWS)
 
 
 # Register algorithm with Mantid
