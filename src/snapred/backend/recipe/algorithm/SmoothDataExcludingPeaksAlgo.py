@@ -75,15 +75,14 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
                 the list will be used and ingredients ignored"""
             )
         # validate sources of smoothing parameter
-        ingredientSmoothingParameter = json.loads(self.getPropertyValue("DetectorPeakIngredients")).get(
-            "smoothingParameter"
-        )
-        inputSmoothingParameter = not self.getProperty("SmoothingParameter").isDefault
-        if ingredientSmoothingParameter is None and not inputSmoothingParameter:
+        ingredientSmoothParam = json.loads(self.getPropertyValue("DetectorPeakIngredients")).get("smoothingParameter")
+        specifiedIngredients = ingredientSmoothParam is not None
+        specifiedProperties = not self.getProperty("SmoothingParameter").isDefault
+        if not specifiedIngredients and not specifiedProperties:
             msg = "You must specify smoothing parameter through either ingredients or property"
             errors["DetectorPeakIngredients"] = msg
             errors["SmoothingParameter"] = msg
-        if ingredientSmoothingParameter is not None and ingredientSmoothingParameter:
+        if specifiedIngredients and specifiedProperties:
             logger.warn(
                 """Smoothing parameter was specified through both property and ingredients;
                 The value in ingredients will be ignored."""
