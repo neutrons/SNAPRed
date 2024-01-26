@@ -39,7 +39,6 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                 action=FileAction.Load,
                 extensions=["xml", "h5", "nxs", "hd5"],
                 direction=Direction.Input,
-                # optional=PropertyMode.Mandatory,
             ),
             doc="Path to file to be loaded",
         )
