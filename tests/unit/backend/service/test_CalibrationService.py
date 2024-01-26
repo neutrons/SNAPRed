@@ -267,7 +267,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 ws_name = (
                     wng.diffCalMetrics()
                     .runNumber(calibRecord.runNumber)
-                    .version(calibRecord.version)
+                    .version("v" + str(calibRecord.version))
                     .metricName(metric)
                     .build()
                 )
