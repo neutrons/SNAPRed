@@ -1,5 +1,6 @@
 {
   "instrumentState": {
+    "id": "0a1b2c3d0a1b2c3d",
     "instrumentConfig": {
       "version": "1.4",
       "facility": "SNS",
@@ -60,7 +61,7 @@
     },
     "peakTailCoefficient": 2.0
   },
-  "peakIntensityFractionalThreshold": 1,
+  "peakIntensityThreshold": 1,
   "pixelGroup": {
     "timeOfFlight": {
       "minimum": 2350.800030332904,

@@ -20,7 +20,7 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
 # the algorithm to test (and its ingredients)
-from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
+from snapred.backend.dao.ingredients import PeakIngredients
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
 
 #User inputs ###########################
@@ -38,14 +38,8 @@ farmFresh = FarmFreshIngredients(
   focusGroup={"name": groupingScheme, "definition": ""},
   cifPath=cifPath,
 )
-peakIngredients = SousChef().prepPeakIngredients(farmFresh)
-
-ingredients = SmoothDataExcludingPeaksIngredients(
-    instrumentState=peakIngredients.instrumentState, 
-    crystalInfo=peakIngredients.crystalInfo, 
-    smoothingParameter=0.05,
-    pixelGroup = pixelGroup,
-)
+ingredients = SousChef().prepPeakIngredients(farmFresh)
+ingredients.smoothingParameter=0.05
 
 ## FETCH GROCERIES
 simpleList = GroceryListItem.builder().neutron(runNumber).useLiteMode(isLite).buildList()

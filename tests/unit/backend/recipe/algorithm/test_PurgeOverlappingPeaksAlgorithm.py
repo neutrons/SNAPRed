@@ -41,7 +41,7 @@ with mock.patch.dict(
         assert expected_pos_json == actual_pos_json
 
         # test the threshold -- set to over-1 value and verify no peaks are found
-        ingredients.peakIntensityFractionalThreshold = 1.2
+        ingredients.peakIntensityThreshold = 1.2
         purgeAlgo.setProperty("DetectorPeakIngredients", ingredients.json())
         purgeAlgo.execute()
         no_pos_json = json.loads(purgeAlgo.getProperty("OutputPeakMap").value)

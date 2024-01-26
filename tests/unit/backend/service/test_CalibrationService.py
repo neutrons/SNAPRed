@@ -137,7 +137,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert metric == FocusGroupMetric.return_value
 
     @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record"))
-    @patch(thisService + "PeakIngredients")
     @patch(thisService + "FitMultiplePeaksRecipe")
     @patch(thisService + "FarmFreshIngredients")
     @patch(
@@ -152,7 +151,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         CalibrationMetricsWorkspaceIngredients,
         FarmFreshIngredients,
         FitMultiplePeaksRecipe,
-        FitMultiplePeaksIngredients,
         CalibrationRecord,
     ):
         # Mock input data
@@ -185,7 +183,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Assert correct method calls
         assert FarmFreshIngredients.call_count == 1
         assert self.instance.sousChef.prepPeakIngredients.called_once_with(FarmFreshIngredients.return_value)
-        assert FitMultiplePeaksRecipe.called_once_with(FitMultiplePeaksIngredients.return_value)
+        assert FitMultiplePeaksRecipe.called_once_with(self.instance.sousChef.prepPeakIngredients.return_value)
 
         # Assert the result is as expected
         assert record == CalibrationRecord.return_value

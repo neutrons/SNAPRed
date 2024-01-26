@@ -8,7 +8,6 @@ from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import PeakIngredients
 from snapred.backend.dao.Limit import LimitedValue
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.meta.Config import Config
 from snapred.meta.redantic import list_to_raw
 
@@ -39,13 +38,6 @@ class DetectorPeakPredictor(PythonAlgorithm):
             direction=Direction.Output,
             doc="The returned list of GroupPeakList objects",
         )
-        self.declareProperty(
-            "PeakIntensityFractionThreshold",
-            defaultValue=self.PEAK_INTENSITY_THRESHOLD,
-            direction=Direction.Input,
-            doc="The input value for setting the threshold for peak intensity",
-        )
-        self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
 
     def chopIngredients(self, ingredients: PeakIngredients) -> None:
@@ -57,11 +49,11 @@ class DetectorPeakPredictor(PythonAlgorithm):
         self.L = ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2
 
         # binning params
-        pixelGroupParams = ingredients.pixelGroup.pixelGroupingParameters
-        self.delDoD = {groupID: pgp.dRelativeResolution for groupID, pgp in pixelGroupParams.items()}
-        self.tTheta = {groupID: pgp.twoTheta for groupID, pgp in pixelGroupParams.items()}
-        self.dMin = {groupID: pgp.dResolution.minimum for groupID, pgp in pixelGroupParams.items()}
-        self.dMax = {groupID: pgp.dResolution.maximum for groupID, pgp in pixelGroupParams.items()}
+        groupIDs = ingredients.pixelGroup.groupIDs
+        self.delDoD = dict(zip(groupIDs, ingredients.pixelGroup.dRelativeResolution))
+        self.tTheta = dict(zip(groupIDs, ingredients.pixelGroup.twoTheta))
+        self.dMin = dict(zip(groupIDs, ingredients.pixelGroup.dMin()))
+        self.dMax = dict(zip(groupIDs, ingredients.pixelGroup.dMax()))
 
         # select only peaks above the amplitude threshold
         crystalInfo = ingredients.crystalInfo
@@ -70,7 +62,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         multiplicity = np.array(crystalInfo.multiplicities)
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
-        thresholdA = np.max(A) * ingredients.peakIntensityFractionalThreshold
+        thresholdA = np.max(A) * ingredients.peakIntensityThreshold
         self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
 
         self.allGroupIDs = ingredients.pixelGroup.groupIDs

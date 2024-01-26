@@ -1,7 +1,6 @@
 import time
 
-from mantid.api import *
-from mantid.kernel import *
+from mantid.api import AlgorithmFactory, Progress, PythonAlgorithm
 
 
 class DummyAlgo(PythonAlgorithm):

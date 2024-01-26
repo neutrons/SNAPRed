@@ -9,27 +9,35 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.meta.Config import Config
+
+logger = snapredLogger.getLogger(__name__)
 
 logger = snapredLogger.getLogger(__name__)
 
 
 class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
-    PEAK_INTENSITY_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
-
     def category(self):
         return "SNAPRed Data Processing"
 
     def PyInit(self):
         # declare properties
-        self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
-        self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputPeakMap", defaultValue="", direction=Direction.Output)
         self.declareProperty(
-            "PeakIntensityFractionThreshold",
-            defaultValue=self.PEAK_INTENSITY_THRESHOLD,
+            "DetectorPeaks",
+            defaultValue="",
             direction=Direction.Input,
-            doc="Fraction of max for threshold peak intensity",
+            doc="Input list of peaks",
+        )
+        self.declareProperty(
+            "DetectorPeakIngredients",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="Ingredients for DetectorPeakPredictor to find the lsit of peaks",
+        )
+        self.declareProperty(
+            "OutputPeakMap",
+            defaultValue="",
+            direction=Direction.Output,
+            doc="The resulting, non-overlapping list of peaks",
         )
 
         self.setRethrows(True)
@@ -38,12 +46,12 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
         waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
-        definedWaysToGetPeaks = sum([self.getProperty(x).isDefault for x in waysToGetPeaks])
-        if definedWaysToGetPeaks == 0:
+        definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
+        if len(definedWaysToGetPeaks) == 0:
             msg = "Purse peaks requires either a list of peaks, or ingredients to detect peaks"
             errors["DetectorPeaks"] = msg
             errors["DetectorPeakIngredients"] = msg
-        elif definedWaysToGetPeaks == 2:
+        elif len(definedWaysToGetPeaks) == 2:
             logger.warn(
                 """Both a list of detector peaks and ingredients were given;
                 the list will be used and ingredients ignored"""
@@ -99,4 +107,4 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         return outputPeaks
 
 
-AlgorithmFactory.subscribe(PurgeOverlappingPeaksAlgorithm)
+(AlgorithmFactory.subscribe(PurgeOverlappingPeaksAlgorithm),)

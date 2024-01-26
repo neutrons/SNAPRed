@@ -8,6 +8,7 @@ from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDi
 from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -31,15 +32,16 @@ class DiffractionCalibrationRecipe:
         It is necessary to provide the following keys:
         - "inputWorkspace": the raw neutron data
         - "groupingWorkspace": a grouping workspace for focusing the data
-        It is optional to provide the following keys:
-        - "outputWorkspace": a name for the final output workspace; otherwise default is used
-        - "calibrationTable": a name for the fully calibrated DIFC table; otherwise a default is used
+        - "outputWorkspace": a name for the final output workspace
+        - "calibrationTable": a name for the final calibrated DIFC table
+        - "maskWorkspace": a name for the final mask workspace
         """
 
         self.rawInput = groceries["inputWorkspace"]
         self.groupingWS = groceries["groupingWorkspace"]
-        self.outputWS = groceries.get("outputWorkspace", "")
-        self.calTable = groceries.get("calibrationTable", "")
+        self.outputWS = groceries["outputWorkspace"]
+        self.calTable = groceries["calibrationTable"]
+        self.maskWS = groceries["maskWorkspace"]
 
     def executeRecipe(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         self.chopIngredients(ingredients)
@@ -57,6 +59,7 @@ class DiffractionCalibrationRecipe:
         pixelAlgo.setProperty("GroupingWorkspace", self.groupingWS)
         pixelAlgo.setProperty("Ingredients", ingredients.json())
         pixelAlgo.setProperty("CalibrationTable", self.calTable)
+        pixelAlgo.setProperty("MaskWorkspace", self.maskWS)
         try:
             pixelAlgo.execute()
             dataSteps.append(json.loads(pixelAlgo.getPropertyValue("data")))
@@ -94,11 +97,13 @@ class DiffractionCalibrationRecipe:
         groupedAlgo.setProperty("GroupingWorkspace", self.groupingWS)
         groupedAlgo.setProperty("Ingredients", ingredients.json())
         groupedAlgo.setProperty("PreviousCalibrationTable", self.calTable)
+        groupedAlgo.setProperty("MaskWorkspace", self.maskWS)
         groupedAlgo.setProperty("FinalCalibrationTable", self.calTable)
         try:
             groupedAlgo.execute()
             data["calibrationTable"] = groupedAlgo.getPropertyValue("FinalCalibrationTable")
             data["outputWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspace")
+            data["maskWorkspace"] = groupedAlgo.getPropertyValue("MaskWorkspace")
         except RuntimeError as e:
             errorString = str(e)
             raise RuntimeError(errorString) from e

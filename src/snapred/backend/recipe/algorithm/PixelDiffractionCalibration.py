@@ -9,10 +9,10 @@ from mantid.api import (
     PropertyMode,
     PythonAlgorithm,
 )
+from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
-from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -31,7 +31,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
     # therefore there is no reason not to deform the input workspace to this algorithm
     # instead, the original clean file is preserved in a separate location
 
-    MAX_DSPACE_SHIFT = Config["calibration.diffraction.maxDSpaceShift"]
+    MAX_DSPACE_SHIFT_FACTOR = Config["calibration.diffraction.maxDSpaceShiftFactor"]
 
     def category(self):
         return "SNAPRed Diffraction Calibration"
@@ -49,6 +49,10 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.declareProperty(
             ITableWorkspaceProperty("CalibrationTable", "", Direction.Output, PropertyMode.Optional),
             doc="Workspace containing the corrected calibration constants",
+        )
+        self.declareProperty(
+            MaskWorkspaceProperty("MaskWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="if mask workspace exists: incoming values will be used (1.0 => dead-pixel, 0.0 => live-pixel)",
         )
         self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
@@ -73,16 +77,23 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # from the grouped peak lists, find the maximum shift in d-spacing
         self.maxDSpaceShifts: Dict[int, float] = {}
         for peakList in ingredients.groupedPeakLists:
-            self.maxDSpaceShifts[peakList.groupID] = self.MAX_DSPACE_SHIFT * peakList.maxfwhm
+            self.maxDSpaceShifts[peakList.groupID] = self.MAX_DSPACE_SHIFT_FACTOR * peakList.maxfwhm
 
-        # create string name for output calibration table
-        # TODO: use workspace namer
+        # create a default name for output calibration table
         self.DIFCpixel: str = ""
         if self.getProperty("CalibrationTable").isDefault:
-            self.DIFCpixel = f"_DIFC_{self.runNumber}"
+            self.DIFCpixel = wng.diffCalTable().runNumber(self.runNumber).build()
             self.setProperty("CalibrationTable", self.DIFCpixel)
         else:
             self.DIFCpixel = self.getPropertyValue("CalibrationTable")
+
+        # create a default name for output mask workspace
+        self.maskWS: str = ""
+        if self.getProperty("MaskWorkspace").isDefault:
+            self.maskWS = wng.diffCalMask().runNumber(self.runNumber).build()
+            self.setProperty("MaskWorkspace", self.maskWS)
+        else:
+            self.maskWS = self.getPropertyValue("MaskWorkspace")
 
         # set the max offset
         self.maxOffset: float = ingredients.maxOffset
@@ -99,13 +110,14 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # TODO: use workspace namer
         self.wsDSP: str = self.wsTOF + "_dsp"
 
-        # for inspection, make a copy of initial data
         self.mantidSnapper.ConvertUnits(
             "Convert to d-spacing to diffraction focus",
             InputWorkspace=self.wsTOF,
             OutPutWorkspace=self.wsDSP,
             Target="dSpacing",
         )
+
+        # for inspection, make a copy of initial data
         self.mantidSnapper.MakeDirtyDish(
             "Creating copy of initial TOF data",
             InputWorkspace=self.wsTOF,
@@ -143,7 +155,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             #     OutputWorkspace=self.wsDSP + "_pixelStripped",
             # )
 
-        # get handle to group focusing workspace and retrieve all workspace IDs in each group
+        # get handle to group focusing workspace and retrieve workspace indices for all detectors in each group
         focusWSname: str = str(self.getPropertyValue("GroupingWorkspace"))
         focusWS = self.mantidSnapper.mtd[focusWSname]
         self.groupIDs: List[int] = [int(x) for x in focusWS.getGroupIDs()]
@@ -218,6 +230,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         for groupID, workspaceIndices in self.groupWorkspaceIndices.items():
             workspaceIndices = list(workspaceIndices)
             refID: int = self.getRefID(workspaceIndices)
+
             self.mantidSnapper.CrossCorrelate(
                 f"Cross-Correlating spectra for {wscc}",
                 InputWorkspace=self.wsDSP,
@@ -228,16 +241,19 @@ class PixelDiffractionCalibration(PythonAlgorithm):
                 XMax=self.overallDMax,
                 MaxDSpaceShift=self.maxDSpaceShifts[groupID],
             )
+
             self.mantidSnapper.GetDetectorOffsets(
                 f"Calculate offset workspace {wsoff}",
                 InputWorkspace=wscc + f"_group{groupID}",
                 OutputWorkspace=wsoff,
+                MaskWorkspace=self.maskWS,
                 # Scale the fitting ROI using the expected peak width (including a few possible peaks):
                 XMin=-(self.maxDSpaceShifts[groupID] / self.dBin) * 2.0,
                 XMax=(self.maxDSpaceShifts[groupID] / self.dBin) * 2.0,
                 OffsetMode="Signed",
                 MaxOffset=self.maxOffset,
             )
+
             # add in group offsets to total, or begin the sum if none
             if not self.mantidSnapper.mtd.doesExist(totalOffsetWS):
                 self.mantidSnapper.CloneWorkspace(
@@ -258,10 +274,10 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             )
             self.mantidSnapper.executeQueue()
 
-        # offsets should converge to 0 with reexecution of the process
-        # use the median, to avoid issues with possible pathologic pixels
+        # Offsets should converge to zero with re-execution of the process.
+        # Testing uses the median, to avoid issues with possible pathologic pixels.
+        # (Warning: `median(abs(offsets))` vs. `abs(median(offsets)`: the former introduces oscillation artifacts.)
         offsets = list(self.mantidSnapper.mtd[totalOffsetWS].extractY().ravel())
-        offsets = [abs(x) for x in offsets]  # ignore negative
         data["medianOffset"] = abs(np.median(offsets))
         data["meanOffset"] = abs(np.mean(offsets))
 
@@ -293,7 +309,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # cleanup memory usage
         self.mantidSnapper.WashDishes(
             "Deleting temporary workspaces",
-            WorkspaceList=[wsoff, totalOffsetWS, self.wsDSP, "Mask"],
+            WorkspaceList=[wsoff, totalOffsetWS, self.wsDSP],
         )
         # now execute the queue
         self.mantidSnapper.executeQueue()

@@ -6,7 +6,7 @@ from typing import List, Tuple
 
 from pydantic import parse_raw_as
 
-from snapred.backend.dao import GroupPeakList, RunConfig
+from snapred.backend.dao import RunConfig
 from snapred.backend.dao.calibration import (
     CalibrationIndexEntry,
     CalibrationMetric,
@@ -15,10 +15,7 @@ from snapred.backend.dao.calibration import (
 )
 from snapred.backend.dao.ingredients import (
     CalibrationMetricsWorkspaceIngredients,
-    DiffractionCalibrationIngredients,
-    FitMultiplePeaksIngredients,
     GroceryListItem,
-    PixelGroupingIngredients,
 )
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
@@ -27,7 +24,6 @@ from snapred.backend.dao.request import (
     FarmFreshIngredients,
     InitializeStateRequest,
 )
-from snapred.backend.dao.state import FocusGroup, InstrumentState, PixelGroup
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
@@ -36,12 +32,10 @@ from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalib
 from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import GenerateCalibrationMetricsWorkspaceRecipe
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
-    DetectorPeakPredictorRecipe,
     FitMultiplePeaksRecipe,
     GenerateTableWorkspaceFromListOfDictRecipe,
 )
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
-from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
@@ -113,6 +107,16 @@ class CalibrationService(Service):
         self.groceryClerk.name("groupingWorkspace").grouping(request.focusGroup.name).useLiteMode(
             request.useLiteMode
         ).fromPrev().add()
+        self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.specialOrder().name("calibrationTable").diffcal_table(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.specialOrder().name("maskWorkspace").diffcal_mask(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+
         groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
 
         # now have all ingredients and groceries, run recipe
@@ -203,23 +207,19 @@ class CalibrationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
         )
-        peakIngredients = self.sousChef.prepPeakIngredients(farmFresh)
-        # TODO in future, the ingredients for FitMultiplePeaks will be PeakIngredients
-        fitIngredients = FitMultiplePeaksIngredients(
-            instrumentState=peakIngredients.instrumentState,
-            crystalInfo=peakIngredients.crystalInfo,
-            inputWorkspace=request.workspace,
-        )
+        ingredients = self.sousChef.prepPeakIngredients(farmFresh)
 
         # TODO: We Need to Fit the Data
-        fitResults = FitMultiplePeaksRecipe().executeRecipe(FitMultiplePeaksIngredients=fitIngredients)
-        metrics = self._collectMetrics(fitResults, request.focusGroup, peakIngredients.pixelGroup)
+        fitResults = FitMultiplePeaksRecipe().executeRecipe(
+            InputWorkspace=request.workspace, DetectorPeakIngredients=ingredients
+        )
+        metrics = self._collectMetrics(fitResults, request.focusGroup, ingredients.pixelGroup)
 
         record = CalibrationRecord(
             runNumber=request.run.runNumber,
-            crystalInfo=peakIngredients.crystalInfo,
+            crystalInfo=ingredients.crystalInfo,
             calibrationFittingIngredients=self.sousChef.prepCalibration(request.run.runNumber),
-            pixelGroups=[peakIngredients.pixelGroup],
+            pixelGroups=[ingredients.pixelGroup],
             focusGroupCalibrationMetrics=metrics,
             workspaceNames=[request.workspace],
         )

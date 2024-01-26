@@ -48,7 +48,7 @@ with mock.patch.dict(
     def test_chopIngredients():
         ingredientsFile = "/inputs/predict_peaks/input_fake_ingredients.json"
 
-        ingredients = PeakIngredients.parse_raw(Resource.read(ingredientsFile))
+        ingredients = PeakIngredients.parse_file(Resource.getPath(ingredientsFile))
         algo = DetectorPeakPredictor()
         algo.chopIngredients(ingredients)
 
@@ -65,10 +65,9 @@ with mock.patch.dict(
         # check the peaks threshold
         # NOTE all peaks in test file have dspacing = multiplicity = 1, so ordered by fSquared
         peaks = ingredients.crystalInfo.peaks
-        threshold = ingredients.peakIntensityFractionalThreshold * max([peak.fSquared for peak in peaks])
+        threshold = ingredients.peakIntensityThreshold * max([peak.fSquared for peak in peaks])
         goodPeaks = [peak for peak in peaks if peak.fSquared >= threshold]
         assert algo.goodPeaks == goodPeaks
-
         assert algo.allGroupIDs == ingredients.pixelGroup.groupIDs
 
     def test_execute():
@@ -84,7 +83,6 @@ with mock.patch.dict(
 
         peaks_cal = parse_raw_as(List[GroupPeakList], peakPredictorAlgo.getProperty("DetectorPeaks").value)
         peaks_ref = parse_raw_as(List[GroupPeakList], Resource.read(peaksRefFile))
-
         assert peaks_cal == peaks_ref
 
     def test_bad_ingredients():

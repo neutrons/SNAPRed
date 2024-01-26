@@ -5,7 +5,6 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.dao.ingredients import ReductionIngredients
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 # the algorithm to test
@@ -21,11 +20,7 @@ class TestFocusSpectra(unittest.TestCase):
         self.maxOffset = 2
         self.fakeRunNumber = "555"
 
-        self.fakeInstrumentState = InstrumentState.parse_raw(Resource.read("/inputs/diffcal/fakeInstrumentState.json"))
-
-        self.fakeIngredients = Resource.read("/inputs/reduction/input_ingredients.json")
-        self.fakeIngredients = ReductionIngredients.parse_raw(self.fakeIngredients)
-        self.fakeIngredients.pixelGroup = self.fakeInstrumentState.pixelGroup
+        self.pixelGroup = PixelGroup.parse_file(Resource.getPath("/inputs/diffcal/fakePixelGroup.json"))
 
         self.fakeRawData = f"_test_focusSpectra_{self.fakeRunNumber}"
         self.fakeGroupingWorkspace = f"_test_focusSpectra_difc_{self.fakeRunNumber}"
@@ -50,12 +45,12 @@ class TestFocusSpectra(unittest.TestCase):
             RebinRagged,
         )
 
-        TOFMin = self.fakeInstrumentState.particleBounds.tof.minimum
-        TOFMax = self.fakeInstrumentState.particleBounds.tof.maximum
+        TOFMin = self.pixelGroup.timeOfFlight.minimum
+        TOFMax = self.pixelGroup.timeOfFlight.maximum
 
-        dMin = self.fakeIngredients.pixelGroup.dMin()
-        dMax = self.fakeIngredients.pixelGroup.dMax()
-        DBin = self.fakeIngredients.pixelGroup.dBin()
+        dMin = self.pixelGroup.dMin()
+        dMax = self.pixelGroup.dMax()
+        DBin = self.pixelGroup.dBin()
         overallDMax = max(dMax)
         overallDMin = min(dMin)
         dBin = min([abs(d) for d in DBin])
@@ -109,13 +104,13 @@ class TestFocusSpectra(unittest.TestCase):
 
     def getRebinRaggedParams(self, focusWSname: str):
         focWS = mtd[focusWSname]
-        dMin = self.fakeIngredients.pixelGroup.dMin()
-        dMax = self.fakeIngredients.pixelGroup.dMax()
-        DBin = self.fakeIngredients.pixelGroup.dBin()
+        dMin = self.pixelGroup.dMin()
+        dMax = self.pixelGroup.dMax()
+        DBin = self.pixelGroup.dBin()
         allXmins = [0] * 16
         allXmaxs = [0] * 16
         allDelta = [0] * 16
-        groupIDs = self.fakeIngredients.pixelGroup.groupIDs
+        groupIDs = self.pixelGroup.groupIDs
         for i, gid in enumerate(groupIDs):
             for detid in focWS.getDetectorIDsOfGroup(int(gid)):
                 allXmins[detid] = dMin[i]
@@ -128,7 +123,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("Ingredients", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         assert algo.execute()
         # assert outputworkspace is focussed correctly
@@ -150,17 +145,17 @@ class TestFocusSpectra(unittest.TestCase):
     def test_chopIngredients(self):
         algo = ThisAlgo()
         algo.initialize()
-        algo.chopIngredients(self.fakeIngredients)
-        assert algo.dMin == self.fakeIngredients.pixelGroup.dMin()
-        assert algo.dMax == self.fakeIngredients.pixelGroup.dMax()
-        assert algo.dBin == self.fakeIngredients.pixelGroup.dBin()
+        algo.chopIngredients(self.pixelGroup)
+        assert algo.dMin == self.pixelGroup.dMin()
+        assert algo.dMax == self.pixelGroup.dMax()
+        assert algo.dBin == self.pixelGroup.dBin()
 
     def test_unbagGroceries(self):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("Ingredients", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         algo.unbagGroceries()
         assert algo.inputWSName == self.fakeRawData
@@ -172,7 +167,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("Ingredients", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         errors = algo.validateInputs()
         assert errors == {}
@@ -182,7 +177,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("Ingredients", self.pixelGroup.json())
         errors = algo.validateInputs()
         assert errors.get("OutputWorkspace") is not None
 
@@ -190,7 +185,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("Ingredients", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         errors = algo.validateInputs()
         assert errors.get("GroupingWorkspace") is not None
@@ -199,7 +194,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("Ingredients", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         errors = algo.validateInputs()
         assert errors.get("InputWorkspace") is not None
@@ -218,7 +213,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeRawData)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("Ingredients", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         errors = algo.validateInputs()
         assert errors.get("GroupingWorkspace") is not None
@@ -228,9 +223,9 @@ class TestFocusSpectra(unittest.TestCase):
             CreateSampleWorkspace,
         )
 
-        dMin = self.fakeIngredients.pixelGroup.dMin()
-        dMax = self.fakeIngredients.pixelGroup.dMax()
-        DBin = self.fakeIngredients.pixelGroup.dBin()
+        dMin = self.pixelGroup.dMin()
+        dMax = self.pixelGroup.dMax()
+        DBin = self.pixelGroup.dBin()
         overallDMax = max(dMax)
         overallDMin = min(dMin)
         dBin = min([abs(d) for d in DBin])
@@ -253,7 +248,7 @@ class TestFocusSpectra(unittest.TestCase):
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("Ingredients", self.pixelGroup.json())
         algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
         errors = algo.validateInputs()
         assert errors.get("InputWorkspace") is not None

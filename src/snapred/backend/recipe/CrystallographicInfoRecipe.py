@@ -24,7 +24,7 @@ class CrystallographicInfoRecipe:
         logger.info("Ingesting crystal info: %s" % cifPath)
         data: Dict[str, Any] = {}
         algo = AlgorithmManager.create(Algo.__name__)
-        algo.setProperty("cifPath", cifPath)
+        algo.setPropertyValue("cifPath", cifPath)
         algo.setProperty("dMin", dMin)
         algo.setProperty("dMax", dMax)
 

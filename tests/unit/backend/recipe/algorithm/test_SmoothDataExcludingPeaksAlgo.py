@@ -37,12 +37,19 @@ class TestSmoothDataAlgo(unittest.TestCase):
         )
 
         # populate ingredients
-        ingredients = Ingredients.parse_raw(Resource.read("inputs/predict_peaks/input_fake_ingredients.json"))
+        ingredients = Ingredients.parse_file(Resource.getPath("inputs/predict_peaks/input_fake_ingredients.json"))
 
         # initialize and run smoothdata algo
         smoothDataAlgo = SmoothDataExcludingPeaksAlgo()
         smoothDataAlgo.initialize()
         smoothDataAlgo.setPropertyValue("InputWorkspace", test_ws_name)
         smoothDataAlgo.setProperty("OutputWorkspace", "_output")
-        smoothDataAlgo.setPropertyValue("Ingredients", ingredients.json())
+        smoothDataAlgo.setPropertyValue("DetectorPeakIngredients", ingredients.json())
+        with pytest.raises(RuntimeError) as e:
+            smoothDataAlgo.execute()
+        assert "DetectorPeakIngredients" in str(e.value)
+        assert "SmoothingParameter" in str(e.value)
+
+        ingredients.smoothingParameter = 0.9
+        smoothDataAlgo.setProperty("DetectorPeakIngredients", ingredients.json())
         assert smoothDataAlgo.execute()

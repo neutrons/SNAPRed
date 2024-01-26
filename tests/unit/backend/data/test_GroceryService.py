@@ -20,6 +20,7 @@ from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config, Resource
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 ThisService = "snapred.backend.data.GroceryService."
 
@@ -228,6 +229,33 @@ class TestGroceryService(unittest.TestCase):
         """Test the creation of name for Lite data map"""
         res = self.instance._createGroupingWorkspaceName("Lite", True)
         assert res == "lite_grouping_map"
+
+    def test_diffcal_input_workspacename(self):
+        # Test name generation for diffraction-calibration focussed-data workspace
+        res = self.instance._createDiffcalInputWorkspaceName(self.runNumber)
+        assert "tof" in res
+        assert self.runNumber in res
+        assert "raw" in res
+
+    def test_diffcal_output_workspacename(self):
+        # Test name generation for diffraction-calibration output workspace
+        res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber)
+        assert "tof" in res
+        assert self.runNumber in res
+        assert "diffoc" in res
+
+    def test_diffcal_table_workspacename(self):
+        # Test name generation for diffraction-calibration output workspace
+        res = self.instance._createDiffcalTableWorkspaceName(self.runNumber)
+        assert "difc" in res
+        assert self.runNumber in res
+
+    def test_diffcal_mask_workspacename(self):
+        # Test name generation for diffraction-calibration output workspace
+        res = self.instance._createDiffcalMaskWorkspaceName(self.runNumber)
+        assert "difc" in res
+        assert self.runNumber in res
+        assert "mask" in res
 
     ## TESTS OF WRITING METHODS
 
@@ -801,6 +829,38 @@ class TestGroceryService(unittest.TestCase):
             self.instance.fetchGroceryList(groceryList)
         print(str(e.value))
 
+    def test_fetch_grocery_list_diffcal_fails(self):
+        groceryList = GroceryListItem.builder().native().diffcal(self.runNumber).buildList()
+        with pytest.raises(
+            RuntimeError,
+            match="not implemented: no path available to fetch diffcal",
+        ):
+            self.instance.fetchGroceryList(groceryList)
+
+    def test_fetch_grocery_list_diffcal_output(self):
+        groceryList = GroceryListItem.builder().native().diffcal_output(self.runNumber).buildList()
+        items = self.instance.fetchGroceryList(groceryList)
+        assert items[0] == wng.diffCalOutput().runNumber(self.runNumber).build()
+
+    def test_fetch_grocery_list_diffcal_table(self):
+        groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber).buildList()
+        items = self.instance.fetchGroceryList(groceryList)
+        assert items[0] == wng.diffCalTable().runNumber(self.runNumber).build()
+
+    def test_fetch_grocery_list_diffcal_mask(self):
+        groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber).buildList()
+        items = self.instance.fetchGroceryList(groceryList)
+        assert items[0] == wng.diffCalMask().runNumber(self.runNumber).build()
+
+    def test_fetch_grocery_list_unknown_type(self):
+        groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber).buildList()
+        groceryList[0].workspaceType = "banana"
+        with pytest.raises(
+            RuntimeError,
+            match="unrecognized 'workspaceType': 'banana'",
+        ):
+            self.instance.fetchGroceryList(groceryList)
+
     @mock.patch.object(GroceryService, "fetchNeutronDataCached")
     @mock.patch.object(GroceryService, "fetchGroupingDefinition")
     def test_fetch_grocery_list_with_prev(self, mockFetchGroup, mockFetchClean):
@@ -878,3 +938,18 @@ class TestGroceryService(unittest.TestCase):
         # assert that the lite data service was created and called
         assert mockLDS.called_once()
         assert mockLDS.reduceLiteData.called_once_with(workspacename, workspacename)
+
+
+# this at teardown removes the loggers, eliminating logger error printouts
+# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
+@pytest.fixture(autouse=True)
+def clear_loggers():  # noqa: PT004
+    """Remove handlers from all loggers"""
+    import logging
+
+    yield  # ... teardown follows:
+    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
+    for logger in loggers:
+        handlers = getattr(logger, "handlers", [])
+        for handler in handlers:
+            logger.removeHandler(handler)

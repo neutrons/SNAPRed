@@ -502,11 +502,7 @@ class LocalDataService:
     def writeCalibrantSample(self, sample: CalibrantSamples):
         samplePath: str = Config["samples.home"]
         fileName: str = sample.name + "_" + sample.unique_id
-        # TODO: Test code should not pollute production code, why is this here?
-        if fileName == "test_id123":
-            filePath = os.path.join(Resource._resourcesPath + fileName) + ".json"
-        else:
-            filePath = os.path.join(samplePath, fileName) + ".json"
+        filePath = os.path.join(samplePath, fileName) + ".json"
         if os.path.exists(filePath):
             raise ValueError(f"the file '{filePath}' already exists")
         write_model_pretty(sample, filePath)

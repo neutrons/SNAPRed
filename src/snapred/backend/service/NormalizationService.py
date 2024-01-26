@@ -4,7 +4,6 @@ from typing import Any, Dict
 
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
-    SmoothDataExcludingPeaksIngredients,
 )
 from snapred.backend.dao.normalization import (
     Normalization,
@@ -173,20 +172,17 @@ class NormalizationService(Service):
 
     @FromString
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
-        calibrantSample = self.sousChef.prepCalibrantSample(request.calibrantSamplePath)
-
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroup,
+            calibrantSamplePath=request.calibrantSamplePath,
         )
-        reductionIngredients = self.sousChef.prepReductionIngredients(farmFresh)
-
+        ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
         return RawVanadiumCorrectionRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             BackgroundWorkspace=request.backgroundWorkspace,
-            Ingredients=reductionIngredients,
-            CalibrantSample=calibrantSample,
+            Ingredients=ingredients,
             OutputWorkspace=request.outputWorkspace,
         )
 
@@ -197,11 +193,11 @@ class NormalizationService(Service):
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroup,
         )
-        reductionIngredients = self.sousChef.prepReductionIngredients(farmFresh)
+        ingredients = self.sousChef.prepPixelGroup(farmFresh)
         return FocusSpectraRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             GroupingWorkspace=request.groupingWorkspace,
-            Ingredients=reductionIngredients,
+            Ingredients=ingredients,
             OutputWorkspace=request.outputWorkspace,
         )
 
@@ -215,14 +211,11 @@ class NormalizationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
         )
-        peakIngredients = self.sousChef.prepPeakIngredients(farmFresh)
+        ingredients = self.sousChef.prepPeakIngredients(farmFresh)
+        ingredients.smoothingParameter = request.smoothingParameter
 
-        # TODO this will be replaced with simply PeakIngredients
-        ingredients = SmoothDataExcludingPeaksIngredients(
-            smoothingParameter=request.smoothingParameter,
-            instrumentState=peakIngredients.instrumentState,
-            crystalInfo=peakIngredients.crystalInfo,
-        )
         return SmoothDataExcludingPeaksRecipe().executeRecipe(
-            InputWorkspace=request.inputWorkspace, OutputWorkspace=request.outputWorkspace, Ingredients=ingredients
+            InputWorkspace=request.inputWorkspace,
+            OutputWorkspace=request.outputWorkspace,
+            DetectorPeakIngredients=ingredients,
         )

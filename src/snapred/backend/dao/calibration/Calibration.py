@@ -7,7 +7,7 @@ from snapred.backend.dao.state import InstrumentState
 
 class Calibration(BaseModel):
     """This is actually a group of parameters(mostly) used to peform a fitting.
-    The contents of which should all be static
+    The contents of which are static.
     """
 
     instrumentState: InstrumentState
