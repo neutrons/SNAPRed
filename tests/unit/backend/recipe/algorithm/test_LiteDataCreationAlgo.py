@@ -167,7 +167,7 @@ def test_fail_with_no_output():
     liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
     with pytest.raises(RuntimeError) as e:
         liteDataCreationAlgo.execute()
-    assert "OutputWorkspace" in str(e.value)
+    assert "invalid Properties" in str(e.value)
 
     DeleteWorkspace(fullInstrumentWS)
     DeleteWorkspace(focusWS)

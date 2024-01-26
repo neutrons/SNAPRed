@@ -10,7 +10,7 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.dataobjects import MaskWorkspaceProperty
-from mantid.kernel import Direction
+from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
@@ -54,7 +54,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
             MaskWorkspaceProperty("MaskWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="if mask workspace exists: incoming values will be used (1.0 => dead-pixel, 0.0 => live-pixel)",
         )
-        self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
+        self.declareProperty(
+            "Ingredients", defaultValue="", validator=StringMandatoryValidator(), direction=Direction.Input
+        )
         self.declareProperty("data", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)

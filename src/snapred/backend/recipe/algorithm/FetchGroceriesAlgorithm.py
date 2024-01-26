@@ -39,12 +39,12 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                 action=FileAction.Load,
                 extensions=["xml", "h5", "nxs", "hd5"],
                 direction=Direction.Input,
+                # optional=PropertyMode.Mandatory,
             ),
-            # propertyMode=PropertyMode.Mandatory,
             doc="Path to file to be loaded",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="Workspace containing the loaded data",
         )
         self.declareProperty(
@@ -75,8 +75,6 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
     def validateInputs(self) -> Dict[str, str]:
         # cannot load a grouping workspace with a nexus loader
         issues: Dict[str, str] = {}
-        if self.getProperty("OutputWorkspace").isDefault:
-            issues["OutputWorkspace"] = "Must specify the Workspace to load into"
         instrumentSources = ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]
         specifiedSources = [s for s in instrumentSources if not self.getProperty(s).isDefault]
         if len(specifiedSources) > 1:
@@ -119,6 +117,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             logger.warning(f"A workspace with name {outWS} already exists in the ADS, and so will not be loaded")
             loaderType = ""
         self.mantidSnapper.executeQueue()
+        self.setPropertyValue("OutputWorkspace", outWS)
         self.setPropertyValue("LoaderType", str(loaderType))
 
 

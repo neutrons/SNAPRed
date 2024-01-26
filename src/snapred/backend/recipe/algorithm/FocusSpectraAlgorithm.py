@@ -29,11 +29,14 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             doc="Workspace defining the grouping for diffraction focusing",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="The diffraction-focused data",
         )
         self.declareProperty(
-            "Ingredients", defaultValue="", validator=StringMandatoryValidator(), direction=Direction.Input
+            "Ingredients",
+            defaultValue="",
+            validator=StringMandatoryValidator(),
+            direction=Direction.Input,
         )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
@@ -51,20 +54,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
-        if self.getProperty("OutputWorkspace").isDefault:
-            errors["OutputWorkspace"] = "You must specify the output workspace for focused data"
-
         # make sure the input workspace can be reduced by this grouping workspace
-        if not self.mantidSnapper.mtd.doesExist(self.getPropertyValue("InputWorkspace")):
-            errors["InputWorkspace"] = "Input workspace does not exist"
-            return errors
-        if not self.mantidSnapper.mtd.doesExist(self.getPropertyValue("GroupingWorkspace")):
-            errors["GroupingWorkspace"] = "Grouping workspace does not exist"
-            return errors
-        if not self.getPropertyValue("Ingredients"):
-            errors["Ingredients"] = "Ingredients are required"
-            return errors
-
         inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
         groupWS = self.mantidSnapper.mtd[self.getPropertyValue("GroupingWorkspace")]
         if "Grouping" not in groupWS.id():
@@ -80,7 +70,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
                 have inconsistent number of spectra
                 """
             errors["InputWorkspace"] = msg
-            errors["GroupingpWorkspace"] = msg
+            errors["GroupingWorkspace"] = msg
         return errors
 
     def PyExec(self):
@@ -117,8 +107,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         )
 
         self.mantidSnapper.executeQueue()
-
-        self.setProperty("OutputWorkspace", self.mantidSnapper.mtd[self.outputWSName])
+        self.setPropertyValue("OutputWorkspace", self.outputWSName)
 
 
 # Register algorithm with Mantid
