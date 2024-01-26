@@ -92,8 +92,8 @@ mantid:
       delimiter: "_"
       run: "{unit},{group},{lite},{auxilary},{runNumber}"
       diffCal:
-        input: "{unit},raw,{runNumber}"
-        output: "{unit},diffoc,{runNumber}"
+        input: "{unit},{runNumber},raw"
+        output: "{unit},{runNumber},diffoc"
         table: "diffract_consts,{runNumber}"
         metric: "calib_metrics,{metricName},{runNumber},{version}"
         mask: "DIFC,{runNumber},mask"
