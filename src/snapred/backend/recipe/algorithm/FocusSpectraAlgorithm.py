@@ -10,8 +10,7 @@ from mantid.api import (
 )
 from mantid.kernel import Direction, StringMandatoryValidator
 
-from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients as Ingredients
-from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.backend.dao.state.PixelGroup import PixelGroup as Ingredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
@@ -40,9 +39,9 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients):
-        self.dMin = ingredients.pixelGroup.dMin()
-        self.dMax = ingredients.pixelGroup.dMax()
-        self.dBin = ingredients.pixelGroup.dBin()
+        self.dMin = ingredients.dMin()
+        self.dMax = ingredients.dMax()
+        self.dBin = ingredients.dBin()
         pass
 
     def unbagGroceries(self):
@@ -85,8 +84,8 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         return errors
 
     def PyExec(self):
-        self.ingredients: Ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
-        self.chopIngredients(self.ingredients)
+        ingredients: Ingredients = Ingredients.parse_raw(self.getPropertyValue("Ingredients"))
+        self.chopIngredients(ingredients)
         self.unbagGroceries()
 
         self.log().notice("Execute of FocusSpectra START!")

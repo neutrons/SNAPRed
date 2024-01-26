@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 
-from snapred.backend.dao.ingredients import SmoothDataExcludingPeaksIngredients
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 
 

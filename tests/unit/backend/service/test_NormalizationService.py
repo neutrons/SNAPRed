@@ -70,6 +70,7 @@ from snapred.backend.service.NormalizationService import NormalizationService  #
 
 class TestNormalizationService(unittest.TestCase):
     def setUp(self):
+        self.instance = NormalizationService()
         self.request = NormalizationCalibrationRequest(
             runNumber="12345",
             backgroundRunNumber="67890",
@@ -104,19 +105,18 @@ class TestNormalizationService(unittest.TestCase):
             outputWorkspace="output_ws",
         )
 
-        mockReductionIngredients = MagicMock()
         self.instance = NormalizationService()
-        self.instance.sousChef.prepReductionIngredients = MagicMock(return_value=mockReductionIngredients)
+        self.instance.sousChef.prepPixelGroup = MagicMock()
         mockRecipeInst = mockRecipe.return_value
         mockRecipeInst.executeRecipe.return_value = "expected"
 
         res = self.instance.focusSpectra(mockRequest)
 
-        assert self.instance.sousChef.prepReductionIngredients.called_once_with(FarmFreshIngredients.return_value)
+        assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
         assert mockRecipeInst.executeRecipe.called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             GroupingWorkspace=mockRequest.groupingWorkspace,
-            Ingredients=self.instance.sousChef.prepReductionIngredients.return_value,
+            Ingredients=self.instance.sousChef.prepPixelGroup.return_value,
             OutputWorkspace=mockRequest.outputWorkspace,
         )
         assert res == mockRecipeInst.executeRecipe.return_value
@@ -134,29 +134,24 @@ class TestNormalizationService(unittest.TestCase):
             outputWorkspace="output_ws",
         )
         self.instance = NormalizationService()
-        self.instance.sousChef.prepCalibrantSample = MagicMock()
-        self.instance.sousChef.prepReductionIngredients = MagicMock()
+        self.instance.sousChef.prepNormalizationIngredients = MagicMock()
 
         res = self.instance.vanadiumCorrection(mockRequest)
 
         mockRecipeInst = RawVanadiumCorrectionRecipe.return_value
-        assert self.instance.sousChef.prepCalibrantSample.called_once_with(mockRequest.calibrantSamplePath)
-        assert self.instance.sousChef.prepReductionIngredients.called_once_with(FarmFreshIngredients.return_value)
+        assert self.instance.sousChef.prepNormalizationIngredients.called_once_with(FarmFreshIngredients.return_value)
         assert mockRecipeInst.executeRecipe.called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             BackgroundWorkspace=mockRequest.backgroundWorkspace,
-            Ingredients=self.instance.sousChef.prepReductionIngredients.return_value,
-            CalibrantSample=self.instance.sousChef.prepCalibrantSample.return_value,
+            Ingredients=self.instance.sousChef.prepNormalizationIngredients.return_value,
             OutputWorkspace=mockRequest.outputWorkspace,
         )
         assert res == mockRecipeInst.executeRecipe.return_value
 
     @patch("snapred.backend.service.NormalizationService.FarmFreshIngredients")
     @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksRecipe")
-    @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksIngredients")
     def test_smoothDataExcludingPeaks(
         self,
-        SmoothDataExcludingPeaksIngredients,
         mockRecipe,
         FarmFreshIngredients,
     ):
@@ -174,7 +169,6 @@ class TestNormalizationService(unittest.TestCase):
         self.instance = NormalizationService()
         self.instance.sousChef.prepPeakIngredients = MagicMock()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
-        SmoothDataExcludingPeaksIngredients.return_value = self.instance.sousChef.prepPeakIngredients.return_value
 
         mockRecipeInst = mockRecipe.return_value
 

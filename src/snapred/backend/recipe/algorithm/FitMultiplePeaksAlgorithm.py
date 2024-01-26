@@ -1,16 +1,28 @@
 import json
 from enum import Enum
+from typing import Dict, List
 
 import numpy as np
-from mantid.api import AlgorithmFactory, PythonAlgorithm, WorkspaceFactory, WorkspaceGroup, mtd
-from mantid.kernel import Direction
+from mantid.api import (
+    AlgorithmFactory,
+    MatrixWorkspaceProperty,
+    PropertyMode,
+    PythonAlgorithm,
+    WorkspaceFactory,
+    WorkspaceGroup,
+    mtd,
+)
+from mantid.kernel import Direction, StringListValidator
+from pydantic import parse_raw_as
 
-from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients import FitMultiplePeaksIngredients
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 from snapred.meta.Config import Config
+from snapred.meta.mantid.AllowedPeakTypes import allowed_peak_type_list
+
+logger = snapredLogger.getLogger(__name__)
 
 
 class FitOutputEnum(Enum):
@@ -28,9 +40,24 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
 
     def PyInit(self):
         # declare properties
-        self.declareProperty("FitMultiplePeaksIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty(
-            "PeakIntensityFractionThreshold", defaultValue=self.PEAK_INTENSITY_THRESHOLD, direction=Direction.Input
+            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace containing the peaks to be fit",
+        )
+        self.declareProperty(
+            "DetectorPeaks",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="Input list of peaks to be fit",
+        )
+        self.declareProperty(
+            "DetectorPeakIngredients",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="Ingredients for DetectorPeakPredictor to find the lsit of peaks",
+        )
+        self.declareProperty(
+            "PeakType", "Gaussian", StringListValidator(allowed_peak_type_list), direction=Direction.Input
         )
         self.declareProperty("OutputWorkspaceGroup", defaultValue="fitPeaksWSGroup", direction=Direction.Output)
         self.setRethrows(True)
@@ -43,43 +70,49 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         mtd.add(name, ws)
         return ws
 
-    def PyExec(self):
-        fitPeakIngredients = FitMultiplePeaksIngredients(
-            **json.loads(self.getProperty("FitMultiplePeaksIngredients").value)
-        )
-        wsName = fitPeakIngredients.inputWorkspace
-        outputWorkspaceName = self.getProperty("OutputWorkspaceGroup").value
-        peakIntensityFractionThreshold = self.getProperty("PeakIntensityFractionThreshold").value
-        instrumentState = fitPeakIngredients.instrumentState
-        crystalInfo = fitPeakIngredients.crystalInfo
-        peakType = fitPeakIngredients.peakType
+    def validateInputs(self) -> Dict[str, str]:
+        errors = {}
+        waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
+        definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
+        if len(definedWaysToGetPeaks) == 0:
+            msg = "Purse peaks requires either a list of peaks, or ingredients to detect peaks"
+            errors["DetectorPeaks"] = msg
+            errors["DetectorPeakIngredients"] = msg
+        elif len(definedWaysToGetPeaks) == 2:
+            logger.warn(
+                """Both a list of detector peaks and ingredients were given;
+                the list will be used and ingredients ignored"""
+            )
+        return errors
 
-        result = self.mantidSnapper.PurgeOverlappingPeaksAlgorithm(
+    def PyExec(self):
+        inputWorkspaceName = self.getPropertyValue("Inputworkspace")
+        outputWorkspaceName = self.getPropertyValue("OutputWorkspaceGroup")
+        peakType = self.getPropertyValue("PeakType")
+
+        peakString = self.mantidSnapper.PurgeOverlappingPeaksAlgorithm(
             "Purging overlapping peaks...",
-            InstrumentState=instrumentState.json(),
-            CrystalInfo=crystalInfo.json(),
-            PeakIntensityFractionThreshold=peakIntensityFractionThreshold,
+            DetectorPeaks=self.getPropertyValue("DetectorPeaks"),
+            DetectorPeakIngredients=self.getPropertyValue("DetectorPeakIngredients"),
         )
         self.mantidSnapper.executeQueue()
-        reducedList_json = json.loads(result.get())
+        reducedPeakList = parse_raw_as(List[GroupPeakList], peakString.get())
 
-        ws_group = WorkspaceGroup()
-        mtd.add(outputWorkspaceName, ws_group)
+        outputWorkspace = WorkspaceGroup()
+        mtd.add(outputWorkspaceName, outputWorkspace)
 
         groupIDs = []
         reducedList = {}
-        for x in reducedList_json:
-            groupPeakList = GroupPeakList.parse_obj(x)
+        for groupPeakList in reducedPeakList:
             groupIDs.append(groupPeakList.groupID)
             reducedList[groupPeakList.groupID] = groupPeakList.peaks
 
-        self.mantidSnapper.mtd[wsName]
         for index, groupID in enumerate(groupIDs):
-            outputNames = [None for _ in range(len(FitOutputEnum))]
-            outputNames[FitOutputEnum.PeakPosition.value] = f"{wsName}_fitted_peakpositions_{index}"
-            outputNames[FitOutputEnum.Parameters.value] = f"{wsName}_fitted_params_{index}"
-            outputNames[FitOutputEnum.Workspace.value] = f"{wsName}_fitted_{index}"
-            outputNames[FitOutputEnum.ParameterError.value] = f"{wsName}_fitted_params_err_{index}"
+            outputNames = [None] * len(FitOutputEnum)
+            outputNames[FitOutputEnum.PeakPosition.value] = f"{inputWorkspaceName}_fitted_peakpositions_{index}"
+            outputNames[FitOutputEnum.Parameters.value] = f"{inputWorkspaceName}_fitted_params_{index}"
+            outputNames[FitOutputEnum.Workspace.value] = f"{inputWorkspaceName}_fitted_{index}"
+            outputNames[FitOutputEnum.ParameterError.value] = f"{inputWorkspaceName}_fitted_params_err_{index}"
 
             peakCenters = []
             peakLimits = []
@@ -89,7 +122,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
 
             self.mantidSnapper.ExtractSingleSpectrum(
                 "Extract Single Spectrum...",
-                InputWorkspace=wsName,
+                InputWorkspace=inputWorkspaceName,
                 OutputWorkspace="ws2fit",
                 WorkspaceIndex=index,
             )
@@ -109,15 +142,15 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             )
             self.mantidSnapper.executeQueue()
             for output in outputNames:
-                ws_group.add(output)
+                outputWorkspace.add(output)
 
         self.mantidSnapper.WashDishes(
             "Deleting fitting workspace...",
             Workspace="ws2fit",
         )
         self.mantidSnapper.executeQueue()
-        self.setProperty("OutputWorkspaceGroup", ws_group.name())
-        return ws_group
+        self.setProperty("OutputWorkspaceGroup", outputWorkspace.name())
+        return outputWorkspace
 
 
 AlgorithmFactory.subscribe(FitMultiplePeaksAlgorithm)

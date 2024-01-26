@@ -14,9 +14,7 @@ class StateConfig(BaseModel):
     calibration: Calibration
     diffractionCalibrant: Optional[DiffractionCalibrant]
     normalizationCalibrant: Optional[NormalizationCalibrant]
-    rawVanadiumCorrectionFileName: str  # Needs to be removed when Normalization changes go in
-    vanadiumFilePath: str  # Needs to be removed when Normalization changes go in
-    # PixelGroupingParameters
+    vanadiumFilePath: str = ""  # Needs to be removed when Normalization changes go in
 
     # 'groupingMap' (not really Optional), has its own separate JSON file:
     #   * Optional: allows it to temporarily be `None` after `__init__` but prior to `attachGroupingMap`.

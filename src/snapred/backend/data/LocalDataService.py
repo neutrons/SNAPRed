@@ -111,7 +111,6 @@ class LocalDataService:
             raise _createFileNotFoundError("Instrument configuration file", self.instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str) -> StateConfig:
-        reductionParameters = self._readReductionParameters(runId)
         previousDiffCalRecord: CalibrationRecord = self.readCalibrationRecord(runId)
         if previousDiffCalRecord is None:
             diffCalibration: Calibration = self.readCalibrationState(runId)
@@ -136,36 +135,9 @@ class LocalDataService:
 
         return StateConfig(
             calibration=diffCalibration,
-            rawVanadiumCorrectionFileName=reductionParameters["rawVCorrFileName"],
-            vanadiumFilePath=str(
-                self.instrumentConfig.calibrationDirectory
-                / "Powder"
-                / diffCalibration.instrumentState.id.hex
-                / reductionParameters["rawVCorrFileName"]
-            ),
             groupingMap=groupingMap,
             stateId=diffCalibration.instrumentState.id,
         )
-
-    def _readFocusGroups(self, runId: str) -> List[FocusGroup]:  # noqa: ARG002
-        reductionParameters = self._readReductionParameters(runId)
-        # TODO: fix hardcode reductionParameters["focGroupLst"]
-        # dont have time to figure out why its reading the wrong data
-        focusGroupNames = ["Column", "Bank", "All"]
-        focusGroups = []
-        for i, name in enumerate(focusGroupNames):
-            focusGroups.append(
-                FocusGroup(
-                    name=name,
-                    definition=str(
-                        self.instrumentConfig.calibrationDirectory
-                        / "Powder"
-                        / self.instrumentConfig.pixelGroupingDirectory
-                        / reductionParameters["focGroupDefinition"][i]
-                    ),
-                )
-            )
-        return focusGroups
 
     def readRunConfig(self, runId: str) -> RunConfig:
         return self._readRunConfig(runId)
@@ -258,56 +230,6 @@ class LocalDataService:
     def _constructCalibrationStatePath(self, stateId):
         # TODO: Propagate pathlib through codebase
         return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId}/"
-
-    def _readReductionParameters(self, runId: str) -> Dict[Any, Any]:
-        # lookup IPTS number
-        run: int = int(runId)
-        stateId, _ = self._generateStateId(runId)
-
-        calibrationPath: str = self._constructCalibrationStatePath(stateId)
-        calibSearchPattern: str = f"{calibrationPath}{self.instrumentConfig.calibrationFilePrefix}*{self.instrumentConfig.calibrationFileExtension}"  # noqa: E501
-
-        foundFiles = self._findMatchingFileList(calibSearchPattern)
-
-        calibFileList = []
-
-        # TODO: Allow non lite files
-        for file in foundFiles:
-            if "lite" in file:
-                calibFileList.append(file)
-
-        calibRunList = []
-        # TODO: Why are we overwriting dictIn every iteration?
-        for string in calibFileList:
-            runStr = string[
-                string.find(self.instrumentConfig.calibrationFilePrefix)
-                + len(self.instrumentConfig.calibrationFilePrefix) :
-            ].split(".")[0]
-            if not runStr.isnumeric():
-                continue
-            calibRunList.append(int(runStr))
-
-            relRuns = [x - run != 0 for x in calibRunList]
-
-            pos = [i for i, val in enumerate(relRuns) if val >= 0]
-            [i for i, val in enumerate(relRuns) if val <= 0]
-
-            # TODO: Account for errors
-            closestAfter = min([calibRunList[i] for i in pos])
-            calIndx = calibRunList.index(closestAfter)
-
-            with open(calibFileList[calIndx], "r") as json_file:
-                dictIn = json.load(json_file)
-
-            # useful to also path location of calibration directory
-            fullCalPath = calibFileList[calIndx]
-            fSlash = [pos for pos, char in enumerate(fullCalPath) if char == "/"]
-            dictIn["calPath"] = fullCalPath[0 : fSlash[-1] + 1]
-
-        # Now push data into DAO object
-        self.reductionParameterCache[runId] = dictIn
-        dictIn["stateId"] = stateId
-        return dictIn
 
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
@@ -469,8 +391,6 @@ class LocalDataService:
         return latestVersion
 
     def readNormalizationRecord(self, runId: str, version: str = None):
-        stateId, _ = self._generateStateId(runId)
-        self._readReductionParameters(runId)
         recordPath: str = self.getNormalizationRecordPath(runId, "*")
         latestFile = ""
         if version:
@@ -583,11 +503,7 @@ class LocalDataService:
     def writeCalibrantSample(self, sample: CalibrantSamples):
         samplePath: str = Config["samples.home"]
         fileName: str = sample.name + "_" + sample.unique_id
-        # TODO: Test code should not pollute production code, why is this here?
-        if fileName == "test_id123":
-            filePath = os.path.join(Resource._resourcesPath + fileName) + ".json"
-        else:
-            filePath = os.path.join(samplePath, fileName) + ".json"
+        filePath = os.path.join(samplePath, fileName) + ".json"
         if os.path.exists(filePath):
             raise ValueError(f"the file '{filePath}' already exists")
         write_model_pretty(sample, filePath)

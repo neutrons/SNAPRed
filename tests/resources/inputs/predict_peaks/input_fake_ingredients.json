@@ -1,0 +1,139 @@
+{
+  "instrumentState": {
+    "id": "0a1b2c3d0a1b2c3d",
+    "instrumentConfig": {
+      "version": "1.4",
+      "facility": "SNS",
+      "name": "SNAP",
+      "nexusFileExtension": ".nxs.h5",
+      "nexusFilePrefix": "SNAP_",
+      "calibrationFileExtension": "json",
+      "calibrationFilePrefix": "SNAPcalibLog",
+      "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+      "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+      "sharedDirectory": "shared/",
+      "nexusDirectory": "nexus/",
+      "reducedDataDirectory": "shared/manualReduced/",
+      "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+      "bandwidth": 3.0,
+      "maxBandwidth": 3.0,
+      "L1": 15,
+      "L2": 0.5,
+      "delTOverT": 0.002,
+      "delLOverL": 6.453e-5,
+      "delThNoGuide": 3.20e-3,
+      "delThWithGuide": 3.20e-3
+    },
+    "detectorState": {
+      "arc": [
+        -65.3,
+        104.95
+      ],
+      "wav": 2.1,
+      "freq": 60.0,
+      "guideStat": 1,
+      "lin": [
+        0.045,
+        0.043
+      ]
+    },
+    "gsasParameters": {
+      "alpha": 0.1,
+      "beta": [
+        0.02,
+        0.05
+      ]
+    },
+    "particleBounds": {
+      "wavelength": {
+        "minimum": 0.60,
+        "maximum": 3.60
+      },
+      "tof": {
+        "minimum": 1959.0,
+        "maximum": 14496.6
+      }
+    },
+    "defaultGroupingSliceValue": 5,
+    "fwhmMultiplierLimit": {
+      "minimum": 1.5,
+      "maximum": 1.5
+    },
+    "peakTailCoefficient": 2.0
+  },
+  "peakIntensityThreshold": 1,
+  "pixelGroup": {
+    "timeOfFlight": {
+      "minimum": 2350.800030332904,
+      "maximum": 14104.800181997423,
+      "binWidth": 0.0002771822370612031,
+      "binningMode": -1
+    },
+    "pixelGroupingParameters": [
+      {
+        "groupID": 0,
+        "twoTheta": 2.1108948177427838,
+        "dResolution": {
+          "minimum": 0.40224298673776404,
+          "maximum": 2.0112149336888203
+        },
+        "dRelativeResolution": 0.002771822370612031
+      },
+      {
+        "groupID": 1,
+        "twoTheta": 1.82310673131693,
+        "dResolution": {
+          "minimum": 0.44278229953817677,
+          "maximum": 2.213911497690884
+        },
+        "dRelativeResolution": 0.003234525153614593
+      },
+      {
+        "groupID": 2,
+        "twoTheta": 1.5352228379083572,
+        "dResolution": {
+          "minimum": 0.5040188478793922,
+          "maximum": 2.5200942393969608
+        },
+        "dRelativeResolution": 0.004014748859873182
+      },
+      {
+        "groupID": 3,
+        "twoTheta": 1.440276389170165,
+        "dResolution": {
+          "minimum": 0.530714277849788,
+          "maximum": 2.6535713892489396
+        },
+        "dRelativeResolution": 0.004309856397320412
+      }
+    ]
+  },
+  "crystalInfo": {
+    "peaks": [
+      {
+          "hkl": [1, 1, 1],
+          "dSpacing": 1,
+          "fSquared": 4,
+          "multiplicity": 1
+      },
+      {
+          "hkl": [2, 2, 2],
+          "dSpacing": 1,
+          "fSquared": 4,
+          "multiplicity": 1
+      },
+      {
+          "hkl": [3, 3, 3],
+          "dSpacing": 1,
+          "fSquared": 2,
+          "multiplicity": 1
+      },
+      {
+          "hkl": [4, 4, 4],
+          "dSpacing": 1,
+          "fSquared": 1,
+          "multiplicity": 1
+      }
+    ]
+  }
+}

@@ -1,53 +1,76 @@
 import json
+from typing import Dict, List
 
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
+from pydantic import parse_raw_as
 
-from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.meta.Config import Config
+
+logger = snapredLogger.getLogger(__name__)
 
 
 class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
-    PEAK_INTENSITY_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
-
     def category(self):
         return "SNAPRed Data Processing"
 
     def PyInit(self):
         # declare properties
-        self.declareProperty("InstrumentState", defaultValue="", direction=Direction.Input)
-        self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputPeakMap", defaultValue="", direction=Direction.Output)
         self.declareProperty(
-            "PeakIntensityFractionThreshold",
-            defaultValue=self.PEAK_INTENSITY_THRESHOLD,
+            "DetectorPeaks",
+            defaultValue="",
             direction=Direction.Input,
-            doc="Fraction of max for threshold peak intensity",
+            doc="Input list of peaks",
+        )
+        self.declareProperty(
+            "DetectorPeakIngredients",
+            defaultValue="",
+            direction=Direction.Input,
+            doc="Ingredients for DetectorPeakPredictor to find the lsit of peaks",
+        )
+        self.declareProperty(
+            "OutputPeakMap",
+            defaultValue="",
+            direction=Direction.Output,
+            doc="The resulting, non-overlapping list of peaks",
         )
 
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
+    def validateInputs(self) -> Dict[str, str]:
+        errors = {}
+        waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
+        definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
+        if len(definedWaysToGetPeaks) == 0:
+            msg = "Purse peaks requires either a list of peaks, or ingredients to detect peaks"
+            errors["DetectorPeaks"] = msg
+            errors["DetectorPeakIngredients"] = msg
+        elif len(definedWaysToGetPeaks) == 2:
+            logger.warn(
+                """Both a list of detector peaks and ingredients were given;
+                the list will be used and ingredients ignored"""
+            )
+        return errors
+
     def PyExec(self):
         # predict detector peaks for all focus groups
-        result = self.mantidSnapper.DetectorPeakPredictor(
-            "Predicting peaks...",
-            InstrumentState=self.getProperty("InstrumentState").value,
-            CrystalInfo=self.getProperty("CrystalInfo").value,
-            PeakIntensityFractionThreshold=self.getProperty("PeakIntensityFractionThreshold").value,
-        )
-        self.mantidSnapper.executeQueue()
-        predictedPeaks_json = json.loads(result.get())
+        if self.getProperty("DetectorPeaks").isDefault:
+            result = self.mantidSnapper.DetectorPeakPredictor(
+                "Predicting peaks...",
+                Ingredients=self.getProperty("DetectorPeakIngredients").value,
+            )
+            self.mantidSnapper.executeQueue()
+        else:
+            result = self.getPropertyValue("DetectorPeaks")
+        predictedPeaks = parse_raw_as(List[GroupPeakList], result.get())
 
         # build lists of non-overlapping peaks for each focus group. Combine them into the total list.
         outputPeaks = []
-        for focusGroupPeaks_json in predictedPeaks_json:
-            # build a list of DetectorPeak objects for this focus group
-            groupPeakList = GroupPeakList.parse_obj(focusGroupPeaks_json)
-
+        for groupPeakList in predictedPeaks:
             # ensure peaks are unique
             uniquePeaks = {peak.position.value: peak for peak in groupPeakList.peaks}.values()
 
@@ -82,4 +105,4 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         return outputPeaks
 
 
-AlgorithmFactory.subscribe(PurgeOverlappingPeaksAlgorithm)
+(AlgorithmFactory.subscribe(PurgeOverlappingPeaksAlgorithm),)

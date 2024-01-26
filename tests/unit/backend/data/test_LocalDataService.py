@@ -44,14 +44,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             instrumentParmaeters = json.loads(file.read())
         return instrumentParmaeters
 
-    def _readReductionParameters(runId: str):  # noqa: ARG001
-        reductionParameters = None
-        with Resource.open("inputs/ReductionParameters.json", "r") as file:
-            reductionParameters = json.loads(file.read())
-        # make sure it's actually a valid SHA:
-        reductionParameters["stateId"] = "04bd2c53f6bf6754"
-        return reductionParameters
-
     def test_readInstrumentConfig():
         localDataService = LocalDataService()
         localDataService._readInstrumentParameters = _readInstrumentParameters
@@ -81,7 +73,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def test_readStateConfig():
         localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
+        localDataService.readGroupingFiles = mock.Mock(return_value=["/grouping1.json"])
         localDataService._readDiffractionCalibrant = mock.Mock()
         localDataService._readDiffractionCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -118,7 +110,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
     def test_readStateConfig_attaches_grouping_map():
         # test that `readStateConfig` reads the `GroupingMap` from its separate JSON file.
         localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
         localDataService._readDiffractionCalibrant = mock.Mock()
         localDataService._readDiffractionCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -156,7 +147,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         # Test that the first time a `StateConfig` is initialized,
         #   the 'stateId' of the `StateConfig.groupingMap` is set to match that of the `StateConfig`.
         localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
         localDataService._readDiffractionCalibrant = mock.Mock()
         localDataService._readDiffractionCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -197,7 +187,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         # Test that the first time a `StateConfig` is initialized,
         #   the `StateConfig.groupingMap` is written to the <state root> directory.
         localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
         localDataService._readDiffractionCalibrant = mock.Mock()
         localDataService._readDiffractionCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -244,7 +233,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             match="the state configuration's grouping map must have the same 'stateId' as the configuration",
         ):
             localDataService = LocalDataService()
-            localDataService._readReductionParameters = _readReductionParameters
             localDataService._readDiffractionCalibrant = mock.Mock()
             localDataService._readDiffractionCalibrant.return_value = (
                 reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -292,7 +280,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             FileNotFoundError,
             match=f'required default grouping-schema map "{nonExistentPath}" does not exist',
         ):
-            localDataService._readReductionParameters = _readReductionParameters
             localDataService._readDiffractionCalibrant = mock.Mock()
             localDataService._readDiffractionCalibrant.return_value = (
                 reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -319,7 +306,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         #   actually build up the `StateConfig` from its components.
         # This test verifies that `GroupingMap` is excluded from any future `StateConfig` JSON serialization.
         localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
         localDataService._readDiffractionCalibrant = mock.Mock()
         localDataService._readDiffractionCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -358,16 +344,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             with open(stateConfigPath, "r") as file:
                 stateConfig = parse_raw_as(StateConfig, file.read())
             assert stateConfig.groupingMap is None
-
-    def test__readFocusGroups():
-        # test of `LocalDataService._readFocusGroups`
-        localDataService = LocalDataService()
-        localDataService._readReductionParameters = _readReductionParameters
-        _readReductionParameters("test")
-        localDataService.instrumentConfig = getMockInstrumentConfig()
-        actual = localDataService._readFocusGroups(mock.Mock())
-        assert actual is not None
-        assert len(actual) == 3
 
     def test_readRunConfig():
         localDataService = LocalDataService()
@@ -945,20 +921,45 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         ]
 
     @mock.patch("os.path.exists", return_value=True)
-    def test_readCalibrantSample(mock1):  # noqa: ARG001
-        with mock.patch("os.path.exists", return_value=True):
-            localDataService = LocalDataService()
+    def test_writeCalibrantSample_failure(mock1):  # noqa: ARG001
+        localDataService = LocalDataService()
+        sample = mock.MagicMock()
+        sample.name = "apple"
+        sample.unique_id = "banana"
+        with pytest.raises(ValueError) as e:  # noqa: PT011
+            localDataService.writeCalibrantSample(sample)
+        assert sample.name in str(e.value)
+        assert sample.unique_id in str(e.value)
+        assert Config["samples.home"] in str(e.value)
 
-            result = localDataService.readCalibrantSample(
-                Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
-            )
-            assert type(result) == CalibrantSamples
-            assert result.name == "Silicon_NIST_640D"
+    def test_writeCalibrantSample_success():  # noqa: ARG002
+        localDataService = LocalDataService()
+        sample = mock.MagicMock()
+        sample.name = "apple"
+        sample.unique_id = "banana"
+        sample.json.return_value = "I like to eat, eat, eat"
+        temp = Config._config["samples"]["home"]
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+            Config._config["samples"]["home"] = tempdir
+            # mock_os_join.return_value = f"{tempdir}{sample.name}_{sample.unique_id}"
+            filePath = f"{tempdir}/{sample.name}_{sample.unique_id}.json"
+            localDataService.writeCalibrantSample(sample)
+            assert os.path.exists(filePath)
+        Config._config["samples"]["home"] = temp
+
+    @mock.patch("os.path.exists", return_value=True)
+    def test_readCalibrantSample(mock1):  # noqa: ARG001
+        localDataService = LocalDataService()
+
+        result = localDataService.readCalibrantSample(
+            Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
+        )
+        assert type(result) == CalibrantSamples
+        assert result.name == "Silicon_NIST_640D"
 
     @mock.patch("os.path.exists", return_value=True)
     def test_readCifFilePath(mock1):  # noqa: ARG001
-        with mock.patch("os.path.exists", return_value=True):
-            localDataService = LocalDataService()
+        localDataService = LocalDataService()
 
-            result = localDataService.readCifFilePath("testid")
-            assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif"
+        result = localDataService.readCifFilePath("testid")
+        assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif"

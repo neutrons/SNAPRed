@@ -9,10 +9,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Resource
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
-from snapred.ui.view.FitMultiplePeaksView import FitMultiplePeaksView
 from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibrationCheckView
-from snapred.ui.view.VanadiumFocussedReductionView import VanadiumFocussedReductionView
 from snapred.ui.widget.JsonForm import JsonForm
 from snapred.ui.workflow.DiffractionCalibrationCreationWorkflow import DiffractionCalibrationCreationWorkflow
 from snapred.ui.workflow.NormalizationCalibrationWorkflow import NormalizationCalibrationWorkflow

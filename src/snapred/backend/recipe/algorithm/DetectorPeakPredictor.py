@@ -4,12 +4,12 @@ import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction, PhysicalConstants
 
-from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
+from snapred.backend.dao.ingredients import PeakIngredients
 from snapred.backend.dao.Limit import LimitedValue
-from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.meta.Config import Config
+from snapred.meta.redantic import list_to_raw
 
 
 class DetectorPeakPredictor(PythonAlgorithm):
@@ -27,75 +27,80 @@ class DetectorPeakPredictor(PythonAlgorithm):
     def PyInit(self) -> None:
         # declare properties
         self.declareProperty(
-            "InstrumentState",
+            "Ingredients",
             defaultValue="",
             direction=Direction.Input,
-            doc="The input value that holds instrument state!",
+            doc="The detector peak ingredients",
         )
         self.declareProperty(
-            "CrystalInfo",
+            "DetectorPeaks",
             defaultValue="",
-            direction=Direction.Input,
-            doc="The input value that holds crystal info.",
+            direction=Direction.Output,
+            doc="The returned list of GroupPeakList objects",
         )
-        self.declareProperty(
-            "PeakIntensityFractionThreshold",
-            defaultValue=self.PEAK_INTENSITY_THRESHOLD,
-            direction=Direction.Input,
-            doc="The input value for setting the threshold for peak intensity",
-        )
-        self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
 
-    def PyExec(self) -> None:
-        instrumentState = InstrumentState.parse_raw(self.getProperty("InstrumentState").value)
-        crystalInfo = CrystallographicInfo.parse_raw(self.getProperty("CrystalInfo").value)
-        crystalInfo.peaks.sort(key=lambda x: x.dSpacing)
-        beta_0 = instrumentState.gsasParameters.beta[0]
-        beta_1 = instrumentState.gsasParameters.beta[1]
-        FWHMMultiplierLeft = instrumentState.fwhmMultiplierLimit.minimum
-        FWHMMultiplierRight = instrumentState.fwhmMultiplierLimit.maximum
-        peakTailCoefficient = instrumentState.peakTailCoefficient
-        L = instrumentState.instrumentConfig.L1 + instrumentState.instrumentConfig.L2
+    def chopIngredients(self, ingredients: PeakIngredients) -> None:
+        self.beta_0 = ingredients.instrumentState.gsasParameters.beta[0]
+        self.beta_1 = ingredients.instrumentState.gsasParameters.beta[1]
+        self.FWHMMultiplierLeft = ingredients.instrumentState.fwhmMultiplierLimit.minimum
+        self.FWHMMultiplierRight = ingredients.instrumentState.fwhmMultiplierLimit.maximum
+        self.peakTailCoefficient = ingredients.instrumentState.peakTailCoefficient
+        self.L = ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2
 
+        # binning params
+        groupIDs = ingredients.pixelGroup.groupIDs
+        self.delDoD = dict(zip(groupIDs, ingredients.pixelGroup.dRelativeResolution))
+        self.tTheta = dict(zip(groupIDs, ingredients.pixelGroup.twoTheta))
+        self.dMin = dict(zip(groupIDs, ingredients.pixelGroup.dMin()))
+        self.dMax = dict(zip(groupIDs, ingredients.pixelGroup.dMax()))
+
+        # select only peaks above the amplitude threshold
+        crystalInfo = ingredients.crystalInfo
+        crystalInfo.peaks.sort(key=lambda x: x.dSpacing)
         fSquared = np.array(crystalInfo.fSquared)
         multiplicity = np.array(crystalInfo.multiplicities)
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
-        thresholdA = np.max(A) * self.getProperty("PeakIntensityFractionThreshold").value
+        thresholdA = np.max(A) * ingredients.peakIntensityThreshold
+        self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
+
+        self.allGroupIDs = ingredients.pixelGroup.groupIDs
+
+    def PyExec(self) -> None:
+        ingredients = PeakIngredients.parse_raw(self.getProperty("Ingredients").value)
+        self.chopIngredients(ingredients)
 
         allFocusGroupsPeaks = []
-        allGroupIDs = [p for p in instrumentState.pixelGroup.pixelGroupingParameters]
-        for index, groupID in enumerate(allGroupIDs):
-            delDoD = instrumentState.pixelGroup[groupID].dRelativeResolution
-            tTheta = instrumentState.pixelGroup[groupID].twoTheta
-
-            dMin = instrumentState.pixelGroup[groupID].dResolution.minimum
-            dMax = instrumentState.pixelGroup[groupID].dResolution.maximum
-
-            dList = [peak.dSpacing for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
-            dList = [d for d in dList if dMin <= d <= dMax]
+        for groupID in self.allGroupIDs:
+            # select only good peaks within the d-spacing range
+            dList = [
+                peak.dSpacing for peak in self.goodPeaks if self.dMin[groupID] <= peak.dSpacing <= self.dMax[groupID]
+            ]
 
             singleFocusGroupPeaks = []
             for d in dList:
                 # beta terms
-                beta_T = beta_0 + beta_1 / d**4  # GSAS-I beta
-                beta_d = self.BETA_D_COEFFICIENT * L * np.sin(tTheta / 2) * beta_T  # converted to d-space
+                beta_T = self.beta_0 + self.beta_1 / d**4  # GSAS-I beta
+                beta_d = (
+                    self.BETA_D_COEFFICIENT * self.L * np.sin(self.tTheta[groupID] / 2) * beta_T
+                )  # converted to d-space
 
-                fwhm = self.FWHM * delDoD * d
-                widthLeft = fwhm * FWHMMultiplierLeft
-                widthRight = fwhm * FWHMMultiplierRight + peakTailCoefficient / beta_d
+                fwhm = self.FWHM * self.delDoD[groupID] * d
+                widthLeft = fwhm * self.FWHMMultiplierLeft
+                widthRight = fwhm * self.FWHMMultiplierRight + self.peakTailCoefficient / beta_d
 
                 singleFocusGroupPeaks.append(
                     DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight))
                 )
-            maxFwhm = self.FWHM * max(dList, default=0.0) * delDoD
+
+            maxFwhm = self.FWHM * max(dList, default=0.0) * self.delDoD[groupID]
 
             singleFocusGroupPeakList = GroupPeakList(peaks=singleFocusGroupPeaks, groupID=groupID, maxfwhm=maxFwhm)
             self.log().notice(f"Focus group {groupID} : {len(dList)} peaks out")
-            allFocusGroupsPeaks.append(singleFocusGroupPeakList.dict())
+            allFocusGroupsPeaks.append(singleFocusGroupPeakList)
 
-        self.setProperty("DetectorPeaks", json.dumps(allFocusGroupsPeaks))
+        self.setProperty("DetectorPeaks", list_to_raw(allFocusGroupsPeaks))
         return allFocusGroupsPeaks
 
 
