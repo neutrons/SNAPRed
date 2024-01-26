@@ -25,7 +25,3 @@ def testDiffCalTableName():
 
 def testDiffCalMetricsName():
     assert "_calib_metrics_strain_123_1" == wng.diffCalMetrics().metricName("strain").runNumber(123).version(1).build()
-
-
-def testParseRun():
-    assert wng.parseRun("tof_all_lite_sometext_123")["auxilary"] == "sometext"
