@@ -8,6 +8,23 @@ class WorkspaceName(str):
         return self
 
 
+class NameParser:
+    def __init__(self, template: str, keys: List[str], delimiter: str):
+        self.template = template
+        self.keys = keys
+        self.delimiter = delimiter
+
+    def parse(self, name: WorkspaceName) -> dict:
+        templateBits = self.template.split(",")
+        nameBits = name.split(self.delimiter)
+        if len(templateBits) != len(nameBits):
+            raise RuntimeError(f'Different number of tokens in "{self.template}" and "{name}".')
+        tokens = {}
+        for templateBit, nameBit in zip(templateBits, nameBits):
+            tokens[templateBit.strip("{}")] = nameBit
+        return tokens
+
+
 class NameBuilder:
     def __init__(self, template: str, keys: List[str], delimiter: str, **kwargs):
         self.template = template
@@ -24,6 +41,9 @@ class NameBuilder:
             return self
 
         return setValue
+
+    def __str__(self):
+        return self.build()
 
     def build(self):
         tokens = self.template.format(**self.props).split(",")
@@ -45,7 +65,7 @@ class _WorkspaceNameGenerator:
     _diffCalMaskTemplate = Config[f"{_templateRoot}.diffCal.mask"]
     _diffCalMaskTemplateKeys = ["runNumber"]
     _diffCalMetricTemplate = Config[f"{_templateRoot}.diffCal.metric"]
-    _diffCalMetricTemplateKeys = ["runNumber", "version", "metricName"]
+    _diffCalMetricTemplateKeys = ["metricName", "runNumber", "version"]
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"
@@ -75,6 +95,9 @@ class _WorkspaceNameGenerator:
             group=self.Groups.ALL,
             lite=self.Lite.FALSE,
         )
+
+    def parseRun(self, name: WorkspaceName) -> dict:
+        return NameParser(self._runTemplate, self._runTemplateKeys, self._delimiter).parse(name)
 
     def diffCalInput(self):
         return NameBuilder(

@@ -8,7 +8,7 @@ instrument:
   name: SNAP
   home: /SNS/SNAP/
   calibration:
-    home: ${instrument.home}shared/Calibration
+    home: /SNS/users/r1e/SNAPRedHOME/Calibration
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
       extensions:
@@ -90,16 +90,13 @@ mantid:
   workspace:
     nameTemplate:
       delimiter: "_"
-      run: "{unit},{group},{lite},{runNumber},{auxilary}"
+      run: "{unit},{group},{lite},{auxilary},{runNumber}"
       diffCal:
-        input: "{unit},{runNumber},raw"
-        table: "DIFC,{runNumber}"
-<<<<<<< HEAD
-        output: "{unit},{runNumber},diffoc"
+        input: "{unit},raw,{runNumber}"
+        output: "{unit},diffoc,{runNumber}"
+        table: "diffract_consts,{runNumber}"
+        metric: "calib_metrics,{metricName},{runNumber},{version}"
         mask: "DIFC,{runNumber},mask"
-=======
->>>>>>> Implement calibration assessment view.
-        metric: "{runNumber},{version},calibration_metrics,{metricName}"
       normCal:
         rawVandium: "{runNumber},{backgroundRunNumber},RVC"
         focusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}"

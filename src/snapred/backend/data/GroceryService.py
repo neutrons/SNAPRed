@@ -104,13 +104,15 @@ class GroceryService:
 
     ## WRITING TO DISK
 
-    def writeWorkspace(self, path: str, name: WorkspaceName):
+    def writeWorkspace(self, path: str, ws_name: WorkspaceName, filename: str = None):
         """
         Writes a Mantid Workspace to disk.
         """
         saveAlgo = AlgorithmManager.create("SaveNexus")
-        saveAlgo.setProperty("InputWorkspace", name)
-        saveAlgo.setProperty("Filename", os.path.join(path, name) + ".nxs")
+        saveAlgo.setProperty("InputWorkspace", ws_name)
+
+        fullPath = os.path.join(path, filename) if filename else os.path.join(path, ws_name) + ".nxs"
+        saveAlgo.setProperty("Filename", fullPath)
 
         saveAlgo.execute()
 

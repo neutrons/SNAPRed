@@ -206,9 +206,9 @@ class CalibrationService(Service):
             for metricName in ["sigma", "strain"]:
                 ws_name = (
                     wng.diffCalMetrics()
-                    .runNumber(request.runId)
-                    .version(request.version)
                     .metricName(metricName)
+                    .runNumber(request.runId)
+                    .version("v" + request.version.zfill(4))
                     .build()
                 )
                 if self.dataFactoryService.workspaceDoesExist(ws_name):
@@ -235,7 +235,9 @@ class CalibrationService(Service):
         # load persistent workspaces
         for ws_name in calibrationRecord.workspaceNames:
             self.dataFactoryService.loadCalibrationDataWorkspace(
-                calibrationRecord.runNumber, calibrationRecord.version, ws_name
+                calibrationRecord.runNumber,
+                calibrationRecord.version,
+                ws_name + "_v" + str(calibrationRecord.version).zfill(4),
             )
 
     @FromString

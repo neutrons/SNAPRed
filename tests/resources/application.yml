@@ -89,16 +89,13 @@ mantid:
     workspace:
       nameTemplate:
         delimiter: "_"
-        run: "{unit},{group},{lite},{runNumber},{auxilary}"
+        run: "{unit},{group},{lite},{auxilary},{runNumber}"
         diffCal:
-          input: "_{unit},{runNumber},raw"
-          table: "_DIFC,{runNumber}"
-<<<<<<< HEAD
-          output: "_{unit},{runNumber},diffoc"
+          input: "_{unit},raw,{runNumber}"
+          output: "_{unit},diffoc,{runNumber}"
+          table: "_diffract_consts,{runNumber}"
+          metric: "_calib_metrics,{metricName},{runNumber},{version}"
           mask: "_DIFC,{runNumber},mask"
-=======
->>>>>>> Implement calibration assessment view.
-          metric: "{runNumber},{version},calibration_metrics,{metricName}"
         units:
           dSpacing: dsp
           timeOfFlight: tof

@@ -5,8 +5,11 @@ def testRunNames():
     assert "tof_all_123" == wng.run().runNumber(123).build()
     assert "dsp_all_123" == wng.run().runNumber(123).unit(wng.Units.DSP).build()
     assert "dsp_column_123" == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).build()
+    # assert (
+    #     "dsp_column_123_test"
+    #     == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).auxilary("Test").build()
     assert (
-        "dsp_column_123_test"
+        "dsp_column_test_123"
         == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).auxilary("Test").build()
     )
 
@@ -17,11 +20,12 @@ def testDiffCalInputNames():
 
 
 def testDiffCalTableName():
-    assert "_difc_123" == wng.diffCalTable().runNumber(123).build()
+    assert "_diffract_consts_123" == wng.diffCalTable().runNumber(123).build()
 
 
 def testDiffCalMetricsName():
-    assert (
-        "123_1_calibration_metrics_strain"
-        == wng.diffCalMetrics().runNumber(123).version(1).metricName("strain").build()
-    )
+    assert "_calib_metrics_strain_123_1" == wng.diffCalMetrics().metricName("strain").runNumber(123).version(1).build()
+
+
+def testParseRun():
+    assert wng.parseRun("tof_all_lite_sometext_123")["auxilary"] == "sometext"

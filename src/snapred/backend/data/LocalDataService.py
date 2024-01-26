@@ -478,8 +478,9 @@ class LocalDataService:
         write_model_pretty(record, recordPath)
 
         self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
-        for workspace in record.workspaceNames:
-            self.groceryService.writeWorkspace(calibrationPath, workspace)
+        for ws_name in record.workspaceNames:
+            filename = ws_name + "_v" + str(version).zfill(4) + ".nxs"
+            self.groceryService.writeWorkspace(calibrationPath, ws_name, filename)
         logger.info(f"Wrote CalibrationRecord: version: {version}")
         return record
 

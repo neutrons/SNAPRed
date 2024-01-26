@@ -129,7 +129,8 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # TODO: use workspace namer
         self.DIFCprev: str = ""
         if self.getProperty("PreviousCalibrationTable").isDefault:
-            self.DIFCprev = f"difc_prev_{self.runNumber}"
+            # self.DIFCprev = f"difc_prev_{self.runNumber}"
+            self.DIFCprev = wng.diffCalTable().runNumber(self.runNumber).build()
             self.mantidSnapper.CalculateDiffCalTable(
                 "Initialize the DIFC table from input",
                 InputWorkspace=self.wsTOF,
@@ -163,6 +164,23 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             InputWorkspace=self.DIFCprev,
             OutputWorkspace=self.DIFCprev + "_before",
         )
+
+        # create string names of workspaces that will be used by algorithm
+        self.outputWStof: str = ""
+        if self.getProperty("OutputWorkspace").isDefault:
+            tokens = wng.parseRun(self.wsTOF)
+            self.outputWStof = (
+                wng.run()
+                .runNumber(tokens["runNumber"])
+                .unit(tokens["unit"])
+                .group(tokens["group"])
+                .lite(tokens["lite"])
+                .auxilary(tokens["auxilary"] + "_diffoc")
+                .build()
+            )
+            self.setProperty("OutputWorkspace", self.outputWStof)
+        else:
+            self.outputWStof = self.getPropertyValue("OutputWorkspace")
 
         # process and diffraction focus the input data
         # must convert to d-spacing, diffraction focus, ragged rebin, then convert back to TOF
@@ -279,8 +297,10 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
     def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str):
         # TODO use workspace name generator
-        tmpWStof = f"_TOF_{self.runNumber}_diffoc_{note}"
-        tmpWSdsp = f"_DSP_{self.runNumber}_diffoc_{note}"
+        # tmpWStof = f"_TOF_{self.runNumber}_diffoc_{note}"
+        # tmpWSdsp = f"_DSP_{self.runNumber}_diffoc_{note}"
+        tmpWStof = f"_TOF_diffoc_{note}_{self.runNumber}"
+        tmpWSdsp = f"_DSP_diffoc_{note}_{self.runNumber}"
         self.mantidSnapper.ConvertUnits(
             "Convert the raw TOF data to d-spacing",
             InputWorkspace=inputWS,

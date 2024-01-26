@@ -29,7 +29,7 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
             calibVersionOrTimeStamp = "ts" + str(ingredients.timestamp)
             logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {calibVersionOrTimeStamp}")
         else:
-            calibVersionOrTimeStamp = "v" + str(ingredients.calibrationRecord.version)
+            calibVersionOrTimeStamp = "v" + str(ingredients.calibrationRecord.version).zfill(4)
             logger.info(f"Executing recipe {__name__} for run: {runId} calibration version: {calibVersionOrTimeStamp}")
 
         ws_table = wng.diffCalMetrics().runNumber(runId).version(calibVersionOrTimeStamp).metricName("table").build()
@@ -44,7 +44,7 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
             # convert the table workspace to 2 matrix workspaces: sigma vs. twoTheta and strain vs. twoTheta
             for metric in ["sigma", "strain"]:
                 ws_metric = (
-                    wng.diffCalMetrics().runNumber(runId).version(calibVersionOrTimeStamp).metricName(metric).build()
+                    wng.diffCalMetrics().metricName(metric).runNumber(runId).version(calibVersionOrTimeStamp).build()
                 )
                 ConvertTableToMatrixWorkspaceRecipe().executeRecipe(
                     InputWorkspace=ws_table,

@@ -199,7 +199,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Assert expected calibration metric workspaces have been generated
         for metric in ["sigma", "strain"]:
-            ws_name = wng.diffCalMetrics().runNumber("57514").version("ts123").metricName(metric).build()
+            ws_name = wng.diffCalMetrics().metricName(metric).runNumber("57514").version("ts123").build()
             assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
     def test_load_quality_assessment_no_calibration_record_exception(self):
@@ -272,6 +272,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             for metric in ["sigma", "strain"]:
                 ws_name = (
                     wng.diffCalMetrics()
+                    .metricName(metric)
                     .runNumber(calibRecord.runNumber)
                     .version("v" + str(calibRecord.version))
                     .metricName(metric)
