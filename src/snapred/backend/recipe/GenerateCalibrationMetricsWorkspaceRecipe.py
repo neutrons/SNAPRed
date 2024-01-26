@@ -29,7 +29,7 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
             calibVersionOrTimeStamp = "ts" + str(ingredients.timestamp)
             logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {calibVersionOrTimeStamp}")
         else:
-            calibVersionOrTimeStamp = ingredients.calibrationRecord.version
+            calibVersionOrTimeStamp = "v" + str(ingredients.calibrationRecord.version)
             logger.info(f"Executing recipe {__name__} for run: {runId} calibration version: {calibVersionOrTimeStamp}")
 
         ws_table = wng.diffCalMetrics().runNumber(runId).version(calibVersionOrTimeStamp).metricName("table").build()
