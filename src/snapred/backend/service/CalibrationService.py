@@ -200,7 +200,9 @@ class CalibrationService(Service):
         ingredients = self.sousChef.prepPeakIngredients(farmFresh)
 
         # TODO: We Need to Fit the Data
-        fitResults = FitMultiplePeaksRecipe().executeRecipe(DetectorPeakIngredients=ingredients)
+        fitResults = FitMultiplePeaksRecipe().executeRecipe(
+            InputWorkspace=request.workspace, DetectorPeakIngredients=ingredients
+        )
         metrics = self._collectMetrics(fitResults, request.focusGroup, ingredients.pixelGroup)
 
         record = CalibrationRecord(
