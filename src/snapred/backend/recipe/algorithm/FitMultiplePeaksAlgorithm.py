@@ -20,6 +20,7 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 from snapred.meta.Config import Config
+from snapred.meta.mantid.AllowedPeakTypes import allowed_peak_type_list
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -38,21 +39,6 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         return "SNAPRed Data Processing"
 
     def PyInit(self):
-        allowed_peak_types = [
-            "AsymmetricPearsonVII",
-            "BackToBackExponential",
-            "Bk2BkExpConvPV",
-            "DeltaFunction",
-            "ElasticDiffRotDiscreteCircle",
-            "ElasticDiffSphere",
-            "ElasticIsoRotDiff",
-            "ExamplePeakFunction",
-            "Gaussian",
-            "IkedaCarpenterPV",
-            "Lorentzian",
-            "PseudoVoigt",
-            "Voigt",
-        ]
         # declare properties
         self.declareProperty(
             MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
@@ -70,7 +56,9 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             direction=Direction.Input,
             doc="Ingredients for DetectorPeakPredictor to find the lsit of peaks",
         )
-        self.declareProperty("PeakType", "Gaussian", StringListValidator(allowed_peak_types), direction=Direction.Input)
+        self.declareProperty(
+            "PeakType", "Gaussian", StringListValidator(allowed_peak_type_list), direction=Direction.Input
+        )
         self.declareProperty("OutputWorkspaceGroup", defaultValue="fitPeaksWSGroup", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)

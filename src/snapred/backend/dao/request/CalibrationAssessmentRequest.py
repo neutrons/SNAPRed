@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import Literal
 
 from pydantic import BaseModel
 
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
+from snapred.meta.mantid.AllowedPeakTypes import ALLOWED_PEAK_TYPES
 
 
 class CalibrationAssessmentRequest(BaseModel):
@@ -20,4 +21,4 @@ class CalibrationAssessmentRequest(BaseModel):
     useLiteMode: bool
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
-    peakType: str = "Gaussian"
+    peakType: ALLOWED_PEAK_TYPES = "Gaussian"
