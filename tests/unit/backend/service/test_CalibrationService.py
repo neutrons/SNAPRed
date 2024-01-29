@@ -77,6 +77,14 @@ with mock.patch.dict(
         res = calibrationService.load(mock.Mock())
         assert res == calibrationService.dataFactoryService.getCalibrationRecord.return_value
 
+    def test_getCalibrationIndex():
+        calibrationService = CalibrationService()
+        calibrationService.dataFactoryService.getCalibrationIndex = mock.Mock(
+            return_value=CalibrationIndexEntry(runNumber="1", comments="", author="")
+        )
+        calibrationService.getCalibrationIndex(MagicMock(run=MagicMock(runNumber="123")))
+        assert calibrationService.dataFactoryService.getCalibrationIndex.called
+
 
 from snapred.backend.service.CalibrationService import CalibrationService  # noqa: F811
 
