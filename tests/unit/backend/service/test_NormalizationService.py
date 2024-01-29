@@ -135,6 +135,7 @@ class TestNormalizationService(unittest.TestCase):
         )
         self.instance = NormalizationService()
         self.instance.sousChef.prepNormalizationIngredients = MagicMock()
+        self.instance.dataFactoryService = MagicMock()
 
         res = self.instance.vanadiumCorrection(mockRequest)
 

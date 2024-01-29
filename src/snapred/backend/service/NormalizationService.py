@@ -172,10 +172,12 @@ class NormalizationService(Service):
 
     @FromString
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
+        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroup,
+            cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
         )
         ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
