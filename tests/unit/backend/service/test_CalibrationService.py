@@ -11,6 +11,7 @@ from mantid.simpleapi import (
     CreateWorkspace,
     mtd,
 )
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 # Mock out of scope modules before importing DataExportService
 
@@ -75,6 +76,14 @@ with mock.patch.dict(
         calibrationService.dataFactoryService.getCalibrationRecord = mock.Mock(return_value="passed")
         res = calibrationService.load(mock.Mock())
         assert res == calibrationService.dataFactoryService.getCalibrationRecord.return_value
+
+    def test_getCalibrationIndex():
+        calibrationService = CalibrationService()
+        calibrationService.dataFactoryService.getCalibrationIndex = mock.Mock(
+            return_value=CalibrationIndexEntry(runNumber="1", comments="", author="")
+        )
+        calibrationService.getCalibrationIndex(MagicMock(run=MagicMock(runNumber="123")))
+        assert calibrationService.dataFactoryService.getCalibrationIndex.called
 
 
 from snapred.backend.service.CalibrationService import CalibrationService  # noqa: F811
@@ -189,33 +198,31 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert record == CalibrationRecord.return_value
 
         # Assert expected calibration metric workspaces have been generated
-        ws_name_stem = "57514_calibrationMetrics_ts123"
         for metric in ["sigma", "strain"]:
-            assert self.instance.dataFactoryService.workspaceDoesExist(ws_name_stem + "_" + metric)
+            ws_name = wng.diffCalMetrics().runNumber("57514").version("ts123").metricName(metric).build()
+            assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
-    def test_readQuality_no_calibration_record_exception(self):
+    def test_load_quality_assessment_no_calibration_record_exception(self):
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
-        run = MagicMock()
-        version = MagicMock()
+        mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
         with pytest.raises(ValueError) as excinfo:  # noqa: PT011
-            self.instance.readQuality(run, version)
-        assert str(run) in str(excinfo.value)
-        assert str(version) in str(excinfo.value)
+            self.instance.loadQualityAssessment(mockRequest)
+        assert str(mockRequest.runId) in str(excinfo.value)
+        assert str(mockRequest.version) in str(excinfo.value)
 
     @patch(thisService + "CalibrationMetricsWorkspaceIngredients", return_value=MagicMock())
-    def test_readQuality_no_calibration_metrics_exception(
+    def test_load_quality_assessment_no_calibration_metrics_exception(
         self,
         mockCalibrationMetricsWorkspaceIngredients,
     ):
-        run = MagicMock()
-        version = MagicMock()
+        mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
         calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
         with pytest.raises(Exception) as excinfo:  # noqa: PT011
-            self.instance.readQuality(run, version)
+            self.instance.loadQualityAssessment(mockRequest)
         assert "The input table is empty" in str(excinfo.value)
 
-    def test_readQuality(self):
+    def test_load_quality_assessment_check_existent(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
@@ -231,13 +238,45 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 self.instance.dataFactoryService.writeWorkspace(os.path.join(tmpdir, ws_name + ".nxs"), ws_name)
 
             # Call the method to test. Use a mocked run and a mocked version
-            run = MagicMock()
+            runId = MagicMock()
             version = MagicMock()
-            self.instance.readQuality(run, version)
+            mockRequest = MagicMock(runId=runId, version=version, checkExistent=False)
+            self.instance.loadQualityAssessment(mockRequest)
+            with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+                self.instance.loadQualityAssessment(MagicMock(runId=runId, version=version, checkExistent=True))
+            assert "is already loaded" in str(excinfo.value)
+            with pytest.raises(ValueError) as excinfo:  # noqa: PT011
+                self.instance.loadQualityAssessment(MagicMock(runId="57514", version="7", checkExistent=True))
+            assert "is already loaded" in str(excinfo.value)
+
+    def test_load_quality_assessment(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
+            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+
+            # Under a mocked calibration data path, create fake "persistent" workspace files
+            self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
+            for ws_name in calibRecord.workspaceNames:
+                CreateWorkspace(
+                    OutputWorkspace=ws_name,
+                    DataX=1,
+                    DataY=1,
+                )
+                self.instance.dataFactoryService.writeWorkspace(os.path.join(tmpdir, ws_name + ".nxs"), ws_name)
+
+            # Call the method to test. Use a mocked run and a mocked version
+            mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
+            self.instance.loadQualityAssessment(mockRequest)
 
             # Assert the expected calibration metric workspaces have been generated
-            ws_name_stem = f"{calibRecord.runNumber}_calibrationMetrics_v{calibRecord.version}"
-            for ws_name in [ws_name_stem + "_sigma", ws_name_stem + "_strain"]:
+            for metric in ["sigma", "strain"]:
+                ws_name = (
+                    wng.diffCalMetrics()
+                    .runNumber(calibRecord.runNumber)
+                    .version("v" + str(calibRecord.version))
+                    .metricName(metric)
+                    .build()
+                )
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
             # Assert the "persistent" workspaces have been loaded

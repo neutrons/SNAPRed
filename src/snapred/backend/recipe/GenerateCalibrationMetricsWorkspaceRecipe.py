@@ -1,3 +1,7 @@
+from mantid.simpleapi import (
+    DeleteWorkspace,
+)
+
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients as Ingredients
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
@@ -7,6 +11,7 @@ from snapred.backend.recipe.GenericRecipe import (
     GenerateTableWorkspaceFromListOfDictRecipe,
 )
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
@@ -21,32 +26,34 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
         runId = ingredients.calibrationRecord.runNumber
 
         if ingredients.timestamp is not None:
-            logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {ingredients.timestamp}")
-            outputWS_stem = f"{runId}_calibrationMetrics_ts{ingredients.timestamp}"
+            calibVersionOrTimeStamp = "ts" + str(ingredients.timestamp)
+            logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {calibVersionOrTimeStamp}")
         else:
-            calibrationVersion = ingredients.calibrationRecord.version
-            logger.info(f"Executing recipe {__name__} for run: {runId} calibration version: {calibrationVersion}")
-            outputWS_stem = f"{runId}_calibrationMetrics_v{calibrationVersion}"
+            calibVersionOrTimeStamp = "v" + str(ingredients.calibrationRecord.version)
+            logger.info(f"Executing recipe {__name__} for run: {runId} calibration version: {calibVersionOrTimeStamp}")
 
-        tableWS = outputWS_stem + "_table"
+        ws_table = wng.diffCalMetrics().runNumber(runId).version(calibVersionOrTimeStamp).metricName("table").build()
+
         try:
             # create a table workspace with all metrics
             GenerateTableWorkspaceFromListOfDictRecipe().executeRecipe(
                 ListOfDict=list_to_raw(ingredients.calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric),
-                OutputWorkspace=tableWS,
+                OutputWorkspace=ws_table,
             )
 
             # convert the table workspace to 2 matrix workspaces: sigma vs. twoTheta and strain vs. twoTheta
             for metric in ["sigma", "strain"]:
+                ws_metric = (
+                    wng.diffCalMetrics().runNumber(runId).version(calibVersionOrTimeStamp).metricName(metric).build()
+                )
                 ConvertTableToMatrixWorkspaceRecipe().executeRecipe(
-                    InputWorkspace=tableWS,
+                    InputWorkspace=ws_table,
                     ColumnX="twoThetaAverage",
                     ColumnY=metric + "Average",
                     ColumnE=metric + "StandardDeviation",
-                    OutputWorkspace=outputWS_stem + "_" + metric,
+                    OutputWorkspace=ws_metric,
                 )
-
-            self.mantidSnapper.DeleteWorkspace(f"Deleting workspace {tableWS}", Workspace=tableWS)
+            DeleteWorkspace(Workspace=ws_table)
         except (RuntimeError, AlgorithmException) as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])

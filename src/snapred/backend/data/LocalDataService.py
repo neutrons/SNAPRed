@@ -437,20 +437,17 @@ class LocalDataService:
         return record
 
     def readCalibrationRecord(self, runId: str, version: str = None):
-        stateId, _ = self._generateStateId(runId)
-        recordPath: str = self.getCalibrationRecordPath(runId, "*")
-        # find the latest version
-        latestFile = ""
+        recordFile: str = None
         if version:
-            latestFile = self._getFileOfVersion(recordPath, version)
+            recordPath: str = self.getCalibrationRecordPath(runId, version)
+            recordFile = self._getFileOfVersion(recordPath, int(version))
         else:
-            latestFile = self._getLatestFile(recordPath)
-        # read the file
+            recordPath: str = self.getCalibrationRecordPath(runId, "*")
+            recordFile = self._getLatestFile(recordPath)
         record: CalibrationRecord = None
-        if latestFile:
-            logger.info(f"reading CalibrationRecord from {latestFile}")
-            record = parse_file_as(CalibrationRecord, latestFile)
-
+        if recordFile:
+            logger.info(f"reading CalibrationRecord from {recordFile}")
+            record = parse_file_as(CalibrationRecord, recordFile)
         return record
 
     def writeCalibrationRecord(self, record: CalibrationRecord, version: int = None):

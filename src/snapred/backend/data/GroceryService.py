@@ -110,7 +110,8 @@ class GroceryService:
         """
         saveAlgo = AlgorithmManager.create("SaveNexus")
         saveAlgo.setProperty("InputWorkspace", name)
-        saveAlgo.setProperty("Filename", path + name)
+        saveAlgo.setProperty("Filename", os.path.join(path, name) + ".nxs")
+
         saveAlgo.execute()
 
     def writeGrouping(self, path: str, name: WorkspaceName):
@@ -119,7 +120,7 @@ class GroceryService:
         """
         saveAlgo = AlgorithmManager.create("SaveGroupingDefinition")
         saveAlgo.setProperty("GroupingWorkspace", name)
-        saveAlgo.setProperty("OutputFilename", path + name)
+        saveAlgo.setProperty("OutputFilename", os.path.join(path, name))
         saveAlgo.execute()
 
     def writeDiffCalTable(self, path: str, name: WorkspaceName, grouping: WorkspaceName = "", mask: WorkspaceName = ""):
@@ -130,7 +131,7 @@ class GroceryService:
         saveAlgo.setPropertyValue("CalibrationWorkspace", name)
         saveAlgo.setPropertyValue("GroupingWorkspace", grouping)
         saveAlgo.setPropertyValue("MaskWorkspace", mask)
-        saveAlgo.setPropertyValue("Filename", path + name)
+        saveAlgo.setPropertyValue("Filename", os.path.join(path, name))
         saveAlgo.execute()
 
     ## ACCESSING WORKSPACES

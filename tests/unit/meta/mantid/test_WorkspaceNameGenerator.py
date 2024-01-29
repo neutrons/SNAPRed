@@ -18,3 +18,10 @@ def testDiffCalInputNames():
 
 def testDiffCalTableName():
     assert "_difc_123" == wng.diffCalTable().runNumber(123).build()
+
+
+def testDiffCalMetricsName():
+    assert (
+        "123_1_calibration_metrics_strain"
+        == wng.diffCalMetrics().runNumber(123).version(1).metricName("strain").build()
+    )

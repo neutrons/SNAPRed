@@ -95,6 +95,7 @@ mantid:
           table: "_DIFC,{runNumber}"
           output: "_{unit},{runNumber},diffoc"
           mask: "_DIFC,{runNumber},mask"
+          metric: "{runNumber},{version},calibration_metrics,{metricName}"
         units:
           dSpacing: dsp
           timeOfFlight: tof
