@@ -264,9 +264,9 @@ class TestGroceryService(unittest.TestCase):
         name = "test_write_workspace"
         self.create_dumb_workspace(name)
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmppath:
-            self.instance.writeWorkspace(tmppath, name)
-            assert os.path.exists(tmppath + name)
-        assert not os.path.exists(tmppath + name)
+            self.instance.writeWorkspace(os.path.join(tmppath, name), name)
+            assert os.path.exists(os.path.join(tmppath, name))
+        assert not os.path.exists(os.path.join(tmppath, name))
 
     def test_writeGrouping(self):
         path = Resource.getPath("outputs")
@@ -278,8 +278,8 @@ class TestGroceryService(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmppath:
             self.instance.writeGrouping(tmppath, name)
-            assert os.path.exists(tmppath + name)
-        assert not os.path.exists(tmppath + name)
+            assert os.path.exists(os.path.join(tmppath, name))
+        assert not os.path.exists(os.path.join(tmppath, name))
 
     def test_writeDiffCalTable(self):
         path = Resource.getPath("outputs")
@@ -287,8 +287,8 @@ class TestGroceryService(unittest.TestCase):
         self.create_dumb_diffcal(name)
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmppath:
             self.instance.writeDiffCalTable(tmppath, name)
-            assert os.path.exists(tmppath + name)
-        assert not os.path.exists(tmppath + name)
+            assert os.path.exists(os.path.join(tmppath, name))
+        assert not os.path.exists(os.path.join(tmppath, name))
 
     ## TESTS OF ACCESS METHODS
 

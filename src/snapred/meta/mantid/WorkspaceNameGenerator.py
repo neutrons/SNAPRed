@@ -44,6 +44,8 @@ class _WorkspaceNameGenerator:
     _diffCalOutputTemplateKeys = ["runNumber", "unit"]
     _diffCalMaskTemplate = Config[f"{_templateRoot}.diffCal.mask"]
     _diffCalMaskTemplateKeys = ["runNumber"]
+    _diffCalMetricTemplate = Config[f"{_templateRoot}.diffCal.metric"]
+    _diffCalMetricTemplateKeys = ["runNumber", "version", "metricName"]
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"
@@ -89,6 +91,9 @@ class _WorkspaceNameGenerator:
 
     def diffCalMask(self):
         return NameBuilder(self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter)
+
+    def diffCalMetrics(self):
+        return NameBuilder(self._diffCalMetricTemplate, self._diffCalMetricTemplateKeys, self._delimiter)
 
 
 WorkspaceNameGenerator = _WorkspaceNameGenerator()

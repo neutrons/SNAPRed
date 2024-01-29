@@ -1,3 +1,4 @@
+import os
 from pdb import run
 from typing import Dict
 
@@ -88,7 +89,7 @@ class DataFactoryService:
 
     def loadCalibrationDataWorkspace(self, runId, version, name):
         path = self.getCalibrationDataPath(runId, version)
-        return self.groceryService.fetchWorkspace(path, name)
+        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     def writeWorkspace(self, path, name):
         return self.groceryService.writeWorkspace(path, name)
@@ -99,8 +100,8 @@ class DataFactoryService:
     def getWorkspaceSingleUse(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataSingleUse(runId, useLiteMode)
 
-    def getCalibrationRecord(self, runId):
-        return self.lookupService.readCalibrationRecord(runId)
+    def getCalibrationRecord(self, runId, version: str = None):
+        return self.lookupService.readCalibrationRecord(runId, version)
 
     def getNormalizationRecord(self, runId):
         return self.lookupService.readNormalizationRecord(runId)

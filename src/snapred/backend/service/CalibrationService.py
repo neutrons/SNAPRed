@@ -4,7 +4,7 @@ from datetime import date
 from functools import lru_cache
 from typing import List, Tuple
 
-from pydantic import parse_raw_as
+from pydantic import parse_file_as, parse_raw_as
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.calibration import (
@@ -20,6 +20,8 @@ from snapred.backend.dao.ingredients import (
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
+    CalibrationIndexRequest,
+    CalibrationLoadAssessmentRequest,
     DiffractionCalibrationRequest,
     FarmFreshIngredients,
     InitializeStateRequest,
@@ -69,7 +71,8 @@ class CalibrationService(Service):
         self.registerPath("hasState", self.hasState)
         self.registerPath("checkDataExists", self.fakeMethod)
         self.registerPath("assessment", self.assessQuality)
-        self.registerPath("quality", self.readQuality)
+        self.registerPath("loadQualityAssessment", self.loadQualityAssessment)
+        self.registerPath("index", self.getCalibrationIndex)
         self.registerPath("retrievePixelGroupingParams", self.fakeMethod)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
@@ -181,13 +184,55 @@ class CalibrationService(Service):
         return FocusGroupMetric(focusGroupName=focusGroup.name, calibrationMetric=metric)
 
     @FromString
-    def readQuality(self, runId: str, version: str):
+    def getCalibrationIndex(self, request: CalibrationIndexRequest):
+        run = request.run
+        calibrationIndex = self.dataFactoryService.getCalibrationIndex(run.runNumber)
+        return calibrationIndex
+
+    @FromString
+    def loadQualityAssessment(self, request: CalibrationLoadAssessmentRequest):
+        runId = request.runId
+        version = request.version
+
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
         if calibrationRecord is None:
-            raise ValueError(f"No calibration record found for run {runId}, version {version}.")
+            errorTxt = f"No calibration record found for run {runId}, version {version}."
+            logger.error(errorTxt)
+            raise ValueError(errorTxt)
+
+        # check if any of the workspaces already exist
+        if request.checkExistent:
+            wkspaceExists = False
+            for metricName in ["sigma", "strain"]:
+                ws_name = (
+                    wng.diffCalMetrics()
+                    .runNumber(request.runId)
+                    .version(request.version)
+                    .metricName(metricName)
+                    .build()
+                )
+                if self.dataFactoryService.workspaceDoesExist(ws_name):
+                    wkspaceExists = True
+                    break
+            if not wkspaceExists:
+                for ws_name in calibrationRecord.workspaceNames:
+                    if self.dataFactoryService.workspaceDoesExist(ws_name):
+                        wkspaceExists = True
+                        break
+            if wkspaceExists:
+                errorTxt = (
+                    f"Calibration assessment for Run {runId} Version {version} "
+                    f"is already loaded: see workspace {ws_name}."
+                )
+                logger.error(errorTxt)
+                raise ValueError(errorTxt)
+
+        # generate metrics workspaces
         GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
             CalibrationMetricsWorkspaceIngredients(calibrationRecord=calibrationRecord)
         )
+
+        # load persistent workspaces
         for ws_name in calibrationRecord.workspaceNames:
             self.dataFactoryService.loadCalibrationDataWorkspace(
                 calibrationRecord.runNumber, calibrationRecord.version, ws_name

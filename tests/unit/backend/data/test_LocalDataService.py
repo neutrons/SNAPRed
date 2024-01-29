@@ -524,6 +524,23 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert actualRecord.runNumber == "57514"
         assert actualRecord == testCalibrationRecord
 
+    def test_readWriteCalibrationRecord_with_version():
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+            localDataService = LocalDataService()
+            localDataService.instrumentConfig = mock.Mock()
+            localDataService._generateStateId = mock.Mock()
+            localDataService._generateStateId.return_value = ("123", "456")
+            localDataService._readReductionParameters = mock.Mock()
+            localDataService._constructCalibrationStatePath = mock.Mock()
+            localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService.groceryService = mock.Mock()
+            localDataService.writeCalibrationRecord(
+                CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
+            )
+            actualRecord = localDataService.readCalibrationRecord("57514", "1")
+        assert actualRecord.runNumber == "57514"
+        assert actualRecord.version == 1
+
     def test_readWriteCalibrationRecord():
         testCalibrationRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
