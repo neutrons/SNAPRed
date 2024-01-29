@@ -1,5 +1,6 @@
 from typing import List, Tuple
 
+import numpy as np
 from pydantic import BaseModel
 
 from snapred.backend.dao.CrystallographicPeak import CrystallographicPeak
@@ -28,14 +29,17 @@ class CrystallographicInfo(BaseModel):
 
     def __init__(
         self,
-        hkl: List[Tuple[int, int, int]] = None,
-        dSpacing: List[float] = None,
-        fSquared: List[float] = None,
-        multiplicities: List[int] = None,
+        hkl: List[Tuple[int, int, int]] = [],
+        dSpacing: List[float] = [],
+        fSquared: List[float] = [],
+        multiplicities: List[int] = [],
         peaks=[],
     ):
         if peaks != []:
             super().__init__(peaks=peaks)
+            return
+        if peaks == []:
+            super().__init__(peaks=np.zeros(len(hkl), dtype=CrystallographicPeak))
             return
         if len(fSquared) != len(hkl):
             raise ValueError("Structure factors and hkl required to have same length")
