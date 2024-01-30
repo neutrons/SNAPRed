@@ -77,13 +77,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
             dList = [
                 peak.dSpacing for peak in self.goodPeaks if self.dMin[groupID] <= peak.dSpacing <= self.dMax[groupID]
             ]
-            # if not dList:
-            #     default_length = 10
-            #     default_value = 0
-            #     dList = [default_value] * default_length
-            #     self.log().notice(
-            #         f"Focus group {groupID} has no peaks within range. Creating default array of length {default_length}" # noqa: E501
-            #     )
+
             singleFocusGroupPeaks = []
             for d in dList:
                 # beta terms
