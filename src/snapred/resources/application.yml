@@ -122,7 +122,7 @@ logging:
 samples:
   home: ${instrument.calibration.home}/CalibrantSamples
 
-cis_mode: true
+cis_mode: false
 
 constants:
   millisecondsPerSecond: 1000
