@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from mantid.simpleapi import CreateWorkspace
+from mantid.simpleapi import CreateSampleWorkspace, Rebin
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from qtpy.QtWidgets import QGridLayout, QMainWindow, QWidget
 from workbench.plotting.figuremanager import MantidFigureCanvas
@@ -22,16 +22,29 @@ class PlotTestView(QMainWindow):
         self.grid.rowStretch(1)
         self.centralWidget.setLayout(self.grid)
 
-        wksp = CreateWorkspace(
-            DataX=list(range(10)),
-            DataY=[10] * 10,
-            NSpec=1,
+        wksp = CreateSampleWorkspace(
+            Function="Powder Diffraction",
+            XUnit="dSpacing",
+            NumBanks=1,
+            Xmin=1,
+            Xmax=10000,
+            BinWidth=1,
+            BankPixelWidth=1,
+        )
+        wksp = Rebin(
+            InputWorkspace=wksp,
+            Params=(1, -0.01, 10000),
+            BinningMode="Logarithmic",
         )
 
         fig, ax = plt.subplots(
-            figsize=(10, 6.5258), nrows=1, ncols=1, num="A Most Excellent Plot", subplot_kw={"projection": "mantid"}
+            figsize=(10, 6.5258),
+            nrows=1,
+            ncols=1,
+            num="A Most Excellent Plot",
+            subplot_kw={"projection": "mantid"},
         )
-        ax.plot(wksp, specNum=1, label="good")
+        ax.plot(wksp, specNum=1, label="good", normalize_by_bin_width=True)
         ax.legend()
 
         self.figure = fig
