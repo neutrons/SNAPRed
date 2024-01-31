@@ -27,6 +27,9 @@ class WorkflowNodeView(QWidget):
         self.cancelButton = QPushButton("Cancel \U0000274C", self)
         layout.addWidget(self.cancelButton, 2, 1)
 
+    def reset(self):
+        self.view.reset()
+
     def onBackButtonClicked(self, slot):
         self.backButton.clicked.connect(slot)
 

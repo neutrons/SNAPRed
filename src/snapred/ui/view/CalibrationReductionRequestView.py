@@ -1,21 +1,22 @@
-from qtpy.QtWidgets import QComboBox
+from qtpy.QtWidgets import QComboBox, QLineEdit
 
+from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
 
 
+@Resettable
 class CalibrationReductionRequestView(BackendRequestView):
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = "calibration/diffractionCalibration"
         super(CalibrationReductionRequestView, self).__init__(jsonForm, selection, parent=parent)
         self.runNumberField = self._labeledField("Run Number", jsonForm.getField("runNumber"))
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.fieldConvergnceThreshold = self._labeledField(
-            "Convergence Threshold", jsonForm.getField("convergenceThreshold")
-        )
+        self.fieldConvergnceThreshold = self._labeledField("Convergence Threshold", QLineEdit(parent=self))
         self.fieldPeakIntensityThreshold = self._labeledField(
             "Peak Intensity Threshold", jsonForm.getField("peakIntensityThreshold")
         )
+        # breakpoint()
         self.fieldNBinsAcrossPeakWidth = self._labeledField(
             "Bins Across Peak Width", jsonForm.getField("nBinsAcrossPeakWidth")
         )

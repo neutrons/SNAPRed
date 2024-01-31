@@ -55,13 +55,28 @@ class WorkflowView(QWidget):
 
     @property
     def continueButton(self):
-        widget = self.tabWidget.widget(self.currentTab)
-        return widget.continueButton
+        return self.tabWidget.widget(self.currentTab).continueButton
 
     @property
     def cancelButton(self):
-        widget = self.tabWidget.widget(self.currentTab)
-        return widget.cancelButton
+        return self.tabWidget.widget(self.currentTab).cancelButton
+
+    def reset(self, hard: bool = False):
+        """
+        This resets the workflow
+        """
+        for i in range(0, self.tabWidget.count()):
+            self.tabWidget.setTabEnabled(i, False)
+            currentWidget = self.tabWidget.widget(i)
+            currentWidget.continueButton.setEnabled(True)
+            currentWidget.cancelButton.setEnabled(True)
+            currentWidget.forwardButton.setVisible(False)
+            if hard:
+                currentWidget.reset()
+        self.tabWidget.setTabEnabled(0, True)
+        self.tabWidget.setCurrentIndex(0)
+        self.currentTab = 0
+        self.position = 0
 
     def advanceWorkflow(self):
         if self.currentTab < self.totalNodes - 1:

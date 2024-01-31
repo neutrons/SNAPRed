@@ -38,9 +38,6 @@ class DiffractionCalibrationCreationWorkflow:
         request = SNAPRequest(path="api/parameters", payload="calibration/save")
         self.saveSchema = self.interfaceController.executeRequest(request).data
         self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
-        cancelLambda = None
-        if parent is not None and hasattr(parent, "close"):
-            cancelLambda = parent.close
 
         request = SNAPRequest(path="config/samplePaths")
         self.samplePaths = self.interfaceController.executeRequest(request).data
@@ -58,7 +55,7 @@ class DiffractionCalibrationCreationWorkflow:
         self._saveCalibrationView = SaveCalibrationView("Saving Calibration", self.saveSchema, parent)
 
         self.workflow = (
-            WorkflowBuilder(cancelLambda=cancelLambda, parent=parent)
+            WorkflowBuilder(cancelLambda=None, parent=parent)
             .addNode(
                 self._triggerCalibrationReduction,
                 self._calibrationReductionView,

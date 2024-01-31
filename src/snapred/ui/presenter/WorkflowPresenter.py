@@ -31,6 +31,12 @@ class WorkflowPresenter(object):
         self.window.setCentralWidget(self.view)
         self.window.show()
 
+    def resetSoft(self):
+        self.widget.reset(hard=False)
+
+    def resetHard(self):
+        self.widget.reset(hard=True)
+
     def _hookupSignals(self):
         for i, model in enumerate(self.model):
             widget = self.view.tabWidget.widget(i)
@@ -42,7 +48,7 @@ class WorkflowPresenter(object):
             if self._cancelLambda:
                 widget.onCancelButtonClicked(self._cancelLambda)
             else:
-                self.view.cancelButton.setVisible(False)
+                widget.onCancelButtonClicked(self.resetHard)
 
     def handleContinueButtonClicked(self, model):
         self.view.continueButton.setEnabled(False)
@@ -58,7 +64,7 @@ class WorkflowPresenter(object):
         self.worker_pool.submitWorker(self.worker)
 
     def _handleComplications(self, result):
-        if result.code - 200 > 100:
+        if result.code - 200 >= 100:
             QMessageBox.critical(
                 self.view,
                 "Error",
