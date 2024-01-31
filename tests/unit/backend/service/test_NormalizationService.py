@@ -73,6 +73,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance = NormalizationService()
         self.request = NormalizationCalibrationRequest(
             runNumber="12345",
+            workspace="workspace",
             backgroundRunNumber="67890",
             useLiteMode=True,
             calibrantSamplePath="path/to/sample",

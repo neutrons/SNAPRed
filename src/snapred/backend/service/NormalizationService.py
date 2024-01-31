@@ -150,6 +150,7 @@ class NormalizationService(Service):
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             normalization=normalization,
+            workspaceNames=[request.workspace],
         )
         return record
 
