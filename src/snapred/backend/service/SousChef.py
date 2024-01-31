@@ -104,7 +104,10 @@ class SousChef(Service):
         if not ingredients.cifPath:
             samplePath = ingredients.calibrantSamplePath.split("/")[-1].split(".")[0]
             ingredients.cifPath = self.dataFactoryService.getCifFilePath(samplePath)
-        key = (ingredients.cifPath, ingredients.dBounds.minimum, ingredients.dBounds.maximum)
+        if ingredients.dMin:
+            key = (ingredients.cifPath, ingredients.dMin, ingredients.dBounds.maximum)
+        else:
+            key = (ingredients.cifPath, ingredients.dBounds.minimum, ingredients.dBounds.maximum)
         if key not in self._xtalCache:
             self._xtalCache[key] = CrystallographicInfoService().ingest(*key)["crystalInfo"]
         return self._xtalCache[key]

@@ -61,9 +61,18 @@ class DetectorPeakPredictor(PythonAlgorithm):
         fSquared = np.array(crystalInfo.fSquared)
         multiplicity = np.array(crystalInfo.multiplicities)
         dSpacing = np.array(crystalInfo.dSpacing)
-        A = fSquared * multiplicity * dSpacing**4
-        thresholdA = np.max(A) * ingredients.peakIntensityThreshold
-        self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
+
+        if fSquared.size == 0 or multiplicity.size == 0 or dSpacing.size == 0:
+            A = np.array([])
+        else:
+            A = fSquared * multiplicity * dSpacing**4
+
+        thresholdA = 0
+        self.goodPeaks = []
+
+        if A.size > 0:
+            thresholdA = np.max(A) * ingredients.peakIntensityThreshold
+            self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
 
         self.allGroupIDs = ingredients.pixelGroup.groupIDs
 
@@ -73,18 +82,22 @@ class DetectorPeakPredictor(PythonAlgorithm):
 
         allFocusGroupsPeaks = []
         for groupID in self.allGroupIDs:
-            # select only good peaks within the d-spacing range
-            dList = [
-                peak.dSpacing for peak in self.goodPeaks if self.dMin[groupID] <= peak.dSpacing <= self.dMax[groupID]
-            ]
+            initialPeakCount = len(self.goodPeaks)
+            self.log().notice(f"Initial peak count for group {groupID}: {initialPeakCount}")
+
+            # Apply dMin filtering
+            dList = [peak.dSpacing for peak in self.goodPeaks if self.dMin[groupID] <= peak.dSpacing]
+
+            filteredPeakCount = len(dList)
+            self.log().notice(
+                f"Filtered peak count for group {groupID} after applying dMin={self.dMin[groupID]}: {filteredPeakCount}"
+            )
 
             singleFocusGroupPeaks = []
             for d in dList:
-                # beta terms
+                # Compute beta terms and other calculations
                 beta_T = self.beta_0 + self.beta_1 / d**4  # GSAS-I beta
-                beta_d = (
-                    self.BETA_D_COEFFICIENT * self.L * np.sin(self.tTheta[groupID] / 2) * beta_T
-                )  # converted to d-space
+                beta_d = self.BETA_D_COEFFICIENT * self.L * np.sin(self.tTheta[groupID] / 2) * beta_T
 
                 fwhm = self.FWHM * self.delDoD[groupID] * d
                 widthLeft = fwhm * self.FWHMMultiplierLeft
@@ -94,10 +107,15 @@ class DetectorPeakPredictor(PythonAlgorithm):
                     DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight))
                 )
 
-            maxFwhm = self.FWHM * max(dList, default=0.0) * self.delDoD[groupID]
+            # Check if no peaks were added to singleFocusGroupPeaks
+            if not singleFocusGroupPeaks:
+                maxFwhm = 0  # Set maxFwhm to 0 or another appropriate default value
+                singleFocusGroupPeakList = GroupPeakList(peaks=[], groupID=groupID, maxfwhm=maxFwhm)  # No peaks to add
+            else:
+                maxFwhm = self.FWHM * max(dList, default=0.0) * self.delDoD[groupID]
+                singleFocusGroupPeakList = GroupPeakList(peaks=singleFocusGroupPeaks, groupID=groupID, maxfwhm=maxFwhm)
 
-            singleFocusGroupPeakList = GroupPeakList(peaks=singleFocusGroupPeaks, groupID=groupID, maxfwhm=maxFwhm)
-            self.log().notice(f"Focus group {groupID} : {len(dList)} peaks out")
+            self.log().notice(f"Focus group {groupID} : {len(singleFocusGroupPeaks)} peaks out")
             allFocusGroupsPeaks.append(singleFocusGroupPeakList)
 
         self.setProperty("DetectorPeaks", list_to_raw(allFocusGroupsPeaks))

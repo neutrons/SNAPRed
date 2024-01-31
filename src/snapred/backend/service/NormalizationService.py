@@ -212,6 +212,7 @@ class NormalizationService(Service):
             focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
+            dMin=request.dMin,
         )
         ingredients = self.sousChef.prepPeakIngredients(farmFresh)
         ingredients.smoothingParameter = request.smoothingParameter
