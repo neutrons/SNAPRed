@@ -8,7 +8,6 @@ from snapred.meta.Config import Config
 
 class NormalizationCalibrationRequest(BaseModel):
     runNumber: str
-    workspace: str
     backgroundRunNumber: str
     useLiteMode: bool = True  # TODO turn this on inside the view and workflow
     focusGroup: FocusGroup

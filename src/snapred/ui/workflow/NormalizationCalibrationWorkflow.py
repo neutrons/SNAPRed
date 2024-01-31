@@ -115,7 +115,6 @@ class NormalizationCalibrationWorkflow:
 
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
-            workspace="",
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=self.focusGroups[str(self.groupingFiles[self.initGroupingIndex])],
@@ -138,7 +137,6 @@ class NormalizationCalibrationWorkflow:
         if self.lastGroupingFile is not None and self.lastSmoothingParameter is not None:
             payload = NormalizationCalibrationRequest(
                 runNumber=self.runNumber,
-                workspace=self.responses[-1].data["outputWorkspace"],
                 backgroundRunNumber=self.backgroundRunNumber,
                 calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
                 focusGroup=self.focusGroups[str(self.lastGroupingFile)],
@@ -148,7 +146,6 @@ class NormalizationCalibrationWorkflow:
         else:
             payload = NormalizationCalibrationRequest(
                 runNumber=self.runNumber,
-                workspace=self.responses[-1].data["outputWorkspace"],
                 backgroundRunNumber=self.backgroundRunNumber,
                 calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
                 focusGroup=self.focusGroups[str(self.groupingFiles[self.initGroupingIndex])],
@@ -166,6 +163,9 @@ class NormalizationCalibrationWorkflow:
         view = workflowPresenter.widget.tabView
 
         normalizationRecord = self.responses[-1].data
+        normalizationRecord.workspaceNames.append(self.responses[-2].data["smoothedOutput"])
+        normalizationRecord.workspaceNames.append(self.responses[-2].data["outputWorkspace"])
+        normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
@@ -183,7 +183,6 @@ class NormalizationCalibrationWorkflow:
     def callNormalizationCalibration(self, groupingFile, smoothingParameter, dMin):
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
-            workspace="",
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=self.focusGroups[groupingFile],
