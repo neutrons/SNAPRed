@@ -17,6 +17,7 @@ from workbench.plugins.workspacewidget import WorkspaceWidget
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Resource
 from snapred.ui.widget.LogTable import LogTable
+from snapred.ui.widget.PlotTest import PlotTest
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
 
@@ -66,6 +67,17 @@ class SNAPRedGUI(QMainWindow):
 
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
+
+        # add button to open plot test window
+        button = QPushButton("plot test")
+        button.clicked.connect(self.openPlotTest)
+        splitter.addWidget(button)
+
+    def openPlotTest(self):
+        self.newWindow = PlotTest(self)
+        self.newWindow.widget.setWindowTitle("test the plottliness")
+        self.newWindow.widget.show()
+        pass
 
     def openNewWindow(self):
         try:
