@@ -104,16 +104,16 @@ class SpecifyNormalizationCalibrationView(QWidget):
         smoothingLayout.addWidget(self.smoothingLineEdit)
         smoothingLayout.addWidget(self.fielddMin)
 
-        # self.layout.addWidget(self.navigationBar, 0,0)
-        self.layout.addWidget(self.canvas, 0, 0, 1, -1)
-        self.layout.addWidget(self.fieldRunNumber, 1, 0)
-        self.layout.addWidget(self.fieldBackgroundRunNumber, 1, 1)
-        self.layout.addLayout(smoothingLayout, 2, 0)
-        self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 3, 0)
-        self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 3, 1)
-        self.layout.addWidget(self.recalculationButton, 4, 0, 1, 2)
+        self.layout.addWidget(self.navigationBar, 0, 0)
+        self.layout.addWidget(self.canvas, 1, 0, 1, -1)
+        self.layout.addWidget(self.fieldRunNumber, 2, 0)
+        self.layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
+        self.layout.addLayout(smoothingLayout, 3, 0)
+        self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 4, 0)
+        self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 4, 1)
+        self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
 
-        self.layout.setRowStretch(0, 3)
+        self.layout.setRowStretch(1, 3)
         # self.layout.setRowStretch(1, 1)
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
@@ -149,10 +149,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         except:  # noqa: E722
             raise Exception("Must be a numerical value.")
 
-    def resizeEvent(self, event):
-        self._updateGraphs()
-        super().resizeEvent(event)
-
     def emitValueChange(self):
         index = self.groupingDropDown.currentIndex()
         v = self.smoothingSlider.value() / 100.0
@@ -175,15 +171,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
         smoothedWorkspace = mtd[self.smoothedWorkspace]
         numGraphs = focusedWorkspace.getNumberHistograms()
 
-        fig, axes = plt.subplots(
-            figsize=(50,50),
-            nrows=1,
-            ncols=numGraphs,
-            subplot_kw={"projection": "mantid"},
-        )
-        self.figure = fig
-
-        for i, ax in enumerate(axes):
+        for i in range(numGraphs):
+            ax = self.figure.add_subplot(1, numGraphs, i + 1, projection='mantid')
             ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
             ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
             ax.legend()
@@ -191,9 +180,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.set_xlabel("d-Spacing (Å)")
             ax.set_ylabel("Intensity")
 
-        self.canvas.figure = self.figure
         self.canvas.draw()
-        self.layout.addWidget(self.canvas, 0, 0, 1, -1)
 
     def setEnableRecalculateButton(self, enable):
         self.recalculationButton.setEnabled(enable)
