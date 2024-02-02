@@ -77,7 +77,6 @@ class SNAPRedGUI(QMainWindow):
         self.newWindow = PlotTest(self)
         self.newWindow.widget.setWindowTitle("test the plottliness")
         self.newWindow.widget.show()
-        pass
 
     def openNewWindow(self):
         try:

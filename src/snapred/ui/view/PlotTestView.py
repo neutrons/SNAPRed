@@ -10,9 +10,6 @@ class PlotTestView(QMainWindow):
     position = 1
 
     def __init__(self, parent=None):
-        self._working_init(parent)
-
-    def _working_init(self, parent):
         super(PlotTestView, self).__init__(parent)
         self.centralWidget = QWidget(self)
         self.setCentralWidget(self.centralWidget)
