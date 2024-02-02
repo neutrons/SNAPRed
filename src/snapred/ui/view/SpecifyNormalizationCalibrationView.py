@@ -176,7 +176,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         numGraphs = focusedWorkspace.getNumberHistograms()
 
         fig, axes = plt.subplots(
-            figsize=(50,50),
+            figsize=(50, 50),
             nrows=1,
             ncols=numGraphs,
             subplot_kw={"projection": "mantid"},
