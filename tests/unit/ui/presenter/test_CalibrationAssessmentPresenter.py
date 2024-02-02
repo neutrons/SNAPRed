@@ -45,6 +45,9 @@ def test_load_record_with_no_records_available(calibrationAssessmentPresenter):
 
     calibrationAssessmentPresenter.loadSelectedCalibrationAssessment()
 
+    view.getCalibrationRecordCount.assert_called_once()
+    view.onError.assert_called_once_with("No calibration records available.")
+
 
 def test_load_record_with_no_record_selected(calibrationAssessmentPresenter):
     view = calibrationAssessmentPresenter.view
