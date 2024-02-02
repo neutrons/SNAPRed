@@ -46,7 +46,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
         fig, ax = plt.subplots(
             figsize=(50, 50),
             nrows=1,
-            subplot_kw={"project": "mantid"},
+            ncols=1,
+            num=1,
+            subplot_kw={"projection": "mantid"},
         )
 
         self.figure = fig
@@ -102,7 +104,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         smoothingLayout.addWidget(self.smoothingLineEdit)
         smoothingLayout.addWidget(self.fielddMin)
 
-        self.layout.addWidget(self.navigationBar)
+        # self.layout.addWidget(self.navigationBar, 0,0)
         self.layout.addWidget(self.canvas, 0, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 1, 0)
         self.layout.addWidget(self.fieldBackgroundRunNumber, 1, 1)
@@ -112,7 +114,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout.addWidget(self.recalculationButton, 4, 0, 1, 2)
 
         self.layout.setRowStretch(0, 3)
-        self.layout.setRowStretch(1, 1)
+        # self.layout.setRowStretch(1, 1)
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
 
@@ -168,45 +170,30 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
     def _updateGraphs(self):
         self.figure.clear()
-        self.subplots.clear()
 
-        if self.groupingSchema == "All":
-            numGraphs = 1
-        elif self.groupingSchema == "Bank":
-            numGraphs = 2
-        elif self.groupingSchema == "Column":
-            numGraphs = 6
-        else:
-            raise Exception("Invalid grouping schema or this schema is not yet supported.")
+        focusedWorkspace = mtd[self.focusWorkspace]
+        smoothedWorkspace = mtd[self.smoothedWorkspace]
+        numGraphs = focusedWorkspace.getNumberHistograms()
 
-        self._updatePlots(numGraphs)
-
-    def _updatePlots(self, numGraphs):
-        self.figure.clear()
-        self.subplots = []
-
-        fig, ax = plt.subplots(
-            figsize=(10, 6.5258),
+        fig, axes = plt.subplots(
+            figsize=(50,50),
             nrows=1,
             ncols=numGraphs,
             subplot_kw={"projection": "mantid"},
         )
         self.figure = fig
 
-        focusedWorkspace = mtd[self.focusWorkspace]
-        smoothedWorkspace = mtd[self.smoothedWorkspace]
+        for i, ax in enumerate(axes):
+            ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
+            ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
+            ax.legend()
+            ax.set_title(f"Group ID: {i + 1}")
+            ax.set_xlabel("d-Spacing (Å)")
+            ax.set_ylabel("Intensity")
 
-        for i, ax in enumerate(self.subplots):
-            if i < focusedWorkspace.getNumberHistograms():
-                ax.plot(focusedWorkspace, label="Focused Data", normalize_by_bin_width=True)
-                ax.plot(smoothedWorkspace, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
-                ax.legend()
-                ax.set_title(f"Group ID: {i + 1}")
-                ax.set_xlabel("d-Spacing (Å)")
-                ax.set_ylabel("Intensity")
-
+        self.canvas.figure = self.figure
         self.canvas.draw()
-        self.adjustSize()
+        self.layout.addWidget(self.canvas, 0, 0, 1, -1)
 
     def setEnableRecalculateButton(self, enable):
         self.recalculationButton.setEnabled(enable)
