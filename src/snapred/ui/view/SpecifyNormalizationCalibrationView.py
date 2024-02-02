@@ -172,7 +172,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         numGraphs = focusedWorkspace.getNumberHistograms()
 
         for i in range(numGraphs):
-            ax = self.figure.add_subplot(1, numGraphs, i + 1, projection='mantid')
+            ax = self.figure.add_subplot(1, numGraphs, i + 1, projection="mantid")
             ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
             ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
             ax.legend()
