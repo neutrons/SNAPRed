@@ -32,9 +32,9 @@ class CrystallographicInfo(BaseModel):
         dSpacing: List[float] = None,
         fSquared: List[float] = None,
         multiplicities: List[int] = None,
-        peaks=[],
+        peaks=None,
     ):
-        if peaks != []:
+        if peaks is not None:
             super().__init__(peaks=peaks)
             return
         if len(fSquared) != len(hkl):

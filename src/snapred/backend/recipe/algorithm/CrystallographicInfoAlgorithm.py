@@ -37,11 +37,9 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
         # Load the CIF file into an empty workspace
         if not self.getProperty("cifPath").isDefault:
             ws = "xtal_data"
-            self.mantidSnapper.CreateWorkspace(
+            self.mantidSnapper.CreateSingleValuedWorkspace(
                 "Creating sample workspace...",
                 OutputWorkspace=ws,
-                DataX=1,
-                DataY=1,
             )
             self.mantidSnapper.LoadCIF("Loading crystal data...", Workspace=ws, InputFile=cifPath)
             self.mantidSnapper.executeQueue()

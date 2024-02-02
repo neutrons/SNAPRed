@@ -206,7 +206,7 @@ class NormalizationCalibrationWorkflow:
             focusGroup=self.focusGroups[self.groupingFiles[index]],
             runNumber=self.runNumber,
             smoothingParameter=smoothingValue,
-            cryatalDMin=dMin,
+            crystalDMin=dMin,
         )
         request = SNAPRequest(path="normalization/smooth", payload=payload.json())
         response = self.interfaceController.executeRequest(request)

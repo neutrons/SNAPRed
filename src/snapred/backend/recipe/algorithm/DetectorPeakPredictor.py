@@ -62,6 +62,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         multiplicity = np.array(crystalInfo.multiplicities)
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
+        A = np.append(A,0)
         thresholdA = np.max(A) * ingredients.peakIntensityThreshold
         self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
 
