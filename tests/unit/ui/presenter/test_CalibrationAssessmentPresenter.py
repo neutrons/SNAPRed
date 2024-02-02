@@ -45,6 +45,7 @@ def test_load_record_with_no_records_available(calibrationAssessmentPresenter):
 
     calibrationAssessmentPresenter.loadSelectedCalibrationAssessment()
 
+
 def test_load_record_with_no_record_selected(calibrationAssessmentPresenter):
     view = calibrationAssessmentPresenter.view
     view.getCalibrationRecordCount = MagicMock(return_value=1)
