@@ -93,10 +93,10 @@ mantid:
       run: "{unit},{group},{lite},{auxilary},{runNumber}"
       diffCal:
         input: "{unit},{runNumber},raw"
-        output: "{unit},diffoc,{runNumber}"
+        output: "{unit},{runNumber},diffoc"
         table: "diffract_consts,{runNumber}"
         metric: "calib_metrics,{metricName},{runNumber},{version}"
-        mask: "DIFC,{runNumber},mask"
+        mask: "diffract_consts,mask,{runNumber}"
       normCal:
         rawVandium: "{runNumber},{backgroundRunNumber},RVC"
         focusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}"

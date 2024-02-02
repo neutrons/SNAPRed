@@ -59,8 +59,10 @@ class _WorkspaceNameGenerator:
         return str(runNumber).zfill(6)
 
     @staticmethod
-    def formatVersion(version: str):
-        return "v" + str(version).zfill(4)
+    def formatVersion(version, v_prefix: bool = True):
+        if not version == "*":
+            version = str(version).zfill(4)
+        return "v" + version if v_prefix else version
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"

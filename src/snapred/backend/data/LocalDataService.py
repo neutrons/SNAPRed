@@ -316,7 +316,10 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructCalibrationStatePath(stateId)
-        cablibrationVersionPath: str = statePath + "v_{}/".format(WorkspaceNameGenerator.formatVersion(version))
+        cablibrationVersionPath: str = statePath + "v_{}/".format(
+            WorkspaceNameGenerator.formatVersion(version=version, v_prefix=False)
+        )
+
         return cablibrationVersionPath
 
     def _getCalibrationDataPath(self, runId: str):
