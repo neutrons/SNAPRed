@@ -5,6 +5,8 @@ from mantid.simpleapi import mtd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
+from workbench.plotting.figuremanager import MantidFigureCanvas
+from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.meta.Config import Config
 from snapred.ui.widget.JsonFormList import JsonFormList
@@ -41,8 +43,15 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.fieldBackgroundRunNumber.setEnabled(False)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
-        self.figure = plt.figure(figsize=(50, 50))
-        self.canvas = FigureCanvas(self.figure)
+        fig, ax = plt.subplots(
+            figsize=(50, 50),
+            nrows=1,
+            subplot_kw={"project": "mantid"},
+        )
+
+        self.figure = fig
+        self.canvas = MantidFigureCanvas(self.figure)
+        self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
 
         self.sampleDropDown = QComboBox()
         self.sampleDropDown.setEnabled(False)
@@ -93,6 +102,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         smoothingLayout.addWidget(self.smoothingLineEdit)
         smoothingLayout.addWidget(self.fielddMin)
 
+        self.layout.addWidget(self.navigationBar)
         self.layout.addWidget(self.canvas, 0, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 1, 0)
         self.layout.addWidget(self.fieldBackgroundRunNumber, 1, 1)
@@ -169,37 +179,34 @@ class SpecifyNormalizationCalibrationView(QWidget):
         else:
             raise Exception("Invalid grouping schema or this schema is not yet supported.")
 
-        for i in range(numGraphs * 2):
-            ax = self.figure.add_subplot(2, numGraphs, i + 1)
-            self.subplots.append(ax)
-
         self._updatePlots(numGraphs)
 
     def _updatePlots(self, numGraphs):
         self.figure.clear()
         self.subplots = []
 
-        for i in range(numGraphs):
-            ax = self.figure.add_subplot(1, numGraphs, i + 1)
-            self.subplots.append(ax)
+        fig, ax = plt.subplots(
+            figsize=(10, 6.5258),
+            nrows=1,
+            ncols=numGraphs,
+            subplot_kw={"projection": "mantid"},
+        )
+        self.figure = fig
 
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
 
         for i, ax in enumerate(self.subplots):
             if i < focusedWorkspace.getNumberHistograms():
-                focusedData = focusedWorkspace.readY(i)
-                smoothedData = smoothedWorkspace.readY(i)
-
-                ax.plot(focusedData, label="Focused Data")
-                ax.plot(smoothedData, label="Smoothed Data", linestyle="--")
+                ax.plot(focusedWorkspace, label="Focused Data", normalize_by_bin_width=True)
+                ax.plot(smoothedWorkspace, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
                 ax.legend()
                 ax.set_title(f"Group ID: {i + 1}")
-
                 ax.set_xlabel("d-Spacing (Å)")
                 ax.set_ylabel("Intensity")
 
         self.canvas.draw()
+        self.adjustSize()
 
     def setEnableRecalculateButton(self, enable):
         self.recalculationButton.setEnabled(enable)
