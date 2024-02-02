@@ -2,6 +2,7 @@ import re
 import time
 from typing import Any, Dict
 
+from snapred.backend.dao import Limit
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
@@ -76,7 +77,7 @@ class NormalizationService(Service):
             wng.run()
             .runNumber(request.runNumber)
             .group(groupingScheme)
-            .auxilary(f"{request.smoothingParameter}-s_{request.dMin}-dmin")
+            .auxilary(f"{request.smoothingParameter}-s_{request.crystalDMin}-dmin")
             .build()
         )
 
@@ -106,6 +107,8 @@ class NormalizationService(Service):
             inputWorkspace=groceries["inputWorkspace"],
             backgroundWorkspace=groceries["backgroundWorkspace"],
             outputWorkspace=groceries["outputWorkspace"],
+            crystalDMin=request.crystalDMin,
+            crystalDMax=request.crystalDMax,
         )
         outputWorkspace = self.vanadiumCorrection(vanadiumCorrectionRequest)
         # clone output correctedVanadium
@@ -134,7 +137,8 @@ class NormalizationService(Service):
             useLiteMode=request.useLiteMode,
             runNumber=request.runNumber,
             smoothingParameter=request.smoothingParameter,
-            dMin=request.dMin,
+            crystalDMin=request.crystalDMin,
+            crystalDMax=request.crystalDMax,
         )
         outputWorkspace = self.smoothDataExcludingPeaks(smoothRequest)
 
@@ -179,6 +183,7 @@ class NormalizationService(Service):
             focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
+            crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
         )
         ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
         return RawVanadiumCorrectionRecipe().executeRecipe(
@@ -212,7 +217,7 @@ class NormalizationService(Service):
             focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
-            dMin=request.dMin,
+            crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
         )
         ingredients = self.sousChef.prepPeakIngredients(farmFresh)
         ingredients.smoothingParameter = request.smoothingParameter

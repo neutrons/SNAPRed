@@ -132,6 +132,7 @@ class TestNormalizationService(unittest.TestCase):
             inputWorkspace="input_ws",
             backgroundWorkspace="background_ws",
             outputWorkspace="output_ws",
+            crystalDMin=0.4,
         )
         self.instance = NormalizationService()
         self.instance.sousChef.prepNormalizationIngredients = MagicMock()
@@ -164,7 +165,7 @@ class TestNormalizationService(unittest.TestCase):
             inputWorkspace="input_ws",
             outputWorkspace="output_ws",
             smoothingParameter=0.5,
-            dMin=0.4,
+            crystalDMin=0.4,
         )
 
         self.instance = NormalizationService()
@@ -247,5 +248,5 @@ class TestNormalizationService(unittest.TestCase):
         assert result == {
             "correctedVanadium": f"tof_{self.request.focusGroup.name}_12345_c-vanadium",
             "outputWorkspace": f"tof_{self.request.focusGroup.name}_12345_s+f-vanadium",
-            "smoothedOutput": f"tof_{self.request.focusGroup.name}_12345_0.5-s_{self.request.dMin}-dmin",
+            "smoothedOutput": f"tof_{self.request.focusGroup.name}_12345_0.5-s_{self.request.crystalDMin}-dmin",
         }
