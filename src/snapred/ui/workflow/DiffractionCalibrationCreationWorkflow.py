@@ -1,5 +1,6 @@
 import json
 
+from mantid.simpleapi import mtd
 from qtpy.QtWidgets import QLabel
 
 from snapred.backend.api.InterfaceController import InterfaceController
@@ -13,6 +14,7 @@ from snapred.backend.dao.request import (
 )
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
 from snapred.ui.view.CalibrationAssessmentView import CalibrationAssessmentView
 from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
 from snapred.ui.view.SaveCalibrationView import SaveCalibrationView
@@ -129,7 +131,8 @@ class DiffractionCalibrationCreationWorkflow:
         # pull fields from view for calibration save
         calibrationRecord = self.responses[-1].data  # [-1]: response from CalibrationAssessmentRequest
         # [-2]: response from DiffractionCalibrationRequest
-        calibrationRecord.workspaceNames.append(self.responses[-2].data["calibrationTable"])
+        wsName = self.responses[-2].data["calibrationTable"]
+        calibrationRecord.workspaceList.append(WorkspaceInfo(name=wsName, type=mtd[wsName].id()))
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
             comments=view.fieldComments.get(),

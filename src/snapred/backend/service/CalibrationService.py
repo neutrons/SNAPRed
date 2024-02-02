@@ -4,6 +4,7 @@ from datetime import date
 from functools import lru_cache
 from typing import List, Tuple
 
+from mantid.simpleapi import mtd
 from pydantic import parse_file_as, parse_raw_as
 
 from snapred.backend.dao import RunConfig
@@ -43,6 +44,7 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import list_to_raw
 
@@ -204,25 +206,26 @@ class CalibrationService(Service):
         if request.checkExistent:
             wkspaceExists = False
             for metricName in ["sigma", "strain"]:
-                ws_name = (
+                wsName = (
                     wng.diffCalMetrics()
                     .metricName(metricName)
                     .runNumber(request.runId)
-                    .version("v" + request.version.zfill(4))
+                    .version(wng.formatVersion(request.version))
                     .build()
                 )
-                if self.dataFactoryService.workspaceDoesExist(ws_name):
+                if self.dataFactoryService.workspaceDoesExist(wsName):
                     wkspaceExists = True
                     break
             if not wkspaceExists:
-                for ws_name in calibrationRecord.workspaceNames:
-                    if self.dataFactoryService.workspaceDoesExist(ws_name):
+                for wsInfo in calibrationRecord.workspaceList:
+                    wsName = wsInfo.name
+                    if self.dataFactoryService.workspaceDoesExist(wsName):
                         wkspaceExists = True
                         break
             if wkspaceExists:
                 errorTxt = (
                     f"Calibration assessment for Run {runId} Version {version} "
-                    f"is already loaded: see workspace {ws_name}."
+                    f"is already loaded: see workspace {wsName}."
                 )
                 logger.error(errorTxt)
                 raise ValueError(errorTxt)
@@ -233,11 +236,12 @@ class CalibrationService(Service):
         )
 
         # load persistent workspaces
-        for ws_name in calibrationRecord.workspaceNames:
+        for wsInfo in calibrationRecord.workspaceList:
+            wsInfo.name += "_" + wng.formatVersion(str(calibrationRecord.version))
             self.dataFactoryService.loadCalibrationDataWorkspace(
                 calibrationRecord.runNumber,
                 calibrationRecord.version,
-                ws_name + "_v" + str(calibrationRecord.version).zfill(4),
+                wsInfo,
             )
 
     @FromString
@@ -268,7 +272,7 @@ class CalibrationService(Service):
             calibrationFittingIngredients=self.sousChef.prepCalibration(request.run.runNumber),
             pixelGroups=[ingredients.pixelGroup],
             focusGroupCalibrationMetrics=metrics,
-            workspaceNames=[request.workspace],
+            workspaceList=[WorkspaceInfo(name=request.workspace, type=mtd[request.workspace].id())],
         )
 
         timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))

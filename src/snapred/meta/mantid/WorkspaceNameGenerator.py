@@ -20,6 +20,10 @@ class NameBuilder:
             raise RuntimeError(f"Key [{key}] not a valid property for given name.")
 
         def setValue(value):
+            if key == "runNumber":
+                value = WorkspaceNameGenerator.formatRunNumber(value)
+            elif key == "version":
+                value = WorkspaceNameGenerator.formatVersion(value)
             self.props[key] = value
             return self
 
@@ -49,6 +53,14 @@ class _WorkspaceNameGenerator:
     _diffCalMaskTemplateKeys = ["runNumber"]
     _diffCalMetricTemplate = Config[f"{_templateRoot}.diffCal.metric"]
     _diffCalMetricTemplateKeys = ["metricName", "runNumber", "version"]
+
+    @staticmethod
+    def formatRunNumber(runNumber: str):
+        return str(runNumber).zfill(6)
+
+    @staticmethod
+    def formatVersion(version: str):
+        return "v" + str(version).zfill(4)
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"

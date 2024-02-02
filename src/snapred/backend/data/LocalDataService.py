@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Tuple
 
 import h5py
 from mantid.kernel import PhysicalConstants
+from mantid.simpleapi import mtd
 from pydantic import parse_file_as
 
 from snapred.backend.dao import (
@@ -37,7 +38,8 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceNameGenerator
 from snapred.meta.redantic import (
     write_model_list_pretty,
     write_model_pretty,
@@ -314,7 +316,7 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructCalibrationStatePath(stateId)
-        cablibrationVersionPath: str = statePath + "v_{}/".format(version)
+        cablibrationVersionPath: str = statePath + "v_{}/".format(WorkspaceNameGenerator.formatVersion(version))
         return cablibrationVersionPath
 
     def _getCalibrationDataPath(self, runId: str):
@@ -431,8 +433,8 @@ class LocalDataService:
         write_model_pretty(record, recordPath)
 
         self.writeNormalizationState(runNumber, record.normalization, version)
-        for workspace in record.workspaceNames:
-            self.groceryService.writeWorkspace(normalizationPath, workspace)
+        for wsInfo in record.workspaceList:
+            self.groceryService.writeWorkspace(normalizationPath, wsInfo)
         logger.info(f"wrote NormalizationRecord: version: {version}")
         return record
 
@@ -478,9 +480,8 @@ class LocalDataService:
         write_model_pretty(record, recordPath)
 
         self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
-        for ws_name in record.workspaceNames:
-            filename = ws_name + "_v" + str(version).zfill(4) + ".nxs"
-            self.groceryService.writeWorkspace(calibrationPath, ws_name, filename)
+        for wsInfo in record.workspaceList:
+            self.groceryService.writeWorkspace(calibrationPath, wsInfo, version)
         logger.info(f"Wrote CalibrationRecord: version: {version}")
         return record
 
@@ -494,8 +495,10 @@ class LocalDataService:
         version = len(foundFiles) + 1
 
         filename = filenameFormat.format(version)
+
         if not dryrun:
-            self.groceryService.writeWorkspace(filename, workspaceName)
+            wsInfo = WorkspaceInfo(name=workspaceName, type=mtd[workspaceName].id())
+            self.groceryService.writeWorkspace(filename, wsInfo)
         return filename
 
     def writeCalibrantSample(self, sample: CalibrantSamples):

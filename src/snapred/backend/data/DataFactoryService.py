@@ -87,12 +87,12 @@ class DataFactoryService:
     def deleteWorkspaceUnconditional(self, name):
         return self.groceryService.deleteWorkspaceUnconditional(name)
 
-    def loadCalibrationDataWorkspace(self, runId, version, name):
+    def loadCalibrationDataWorkspace(self, runId, version, wsInfo):
         path = self.getCalibrationDataPath(runId, version)
-        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
+        return self.groceryService.fetchWorkspace(path, wsInfo)
 
-    def writeWorkspace(self, path, name):
-        return self.groceryService.writeWorkspace(path, name)
+    def writeWorkspace(self, path, wsInfo):
+        return self.groceryService.writeWorkspace(path, wsInfo)
 
     def getWorkspaceCached(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataCached(runId, useLiteMode)

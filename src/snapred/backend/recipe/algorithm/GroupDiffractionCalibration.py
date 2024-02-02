@@ -279,10 +279,8 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
     def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str):
         # TODO use workspace name generator
-        # tmpWStof = f"_TOF_{self.runNumber}_diffoc_{note}"
-        # tmpWSdsp = f"_DSP_{self.runNumber}_diffoc_{note}"
-        tmpWStof = f"_TOF_diffoc_{note}_{self.runNumber}"
-        tmpWSdsp = f"_DSP_diffoc_{note}_{self.runNumber}"
+        tmpWStof = f"_TOF_{self.runNumber}_diffoc_{note}"
+        tmpWSdsp = f"_DSP_{self.runNumber}_diffoc_{note}"
         self.mantidSnapper.ConvertUnits(
             "Convert the raw TOF data to d-spacing",
             InputWorkspace=inputWS,

@@ -8,6 +8,7 @@ from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGrouping
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import list_to_raw_pretty
@@ -104,14 +105,24 @@ class GroceryService:
 
     ## WRITING TO DISK
 
-    def writeWorkspace(self, path: str, ws_name: WorkspaceName, filename: str = None):
+    def writeWorkspace(self, path: str, wsInfo: WorkspaceInfo, version: str = None):
         """
         Writes a Mantid Workspace to disk.
         """
-        saveAlgo = AlgorithmManager.create("SaveNexus")
-        saveAlgo.setProperty("InputWorkspace", ws_name)
+        if wsInfo.type == "TableWorkspace":
+            return self.writeDiffCalTable(path=path, name=wsInfo.name, version=version)
+        elif wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
+            algo = "SaveNexusProcessed"
+        else:
+            algo = "SaveNexus"
 
-        fullPath = os.path.join(path, filename) if filename else os.path.join(path, ws_name) + ".nxs"
+        saveAlgo = AlgorithmManager.create(algo)
+        saveAlgo.setProperty("InputWorkspace", wsInfo.name)
+
+        fullPath = os.path.join(path, wsInfo.name)
+        if version:
+            fullPath += "_" + wng.formatVersion(version)
+        fullPath += ".nxs"
         saveAlgo.setProperty("Filename", fullPath)
 
         saveAlgo.execute()
@@ -125,7 +136,14 @@ class GroceryService:
         saveAlgo.setProperty("OutputFilename", os.path.join(path, name))
         saveAlgo.execute()
 
-    def writeDiffCalTable(self, path: str, name: WorkspaceName, grouping: WorkspaceName = "", mask: WorkspaceName = ""):
+    def writeDiffCalTable(
+        self,
+        path: str,
+        name: WorkspaceName,
+        grouping: WorkspaceName = "",
+        mask: WorkspaceName = "",
+        version: str = None,
+    ):
         """
         Writes a diffcal table from a Mantid TableWorkspace to disk.
         """
@@ -133,7 +151,11 @@ class GroceryService:
         saveAlgo.setPropertyValue("CalibrationWorkspace", name)
         saveAlgo.setPropertyValue("GroupingWorkspace", grouping)
         saveAlgo.setPropertyValue("MaskWorkspace", mask)
-        saveAlgo.setPropertyValue("Filename", os.path.join(path, name))
+        fullPath = os.path.join(path, name)
+        if version:
+            fullPath += "_" + wng.formatVersion(version)
+        fullPath += ".h5"
+        saveAlgo.setPropertyValue("Filename", fullPath)
         saveAlgo.execute()
 
     ## ACCESSING WORKSPACES
@@ -200,22 +222,33 @@ class GroceryService:
     and preserving a cache to prevent re-loading the same data files.
     """
 
-    def fetchWorkspace(self, path: str, name: WorkspaceName, loader: str = "") -> WorkspaceName:
+    def fetchWorkspace(self, path: str, wsInfo: WorkspaceInfo, loader: str = "") -> WorkspaceName:
         """
-        Will fetch a workspace given a name and a path.
+        Will fetch a workspace given a name, a type, and a path.
         Returns the same workspace name, if the workspace exists or can be loaded.
         """
-        if self.workspaceDoesExist(name):
-            return name
+        if self.workspaceDoesExist(wsInfo.name):
+            return wsInfo.name
         else:
+            # determine the loader and extension
+            ext = ".nxs"
+            if not loader:
+                if wsInfo.type == "TableWorkspace":
+                    loader = "LoadDiffCal"
+                    ext = ".h5"
+                elif wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
+                    loader = "LoadNexusProcessed"
+                else:
+                    loader = "LoadNexus"
+            path = os.path.join(path, wsInfo.name) + ext
             try:
-                res = self.grocer.executeRecipe(path, name, loader)
+                res = self.grocer.executeRecipe(path, wsInfo.name, loader)
             except RuntimeError:
-                raise RuntimeError(f"Failed to load workspace {name} from {path}")
+                raise RuntimeError(f"Failed to load workspace {wsInfo.name} from {path}")
             if res["result"] is True:
                 return res["workspace"]
             else:
-                raise RuntimeError(f"Failed to load workspace {name} from {path}")
+                raise RuntimeError(f"Failed to load workspace {wsInfo.name} from {path}")
 
     def fetchNeutronDataSingleUse(self, runId: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
         """

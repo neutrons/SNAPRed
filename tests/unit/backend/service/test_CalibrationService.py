@@ -229,13 +229,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
-            for ws_name in calibRecord.workspaceNames:
+            for wsInfo in calibRecord.workspaceList:
                 CreateWorkspace(
-                    OutputWorkspace=ws_name,
+                    OutputWorkspace=wsInfo.name,
                     DataX=1,
                     DataY=1,
                 )
-                self.instance.dataFactoryService.writeWorkspace(os.path.join(tmpdir, ws_name + ".nxs"), ws_name)
+                self.instance.dataFactoryService.writeWorkspace(tmpdir, wsInfo)
 
             # Call the method to test. Use a mocked run and a mocked version
             runId = MagicMock()
@@ -256,13 +256,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
-            for ws_name in calibRecord.workspaceNames:
+            for wsInfo in calibRecord.workspaceList:
                 CreateWorkspace(
-                    OutputWorkspace=ws_name,
+                    OutputWorkspace=wsInfo.name,
                     DataX=1,
                     DataY=1,
                 )
-                self.instance.dataFactoryService.writeWorkspace(os.path.join(tmpdir, ws_name + ".nxs"), ws_name)
+                self.instance.dataFactoryService.writeWorkspace(tmpdir, wsInfo)
 
             # Call the method to test. Use a mocked run and a mocked version
             mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
@@ -281,8 +281,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
             # Assert the "persistent" workspaces have been loaded
-            for ws_name in calibRecord.workspaceNames:
-                assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
+            for wsInfo in calibRecord.workspaceList:
+                assert self.instance.dataFactoryService.workspaceDoesExist(wsInfo.name)
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)

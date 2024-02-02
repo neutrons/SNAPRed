@@ -49,7 +49,9 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         self.declareProperty(
             "LoaderType",
             "",
-            StringListValidator(["", "LoadGroupingDefinition", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed"]),
+            StringListValidator(
+                ["", "LoadGroupingDefinition", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed", "LoadDiffCal"]
+            ),
             direction=Direction.InOut,
         )
         self.declareProperty(
@@ -104,6 +106,10 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     GroupingFilename=filename,
                     OutputWorkspace=outWS,
                     **{instrumentPropertySource: instrumentSource},
+                )
+            elif loaderType == "LoadDiffCal":
+                getattr(self.mantidSnapper, loaderType)(
+                    f"Loading data using {loaderType}", Filename=filename, WorkspaceName=outWS, InstrumentName="SNAP"
                 )
             else:
                 getattr(self.mantidSnapper, loaderType)(
