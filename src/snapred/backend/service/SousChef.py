@@ -55,13 +55,16 @@ class SousChef(Service):
     def name():
         return "souschef"
 
-    def prepCalibration(self, runNumber: str) -> Calibration:
+    def prepCalibration(self, runNumber: str, normalization: bool) -> Calibration:
         if runNumber not in self._calibrationCache:
-            self._calibrationCache[runNumber] = self.dataFactoryService.getCalibrationState(runNumber)
+            if normalization:
+                self._calibrationCache[runNumber] = self.dataFactoryService.getNormalizationState(runNumber)
+            else:
+                self._calibrationCache[runNumber] = self.dataFactoryService.getCalibrationState(runNumber)
         return self._calibrationCache[runNumber]
 
-    def prepInstrumentState(self, runNumber: str) -> InstrumentState:
-        return self.prepCalibration(runNumber).instrumentState
+    def prepInstrumentState(self, runNumber: str, normalization: bool) -> InstrumentState:
+        return self.prepCalibration(runNumber, normalization).instrumentState
 
     def prepRunConfig(self, runNumber: str) -> RunConfig:
         return self.dataFactoryService.getRunConfig(runNumber)
@@ -69,11 +72,11 @@ class SousChef(Service):
     def prepCalibrantSample(self, calibrantSamplePath: str) -> CalibrantSamples:
         return self.dataFactoryService.getCalibrantSample(calibrantSamplePath)
 
-    def prepPixelGroup(self, ingredients: FarmFreshIngredients):
+    def prepPixelGroup(self, ingredients: FarmFreshIngredients, normalization: bool):
         groupingSchema = ingredients.focusGroup.name
         key = (ingredients.runNumber, ingredients.useLiteMode, groupingSchema)
         if key not in self._pixelGroupCache:
-            instrumentState = self.prepInstrumentState(ingredients.runNumber)
+            instrumentState = self.prepInstrumentState(ingredients.runNumber, normalization)
             pixelIngredients = PixelGroupingIngredients(
                 instrumentState=instrumentState,
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
@@ -141,7 +144,7 @@ class SousChef(Service):
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
         return NormalizationIngredients(
-            pixelGroup=self.prepPixelGroup(ingredients),
+            pixelGroup=self.prepPixelGroup(ingredients, normalization=True),
             calibrantSample=self.prepCalibrantSample(ingredients.calibrantSamplePath),
             detectorPeaks=self.prepDetectorPeaks(ingredients),
         )
