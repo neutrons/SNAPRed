@@ -39,6 +39,7 @@ class TestGroceryService(unittest.TestCase):
         cls.groupingScheme = "Native"
         # create some sample data
         cls.sampleWS = "_grocery_to_fetch"
+        cls.exclude = [cls.sampleWS, cls.fetchedWSname]
         CreateWorkspace(
             OutputWorkspace=cls.sampleWS,
             DataX=[1] * 16,
@@ -938,6 +939,41 @@ class TestGroceryService(unittest.TestCase):
         # assert that the lite data service was created and called
         assert mockLDS.called_once()
         assert mockLDS.reduceLiteData.called_once_with(workspacename, workspacename)
+
+    def test_getCachedWorkspaces(self):
+        self.instance._loadedRuns = {(0, "a"): "b"}
+        self.instance._loadedGroupings = {(1, "c"): "d"}
+
+        assert self.instance.getCachedWorkspaces() == ["a", "c"]
+
+    def test_getCachedWorkspaces_empty(self):
+        self.instance._loadedRuns = {}
+        self.instance._loadedGroupings = {}
+
+        assert self.instance.getCachedWorkspaces() == []
+
+    def test_renameWorkspace(self):
+        oldName = "old"
+        newName = "new"
+        self.create_dumb_workspace(oldName)
+        assert mtd.doesExist(oldName)
+        self.instance.renameWorkspace(oldName, newName)
+        assert not mtd.doesExist(oldName)
+        assert mtd.doesExist(newName)
+
+    def test_clearADS(self):
+        self.instance._loadedRuns = {(0, "a"): "b"}
+        self.instance._loadedGroupings = {(1, "c"): "d"}
+
+        self.create_dumb_workspace("b")
+        self.instance.clearADS(exclude=self.exclude)
+
+        assert mtd.doesExist("b") is False
+
+        self.create_dumb_workspace("a")
+        self.instance.clearADS(exclude=self.exclude)
+
+        assert mtd.doesExist("a") is True
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

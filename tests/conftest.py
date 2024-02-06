@@ -2,6 +2,7 @@ import os
 import unittest.mock as mock
 
 import pytest
+from snapred.meta.decorators import Resettable
 
 # import sys
 # sys.path.append('.')
@@ -27,6 +28,7 @@ mock.patch.dict("sys.modules", {"snapred.meta.decorators.Singleton": mockSinglet
 mockResettable = mock.Mock()
 mockResettable.Resettable = mock_decorator
 mock.patch.dict("sys.modules", {"snapred.meta.decorators.Resettable": mockResettable}).start()
+mock.patch.dict("sys.modules", {"snapred.meta.decorators._Resettable": Resettable}).start()
 
 # manually alter the config to point to the test resources
 Config._config["instrument"]["home"] = Resource.getPath("inputs")

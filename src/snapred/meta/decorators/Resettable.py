@@ -12,7 +12,7 @@ def Resettable(orig_cls):
 
     class Wrapper(QWidget):
         def __init__(self, *args, **kwargs):
-            super().__init__(kwargs.get("parent"))
+            super().__init__(kwargs.get("parent", None))
             self._args = args
             self._kwargs = kwargs
             orig_cls.__new__ = orig_new
