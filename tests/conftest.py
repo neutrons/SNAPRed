@@ -24,6 +24,10 @@ mockSingleton = mock.Mock()
 mockSingleton.Singleton = mock_decorator
 mock.patch.dict("sys.modules", {"snapred.meta.decorators.Singleton": mockSingleton}).start()
 
+mockResettable = mock.Mock()
+mockResettable.Resettable = mock_decorator
+mock.patch.dict("sys.modules", {"snapred.meta.decorators.Resettable": mockResettable}).start()
+
 # manually alter the config to point to the test resources
 Config._config["instrument"]["home"] = Resource.getPath("inputs")
 Config._config["samples"]["home"] = Resource.getPath("outputs/sample/")
