@@ -5,8 +5,7 @@ from mantid.simpleapi import mtd
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
-
-# from workbench.plotting.figuremanager import MantidFigureCanvas
+from workbench.plotting.figuremanager import MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.meta.Config import Config
@@ -53,7 +52,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         )
 
         self.figure = fig
-        self.canvas = FigureCanvas(self.figure)
+        self.canvas = MantidFigureCanvas(self.figure)
         self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
 
         self.sampleDropDown = QComboBox()
