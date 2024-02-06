@@ -6,29 +6,41 @@ class WorkflowNodeView(QWidget):
         super(WorkflowNodeView, self).__init__(parent)
         self.model = node
         self.view = node.view
-        layout = QGridLayout()
-        self.setLayout(layout)
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
         # add a back and forward button to the top left
         self.backButton = QPushButton("Back \U00002B05", self)
-        layout.addWidget(self.backButton, 0, 0)
+        self.layout.addWidget(self.backButton, 0, 0)
         if position == 0:
             self.backButton.setVisible(False)
 
         self.forwardButton = QPushButton("Forward \U000027A1", self)
-        layout.addWidget(self.forwardButton, 0, 1)
+        self.layout.addWidget(self.forwardButton, 0, 1)
         self.forwardButton.setVisible(False)
 
-        layout.addWidget(self.view, 1, 0, 1, 2)
+        self.layout.addWidget(self.view, 1, 0, 1, 2)
 
         # add a continue and quit button to the bottom
         self.continueButton = QPushButton("Continue \U00002705", self)
-        layout.addWidget(self.continueButton, 2, 0)
+        self.layout.addWidget(self.continueButton, 2, 0)
+
+        self.skipButton = QPushButton("Skip \U000023ED", self)
+        # self.layout.addWidget(self.skipButton, 2, 1)
+        self.skipButton.setVisible(False)
 
         self.cancelButton = QPushButton("Cancel \U0000274C", self)
-        layout.addWidget(self.cancelButton, 2, 1)
+        self.layout.addWidget(self.cancelButton, 2, 1)
 
     def reset(self):
         self.view.reset()
+
+    def enableSkip(self):
+        self.layout.removeWidget(self.continueButton)
+        self.layout.removeWidget(self.cancelButton)
+        self.layout.addWidget(self.continueButton, 2, 0)
+        self.layout.addWidget(self.skipButton, 2, 1)
+        self.layout.addWidget(self.cancelButton, 2, 2)
+        self.skipButton.setVisible(True)
 
     def onBackButtonClicked(self, slot):
         self.backButton.clicked.connect(slot)
@@ -41,3 +53,6 @@ class WorkflowNodeView(QWidget):
 
     def onCancelButtonClicked(self, slot):
         self.cancelButton.clicked.connect(slot)
+
+    def onSkipButtonClicked(self, slot):
+        self.skipButton.clicked.connect(slot)

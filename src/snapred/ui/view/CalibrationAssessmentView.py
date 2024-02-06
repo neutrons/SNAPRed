@@ -20,7 +20,7 @@ class CalibrationAssessmentView(QWidget):
 
         self.interactionText = QLabel("Calibration Complete! Would you like to assess the calibration now?")
 
-        self.fieldRunNumber = LabeledField("Run Number :", self._jsonFormList.getField("run.runNumber"), self)
+        self.fieldRunNumber = LabeledField("Run Number :", QLineEdit(parent=self), self)
         self.fieldRunNumber.setEnabled(False)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
 

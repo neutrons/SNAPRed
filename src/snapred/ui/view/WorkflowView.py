@@ -58,6 +58,10 @@ class WorkflowView(QWidget):
         return self.tabWidget.widget(self.currentTab).continueButton
 
     @property
+    def skipButton(self):
+        return self.tabWidget.widget(self.currentTab).skipButton
+
+    @property
     def cancelButton(self):
         return self.tabWidget.widget(self.currentTab).cancelButton
 
@@ -75,21 +79,24 @@ class WorkflowView(QWidget):
                 currentWidget.reset()
         self.tabWidget.setTabEnabled(0, True)
         self.tabWidget.setCurrentIndex(0)
-        self.currentTab = 0
-        self.position = 0
+        self.currentTab = -1
+        self.position = -1
 
     def advanceWorkflow(self):
-        if self.currentTab < self.totalNodes - 1:
+        # Note: This checks the lower bound to account for the invocation of #reset
+        if self.currentTab >= 0 and self.currentTab < self.totalNodes - 1:
             # enable forward button of previous tab
             widget = self.tabWidget.widget(self.currentTab)
             widget.forwardButton.setVisible(True)
             # disable continue button of previous tab
             widget.continueButton.setEnabled(False)
-            # TODO: Forward fields from previous tab to next tab
+
             self.position = max(self.currentTab + 1, self.position)
             self.currentTab += 1
             self.tabWidget.setTabEnabled(self.currentTab, True)
             self.tabWidget.setCurrentIndex(self.currentTab)
+        # Note: Accounts for a reset
+        self.currentTab = max(self.currentTab, 0)
 
     def _generateTabWidget(self, node, position):
         widget = WorkflowNodeView(node, position)

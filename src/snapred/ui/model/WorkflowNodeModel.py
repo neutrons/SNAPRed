@@ -12,6 +12,7 @@ class WorkflowNodeModel(object):
     continueAction: Callable
     nextModel: WorkflowNodeModel
     name: str = "Unnamed"
+    required: bool = True
 
     def __iter__(self):
         return _WorkflowModelIterator(self)

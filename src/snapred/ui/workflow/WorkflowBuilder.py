@@ -8,15 +8,17 @@ class WorkflowBuilder:
         self._cancelLambda = cancelLambda
         self._workflow = None
 
-    def addNode(self, continueAction, subview, name="Unnamed"):
+    def addNode(self, continueAction, subview, name="Unnamed", required=True):
         if self._workflow is None:
-            self._workflow = WorkflowNodeModel(continueAction=continueAction, view=subview, nextModel=None, name=name)
+            self._workflow = WorkflowNodeModel(
+                continueAction=continueAction, view=subview, nextModel=None, name=name, required=required
+            )
         else:
             currentWorkflow = self._workflow
             while currentWorkflow.nextModel is not None:
                 currentWorkflow = currentWorkflow.nextModel
             currentWorkflow.nextModel = WorkflowNodeModel(
-                continueAction=continueAction, view=subview, nextModel=None, name=name
+                continueAction=continueAction, view=subview, nextModel=None, name=name, required=required
             )
         return self
 

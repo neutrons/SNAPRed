@@ -13,6 +13,7 @@ class WorkflowPresenter(object):
 
     def __init__(self, model: WorkflowNodeModel, cancelLambda=None, parent=None):
         self.view = WorkflowView(model, parent)
+        self._iteration = 1
         self.model = model
         self._cancelLambda = cancelLambda
         self._hookupSignals()
@@ -37,6 +38,14 @@ class WorkflowPresenter(object):
     def resetHard(self):
         self.widget.reset(hard=True)
 
+    def iterate(self):
+        self._iteration += 1
+        self.resetSoft()
+
+    @property
+    def iteration(self):
+        return self._iteration
+
     def _hookupSignals(self):
         for i, model in enumerate(self.model):
             widget = self.view.tabWidget.widget(i)
@@ -44,20 +53,30 @@ class WorkflowPresenter(object):
                 f"Hooking up signals for tab {widget.view} to {widget.model.continueAction} \
                     to continue button {widget.continueButton}"
             )
+            if not model.required:
+                widget.onSkipButtonClicked(self.handleSkipButtonClicked)
+                widget.enableSkip()
+
             widget.onContinueButtonClicked(self.handleContinueButtonClicked)
+
             if self._cancelLambda:
                 widget.onCancelButtonClicked(self._cancelLambda)
             else:
                 widget.onCancelButtonClicked(self.resetHard)
 
+    def handleSkipButtonClicked(self):
+        self.view.advanceWorkflow()
+
     def handleContinueButtonClicked(self, model):
         self.view.continueButton.setEnabled(False)
         self.view.cancelButton.setEnabled(False)
+        self.view.skipButton.setEnabled(False)
 
         # do action
         self.worker = self.worker_pool.createWorker(target=model.continueAction, args=(self))
         self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
         self.worker.finished.connect(lambda: self.view.cancelButton.setEnabled(True))
+        self.worker.finished.connect(lambda: self.view.skipButton.setEnabled(True))
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(lambda success: self.view.advanceWorkflow() if success else None)
 
