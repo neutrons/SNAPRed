@@ -118,6 +118,14 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
 
         numSpec = weight_ws.getNumberHistograms()
+
+        allZeros = all(np.all(weight_ws.readX(index) == 0) for index in range(numSpec))
+
+        if allZeros:
+            self.mantidSnapper.executeQueue()
+            self.setProperty("OutputWorkspace", weight_ws)
+            return
+
         # extract x & y data for csaps
         for index in range(numSpec):
             x = inputWorkspace.readX(index)
