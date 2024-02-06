@@ -115,11 +115,11 @@ class TestSaveGroupingDefinition(unittest.TestCase):
     def test_fail_no_output_file(self):
         savingAlgo = SavingAlgo()
         savingAlgo.initialize()
-        errs = savingAlgo.validateInputs()
-        assert errs.get("OutputFilename") is not None
-        # mke sure this fails fast with no other errors
-        assert errs.get("GroupingFilename") is None
-        assert errs.get("GroupingWorkspace") is None
+        savingAlgo.validateInputs = mock.Mock()
+        with pytest.raises(RuntimeError):
+            savingAlgo.execute()
+        # make sure it doesn't both validating other inputs
+        assert not savingAlgo.validateInputs.called
 
     def test_fail_no_groupings(self):
         savingAlgo = SavingAlgo()

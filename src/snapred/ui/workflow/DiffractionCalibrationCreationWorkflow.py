@@ -41,7 +41,7 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
             jsonForm, samples=self.samplePaths, groups=self.groupingFiles, parent=parent
         )
         self._calibrationAssessmentView = CalibrationAssessmentView(
-            "Assessing Calibration", self.assessmentSchema, samples=self.samplePaths, parent=parent
+            "Assessing Calibration", self.assessmentSchema, parent=parent
         )
         self._saveCalibrationView = SaveCalibrationView(parent)
 
@@ -68,11 +68,9 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         self.verifyForm(view)
 
         self.runNumber = view.runNumberField.text()
-        sampleIndex = view.sampleDropdown.currentIndex()
 
-        self._calibrationAssessmentView.updateSample(sampleIndex)
-        self._calibrationAssessmentView.updateRunNumber(self.runNumber)
         self._saveCalibrationView.updateRunNumber(self.runNumber)
+
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.useLiteMode = view.litemodeToggle.field.getState()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
@@ -89,11 +87,7 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         self.nBinsAcrossPeakWidth = payload.nBinsAcrossPeakWidth
 
         response = self.request(path="calibration/diffraction", payload=payload.json())
-        return response
 
-    def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
-        # TODO Load Previous ->
-        # pull fields from view for calibration assessment
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),
             workspace=self.responses[-1].data["outputWorkspace"],
@@ -109,6 +103,9 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         self.outputs.extend(self.calibrationRecord.workspaceNames)
         return response
 
+    def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
+        return self.responses[-1]  # [-1]: response from CalibrationAssessmentRequest for the calibration in progress
+
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration save
@@ -123,4 +120,3 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
 
         response = self.request(path="calibration/save", payload=payload.json())
         return response
-

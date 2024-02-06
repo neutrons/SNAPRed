@@ -145,6 +145,25 @@ class TestSousChef(unittest.TestCase):
         assert not XtalService.called
         assert res == self.instance._xtalCache[key]
 
+    @mock.patch(thisService + "CrystallographicInfoService")
+    def test_prepXtalInfo_noCif(self, XtalService):
+        key = (self.ingredients.cifPath, self.ingredients.dBounds.minimum, self.ingredients.dBounds.maximum)
+        # ensure the cache is preped
+        self.instance._xtalCache[key] = mock.Mock()
+        # make ingredients with no CIF path
+        incompleteIngredients = FarmFreshIngredients.parse_obj(self.ingredients)
+        incompleteIngredients.cifPath = None
+
+        # mock out the data factory
+        self.instance.dataFactoryService = mock.Mock()
+        self.instance.dataFactoryService.getCifFilePath.return_value = self.ingredients.cifPath
+
+        res = self.instance.prepCrystallographicInfo(incompleteIngredients)
+
+        assert not XtalService.called
+        assert res == self.instance._xtalCache[key]
+        assert self.instance.dataFactoryService.getCifFilePath.called
+
     @mock.patch(thisService + "PeakIngredients")
     def test_prepPeakIngredients(self, PeakIngredients):
         self.instance.prepCrystallographicInfo = mock.Mock()

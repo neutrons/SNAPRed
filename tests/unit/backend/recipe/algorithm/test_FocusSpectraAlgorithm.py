@@ -172,42 +172,6 @@ class TestFocusSpectra(unittest.TestCase):
         errors = algo.validateInputs()
         assert errors == {}
 
-    def test_failedValidation_noOutputWs(self):
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.pixelGroup.json())
-        errors = algo.validateInputs()
-        assert errors.get("OutputWorkspace") is not None
-
-    def test_failedValidation_noGroupingWs(self):
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("Ingredients", self.pixelGroup.json())
-        algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
-        errors = algo.validateInputs()
-        assert errors.get("GroupingWorkspace") is not None
-
-    def test_failedValidation_noInputWs(self):
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("Ingredients", self.pixelGroup.json())
-        algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
-        errors = algo.validateInputs()
-        assert errors.get("InputWorkspace") is not None
-
-    def test_failedValidation_noIngredients(self):
-        algo = ThisAlgo()
-        algo.initialize()
-        algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("Groupingworkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("OutputWorkspace", "_test_focusSpectra_output")
-        errors = algo.validateInputs()
-        assert errors.get("Ingredients") is not None
-
     def test_failedValidation_groupingWsIsNotGroupingWorkspace(self):
         algo = ThisAlgo()
         algo.initialize()

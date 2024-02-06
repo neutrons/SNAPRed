@@ -29,7 +29,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             doc="Grouping workspace which converts maps full pixel resolution to lite data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="the workspace reduced to lite resolution and compressed",
         )
         # TODO this is needed by LoadInstrument, which needs to be removed
@@ -44,8 +44,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
-        if self.getProperty("OutputWorkspace").isDefault:
-            errors["OutputWorkspace"] = "You must specify an output workspace for Lite data"
         # make sure map is consistent with input data
         inWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
         groupWS = self.mantidSnapper.mtd[self.getPropertyValue("LiteDataMapWorkspace")]

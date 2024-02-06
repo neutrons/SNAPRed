@@ -95,6 +95,7 @@ mantid:
           table: "_DIFC,{runNumber}"
           output: "_{unit},{runNumber},diffoc"
           mask: "_DIFC,{runNumber},mask"
+          metric: "{runNumber},{version},calibration_metrics,{metricName}"
         units:
           dSpacing: dsp
           timeOfFlight: tof
@@ -130,7 +131,7 @@ test:
   data:
     home: ${test.persistence}/data/${test.config.name}
 
-cis_mode: true
+cis_mode: false
 
 constants:
   millisecondsPerSecond: 1000

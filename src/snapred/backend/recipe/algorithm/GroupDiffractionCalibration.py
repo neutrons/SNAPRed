@@ -9,7 +9,7 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.dataobjects import MaskWorkspaceProperty
-from mantid.kernel import Direction
+from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
@@ -53,7 +53,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             ITableWorkspaceProperty("FinalCalibrationTable", "", Direction.Output, PropertyMode.Optional),
             doc="Table workspace with group-corrected DIFC values",
         )
-        self.declareProperty("Ingredients", defaultValue="", direction=Direction.Input)  # noqa: F821
+        self.declareProperty(
+            "Ingredients", defaultValue="", validator=StringMandatoryValidator(), direction=Direction.Input
+        )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -112,7 +114,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.outputWStof: str = ""
         if self.getProperty("OutputWorkspace").isDefault:
             self.outputWStof = wng.diffCalOutput().runNumber(self.runNumber).build()
-            self.setProperty("OutputWorkspace", self.outputWStof)
+            self.setPropertyValue("OutputWorkspace", self.outputWStof)
         else:
             self.outputWStof = self.getPropertyValue("OutputWorkspace")
 
@@ -307,12 +309,12 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         )
         # for inspection, save diffraction focused data before calculation
         self.mantidSnapper.MakeDirtyDish(
-            "save diffraction-focussed TOF data",
+            "Save diffraction-focused TOF data",
             InputWorkspace=outputWS,
             OutputWorkspace=tmpWStof,
         )
         self.mantidSnapper.WashDishes(
-            "save diffraction-focussed d-spacing data",
+            "Delete diffraction-focused d-spacing data",
             Workspace=tmpWSdsp,
         )
         self.mantidSnapper.executeQueue()

@@ -91,7 +91,7 @@ class SNAPRedGUI(QMainWindow):
 
     def changeEvent(self, event):
         if event.type() == event.WindowStateChange:
-            self.titleBar.presenter.windowStateChanged(self.windowState())
+            self.titleBar.presenter.windowStateChange(self.windowState())
 
     def resizeEvent(self, event):
         self.titleBar.presenter.resizeEvent(event)
