@@ -12,7 +12,6 @@ from snapred.backend.dao.request import (
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Config import Config
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
 from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
 from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
