@@ -1,5 +1,5 @@
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QGridLayout, QLabel, QLineEdit, QWidget
+from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QWidget
 
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.JsonFormList import JsonFormList
@@ -38,6 +38,9 @@ class SaveCalibrationView(QWidget):
         self.fieldAuthor = LabeledField("Author :", QLineEdit(parent=self), self)
         self.fieldAuthor.setToolTip("Author of the calibration.")
 
+        self.iterationDropdown = QComboBox(parent=self)
+        self.iterationDropdown.setVisible(False)
+
         self.layout.addWidget(self.interactionText)
         self.layout.addWidget(self.fieldRunNumber)
         self.layout.addWidget(self.fieldVersion)
@@ -52,3 +55,11 @@ class SaveCalibrationView(QWidget):
 
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
+
+    def enableIterationDropdown(self):
+        self.iterationDropdown.setVisible(True)
+        self.layout.addWidget(self.iterationDropdown)
+
+    def setIterationDropdown(self, iterations):
+        self.iterationDropdown.clear()
+        self.iterationDropdown.addItems(iterations)

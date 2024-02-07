@@ -18,6 +18,7 @@ class WorkflowImplementer:
         self.outputs = []
         self.collectiveOutputs = []
         self.interfaceController = InterfaceController()
+        self.renameTemplate = "{workspaceName}_{iteration:02d}"
 
         self._iterateView = IterateView(parent)
         self.workflow = None
@@ -25,7 +26,7 @@ class WorkflowImplementer:
     def _iterate(self, workflowPresenter):
         # rename output workspaces
         for i, workspaceName in enumerate(self.outputs.copy()):
-            newName = f"{workspaceName}_{workflowPresenter.iteration:02d}"
+            newName = self.renameTemplate.format(workspaceName=workspaceName, iteration=workflowPresenter.iteration)
             self.outputs[i] = newName
             payload = RenameWorkspaceRequest(oldName=workspaceName, newName=newName)
             response = self.request(path="workspace/rename", payload=payload.json())
@@ -38,8 +39,6 @@ class WorkflowImplementer:
         # clear every other workspace
         payload = ClearWorkspaceRequest(exclude=self.collectiveOutputs)
         response = self.request(path="workspace/clear", payload=payload.json())
-
-        workflowPresenter.iterate()
         return response
 
     @property

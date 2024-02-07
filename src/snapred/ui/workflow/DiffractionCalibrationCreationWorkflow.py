@@ -46,7 +46,7 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         self._saveCalibrationView = SaveCalibrationView(parent)
 
         self.workflow = (
-            WorkflowBuilder(cancelLambda=None, parent=parent)
+            WorkflowBuilder(cancelLambda=None, iterateLambda=self._iterate, parent=parent)
             .addNode(
                 self._triggerCalibrationReduction,
                 self._calibrationReductionView,
@@ -57,8 +57,7 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
                 self._calibrationAssessmentView,
                 "Assessing",
             )
-            .addNode(self._saveCalibration, self._saveCalibrationView, name="Saving", required=False)
-            .addNode(*self.iterateStepTuple)
+            .addNode(self._saveCalibration, self._saveCalibrationView, name="Saving", iterate=True)
             .build()
         )
 
@@ -104,6 +103,12 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
+        if workflowPresenter.iteration > 1:
+            self._saveCalibrationView.enableIterationDropdown()
+            iterations = [str(i) for i in range(0, workflowPresenter.iteration)]
+            self._saveCalibrationView.iterationDropdown.clear()
+            self._saveCalibrationView.iterationDropdown.addItems(iterations)
+            self._saveCalibrationView.iterationDropdown.setCurrentIndex(workflowPresenter.iteration - 1)
         return self.responses[-1]  # [-1]: response from CalibrationAssessmentRequest for the calibration in progress
 
     def _saveCalibration(self, workflowPresenter):
@@ -114,6 +119,15 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
         )
+
+        # if this is not the first iteration, account for choice.
+        if workflowPresenter.iteration > 1:
+            iteration = int(self._saveCalibrationView.iterationDropdown.currentText())
+            self.calibrationRecord.workspaceNames = [
+                self.renameTemplate.format(workspaceName=w, iteration=iteration)
+                for w in self.calibrationRecord.workspaceNames
+            ]
+
         payload = CalibrationExportRequest(
             calibrationRecord=self.calibrationRecord, calibrationIndexEntry=calibrationIndexEntry
         )

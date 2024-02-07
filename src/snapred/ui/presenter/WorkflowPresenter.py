@@ -11,11 +11,12 @@ logger = snapredLogger.getLogger(__name__)
 class WorkflowPresenter(object):
     worker_pool = WorkerPool()
 
-    def __init__(self, model: WorkflowNodeModel, cancelLambda=None, parent=None):
+    def __init__(self, model: WorkflowNodeModel, cancelLambda=None, iterateLambda=None, parent=None):
         self.view = WorkflowView(model, parent)
         self._iteration = 1
         self.model = model
         self._cancelLambda = cancelLambda
+        self._iterateLambda = iterateLambda
         self._hookupSignals()
 
     @property
@@ -57,12 +58,20 @@ class WorkflowPresenter(object):
                 widget.onSkipButtonClicked(self.handleSkipButtonClicked)
                 widget.enableSkip()
 
+            if model.iterate:
+                widget.onIterateButtonClicked(self.handleIterateButtonClicked)
+                widget.enableIterate()
+
             widget.onContinueButtonClicked(self.handleContinueButtonClicked)
 
             if self._cancelLambda:
                 widget.onCancelButtonClicked(self._cancelLambda)
             else:
                 widget.onCancelButtonClicked(self.resetHard)
+
+    def handleIterateButtonClicked(self):
+        self._iterateLambda(self)
+        self.iterate()
 
     def handleSkipButtonClicked(self):
         self.view.advanceWorkflow()

@@ -13,6 +13,7 @@ class WorkflowNodeModel(object):
     nextModel: WorkflowNodeModel
     name: str = "Unnamed"
     required: bool = True
+    iterate: bool = False
 
     def __iter__(self):
         return _WorkflowModelIterator(self)

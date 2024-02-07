@@ -25,8 +25,10 @@ class WorkflowNodeView(QWidget):
         self.layout.addWidget(self.continueButton, 2, 0)
 
         self.skipButton = QPushButton("Skip \U000023ED", self)
-        # self.layout.addWidget(self.skipButton, 2, 1)
         self.skipButton.setVisible(False)
+
+        self.iterateButton = QPushButton("Iterate \U0001F504", self)
+        self.iterateButton.setVisible(False)
 
         self.cancelButton = QPushButton("Cancel \U0000274C", self)
         self.layout.addWidget(self.cancelButton, 2, 1)
@@ -42,6 +44,14 @@ class WorkflowNodeView(QWidget):
         self.layout.addWidget(self.cancelButton, 2, 2)
         self.skipButton.setVisible(True)
 
+    def enableIterate(self):
+        self.layout.removeWidget(self.continueButton)
+        self.layout.removeWidget(self.cancelButton)
+        self.layout.addWidget(self.continueButton, 2, 0)
+        self.layout.addWidget(self.iterateButton, 2, 1)
+        self.layout.addWidget(self.cancelButton, 2, 2)
+        self.iterateButton.setVisible(True)
+
     def onBackButtonClicked(self, slot):
         self.backButton.clicked.connect(slot)
 
@@ -56,3 +66,6 @@ class WorkflowNodeView(QWidget):
 
     def onSkipButtonClicked(self, slot):
         self.skipButton.clicked.connect(slot)
+
+    def onIterateButtonClicked(self, slot):
+        self.iterateButton.clicked.connect(slot)
