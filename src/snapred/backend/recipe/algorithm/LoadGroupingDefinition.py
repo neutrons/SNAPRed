@@ -87,7 +87,7 @@ class LoadGroupingDefinition(PythonAlgorithm):
         groupingFileExt = pathlib.Path(groupingFilename).suffix[1:].upper()
         # TODO this validation SHOULD occur as part of property validation
         if groupingFileExt not in self.all_extensions:
-            errors["GroupingFilename"] = f"Grouping file extension {groupingFileExt} not supported"
+            errors["GroupingFilename"] = f"Grouping file extension {groupingFileExt} is not supported"
 
         if groupingFileExt not in self.supported_xml_file_extensions:
             if not self.getProperty("InstrumentDonor").isDefault:

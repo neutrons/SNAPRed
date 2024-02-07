@@ -79,7 +79,7 @@ class SousChef(Service):
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
             getGrouping = (
-                self.groceryClerk.grouping(ingredients.focusGroup.name)
+                self.groceryClerk.grouping(ingredients.runNumber, ingredients.focusGroup.name)
                 .useLiteMode(ingredients.useLiteMode)
                 .source(InstrumentFilename=self._getInstrumentDefinitionFilename(ingredients.useLiteMode))
                 .buildList()

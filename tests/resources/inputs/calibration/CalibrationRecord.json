@@ -628,7 +628,8 @@
       "fitted_strippedFocussedData_stripped_0",
       "fitted_strippedFocussedData_stripped_1",
       "fitted_strippedFocussedData_stripped_2",
-      "57514_calibration_reduction_result"
+      "_difc_57514",
+      "_difc_57514_mask"
     ],
     "version": 7
   }

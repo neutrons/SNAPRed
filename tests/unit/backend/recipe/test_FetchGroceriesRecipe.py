@@ -58,7 +58,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         )
         assert os.path.exists(cls.filepath)
 
-        cls.liteMapGroceryItem = GroceryListItem.builder().grouping("Lite").build()
+        cls.liteMapGroceryItem = GroceryListItem.builder().grouping(cls.runNumber, "Lite").build()
 
     def setUp(self) -> None:
         self.rx = Recipe()

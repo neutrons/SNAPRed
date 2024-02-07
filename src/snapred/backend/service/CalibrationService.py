@@ -60,7 +60,7 @@ class CalibrationService(Service):
     def __init__(self):
         super().__init__()
         self.dataFactoryService = DataFactoryService()
-        self.dataExportService = DataExportService()
+        self.dataExportService = DataExportService()        
         self.groceryService = GroceryService()
         self.groceryClerk = GroceryListItem.builder()
         self.sousChef = SousChef()
@@ -111,9 +111,9 @@ class CalibrationService(Service):
 
         # groceries
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("groupingWorkspace").grouping(request.focusGroup.name).useLiteMode(
+        self.groceryClerk.name("groupingWorkspace").grouping(request.runNumber, request.focusGroup.name).useLiteMode(
             request.useLiteMode
-        ).fromPrev().add()
+        ).add()
         self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).useLiteMode(
             request.useLiteMode
         ).add()
@@ -134,6 +134,7 @@ class CalibrationService(Service):
         entry = request.calibrationIndexEntry
         calibrationRecord = request.calibrationRecord
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
+        calibrationRecord = self.dataExportService.exportCalibrationWorkspaces(calibrationRecord)
         entry.version = calibrationRecord.version
         self.saveCalibrationToIndex(entry)
 
@@ -238,7 +239,7 @@ class CalibrationService(Service):
 
         # load persistent workspaces
         for ws_name in calibrationRecord.workspaceNames:
-            self.dataFactoryService.loadCalibrationDataWorkspace(
+            self.dataFactoryService.getCalibrationDataWorkspace(
                 calibrationRecord.runNumber, calibrationRecord.version, ws_name
             )
 

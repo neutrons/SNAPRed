@@ -75,7 +75,7 @@ for group in peakList:
 
 clerk = GroceryListItem.builder()
 clerk.neutron(runNumber).useLiteMode(isLite).add()
-clerk.grouping(groupingScheme).useLiteMode(isLite).fromPrev().add()
+clerk.grouping(runNumber, groupingScheme).useLiteMode(isLite).add()
 groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 ConvertUnits(

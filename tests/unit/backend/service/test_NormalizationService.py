@@ -45,6 +45,8 @@ with mock.patch.dict(
         normalizationService = NormalizationService()
         normalizationService.dataExportService.exportNormalizationRecord = mock.Mock()
         normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version="1.0.0")
+        normalizationService.dataExportService.exportNormalizationWorkspaces = mock.Mock()
+        normalizationService.dataExportService.exportNormalizationWorkspaces.return_value = MagicMock(version="1.0.0")
         normalizationService.dataExportService.exportNormalizationIndexEntry = mock.Mock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = MagicMock("expected")
         normalizationService.sousChef.prepReductionIngredients = mock.Mock()
@@ -53,6 +55,7 @@ with mock.patch.dict(
         assert normalizationService.dataExportService.exportNormalizationRecord.called
         savedEntry = normalizationService.dataExportService.exportNormalizationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
+        assert normalizationService.dataExportService.exportNormalizationWorkspaces.called
 
     def test_exportNormalizationIndexEntry():
         normalizationService = NormalizationService()
@@ -83,7 +86,7 @@ class TestNormalizationService(unittest.TestCase):
 
     def clearoutWorkspaces(self) -> None:
         for ws in mtd.getObjectNames():
-            self.instance.dataFactoryService.deleteWorkspace(ws)
+            self.instance.dataExportService.deleteWorkspace(ws)
 
     def tearDown(self) -> None:
         self.clearoutWorkspaces()
@@ -250,3 +253,17 @@ class TestNormalizationService(unittest.TestCase):
             "outputWorkspace": f"tof_{self.request.focusGroup.name}_12345_s+f-vanadium",
             "smoothedOutput": "dsp_apple_12345_fitted_van_cor",
         }
+
+# this at teardown removes the loggers, eliminating logger error printouts
+# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
+@pytest.fixture(autouse=True)
+def clear_loggers():  # noqa: PT004
+    """Remove handlers from all loggers"""
+    import logging
+
+    yield  # ... teardown follows:
+    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
+    for logger in loggers:
+        handlers = getattr(logger, "handlers", [])
+        for handler in handlers:
+            logger.removeHandler(handler)

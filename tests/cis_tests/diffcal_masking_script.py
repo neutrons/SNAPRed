@@ -136,7 +136,7 @@ ingredients = DiffractionCalibrationIngredients(
 
 clerk = GroceryListItem.builder()
 clerk.neutron(runNumber).useLiteMode(isLite).add()
-clerk.grouping(groupingScheme).useLiteMode(isLite).add()
+clerk.grouping(runNumber, groupingScheme).useLiteMode(isLite).add()
 groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 ### OPTIONAL: CREATE AN INPUT MASK, IF REQUIRED FOR TESTING. ##########
@@ -233,7 +233,7 @@ except:
 
 clerk = GroceryListItem.builder()
 clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
-clerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(isLite).fromPrev().add()
+clerk.name("groupingWorkspace").grouping(runNumber, groupingScheme).useLiteMode(isLite).add()
 
 groceries = GroceryService().fetchGroceryDict(
     groceryDict=clerk.buildDict(),

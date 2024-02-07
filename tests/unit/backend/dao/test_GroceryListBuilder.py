@@ -86,18 +86,18 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert item.propertyName == propertyName
 
     def test_grouping_native_lite(self):
-        item = GroceryListBuilder().grouping(self.groupingScheme).native().build()
+        item = GroceryListBuilder().grouping(self.runNumber, self.groupingScheme).native().build()
         assert item.groupingScheme == self.groupingScheme
         assert item.useLiteMode is False
         assert item.workspaceType == "grouping"
 
-        item = GroceryListBuilder().grouping(self.groupingScheme).lite().build()
+        item = GroceryListBuilder().grouping(self.runNumber, self.groupingScheme).lite().build()
         assert item.groupingScheme == self.groupingScheme
         assert item.useLiteMode is True
         assert item.workspaceType == "grouping"
 
         for useLite in [True, False]:
-            item = GroceryListBuilder().grouping(self.groupingScheme).useLiteMode(useLite).build()
+            item = GroceryListBuilder().grouping(self.runNumber, self.groupingScheme).useLiteMode(useLite).build()
             assert item.groupingScheme == self.groupingScheme
             assert item.useLiteMode == useLite
             assert item.workspaceType == "grouping"
@@ -105,7 +105,7 @@ class TestGroceryListBuilder(unittest.TestCase):
     def test_grouping_with_source(self):
         item = (
             GroceryListBuilder()
-            .grouping(self.groupingScheme)
+            .grouping(self.runNumber, self.groupingScheme)
             .native()
             .source(InstrumentDonor=self.instrumentDonor)
             .build()
@@ -115,7 +115,7 @@ class TestGroceryListBuilder(unittest.TestCase):
 
         item = (
             GroceryListBuilder()
-            .grouping(self.groupingScheme)
+            .grouping(self.runNumber, self.groupingScheme)
             .native()
             .source(InstrumentFilename=self.instrumentFilename)
             .build()
@@ -123,27 +123,31 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert item.instrumentPropertySource == "InstrumentFilename"
         assert item.instrumentSource == self.instrumentFilename
 
-        item = GroceryListBuilder().grouping(self.groupingScheme).native().source(InstrumentName="SNAP").build()
+        item = GroceryListBuilder().grouping(self.runNumber, self.groupingScheme).native().source(InstrumentName="SNAP").build()
         assert item.instrumentPropertySource == "InstrumentName"
         assert item.instrumentSource == "SNAP"
 
     def test_fail_bad_property_source(self):
         with pytest.raises(ValidationError):
-            GroceryListBuilder().grouping(self.groupingScheme).native().source(MyBestFriend="trust me").build()
+            GroceryListBuilder().grouping(self.runNumber, self.groupingScheme).native().source(MyBestFriend="trust me").build()
 
     def test_fail_two_sources(self):
         with pytest.raises(RuntimeError) as e:
-            GroceryListBuilder().grouping(self.groupingScheme).native().source(
+            GroceryListBuilder().grouping(self.runNumber, self.groupingScheme).native().source(
                 MyBestFriend="trust me",
                 SusyFromClass="i heard it too",
             ).build()
         assert "one instrument source" in str(e.value)
 
     def test_nexus_with_instrument(self):
-        item = GroceryListBuilder().neutron(self.runNumber).native().source(InstrumentName="SNAP").build()
-        assert item.runNumber == self.runNumber
-        assert item.useLiteMode is False
-        assert item.workspaceType == "neutron"
+        with pytest.raises(ValueError) as e:
+            item = GroceryListBuilder().neutron(self.runNumber).native().source(InstrumentName="SNAP").build()
+        assert "should not specify an instrument" in str(e.value)        
+
+    def test_diffcal_output_with_instrument(self):
+        with pytest.raises(ValueError) as e:
+            item = GroceryListBuilder().diffcal_output(self.runNumber).native().source(InstrumentName="SNAP").build()
+        assert "should not specify an instrument" in str(e.value)        
 
     def test_nexus_clean_and_dirty(self):
         item = GroceryListBuilder().neutron(self.runNumber).native().clean().build()
@@ -161,8 +165,8 @@ class TestGroceryListBuilder(unittest.TestCase):
     def test_build_list(self):
         builder = GroceryListBuilder()
         builder.neutron(self.runNumber).native().add()
-        builder.grouping(self.groupingScheme).native().source(InstrumentDonor=self.instrumentDonor).add()
-        builder.grouping(self.groupingScheme).native().fromPrev().add()
+        builder.grouping(self.runNumber, self.groupingScheme).native().source(InstrumentDonor=self.instrumentDonor).add()
+        builder.grouping(self.runNumber, self.groupingScheme).native().add()
         groceryList = builder.buildList()
         # test the list built correctly
         assert len(groceryList) == 3
@@ -180,8 +184,8 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert groceryList[2].workspaceType == "grouping"
         assert groceryList[2].groupingScheme == self.groupingScheme
         assert groceryList[2].useLiteMode is False
-        assert groceryList[2].instrumentPropertySource == "InstrumentDonor"
-        assert groceryList[2].instrumentSource == "prev"
+        assert groceryList[2].instrumentPropertySource == None
+        assert groceryList[2].instrumentSource == None
 
     def test_build_list_hanging(self):
         builder = GroceryListBuilder()
@@ -206,8 +210,8 @@ class TestGroceryListBuilder(unittest.TestCase):
         # make the list with out any property names
         builder = GroceryListBuilder()
         builder.neutron(self.runNumber).native().add()
-        builder.grouping(self.groupingScheme).native().source(InstrumentDonor=self.instrumentDonor).add()
-        builder.grouping(self.groupingScheme).native().fromPrev().add()
+        builder.grouping(self.runNumber, self.groupingScheme).native().source(InstrumentDonor=self.instrumentDonor).add()
+        builder.grouping(self.runNumber, self.groupingScheme).native().add()
         groceryDict = builder.buildDict()
         # test the dictionary has nothing in it
         assert len(groceryDict) == 0

@@ -67,11 +67,11 @@ class NormalizationService(Service):
         self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
             request.useLiteMode
         ).add()
-        self.groceryClerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(
+        self.groceryClerk.name("groupingWorkspace").grouping(request.runNumber, groupingScheme).useLiteMode(
             request.useLiteMode
-        ).fromPrev().add()
+        ).add()
 
-        outputWorkspace = wng.run().runNumber(request.runNumber).group(groupingScheme).auxilary("S+F-Vanadium").build()
+        outputWorkspace = wng.run().runNumber(request.runNumber).group(groupingScheme).auxiliary("S+F-Vanadium").build()
         correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
         smoothedOutput = wng.smoothedFocusedRawVanadium().runNumber(request.runNumber).group(groupingScheme).build()
 
@@ -157,6 +157,7 @@ class NormalizationService(Service):
         entry = request.normalizationIndexEntry
         normalizationRecord = request.normalizationRecord
         normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
+        normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
         entry.version = normalizationRecord.version
         self.saveNormalizationToIndex(entry)
 
