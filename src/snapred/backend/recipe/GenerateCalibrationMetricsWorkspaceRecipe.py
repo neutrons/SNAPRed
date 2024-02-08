@@ -40,7 +40,7 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
                 ListOfDict=list_to_raw(ingredients.calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric),
                 OutputWorkspace=ws_table,
             )
-
+            outputs = []
             # convert the table workspace to 2 matrix workspaces: sigma vs. twoTheta and strain vs. twoTheta
             for metric in ["sigma", "strain"]:
                 ws_metric = (
@@ -53,8 +53,10 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
                     ColumnE=metric + "StandardDeviation",
                     OutputWorkspace=ws_metric,
                 )
+                outputs.append(ws_metric)
             DeleteWorkspace(Workspace=ws_table)
+            logger.info("Finished generating calibration metrics workspace.")
+            return outputs
         except (RuntimeError, AlgorithmException) as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])
-        logger.info("Finished generating calibration metrics workspace.")

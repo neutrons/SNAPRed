@@ -7,6 +7,7 @@ from snapred.backend.dao.request import (
     CalibrationExportRequest,
     DiffractionCalibrationRequest,
 )
+from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.CalibrationAssessmentView import CalibrationAssessmentView
 from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
@@ -97,8 +98,11 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         )
 
         response = self.request(path="calibration/assessment", payload=payload.json())
-        self.calibrationRecord = self.responses[-1].data
+        assessmentResponse = response.data
+        self.calibrationRecord = assessmentResponse.record
         self.calibrationRecord.workspaceNames.append(self.responses[-2].data["calibrationTable"])
+
+        self.outputs.extend(assessmentResponse.metricWorkspaces)
         self.outputs.extend(self.calibrationRecord.workspaceNames)
         return response
 

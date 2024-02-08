@@ -26,6 +26,7 @@ from snapred.backend.dao.request import (
     FarmFreshIngredients,
     InitializeStateRequest,
 )
+from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
@@ -270,8 +271,8 @@ class CalibrationService(Service):
         )
 
         timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
-        GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
+        metricWorkspaces = GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
             CalibrationMetricsWorkspaceIngredients(calibrationRecord=record, timestamp=timestamp)
         )
 
-        return record
+        return CalibrationAssessmentResponse(record=record, metricWorkspaces=metricWorkspaces)
