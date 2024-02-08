@@ -91,6 +91,10 @@ class DataFactoryService:
         path = self.getCalibrationDataPath(runId, version)
         return self.groceryService.fetchWorkspace(path, wsInfo)
 
+    def loadCalibrationTableWorkspaces(self, runId, version):
+        path = self.getCalibrationDataPath(runId, version)
+        return self.groceryService.readCalibrationTableWorkspaces(path, runId, version)
+
     def writeWorkspace(self, path, wsInfo):
         return self.groceryService.writeWorkspace(path, wsInfo)
 
@@ -114,7 +118,7 @@ class DataFactoryService:
         return self.lookupService.readFocusGroups()
 
     def checkCalibrationStateExists(self, runId: str):
-        return self.lookupService.checkCalibrationFileExists(runId)
+        return self.lookupService.checkCalibrationStateExists(runId)
 
     def getSamplePaths(self):
         return self.lookupService.readSamplePaths()

@@ -24,6 +24,8 @@ class NameBuilder:
                 value = WorkspaceNameGenerator.formatRunNumber(value)
             elif key == "version":
                 value = WorkspaceNameGenerator.formatVersion(value)
+            elif key == "timestamp":
+                value = WorkspaceNameGenerator.formatTimestamp(value)
             self.props[key] = value
             return self
 
@@ -46,23 +48,31 @@ class _WorkspaceNameGenerator:
     _diffCalInputTemplate = Config[f"{_templateRoot}.diffCal.input"]
     _diffCalInputTemplateKeys = ["runNumber", "unit"]
     _diffCalTableTemplate = Config[f"{_templateRoot}.diffCal.table"]
-    _diffCalTableTemplateKeys = ["runNumber"]
+    _diffCalTableTemplateKeys = ["runNumber", "version"]
     _diffCalOutputTemplate = Config[f"{_templateRoot}.diffCal.output"]
     _diffCalOutputTemplateKeys = ["runNumber", "unit"]
     _diffCalMaskTemplate = Config[f"{_templateRoot}.diffCal.mask"]
-    _diffCalMaskTemplateKeys = ["runNumber"]
+    _diffCalMaskTemplateKeys = ["runNumber", "version"]
     _diffCalMetricTemplate = Config[f"{_templateRoot}.diffCal.metric"]
     _diffCalMetricTemplateKeys = ["metricName", "runNumber", "version"]
+    _diffCalTimedMetricTemplate = Config[f"{_templateRoot}.diffCal.timed_metric"]
+    _diffCalTimedMetricTemplateKeys = ["metricName", "runNumber", "timestamp"]
 
     @staticmethod
     def formatRunNumber(runNumber: str):
         return str(runNumber).zfill(6)
 
     @staticmethod
-    def formatVersion(version, v_prefix: bool = True):
+    def formatVersion(version, use_v_prefix: bool = True):
+        if version == "":
+            return version
         if not version == "*":
             version = str(version).zfill(4)
-        return "v" + version if v_prefix else version
+        return "v" + version if use_v_prefix else version
+
+    @staticmethod
+    def formatTimestamp(timestamp: str):
+        return "ts" + timestamp
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"
@@ -99,7 +109,7 @@ class _WorkspaceNameGenerator:
         )
 
     def diffCalTable(self):
-        return NameBuilder(self._diffCalTableTemplate, self._diffCalTableTemplateKeys, self._delimiter)
+        return NameBuilder(self._diffCalTableTemplate, self._diffCalTableTemplateKeys, self._delimiter, version="")
 
     def diffCalOutput(self):
         return NameBuilder(
@@ -107,10 +117,13 @@ class _WorkspaceNameGenerator:
         )
 
     def diffCalMask(self):
-        return NameBuilder(self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter)
+        return NameBuilder(self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter, version="")
 
-    def diffCalMetrics(self):
+    def diffCalMetric(self):
         return NameBuilder(self._diffCalMetricTemplate, self._diffCalMetricTemplateKeys, self._delimiter)
+
+    def diffCalTimedMetric(self):
+        return NameBuilder(self._diffCalTimedMetricTemplate, self._diffCalTimedMetricTemplateKeys, self._delimiter)
 
 
 WorkspaceNameGenerator = _WorkspaceNameGenerator()

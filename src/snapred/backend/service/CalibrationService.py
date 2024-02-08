@@ -207,18 +207,14 @@ class CalibrationService(Service):
             wkspaceExists = False
             for metricName in ["sigma", "strain"]:
                 wsName = (
-                    wng.diffCalMetrics()
-                    .metricName(metricName)
-                    .runNumber(request.runId)
-                    .version(wng.formatVersion(request.version))
-                    .build()
+                    wng.diffCalMetric().metricName(metricName).runNumber(request.runId).version(request.version).build()
                 )
                 if self.dataFactoryService.workspaceDoesExist(wsName):
                     wkspaceExists = True
                     break
             if not wkspaceExists:
                 for wsInfo in calibrationRecord.workspaceList:
-                    wsName = wsInfo.name
+                    wsName = wsInfo.name + "_" + wng.formatVersion(version)
                     if self.dataFactoryService.workspaceDoesExist(wsName):
                         wkspaceExists = True
                         break
@@ -237,12 +233,19 @@ class CalibrationService(Service):
 
         # load persistent workspaces
         for wsInfo in calibrationRecord.workspaceList:
+            if wsInfo.type == "TableWorkspace" or wsInfo.type == "MaskWorkspace":
+                continue  # skip potential DiffCal workspaces until workspaceList is refactored
             wsInfo.name += "_" + wng.formatVersion(str(calibrationRecord.version))
             self.dataFactoryService.loadCalibrationDataWorkspace(
                 calibrationRecord.runNumber,
                 calibrationRecord.version,
                 wsInfo,
             )
+
+        # separately handle reading DiffCal workspaces until workspaceList is refactored
+        self.dataFactoryService.loadCalibrationTableWorkspaces(
+            runId=calibrationRecord.runNumber, version=str(calibrationRecord.version)
+        )
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):

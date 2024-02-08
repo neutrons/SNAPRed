@@ -97,34 +97,27 @@ class GroceryService:
     def _createDiffcalOutputWorkspaceName(self, runId: str):
         return wng.diffCalOutput().runNumber(runId).build()
 
-    def _createDiffcalTableWorkspaceName(self, runId: str):
-        return wng.diffCalTable().runNumber(runId).build()
+    def _createDiffcalTableWorkspaceName(self, runId: str, version: str = ""):
+        return wng.diffCalTable().runNumber(runId).version(version).build()
 
-    def _createDiffcalMaskWorkspaceName(self, runId: str):
-        return wng.diffCalMask().runNumber(runId).build()
+    def _createDiffcalMaskWorkspaceName(self, runId: str, version: str = ""):
+        return wng.diffCalMask().runNumber(runId).version(version).build()
 
     ## WRITING TO DISK
 
-    def writeWorkspace(self, path: str, wsInfo: WorkspaceInfo, version: str = None):
+    def writeWorkspace(self, path: str, wsInfo: WorkspaceInfo):
         """
         Writes a Mantid Workspace to disk.
         """
-        if wsInfo.type == "TableWorkspace":
-            return self.writeDiffCalTable(path=path, name=wsInfo.name, version=version)
-        elif wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
+        if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
+            path += ".nxs"
             algo = "SaveNexusProcessed"
         else:
+            path += ".nxs"
             algo = "SaveNexus"
-
         saveAlgo = AlgorithmManager.create(algo)
         saveAlgo.setProperty("InputWorkspace", wsInfo.name)
-
-        fullPath = os.path.join(path, wsInfo.name)
-        if version:
-            fullPath += "_" + wng.formatVersion(version)
-        fullPath += ".nxs"
-        saveAlgo.setProperty("Filename", fullPath)
-
+        saveAlgo.setProperty("Filename", path)
         saveAlgo.execute()
 
     def writeGrouping(self, path: str, name: WorkspaceName):
@@ -136,27 +129,63 @@ class GroceryService:
         saveAlgo.setProperty("OutputFilename", os.path.join(path, name))
         saveAlgo.execute()
 
+    def writeCalibrationTableWorkspaces(self, path: str, runId: str, version: str):
+        calTableName = self._createDiffcalTableWorkspaceName(runId)
+        maskTableName = self._createDiffcalMaskWorkspaceName(runId)
+        filePath = os.path.join(path, calTableName)
+        if version:
+            filePath += "_" + wng.formatVersion(version)
+        filePath += ".h5"
+        self.writeDiffCalTable(path=filePath, calibrationWS=calTableName, maskingWS=maskTableName)
+
     def writeDiffCalTable(
         self,
         path: str,
-        name: WorkspaceName,
-        grouping: WorkspaceName = "",
-        mask: WorkspaceName = "",
-        version: str = None,
+        calibrationWS: WorkspaceName,
+        groupingWS: WorkspaceName = "",
+        maskingWS: WorkspaceName = "",
     ):
         """
-        Writes a diffcal table from a Mantid TableWorkspace to disk.
+        Writes a file from Mantid calibration table workspaces to disk.
         """
         saveAlgo = AlgorithmManager.create("SaveDiffCal")
-        saveAlgo.setPropertyValue("CalibrationWorkspace", name)
-        saveAlgo.setPropertyValue("GroupingWorkspace", grouping)
-        saveAlgo.setPropertyValue("MaskWorkspace", mask)
-        fullPath = os.path.join(path, name)
-        if version:
-            fullPath += "_" + wng.formatVersion(version)
-        fullPath += ".h5"
-        saveAlgo.setPropertyValue("Filename", fullPath)
+        saveAlgo.setPropertyValue("CalibrationWorkspace", calibrationWS)
+        saveAlgo.setPropertyValue("GroupingWorkspace", groupingWS)
+        saveAlgo.setPropertyValue("MaskWorkspace", maskingWS)
+        saveAlgo.setPropertyValue("Filename", path)
         saveAlgo.execute()
+
+    def readCalibrationTableWorkspaces(self, path: str, runId: str, version: str):
+        calTableName = self._createDiffcalTableWorkspaceName(runId, version)
+        maskTableName = self._createDiffcalMaskWorkspaceName(runId, version)
+        filePath = os.path.join(path, calTableName) + ".h5"
+        self.readDiffCalTable(path=filePath, calibrationWS=calTableName, maskingWS=maskTableName)
+
+    def readDiffCalTable(
+        self, path: str, calibrationWS: WorkspaceName, maskingWS: WorkspaceName = None, groupingWS: WorkspaceName = None
+    ):
+        loadAlgo = AlgorithmManager.create("LoadDiffCal")
+        loadAlgo.setPropertyValue("WorkspaceName", calibrationWS)
+        loadAlgo.setPropertyValue("Filename", path)
+        loadAlgo.setPropertyValue("InstrumentFilename", "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml")
+        loadAlgo.setPropertyValue("MakeMaskWorkspace", "1" if maskingWS else "0")
+        loadAlgo.setPropertyValue("MakeGroupingWorkspace", "1" if groupingWS else "0")
+        loadAlgo.execute()
+
+        renameAlgo = AlgorithmManager.create("RenameWorkspace")
+        renameAlgo.setPropertyValue("InputWorkspace", calibrationWS + "_cal")
+        renameAlgo.setPropertyValue("OutputWorkspace", calibrationWS)
+        renameAlgo.execute()
+
+        if maskingWS:
+            renameAlgo.setPropertyValue("InputWorkspace", calibrationWS + "_mask")
+            renameAlgo.setPropertyValue("OutputWorkspace", maskingWS)
+            renameAlgo.execute()
+
+        if groupingWS:
+            renameAlgo.setPropertyValue("InputWorkspace", calibrationWS + "_group")
+            renameAlgo.setPropertyValue("OutputWorkspace", groupingWS)
+            renameAlgo.execute()
 
     ## ACCESSING WORKSPACES
     """
@@ -231,16 +260,15 @@ class GroceryService:
             return wsInfo.name
         else:
             # determine the loader and extension
-            ext = ".nxs"
+            path = os.path.join(path, wsInfo.name)
             if not loader:
-                if wsInfo.type == "TableWorkspace":
-                    loader = "LoadDiffCal"
-                    ext = ".h5"
-                elif wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
+                if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
+                    ext = ".nxs"
                     loader = "LoadNexusProcessed"
                 else:
+                    ext = ".nxs"
                     loader = "LoadNexus"
-            path = os.path.join(path, wsInfo.name) + ext
+            path += ext
             try:
                 res = self.grocer.executeRecipe(path, wsInfo.name, loader)
             except RuntimeError:

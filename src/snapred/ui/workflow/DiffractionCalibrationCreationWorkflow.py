@@ -133,6 +133,8 @@ class DiffractionCalibrationCreationWorkflow:
         # [-2]: response from DiffractionCalibrationRequest
         wsName = self.responses[-2].data["calibrationTable"]
         calibrationRecord.workspaceList.append(WorkspaceInfo(name=wsName, type=mtd[wsName].id()))
+        wsName = self.responses[-2].data["maskWorkspace"]
+        calibrationRecord.workspaceList.append(WorkspaceInfo(name=wsName, type=mtd[wsName].id()))
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
             comments=view.fieldComments.get(),

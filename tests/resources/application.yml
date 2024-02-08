@@ -93,9 +93,10 @@ mantid:
         diffCal:
           input: "_{unit},{runNumber},raw"
           output: "_{unit},diffoc,{runNumber}"
-          table: "_diffract_consts,{runNumber}"
+          table: "_diffract_consts,{runNumber},{version}"
           metric: "_calib_metrics,{metricName},{runNumber},{version}"
-          mask: "_diffract_consts,mask,{runNumber}"
+          timed_metric: "calib_metrics,{metricName},{runNumber},{timestamp}"
+          mask: "_diffract_consts,mask,{runNumber},{version}"
         units:
           dSpacing: dsp
           timeOfFlight: tof
