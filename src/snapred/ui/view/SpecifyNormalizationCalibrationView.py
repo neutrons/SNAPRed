@@ -1,5 +1,4 @@
 import math
-
 import unittest.mock as mock
 
 import matplotlib.pyplot as plt
@@ -8,9 +7,9 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
 from workbench.plotting.figuremanager import MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
+
 # from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 # from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-
 from snapred.meta.Config import Config
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
@@ -47,9 +46,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
         fig, ax = plt.subplots(
-            figsize=(10, 6.5258), 
-            nrows = 3,
-            ncols = 3,
+            figsize=(10, 6.5258),
+            nrows=3,
+            ncols=3,
             subplot_kw={"projection": "mantid"},
         )
 
@@ -168,8 +167,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
     def _optimizeRowsAndCols(self, numGraphs):
         # Get best size for layout
-        sqrtSize = int( numGraphs ** 0.5 )
-        if sqrtSize == numGraphs ** 0.5:
+        sqrtSize = int(numGraphs**0.5)
+        if sqrtSize == numGraphs**0.5:
             rowSize = sqrtSize
             colSize = sqrtSize
         elif numGraphs <= ((sqrtSize + 1) * sqrtSize):
@@ -240,7 +239,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         # self.layout.addWidget(self.canvas, 1, 0, 1, -1)
 
         self.canvas.draw()
-
 
     def setEnableRecalculateButton(self, enable):
         self.recalculationButton.setEnabled(enable)
