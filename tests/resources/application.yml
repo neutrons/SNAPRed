@@ -95,7 +95,7 @@ mantid:
           output: "_{unit},diffoc,{runNumber}"
           table: "_diffract_consts,{runNumber},{version}"
           metric: "_calib_metrics,{metricName},{runNumber},{version}"
-          timed_metric: "calib_metrics,{metricName},{runNumber},{timestamp}"
+          timed_metric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
           mask: "_diffract_consts,mask,{runNumber},{version}"
         units:
           dSpacing: dsp
