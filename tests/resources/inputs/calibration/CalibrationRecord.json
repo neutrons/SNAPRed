@@ -624,11 +624,7 @@
         }
       ]
     },
-    "workspaceNames": [
-      "fitted_strippedFocussedData_stripped_0",
-      "fitted_strippedFocussedData_stripped_1",
-      "fitted_strippedFocussedData_stripped_2",
-      "57514_calibration_reduction_result"
+    "workspaceList": [
     ],
     "version": 7
   }
