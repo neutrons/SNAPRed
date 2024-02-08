@@ -204,8 +204,6 @@ class LocalDataService:
         return SHA.hex, SHA.decodedKey
 
     def _findMatchingFileList(self, pattern, throws=True) -> List[str]:
-        print("pattern is")
-        print(pattern)
         fileList: List[str] = []
         for fname in glob.glob(pattern, recursive=True):
             if os.path.isfile(fname):
@@ -300,8 +298,6 @@ class LocalDataService:
         """
         # lookup normalization index
         normalizationIndex = self.readNormalizationIndex(runId)
-        print("normal index is")
-        print(normalizationIndex)
         # From the index find the latest normalization
         latestNormalization = None
         version = None
@@ -359,7 +355,6 @@ class LocalDataService:
         # append to index and write to file
         normalizationIndex = self.readNormalizationIndex(entry.runNumber)
         normalizationIndex.append(entry)
-        print("writing normal index")
         write_model_list_pretty(normalizationIndex, indexPath)
 
     def getCalibrationRecordPath(self, runId: str, version: str):
@@ -408,6 +403,20 @@ class LocalDataService:
                 latestVersion = version
         return latestVersion
 
+    def _getLatestNormalizationCalibrationVersion(self, stateId: str):
+        """
+        Ignoring the calibration index, whats the last set of calibration files to be generated.
+        """
+        calibrationStatePath = self._constructNormalizationCalibrationStatePath(stateId)
+        calibrationVersionPath = f"{calibrationStatePath}v_*/"
+        latestVersion = 0
+        versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
+        for versionDir in versionDirs:
+            version = int(versionDir.split("/")[-2].split("_")[-1])
+            if version > latestVersion:
+                latestVersion = version
+        return latestVersion
+
     def readNormalizationRecord(self, runId: str, version: str = None):
         recordPath: str = self.getNormalizationRecordPath(runId, "*")
         latestFile = ""
@@ -429,7 +438,7 @@ class LocalDataService:
         """
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
-        previousVersion = self._getLatestCalibrationVersion(stateId)
+        previousVersion = self._getLatestNormalizationCalibrationVersion(stateId)
         if not version:
             version = previousVersion + 1
         recordPath: str = self.getNormalizationRecordPath(runNumber, version)
@@ -442,14 +451,12 @@ class LocalDataService:
         record.normalization.version = version
 
         normalizationPath = self._constructNormalizationCalibrationDataPath(runNumber, version)
-        print(normalizationPath)
         # check if directory exists for runId
         if not os.path.exists(normalizationPath):
             os.makedirs(normalizationPath)
         # append to record and write to file
         write_model_pretty(record, recordPath)
 
-        # self.writeNormalizationState(runNumber, record.normalization, version)
         for workspace in record.workspaceNames:
             self.groceryService.writeWorkspace(normalizationPath, workspace)
         logger.info(f"wrote NormalizationRecord: version: {version}")
@@ -591,10 +598,6 @@ class LocalDataService:
     def readNormalizationState(self, runId: str, version: str = None):
         stateId, _ = self._generateStateId(runId)
         normalizationStatePath = self.getNormalizationStatePath(runId, "*")
-        print("path is")
-        print(normalizationStatePath)
-        print("version is")
-        print(version)
 
         latestFile = ""
         if version:
@@ -605,7 +608,6 @@ class LocalDataService:
 
         normalizationState = None
         if latestFile:
-            print("lastfile exists")
             normalizationState = parse_file_as(Normalization, latestFile)  # noqa: F821
 
         return normalizationState

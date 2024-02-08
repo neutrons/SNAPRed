@@ -150,6 +150,7 @@ class NormalizationService(Service):
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             normalization=normalization,
+            dMin=request.dMin,
         )
         return record
 
@@ -195,7 +196,7 @@ class NormalizationService(Service):
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroup,
         )
-        ingredients = self.sousChef.prepPixelGroup(farmFresh)
+        ingredients = self.sousChef.prepPixelGroup(farmFresh, True)
         return FocusSpectraRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             GroupingWorkspace=request.groupingWorkspace,

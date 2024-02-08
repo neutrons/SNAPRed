@@ -55,7 +55,7 @@ class SousChef(Service):
     def name():
         return "souschef"
 
-    def prepCalibration(self, runNumber: str, normalization: bool) -> Calibration:
+    def prepCalibration(self, runNumber: str, normalization=False) -> Calibration:
         if runNumber not in self._calibrationCache:
             if normalization:
                 self._calibrationCache[runNumber] = self.dataFactoryService.getNormalizationState(runNumber)
@@ -63,7 +63,7 @@ class SousChef(Service):
                 self._calibrationCache[runNumber] = self.dataFactoryService.getCalibrationState(runNumber)
         return self._calibrationCache[runNumber]
 
-    def prepInstrumentState(self, runNumber: str, normalization: bool) -> InstrumentState:
+    def prepInstrumentState(self, runNumber: str, normalization=False) -> InstrumentState:
         return self.prepCalibration(runNumber, normalization).instrumentState
 
     def prepRunConfig(self, runNumber: str) -> RunConfig:
@@ -112,15 +112,15 @@ class SousChef(Service):
             self._xtalCache[key] = CrystallographicInfoService().ingest(*key)["crystalInfo"]
         return self._xtalCache[key]
 
-    def prepPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
+    def prepPeakIngredients(self, ingredients: FarmFreshIngredients, normalization=False) -> PeakIngredients:
         return PeakIngredients(
             crystalInfo=self.prepCrystallographicInfo(ingredients),
-            instrumentState=self.prepInstrumentState(ingredients.runNumber),
-            pixelGroup=self.prepPixelGroup(ingredients),
+            instrumentState=self.prepInstrumentState(ingredients.runNumber, normalization),
+            pixelGroup=self.prepPixelGroup(ingredients, normalization),
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
         )
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[GroupPeakList]:
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, normalization=False) -> List[GroupPeakList]:
         key = (
             ingredients.runNumber,
             ingredients.useLiteMode,
@@ -128,7 +128,7 @@ class SousChef(Service):
             ingredients.peakIntensityThreshold,
         )
         if key not in self._peaksCache:
-            ingredients = self.prepPeakIngredients(ingredients)
+            ingredients = self.prepPeakIngredients(ingredients, normalization)
             res = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=ingredients,
             )
@@ -146,7 +146,7 @@ class SousChef(Service):
         return NormalizationIngredients(
             pixelGroup=self.prepPixelGroup(ingredients, normalization=True),
             calibrantSample=self.prepCalibrantSample(ingredients.calibrantSamplePath),
-            detectorPeaks=self.prepDetectorPeaks(ingredients),
+            detectorPeaks=self.prepDetectorPeaks(ingredients, normalization=True),
         )
 
     def prepDiffractionCalibrationIngredients(

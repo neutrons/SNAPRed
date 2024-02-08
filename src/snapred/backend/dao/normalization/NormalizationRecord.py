@@ -12,3 +12,4 @@ class NormalizationRecord(BaseModel):
     normalization: Normalization
     workspaceNames: Optional[List[str]]
     version: Optional[int]
+    dMin: float
