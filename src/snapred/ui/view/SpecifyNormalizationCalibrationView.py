@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from mantid.simpleapi import mtd
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
-from workbench.plotting.figuremanager import MantidFigureCanvas, FigureManagerWorkbench
+from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.meta.Config import Config
@@ -179,7 +179,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout.addWidget(self.canvas, 1, 0, 1, -1)
 
     def _updateGraphsOption1(self):
-    
         # get the updated workspaces and optimal graph grid
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
