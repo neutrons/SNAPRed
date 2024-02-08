@@ -1,12 +1,15 @@
 import math
 
+import unittest.mock as mock
+
 import matplotlib.pyplot as plt
 from mantid.simpleapi import mtd
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
 from workbench.plotting.figuremanager import MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
+# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+# from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
 from snapred.meta.Config import Config
 from snapred.ui.widget.JsonFormList import JsonFormList
@@ -44,10 +47,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
         fig, ax = plt.subplots(
-            figsize=(50, 50),
-            nrows=1,
-            ncols=1,
-            num=1,
+            figsize=(10, 6.5258), 
+            nrows = 3,
+            ncols = 3,
             subplot_kw={"projection": "mantid"},
         )
 
@@ -164,14 +166,33 @@ class SpecifyNormalizationCalibrationView(QWidget):
         )
         self._updateGraphs()
 
+    def _optimizeRowsAndCols(self, numGraphs):
+        # Get best size for layout
+        sqrtSize = int( numGraphs ** 0.5 )
+        if sqrtSize == numGraphs ** 0.5:
+            rowSize = sqrtSize
+            colSize = sqrtSize
+        elif numGraphs <= ((sqrtSize + 1) * sqrtSize):
+            rowSize = sqrtSize
+            colSize = sqrtSize + 1
+        else:
+            rowSize = sqrtSize + 1
+            colSize = sqrtSize + 1
+        return rowSize, colSize
+
     def _updateGraphs(self):
+        self._updateGraphsOption2()
+
+    def _updateGraphsOption1(self):
+        """
+        This will allow the toolbar to work, but it sends out incessant error messsages
+        """
         self.figure.clear()
 
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
         numGraphs = focusedWorkspace.getNumberHistograms()
-        ncols = 3
-        nrows = int(numGraphs / ncols) + 1
+        nrows, ncols = self._optimizeRowsAndCols(numGraphs)
 
         for i in range(numGraphs):
             ax = self.figure.add_subplot(nrows, ncols, i + 1, projection="mantid")
@@ -183,6 +204,43 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.set_ylabel("Intensity")
 
         self.canvas.draw()
+
+    def _updateGraphsOption2(self):
+        """
+        This will eliminate the incessant mouse-over errors, but the toolbar does not (and cannot) work.
+        """
+        self.figure.clear()
+
+        focusedWorkspace = mtd[self.focusWorkspace]
+        smoothedWorkspace = mtd[self.smoothedWorkspace]
+        numGraphs = focusedWorkspace.getNumberHistograms()
+        nrows, ncols = self._optimizeRowsAndCols(numGraphs)
+
+        fig, axes = plt.subplots(
+            nrows=nrows,
+            ncols=ncols,
+            subplot_kw={"projection": "mantid"},
+        )
+        self.figure = fig
+        self.canvas.figure = self.figure
+
+        for i in range(numGraphs):
+            ax = self.figure.add_subplot(nrows, ncols, i + 1, projection="mantid")
+            ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
+            ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
+            ax.legend()
+            ax.set_title(f"Group ID: {i + 1}")
+            ax.set_xlabel("d-Spacing (Å)")
+            ax.set_ylabel("Intensity")
+
+        """Try these to replace the elements completely -- still won't work"""
+        # self.canvas = MantidFigureCanvas(self.figure)
+        # self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
+        # self.layout.addWidget(self.navigationBar, 0, 0)
+        # self.layout.addWidget(self.canvas, 1, 0, 1, -1)
+
+        self.canvas.draw()
+
 
     def setEnableRecalculateButton(self, enable):
         self.recalculationButton.setEnabled(enable)
