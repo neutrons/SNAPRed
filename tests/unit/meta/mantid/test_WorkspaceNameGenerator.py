@@ -2,26 +2,39 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as
 
 
 def testRunNames():
-    assert "tof_all_123" == wng.run().runNumber(123).build()
-    assert "dsp_all_123" == wng.run().runNumber(123).unit(wng.Units.DSP).build()
-    assert "dsp_column_123" == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).build()
-    # assert (
-    #     "dsp_column_123_test"
-    #     == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).auxilary("Test").build()
+    runNumber = 123
+    fRunNumber = wng.formatRunNumber(runNumber)
+    assert "tof_all_" + fRunNumber == wng.run().runNumber(runNumber).build()
+    assert "dsp_all_" + fRunNumber == wng.run().runNumber(runNumber).unit(wng.Units.DSP).build()
     assert (
-        "dsp_column_test_123"
-        == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).auxilary("Test").build()
+        "dsp_column_" + fRunNumber
+        == wng.run().runNumber(runNumber).unit(wng.Units.DSP).group(wng.Groups.COLUMN).build()
+    )
+    assert (
+        "dsp_column_test_" + fRunNumber
+        == wng.run().runNumber(runNumber).unit(wng.Units.DSP).group(wng.Groups.COLUMN).auxilary("Test").build()
     )
 
 
 def testDiffCalInputNames():
-    assert "_tof_123_raw" == wng.diffCalInput().runNumber(123).build()
-    assert "_dsp_123_raw" == wng.diffCalInput().runNumber(123).unit(wng.Units.DSP).build()
+    runNumber = 123
+    fRunNumber = wng.formatRunNumber(runNumber)
+    assert "_tof_" + fRunNumber + "_raw" == wng.diffCalInput().runNumber(runNumber).build()
+    assert "_dsp_" + fRunNumber + "_raw" == wng.diffCalInput().runNumber(runNumber).unit(wng.Units.DSP).build()
 
 
 def testDiffCalTableName():
-    assert "_diffract_consts_123" == wng.diffCalTable().runNumber(123).build()
+    runNumber = 123
+    fRunNumber = wng.formatRunNumber(runNumber)
+    assert "_diffract_consts_" + fRunNumber == wng.diffCalTable().runNumber(runNumber).build()
 
 
 def testDiffCalMetricsName():
-    assert "_calib_metrics_strain_123_1" == wng.diffCalMetrics().metricName("strain").runNumber(123).version(1).build()
+    runNumber = 123
+    fRunNumber = wng.formatRunNumber(runNumber)
+    version = 1
+    fVersion = wng.formatVersion(1)
+    assert (
+        "_calib_metrics_strain_" + fRunNumber + "_" + fVersion
+        == wng.diffCalMetric().metricName("strain").runNumber(runNumber).version(version).build()
+    )
