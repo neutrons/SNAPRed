@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from mantid.simpleapi import CreateSampleWorkspace, Rebin
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from qtpy.QtWidgets import QGridLayout, QMainWindow, QWidget, QPushButton
+from qtpy.QtWidgets import QGridLayout, QMainWindow, QPushButton, QWidget
 from workbench.plotting.figuremanager import MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
