@@ -251,32 +251,22 @@ class GroceryService:
     and preserving a cache to prevent re-loading the same data files.
     """
 
-    def fetchWorkspace(self, path: str, wsInfo: WorkspaceInfo, loader: str = "") -> WorkspaceName:
+    def fetchWorkspace(self, path: str, name: WorkspaceName, loader: str = "") -> WorkspaceName:
         """
-        Will fetch a workspace given a name, a type, and a path.
+        Will fetch a workspace given a name and a full path to the file.
         Returns the same workspace name, if the workspace exists or can be loaded.
         """
-        if self.workspaceDoesExist(wsInfo.name):
-            return wsInfo.name
+        if self.workspaceDoesExist(name):
+            return name
         else:
-            # determine the loader and extension
-            path = os.path.join(path, wsInfo.name)
-            if not loader:
-                if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
-                    ext = ".nxs"
-                    loader = "LoadNexusProcessed"
-                else:
-                    ext = ".nxs"
-                    loader = "LoadNexus"
-            path += ext
             try:
-                res = self.grocer.executeRecipe(path, wsInfo.name, loader)
+                res = self.grocer.executeRecipe(path, name, loader)
             except RuntimeError:
-                raise RuntimeError(f"Failed to load workspace {wsInfo.name} from {path}")
+                raise RuntimeError(f"Failed to load workspace {name} from {path}")
             if res["result"] is True:
                 return res["workspace"]
             else:
-                raise RuntimeError(f"Failed to load workspace {wsInfo.name} from {path}")
+                raise RuntimeError(f"Failed to load workspace {name} from {path}")
 
     def fetchNeutronDataSingleUse(self, runId: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
         """

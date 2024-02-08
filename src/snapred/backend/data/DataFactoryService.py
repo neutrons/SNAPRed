@@ -89,7 +89,13 @@ class DataFactoryService:
 
     def loadCalibrationDataWorkspace(self, runId, version, wsInfo):
         path = self.getCalibrationDataPath(runId, version)
-        return self.groceryService.fetchWorkspace(path, wsInfo)
+        path = os.path.join(path, wsInfo.name)
+        path += ".nxs"
+        if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
+            loader = "LoadNexusProcessed"
+        else:
+            loader = "LoadNexus"
+        return self.groceryService.fetchWorkspace(path, wsInfo.name, loader)
 
     def loadCalibrationTableWorkspaces(self, runId, version):
         path = self.getCalibrationDataPath(runId, version)
