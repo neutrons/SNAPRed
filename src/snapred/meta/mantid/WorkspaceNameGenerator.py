@@ -20,12 +20,7 @@ class NameBuilder:
             raise RuntimeError(f"Key [{key}] not a valid property for given name.")
 
         def setValue(value):
-            if key == "runNumber":
-                value = WorkspaceNameGenerator.formatRunNumber(value)
-            elif key == "version":
-                value = WorkspaceNameGenerator.formatVersion(value)
-            elif key == "timestamp":
-                value = WorkspaceNameGenerator.formatTimestamp(value)
+            value = WorkspaceNameGenerator.formatValueByKey(key, value)
             self.props[key] = value
             return self
 
@@ -73,6 +68,16 @@ class _WorkspaceNameGenerator:
     @staticmethod
     def formatTimestamp(timestamp: str):
         return "ts" + timestamp
+
+    @staticmethod
+    def formatValueByKey(key: str, value: any):
+        if key == "runNumber":
+            value = WorkspaceNameGenerator.formatRunNumber(value)
+        elif key == "version":
+            value = WorkspaceNameGenerator.formatVersion(value)
+        elif key == "timestamp":
+            value = WorkspaceNameGenerator.formatTimestamp(value)
+        return value
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"
