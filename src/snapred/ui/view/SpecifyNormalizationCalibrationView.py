@@ -18,7 +18,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
     signalValueChanged = pyqtSignal(int, float, float)
     signalUpdateRecalculationButton = pyqtSignal(bool)
-    # signalUpdateGraphs = pyqtSignal(bool)
 
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
         super().__init__(parent)
@@ -30,11 +29,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
-        # create the graph elements
-        self.figure = plt.figure()
-        self.canvas = MantidFigureCanvas(self.figure)
-        self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
-
         # create the run number fields
         self.fieldRunNumber = LabeledField("Run Number :", self._jsonFormList.getField("run.runNumber"), self)
         self.fieldRunNumber.setEnabled(False)
@@ -45,6 +39,11 @@ class SpecifyNormalizationCalibrationView(QWidget):
         )
         self.fieldBackgroundRunNumber.setEnabled(False)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
+
+        # create the graph elements
+        self.figure = plt.figure()
+        self.canvas = MantidFigureCanvas(self.figure)
+        self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
 
         # create the other specification elements
         self.sampleDropDown = QComboBox()
@@ -155,20 +154,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         )
         self._updateGraphs()
 
-    def _optimizeRowsAndCols(self, numGraphs):
-        # Get best size for layout
-        sqrtSize = int(numGraphs**0.5)
-        if sqrtSize == numGraphs**0.5:
-            rowSize = sqrtSize
-            colSize = sqrtSize
-        elif numGraphs <= ((sqrtSize + 1) * sqrtSize):
-            rowSize = sqrtSize
-            colSize = sqrtSize + 1
-        else:
-            rowSize = sqrtSize + 1
-            colSize = sqrtSize + 1
-        return rowSize, colSize
-
     def _updateGraphs(self):
         # get the updated workspaces and optimal graph grid
         focusedWorkspace = mtd[self.focusWorkspace]
@@ -187,6 +172,20 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.set_xlabel("d-Spacing (Å)")
             ax.set_ylabel("Intensity")
         self.canvas.draw()
+
+    def _optimizeRowsAndCols(self, numGraphs):
+        # Get best size for layout
+        sqrtSize = int(numGraphs**0.5)
+        if sqrtSize == numGraphs**0.5:
+            rowSize = sqrtSize
+            colSize = sqrtSize
+        elif numGraphs <= ((sqrtSize + 1) * sqrtSize):
+            rowSize = sqrtSize
+            colSize = sqrtSize + 1
+        else:
+            rowSize = sqrtSize + 1
+            colSize = sqrtSize + 1
+        return rowSize, colSize
 
     def setEnableRecalculateButton(self, enable):
         self.recalculationButton.setEnabled(enable)
