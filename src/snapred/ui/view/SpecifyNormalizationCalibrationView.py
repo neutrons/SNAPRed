@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from mantid.simpleapi import mtd
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
-from workbench.plotting.figuremanager import MantidFigureCanvas
+from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 # from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -24,6 +24,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
     signalValueChanged = pyqtSignal(int, float, float)
     signalWorkspacesUpdate = pyqtSignal(str, str)
     signalUpdateRecalculationButton = pyqtSignal(bool)
+    signalUpdateGraphs = pyqtSignal(bool)
 
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
         super().__init__(parent)
@@ -44,17 +45,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         )
         self.fieldBackgroundRunNumber.setEnabled(False)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
-
-        fig, ax = plt.subplots(
-            figsize=(10, 6.5258),
-            nrows=3,
-            ncols=3,
-            subplot_kw={"projection": "mantid"},
-        )
-
-        self.figure = fig
-        self.canvas = MantidFigureCanvas(self.figure)
-        self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
 
         self.sampleDropDown = QComboBox()
         self.sampleDropDown.setEnabled(False)
@@ -105,8 +95,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
         smoothingLayout.addWidget(self.smoothingLineEdit)
         smoothingLayout.addWidget(self.fielddMin)
 
-        self.layout.addWidget(self.navigationBar, 0, 0)
-        self.layout.addWidget(self.canvas, 1, 0, 1, -1)
+        # self.layout.addWidget(self.navigationBar, 0, 0)
+        # self.layout.addWidget(self.canvas, 1, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 2, 0)
         self.layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
         self.layout.addLayout(smoothingLayout, 3, 0)
@@ -118,6 +108,14 @@ class SpecifyNormalizationCalibrationView(QWidget):
         # self.layout.setRowStretch(1, 1)
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
+        self.signalUpdateGraphs.connect(self.updateGraphs)
+
+    def initFigure(self):
+        self.figure = plt.figure()
+        self.canvas = MantidFigureCanvas(self.figure)
+        self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
+        self.layout.addWidget(self.navigationBar, 0, 0)
+        self.layout.addWidget(self.canvas, 1, 0, 1, -1)
 
     def _updateRunNumber(self, runNumber):
         self.fieldRunNumber.setText(runNumber)
@@ -179,8 +177,12 @@ class SpecifyNormalizationCalibrationView(QWidget):
             colSize = sqrtSize + 1
         return rowSize, colSize
 
+    def updateGraphs(self, _):
+        self.initFigure()
+        self._updateGraphsOption1()
+
     def _updateGraphs(self):
-        self._updateGraphsOption2()
+        self.signalUpdateGraphs.emit(True)
 
     def _updateGraphsOption1(self):
         """
@@ -208,7 +210,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         """
         This will eliminate the incessant mouse-over errors, but the toolbar does not (and cannot) work.
         """
-        self.figure.clear()
+        plt.clf()
 
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
