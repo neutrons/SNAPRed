@@ -163,6 +163,9 @@ class NormalizationCalibrationWorkflow:
         view = workflowPresenter.widget.tabView
 
         normalizationRecord = self.responses[-1].data
+        normalizationRecord.workspaceNames.append(self.responses[-2].data["smoothedOutput"])
+        normalizationRecord.workspaceNames.append(self.responses[-2].data["outputWorkspace"])
+        normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
