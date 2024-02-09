@@ -15,14 +15,10 @@ from snapred.ui.widget.LabeledField import LabeledField
 
 class SpecifyNormalizationCalibrationView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
-    signalGroupingUpdate = pyqtSignal(int)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
-    signalCalibrantUpdate = pyqtSignal(int)
-    signalUpdateSmoothingParameter = pyqtSignal(float)
     signalValueChanged = pyqtSignal(int, float, float)
-    signalWorkspacesUpdate = pyqtSignal(str, str)
     signalUpdateRecalculationButton = pyqtSignal(bool)
-    signalUpdateGraphs = pyqtSignal(bool)
+    # signalUpdateGraphs = pyqtSignal(bool)
 
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
         super().__init__(parent)
@@ -34,6 +30,12 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
+        # create the graph elements
+        self.figure = plt.figure()
+        self.canvas = MantidFigureCanvas(self.figure)
+        self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
+
+        # create the run number fields
         self.fieldRunNumber = LabeledField("Run Number :", self._jsonFormList.getField("run.runNumber"), self)
         self.fieldRunNumber.setEnabled(False)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
@@ -44,6 +46,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.fieldBackgroundRunNumber.setEnabled(False)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
+        # create the other specification elements
         self.sampleDropDown = QComboBox()
         self.sampleDropDown.setEnabled(False)
         self.sampleDropDown.addItems(samples)
@@ -92,6 +95,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
         smoothingLayout.addWidget(self.smoothingLineEdit)
         smoothingLayout.addWidget(self.fielddMin)
 
+        # add all elements to the grid layout
+        self.layout.addWidget(self.navigationBar, 0, 0)
+        self.layout.addWidget(self.canvas, 1, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 2, 0)
         self.layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
         self.layout.addLayout(smoothingLayout, 3, 0)
@@ -102,7 +108,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout.setRowStretch(1, 3)
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
-        self.signalUpdateGraphs.connect(self.updateGraphs)
 
     def _updateRunNumber(self, runNumber):
         self.fieldRunNumber.setText(runNumber)
@@ -165,20 +170,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         return rowSize, colSize
 
     def _updateGraphs(self):
-        self.signalUpdateGraphs.emit(True)
-
-    def updateGraphs(self, _):
-        self.initFigure()
-        self._updateGraphsOption1()
-
-    def initFigure(self):
-        self.figure = plt.figure()
-        self.canvas = MantidFigureCanvas(self.figure)
-        self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
-        self.layout.addWidget(self.navigationBar, 0, 0)
-        self.layout.addWidget(self.canvas, 1, 0, 1, -1)
-
-    def _updateGraphsOption1(self):
         # get the updated workspaces and optimal graph grid
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
