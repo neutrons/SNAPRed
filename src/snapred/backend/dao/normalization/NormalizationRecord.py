@@ -11,5 +11,5 @@ class NormalizationRecord(BaseModel):
     backgroundRunNumber: str
     smoothingParameter: float
     normalization: Normalization
-    workspaceList: Optional[List[WorkspaceInfo]]
+    workspaceList: List[WorkspaceInfo] = []
     version: Optional[int]
