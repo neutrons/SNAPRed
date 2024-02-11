@@ -45,6 +45,7 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import list_to_raw
 
@@ -214,7 +215,7 @@ class CalibrationService(Service):
                     break
             if not wkspaceExists:
                 for wsInfo in calibrationRecord.workspaceList:
-                    wsName = wsInfo.name + "_" + wng.formatVersion(version)
+                    wsName = wsInfo.name + "_" + wnvf.formatVersion(version)
                     if self.dataFactoryService.workspaceDoesExist(wsName):
                         wkspaceExists = True
                         break
@@ -235,7 +236,7 @@ class CalibrationService(Service):
         for wsInfo in calibrationRecord.workspaceList:
             if wsInfo.type == "TableWorkspace" or wsInfo.type == "MaskWorkspace":
                 continue  # skip potential DiffCal workspaces until workspaceList is refactored
-            wsInfo.name += "_" + wng.formatVersion(str(calibrationRecord.version))
+            wsInfo.name += "_" + wnvf.formatVersion(str(calibrationRecord.version))
             self.dataFactoryService.loadCalibrationDataWorkspace(
                 calibrationRecord.runNumber,
                 calibrationRecord.version,

@@ -20,6 +20,7 @@ from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config, Resource
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 ThisService = "snapred.backend.data.GroceryService."
@@ -103,6 +104,17 @@ class TestGroceryService(unittest.TestCase):
         ws = CreateEmptyTableWorkspace(OutputWorkspace=wsname)
         ws.addColumn(type="int", name="detid", plottype=6)
         ws.addRow({"detid": 0})
+
+    # Check that wsname_1 has an extra token compared to wsname_2.
+    # Note, the exact order of tokens and the location of the extra token within a name
+    # are up to WorkspaceNameGenerator, which isn't the target of this test.
+    def check_workspace_name_has_extra_token(self, wsname_1: str, wsname_2: str, extra_token: str) -> bool:
+        delimiter = "_"
+        tokens_1 = wsname_1.split(delimiter)
+        tokens_2 = wsname_2.split(delimiter)
+        diff_12 = [x for x in tokens_1 if x not in tokens_2]
+        diff_21 = [x for x in tokens_2 if x not in tokens_1]
+        return diff_12 == [extra_token] and diff_21 == []
 
     ## TESTS OF FILENAME METHODS
 
@@ -193,26 +205,29 @@ class TestGroceryService(unittest.TestCase):
 
     ## TESTS OF WORKSPACE NAME METHODS
 
+    difc_name = "diffract_consts"
+
     def test_neutron_workspacename_plain(self):
         """Test the creation of a plain nexus workspace name"""
         res = self.instance._createNeutronWorkspaceName(self.runNumber, False)
-        assert res == f"tof_all_{self.runNumber}"
+        fRunNumber = wnvf.formatRunNumber(self.runNumber)
+        assert res == "tof_all_" + fRunNumber
         # now use lite mode
         res = self.instance._createNeutronWorkspaceName(self.runNumber, True)
-        assert res == f"tof_all_lite_{self.runNumber}"
+        assert res == "tof_all_lite_" + fRunNumber
 
     def test_neutron_workspacename_raw(self):
         """Test the creation of a raw nexus workspace name"""
-        res = self.instance._createRawNeutronWorkspaceName(self.runNumber, False)
-        plain = self.instance._createNeutronWorkspaceName(self.runNumber, False)
-        assert res == plain + "_raw"
+        plainName = self.instance._createNeutronWorkspaceName(self.runNumber, False)
+        rawName = self.instance._createRawNeutronWorkspaceName(self.runNumber, False)
+        assert self.check_workspace_name_has_extra_token(rawName, plainName, "raw")
 
     def test_neutron_workspacename_copy(self):
         """Test the creation of a copy nexus workspace name"""
         fakeCopies = 117
-        res = self.instance._createCopyNeutronWorkspaceName(self.runNumber, False, fakeCopies)
-        plain = self.instance._createNeutronWorkspaceName(self.runNumber, False)
-        assert res == plain + f"_copy{fakeCopies}"
+        plainName = self.instance._createNeutronWorkspaceName(self.runNumber, False)
+        copyName = self.instance._createCopyNeutronWorkspaceName(self.runNumber, False, fakeCopies)
+        assert self.check_workspace_name_has_extra_token(copyName, plainName, f"copy{fakeCopies}")
 
     def test_grouping_workspacename(self):
         """Test the creation of a grouping workspace name"""
@@ -247,13 +262,13 @@ class TestGroceryService(unittest.TestCase):
     def test_diffcal_table_workspacename(self):
         # Test name generation for diffraction-calibration output workspace
         res = self.instance._createDiffcalTableWorkspaceName(self.runNumber)
-        assert "difc" in res
+        assert self.difc_name in res
         assert self.runNumber in res
 
     def test_diffcal_mask_workspacename(self):
         # Test name generation for diffraction-calibration output workspace
         res = self.instance._createDiffcalMaskWorkspaceName(self.runNumber)
-        assert "difc" in res
+        assert self.difc_name in res
         assert self.runNumber in res
         assert "mask" in res
 
@@ -264,9 +279,9 @@ class TestGroceryService(unittest.TestCase):
         name = "test_write_workspace"
         self.create_dumb_workspace(name)
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmppath:
-            self.instance.writeWorkspace(os.path.join(tmppath, name), name)
-            assert os.path.exists(os.path.join(tmppath, name))
-        assert not os.path.exists(os.path.join(tmppath, name))
+            self.instance.writeWorkspace(tmppath, name)
+            assert os.path.exists(os.path.join(tmppath, name) + ".nxs")
+        assert not os.path.exists(os.path.join(tmppath, name) + ".nxs")
 
     def test_writeGrouping(self):
         path = Resource.getPath("outputs")
@@ -286,7 +301,7 @@ class TestGroceryService(unittest.TestCase):
         name = "test_write_diffcal"
         self.create_dumb_diffcal(name)
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmppath:
-            self.instance.writeDiffCalTable(tmppath, name)
+            self.instance.writeDiffCalTable(os.path.join(tmppath, name), name)
             assert os.path.exists(os.path.join(tmppath, name))
         assert not os.path.exists(os.path.join(tmppath, name))
 

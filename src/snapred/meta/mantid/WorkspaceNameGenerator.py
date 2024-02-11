@@ -20,7 +20,7 @@ class NameBuilder:
             raise RuntimeError(f"Key [{key}] not a valid property for given name.")
 
         def setValue(value):
-            value = WorkspaceNameGenerator.formatValueByKey(key, value)
+            value = ValueFormatter.formatValueByKey(key, value)
             self.props[key] = value
             return self
 
@@ -35,24 +35,7 @@ class NameBuilder:
         return WorkspaceName(self.delimiter.join(tokens))
 
 
-class _WorkspaceNameGenerator:
-    _templateRoot = "mantid.workspace.nameTemplate"
-    _delimiter = Config[f"{_templateRoot}.delimiter"]
-    _runTemplate = Config[f"{_templateRoot}.run"]
-    _runTemplateKeys = ["runNumber", "auxilary", "lite", "unit", "group"]
-    _diffCalInputTemplate = Config[f"{_templateRoot}.diffCal.input"]
-    _diffCalInputTemplateKeys = ["runNumber", "unit"]
-    _diffCalTableTemplate = Config[f"{_templateRoot}.diffCal.table"]
-    _diffCalTableTemplateKeys = ["runNumber", "version"]
-    _diffCalOutputTemplate = Config[f"{_templateRoot}.diffCal.output"]
-    _diffCalOutputTemplateKeys = ["runNumber", "unit"]
-    _diffCalMaskTemplate = Config[f"{_templateRoot}.diffCal.mask"]
-    _diffCalMaskTemplateKeys = ["runNumber", "version"]
-    _diffCalMetricTemplate = Config[f"{_templateRoot}.diffCal.metric"]
-    _diffCalMetricTemplateKeys = ["metricName", "runNumber", "version"]
-    _diffCalTimedMetricTemplate = Config[f"{_templateRoot}.diffCal.timed_metric"]
-    _diffCalTimedMetricTemplateKeys = ["metricName", "runNumber", "timestamp"]
-
+class ValueFormatter:
     @staticmethod
     def formatRunNumber(runNumber: str):
         return str(runNumber).zfill(6)
@@ -72,12 +55,31 @@ class _WorkspaceNameGenerator:
     @staticmethod
     def formatValueByKey(key: str, value: any):
         if key == "runNumber":
-            value = WorkspaceNameGenerator.formatRunNumber(value)
+            value = ValueFormatter.formatRunNumber(value)
         elif key == "version":
-            value = WorkspaceNameGenerator.formatVersion(value)
+            value = ValueFormatter.formatVersion(value)
         elif key == "timestamp":
-            value = WorkspaceNameGenerator.formatTimestamp(value)
+            value = ValueFormatter.formatTimestamp(value)
         return value
+
+
+class _WorkspaceNameGenerator:
+    _templateRoot = "mantid.workspace.nameTemplate"
+    _delimiter = Config[f"{_templateRoot}.delimiter"]
+    _runTemplate = Config[f"{_templateRoot}.run"]
+    _runTemplateKeys = ["runNumber", "auxilary", "lite", "unit", "group"]
+    _diffCalInputTemplate = Config[f"{_templateRoot}.diffCal.input"]
+    _diffCalInputTemplateKeys = ["runNumber", "unit"]
+    _diffCalTableTemplate = Config[f"{_templateRoot}.diffCal.table"]
+    _diffCalTableTemplateKeys = ["runNumber", "version"]
+    _diffCalOutputTemplate = Config[f"{_templateRoot}.diffCal.output"]
+    _diffCalOutputTemplateKeys = ["runNumber", "unit"]
+    _diffCalMaskTemplate = Config[f"{_templateRoot}.diffCal.mask"]
+    _diffCalMaskTemplateKeys = ["runNumber", "version"]
+    _diffCalMetricTemplate = Config[f"{_templateRoot}.diffCal.metric"]
+    _diffCalMetricTemplateKeys = ["metricName", "runNumber", "version"]
+    _diffCalTimedMetricTemplate = Config[f"{_templateRoot}.diffCal.timed_metric"]
+    _diffCalTimedMetricTemplateKeys = ["metricName", "runNumber", "timestamp"]
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"

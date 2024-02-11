@@ -39,6 +39,7 @@ from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import (
@@ -328,7 +329,7 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructCalibrationStatePath(stateId)
         cablibrationVersionPath: str = statePath + "v_{}/".format(
-            wng.formatVersion(version=version, use_v_prefix=False)
+            wnvf.formatVersion(version=version, use_v_prefix=False)
         )
         print(f"************ CALIBRATION DATA PATH: {cablibrationVersionPath}")
 
@@ -341,7 +342,7 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructNormalizationStatePath(stateId)
         normalizationVersionPath: str = statePath + "v_{}/".format(
-            wng.formatVersion(version=version, use_v_prefix=False)
+            wnvf.formatVersion(version=version, use_v_prefix=False)
         )
         print(f"************ NORMALIZATION DATA PATH: {normalizationVersionPath}")
 
@@ -470,10 +471,7 @@ class LocalDataService:
         # write "persistent" workspaces
         if record.workspaceList:
             for wsInfo in record.workspaceList:
-                filePath = os.path.join(normalizationPath, wsInfo.name)
-                if version:
-                    filePath += "_" + wng.formatVersion(version)
-                self.groceryService.writeWorkspace(filePath, wsInfo)
+                self.groceryService.writeWorkspace(normalizationPath, wsInfo.name, version)
 
         logger.info(f"wrote NormalizationRecord: version: {version}")
 
@@ -526,10 +524,7 @@ class LocalDataService:
         for wsInfo in record.workspaceList:
             if wsInfo.type == "TableWorkspace" or wsInfo.type == "MaskWorkspace":
                 continue  # skip potential DiffCal workspaces until workspaceList is refactored
-            filePath = os.path.join(calibrationPath, wsInfo.name)
-            if version:
-                filePath += "_" + wng.formatVersion(version)
-            self.groceryService.writeWorkspace(filePath, wsInfo)
+            self.groceryService.writeWorkspace(calibrationPath, wsInfo.name)
 
         # separately handle writing DiffCal workspaces until workspaceList is refactored
         self.groceryService.writeCalibrationTableWorkspaces(path=calibrationPath, runId=runNumber, version=str(version))
@@ -542,16 +537,14 @@ class LocalDataService:
         # use mantid to write workspace to file
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationStatePath(stateId)
-        filenameFormat = f"{calibrationPath}{runId}/{workspaceName}" + "_v{}.nxs"
+        filenameFormat = f"{calibrationPath}/{runId}/{workspaceName}" + "_v{}.nxs"
         # find total number of files
         foundFiles = self._findMatchingFileList(filenameFormat.format("*"), throws=False)
         version = len(foundFiles) + 1
-
         filename = filenameFormat.format(version)
 
         if not dryrun:
-            wsInfo = WorkspaceInfo(name=workspaceName, type=mtd[workspaceName].id())
-            self.groceryService.writeWorkspace(filename, wsInfo)
+            return self.groceryService.writeWorkspace(f"{calibrationPath}/{runId}", workspaceName, version)
         return filename
 
     def writeCalibrantSample(self, sample: CalibrantSamples):

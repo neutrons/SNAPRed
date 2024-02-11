@@ -8,8 +8,8 @@ from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGrouping
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import list_to_raw_pretty
 
@@ -105,20 +105,24 @@ class GroceryService:
 
     ## WRITING TO DISK
 
-    def writeWorkspace(self, path: str, wsInfo: WorkspaceInfo):
+    def writeWorkspace(self, path: str, name: WorkspaceName, version: str = None):
         """
         Writes a Mantid Workspace to disk.
         """
-        if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
-            path += ".nxs"
+        filename = name + "_" + wnvf.formatVersion(version) if version else name
+        filename += ".nxs"
+        path = os.path.join(path, filename)
+        mantidType = mtd[name].id()
+        if mantidType == "EventWorkspace" or mantidType == "Workspace2D":
             algo = "SaveNexusProcessed"
         else:
-            path += ".nxs"
             algo = "SaveNexus"
         saveAlgo = AlgorithmManager.create(algo)
-        saveAlgo.setProperty("InputWorkspace", wsInfo.name)
+        saveAlgo.setProperty("InputWorkspace", name)
         saveAlgo.setProperty("Filename", path)
         saveAlgo.execute()
+
+        return path
 
     def writeGrouping(self, path: str, name: WorkspaceName):
         """
@@ -134,7 +138,7 @@ class GroceryService:
         maskTableName = self._createDiffcalMaskWorkspaceName(runId)
         filePath = os.path.join(path, calTableName)
         if version:
-            filePath += "_" + wng.formatVersion(version)
+            filePath += "_" + wnvf.formatVersion(version)
         filePath += ".h5"
         self.writeDiffCalTable(path=filePath, calibrationWS=calTableName, maskingWS=maskTableName)
 
