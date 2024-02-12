@@ -41,7 +41,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
         # create the graph elements
-        self.figure = plt.figure()
+        self.figure = plt.figure(figsize=(50, 50))
         self.canvas = MantidFigureCanvas(self.figure)
         self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
 
@@ -168,9 +168,11 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
             ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
             ax.legend()
+            ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {i + 1}")
             ax.set_xlabel("d-Spacing (Å)")
             ax.set_ylabel("Intensity")
+        plt.tight_layout()
         self.canvas.draw()
 
     def _optimizeRowsAndCols(self, numGraphs):
