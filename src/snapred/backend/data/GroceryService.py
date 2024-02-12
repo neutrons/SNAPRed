@@ -50,10 +50,11 @@ class GroceryService:
         Returns a list of all workspaces cached in GroceryService
         """
         cachedWorkspaces = []
-        cachedWorkspaces.extend(self._loadedRuns.keys())
-        cachedWorkspaces.extend(self._loadedGroupings.keys())
-        # extract out the names of the workspaces
-        cachedWorkspaces = [c[1] for c in cachedWorkspaces]
+        cachedWorkspaces.extend(
+            [self._createRawNeutronWorkspaceName(runId, useLiteMode) for runId, useLiteMode in self._loadedRuns.keys()]
+        )
+        cachedWorkspaces.extend(self._loadedGroupings.values())
+
         return cachedWorkspaces
 
     ## FILENAME METHODS
