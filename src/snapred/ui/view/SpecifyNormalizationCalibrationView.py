@@ -174,7 +174,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.set_ylabel("Intensity")
 
         # resize window and redraw
-        self.setMinimumHeight(self.size().height() + int(self.figure.get_size_inches()[1]*self.figure.dpi))
+        self.setMinimumHeight(self.size().height() + int(self.figure.get_size_inches()[1] * self.figure.dpi))
         self.canvas.draw()
 
     def _optimizeRowsAndCols(self, numGraphs):
