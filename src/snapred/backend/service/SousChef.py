@@ -55,16 +55,13 @@ class SousChef(Service):
     def name():
         return "souschef"
 
-    def prepCalibration(self, runNumber: str, normalization=False) -> Calibration:
+    def prepCalibration(self, runNumber: str) -> Calibration:
         if runNumber not in self._calibrationCache:
-            if normalization:
-                self._calibrationCache[runNumber] = self.dataFactoryService.getNormalizationState(runNumber)
-            else:
-                self._calibrationCache[runNumber] = self.dataFactoryService.getCalibrationState(runNumber)
+            self._calibrationCache[runNumber] = self.dataFactoryService.getCalibrationState(runNumber)
         return self._calibrationCache[runNumber]
 
-    def prepInstrumentState(self, runNumber: str, normalization=False) -> InstrumentState:
-        return self.prepCalibration(runNumber, normalization).instrumentState
+    def prepInstrumentState(self, runNumber: str) -> InstrumentState:
+        return self.prepCalibration(runNumber).instrumentState
 
     def prepRunConfig(self, runNumber: str) -> RunConfig:
         return self.dataFactoryService.getRunConfig(runNumber)
@@ -72,11 +69,11 @@ class SousChef(Service):
     def prepCalibrantSample(self, calibrantSamplePath: str) -> CalibrantSamples:
         return self.dataFactoryService.getCalibrantSample(calibrantSamplePath)
 
-    def prepPixelGroup(self, ingredients: FarmFreshIngredients, normalization: bool):
+    def prepPixelGroup(self, ingredients: FarmFreshIngredients):
         groupingSchema = ingredients.focusGroup.name
         key = (ingredients.runNumber, ingredients.useLiteMode, groupingSchema)
         if key not in self._pixelGroupCache:
-            instrumentState = self.prepInstrumentState(ingredients.runNumber, normalization)
+            instrumentState = self.prepInstrumentState(ingredients.runNumber)
             pixelIngredients = PixelGroupingIngredients(
                 instrumentState=instrumentState,
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
@@ -112,15 +109,15 @@ class SousChef(Service):
             self._xtalCache[key] = CrystallographicInfoService().ingest(*key)["crystalInfo"]
         return self._xtalCache[key]
 
-    def prepPeakIngredients(self, ingredients: FarmFreshIngredients, normalization=False) -> PeakIngredients:
+    def prepPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
         return PeakIngredients(
             crystalInfo=self.prepCrystallographicInfo(ingredients),
-            instrumentState=self.prepInstrumentState(ingredients.runNumber, normalization),
-            pixelGroup=self.prepPixelGroup(ingredients, normalization),
+            instrumentState=self.prepInstrumentState(ingredients.runNumber),
+            pixelGroup=self.prepPixelGroup(ingredients),
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
         )
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, normalization=False) -> List[GroupPeakList]:
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[GroupPeakList]:
         key = (
             ingredients.runNumber,
             ingredients.useLiteMode,
@@ -128,7 +125,7 @@ class SousChef(Service):
             ingredients.peakIntensityThreshold,
         )
         if key not in self._peaksCache:
-            ingredients = self.prepPeakIngredients(ingredients, normalization)
+            ingredients = self.prepPeakIngredients(ingredients)
             res = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=ingredients,
             )
@@ -144,9 +141,9 @@ class SousChef(Service):
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
         return NormalizationIngredients(
-            pixelGroup=self.prepPixelGroup(ingredients, normalization=True),
+            pixelGroup=self.prepPixelGroup(ingredients),
             calibrantSample=self.prepCalibrantSample(ingredients.calibrantSamplePath),
-            detectorPeaks=self.prepDetectorPeaks(ingredients, normalization=True),
+            detectorPeaks=self.prepDetectorPeaks(ingredients),
         )
 
     def prepDiffractionCalibrationIngredients(

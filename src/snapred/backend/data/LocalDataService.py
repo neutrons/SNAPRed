@@ -233,7 +233,8 @@ class LocalDataService:
 
     def _constructNormalizationCalibrationStatePath(self, stateId):
         # TODO: Propagate pathlib through codebase
-        return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId / 'normalization'}/"
+        # return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId / 'normalization'}/"
+        return f"{self.instrumentConfig.calibrationDirectory}/Powder/{stateId}/normalization/"
 
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
@@ -448,7 +449,7 @@ class LocalDataService:
         # because it's written to a separate file during 'writeNormalizationState'.
         # However, if it is going to be _nested_, this marks it with the correct version.
         # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
-        record.normalization.version = version
+        record.calibration.version = version
 
         normalizationPath = self._constructNormalizationCalibrationDataPath(runNumber, version)
         # check if directory exists for runId

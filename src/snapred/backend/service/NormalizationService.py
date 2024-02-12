@@ -144,12 +144,12 @@ class NormalizationService(Service):
 
     @FromString
     def normalizationAssessment(self, request: NormalizationCalibrationRequest):
-        normalization = self.dataFactoryService.getNormalizationState(request.runNumber)
+        calibration = self.dataFactoryService.getCalibrationState(request.runNumber)
         record = NormalizationRecord(
             runNumber=request.runNumber,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
-            normalization=normalization,
+            calibration=calibration,
             dMin=request.dMin,
         )
         return record
@@ -196,7 +196,7 @@ class NormalizationService(Service):
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroup,
         )
-        ingredients = self.sousChef.prepPixelGroup(farmFresh, True)
+        ingredients = self.sousChef.prepPixelGroup(farmFresh)
         return FocusSpectraRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             GroupingWorkspace=request.groupingWorkspace,
