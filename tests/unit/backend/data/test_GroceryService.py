@@ -3,6 +3,7 @@
 import os
 import tempfile
 import unittest
+from curses import raw
 from unittest import mock
 
 import pytest
@@ -941,10 +942,11 @@ class TestGroceryService(unittest.TestCase):
         assert mockLDS.reduceLiteData.called_once_with(workspacename, workspacename)
 
     def test_getCachedWorkspaces(self):
+        rawWsName = self.instance._createRawNeutronWorkspaceName(0, "a")
         self.instance._loadedRuns = {(0, "a"): "b"}
         self.instance._loadedGroupings = {(1, "c"): "d"}
 
-        assert self.instance.getCachedWorkspaces() == ["a", "c"]
+        assert self.instance.getCachedWorkspaces() == [rawWsName, "d"]
 
     def test_getCachedWorkspaces_empty(self):
         self.instance._loadedRuns = {}
@@ -962,7 +964,8 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(newName)
 
     def test_clearADS(self):
-        self.instance._loadedRuns = {(0, "a"): "b"}
+        rawWsName = self.instance._createRawNeutronWorkspaceName(0, "a")
+        self.instance._loadedRuns = {(0, "a"): rawWsName}
         self.instance._loadedGroupings = {(1, "c"): "d"}
 
         self.create_dumb_workspace("b")
@@ -970,10 +973,10 @@ class TestGroceryService(unittest.TestCase):
 
         assert mtd.doesExist("b") is False
 
-        self.create_dumb_workspace("a")
+        self.create_dumb_workspace(rawWsName)
         self.instance.clearADS(exclude=self.exclude)
 
-        assert mtd.doesExist("a") is True
+        assert mtd.doesExist(rawWsName) is True
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
