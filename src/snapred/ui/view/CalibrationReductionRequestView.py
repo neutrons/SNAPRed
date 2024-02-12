@@ -1,24 +1,22 @@
-from qtpy.QtWidgets import QComboBox
+from PyQt5.QtCore import pyqtSignal
+from qtpy.QtWidgets import QComboBox, QLineEdit
 
+from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
 
 
+@Resettable
 class CalibrationReductionRequestView(BackendRequestView):
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = "calibration/diffractionCalibration"
-        super(CalibrationReductionRequestView, self).__init__(jsonForm, selection, parent=parent)
-        self.runNumberField = self._labeledField("Run Number", jsonForm.getField("runNumber"))
+        super().__init__(jsonForm, selection, parent=parent)
+        self.runNumberField = self._labeledField("Run Number", QLineEdit(parent=self))
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.fieldConvergnceThreshold = self._labeledField(
-            "Convergence Threshold", jsonForm.getField("convergenceThreshold")
-        )
-        self.fieldPeakIntensityThreshold = self._labeledField(
-            "Peak Intensity Threshold", jsonForm.getField("peakIntensityThreshold")
-        )
-        self.fieldNBinsAcrossPeakWidth = self._labeledField(
-            "Bins Across Peak Width", jsonForm.getField("nBinsAcrossPeakWidth")
-        )
+        self.fieldConvergnceThreshold = self._labeledField("Convergence Threshold", QLineEdit(parent=self))
+        self.fieldPeakIntensityThreshold = self._labeledField("Peak Intensity Threshold", QLineEdit(parent=self))
+
+        self.fieldNBinsAcrossPeakWidth = self._labeledField("Bins Across Peak Width", QLineEdit(parent=self))
         self.sampleDropdown = self._sampleDropDown("Sample", samples)
         self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
 
