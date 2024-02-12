@@ -1,6 +1,7 @@
 import json
 
 from mantid.simpleapi import mtd
+
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.calibration import CalibrationIndexEntry
 from snapred.backend.dao.request import (
