@@ -11,10 +11,12 @@ logger = snapredLogger.getLogger(__name__)
 class WorkflowPresenter(object):
     worker_pool = WorkerPool()
 
-    def __init__(self, model: WorkflowNodeModel, cancelLambda=None, parent=None):
+    def __init__(self, model: WorkflowNodeModel, cancelLambda=None, iterateLambda=None, parent=None):
         self.view = WorkflowView(model, parent)
+        self._iteration = 1
         self.model = model
         self._cancelLambda = cancelLambda
+        self._iterateLambda = iterateLambda
         self._hookupSignals()
 
     @property
@@ -31,6 +33,20 @@ class WorkflowPresenter(object):
         self.window.setCentralWidget(self.view)
         self.window.show()
 
+    def resetSoft(self):
+        self.widget.reset(hard=False)
+
+    def resetHard(self):
+        self.widget.reset(hard=True)
+
+    def iterate(self):
+        self._iteration += 1
+        self.resetSoft()
+
+    @property
+    def iteration(self):
+        return self._iteration
+
     def _hookupSignals(self):
         for i, model in enumerate(self.model):
             widget = self.view.tabWidget.widget(i)
@@ -38,27 +54,45 @@ class WorkflowPresenter(object):
                 f"Hooking up signals for tab {widget.view} to {widget.model.continueAction} \
                     to continue button {widget.continueButton}"
             )
+            if not model.required:
+                widget.onSkipButtonClicked(self.handleSkipButtonClicked)
+                widget.enableSkip()
+
+            if model.iterate:
+                widget.onIterateButtonClicked(self.handleIterateButtonClicked)
+                widget.enableIterate()
+
             widget.onContinueButtonClicked(self.handleContinueButtonClicked)
+
             if self._cancelLambda:
                 widget.onCancelButtonClicked(self._cancelLambda)
             else:
-                self.view.cancelButton.setVisible(False)
+                widget.onCancelButtonClicked(self.resetHard)
+
+    def handleIterateButtonClicked(self):
+        self._iterateLambda(self)
+        self.iterate()
+
+    def handleSkipButtonClicked(self):
+        self.view.advanceWorkflow()
 
     def handleContinueButtonClicked(self, model):
         self.view.continueButton.setEnabled(False)
         self.view.cancelButton.setEnabled(False)
+        self.view.skipButton.setEnabled(False)
 
         # do action
         self.worker = self.worker_pool.createWorker(target=model.continueAction, args=(self))
         self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
         self.worker.finished.connect(lambda: self.view.cancelButton.setEnabled(True))
+        self.worker.finished.connect(lambda: self.view.skipButton.setEnabled(True))
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(lambda success: self.view.advanceWorkflow() if success else None)
 
         self.worker_pool.submitWorker(self.worker)
 
     def _handleComplications(self, result):
-        if result.code - 200 > 100:
+        if result.code - 200 >= 100:
             QMessageBox.critical(
                 self.view,
                 "Error",

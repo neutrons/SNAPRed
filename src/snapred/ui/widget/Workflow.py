@@ -4,9 +4,11 @@ from snapred.ui.view.WorkflowView import WorkflowView
 
 
 class Workflow:
-    def __init__(self, model: WorkflowNodeModel, cancelLambda=None, parent=None):
+    def __init__(self, model: WorkflowNodeModel, cancelLambda=None, iterateLambda=None, parent=None):
         # default loading subview
-        self._presenter = WorkflowPresenter(model, cancelLambda=cancelLambda, parent=parent)
+        self._presenter = WorkflowPresenter(
+            model, cancelLambda=cancelLambda, iterateLambda=iterateLambda, parent=parent
+        )
 
     @property
     def presenter(self):

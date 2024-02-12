@@ -4,11 +4,13 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushButton, QWidget
 
 from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentPresenter
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
+@Resettable
 class CalibrationAssessmentView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
     signalError = pyqtSignal(str)
@@ -77,6 +79,3 @@ class CalibrationAssessmentView(QWidget):
         msgBox.setText(msg)
         msgBox.setFixedSize(500, 200)
         msgBox.exec()
-
-    def updateRunNumber(self, runNumber):
-        self.signalRunNumberUpdate.emit(runNumber)

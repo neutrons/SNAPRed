@@ -1,56 +1,44 @@
 import json
 
 from mantid.simpleapi import mtd
-from qtpy.QtWidgets import QLabel
-
-from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao import RunConfig, SNAPRequest
-from snapred.backend.dao.calibration import CalibrationIndexEntry, CalibrationRecord
+from snapred.backend.dao import RunConfig
+from snapred.backend.dao.calibration import CalibrationIndexEntry
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     CalibrationIndexRequest,
     DiffractionCalibrationRequest,
 )
-from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
 from snapred.ui.view.CalibrationAssessmentView import CalibrationAssessmentView
 from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
 from snapred.ui.view.SaveCalibrationView import SaveCalibrationView
-from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
+from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
 logger = snapredLogger.getLogger(__name__)
 
 
-class DiffractionCalibrationCreationWorkflow:
+class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
     def __init__(self, jsonForm, parent=None):
+        super().__init__(parent)
         # create a tree of flows for the user to successfully execute diffraction calibration
         # Calibrate     ->
         # Assess        ->
         # Save?         ->
-        self.requests = []
-        self.responses = []
-        self.interfaceController = InterfaceController()
 
-        request = SNAPRequest(path="api/parameters", payload="calibration/assessment")
-        self.assessmentSchema = self.interfaceController.executeRequest(request).data
+        self.assessmentSchema = self.request(path="api/parameters", payload="calibration/assessment").data
         # for each key, read string and convert to json
         self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
 
-        request = SNAPRequest(path="api/parameters", payload="calibration/save")
-        self.saveSchema = self.interfaceController.executeRequest(request).data
+        self.saveSchema = self.request(path="api/parameters", payload="calibration/save").data
         self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
-        cancelLambda = None
-        if parent is not None and hasattr(parent, "close"):
-            cancelLambda = parent.close
 
-        request = SNAPRequest(path="config/samplePaths")
-        self.samplePaths = self.interfaceController.executeRequest(request).data
+        self.samplePaths = self.request(path="config/samplePaths").data
 
-        request = SNAPRequest(path="config/focusGroups")
-        self.focusGroups = self.interfaceController.executeRequest(request).data
+        self.focusGroups = self.request(path="config/focusGroups").data
         self.groupingFiles = list(self.focusGroups.keys())
 
         self._calibrationReductionView = CalibrationReductionRequestView(
@@ -59,10 +47,10 @@ class DiffractionCalibrationCreationWorkflow:
         self._calibrationAssessmentView = CalibrationAssessmentView(
             "Assessing Calibration", self.assessmentSchema, parent=parent
         )
-        self._saveCalibrationView = SaveCalibrationView("Saving Calibration", self.saveSchema, parent)
+        self._saveCalibrationView = SaveCalibrationView(parent)
 
         self.workflow = (
-            WorkflowBuilder(cancelLambda=cancelLambda, parent=parent)
+            WorkflowBuilder(cancelLambda=None, iterateLambda=self._iterate, parent=parent)
             .addNode(
                 self._triggerCalibrationReduction,
                 self._calibrationReductionView,
@@ -73,19 +61,17 @@ class DiffractionCalibrationCreationWorkflow:
                 self._calibrationAssessmentView,
                 "Assessing",
             )
-            .addNode(self._saveCalibration, self._saveCalibrationView, "Saving")
+            .addNode(self._saveCalibration, self._saveCalibrationView, name="Saving", iterate=True)
             .build()
         )
 
     def _triggerCalibrationReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration reduction
-        try:
-            view.verify()
-        except ValueError as e:
-            return SNAPResponse(code=500, message=f"Missing Fields!{e}")
+        self.verifyForm(view)
 
-        self.runNumber = view.getFieldText("runNumber")
+        self.runNumber = view.runNumberField.text()
+
         self._saveCalibrationView.updateRunNumber(self.runNumber)
 
         self.focusGroupPath = view.groupingFileDropdown.currentText()
@@ -103,9 +89,7 @@ class DiffractionCalibrationCreationWorkflow:
         payload.nBinsAcrossPeakWidth = view.fieldNBinsAcrossPeakWidth.get(payload.nBinsAcrossPeakWidth)
         self.nBinsAcrossPeakWidth = payload.nBinsAcrossPeakWidth
 
-        request = SNAPRequest(path="calibration/diffraction", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
-        self.responses.append(response)
+        response = self.request(path="calibration/diffraction", payload=payload.json())
 
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),
@@ -115,15 +99,23 @@ class DiffractionCalibrationCreationWorkflow:
             useLiteMode=self.useLiteMode,
             calibrantSamplePath=self.calibrantSamplePath,
         )
-        request = SNAPRequest(path="calibration/assessment", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
-        self.responses.append(response)
 
-        self._calibrationAssessmentView.updateRunNumber(self.runNumber)
+        response = self.request(path="calibration/assessment", payload=payload.json())
+        assessmentResponse = response.data
+        self.calibrationRecord = assessmentResponse.record
+        self.calibrationRecord.workspaceNames.append(self.responses[-2].data["calibrationTable"])
 
+        self.outputs.extend(assessmentResponse.metricWorkspaces)
+        self.outputs.extend(self.calibrationRecord.workspaceNames)
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
+        if workflowPresenter.iteration > 1:
+            self._saveCalibrationView.enableIterationDropdown()
+            iterations = [str(i) for i in range(0, workflowPresenter.iteration)]
+            self._saveCalibrationView.iterationDropdown.clear()
+            self._saveCalibrationView.iterationDropdown.addItems(iterations)
+            self._saveCalibrationView.iterationDropdown.setCurrentIndex(workflowPresenter.iteration - 1)
         return self.responses[-1]  # [-1]: response from CalibrationAssessmentRequest for the calibration in progress
 
     def _saveCalibration(self, workflowPresenter):
@@ -140,19 +132,18 @@ class DiffractionCalibrationCreationWorkflow:
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
         )
+
+        # if this is not the first iteration, account for choice.
+        if workflowPresenter.iteration > 1:
+            iteration = int(self._saveCalibrationView.iterationDropdown.currentText())
+            self.calibrationRecord.workspaceNames = [
+                self.renameTemplate.format(workspaceName=w, iteration=iteration)
+                for w in self.calibrationRecord.workspaceNames
+            ]
+
         payload = CalibrationExportRequest(
-            calibrationRecord=calibrationRecord, calibrationIndexEntry=calibrationIndexEntry
+            calibrationRecord=self.calibrationRecord, calibrationIndexEntry=calibrationIndexEntry
         )
-        request = SNAPRequest(path="calibration/save", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
-        self.responses.append(response)
+
+        response = self.request(path="calibration/save", payload=payload.json())
         return response
-
-    @property
-    def widget(self):
-        return self.workflow.presenter.widget
-
-    def show(self):
-        # wrap workflow.presenter.widget in a QMainWindow
-        # show the QMainWindow
-        pass
