@@ -537,11 +537,12 @@ class LocalDataService:
         # use mantid to write workspace to file
         stateId, _ = self._generateStateId(runId)
         calibrationPath: str = self._constructCalibrationStatePath(stateId)
-        filenameFormat = f"{calibrationPath}/{runId}/{workspaceName}" + "_v{}.nxs"
+        filenamePathStem = os.path.join(calibrationPath, runId, workspaceName)
+        filenameFormat = filenamePathStem + "_v{}.nxs"
         # find total number of files
         foundFiles = self._findMatchingFileList(filenameFormat.format("*"), throws=False)
         version = len(foundFiles) + 1
-        filename = filenameFormat.format(version)
+        filename = filenameFormat.format(wnvf.formatVersion(version, use_v_prefix=False))
 
         if not dryrun:
             return self.groceryService.writeWorkspace(f"{calibrationPath}/{runId}", workspaceName, version)
@@ -664,7 +665,7 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         normalizationPath: str = self._constructNormalizationStatePath(stateId)
-        previousVersion = self._getLatestCalibrationVersion(stateId)
+        previousVersion = self._getLatestNormalizationVersion(stateId)
         if not version:
             version = previousVersion + 1
         # check for the existenece of a calibration parameters file

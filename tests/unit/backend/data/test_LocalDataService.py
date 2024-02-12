@@ -401,8 +401,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs")
+        localDataService._constructNormalizationStatePath = mock.Mock()
+        localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs")
         assert len(localDataService.readNormalizationIndex("123")) == 0
 
     def test_writeCalibrationIndexEntry():
@@ -429,14 +429,14 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert len(actualEntries) > 0
         assert actualEntries[0].runNumber == "57514"
 
-        # def test_writeNormalizationIndexEntry():
+    def test_writeNormalizationIndexEntry():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs")
+        localDataService._constructNormalizationStatePath = mock.Mock()
+        localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs")
         expectedFilePath = Resource.getPath("outputs") + "NormalizationIndex.json"
         localDataService.writeNormalizationIndexEntry(
             NormalizationIndexEntry(
@@ -479,8 +479,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs")
+        localDataService._constructNormalizationStatePath = mock.Mock()
+        localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs")
         expectedFilePath = Resource.getPath("outputs") + "NormalizationIndex.json"
         localDataService.writeNormalizationIndexEntry(
             NormalizationIndexEntry(
@@ -567,8 +567,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
             localDataService._readReductionParameters = mock.Mock()
-            localDataService._constructCalibrationStatePath = mock.Mock()
-            localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService._constructNormalizationStatePath = mock.Mock()
+            localDataService._constructNormalizationStatePath.return_value = f"{tempdir}/"
             localDataService.groceryService = mock.Mock()
             # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
             # and <incoming record>.normalization.version.
@@ -596,8 +596,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
             localDataService._readReductionParameters = mock.Mock()
-            localDataService._constructCalibrationStatePath = mock.Mock()
-            localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService._constructNormalizationStatePath = mock.Mock()
+            localDataService._constructNormalizationStatePath.return_value = f"{tempdir}/"
             localDataService.groceryService = mock.Mock()
             localDataService.writeNormalizationRecord(testNormalizationRecord)
             actualRecord = localDataService.readNormalizationRecord("57514")
@@ -611,16 +611,16 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._constructCalibrationStatePath = mock.Mock()
         localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
         actualPath = localDataService.getCalibrationRecordPath("57514", 1)
-        assert actualPath == Resource.getPath("outputs") + "/v_1/CalibrationRecord.json"
+        assert actualPath == Resource.getPath("outputs") + "/v_0001/CalibrationRecord.json"
 
     def test_getNormalizationRecordPath():
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
+        localDataService._constructNormalizationStatePath = mock.Mock()
+        localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs/")
         actualPath = localDataService.getNormalizationRecordPath("57514", 1)
-        assert actualPath == Resource.getPath("outputs") + "/v_1/NormalizationRecord.json"
+        assert actualPath == Resource.getPath("outputs") + "/v_0001/NormalizationRecord.json"
 
     def test_extractFileVersion():
         localDataService = LocalDataService()
@@ -657,7 +657,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
 
         filename = localDataService.writeCalibrationReductionResult("123", "ws", dryrun=True)
-        assert filename.endswith("tests/resources/outputs/123/ws_v1.nxs")
+        assert filename.endswith("tests/resources/outputs/123/ws_v0001.nxs")
 
     def test_writeCalibrationReductionResult_notdryrun():
         from snapred.backend.data.LocalDataService import LocalDataService as LocalDataService2
@@ -744,7 +744,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._constructCalibrationStatePath = mock.Mock()
         localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
         actualPath = localDataService.getCalibrationStatePath("57514", 1)
-        assert actualPath == Resource.getPath("outputs") + "/v_1/CalibrationParameters.json"
+        assert actualPath == Resource.getPath("outputs") + "/v_0001/CalibrationParameters.json"
 
     def test_readCalibrationState():
         localDataService = LocalDataService()
@@ -792,22 +792,22 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService._getCurrentCalibrationRecord.return_value = Calibration.construct({"name": "test"})
             calibration = Calibration.parse_raw(Resource.read("/inputs/calibration/CalibrationParameters.json"))
             localDataService.writeCalibrationState("123", calibration)
-            assert os.path.exists(tempdir + "/v_1/CalibrationParameters.json")
+            assert os.path.exists(tempdir + "/v_0001/CalibrationParameters.json")
 
     def test_writeNormalizationState():
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
             localDataService = LocalDataService()
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("123", "456")
-            localDataService._constructCalibrationStatePath = mock.Mock()
-            localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService._constructNormalizationStatePath = mock.Mock()
+            localDataService._constructNormalizationStatePath.return_value = f"{tempdir}/"
             localDataService._getCurrentNormalizationRecord = mock.Mock()
             localDataService._getCurrentNormalizationRecord.return_value = Normalization.construct({"name": "test"})
             with Resource.open("/inputs/normalization/NormalizationParameters.json", "r") as f:
                 normalization = Normalization.parse_raw(f.read())
             localDataService.writeNormalizationState("123", normalization)
-            print(os.listdir(tempdir + "/v_1/"))
-            assert os.path.exists(tempdir + "/v_1/NormalizationParameters.json")
+            print(os.listdir(tempdir + "/v_0001/"))
+            assert os.path.exists(tempdir + "/v_0001/NormalizationParameters.json")
 
     def test_initializeState():
         # Test 'initializeState'; test basic functionality.
