@@ -184,9 +184,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="good/cif/path")
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
 
+        # create a fake workspace
+        fakeWSName = "mock workspace"
+        CreateWorkspace(
+            OutputWorkspace=fakeWSName,
+            DataX=1,
+            DataY=1,
+        )
+
         # Call the method to test
         request = CalibrationAssessmentRequest(
-            workspace="mock workspace",
+            workspace=fakeWSName,
             run=RunConfig(runNumber="123"),
             useLiteMode=True,
             focusGroup={"name": fakeMetrics.focusGroupName, "definition": ""},
@@ -204,7 +212,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Assert expected calibration metric workspaces have been generated
         for metric in ["sigma", "strain"]:
-            ws_name = wng.diffCalMetrics().metricName(metric).runNumber("57514").version("ts123").build()
+            ws_name = wng.diffCalTimedMetric().metricName(metric).runNumber("57514").timestamp("123").build()
             assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
     def test_load_quality_assessment_no_calibration_record_exception(self):
