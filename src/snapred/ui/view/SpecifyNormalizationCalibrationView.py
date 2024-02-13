@@ -106,6 +106,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
         self.layout.setRowStretch(1, 3)
 
+        # store the initial layout without graphs
+        self.initialLayoutHeight = self.size().height()
+
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
 
     def _updateRunNumber(self, runNumber):
@@ -174,7 +177,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.set_ylabel("Intensity")
 
         # resize window and redraw
-        self.setMinimumHeight(self.size().height() + int(self.figure.get_size_inches()[1] * self.figure.dpi))
+        self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))
         self.canvas.draw()
 
     def _optimizeRowsAndCols(self, numGraphs):
