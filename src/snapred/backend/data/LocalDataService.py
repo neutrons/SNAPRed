@@ -239,11 +239,6 @@ class LocalDataService:
         # TODO: Propagate pathlib through codebase
         return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId / 'normalization'}/"
 
-    def _constructNormalizationCalibrationStatePath(self, stateId):
-        # TODO: Propagate pathlib through codebase
-        # return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId / 'normalization'}/"
-        return f"{self.instrumentConfig.calibrationDirectory}/Powder/{stateId}/normalization/"
-
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
         stateId, _ = self._generateStateId(runId)
