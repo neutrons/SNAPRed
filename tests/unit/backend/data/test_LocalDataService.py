@@ -577,12 +577,12 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService.writeNormalizationRecord(testNormalizationRecord)
             actualRecord = localDataService.readNormalizationRecord("57514")
             assert actualRecord.version == 1
-            assert actualRecord.normalization.version == 1
+            assert actualRecord.calibration.version == 1
             # write: version == 2
             localDataService.writeNormalizationRecord(testNormalizationRecord)
             actualRecord = localDataService.readNormalizationRecord("57514")
             assert actualRecord.version == 2
-            assert actualRecord.normalization.version == 2
+            assert actualRecord.calibration.version == 2
         assert actualRecord.runNumber == "57514"
         assert actualRecord == testNormalizationRecord
 

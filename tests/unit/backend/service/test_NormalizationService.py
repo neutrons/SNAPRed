@@ -194,14 +194,14 @@ class TestNormalizationService(unittest.TestCase):
     ):
         mockNormalization = MagicMock()
         mockDataFactoryService = mockDataFactoryService.return_value
-        mockDataFactoryService.getNormalizationState.return_value = mockNormalization
+        mockDataFactoryService.getCalibrationState.return_value = mockNormalization
 
         self.instance = NormalizationService()
         self.instance.dataFactoryService.getNormalizationRecord = MagicMock(return_value=mockNormalizationRecord)
 
         result = self.instance.normalizationAssessment(self.request)
 
-        mockDataFactoryService.getNormalizationState.assert_called_once_with(self.request.runNumber)
+        mockDataFactoryService.getCalibrationState.assert_called_once_with(self.request.runNumber)
         expected_record_mockId = "mock_normalization_record"
         assert result.mockId == expected_record_mockId
 

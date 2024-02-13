@@ -2,7 +2,7 @@
     "runNumber": 57514,
     "backgroundRunNumber": 58813,
     "smoothingParameter": 0.5,
-    "normalization":{
+    "calibration":{
         "instrumentState": {
             "id": "ab8704b0bc2a2342",
             "peakTailCoefficient": 1.1,
@@ -72,5 +72,12 @@
     },
     "workspaceList": [
     ],
-    "version": 7
+    "version": 7,
+    "dMin": 0.4
+    #"workspaceNames": [
+    #    "fitted_strippedFocussedData_stripped_0",
+    #    "fitted_strippedFocussedData_stripped_1",
+    #    "fitted_strippedFocussedData_stripped_2",
+    #    "57514_calibration_reduction_result"
+    # ],
 }
