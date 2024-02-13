@@ -18,7 +18,7 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         # mock algorithm execution result and output
         mockAlgo.execute.return_value = "passed"
         params = PixelGroupingParameters(
-            groupID=1, twoTheta=3.14, dResolution=Limit(minimum=0.1, maximum=1.0), dRelativeResolution=0.01
+            groupID=1, isMasked=False, twoTheta=3.14, dResolution=Limit(minimum=0.1, maximum=1.0), dRelativeResolution=0.01
         )
         mock_output_val = [params]
         mockAlgo.getProperty("OutputParameters").value = list_to_raw(mock_output_val)
@@ -27,8 +27,11 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         recipe = PixelGroupingParametersCalculationRecipe()
         ingredients = mock.Mock(return_value="good ingredients")
         ingredients.nBinsAcrossPeakWidth = 7
-        groupingWorkspace = mock.Mock(return_value="grouping workspace")
-        data = recipe.executeRecipe(ingredients, groupingWorkspace)
+        groceries = {
+            "groupingWorkspace": mock.Mock(return_value="grouping workspace"),
+            "maskWorkspace": mock.Mock(return_value="mask workspace"),
+        }
+        data = recipe.executeRecipe(ingredients, groceries)
 
         assert mockAlgo.execute.called
         assert isinstance(data, dict)
@@ -43,10 +46,13 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
 
         recipe = PixelGroupingParametersCalculationRecipe()
         ingredients = mock.Mock()
-        groupingWorkspace = mock.Mock(return_value="grouping workspace")
+        groceries = {
+            "groupingWorkspace": mock.Mock(return_value="grouping workspace"),
+            "maskWorkspace": mock.Mock(return_value="mask workspace"),
+        }
 
         try:
-            recipe.executeRecipe(ingredients, groupingWorkspace)
+            recipe.executeRecipe(ingredients, groceries)
         except Exception as e:  # noqa: E722 BLE001
             assert str(e) == "passed"  # noqa: PT017
             assert mockAlgo.execute.called

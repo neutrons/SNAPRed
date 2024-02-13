@@ -30,7 +30,7 @@ class GroceryService:
         self.dataService = self._defaultClass(dataService, LocalDataService)
 
         # _loadedRuns caches a count of the number of copies made from the neutron-data workspace
-        #   corresponding to a given (runId, isLiteMode) key:
+        #   corresponding to a given (runNumber, isLiteMode) key:
         #   This count is:
         #     None: if a workspace is not loaded;
         #        0: if it is loaded, but no copies have been made;
@@ -79,20 +79,20 @@ class GroceryService:
         """
         cachedWorkspaces = set()
         cachedWorkspaces.update(
-            [self._createRawNeutronWorkspaceName(runId, useLiteMode) for runId, useLiteMode in self._loadedRuns.keys()]
+            [self._createRawNeutronWorkspaceName(runNumber, useLiteMode) for runNumber, useLiteMode in self._loadedRuns.keys()]
         )
         cachedWorkspaces.update(self._loadedGroupings.values())
         cachedWorkspaces.update(self._loadedInstruments.values())
 
         return list(cachedWorkspaces)
 
-    def _updateNeutronCacheFromADS(self, runId: str, useLiteMode: bool):
+    def _updateNeutronCacheFromADS(self, runNumber: str, useLiteMode: bool):
         """
         If the workspace has been loaded, but is not represented in the cache
         then update the cache to represent this condition
         """
-        workspace = self._createRawNeutronWorkspaceName(runId, useLiteMode)
-        key = self._key(runId, useLiteMode)
+        workspace = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
+        key = self._key(runNumber, useLiteMode)
         if self.workspaceDoesExist(workspace) and self._loadedRuns.get(key) is None:
             # 0 => loaded with no copies
             self._loadedRuns[key] = 0
@@ -108,13 +108,13 @@ class GroceryService:
         elif self._loadedGroupings.get(key) is not None and not self.workspaceDoesExist(workspace):
             del self._loadedGroupings[key]
 
-    def _updateInstrumentCacheFromADS(self, runId: str, useLiteMode: bool):
+    def _updateInstrumentCacheFromADS(self, runNumber: str, useLiteMode: bool):
         """
         Ensure cache consistency for a single instrument-donor workspace.
         """
         # The workspace name in the cache may be either a neutron data workspace or an empty-instrument workspace.
-        workspace = self._createRawNeutronWorkspaceName(runId, useLiteMode)
-        key = self._key(runId, useLiteMode)
+        workspace = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
+        key = self._key(runNumber, useLiteMode)
         if self.workspaceDoesExist(workspace) and self._loadedInstruments.get(key) is None:
             self._loadedInstruments[key] = workspace
         elif self._loadedInstruments.get(key) is not None:
@@ -142,16 +142,16 @@ class GroceryService:
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
-    def _createDiffcalOutputWorkspaceFilename(self, runId: str, version: str, unit: str) -> str:
+    def _createDiffcalOutputWorkspaceFilename(self, runNumber: str, version: str, unit: str) -> str:
         return str(
-            Path(self._getCalibrationDataPath(runId, version))
-            / (self._createDiffcalOutputWorkspaceName(runId, version, unit) + ".nxs")
+            Path(self._getCalibrationDataPath(runNumber, version))
+            / (self._createDiffcalOutputWorkspaceName(runNumber, version, unit) + ".nxs")
         )
 
-    def _createDiffcalTableFilename(self, runId: str, version: str) -> str:
+    def _createDiffcalTableFilename(self, runNumber: str, version: str) -> str:
         return str(
-            Path(self._getCalibrationDataPath(runId, version))
-            / (self._createDiffcalTableWorkspaceName(runId, version) + ".h5")
+            Path(self._getCalibrationDataPath(runNumber, version))
+            / (self._createDiffcalTableWorkspaceName(runNumber, version) + ".h5")
         )
 
     ## WORKSPACE NAME METHODS
@@ -162,33 +162,33 @@ class GroceryService:
             runNameBuilder.lite(wng.Lite.TRUE)
         return runNameBuilder
 
-    def _createNeutronWorkspaceName(self, runId: str, useLiteMode: bool) -> WorkspaceName:
-        return self._createNeutronWorkspaceNameBuilder(runId, useLiteMode).build()
+    def _createNeutronWorkspaceName(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
+        return self._createNeutronWorkspaceNameBuilder(runNumber, useLiteMode).build()
 
-    def _createRawNeutronWorkspaceName(self, runId: str, useLiteMode: bool) -> WorkspaceName:
-        return self._createNeutronWorkspaceNameBuilder(runId, useLiteMode).auxiliary("Raw").build()
+    def _createRawNeutronWorkspaceName(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
+        return self._createNeutronWorkspaceNameBuilder(runNumber, useLiteMode).auxiliary("Raw").build()
 
-    def _createCopyNeutronWorkspaceName(self, runId: str, useLiteMode: bool, numCopies: int) -> WorkspaceName:
-        return self._createNeutronWorkspaceNameBuilder(runId, useLiteMode).auxiliary(f"Copy{numCopies}").build()
+    def _createCopyNeutronWorkspaceName(self, runNumber: str, useLiteMode: bool, numCopies: int) -> WorkspaceName:
+        return self._createNeutronWorkspaceNameBuilder(runNumber, useLiteMode).auxiliary(f"Copy{numCopies}").build()
 
-    def _createGroupingWorkspaceName(self, groupingScheme: str, runId: str, useLiteMode: bool) -> WorkspaceName:
+    def _createGroupingWorkspaceName(self, groupingScheme: str, runNumber: str, useLiteMode: bool) -> WorkspaceName:
         # TODO: use WNG here!
         if groupingScheme == "Lite":
             return "lite_grouping_map"
         instr = "lite" if useLiteMode else "native"
-        return f"{Config['grouping.workspacename.' + instr]}_{groupingScheme}_{runId}"
+        return f"{Config['grouping.workspacename.' + instr]}_{groupingScheme}_{runNumber}"
 
-    def _createDiffcalInputWorkspaceName(self, runId: str) -> WorkspaceName:
-        return wng.diffCalInput().runNumber(runId).build()
+    def _createDiffcalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
+        return wng.diffCalInput().runNumber(runNumber).build()
 
-    def _createDiffcalOutputWorkspaceName(self, runId: str, version: str, unit: str) -> WorkspaceName:
-        return wng.diffCalOutput().unit(unit).runNumber(runId).version(version).build()
+    def _createDiffcalOutputWorkspaceName(self, runNumber: str, version: str, unit: str) -> WorkspaceName:
+        return wng.diffCalOutput().unit(unit).runNumber(runNumber).version(version).build()
 
-    def _createDiffcalTableWorkspaceName(self, runId: str, version: str = "") -> WorkspaceName:
-        return wng.diffCalTable().runNumber(runId).version(version).build()
+    def _createDiffcalTableWorkspaceName(self, runNumber: str, version: str = "") -> WorkspaceName:
+        return wng.diffCalTable().runNumber(runNumber).version(version).build()
 
-    def _createDiffcalMaskWorkspaceName(self, runId: str, version: str = "") -> WorkspaceName:
-        return wng.diffCalMask().runNumber(runId).version(version).build()
+    def _createDiffcalMaskWorkspaceName(self, runNumber: str, version: str = "") -> WorkspaceName:
+        return wng.diffCalMask().runNumber(runNumber).version(version).build()
 
     ## ACCESSING WORKSPACES
     """
@@ -242,16 +242,16 @@ class GroceryService:
     and preserving a cache to prevent re-loading the same data files.
     """
 
-    def _fetchInstrumentDonor(self, runId: str, useLiteMode: bool) -> WorkspaceName:
-        self._updateInstrumentCacheFromADS(runId, useLiteMode)
+    def _fetchInstrumentDonor(self, runNumber: str, useLiteMode: bool) -> WorkspaceName:
+        self._updateInstrumentCacheFromADS(runNumber, useLiteMode)
 
-        key = self._key(runId, useLiteMode)
+        key = self._key(runNumber, useLiteMode)
         wsName = self._loadedInstruments.get(key)
         if wsName is None:
-            self._updateNeutronCacheFromADS(runId, useLiteMode)
+            self._updateNeutronCacheFromADS(runNumber, useLiteMode)
             if self._loadedRuns.get(key) is not None:
                 # If possible, use a cached neutron-data workspace as an instrument donor
-                wsName = self._createRawNeutronWorkspaceName(runId, useLiteMode)
+                wsName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
             else:
                 # Otherwise, create an instrument donor.
                 #   Alternatively, depending on performance, loading the corresponding neutron-data workspace
@@ -271,19 +271,20 @@ class GroceryService:
                 loadEmptyInstrument.execute()
 
                 # Initialize the instrument parameters
-                # (Reserved IDs will use the unmodified instrument.)
-                if runId != GroceryListItem.RESERVED_NATIVE_RUNID and runId != GroceryListItem.RESERVED_LITE_RUNID:
-                    self._updateInstrumentParameters(runId, wsName)
+                # (Reserved run-numbers will use the unmodified instrument.)
+                if runNumber != GroceryListItem.RESERVED_NATIVE_RUNNUMBER and runNumber != GroceryListItem.RESERVED_LITE_RUNNUMBER:
+                    detectorState: DetectorState = self._getDetectorState(runNumber)
+                    self.updateInstrumentParameters(wsName, detectorState)
             self._loadedInstruments[key] = wsName
         return wsName
 
-    def _updateInstrumentParameters(self, runNumber: str, wsName: str):
+    def updateInstrumentParameters(self, wsName: str, detectorState: DetectorState):
         """
-        Update mutable instrument parameters
+        Update mutable instrument parameters:
+        -- this public method allows override during algorithm testing
+        separately from the recipe system (i.e. not using `GroceryService` loading).
         """
         # Moved from `PixelGroupingParametersCalculationAlgorithm` for more general application here.
-
-        detectorState: DetectorState = self._getDetectorState(runNumber)
 
         # Add sample logs with detector "arc" and "lin" parameters to the workspace
         # NOTE after adding the logs, it is necessary to update the instrument to
@@ -341,7 +342,7 @@ class GroceryService:
                 raise RuntimeError(f"unable to load workspace {name} from {filePath}")
         return data
 
-    def fetchNeutronDataSingleUse(self, runId: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
+    def fetchNeutronDataSingleUse(self, runNumber: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
         """
         Fetch a neutron data file, without copy-protection.
         If the workspace is truly only needed once, this saves time and memory.
@@ -356,14 +357,14 @@ class GroceryService:
         - "workspace": the name of the workspace created in the ADS
         """
 
-        filename: str = self._createNeutronFilename(runId, useLiteMode)
-        workspaceName: str = self._createNeutronWorkspaceName(runId, useLiteMode)
+        filename: str = self._createNeutronFilename(runNumber, useLiteMode)
+        workspaceName: str = self._createNeutronWorkspaceName(runNumber, useLiteMode)
 
-        self._updateNeutronCacheFromADS(runId, useLiteMode)
+        self._updateNeutronCacheFromADS(runNumber, useLiteMode)
 
         # check if a raw workspace exists, and clone it if so
-        if self._loadedRuns.get(self._key(runId, useLiteMode)) is not None:
-            self.getCloneOfWorkspace(self._createRawNeutronWorkspaceName(runId, useLiteMode), workspaceName)
+        if self._loadedRuns.get(self._key(runNumber, useLiteMode)) is not None:
+            self.getCloneOfWorkspace(self._createRawNeutronWorkspaceName(runNumber, useLiteMode), workspaceName)
             data = {
                 "result": True,
                 "loader": "cached",
@@ -378,7 +379,7 @@ class GroceryService:
 
         return data
 
-    def fetchNeutronDataCached(self, runId: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
+    def fetchNeutronDataCached(self, runNumber: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
         """
         Fetch a nexus data file using a cache system to prevent double-loading from disk
         inputs:
@@ -390,13 +391,13 @@ class GroceryService:
         - "loader": the loader that was used by the algorithm, use it next time
         - "workspace": the name of the workspace created in the ADS
         """
-        key = self._key(runId, useLiteMode)
-        rawWorkspaceName: WorkspaceName = self._createRawNeutronWorkspaceName(runId, useLiteMode)
-        filename: str = self._createNeutronFilename(runId, useLiteMode)
+        key = self._key(runNumber, useLiteMode)
+        rawWorkspaceName: WorkspaceName = self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
+        filename: str = self._createNeutronFilename(runNumber, useLiteMode)
 
         loadedFromNative: bool = False
 
-        self._updateNeutronCacheFromADS(runId, useLiteMode)
+        self._updateNeutronCacheFromADS(runNumber, useLiteMode)
 
         # if the raw data has already been loaded, clone it
         if self._loadedRuns.get(key) is not None:
@@ -407,18 +408,18 @@ class GroceryService:
             self._loadedRuns[key] = 0
         # if the file does not exist, and this is native resolution data, this represents an error condition
         elif useLiteMode is False:
-            raise RuntimeError(f"Could not load run {runId} from file {filename}")
+            raise RuntimeError(f"Could not load run {runNumber} from file {filename}")
         # if in Lite mode, and no raw workspace and no file exists, look if native data has been loaded from cache
         # if so, then clone the native data and reduce it
-        elif self._loadedRuns.get(self._key(runId, False)) is not None:
-            nativeRawWorkspaceName = self._createRawNeutronWorkspaceName(runId, False)
+        elif self._loadedRuns.get(self._key(runNumber, False)) is not None:
+            nativeRawWorkspaceName = self._createRawNeutronWorkspaceName(runNumber, False)
             data = {"loader": "cached"}
             loadedFromNative = True
         # neither lite nor native data in cache and lite file does not exist
         # then load native data, clone it, and reduce it
-        elif os.path.isfile(self._createNeutronFilename(runId, False)):
+        elif os.path.isfile(self._createNeutronFilename(runNumber, False)):
             # load the native resolution data
-            goingNative = (runId, False)
+            goingNative = (runNumber, False)
             nativeRawWorkspaceName = self._createRawNeutronWorkspaceName(*goingNative)
             nativeFilename = self._createNeutronFilename(*goingNative)
             data = self.grocer.executeRecipe(nativeFilename, nativeRawWorkspaceName, loader="")
@@ -427,7 +428,7 @@ class GroceryService:
             loadedFromNative = True
         # the data cannot be loaded -- this is an error condition
         else:
-            raise RuntimeError(f"Could not load run {runId} from file {filename}")
+            raise RuntimeError(f"Could not load run {runNumber} from file {filename}")
 
         if loadedFromNative:
             # clone the native raw workspace
@@ -437,7 +438,7 @@ class GroceryService:
             self.convertToLiteMode(rawWorkspaceName)
 
         # create a copy of the raw data for use
-        workspaceName = self._createCopyNeutronWorkspaceName(runId, useLiteMode, self._loadedRuns[key] + 1)
+        workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
         data["result"] = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
         data["workspace"] = workspaceName
         self._loadedRuns[key] += 1

@@ -1,14 +1,15 @@
 # ruff: noqa: E402, ARG002
 import os
 import tempfile
-import unittest
-import unittest.mock as mock
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List
 from unittest.mock import ANY, MagicMock, call, patch
 
+import unittest
+import unittest.mock as mock
 import pytest
+
 from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
     DeleteWorkspace,
@@ -47,12 +48,14 @@ with mock.patch.dict(
     from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
     from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+    from snapred.backend.dao.RunConfig import RunConfig
     from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.FocusGroup import FocusGroup
     from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
     from snapred.backend.service.CalibrationService import CalibrationService
     from snapred.backend.service.SousChef import SousChef
     from snapred.meta.Config import Resource
+
     from util.helpers import (
         createCompatibleDiffCalTable,
         createCompatibleMask,

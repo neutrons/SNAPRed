@@ -1,5 +1,6 @@
 from enum import IntEnum
 from typing import Dict, List, Optional, Union
+import numpy as np
 
 from pydantic import BaseModel, parse_obj_as
 
@@ -27,6 +28,10 @@ class PixelGroup(BaseModel):
         return sorted([p for p in self.pixelGroupingParameters.keys()])
 
     @property
+    def isMasked(self) -> List[bool]:
+        return [self.pixelGroupingParameters[gid].isMasked for gid in self.groupIDs]
+
+    @property
     def twoTheta(self) -> List[float]:
         return [self.pixelGroupingParameters[gid].twoTheta for gid in self.groupIDs]
 
@@ -47,6 +52,7 @@ class PixelGroup(BaseModel):
             kwargs["pixelGroupingParameters"] = {
                 groupIDs[i]: PixelGroupingParameters(
                     groupID=groupIDs[i],
+                    isMasked=kwargs["isMasked"][i],
                     twoTheta=kwargs["twoTheta"][i],
                     dResolution=kwargs["dResolution"][i],
                     dRelativeResolution=kwargs["dRelativeResolution"][i],
@@ -63,10 +69,16 @@ class PixelGroup(BaseModel):
     # these are not properties, but they reflect the actual data consumption
 
     def dMax(self) -> List[float]:
-        return [self.pixelGroupingParameters[gid].dResolution.maximum for gid in self.groupIDs]
+        # Warning: if the pixel-group is fully masked, it requires special treatment:
+        #   different Mantid algorithms use either "0.0" or "NaN" to indicate an unspecified value,
+        #   so these values may need to be filtered.
+        return [self.pixelGroupingParameters[gid].dResolution.maximum if not self.pixelGroupingParameters[gid].isMasked else 0.0 for gid in self.groupIDs]
 
     def dMin(self) -> List[float]:
-        return [self.pixelGroupingParameters[gid].dResolution.minimum for gid in self.groupIDs]
+        # Warning: if the pixel-group is fully masked, it requires special treatment:
+        #   different Mantid algorithms use either "0.0" or "NaN" to indicate an unspecified value,
+        #   so these values may need to be filtered.
+        return [self.pixelGroupingParameters[gid].dResolution.minimum if not self.pixelGroupingParameters[gid].isMasked else 0.0 for gid in self.groupIDs]
 
     def dBin(self) -> List[float]:
         Nbin = self.nBinsAcrossPeakWidth
