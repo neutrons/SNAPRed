@@ -82,24 +82,6 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             self.groupIDs.append(groupPeakList.groupID)
             self.predictedPeaks[groupPeakList.groupID] = groupPeakList.peaks
 
-        if all(len(peaks) == 0 for peaks in self.predictedPeaks.values()):
-            self.mantidSnapper.CloneWorkspace(
-                "Cloning a weighting workspce...",
-                InputWorkspace=self.inputWorkspaceName,
-                OutputWorkspace=self.weightWorkspaceName,
-            )
-            self.mantidSnapper.executeQueue()
-            weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
-            numSpec = weight_ws.getNumberHistograms()
-            for index in range(numSpec):
-                zeroDataX = np.zeros_like(weight_ws.readX(index))
-                weight_ws.dataX(index)[:] = zeroDataX
-                zeroDataY = np.zeros_like(weight_ws.readY(index))
-                weight_ws.dataY(index)[:] = zeroDataY
-
-            self.setPropertyValue("WeightWorkspace", self.weightWorkspaceName)
-            return
-
         # clone input workspace to create a weight workspace
         self.mantidSnapper.CloneWorkspace(
             "Cloning a weighting workspce...",
@@ -115,13 +97,6 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
                 InputWorkspace=self.weightWorkspaceName,
                 OutputWorkspace=self.weightWorkspaceName,
             )
-            # self.mantidSnapper.RebinToWorkspace(
-            #     "Rebin to remove events",
-            #     WorkspaceToRebin = self.weightWorkspaceName,
-            #     WorkspaceToMatch = self.weightWorkspaceName,
-            #     OutputWorkspace = self.weightWorkspaceName,
-            #     PreserveEvents=False,
-            # )
             self.mantidSnapper.executeQueue()
 
         weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
