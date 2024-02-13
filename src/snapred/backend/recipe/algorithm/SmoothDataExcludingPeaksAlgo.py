@@ -141,8 +141,8 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             y = y[weightY != 0]
             # if no y-values were excluded, then there are no peaks in the spectrum
             # rather than leaving data alone, set all data to zero
-            if len(y) == len(x):
-                smoothing_results = [0] * len(x)
+            if len(y) == len(xMidpoints):
+                smoothing_results = [0] * len(y)
             # otherwise, if some y-values were excluded, then
             # interpolate over the excluded regions
             else:
