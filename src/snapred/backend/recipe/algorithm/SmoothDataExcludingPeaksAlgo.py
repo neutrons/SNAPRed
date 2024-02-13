@@ -119,12 +119,12 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
 
         numSpec = weight_ws.getNumberHistograms()
 
-        allZeros = all(np.all(weight_ws.readX(index) == 0) for index in range(numSpec))
+        # allZeros = all(np.all(weight_ws.readX(index) == 0) for index in range(numSpec))
 
-        if allZeros:
-            self.mantidSnapper.executeQueue()
-            self.setProperty("OutputWorkspace", weight_ws)
-            return
+        # if allZeros:
+        #     self.mantidSnapper.executeQueue()
+        #     self.setProperty("OutputWorkspace", weight_ws)
+        #     return
 
         # extract x & y data for csaps
         for index in range(numSpec):
@@ -139,10 +139,18 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
 
             weightXMidpoints = weightXMidpoints[weightY != 0]
             y = y[weightY != 0]
-            # Generate spline with purged dataset
-            tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
-            # fill in the removed data using the spline function and original datapoints
-            smoothing_results = tck(xMidpoints, extrapolate=False)
+            # if no y-values were excluded, then there are no peaks in the spectrum
+            # rather than leaving data alone, set all data to zero
+            if len(y) == len(x):
+                smoothing_results = [0] * len(x)
+            # otherwise, if some y-values were excluded, then
+            # interpolate over the excluded regions
+            else:
+                # generate spline with purged dataset
+                tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
+                # fill in the removed data using the spline function and original datapoints
+                smoothing_results = tck(xMidpoints, extrapolate=False)
+            # set the spectrum values
             outputWorkspace.setY(index, smoothing_results)
 
         self.mantidSnapper.WashDishes(
