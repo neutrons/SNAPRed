@@ -63,6 +63,7 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
         "mantid.plots.plotfunctions",
         "mantid.plots.datafunctions",
         "mantid.plots.utility",
+        "workbench.plotting",
         "workbench.plugins.workspacewidget",
     ]
 

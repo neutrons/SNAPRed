@@ -34,18 +34,27 @@ class PlotTestView(QMainWindow):
             BinningMode="Logarithmic",
         )
 
+        nrows = 3
+        ncols = 3
         fig, ax = plt.subplots(
             figsize=(10, 6.5258),
-            nrows=1,
-            ncols=1,
+            nrows=nrows,
+            ncols=ncols,
             subplot_kw={"projection": "mantid"},
+            constrained_layout=True,
         )
-        ax.plot(wksp, specNum=1, label="good", normalize_by_bin_width=True)
-        ax.legend()
+
+        for i in range(nrows):
+            for j in range(ncols):
+                ax[i][j].plot(wksp, specNum=1, label=f"{i*nrows+j}", normalize_by_bin_width=True)
+                ax[i][j].tick_params(axis="x", direction="in", pad=5)
+                ax[i][j].tick_params(axis="y", direction="in", pad=-10)
+                ax[i][j].set_title(f"Group ID: {i + 1}")
+                ax[i][j].legend()
+                plt.setp(ax[i][j].get_yticklabels(), ha="left")
 
         self.figure = fig
         self.canvas = MantidFigureCanvas(self.figure)
-
         self.navigation_toolbar = WorkbenchNavigationToolbar(self.canvas, self)
 
         self.recalculationButton = QPushButton("Recalculate")
