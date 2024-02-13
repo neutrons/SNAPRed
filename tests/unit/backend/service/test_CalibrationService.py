@@ -145,6 +145,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert metric == FocusGroupMetric.return_value
 
+    @patch(
+        thisService + "CalibrationAssessmentResponse",
+        return_value=MagicMock(mockId="mock_calibration_assessment_response"),
+    )
     @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record"))
     @patch(thisService + "FitMultiplePeaksRecipe")
     @patch(thisService + "FarmFreshIngredients")
@@ -161,6 +165,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         FarmFreshIngredients,
         FitMultiplePeaksRecipe,
         CalibrationRecord,
+        CalibrationAssessmentResponse,
     ):
         # Mock input data
         fakeFocusGroup = FocusGroup(name="egg", definition="muffin")
@@ -187,7 +192,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             focusGroup={"name": fakeMetrics.focusGroupName, "definition": ""},
             calibrantSamplePath="egg/muffin/biscuit",
         )
-        record = self.instance.assessQuality(request)
+        response = self.instance.assessQuality(request)
 
         # Assert correct method calls
         assert FarmFreshIngredients.call_count == 1
@@ -195,7 +200,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert FitMultiplePeaksRecipe.called_once_with(self.instance.sousChef.prepPeakIngredients.return_value)
 
         # Assert the result is as expected
-        assert record == CalibrationRecord.return_value
+        assert response == CalibrationAssessmentResponse.return_value
 
         # Assert expected calibration metric workspaces have been generated
         for metric in ["sigma", "strain"]:

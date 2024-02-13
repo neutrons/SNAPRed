@@ -1,4 +1,5 @@
 import os
+from functools import cache
 from typing import Any, Dict, List, Tuple
 
 from mantid.api import AlgorithmManager, mtd
@@ -43,6 +44,18 @@ class GroceryService:
     def rebuildGroupingCache(self):
         for loadedGrouping in self._loadedGroupings.copy():
             self._updateGroupingCacheFromADS(loadedGrouping, self._loadedGroupings[loadedGrouping])
+
+    def getCachedWorkspaces(self):
+        """
+        Returns a list of all workspaces cached in GroceryService
+        """
+        cachedWorkspaces = []
+        cachedWorkspaces.extend(
+            [self._createRawNeutronWorkspaceName(runId, useLiteMode) for runId, useLiteMode in self._loadedRuns.keys()]
+        )
+        cachedWorkspaces.extend(self._loadedGroupings.values())
+
+        return cachedWorkspaces
 
     ## FILENAME METHODS
 
@@ -141,6 +154,15 @@ class GroceryService:
 
     def workspaceDoesExist(self, name: WorkspaceName):
         return mtd.doesExist(name)
+
+    def renameWorkspace(self, oldName: WorkspaceName, newName: WorkspaceName):
+        """
+        Renames a workspace in Mantid's ADS.
+        """
+        renameAlgo = AlgorithmManager.create("RenameWorkspace")
+        renameAlgo.setProperty("InputWorkspace", oldName)
+        renameAlgo.setProperty("OutputWorkspace", newName)
+        renameAlgo.execute()
 
     def getWorkspaceForName(self, name: WorkspaceName):
         """
@@ -453,3 +475,17 @@ class GroceryService:
             deleteAlgo.execute()
         else:
             pass
+
+    def clearADS(self, exclude: List[str] = []):
+        """
+        Clears ads of all workspaces except those in the exclude list and cache.
+        """
+        workspacesToClear = mtd.getObjectNames()
+        # filter exclude
+        workspacesToClear = [w for w in workspacesToClear if w not in exclude]
+        # filter caches
+        workspaceCache = self.getCachedWorkspaces()
+        workspacesToClear = [w for w in workspacesToClear if w not in workspaceCache]
+        # clear the workspaces
+        for workspace in workspacesToClear:
+            self.deleteWorkspaceUnconditional(workspace)

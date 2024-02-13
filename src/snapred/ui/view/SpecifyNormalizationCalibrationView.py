@@ -1,8 +1,8 @@
 import math
+import unittest.mock as mock
 
 import matplotlib.pyplot as plt
 from mantid.simpleapi import mtd
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -15,6 +15,9 @@ from PyQt5.QtWidgets import (
     QSlider,
     QWidget,
 )
+from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
+from workbench.plotting.toolbar import WorkbenchNavigationToolbar
+
 
 from snapred.meta.Config import Config
 from snapred.ui.widget.JsonFormList import JsonFormList
@@ -23,12 +26,8 @@ from snapred.ui.widget.LabeledField import LabeledField
 
 class SpecifyNormalizationCalibrationView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
-    signalGroupingUpdate = pyqtSignal(int)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
-    signalCalibrantUpdate = pyqtSignal(int)
-    signalUpdateSmoothingParameter = pyqtSignal(float)
     signalValueChanged = pyqtSignal(int, float, float)
-    signalWorkspacesUpdate = pyqtSignal(str, str)
     signalUpdateRecalculationButton = pyqtSignal(bool)
 
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
@@ -41,6 +40,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
+        # create the run number fields
         self.fieldRunNumber = LabeledField("Run Number :", self._jsonFormList.getField("run.runNumber"), self)
         self.fieldRunNumber.setEnabled(False)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
@@ -51,9 +51,12 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.fieldBackgroundRunNumber.setEnabled(False)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
-        self.figure = plt.figure(figsize=(50, 50))
-        self.canvas = FigureCanvas(self.figure)
+        # create the graph elements
+        self.figure = plt.figure(constrained_layout=True)
+        self.canvas = MantidFigureCanvas(self.figure)
+        self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
 
+        # create the other specification elements
         self.sampleDropDown = QComboBox()
         self.sampleDropDown.setEnabled(False)
         self.sampleDropDown.addItems(samples)
@@ -62,7 +65,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.groupingDropDown = QComboBox()
         self.groupingDropDown.setEnabled(True)
         self.groupingDropDown.addItems(groups)
-        # self.groupingDropDown.currentIndexChanged.connect(self.emitValueChange)
 
         self.smoothingSlider = QSlider(Qt.Horizontal)
         self.smoothingSlider.setMinimum(-1000)
@@ -103,16 +105,20 @@ class SpecifyNormalizationCalibrationView(QWidget):
         smoothingLayout.addWidget(self.smoothingLineEdit)
         smoothingLayout.addWidget(self.fielddMin)
 
-        self.layout.addWidget(self.canvas, 0, 0, 1, -1)
-        self.layout.addWidget(self.fieldRunNumber, 1, 0)
-        self.layout.addWidget(self.fieldBackgroundRunNumber, 1, 1)
-        self.layout.addLayout(smoothingLayout, 2, 0)
-        self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 3, 0)
-        self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 3, 1)
-        self.layout.addWidget(self.recalculationButton, 4, 0, 1, 2)
+        # add all elements to the grid layout
+        self.layout.addWidget(self.navigationBar, 0, 0)
+        self.layout.addWidget(self.canvas, 1, 0, 1, -1)
+        self.layout.addWidget(self.fieldRunNumber, 2, 0)
+        self.layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
+        self.layout.addLayout(smoothingLayout, 3, 0)
+        self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 4, 0)
+        self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 4, 1)
+        self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
 
-        self.layout.setRowStretch(0, 3)
-        self.layout.setRowStretch(1, 1)
+        self.layout.setRowStretch(1, 3)
+
+        # store the initial layout without graphs
+        self.initialLayoutHeight = self.size().height()
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
 
@@ -146,10 +152,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
             self.smoothingSlider.setValue(sliderValue)
         except:  # noqa: E722
             raise Exception("Must be a numerical value.")
-
-    def resizeEvent(self, event):
-        self._updateGraphs()
-        super().resizeEvent(event)
 
     def emitValueChange(self):
         index = self.groupingDropDown.currentIndex()
@@ -185,49 +187,41 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self._updateGraphs()
 
     def _updateGraphs(self):
-        self.figure.clear()
-        self.subplots.clear()
-
-        if self.groupingSchema == "All":
-            numGraphs = 1
-        elif self.groupingSchema == "Bank":
-            numGraphs = 2
-        elif self.groupingSchema == "Column":
-            numGraphs = 6
-        else:
-            raise Exception("Invalid grouping schema or this schema is not yet supported.")
-
-        for i in range(numGraphs * 2):
-            ax = self.figure.add_subplot(2, numGraphs, i + 1)
-            self.subplots.append(ax)
-
-        self._updatePlots(numGraphs)
-
-    def _updatePlots(self, numGraphs):
-        self.figure.clear()
-        self.subplots = []
-
-        for i in range(numGraphs):
-            ax = self.figure.add_subplot(1, numGraphs, i + 1)
-            self.subplots.append(ax)
-
+        # get the updated workspaces and optimal graph grid
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
+        numGraphs = focusedWorkspace.getNumberHistograms()
+        nrows, ncols = self._optimizeRowsAndCols(numGraphs)
 
-        for i, ax in enumerate(self.subplots):
-            if i < focusedWorkspace.getNumberHistograms():
-                focusedData = focusedWorkspace.readY(i)
-                smoothedData = smoothedWorkspace.readY(i)
+        # now re-draw the figure
+        self.figure.clear()
+        for i in range(numGraphs):
+            ax = self.figure.add_subplot(nrows, ncols, i + 1, projection="mantid")
+            ax.plot(focusedWorkspace, wkspIndex=i, label="Focused Data", normalize_by_bin_width=True)
+            ax.plot(smoothedWorkspace, wkspIndex=i, label="Smoothed Data", normalize_by_bin_width=True, linestyle="--")
+            ax.legend()
+            ax.tick_params(direction="in")
+            ax.set_title(f"Group ID: {i + 1}")
+            ax.set_xlabel("d-Spacing (Å)")
+            ax.set_ylabel("Intensity")
 
-                ax.plot(focusedData, label="Focused Data")
-                ax.plot(smoothedData, label="Smoothed Data", linestyle="--")
-                ax.legend()
-                ax.set_title(f"Group ID: {i + 1}")
-
-                ax.set_xlabel("d-Spacing (Å)")
-                ax.set_ylabel("Intensity")
-
+        # resize window and redraw
+        self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))
         self.canvas.draw()
+
+    def _optimizeRowsAndCols(self, numGraphs):
+        # Get best size for layout
+        sqrtSize = int(numGraphs**0.5)
+        if sqrtSize == numGraphs**0.5:
+            rowSize = sqrtSize
+            colSize = sqrtSize
+        elif numGraphs <= ((sqrtSize + 1) * sqrtSize):
+            rowSize = sqrtSize
+            colSize = sqrtSize + 1
+        else:
+            rowSize = sqrtSize + 1
+            colSize = sqrtSize + 1
+        return rowSize, colSize
 
     def setEnableRecalculateButton(self, enable):
         self.recalculationButton.setEnabled(enable)
