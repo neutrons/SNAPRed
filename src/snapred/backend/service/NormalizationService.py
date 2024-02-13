@@ -154,7 +154,7 @@ class NormalizationService(Service):
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             calibration=calibration,
-            dMin=request.dMin,
+            dMin=request.crystalDMin,
         )
         return record
 

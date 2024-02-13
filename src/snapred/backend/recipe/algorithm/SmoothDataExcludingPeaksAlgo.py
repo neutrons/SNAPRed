@@ -120,52 +120,32 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         numSpec = weightWorkspace.getNumberHistograms()
 
         for index in range(numSpec):
-            if all(weightWorkspace.readY(index) == 1):
-                self.mantidSnapper.CloneWorkspace(
-                    "Cloning inputworkspace...",
-                    InputWorkspace=self.weightWorkspaceName,
-                    OutputWorkspace=self.outputWorkspaceName,
-                )
-                self.mantidSnapper.executeQueue()
-                outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]
-                for index in range(numSpec):
-                    zeroDataX = [0]
-                    outputWorkspace.dataX(index)[:] = zeroDataX
-                    zeroDataY = [0]
-                    outputWorkspace.dataY(index)[:] = zeroDataY
-                self.mantidSnapper.WashDishes(
-                    "Cleaning up weight workspace...",
-                    Workspace=self.weightWorkspaceName,
-                )
-                self.mantidSnapper.executeQueue()
-                self.setProperty("OutputWorkspace", outputWorkspace)
-                return
+            if np.all(weightWorkspace.readY(index) == 1):
+                smoothing_results = np.zeroes_like(weightWorkspace.readY(index))
             else:
-                # extract x & y data for csaps
-                for index in range(numSpec):
-                    x = inputWorkspace.readX(index)
-                    y = inputWorkspace.readY(index)
+                x = inputWorkspace.readX(index)
+                y = inputWorkspace.readY(index)
 
-                    weightX = weightWorkspace.readX(index)
-                    weightY = weightWorkspace.readY(index)
+                weightX = weightWorkspace.readX(index)
+                weightY = weightWorkspace.readY(index)
 
-                    weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2
-                    xMidpoints = (x[:-1] + x[1:]) / 2
+                weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2
+                xMidpoints = (x[:-1] + x[1:]) / 2
 
-                    weightXMidpoints = weightXMidpoints[weightY != 0]
-                    y = y[weightY != 0]
-                    # Generate spline with purged dataset
-                    tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
-                    # fill in the removed data using the spline function and original datapoints
-                    smoothing_results = tck(xMidpoints, extrapolate=False)
-                    outputWorkspace.setY(index, smoothing_results)
+                weightXMidpoints = weightXMidpoints[weightY != 0]
+                y = y[weightY != 0]
+                # Generate spline with purged dataset
+                tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
+                # fill in the removed data using the spline function and original datapoints
+                smoothing_results = tck(xMidpoints, extrapolate=False)
+            outputWorkspace.setY(index, smoothing_results)
 
-                self.mantidSnapper.WashDishes(
-                    "Cleaning up weight workspace...",
-                    Workspace=self.weightWorkspaceName,
-                )
-                self.mantidSnapper.executeQueue()
-                self.setProperty("OutputWorkspace", outputWorkspace)
+        self.mantidSnapper.WashDishes(
+            "Cleaning up weight workspace...",
+            Workspace=self.weightWorkspaceName,
+        )
+        self.mantidSnapper.executeQueue()
+        self.setProperty("OutputWorkspace", outputWorkspace)
 
 
 # Register algorithm with Mantid
