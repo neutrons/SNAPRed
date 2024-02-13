@@ -471,7 +471,7 @@ class LocalDataService:
         # append to record and write to file
         write_model_pretty(record, recordPath)
 
-        self.writeNormalizationState(runNumber, record.normalization, version)
+        self.writeNormalizationState(runNumber, record.calibration, version)
 
         # write "persistent" workspaces
         if record.workspaceList:
