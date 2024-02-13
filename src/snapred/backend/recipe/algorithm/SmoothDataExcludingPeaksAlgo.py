@@ -121,7 +121,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
 
         for index in range(numSpec):
             if np.all(weightWorkspace.readY(index) == 1):
-                smoothing_results = np.zeroes_like(weightWorkspace.readY(index))
+                smoothing_results = np.zeros_like(weightWorkspace.readY(index))
             else:
                 x = inputWorkspace.readX(index)
                 y = inputWorkspace.readY(index)
