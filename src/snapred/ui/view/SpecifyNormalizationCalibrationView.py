@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEd
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
-
 from snapred.meta.Config import Config
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
