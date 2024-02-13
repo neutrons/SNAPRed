@@ -115,50 +115,38 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         # get handles to the workspaces
         inputWorkspace = self.mantidSnapper.mtd[self.inputWorkspaceName]
         outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]
-        weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
+        weightWorkspace = self.mantidSnapper.mtd[self.weightWorkspaceName]
 
-        numSpec = weight_ws.getNumberHistograms()
+        numSpec = weightWorkspace.getNumberHistograms()
 
-        # allZeros = all(np.all(weight_ws.readX(index) == 0) for index in range(numSpec))
-
-        # if allZeros:
-        #     self.mantidSnapper.executeQueue()
-        #     self.setProperty("OutputWorkspace", weight_ws)
-        #     return
-
-        # extract x & y data for csaps
         for index in range(numSpec):
-            x = inputWorkspace.readX(index)
-            y = inputWorkspace.readY(index)
-
-            weightX = weight_ws.readX(index)
-            weightY = weight_ws.readY(index)
-
-            weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2
-            xMidpoints = (x[:-1] + x[1:]) / 2
-
-            weightXMidpoints = weightXMidpoints[weightY != 0]
-            y = y[weightY != 0]
-            # if no y-values were excluded, then there are no peaks in the spectrum
-            # rather than leaving data alone, set all data to zero
-            if len(y) == len(xMidpoints):
-                smoothing_results = [0] * len(y)
-            # otherwise, if some y-values were excluded, then
-            # interpolate over the excluded regions
+            if np.all(weightWorkspace.readY(index) == 1):
+                outputWorkspace.dataX(index)[:] = [0]
+                outputWorkspace.dataY(index)[:] = [0]
             else:
-                # generate spline with purged dataset
+                x = inputWorkspace.readX(index)
+                y = inputWorkspace.readY(index)
+
+                weightX = weightWorkspace.readX(index)
+                weightY = weightWorkspace.readY(index)
+
+                weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2
+                xMidpoints = (x[:-1] + x[1:]) / 2
+
+                weightXMidpoints = weightXMidpoints[weightY != 0]
+                y = y[weightY != 0]
+                # Generate spline with purged dataset
                 tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
                 # fill in the removed data using the spline function and original datapoints
                 smoothing_results = tck(xMidpoints, extrapolate=False)
-            # set the spectrum values
-            outputWorkspace.setY(index, smoothing_results)
+                outputWorkspace.setY(index, smoothing_results)
 
-        self.mantidSnapper.WashDishes(
-            "Cleaning up weight workspace...",
-            Workspace=self.weightWorkspaceName,
-        )
-        self.mantidSnapper.executeQueue()
-        self.setProperty("OutputWorkspace", outputWorkspace)
+            self.mantidSnapper.WashDishes(
+                "Cleaning up weight workspace...",
+                Workspace=self.weightWorkspaceName,
+            )
+            self.mantidSnapper.executeQueue()
+            self.setProperty("OutputWorkspace", outputWorkspace)
 
 
 # Register algorithm with Mantid
