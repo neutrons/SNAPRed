@@ -245,7 +245,7 @@ class TestNormalizationService(unittest.TestCase):
         self.instance = NormalizationService()
         result = self.instance.normalization(self.request)
         assert result == {
-            "correctedVanadium": f"tof_{self.request.focusGroup.name}_12345_c-vanadium",
+            "correctedVanadium": "tof_unfoc_12345_raw_van_corr",
             "outputWorkspace": f"tof_{self.request.focusGroup.name}_12345_s+f-vanadium",
             "smoothedOutput": f"tof_{self.request.focusGroup.name}_12345_0.5-s_{self.request.dMin}-dmin",
         }
