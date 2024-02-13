@@ -111,7 +111,6 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             # get spectrum X,Y
             x = weight_ws.readX(index)
             y = weight_ws.readY(index)
-
             # create and initialize a weights array
             weights = np.ones(len(y))
             # for each peak extent, set zeros to the weights array
