@@ -121,8 +121,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
 
         for index in range(numSpec):
             if np.all(weightWorkspace.readY(index) == 1):
-                outputWorkspace.dataX(index)[:] = [0]
-                outputWorkspace.dataY(index)[:] = [0]
+                smoothing_results = np.zeroes_like(weightWorkspace.readY(index))
             else:
                 x = inputWorkspace.readX(index)
                 y = inputWorkspace.readY(index)
@@ -139,14 +138,14 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
                 tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
                 # fill in the removed data using the spline function and original datapoints
                 smoothing_results = tck(xMidpoints, extrapolate=False)
-                outputWorkspace.setY(index, smoothing_results)
+            outputWorkspace.setY(index, smoothing_results)
 
-            self.mantidSnapper.WashDishes(
-                "Cleaning up weight workspace...",
-                Workspace=self.weightWorkspaceName,
-            )
-            self.mantidSnapper.executeQueue()
-            self.setProperty("OutputWorkspace", outputWorkspace)
+        self.mantidSnapper.WashDishes(
+            "Cleaning up weight workspace...",
+            Workspace=self.weightWorkspaceName,
+        )
+        self.mantidSnapper.executeQueue()
+        self.setProperty("OutputWorkspace", outputWorkspace)
 
 
 # Register algorithm with Mantid
