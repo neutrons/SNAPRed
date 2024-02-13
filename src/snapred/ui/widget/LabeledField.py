@@ -41,3 +41,6 @@ class LabeledField(QWidget):
 
     def setText(self, text):
         self._field.setText(text)
+
+    def clear(self):
+        self._field.clear()

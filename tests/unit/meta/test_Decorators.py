@@ -3,8 +3,10 @@ from typing import List
 
 import pytest
 from pydantic import BaseModel
+from qtpy.QtWidgets import QWidget
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.error.StateValidationException import StateValidationException
+from snapred.meta.decorators._Resettable import Resettable
 from snapred.meta.decorators.Builder import Builder
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.FromString import FromString
@@ -70,3 +72,26 @@ def test_builder():
 def test_memberIncorrect():
     with pytest.raises(RuntimeError):
         Apple.builder().color("red").size(5).seeds(2).build()
+
+
+@Resettable
+class BasicWidget(QWidget):
+    def __init__(self, text, parent=None):
+        super(BasicWidget, self).__init__(parent)
+        self.text = text
+
+    def getText(self):
+        return self.text
+
+    def setText(self, text):
+        self.text = text
+
+
+def test_resettable(qtbot):
+    parent = QWidget()
+    qtbot.addWidget(parent)
+    widget = BasicWidget("hello", parent=parent)
+    widget.setText("goodbye")
+    assert widget.getText() == "goodbye"
+    widget.reset()
+    assert widget.getText() == "hello"

@@ -148,12 +148,13 @@ class NormalizationService(Service):
 
     @FromString
     def normalizationAssessment(self, request: NormalizationCalibrationRequest):
-        normalization = self.dataFactoryService.getNormalizationState(request.runNumber)
+        calibration = self.dataFactoryService.getCalibrationState(request.runNumber)
         record = NormalizationRecord(
             runNumber=request.runNumber,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
-            normalization=normalization,
+            calibration=calibration,
+            dMin=request.dMin,
         )
         return record
 
