@@ -244,10 +244,10 @@ class CalibrationService(Service):
                 wsInfo,
             )
 
-        # separately handle reading DiffCal workspaces until workspaceList is refactored
-        self.dataFactoryService.loadCalibrationTableWorkspaces(
-            runId=calibrationRecord.runNumber, version=str(calibrationRecord.version)
-        )
+        # # separately handle reading DiffCal workspaces until workspaceList is refactored
+        # self.dataFactoryService.loadCalibrationTableWorkspaces(
+        #     runId=calibrationRecord.runNumber, version=str(calibrationRecord.version)
+        # )
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):

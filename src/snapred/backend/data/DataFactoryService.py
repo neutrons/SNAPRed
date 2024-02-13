@@ -101,8 +101,8 @@ class DataFactoryService:
         path = self.getCalibrationDataPath(runId, version)
         return self.groceryService.readCalibrationTableWorkspaces(path, runId, version)
 
-    def writeWorkspace(self, path, wsInfo):
-        return self.groceryService.writeWorkspace(path, wsInfo)
+    def writeWorkspace(self, path, wsInfo, version: str = None):
+        return self.groceryService.writeWorkspace(path, wsInfo.name, version)
 
     def getWorkspaceCached(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataCached(runId, useLiteMode)
