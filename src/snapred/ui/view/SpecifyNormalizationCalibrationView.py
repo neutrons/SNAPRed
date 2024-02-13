@@ -4,8 +4,8 @@ import unittest.mock as mock
 import matplotlib.pyplot as plt
 from mantid.simpleapi import mtd
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
-from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
+from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLineEdit, QMessageBox, QPushButton, QSlider, QWidget
+from workbench.plotting.figuremanager import MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.meta.Config import Config
