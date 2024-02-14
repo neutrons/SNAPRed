@@ -7,10 +7,13 @@ from typing import List
 from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
+from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
+    CreateEmptyTableWorkspace,
     CreateWorkspace,
     mtd,
 )
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 # Mock out of scope modules before importing DataExportService
@@ -109,6 +112,18 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # At the end of each test, clear out the workspaces
         self.clearoutWorkspaces()
         return super().tearDown()
+
+    def create_dumb_workspace(self, wsname):
+        CreateWorkspace(
+            OutputWorkspace=wsname,
+            DataX=[1],
+            DataY=[1],
+        )
+
+    def create_dumb_diffcal(self, wsname):
+        ws = CreateEmptyTableWorkspace(OutputWorkspace=wsname)
+        ws.addColumn(type="int", name="detid", plottype=6)
+        ws.addRow({"detid": 0})
 
     @patch(thisService + "parse_raw_as")
     @patch(thisService + "CalibrationMetricExtractionRecipe")
@@ -235,7 +250,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.instance.loadQualityAssessment(mockRequest)
         assert "The input table is empty" in str(excinfo.value)
 
-    def nottest_load_quality_assessment_check_existent(self):
+    def test_load_quality_assessment_check_existent(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
@@ -269,14 +284,30 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
+            diffCalWSName = None
+            maskingWSName = None
             for wsInfo in calibRecord.workspaceList:
                 if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
-                    CreateWorkspace(
-                        OutputWorkspace=wsInfo.name,
-                        DataX=1,
-                        DataY=1,
-                    )
+                    self.create_dumb_workspace(wsInfo.name)
+                    print(f"***************** CREATED WORKSPACE {wsInfo.name} ID: {mtd[wsInfo.name].id()}")
                     self.instance.dataFactoryService.writeWorkspace(tmpdir, wsInfo, str(calibRecord.version))
+                elif wsInfo.type == "TableWorkspace":
+                    diffCalWSName = wsInfo.name
+                    self.create_dumb_diffcal(diffCalWSName)
+                    print(f"***************** CREATED WORKSPACE {diffCalWSName} ID: {mtd[diffCalWSName].id()}")
+                elif wsInfo.type == "MaskWorkspace":
+                    maskingWSName = wsInfo.name
+                    # create_dumb_diffcal_masking(maskingWSName)
+                    # print(f"***************** CREATED WORKSPACE {maskingWSName} ID: {mtd[maskingWSName].id()}")
+                else:
+                    pytest.fail("Unhandled workspace type in test_load_quality_assessment")
+
+            if diffCalWSName is not None:
+                assert maskingWSName is not None  # by design, a diffcal table must have a compatible masking table
+                path = os.path.join(tmpdir, diffCalWSName) + "_" + wnvf.formatVersion(str(calibRecord.version)) + ".h5"
+                self.instance.groceryService.writeDiffCalTable(
+                    path, calibrationWS=diffCalWSName, maskingWS=maskingWSName
+                )
 
             # Call the method to test. Use a mocked run and a mocked version
             mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
@@ -295,10 +326,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 )
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
-            # Assert the "persistent" workspaces have been loaded
+            # Assert all "persistent" workspaces have been loaded
             for wsInfo in calibRecord.workspaceList:
-                if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
-                    assert self.instance.dataFactoryService.workspaceDoesExist(wsInfo.name)
+                assert self.instance.dataFactoryService.workspaceDoesExist(wsInfo.name)
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)

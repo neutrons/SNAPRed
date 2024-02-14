@@ -1,5 +1,6 @@
 from mantid.simpleapi import (
     DeleteWorkspace,
+    mtd,
 )
 
 from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients as Ingredients
@@ -11,6 +12,7 @@ from snapred.backend.recipe.GenericRecipe import (
     GenerateTableWorkspaceFromListOfDictRecipe,
 )
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import list_to_raw
 
@@ -59,7 +61,7 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
                 outputs.append(ws_metric)
             DeleteWorkspace(Workspace=ws_table)
             logger.info("Finished generating calibration metrics workspace.")
-            return outputs
+            return [WorkspaceInfo(name=o, type=mtd[o].id()) for o in outputs]
         except (RuntimeError, AlgorithmException) as e:
             errorString = str(e)
             raise Exception(errorString.split("\n")[0])

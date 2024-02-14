@@ -104,10 +104,13 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         response = self.request(path="calibration/assessment", payload=payload.json())
         assessmentResponse = response.data
         self.calibrationRecord = assessmentResponse.record
-        self.calibrationRecord.workspaceNames.append(self.responses[-2].data["calibrationTable"])
+
+        calibTableName = self.responses[-2].data["calibrationTable"]
+        calibTableType = mtd[calibTableName].id()
+        self.calibrationRecord.workspaceList.append(WorkspaceInfo(name=calibTableName, type=calibTableType))
 
         self.outputs.extend(assessmentResponse.metricWorkspaces)
-        self.outputs.extend(self.calibrationRecord.workspaceNames)
+        self.outputs.extend(self.calibrationRecord.workspaceList)
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
@@ -137,10 +140,16 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         # if this is not the first iteration, account for choice.
         if workflowPresenter.iteration > 1:
             iteration = int(self._saveCalibrationView.iterationDropdown.currentText())
-            self.calibrationRecord.workspaceNames = [
-                self.renameTemplate.format(workspaceName=w, iteration=iteration)
-                for w in self.calibrationRecord.workspaceNames
-            ]
+
+            for w in self.calibrationRecord.workspaceList:
+                wsName = self.renameTemplate.format(workspaceName=w.name, iteration=iteration)
+                wsType = mtd[wsName].id()
+                self.calibrationRecord.workspaceList.append(WorkspaceInfo(name=wsName, type=wsType))
+
+            # self.calibrationRecord.workspaceList = [
+            #     self.renameTemplate.format(workspaceName=w.name, iteration=iteration)
+            #     for w in self.calibrationRecord.workspaceList
+            # ]
 
         payload = CalibrationExportRequest(
             calibrationRecord=self.calibrationRecord, calibrationIndexEntry=calibrationIndexEntry

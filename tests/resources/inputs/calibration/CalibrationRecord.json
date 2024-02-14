@@ -626,15 +626,15 @@
     },
     "workspaceList": [
       {
-          "name": "tof_diffoc_057514",
+          "name": "_tof_diffoc_057514",
           "type": "EventWorkspace"
       },
       {
-          "name": "diffract_consts_057514",
+          "name": "_diffract_consts_057514",
           "type": "TableWorkspace"
       },
       {
-          "name": "diffract_consts_mask_057514",
+          "name": "_diffract_consts_mask_057514",
           "type": "MaskWorkspace"
       }
     ],
