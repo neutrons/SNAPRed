@@ -46,6 +46,8 @@ class _WorkspaceNameGenerator:
     _diffCalMaskTemplateKeys = ["runNumber"]
     _diffCalMetricTemplate = Config[f"{_templateRoot}.diffCal.metric"]
     _diffCalMetricTemplateKeys = ["runNumber", "version", "metricName"]
+    _rawVanadiumTemplate = Config[f"{_templateRoot}.normCal.rawVanadium"]
+    _rawVanadiumTemplateKeys = ["unit", "group", "runNumber"]
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"
@@ -94,6 +96,15 @@ class _WorkspaceNameGenerator:
 
     def diffCalMetrics(self):
         return NameBuilder(self._diffCalMetricTemplate, self._diffCalMetricTemplateKeys, self._delimiter)
+
+    def rawVanadium(self):
+        return NameBuilder(
+            self._rawVanadiumTemplate,
+            self._rawVanadiumTemplateKeys,
+            self._delimiter,
+            unit=self.Units.TOF,
+            group=self.Groups.UNFOC,
+        )
 
 
 WorkspaceNameGenerator = _WorkspaceNameGenerator()

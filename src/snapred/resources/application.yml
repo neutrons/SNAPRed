@@ -98,7 +98,7 @@ mantid:
         mask: "DIFC,{runNumber},mask"
         metric: "{runNumber},{version},calibration_metrics,{metricName}"
       normCal:
-        rawVandium: "{runNumber},{backgroundRunNumber},RVC"
+        rawVanadium: "{unit},{group},{runNumber},raw_van_corr"
         focusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}"
         smoothedFocusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme},{smoothingParameter}"
       units:

@@ -71,7 +71,7 @@ class NormalizationService(Service):
         ).fromPrev().add()
 
         outputWorkspace = wng.run().runNumber(request.runNumber).group(groupingScheme).auxilary("S+F-Vanadium").build()
-        correctedVanadium = wng.run().runNumber(request.runNumber).group("unfoc").auxilary("raw_van_corr").build()
+        correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
         smoothedOutput = (
             wng.run()
             .runNumber(request.runNumber)
