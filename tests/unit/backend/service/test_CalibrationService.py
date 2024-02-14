@@ -11,6 +11,9 @@ from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
     CreateEmptyTableWorkspace,
     CreateWorkspace,
+    ExtractMask,
+    LoadInstrument,
+    WorkspaceFactory,
     mtd,
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -113,17 +116,51 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.clearoutWorkspaces()
         return super().tearDown()
 
-    def create_dumb_workspace(self, wsname):
+    def create_fake_table2D_workspace(self, wsname):
         CreateWorkspace(
             OutputWorkspace=wsname,
             DataX=[1],
             DataY=[1],
         )
 
-    def create_dumb_diffcal(self, wsname):
-        ws = CreateEmptyTableWorkspace(OutputWorkspace=wsname)
+    def create_fake_diffcal_workspaces(self, calWSName, maskWSName):
+        ws = CreateEmptyTableWorkspace(OutputWorkspace=calWSName)
         ws.addColumn(type="int", name="detid", plottype=6)
-        ws.addRow({"detid": 0})
+        ws.addColumn(type="float", name="difc", plottype=6)
+        ws.addColumn(type="float", name="difa", plottype=6)
+        ws.addColumn(type="float", name="tzero", plottype=6)
+        ws.addColumn(type="float", name="tofmin", plottype=6)
+        nextRow = {"detid": 0, "difc": 1, "difa": 0, "tzero": 0, "tofmin": 0}
+        ws.addRow(nextRow)
+
+        mask = WorkspaceFactory.create("SpecialWorkspace2D", NVectors=1, XLength=1, YLength=1)
+        mtd[maskWSName] = mask
+        LoadInstrument(
+            Workspace=maskWSName,
+            Filename=Resource.getPath("inputs/pixel_grouping/SNAPLite_Definition.xml"),
+            RewriteSpectraMap=False,
+        )
+        ExtractMask(InputWorkspace=maskWSName, OutputWorkspace=maskWSName)
+
+    def create_fake_persistent_workspace_files(self, path, workspaceList, version: str):
+        calWSName = None
+        maskWSName = None
+        for wsInfo in workspaceList:
+            if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
+                self.create_fake_table2D_workspace(wsInfo.name)
+                self.instance.dataFactoryService.writeWorkspace(path, wsInfo, version)
+            elif wsInfo.type == "TableWorkspace":
+                calWSName = wsInfo.name
+            elif wsInfo.type == "MaskWorkspace":
+                maskWSName = wsInfo.name
+            else:
+                pytest.fail("Unhandled workspace type in test_load_quality_assessment")
+
+        if calWSName is not None:
+            assert maskWSName is not None  # by design, a diffcal table must have a compatible masking table
+            self.create_fake_diffcal_workspaces(calWSName, maskWSName)
+            path = os.path.join(path, calWSName) + "_" + wnvf.formatVersion(version) + ".h5"
+            self.instance.groceryService.writeDiffCalTable(path, calibrationWS=calWSName, maskingWS=maskWSName)
 
     @patch(thisService + "parse_raw_as")
     @patch(thisService + "CalibrationMetricExtractionRecipe")
@@ -257,13 +294,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
-            for wsInfo in calibRecord.workspaceList:
-                CreateWorkspace(
-                    OutputWorkspace=wsInfo.name,
-                    DataX=1,
-                    DataY=1,
-                )
-                self.instance.dataFactoryService.writeWorkspace(tmpdir, wsInfo)
+            self.create_fake_persistent_workspace_files(tmpdir, calibRecord.workspaceList, str(calibRecord.version))
 
             # Call the method to test. Use a mocked run and a mocked version
             runId = MagicMock()
@@ -276,6 +307,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             with pytest.raises(ValueError) as excinfo:  # noqa: PT011
                 self.instance.loadQualityAssessment(MagicMock(runId="57514", version="7", checkExistent=True))
             assert "is already loaded" in str(excinfo.value)
+        self.clearoutWorkspaces()
 
     def test_load_quality_assessment(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -284,30 +316,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
-            diffCalWSName = None
-            maskingWSName = None
-            for wsInfo in calibRecord.workspaceList:
-                if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
-                    self.create_dumb_workspace(wsInfo.name)
-                    print(f"***************** CREATED WORKSPACE {wsInfo.name} ID: {mtd[wsInfo.name].id()}")
-                    self.instance.dataFactoryService.writeWorkspace(tmpdir, wsInfo, str(calibRecord.version))
-                elif wsInfo.type == "TableWorkspace":
-                    diffCalWSName = wsInfo.name
-                    self.create_dumb_diffcal(diffCalWSName)
-                    print(f"***************** CREATED WORKSPACE {diffCalWSName} ID: {mtd[diffCalWSName].id()}")
-                elif wsInfo.type == "MaskWorkspace":
-                    maskingWSName = wsInfo.name
-                    # create_dumb_diffcal_masking(maskingWSName)
-                    # print(f"***************** CREATED WORKSPACE {maskingWSName} ID: {mtd[maskingWSName].id()}")
-                else:
-                    pytest.fail("Unhandled workspace type in test_load_quality_assessment")
-
-            if diffCalWSName is not None:
-                assert maskingWSName is not None  # by design, a diffcal table must have a compatible masking table
-                path = os.path.join(tmpdir, diffCalWSName) + "_" + wnvf.formatVersion(str(calibRecord.version)) + ".h5"
-                self.instance.groceryService.writeDiffCalTable(
-                    path, calibrationWS=diffCalWSName, maskingWS=maskingWSName
-                )
+            self.create_fake_persistent_workspace_files(tmpdir, calibRecord.workspaceList, str(calibRecord.version))
 
             # Call the method to test. Use a mocked run and a mocked version
             mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
@@ -329,6 +338,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Assert all "persistent" workspaces have been loaded
             for wsInfo in calibRecord.workspaceList:
                 assert self.instance.dataFactoryService.workspaceDoesExist(wsInfo.name)
+
+        self.clearoutWorkspaces()
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)

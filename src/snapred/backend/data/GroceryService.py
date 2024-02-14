@@ -7,7 +7,7 @@ from mantid.api import AlgorithmManager, mtd
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGroupingDefinition
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
-from snapred.meta.Config import Config
+from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -184,7 +184,10 @@ class GroceryService:
         loadAlgo = AlgorithmManager.create("LoadDiffCal")
         loadAlgo.setPropertyValue("WorkspaceName", calibrationWS)
         loadAlgo.setPropertyValue("Filename", path)
-        loadAlgo.setPropertyValue("InstrumentFilename", "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml")
+
+        instrumentFilename = "tests/resources/inputs/pixel_grouping/SNAPLite_Definition.xml"
+        loadAlgo.setPropertyValue("InstrumentFilename", instrumentFilename)
+
         loadAlgo.setPropertyValue("MakeMaskWorkspace", "1" if maskingWS else "0")
         loadAlgo.setPropertyValue("MakeGroupingWorkspace", "1" if groupingWS else "0")
         loadAlgo.execute()
