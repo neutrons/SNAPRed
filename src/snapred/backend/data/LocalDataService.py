@@ -736,7 +736,7 @@ class LocalDataService:
 
         return calibration
 
-    def checkCalibrationStateExists(self, runId: str):
+    def checkCalibrationFileExists(self, runId: str):
         stateID, _ = self._generateStateId(runId)
         calibrationStatePath: str = self._constructCalibrationStatePath(stateID)
 

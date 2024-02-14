@@ -94,7 +94,7 @@ class DataFactoryService:
         if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
             loader = "LoadNexusProcessed"
         else:
-            loader = "LoadNexus"
+            raise ValueError(f"unsupported workspace type in loadCalibrationDataWorkspace: {wsInfo.type}")
         return self.groceryService.fetchWorkspace(path, wsInfo.name, loader)
 
     def loadCalibrationTableWorkspaces(self, runId, version):
@@ -124,7 +124,7 @@ class DataFactoryService:
         return self.lookupService.readFocusGroups()
 
     def checkCalibrationStateExists(self, runId: str):
-        return self.lookupService.checkCalibrationStateExists(runId)
+        return self.lookupService.checkCalibrationFileExists(runId)
 
     def getSamplePaths(self):
         return self.lookupService.readSamplePaths()
