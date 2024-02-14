@@ -216,7 +216,8 @@ class CalibrationService(Service):
                     break
             if not wkspaceExists:
                 for wsInfo in calibrationRecord.workspaceList:
-                    wsName = wsInfo.name + "_" + wnvf.formatVersion(version)
+                    # wsName = wsInfo.name + "_" + wnvf.formatVersion(version)
+                    wsName = wsInfo.name
                     if self.dataFactoryService.workspaceDoesExist(wsName):
                         wkspaceExists = True
                         break
