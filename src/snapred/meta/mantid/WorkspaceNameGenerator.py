@@ -26,9 +26,6 @@ class NameBuilder:
 
         return setValue
 
-    def __str__(self):
-        return self.build()
-
     def build(self):
         tokens = self.template.format(**self.props).split(",")
         tokens = [token.lower() for token in tokens if token != ""]
