@@ -126,6 +126,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
                     InputWorkspace=self.inputWorkspaceName,
                     outputWorkspace=self.outputWorkspaceName,
                 )
+                self.mantidSnapper.executeQueue()
             else:
                 x = inputWorkspace.readX(index)
                 y = inputWorkspace.readY(index)
@@ -144,12 +145,12 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
                 smoothing_results = tck(xMidpoints, extrapolate=False)
                 outputWorkspace.setY(index, smoothing_results)
 
-            self.mantidSnapper.WashDishes(
-                "Cleaning up weight workspace...",
-                Workspace=self.weightWorkspaceName,
-            )
-            self.mantidSnapper.executeQueue()
-            self.setProperty("OutputWorkspace", outputWorkspace)
+        self.mantidSnapper.WashDishes(
+            "Cleaning up weight workspace...",
+            Workspace=self.weightWorkspaceName,
+        )
+        self.mantidSnapper.executeQueue()
+        self.setProperty("OutputWorkspace", outputWorkspace)
 
 
 # Register algorithm with Mantid
