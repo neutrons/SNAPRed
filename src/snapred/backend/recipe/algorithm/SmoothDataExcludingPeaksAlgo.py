@@ -144,10 +144,10 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
                 smoothing_results = tck(xMidpoints, extrapolate=False)
                 outputWorkspace.setY(index, smoothing_results)
 
-                self.mantidSnapper.WashDishes(
-                    "Cleaning up weight workspace...",
-                    Workspace=self.weightWorkspaceName,
-                )
+            self.mantidSnapper.WashDishes(
+                "Cleaning up weight workspace...",
+                Workspace=self.weightWorkspaceName,
+            )
             self.mantidSnapper.executeQueue()
             self.setProperty("OutputWorkspace", outputWorkspace)
 
