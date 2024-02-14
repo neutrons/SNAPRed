@@ -132,6 +132,7 @@ class TestNormalizationService(unittest.TestCase):
             inputWorkspace="input_ws",
             backgroundWorkspace="background_ws",
             outputWorkspace="output_ws",
+            crystalDMin=0.4,
         )
         self.instance = NormalizationService()
         self.instance.sousChef.prepNormalizationIngredients = MagicMock()
@@ -164,7 +165,7 @@ class TestNormalizationService(unittest.TestCase):
             inputWorkspace="input_ws",
             outputWorkspace="output_ws",
             smoothingParameter=0.5,
-            dMin=0.4,
+            crystalDMin=0.4,
         )
 
         self.instance = NormalizationService()

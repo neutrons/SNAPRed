@@ -4,7 +4,17 @@ import unittest.mock as mock
 import matplotlib.pyplot as plt
 from mantid.simpleapi import mtd
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QSlider, QWidget
+from PyQt5.QtWidgets import (
+    QComboBox,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSlider,
+    QWidget,
+)
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
@@ -84,7 +94,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
             lambda: self.updateSliderFromLineEdit(self.smoothingLineEdit.text())
         )
 
-        self.fielddMin = LabeledField("dMin :", QLineEdit(str(Config["normalization.parameters.default.dMin"])), self)
+        self.fielddMin = LabeledField("dMin :", QLineEdit(str(Config["constants.CrystallographicInfo.dMin"])), self)
 
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
@@ -147,6 +157,24 @@ class SpecifyNormalizationCalibrationView(QWidget):
         v = self.smoothingSlider.value() / 100.0
         smoothingValue = 10**v
         dMin = float(self.fielddMin.field.text())
+        dMax = float(Config["constants.CrystallographicInfo.dMax"])
+        if dMin < 0.1:
+            response = QMessageBox.warning(
+                self,
+                "Warning!!!",
+                "Are you sure you want to do this? This may cause memory overflow or may take a long time to compute.",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if response == QMessageBox.No:
+                return
+        elif dMin > dMax:
+            QMessageBox.warning(
+                self,
+                "Warning!!!",
+                f"The dMin value exceeds the allowed maximum dMax value ({dMax}). Please enter a smaller value.",
+                QMessageBox.Ok,
+            )
+            return
         self.signalValueChanged.emit(index, smoothingValue, dMin)
 
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):

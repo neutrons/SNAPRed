@@ -119,7 +119,7 @@ class NormalizationCalibrationWorkflow:
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=self.focusGroups[str(self.groupingFiles[self.initGroupingIndex])],
             smoothingParameter=self.initSmoothingParameter,
-            dMin=self.initDMin,
+            crystalDMin=self.initDMin,
         )
 
         request = SNAPRequest(path="normalization", payload=payload.json())
@@ -141,7 +141,7 @@ class NormalizationCalibrationWorkflow:
                 calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
                 focusGroup=self.focusGroups[str(self.lastGroupingFile)],
                 smoothingParameter=self.lastSmoothingParameter,
-                dMin=self.lastDMin,
+                crystalDMin=self.lastDMin,
             )
         else:
             payload = NormalizationCalibrationRequest(
@@ -150,7 +150,7 @@ class NormalizationCalibrationWorkflow:
                 calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
                 focusGroup=self.focusGroups[str(self.groupingFiles[self.initGroupingIndex])],
                 smoothingParameter=self.initSmoothingParameter,
-                dMin=self.initDMin,
+                crystalDMin=self.initDMin,
             )
 
         request = SNAPRequest(path="normalization/assessment", payload=payload.json())
@@ -187,7 +187,7 @@ class NormalizationCalibrationWorkflow:
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=self.focusGroups[groupingFile],
             smoothingParameter=smoothingParameter,
-            dMin=dMin,
+            crystalDMin=dMin,
         )
 
         request = SNAPRequest(path="normalization", payload=payload.json())
@@ -208,7 +208,7 @@ class NormalizationCalibrationWorkflow:
             focusGroup=self.focusGroups[self.groupingFiles[index]],
             runNumber=self.runNumber,
             smoothingParameter=smoothingValue,
-            dMin=dMin,
+            crystalDMin=dMin,
         )
         request = SNAPRequest(path="normalization/smooth", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
