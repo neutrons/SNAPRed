@@ -98,8 +98,8 @@ mantid:
           metric: "{runNumber},{version},calibration_metrics,{metricName}"
         normCal:
           rawVanadium: "{unit},{group},{runNumber},raw_van_corr"
-          focusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}"
-          smoothedFocusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme},{smoothingParameter}"
+          focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr"
+          smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_cor"
         units:
           dSpacing: dsp
           timeOfFlight: tof
