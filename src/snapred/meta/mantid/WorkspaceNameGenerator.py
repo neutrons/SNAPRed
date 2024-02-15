@@ -117,7 +117,10 @@ class _WorkspaceNameGenerator:
 
     def smoothedFocusedRawVanadium(self):
         return NameBuilder(
-            self._focusedRawVanadiumTemplate, self._focusedRawVanadiumTemplateKeys, self._delimiter, unit=self.Units.DSP
+            self._smoothedFocusedRawVanadiumTemplate,
+            self._smoothedFocusedRawVanadiumTemplateKeys,
+            self._delimiter,
+            unit=self.Units.DSP,
         )
 
 

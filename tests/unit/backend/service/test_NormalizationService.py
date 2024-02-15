@@ -247,5 +247,5 @@ class TestNormalizationService(unittest.TestCase):
         assert result == {
             "correctedVanadium": "tof_unfoc_12345_raw_van_corr",
             "outputWorkspace": f"tof_{self.request.focusGroup.name}_12345_s+f-vanadium",
-            "smoothedOutput": "dsp_apple_12345_raw_van_corr",
+            "smoothedOutput": "dsp_apple_12345_fitted_van_cor",
         }
