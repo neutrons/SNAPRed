@@ -123,13 +123,21 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert item.instrumentPropertySource == "InstrumentFilename"
         assert item.instrumentSource == self.instrumentFilename
 
-        item = GroceryListBuilder().grouping(self.runNumber, self.groupingScheme).native().source(InstrumentName="SNAP").build()
+        item = (
+            GroceryListBuilder()
+            .grouping(self.runNumber, self.groupingScheme)
+            .native()
+            .source(InstrumentName="SNAP")
+            .build()
+        )
         assert item.instrumentPropertySource == "InstrumentName"
         assert item.instrumentSource == "SNAP"
 
     def test_fail_bad_property_source(self):
         with pytest.raises(ValidationError):
-            GroceryListBuilder().grouping(self.runNumber, self.groupingScheme).native().source(MyBestFriend="trust me").build()
+            GroceryListBuilder().grouping(self.runNumber, self.groupingScheme).native().source(
+                MyBestFriend="trust me"
+            ).build()
 
     def test_fail_two_sources(self):
         with pytest.raises(RuntimeError) as e:
@@ -165,7 +173,9 @@ class TestGroceryListBuilder(unittest.TestCase):
     def test_build_list(self):
         builder = GroceryListBuilder()
         builder.neutron(self.runNumber).native().add()
-        builder.grouping(self.runNumber, self.groupingScheme).native().source(InstrumentDonor=self.instrumentDonor).add()
+        builder.grouping(self.runNumber, self.groupingScheme).native().source(
+            InstrumentDonor=self.instrumentDonor
+        ).add()
         builder.grouping(self.runNumber, self.groupingScheme).native().add()
         groceryList = builder.buildList()
         # test the list built correctly
@@ -210,7 +220,9 @@ class TestGroceryListBuilder(unittest.TestCase):
         # make the list with out any property names
         builder = GroceryListBuilder()
         builder.neutron(self.runNumber).native().add()
-        builder.grouping(self.runNumber, self.groupingScheme).native().source(InstrumentDonor=self.instrumentDonor).add()
+        builder.grouping(self.runNumber, self.groupingScheme).native().source(
+            InstrumentDonor=self.instrumentDonor
+        ).add()
         builder.grouping(self.runNumber, self.groupingScheme).native().add()
         groceryDict = builder.buildDict()
         # test the dictionary has nothing in it

@@ -16,8 +16,8 @@ from mantid.kernel import (
 )
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.LoadCalibrationWorkspaces import LoadCalibrationWorkspaces
+from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 logger = snapredLogger.getLogger(__name__)
@@ -51,12 +51,13 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             "LoaderType",
             "",
             StringListValidator(
-                ["",
-                 "LoadGroupingDefinition",
-                 "LoadCalibrationWorkspaces",
-                 "LoadNexus",
-                 "LoadEventNexus",
-                 "LoadNexusProcessed",
+                [
+                    "",
+                    "LoadGroupingDefinition",
+                    "LoadCalibrationWorkspaces",
+                    "LoadNexus",
+                    "LoadEventNexus",
+                    "LoadNexusProcessed",
                 ]
             ),
             direction=Direction.InOut,
@@ -90,7 +91,9 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         # cannot load a grouping workspace with a nexus loader
         issues: Dict[str, str] = {}
         loader = self.getPropertyValue("LoaderType")
-        if not loader in ["LoadCalibrationWorkspaces",]:
+        if loader not in [
+            "LoadCalibrationWorkspaces",
+        ]:
             if self.getProperty("OutputWorkspace").isDefault:
                 issues["OutputWorkspace"] = f"loader '{loader}' requires an 'OutputWorkspace' argument"
             if not self.getProperty("LoaderArgs").isDefault:
@@ -150,6 +153,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
         self.setPropertyValue("OutputWorkspace", outWS)
         self.setPropertyValue("LoaderType", str(loaderType))
+
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(FetchGroceriesAlgorithm)

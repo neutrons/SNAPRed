@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Dict
 
 from mantid.api import (
-    mtd,
     AlgorithmFactory,
     FileAction,
     FileProperty,
@@ -11,6 +10,7 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    mtd,
 )
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction
@@ -63,7 +63,7 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
             MaskWorkspaceProperty("MaskWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="Name of the output mask workspace",
         )
-        
+
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -116,6 +116,7 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
 
         self.setPropertyValue("CalibrationTable", self.calibrationTable)
         self.setPropertyValue("MaskWorkspace", self.maskWorkspace)
+
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(LoadCalibrationWorkspaces)

@@ -2,45 +2,42 @@
 
 import os
 import shutil
-from pathlib import Path
-from typing import Tuple, Dict
 import tempfile
-
 import unittest
 from curses import raw
+from pathlib import Path
+from typing import Dict, Tuple
 from unittest import mock
+
 import pytest
-
-from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
-from util.kernel_helpers import tupleFromV3D, tupleFromQuat
-from util.instrument_helpers import mapFromSampleLogs
-
+from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
+    CloneWorkspace,
     CompareWorkspaces,
     CreateEmptyTableWorkspace,
-    LoadEmptyInstrument,
-    CreateLogPropertyTable,
-    SaveParameterFile,
-    LoadParameterFile,
     CreateGroupingWorkspace,
+    CreateLogPropertyTable,
     CreateWorkspace,
-    CloneWorkspace,
     DeleteWorkspace,
-    LoadInstrument,
     ExtractMask,
-    SaveNexusProcessed,
+    LoadEmptyInstrument,
+    LoadInstrument,
+    LoadParameterFile,
     SaveDiffCal,
+    SaveNexusProcessed,
+    SaveParameterFile,
     mtd,
 )
-from mantid.kernel import Quat, V3D
-
 from pydantic import ValidationError
-from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
+from util.instrument_helpers import mapFromSampleLogs
+from util.kernel_helpers import tupleFromQuat, tupleFromV3D
 
 ThisService = "snapred.backend.data.GroceryService."
 
@@ -58,13 +55,13 @@ class TestGroceryService(unittest.TestCase):
         cls.useLiteMode = False
         cls.version = None
         cls.sampleWSFilePath = Resource.getPath(f"inputs/test_{cls.runNumber}_groceryservice.nxs")
-        
+
         cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
         Config["instrument"]["native"]["definition"]["file"] = cls.instrumentFilePath
-        
+
         cls.instrumentLiteFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
         Config["instrument"]["lite"]["definition"]["file"] = cls.instrumentLiteFilePath
-        
+
         cls.fetchedWSname = "_fetched_grocery"
         cls.groupingScheme = "Native"
         # create some sample data
@@ -79,16 +76,16 @@ class TestGroceryService(unittest.TestCase):
             Filename=cls.sampleWSFilePath,
         )
         assert os.path.exists(cls.sampleWSFilePath)
-        
+
         cls.detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
         cls.detectorState2 = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
-        
-        cls.sampleDiffCalFilePath =  Resource.getPath(f"inputs/test_diffcal_{cls.runNumber}_groceryservice.h5")
+
+        cls.sampleDiffCalFilePath = Resource.getPath(f"inputs/test_diffcal_{cls.runNumber}_groceryservice.h5")
         cls.sampleTableWS = "_table_grocery_to_fetch"
         createCompatibleDiffCalTable(cls.sampleTableWS, cls.sampleWS)
         cls.sampleMaskWS = "_mask_grocery_to_fetch"
         createCompatibleMask(cls.sampleMaskWS, cls.sampleWS, cls.instrumentFilePath)
-        
+
         SaveDiffCal(
             CalibrationWorkspace=cls.sampleTableWS,
             MaskWorkspace=cls.sampleMaskWS,
@@ -97,8 +94,7 @@ class TestGroceryService(unittest.TestCase):
         assert os.path.exists(cls.sampleDiffCalFilePath)
 
         cls.exclude = [cls.sampleWS, cls.fetchedWSname, cls.sampleTableWS, cls.sampleMaskWS]
-            
- 
+
     def setUp(self):
         self.instance = GroceryService()
         self.groupingItem = (
@@ -184,7 +180,7 @@ class TestGroceryService(unittest.TestCase):
         grouping1 = "555"
         runId2 = "2463"
         grouping2 = "556"
-        
+
         lite = True
         native = False
         # two keys with different groupings are different
@@ -310,7 +306,7 @@ class TestGroceryService(unittest.TestCase):
         assert "difc" in res
         assert self.runNumber in res
         assert ".h5" in res
-        
+
     ## TESTS OF ACCESS METHODS
 
     def test_workspaceDoesExist_false(self):
@@ -552,7 +548,7 @@ class TestGroceryService(unittest.TestCase):
         self.instance._loadedInstruments[key] = wsname
         self.instance.rebuildInstrumentCache()
         assert self.instance._loadedInstruments == {}
-        
+
     @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
     def test_rebuildCache(self, mockNeutronWorkspaceName):
         """Test the correct behavior of the rebuildCache method"""
@@ -606,10 +602,10 @@ class TestGroceryService(unittest.TestCase):
         self.clearoutWorkspaces()
         res = self.instance.fetchWorkspace(self.sampleWSFilePath, self.fetchedWSname, loader="")
         assert res == {
-                "result": True,
-                "loader": "LoadNexusProcessed",
-                "workspace": self.fetchedWSname,
-            }
+            "result": True,
+            "loader": "LoadNexusProcessed",
+            "workspace": self.fetchedWSname,
+        }
         assert CompareWorkspaces(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
@@ -620,10 +616,10 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(self.fetchedWSname)
         res = self.instance.fetchWorkspace(self.sampleWSFilePath, self.fetchedWSname, loader="")
         assert res == {
-                "result": True,
-                "loader": "cached",
-                "workspace": self.fetchedWSname,
-            }
+            "result": True,
+            "loader": "cached",
+            "workspace": self.fetchedWSname,
+        }
         assert self.instance.grocer.executeRecipe.not_called
         assert CompareWorkspaces(
             Workspace1=self.sampleWS,
@@ -886,7 +882,9 @@ class TestGroceryService(unittest.TestCase):
         mockWSName.return_value = "lite_map"
         mockFetchInstrumentDonor.return_value = self.sampleWS
         # have to subvert the validation methods in grocerylistitem
-        mockLiteMapGroceryItem = GroceryListItem(workspaceType="grouping", runNumber=self.runNumber, groupingScheme="Lite")
+        mockLiteMapGroceryItem = GroceryListItem(
+            workspaceType="grouping", runNumber=self.runNumber, groupingScheme="Lite"
+        )
         mockLiteMapGroceryItem.instrumentSource = self.instrumentFilePath
         mockGroceryList.builder.return_value.grouping.return_value.build.return_value = mockLiteMapGroceryItem
 
@@ -970,7 +968,7 @@ class TestGroceryService(unittest.TestCase):
 
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_output(self, mockCalibrationDataPath):
-        # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`        
+        # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`
         path = Resource.getPath("outputs")
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
             mockCalibrationDataPath.return_value = tmpPath
@@ -979,7 +977,7 @@ class TestGroceryService(unittest.TestCase):
             diffCalOutputFilename = diffCalOutputName + ".nxs"
             shutil.copy2(self.sampleWSFilePath, Path(tmpPath) / diffCalOutputFilename)
             assert (Path(tmpPath) / diffCalOutputFilename).exists()
-            
+
             assert not mtd.doesExist(diffCalOutputName)
             items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalOutputName
@@ -988,26 +986,28 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_output_cached(self, mockCalibrationDataPath):
         # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`:
-        #   workspace already in ADS        
-        mockCalibrationDataPath.return_value = "/does/not/exist"
-        groceryList = GroceryListItem.builder().native().diffcal_output(self.runNumber1).buildList()
-        diffCalOutputName = wng.diffCalOutput().runNumber(self.runNumber1).build()
-        CloneWorkspace(
-            InputWorkspace=self.sampleWS,
-            OutputWorkspace=diffCalOutputName,
-        )
-        assert mtd.doesExist(diffCalOutputName)
-        testTitle = "I'm a little teapot"
-        mtd[diffCalOutputName].setTitle(testTitle)
-        items = self.instance.fetchGroceryList(groceryList)
-        assert items[0] == diffCalOutputName
-        assert mtd.doesExist(diffCalOutputName)
-        assert mtd[diffCalOutputName].getTitle() == testTitle
+        #   workspace already in ADS
+        path = Resource.getPath("outputs")
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
+            mockCalibrationDataPath.return_value = "/does/not/exist"
+            groceryList = GroceryListItem.builder().native().diffcal_output(self.runNumber1).buildList()
+            diffCalOutputName = wng.diffCalOutput().runNumber(self.runNumber1).build()
+            CloneWorkspace(
+                InputWorkspace=self.sampleWS,
+                OutputWorkspace=diffCalOutputName,
+            )
+            assert mtd.doesExist(diffCalOutputName)
+            testTitle = "I'm a little teapot"
+            mtd[diffCalOutputName].setTitle(testTitle)
+            items = self.instance.fetchGroceryList(groceryList)
+            assert items[0] == diffCalOutputName
+            assert mtd.doesExist(diffCalOutputName)
+            assert mtd[diffCalOutputName].getTitle() == testTitle
 
     @mock.patch.object(GroceryService, "_fetchInstrumentDonor")
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_table(self, mockCalibrationDataPath, mockFetchInstrumentDonor):
-        # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`        
+        # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`
         path = Resource.getPath("outputs")
         mockFetchInstrumentDonor.return_value = self.sampleWS
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
@@ -1017,7 +1017,7 @@ class TestGroceryService(unittest.TestCase):
             diffCalTableFilename = diffCalTableName + ".h5"
             shutil.copy2(self.sampleDiffCalFilePath, Path(tmpPath) / diffCalTableFilename)
             assert (Path(tmpPath) / diffCalTableFilename).exists()
-            
+
             assert not mtd.doesExist(diffCalTableName)
             items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalTableName
@@ -1026,27 +1026,29 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_table_cached(self, mockCalibrationDataPath):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
-        #   workspace already in ADS        
-        mockCalibrationDataPath.return_value = "/does/not/exist"
-        groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1).buildList()
-        diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
-        CloneWorkspace(
-            InputWorkspace=self.sampleTableWS,
-            OutputWorkspace=diffCalTableName,
-        )
-        assert mtd.doesExist(diffCalTableName)
-        testTitle = "I'm a little teapot"
-        mtd[diffCalTableName].setTitle(testTitle)
-        items = self.instance.fetchGroceryList(groceryList)
-        assert items[0] == diffCalTableName
-        assert mtd.doesExist(diffCalTableName)
-        assert mtd[diffCalTableName].getTitle() == testTitle
+        #   workspace already in ADS
+        path = Resource.getPath("outputs")
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
+            mockCalibrationDataPath.return_value = "/does/not/exist"
+            groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1).buildList()
+            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
+            CloneWorkspace(
+                InputWorkspace=self.sampleTableWS,
+                OutputWorkspace=diffCalTableName,
+            )
+            assert mtd.doesExist(diffCalTableName)
+            testTitle = "I'm a little teapot"
+            mtd[diffCalTableName].setTitle(testTitle)
+            items = self.instance.fetchGroceryList(groceryList)
+            assert items[0] == diffCalTableName
+            assert mtd.doesExist(diffCalTableName)
+            assert mtd[diffCalTableName].getTitle() == testTitle
 
     @mock.patch.object(GroceryService, "_fetchInstrumentDonor")
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_table_loads_mask(self, mockCalibrationDataPath, mockFetchInstrumentDonor):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
-        #   * corresponding mask workspace is also loaded from the hdf5-format file.        
+        #   * corresponding mask workspace is also loaded from the hdf5-format file.
         path = Resource.getPath("outputs")
         mockFetchInstrumentDonor.return_value = self.sampleWS
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
@@ -1057,7 +1059,7 @@ class TestGroceryService(unittest.TestCase):
             diffCalTableFilename = diffCalTableName + ".h5"
             shutil.copy2(self.sampleDiffCalFilePath, Path(tmpPath) / diffCalTableFilename)
             assert (Path(tmpPath) / diffCalTableFilename).exists()
-            
+
             assert not mtd.doesExist(diffCalTableName)
             assert not mtd.doesExist(diffCalMaskName)
             items = self.instance.fetchGroceryList(groceryList)
@@ -1068,20 +1070,20 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(GroceryService, "_fetchInstrumentDonor")
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_mask(self, mockCalibrationDataPath, mockFetchInstrumentDonor):
-        # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`        
+        # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`
         path = Resource.getPath("outputs")
         mockFetchInstrumentDonor.return_value = self.sampleWS
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
             mockCalibrationDataPath.return_value = tmpPath
             groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
             diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
-            
+
             # DiffCal filename is constructed from the table name
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
             diffCalTableFilename = diffCalTableName + ".h5"
             shutil.copy2(self.sampleDiffCalFilePath, Path(tmpPath) / diffCalTableFilename)
             assert (Path(tmpPath) / diffCalTableFilename).exists()
-            
+
             assert not mtd.doesExist(diffCalMaskName)
             items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
@@ -1090,17 +1092,19 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_mask_cached(self, mockCalibrationDataPath):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
-        #   workspace already in ADS        
-        mockCalibrationDataPath.return_value = "/does/not/exist"
-        groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
-        diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
-        CloneWorkspace(
-            InputWorkspace=self.sampleMaskWS,
-            OutputWorkspace=diffCalMaskName,
-        )
-        assert mtd.doesExist(diffCalMaskName)
-        testTitle = "I'm a little teapot"
-        mtd[diffCalMaskName].setTitle(testTitle)
+        #   workspace already in ADS
+        path = Resource.getPath("outputs")
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
+            mockCalibrationDataPath.return_value = "/does/not/exist"
+            groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
+            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
+            CloneWorkspace(
+                InputWorkspace=self.sampleMaskWS,
+                OutputWorkspace=diffCalMaskName,
+            )
+            assert mtd.doesExist(diffCalMaskName)
+            testTitle = "I'm a little teapot"
+            mtd[diffCalMaskName].setTitle(testTitle)
 
         # Reloading is triggered based on whether or not the corresponding table workspace is in the ADS.
         diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
@@ -1119,7 +1123,7 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_mask_loads_table(self, mockCalibrationDataPath, mockFetchInstrumentDonor):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
-        #   * corresponding table workspace is also loaded from the hdf5-format file.        
+        #   * corresponding table workspace is also loaded from the hdf5-format file.
         path = Resource.getPath("outputs")
         mockFetchInstrumentDonor.return_value = self.sampleWS
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
@@ -1132,14 +1136,14 @@ class TestGroceryService(unittest.TestCase):
             diffCalTableFilename = diffCalTableName + ".h5"
             shutil.copy2(self.sampleDiffCalFilePath, Path(tmpPath) / diffCalTableFilename)
             assert (Path(tmpPath) / diffCalTableFilename).exists()
-            
+
             assert not mtd.doesExist(diffCalMaskName)
             assert not mtd.doesExist(diffCalTableName)
             items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
             assert mtd.doesExist(diffCalTableName)
-            
+
     def test_fetch_grocery_list_unknown_type(self):
         groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber).buildList()
         groceryList[0].workspaceType = "banana"
@@ -1152,7 +1156,6 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(GroceryService, "fetchNeutronDataCached")
     @mock.patch.object(GroceryService, "fetchGroupingDefinition")
     def test_fetch_grocery_list_with_source(self, mockFetchGroup, mockFetchClean):
-
         # expected workspaces
         cleanWorkspace = "unimportant"
         groupWorkspace = mock.Mock()
@@ -1183,122 +1186,151 @@ class TestGroceryService(unittest.TestCase):
             OutputWorkspace=tmpName,
         )
         assert mtd.doesExist(tmpName)
-                
+
         # Verify that there is a _zero_ relative location prior to updating instrument location parameters
-        ws = mtd[tmpName]        
+        ws = mtd[tmpName]
         # Exact float comparison is intended: these should match
-        assert ws.getInstrument().getComponentByName('West').getRelativeRot() == Quat(1.0, 0.0, 0.0, 0.0)
-        assert ws.getInstrument().getComponentByName('West').getRelativePos() == V3D(0.0, 0.0, 0.0)
-        assert ws.getInstrument().getComponentByName('East').getRelativeRot() == Quat(1.0, 0.0, 0.0, 0.0)
-        assert ws.getInstrument().getComponentByName('East').getRelativePos() == V3D(0.0, 0.0, 0.0)
-        
+        assert ws.getInstrument().getComponentByName("West").getRelativeRot() == Quat(1.0, 0.0, 0.0, 0.0)
+        assert ws.getInstrument().getComponentByName("West").getRelativePos() == V3D(0.0, 0.0, 0.0)
+        assert ws.getInstrument().getComponentByName("East").getRelativeRot() == Quat(1.0, 0.0, 0.0, 0.0)
+        assert ws.getInstrument().getComponentByName("East").getRelativePos() == V3D(0.0, 0.0, 0.0)
+
         self.instance._updateInstrumentParameters(self.runNumber, tmpName)
-        
+
         # Verify that all of the log-derived parameters have been added
-        sampleLogs = mapFromSampleLogs(tmpName, ('det_lin1', 'det_lin2', 'det_arc1', 'det_arc2'))
+        sampleLogs = mapFromSampleLogs(tmpName, ("det_lin1", "det_lin2", "det_arc1", "det_arc2"))
 
         # Exact float comparison is intended: these should match
         assert sampleLogs["det_lin1"] == self.detectorState1.lin[0]
         assert sampleLogs["det_lin2"] == self.detectorState1.lin[1]
         assert sampleLogs["det_arc1"] == self.detectorState1.arc[0]
         assert sampleLogs["det_arc2"] == self.detectorState1.arc[1]
-        
+
         # Verify that the relative location changes correctly after updating the instrument location parameters
         ws = mtd[tmpName]
-        assert pytest.approx(tupleFromQuat(ws.getInstrument().getComponentByName('West').getRelativeRot()), 1.0e-6) ==\
-            (-0.008726535498373997, 0.0, 0.9999619230641713, 0.0)
-        assert pytest.approx(tupleFromV3D(ws.getInstrument().getComponentByName('West').getRelativePos()), 1.0e-6) ==\
-            (0.09598823540505931, 0.0, 5.499162323360152)
-        assert pytest.approx(tupleFromQuat(ws.getInstrument().getComponentByName('East').getRelativeRot()), 1.0e-6) ==\
-            (-0.017452406437283477, 0.0, 0.9998476951563913, 0.0)
-        assert pytest.approx(tupleFromV3D(ws.getInstrument().getComponentByName('East').getRelativePos()), 1.0e-6) ==\
-            (0.2268467285662563, 0.0, 6.496040375624123)
-    
+        assert pytest.approx(tupleFromQuat(ws.getInstrument().getComponentByName("West").getRelativeRot()), 1.0e-6) == (
+            -0.008726535498373997,
+            0.0,
+            0.9999619230641713,
+            0.0,
+        )
+        assert pytest.approx(tupleFromV3D(ws.getInstrument().getComponentByName("West").getRelativePos()), 1.0e-6) == (
+            0.09598823540505931,
+            0.0,
+            5.499162323360152,
+        )
+        assert pytest.approx(tupleFromQuat(ws.getInstrument().getComponentByName("East").getRelativeRot()), 1.0e-6) == (
+            -0.017452406437283477,
+            0.0,
+            0.9998476951563913,
+            0.0,
+        )
+        assert pytest.approx(tupleFromV3D(ws.getInstrument().getComponentByName("East").getRelativePos()), 1.0e-6) == (
+            0.2268467285662563,
+            0.0,
+            6.496040375624123,
+        )
+
     @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
     @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
     @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_neutron_data(self, # noqa: ARG002
-        mockUpdateInstrumentCacheFromADS, mockUpdateNeutronCacheFromADS, mockCreateRawNeutronWorkspaceName):
-        with mock.patch.dict(self.instance._loadedRuns, {(self.runNumber, self.useLiteMode): 0}) as mockLoadedRuns,\
-            mock.patch.dict(self.instance._loadedInstruments, {}) as mockLoadedInstruments:
+    def test_fetch_instrument_donor_neutron_data(
+        self, mockUpdateInstrumentCacheFromADS, mockUpdateNeutronCacheFromADS, mockCreateRawNeutronWorkspaceName
+    ):
+        with mock.patch.dict(
+            self.instance._loadedRuns, {(self.runNumber, self.useLiteMode): 0}
+        ) as mockLoadedRuns, mock.patch.dict(self.instance._loadedInstruments, {}) as mockLoadedInstruments:
             mockCreateRawNeutronWorkspaceName.return_value = self.sampleWS
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
             assert testWS == self.sampleWS
-            
+
     @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
     @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
     @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_neutron_data_is_cached(self, # noqa: ARG002
-        mockUpdateInstrumentCacheFromADS, mockUpdateNeutronCacheFromADS, mockCreateRawNeutronWorkspaceName):
-        with mock.patch.dict(self.instance._loadedRuns, {(self.runNumber, self.useLiteMode): 0}),\
-            mock.patch.dict(self.instance._loadedInstruments, {}) as mockLoadedInstruments:
+    def test_fetch_instrument_donor_neutron_data_is_cached(
+        self, mockUpdateInstrumentCacheFromADS, mockUpdateNeutronCacheFromADS, mockCreateRawNeutronWorkspaceName
+    ):
+        with mock.patch.dict(
+            self.instance._loadedRuns, {(self.runNumber, self.useLiteMode): 0}
+        ) as mockLoadedRuns, mock.patch.dict(self.instance._loadedInstruments, {}) as mockLoadedInstruments:
             mockCreateRawNeutronWorkspaceName.return_value = self.sampleWS
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode) # noqa: F841
             assert mockLoadedInstruments == {(self.runNumber, self.useLiteMode): self.sampleWS}
 
     @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
     @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_cached(self, # noqa: ARG002
-        mockUpdateInstrumentCacheFromADS, mockUpdateNeutronCacheFromADS):
-        with mock.patch.dict(self.instance._loadedRuns, {}),\
-            mock.patch.dict(self.instance._loadedInstruments, {(self.runNumber, self.useLiteMode): self.sampleWS}):
+    def test_fetch_instrument_donor_cached(self, mockUpdateInstrumentCacheFromADS, mockUpdateNeutronCacheFromADS):
+        with mock.patch.dict(self.instance._loadedRuns, {}) as mockLoadedRuns, mock.patch.dict(
+            self.instance._loadedInstruments, {(self.runNumber, self.useLiteMode): self.sampleWS}
+        ) as mockLoadedInstruments:
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
             assert testWS == self.sampleWS
-            
+
     @mock.patch.object(GroceryService, "_getDetectorState")
     @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
     @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_empty_instrument(self, # noqa: ARG002
-        mockUpdateInstrumentCacheFromADS, mockUpdateNeutronCacheFromADS, mockGetDetectorState):
+    def test_fetch_instrument_donor_empty_instrument(
+        self, mockUpdateInstrumentCacheFromADS, mockUpdateNeutronCacheFromADS, mockGetDetectorState
+    ):
         mockGetDetectorState.return_value = self.detectorState2
-        with mock.patch.dict(self.instance._loadedRuns, {}),\
-            mock.patch.dict(self.instance._loadedInstruments, {}):
+        with mock.patch.dict(self.instance._loadedRuns, {}) as mockLoadedRuns, mock.patch.dict(
+            self.instance._loadedInstruments, {}
+        ) as mockLoadedInstruments:
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
             assert mtd.doesExist(testWS)
             assert not testWS == self.sampleWS
-        
+
             # Verify that the instrument workspace has log-derived parameters from `self.detectorState2`.
-            sampleLogs = mapFromSampleLogs(testWS, ('det_lin1', 'det_lin2', 'det_arc1', 'det_arc2'))
+            sampleLogs = mapFromSampleLogs(testWS, ("det_lin1", "det_lin2", "det_arc1", "det_arc2"))
 
             # Exact float comparison is intended: these should match
             assert sampleLogs["det_lin1"] == self.detectorState2.lin[0]
             assert sampleLogs["det_lin2"] == self.detectorState2.lin[1]
             assert sampleLogs["det_arc1"] == self.detectorState2.arc[0]
             assert sampleLogs["det_arc2"] == self.detectorState2.arc[1]
-            
+
     @mock.patch.object(GroceryService, "_getDetectorState")
     @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
     @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_empty_instrument_is_cached(self, # noqa: ARG002
-        mockUpdateInstrumentCacheFromADS, mockUpdateNeutronCacheFromADS, mockGetDetectorState):
+    def test_fetch_instrument_donor_empty_instrument_is_cached(
+        self, mockUpdateInstrumentCacheFromADS, mockUpdateNeutronCacheFromADS, mockGetDetectorState
+    ):
         mockGetDetectorState.return_value = self.detectorState2
-        with mock.patch.dict(self.instance._loadedRuns, {}),\
-            mock.patch.dict(self.instance._loadedInstruments, {}) as mockLoadedInstruments:
+        with mock.patch.dict(self.instance._loadedRuns, {}) as mockLoadedRuns, mock.patch.dict(
+            self.instance._loadedInstruments, {}
+        ) as mockLoadedInstruments:
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
             assert mockLoadedInstruments == {(self.runNumber, self.useLiteMode): testWS}
-    
-    
+
     @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
     def test_update_instrument_cache_from_ADS_to_cache(self, mockCreateRawNeutronWorkspaceName):
         mockCreateRawNeutronWorkspaceName.return_value = self.sampleWS
         with mock.patch.dict(self.instance._loadedInstruments, {}) as mockLoadedInstruments:
             self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode)
             assert mockLoadedInstruments == {(self.runNumber, self.useLiteMode): self.sampleWS}
-    
+
     @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
     def test_update_instrument_cache_from_ADS_cache_del(self, mockCreateRawNeutronWorkspaceName):
         testWSName = "not_any_workspace"
         mockCreateRawNeutronWorkspaceName.return_value = testWSName
-        with mock.patch.dict(self.instance._loadedInstruments, {(self.runNumber, self.useLiteMode): testWSName})\
-            as mockLoadedInstruments:
+        with mock.patch.dict(
+            self.instance._loadedInstruments, {(self.runNumber, self.useLiteMode): testWSName}
+        ) as mockLoadedInstruments:
             self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode)
             assert mockLoadedInstruments == {}
-    
+
     @mock.patch.object(LocalDataService, "readDetectorState")
     def test_get_detector_state(self, mockReadDetectorState):
         mockReadDetectorState.return_value = self.detectorState1
         detectorState = self.instance._getDetectorState(self.runNumber)
         assert detectorState == self.detectorState1
+
+    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
+    def test_get_detector_state(self, mockConstructCalibrationDataPath):
+        testPath = "some/path/that/may_not_exist/"
+        mockConstructCalibrationDataPath.return_value = testPath
+        calibrationDataPath = self.instance._getCalibrationDataPath(self.runNumber, self.version)
+        assert calibrationDataPath == testPath
 
     @mock.patch(ThisService + "mtd")
     def test_unique_hidden_name(self, mockADS):
@@ -1306,7 +1338,7 @@ class TestGroceryService(unittest.TestCase):
         mockADS.unique_hidden_name.return_value = testWSName
         wsName = self.instance.uniqueHiddenName()
         assert wsName == testWSName
-         
+
     @mock.patch.object(GroceryService, "fetchGroceryList")
     def test_fetch_grocery_dict(self, mockFetchList):
         clerk = GroceryListItem.builder()
@@ -1365,8 +1397,7 @@ class TestGroceryService(unittest.TestCase):
         rawWsName = self.instance._createRawNeutronWorkspaceName("556854", False)
         self.instance._loadedRuns = {("556854", False): 0}
         self.instance._loadedGroupings = {("column", "556854", True): "d"}
-        self.instance._loadedInstruments =\
-            {("556854", False): rawWsName, ("556855", True): "hello"}
+        self.instance._loadedInstruments = {("556854", False): rawWsName, ("556855", True): "hello"}
         assert set(self.instance.getCachedWorkspaces()) == set([rawWsName, "d", "hello"])
 
     def test_getCachedWorkspaces_empty(self):

@@ -25,7 +25,7 @@ class FetchGroceriesRecipe:
         instrumentPropertySource=None,
         instrumentSource="",
         *,
-        loaderArgs: str = "",       
+        loaderArgs: str = "",
     ) -> Dict[str, Any]:
         """
         Wraps the fetch groceries algorithm

@@ -6,13 +6,12 @@ from errno import ENOENT as NOT_FOUND
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from pydantic import parse_file_as
 import h5py
-
-from mantid.kernel import PhysicalConstants
 from mantid.api import AlgorithmManager, ITableWorkspace
 from mantid.dataobjects import MaskWorkspace
+from mantid.kernel import PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
+from pydantic import parse_file_as
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -36,12 +35,13 @@ from snapred.backend.dao.state import (
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
 from snapred.backend.error.StateValidationException import StateValidationException
-from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGroupingDefinition
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGroupingDefinition
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as WNG, WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as WNG
 from snapred.meta.redantic import (
     write_model_list_pretty,
     write_model_pretty,
@@ -152,7 +152,7 @@ class LocalDataService:
         if not mtd.doesExist(wsName):
             return False
         return isinstance(mtd[wsName], wsType)
-                 
+
     def readRunConfig(self, runId: str) -> RunConfig:
         return self._readRunConfig(runId)
 
@@ -348,8 +348,6 @@ class LocalDataService:
             raise ValueError(f"No calibration data found for runId {runId}")
         return self._constructCalibrationDataPath(runId, version)
 
-
-
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         stateId, _ = self._generateStateId(entry.runNumber)
         calibrationPath: str = self._constructCalibrationStatePath(stateId)
@@ -480,8 +478,7 @@ class LocalDataService:
             filename = Path(workspace + ".nxs")
             self.writeWorkspace(normalizationDataPath, filename, workspace)
         return record
-    
-    
+
     def readCalibrationRecord(self, runId: str, version: str = None):
         recordFile: str = None
         if version:
@@ -549,8 +546,15 @@ class LocalDataService:
         if not maskWorkspace:
             logger.warning("the diffraction-calibration mask is missing from the workspace list")
         if calibrationTable or maskWorkspace:
-            diffCalFilename = Path(WNG.diffCalTable().runNumber(record.runNumber).version(record.version).build() + ".h5") 
-            self.writeDiffCalWorkspaces(calibrationDataPath, diffCalFilename, tableWorkspaceName=calibrationTable, maskWorkspaceName=maskWorkspace)
+            diffCalFilename = Path(
+                WNG.diffCalTable().runNumber(record.runNumber).version(record.version).build() + ".h5"
+            )
+            self.writeDiffCalWorkspaces(
+                calibrationDataPath,
+                diffCalFilename,
+                tableWorkspaceName=calibrationTable,
+                maskWorkspaceName=maskWorkspace,
+            )
         return record
 
     def writeCalibrantSample(self, sample: CalibrantSamples):
@@ -678,7 +682,7 @@ class LocalDataService:
         if not os.path.exists(normalizationPath):
             os.makedirs(normalizationPath)
         write_model_pretty(normalization, normalizationParametersPath)
-    
+
     def readDetectorState(self, runId: str) -> DetectorState:
         detectorState = None
         pvFile = self._readPVFile(runId)
@@ -691,7 +695,7 @@ class LocalDataService:
                 lin=[pvFile.get("entry/DASlogs/det_lin1/value")[0], pvFile.get("entry/DASlogs/det_lin2/value")[0]],
             )
         except:  # noqa: E722
-            raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")        
+            raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")
         return detectorState
 
     @ExceptionHandler(StateValidationException)
@@ -700,7 +704,7 @@ class LocalDataService:
 
         # Read the detector state from the pv data file
         detectorState = self.readDetectorState(runId)
-        
+
         # then read data from the common calibration state parameters stored at root of calibration directory
         instrumentConfig = self.readInstrumentConfig()
         # then pull static values specified by Malcolm from resources
@@ -840,13 +844,22 @@ class LocalDataService:
         """
         self.writeDiffCalWorkspaces(path, filename, groupingWorkspaceName=workspaceName)
 
-    def writeDiffCalWorkspaces(self, path: Path, filename: Path, tableWorkspaceName: WorkspaceName = "", maskWorkspaceName: WorkspaceName = "", groupingWorkspaceName: WorkspaceName = ""):
+    def writeDiffCalWorkspaces(
+        self,
+        path: Path,
+        filename: Path,
+        tableWorkspaceName: WorkspaceName = "",
+        maskWorkspaceName: WorkspaceName = "",
+        groupingWorkspaceName: WorkspaceName = "",
+    ):
         """
         Writes any or all of the calibration table, mask and grouping workspaces to disk:
         -- up to three workspaces may be written to one 'SaveDiffCal' hdf-5 format file.
         """
         if filename.suffix != ".h5":
-            raise RuntimeError(f"[writeCalibrationWorkspaces]: specify filename including '.h5' extension, not {filename}")
+            raise RuntimeError(
+                f"[writeCalibrationWorkspaces]: specify filename including '.h5' extension, not {filename}"
+            )
         saveAlgo = AlgorithmManager.create("SaveDiffCal")
         saveAlgo.setPropertyValue("CalibrationWorkspace", tableWorkspaceName)
         saveAlgo.setPropertyValue("MaskWorkspace", maskWorkspaceName)

@@ -1,6 +1,6 @@
+import unittest.mock as mock
 
 import pytest
-import unittest.mock as mock
 
 # Mock out of scope modules before importing DataExportService
 # mock.patch("snapred.backend.data"] = mock.Mock()
@@ -74,6 +74,7 @@ with mock.patch.dict(
         dataExportService.dataService.writeNormalizationWorkspaces.return_value = "expected"
         dataExportService.exportNormalizationWorkspaces(mock.Mock())
         assert dataExportService.dataService.writeNormalizationWorkspaces.called
+
 
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873

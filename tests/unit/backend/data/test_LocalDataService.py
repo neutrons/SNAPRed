@@ -3,26 +3,21 @@ import os
 import shutil
 import socket
 import tempfile
+import unittest.mock as mock
 from pathlib import Path
 from typing import List
 
 import pytest
-import unittest.mock as mock
-
+from mantid.api import ITableWorkspace, MatrixWorkspace
+from mantid.dataobjects import MaskWorkspace
+from mantid.simpleapi import (
+    CloneWorkspace,
+    CreateGroupingWorkspace,
+    LoadEmptyInstrument,
+    mtd,
+)
 from pydantic import parse_raw_as
 from pydantic.error_wrappers import ValidationError
-
-from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
-
-from mantid.api import MatrixWorkspace, ITableWorkspace
-from mantid.simpleapi import (
-    mtd,
-    LoadEmptyInstrument,
-    CreateGroupingWorkspace,
-    CloneWorkspace,
-)
-from mantid.dataobjects import MaskWorkspace
-
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 
 # NOTE this is necessary to prevent mocking out needed functions
@@ -30,6 +25,7 @@ from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as WNG
 from snapred.meta.redantic import write_model_pretty
+from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
@@ -340,19 +336,19 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         localDataService = LocalDataService()
         # Create a sample workspace.
         testWS0 = "test_ws"
-        LoadEmptyInstrument (
+        LoadEmptyInstrument(
             Filename=fakeInstrumentFilePath,
             OutputWorkspace=testWS0,
         )
         assert mtd.doesExist(testWS0)
         assert localDataService.workspaceIsInstance(testWS0, MatrixWorkspace)
- 
+
         # Create diffraction-calibration table and mask workspaces.
         tableWS = "test_table"
         maskWS = "test_mask"
         createCompatibleDiffCalTable(tableWS, testWS0)
         createCompatibleMask(maskWS, testWS0, fakeInstrumentFilePath)
-        assert mtd.doesExist(tableWS)          
+        assert mtd.doesExist(tableWS)
         assert mtd.doesExist(maskWS)
         assert localDataService.workspaceIsInstance(tableWS, ITableWorkspace)
         assert localDataService.workspaceIsInstance(maskWS, MaskWorkspace)
@@ -364,7 +360,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         testWS0 = "test_ws"
         assert not mtd.doesExist(testWS0)
         assert not localDataService.workspaceIsInstance(testWS0, MatrixWorkspace)
-    
+
     def test_write_model_pretty_StateConfig_excludes_grouping_map():
         # At present there is no `writeStateConfig` method, and there is no `readStateConfig` that doesn't
         #   actually build up the `StateConfig` from its components.
@@ -625,41 +621,45 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
         localDataService = LocalDataService()
-        path = Resource.getPath("outputs")        
+        path = Resource.getPath("outputs")
         testCalibrationRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
             basePath = Path(basePath)
             mockConstructCalibrationDataPath.return_value = str(basePath)
-            
+
             # Workspace names need to match the names that are used in the test record.
             runNumber = testCalibrationRecord.runNumber
             version = testCalibrationRecord.version
             testWS0, testWS1, testWS2, tableWSName, maskWSName = testCalibrationRecord.workspaceNames
-            diffCalFilename = Path(WNG.diffCalTable().runNumber(runNumber).version(version).build() + ".h5") 
-            
+            diffCalFilename = Path(WNG.diffCalTable().runNumber(runNumber).version(version).build() + ".h5")
+
             # Create sample workspaces.
-            LoadEmptyInstrument (
+            LoadEmptyInstrument(
                 Filename=fakeInstrumentFilePath,
                 OutputWorkspace=testWS0,
             )
             CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS1)
-            CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS2)            
+            CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS2)
             assert mtd.doesExist(testWS0)
             assert mtd.doesExist(testWS1)
             assert mtd.doesExist(testWS2)
-            
+
             # Create diffraction-calibration table and mask workspaces.
             createCompatibleDiffCalTable(tableWSName, testWS0)
             createCompatibleMask(maskWSName, testWS0, fakeInstrumentFilePath)
-            assert mtd.doesExist(tableWSName)          
+            assert mtd.doesExist(tableWSName)
             assert mtd.doesExist(maskWSName)
-            
+
             localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
 
-            diffCalFilename = Path(WNG.diffCalTable().runNumber(runNumber).version(version).build() + ".h5") 
+            diffCalFilename = Path(WNG.diffCalTable().runNumber(runNumber).version(version).build() + ".h5")
             for wsName in testCalibrationRecord.workspaceNames:
                 ws = mtd[wsName]
-                filename = Path(wsName + ".nxs") if not (isinstance(ws, ITableWorkspace) or isinstance(ws, MaskWorkspace)) else diffCalFilename
+                filename = (
+                    Path(wsName + ".nxs")
+                    if not (isinstance(ws, ITableWorkspace) or isinstance(ws, MaskWorkspace))
+                    else diffCalFilename
+                )
                 assert (basePath / filename).exists()
             mtd.clear()
 
@@ -713,24 +713,26 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
     @mock.patch.object(LocalDataService, "_constructNormalizationCalibrationDataPath")
     def test_writeNormalizationWorkspaces(mockConstructNormalizationCalibrationDataPath):
         localDataService = LocalDataService()
-        path = Resource.getPath("outputs")        
-        testNormalizationRecord = NormalizationRecord.parse_raw(Resource.read("inputs/normalization/NormalizationRecord.json"))
+        path = Resource.getPath("outputs")
+        testNormalizationRecord = NormalizationRecord.parse_raw(
+            Resource.read("inputs/normalization/NormalizationRecord.json")
+        )
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
             basePath = Path(basePath)
             mockConstructNormalizationCalibrationDataPath.return_value = str(basePath)
-            
+
             # Workspace names need to match the names that are used in the test record.
             runNumber = testNormalizationRecord.runNumber # noqa: F841
             version = testNormalizationRecord.version # noqa: F841
             testWS0, testWS1, testWS2 = testNormalizationRecord.workspaceNames
-            
+
             # Create sample workspaces.
-            LoadEmptyInstrument (
+            LoadEmptyInstrument(
                 Filename=fakeInstrumentFilePath,
                 OutputWorkspace=testWS0,
             )
             CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS1)
-            CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS2)            
+            CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS2)
             assert mtd.doesExist(testWS0)
             assert mtd.doesExist(testWS1)
             assert mtd.doesExist(testWS2)
@@ -925,14 +927,29 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
 
         localDataService = LocalDataService()
         localDataService._readPVFile = mock.Mock()
-        
+
         pvFileMock = mock.Mock()
         # 2X: seven required `readDetectorState` log entries:
         #   * generated stateId hex-digest: 'ab8704b0bc2a2342',
-        #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json' 
-        pvFileMock.get.side_effect = [[1], [2], [1.1], [1.2], [1], [1.0], [2.0], [1], [2], [1.1], [1.2], [1], [1.0], [2.0]]
+        #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
+        pvFileMock.get.side_effect = [
+            [1],
+            [2],
+            [1.1],
+            [1.2],
+            [1],
+            [1.0],
+            [2.0],
+            [1],
+            [2],
+            [1.1],
+            [1.2],
+            [1],
+            [1.0],
+            [2.0],
+        ]
         localDataService._readPVFile.return_value = pvFileMock
-        
+
         testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
 
         localDataService.readInstrumentConfig = mock.Mock()
@@ -1097,9 +1114,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         result = localDataService.readCifFilePath("testid")
         assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif"
 
-
     ## TESTS OF WORKSPACE WRITE METHODS
-    
+
     def test_writeWorkspace():
         localDataService = LocalDataService()
         path = Resource.getPath("outputs")
@@ -1108,7 +1124,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             basePath = Path(tmpPath)
             filename = Path(workspaceName + ".nxs")
             # Create a test workspace to write.
-            LoadEmptyInstrument (
+            LoadEmptyInstrument(
                 Filename=fakeInstrumentFilePath,
                 OutputWorkspace=workspaceName,
             )
@@ -1136,15 +1152,15 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
 
     def test_writeDiffCalWorkspaces():
         localDataService = LocalDataService()
-        path = Resource.getPath("outputs")        
+        path = Resource.getPath("outputs")
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
             basePath = Path(basePath)
             tableWSName = "test_table"
             maskWSName = "test_mask"
-            filename = Path(tableWSName + ".h5") 
+            filename = Path(tableWSName + ".h5")
             # Create an instrument workspace.
             instrumentDonor = "test_instrument_donor"
-            LoadEmptyInstrument (
+            LoadEmptyInstrument(
                 Filename=fakeInstrumentFilePath,
                 OutputWorkspace=instrumentDonor,
             )
@@ -1153,10 +1169,13 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             createCompatibleMask(maskWSName, instrumentDonor, fakeInstrumentFilePath)
             assert mtd.doesExist(maskWSName)
             createCompatibleDiffCalTable(tableWSName, instrumentDonor)
-            assert mtd.doesExist(tableWSName)          
-            localDataService.writeDiffCalWorkspaces(basePath, filename, tableWorkspaceName=tableWSName, maskWorkspaceName=maskWSName)
+            assert mtd.doesExist(tableWSName)
+            localDataService.writeDiffCalWorkspaces(
+                basePath, filename, tableWorkspaceName=tableWSName, maskWorkspaceName=maskWSName
+            )
             assert (basePath / filename).exists()
         mtd.clear()
+
 
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873

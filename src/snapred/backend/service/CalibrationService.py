@@ -60,7 +60,7 @@ class CalibrationService(Service):
     def __init__(self):
         super().__init__()
         self.dataFactoryService = DataFactoryService()
-        self.dataExportService = DataExportService()        
+        self.dataExportService = DataExportService()
         self.groceryService = GroceryService()
         self.groceryClerk = GroceryListItem.builder()
         self.sousChef = SousChef()

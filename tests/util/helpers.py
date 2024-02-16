@@ -23,6 +23,7 @@ from mantid.simpleapi import (
 )
 from snapred.meta.Config import Resource
 
+
 def createCompatibleDiffCalTable(tableWSName: str, templateWSName: str) -> ITableWorkspace:
     """
     Create an diffraction-calibration `ITableWorkspace` compatible with a template workspace.
@@ -37,6 +38,7 @@ def createCompatibleDiffCalTable(tableWSName: str, templateWSName: str) -> ITabl
     for n in range(templateWS.getInstrument().getNumberDetectors(True)):
         ws.addRow({"detid": n, "difc": 1000.0, "difa": 0.0, "tzero": 0.0})
     return ws
+
 
 def createCompatibleMask(maskWSName: str, templateWSName: str, instrumentFilePath: str) -> MaskWorkspace:
     """

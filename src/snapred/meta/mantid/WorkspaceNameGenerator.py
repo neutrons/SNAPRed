@@ -88,24 +88,22 @@ class _WorkspaceNameGenerator:
         )
 
     def diffCalTable(self):
-        return NameBuilder(
-            self._diffCalTableTemplate, self._diffCalTableTemplateKeys, self._delimiter, version=""
-        )
+        return NameBuilder(self._diffCalTableTemplate, self._diffCalTableTemplateKeys, self._delimiter, version="")
 
     def diffCalOutput(self):
         return NameBuilder(
-            self._diffCalOutputTemplate, self._diffCalOutputTemplateKeys, self._delimiter, unit=self.Units.TOF, version=""
+            self._diffCalOutputTemplate,
+            self._diffCalOutputTemplateKeys,
+            self._delimiter,
+            unit=self.Units.TOF,
+            version="",
         )
 
     def diffCalMask(self):
-        return NameBuilder(
-            self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter, version=""
-        )
+        return NameBuilder(self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter, version="")
 
     def diffCalMetrics(self):
-        return NameBuilder(
-            self._diffCalMetricTemplate, self._diffCalMetricTemplateKeys, self._delimiter, version=""
-        )
+        return NameBuilder(self._diffCalMetricTemplate, self._diffCalMetricTemplateKeys, self._delimiter, version="")
 
     def rawVanadium(self):
         return NameBuilder(

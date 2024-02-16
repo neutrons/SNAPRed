@@ -254,6 +254,7 @@ class TestNormalizationService(unittest.TestCase):
             "smoothedOutput": "dsp_apple_12345_fitted_van_cor",
         }
 
+
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
 @pytest.fixture(autouse=True)

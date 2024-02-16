@@ -71,7 +71,7 @@ class GroceryListItem(BaseModel):
                     raise ValueError("you must specify the grouping scheme to use")
                 if v["groupingScheme"] == "Lite":
                     # the Lite grouping scheme reduces native resolution to Lite mode
-                    v["useLiteMode"] = False  # the lite data map only works on native data                        
+                    v["useLiteMode"] = False  # the lite data map only works on native data
             case "diffcal":
                 if v.get("runNumber") is None:
                     raise ValueError("diffraction-calibration input table workspace requires a run number")
@@ -80,14 +80,18 @@ class GroceryListItem(BaseModel):
                 if v.get("runNumber") is None:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
                 if v.get("isOutput") is False:
-                    raise ValueError(f"diffraction-calibration {v['workspaceType']} output specification is special-order only")
+                    raise ValueError(
+                        f"diffraction-calibration {v['workspaceType']} output specification is special-order only"
+                    )
                 if v.get("instrumentPropertySource") is not None:
                     raise ValueError("Loading diffcal-output data should not specify an instrument")
             case "diffcal_table" | "diffcal_mask":
                 if v.get("runNumber") is None:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
                 if v.get("isOutput") is False:
-                    raise ValueError(f"diffraction-calibration {v['workspaceType']} output specification is special-order only")
+                    raise ValueError(
+                        f"diffraction-calibration {v['workspaceType']} output specification is special-order only"
+                    )
             case _:
                 raise ValueError(f"unrecognized 'workspaceType': '{v['workspaceType']}'")
         return v

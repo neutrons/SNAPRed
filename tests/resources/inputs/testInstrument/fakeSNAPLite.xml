@@ -73,7 +73,7 @@
       <location x="+2.0+value" z="-5.0+value"/>
     </component>
   </type>
-  
+
   <type name="Column1">/
     <component type="pixel" idlist="column1-id-list">
       <location name="pixel1">

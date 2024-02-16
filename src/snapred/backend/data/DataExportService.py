@@ -7,8 +7,8 @@ from snapred.backend.dao.normalization.NormalizationIndexEntry import Normalizat
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 @Singleton
