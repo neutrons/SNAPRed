@@ -92,7 +92,7 @@ class _WorkspaceNameGenerator:
 
     def diffCalOutput(self):
         return NameBuilder(
-            self._diffCalOutputTemplate, self._diffCalOutputTemplateKeys, self._delimiter, unit=self.Units.TOF
+            self._diffCalOutputTemplate, self._diffCalOutputTemplateKeys, self._delimiter, unit=self.Units.DSP
         )
 
     def diffCalMask(self):
