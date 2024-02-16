@@ -72,7 +72,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.dMin = ingredients.pixelGroup.dMin()
         self.dMax = ingredients.pixelGroup.dMax()
         self.dBin = ingredients.pixelGroup.dBin()
-        self.units = ingredients.units
         pixelGroupIDs = ingredients.pixelGroup.groupIDs
 
         # from the pixel group, read the overall min/max TOF and binning

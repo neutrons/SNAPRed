@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.RunConfig import RunConfig
