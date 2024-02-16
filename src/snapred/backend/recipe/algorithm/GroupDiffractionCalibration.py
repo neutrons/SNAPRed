@@ -333,7 +333,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
         # Execute queued Mantid algorithms
         self.mantidSnapper.executeQueue()
-        breakpoint()
 
 
 # Register algorithm with Mantid
