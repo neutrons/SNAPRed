@@ -72,6 +72,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.dMin = ingredients.pixelGroup.dMin()
         self.dMax = ingredients.pixelGroup.dMax()
         self.dBin = ingredients.pixelGroup.dBin()
+        self.units = ingredients.units
         pixelGroupIDs = ingredients.pixelGroup.groupIDs
 
         # from the pixel group, read the overall min/max TOF and binning
@@ -166,7 +167,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
         # process and diffraction focus the input data
         # must convert to d-spacing, diffraction focus, ragged rebin, then convert back to TOF
-        self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "before")
+        self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "before", self.units)
 
     def PyExec(self) -> None:
         """
@@ -275,24 +276,30 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             InstrumentWorkspace=self.wsTOF,
             CalibrationWorkspace=self.DIFCfinal,
         )
-        self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "after")
+        self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "after", self.units)
 
-    def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str):
-        # TODO use workspace name generator
+    def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str, units: str = "TOF"):
+        # Use workspace name generator
         tmpWStof = f"_TOF_{self.runNumber}_diffoc_{note}"
         tmpWSdsp = f"_DSP_{self.runNumber}_diffoc_{note}"
+
+        # Convert the raw TOF data to d-spacing
         self.mantidSnapper.ConvertUnits(
             "Convert the raw TOF data to d-spacing",
             InputWorkspace=inputWS,
             OutputWorkspace=tmpWSdsp,
             Target="dSpacing",
         )
+
+        # Diffraction-focus the d-spacing data
         self.mantidSnapper.DiffractionFocussing(
             "Diffraction-focus the d-spacing data",
             InputWorkspace=tmpWSdsp,
             GroupingWorkspace=self.focusWS,
             OutputWorkspace=tmpWSdsp,
         )
+
+        # Ragged rebin the diffraction-focussed data
         self.mantidSnapper.RebinRagged(
             "Ragged rebin the diffraction-focussed data",
             InputWorkspace=tmpWSdsp,
@@ -301,22 +308,30 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             XMax=self.dMax,
             Delta=self.dBin,
         )
-        self.mantidSnapper.ConvertUnits(
-            "Convert the focussed and rebinned data back to TOF",
-            InputWorkspace=tmpWSdsp,
-            OutputWorkspace=outputWS,
-            Target="TOF",
-        )
-        # for inspection, save diffraction focused data before calculation
+
+        if units == "TOF":
+            # Convert the focussed and rebinned data back to TOF if required
+            self.mantidSnapper.ConvertUnits(
+                "Convert the focussed and rebinned data back to TOF",
+                InputWorkspace=tmpWSdsp,
+                OutputWorkspace=outputWS,
+                Target="TOF",
+            )
+
+        # For inspection, save diffraction focused data before calculation
         self.mantidSnapper.MakeDirtyDish(
             "Save diffraction-focused TOF data",
-            InputWorkspace=outputWS,
+            InputWorkspace=outputWS if units == "TOF" else tmpWSdsp,
             OutputWorkspace=tmpWStof,
         )
+
+        # Delete diffraction-focused d-spacing data
         self.mantidSnapper.WashDishes(
             "Delete diffraction-focused d-spacing data",
             Workspace=tmpWSdsp,
         )
+
+        # Execute queued Mantid algorithms
         self.mantidSnapper.executeQueue()
 
 
