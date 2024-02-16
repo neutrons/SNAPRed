@@ -297,7 +297,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     ):
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
 
-        mockIngredients = mock.Mock(groupedPeakLists = [mock.Mock(peaks=["orange"], groupID="banana")])
+        mockIngredients = mock.Mock(groupedPeakLists=[mock.Mock(peaks=["orange"], groupID="banana")])
         self.instance.sousChef = mock.Mock(spec_set=SousChef)
         self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value = mockIngredients
 
@@ -306,11 +306,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
 
         # Call the method with the provided parameters
-        request = mock.Mock(calibrantSamplePath = "bundt/cake_egg.py")
+        request = mock.Mock(calibrantSamplePath="bundt/cake_egg.py")
         with pytest.raises(RuntimeError) as e:
             self.instance.diffractionCalibration(request)
         assert mockIngredients.groupedPeakLists[0].groupID in str(e.value)
-
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
@@ -321,7 +320,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     ):
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
 
-        mockIngredients = mock.Mock(groupedPeakLists = [mock.Mock(peaks=["orange", "apple"], groupID="banana")])
+        mockIngredients = mock.Mock(groupedPeakLists=[mock.Mock(peaks=["orange", "apple"], groupID="banana")])
         self.instance.sousChef = mock.Mock(spec_set=SousChef)
         self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value = mockIngredients
 
@@ -331,7 +330,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
 
         # Call the method with the provided parameters
-        request = mock.Mock(calibrantSamplePath = "bundt/cake_egg.py")
+        request = mock.Mock(calibrantSamplePath="bundt/cake_egg.py")
         res = self.instance.diffractionCalibration(request)
 
         # Perform assertions to check the result and method calls

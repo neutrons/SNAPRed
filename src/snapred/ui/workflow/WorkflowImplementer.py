@@ -64,7 +64,6 @@ class WorkflowImplementer:
         if result.code >= 300:
             raise RuntimeError(result.message)
 
-
     @property
     def widget(self):
         return self.workflow.presenter.widget
