@@ -16,10 +16,3 @@ class DiffractionCalibrationIngredients(BaseModel):
     groupedPeakLists: List[GroupPeakList]
     convergenceThreshold: float
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
-    units: str = "TOF"
-
-    @validator("units")
-    def validatedSpacing(cls, v):
-        if v not in ["TOF", "dSpacing"]:
-            raise ValueError(f"dSpacing must be either 'TOF' or 'dSpacing', not '{v}'")
-        return v
