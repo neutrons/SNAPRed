@@ -78,7 +78,7 @@ class _WorkspaceNameGenerator:
 
     def diffCalInput(self):
         return NameBuilder(
-            self._diffCalInputTemplate, self._diffCalInputTemplateKeys, self._delimiter, unit=self.Units.DSP
+            self._diffCalInputTemplate, self._diffCalInputTemplateKeys, self._delimiter, unit=self.Units.TOF
         )
 
     def diffCalTable(self):
@@ -86,7 +86,7 @@ class _WorkspaceNameGenerator:
 
     def diffCalOutput(self):
         return NameBuilder(
-            self._diffCalOutputTemplate, self._diffCalOutputTemplateKeys, self._delimiter, unit=self.Units.TOF
+            self._diffCalOutputTemplate, self._diffCalOutputTemplateKeys, self._delimiter, unit=self.Units.DSP
         )
 
     def diffCalMask(self):
