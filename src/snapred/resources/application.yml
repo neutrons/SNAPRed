@@ -93,9 +93,9 @@ mantid:
         mask: "DIFC,{runNumber},mask"
         metric: "{runNumber},{version},calibration_metrics,{metricName}"
       normCal:
-        rawVandium: "{runNumber},{backgroundRunNumber},RVC"
-        focusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme}"
-        smoothedFocusedRawVanadium: "{runNumber},{backgroundRunNumber},RVC,{groupingScheme},{smoothingParameter}"
+        rawVanadium: "{unit},{group},{runNumber},raw_van_corr"
+        focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr"
+        smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_cor"
       units:
         dSpacing: DSP
         timeOfFlight: TOF

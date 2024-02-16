@@ -72,14 +72,8 @@ class NormalizationService(Service):
         ).fromPrev().add()
 
         outputWorkspace = wng.run().runNumber(request.runNumber).group(groupingScheme).auxilary("S+F-Vanadium").build()
-        correctedVanadium = wng.run().runNumber(request.runNumber).group(groupingScheme).auxilary("C-Vanadium").build()
-        smoothedOutput = (
-            wng.run()
-            .runNumber(request.runNumber)
-            .group(groupingScheme)
-            .auxilary(f"{request.smoothingParameter}-s_{request.crystalDMin}-dmin")
-            .build()
-        )
+        correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
+        smoothedOutput = wng.smoothedFocusedRawVanadium().runNumber(request.runNumber).group(groupingScheme).build()
 
         if (
             self.groceryService.workspaceDoesExist(outputWorkspace)
@@ -125,12 +119,12 @@ class NormalizationService(Service):
         )
         outputWorkspace = self.focusSpectra(requestFs)
         # clone output focussedVanadium
-        focussedVanadiumWs = "focussedCorrectedVanadium"
-        self.groceryService.getCloneOfWorkspace(outputWorkspace, focussedVanadiumWs)
+        focusedVanadiumWs = wng.focusedRawVanadium().runNumber(request.runNumber).group(groupingScheme).build()
+        self.groceryService.getCloneOfWorkspace(outputWorkspace, focusedVanadiumWs)
         # 3. smooth
 
         smoothRequest = SmoothDataExcludingPeaksRequest(
-            inputWorkspace=focussedVanadiumWs,
+            inputWorkspace=focusedVanadiumWs,
             outputWorkspace=smoothedOutput,
             calibrantSamplePath=request.calibrantSamplePath,
             focusGroup=request.focusGroup,
@@ -143,7 +137,7 @@ class NormalizationService(Service):
         outputWorkspace = self.smoothDataExcludingPeaks(smoothRequest)
 
         return NormalizationResponse(
-            correctedVanadium=correctedVanadiumWs, outputWorkspace=focussedVanadiumWs, smoothedOutput=outputWorkspace
+            correctedVanadium=correctedVanadiumWs, outputWorkspace=focusedVanadiumWs, smoothedOutput=outputWorkspace
         ).dict()
 
     @FromString
