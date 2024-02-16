@@ -290,18 +290,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
-    def test_diffractionCalibration(
+    def test_diffractionCalibration_tooFewPeaks(
         self,
         DiffractionCalibrationRecipe,
         FarmFreshIngredients,
     ):
-        runNumber = "123"
-        focusGroup = FocusGroup(name="biscuit", definition="flour/butter")
-        nBinsAcrossPeakWidth = 10
-
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
 
-        mockIngredients = {"apple": "banana"}
+        mockIngredients = mock.Mock(groupedPeakLists = [mock.Mock(peaks=["orange"], groupID="banana")])
         self.instance.sousChef = mock.Mock(spec_set=SousChef)
         self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value = mockIngredients
 
@@ -310,14 +306,33 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
 
         # Call the method with the provided parameters
-        request = DiffractionCalibrationRequest(
-            runNumber=runNumber,
-            focusGroup=focusGroup,
-            nBinsAcrossPeakWidth=nBinsAcrossPeakWidth,
-            calibrantSamplePath="path/to/cif",
-            useLiteMode=False,
-        )
-        self.instance.diffractionCalibration(request)
+        request = mock.Mock(calibrantSamplePath = "bundt/cake_egg.py")
+        with pytest.raises(RuntimeError) as e:
+            self.instance.diffractionCalibration(request)
+        assert mockIngredients.groupedPeakLists[0].groupID in str(e.value)
+
+
+    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
+    def test_diffractionCalibration(
+        self,
+        DiffractionCalibrationRecipe,
+        FarmFreshIngredients,
+    ):
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
+
+        mockIngredients = mock.Mock(groupedPeakLists = [mock.Mock(peaks=["orange", "apple"], groupID="banana")])
+        self.instance.sousChef = mock.Mock(spec_set=SousChef)
+        self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value = mockIngredients
+
+        DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
+
+        self.instance.groceryClerk = mock.Mock()
+        self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
+
+        # Call the method with the provided parameters
+        request = mock.Mock(calibrantSamplePath = "bundt/cake_egg.py")
+        res = self.instance.diffractionCalibration(request)
 
         # Perform assertions to check the result and method calls
         assert FarmFreshIngredients.call_count == 1
@@ -328,3 +343,4 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value,
             self.instance.groceryService.fetchGroceryDict.return_value,
         )
+        assert res == {"calibrationTable": "fake"}
