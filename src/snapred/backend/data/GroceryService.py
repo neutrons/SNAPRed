@@ -494,8 +494,6 @@ class GroceryService:
         """
         
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
-        key = self._key(runNumber, version)
-        path = self._getCalibrationDataPath(runNumber, version)
         tableWorkspaceName =  self._createDiffcalTableWorkspaceName(runNumber)
         maskWorkspaceName =  self._createDiffcalMaskWorkspaceName(runNumber)
 

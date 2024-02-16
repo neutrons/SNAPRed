@@ -141,12 +141,12 @@ class TestGroceryListBuilder(unittest.TestCase):
 
     def test_nexus_with_instrument(self):
         with pytest.raises(ValueError) as e:
-            item = GroceryListBuilder().neutron(self.runNumber).native().source(InstrumentName="SNAP").build()
+            GroceryListBuilder().neutron(self.runNumber).native().source(InstrumentName="SNAP").build()
         assert "should not specify an instrument" in str(e.value)        
 
     def test_diffcal_output_with_instrument(self):
         with pytest.raises(ValueError) as e:
-            item = GroceryListBuilder().diffcal_output(self.runNumber).native().source(InstrumentName="SNAP").build()
+            GroceryListBuilder().diffcal_output(self.runNumber).native().source(InstrumentName="SNAP").build()
         assert "should not specify an instrument" in str(e.value)        
 
     def test_nexus_clean_and_dirty(self):
@@ -184,8 +184,8 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert groceryList[2].workspaceType == "grouping"
         assert groceryList[2].groupingScheme == self.groupingScheme
         assert groceryList[2].useLiteMode is False
-        assert groceryList[2].instrumentPropertySource == None
-        assert groceryList[2].instrumentSource == None
+        assert groceryList[2].instrumentPropertySource is None
+        assert groceryList[2].instrumentSource is None
 
     def test_build_list_hanging(self):
         builder = GroceryListBuilder()
