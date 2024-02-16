@@ -78,7 +78,7 @@ class _WorkspaceNameGenerator:
 
     def diffCalInput(self):
         return NameBuilder(
-            self._diffCalInputTemplate, self._diffCalInputTemplateKeys, self._delimiter, unit=self.Units.TOF
+            self._diffCalInputTemplate, self._diffCalInputTemplateKeys, self._delimiter, unit=self.Units.DSP
         )
 
     def diffCalTable(self):
