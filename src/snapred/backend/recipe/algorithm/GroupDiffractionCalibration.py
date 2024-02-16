@@ -167,7 +167,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
         # process and diffraction focus the input data
         # must convert to d-spacing, diffraction focus, ragged rebin, then convert back to TOF
-        self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "before", self.units)
+        self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "before", "TOF")
 
     def PyExec(self) -> None:
         """
@@ -276,9 +276,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             InstrumentWorkspace=self.wsTOF,
             CalibrationWorkspace=self.DIFCfinal,
         )
-        self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "after", self.units)
+        self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "after", "dSpacing")
 
-    def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str, units: str = "TOF"):
+    def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str, units: str):
         # Use workspace name generator
         tmpWStof = f"_TOF_{self.runNumber}_diffoc_{note}"
         tmpWSdsp = f"_DSP_{self.runNumber}_diffoc_{note}"
@@ -333,6 +333,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
         # Execute queued Mantid algorithms
         self.mantidSnapper.executeQueue()
+        breakpoint()
 
 
 # Register algorithm with Mantid
