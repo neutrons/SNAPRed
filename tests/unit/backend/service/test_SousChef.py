@@ -124,7 +124,11 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "CrystallographicInfoService")
     def test_prepXtalInfo_nocache(self, XtalService):
-        key = (self.ingredients.cifPath, self.ingredients.dBounds.minimum, self.ingredients.dBounds.maximum)
+        key = (
+            self.ingredients.cifPath,
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+        )
         # ensure the cache is clear
         assert self.instance._xtalCache == {}
 
@@ -136,7 +140,11 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "CrystallographicInfoService")
     def test_prepXtalInfo_cache(self, XtalService):
-        key = (self.ingredients.cifPath, self.ingredients.dBounds.minimum, self.ingredients.dBounds.maximum)
+        key = (
+            self.ingredients.cifPath,
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+        )
         # ensure the cache is preped
         self.instance._xtalCache[key] = mock.Mock()
 
@@ -147,7 +155,11 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "CrystallographicInfoService")
     def test_prepXtalInfo_noCif(self, XtalService):
-        key = (self.ingredients.cifPath, self.ingredients.dBounds.minimum, self.ingredients.dBounds.maximum)
+        key = (
+            self.ingredients.cifPath,
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+        )
         # ensure the cache is preped
         self.instance._xtalCache[key] = mock.Mock()
         # make ingredients with no CIF path

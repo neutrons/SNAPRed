@@ -97,13 +97,6 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
                 InputWorkspace=self.weightWorkspaceName,
                 OutputWorkspace=self.weightWorkspaceName,
             )
-            # self.mantidSnapper.RebinToWorkspace(
-            #     "Rebin to remove events",
-            #     WorkspaceToRebin = self.weightWorkspaceName,
-            #     WorkspaceToMatch = self.weightWorkspaceName,
-            #     OutputWorkspace = self.weightWorkspaceName,
-            #     PreserveEvents=False,
-            # )
             self.mantidSnapper.executeQueue()
 
         weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
@@ -111,6 +104,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
             # get spectrum X,Y
             x = weight_ws.readX(index)
             y = weight_ws.readY(index)
+
             # create and initialize a weights array
             weights = np.ones(len(y))
             # for each peak extent, set zeros to the weights array

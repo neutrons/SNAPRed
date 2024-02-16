@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from snapred.backend.dao import Limit
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -13,5 +14,6 @@ class NormalizationCalibrationRequest(BaseModel):
     focusGroup: FocusGroup
     calibrantSamplePath: str
     smoothingParameter: float
-    dMin: float
+    crystalDMin: float = Config["constants.CrystallographicInfo.dMin"]
+    crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

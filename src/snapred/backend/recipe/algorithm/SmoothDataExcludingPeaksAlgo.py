@@ -115,26 +115,29 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         # get handles to the workspaces
         inputWorkspace = self.mantidSnapper.mtd[self.inputWorkspaceName]
         outputWorkspace = self.mantidSnapper.mtd[self.outputWorkspaceName]
-        weight_ws = self.mantidSnapper.mtd[self.weightWorkspaceName]
+        weightWorkspace = self.mantidSnapper.mtd[self.weightWorkspaceName]
 
-        numSpec = weight_ws.getNumberHistograms()
-        # extract x & y data for csaps
+        numSpec = weightWorkspace.getNumberHistograms()
+
         for index in range(numSpec):
-            x = inputWorkspace.readX(index)
-            y = inputWorkspace.readY(index)
+            if np.all(weightWorkspace.readY(index) == 1):
+                smoothing_results = np.zeros_like(weightWorkspace.readY(index))
+            else:
+                x = inputWorkspace.readX(index)
+                y = inputWorkspace.readY(index)
 
-            weightX = weight_ws.readX(index)
-            weightY = weight_ws.readY(index)
+                weightX = weightWorkspace.readX(index)
+                weightY = weightWorkspace.readY(index)
 
-            weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2
-            xMidpoints = (x[:-1] + x[1:]) / 2
+                weightXMidpoints = (weightX[:-1] + weightX[1:]) / 2
+                xMidpoints = (x[:-1] + x[1:]) / 2
 
-            weightXMidpoints = weightXMidpoints[weightY != 0]
-            y = y[weightY != 0]
-            # Generate spline with purged dataset
-            tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
-            # fill in the removed data using the spline function and original datapoints
-            smoothing_results = tck(xMidpoints, extrapolate=False)
+                weightXMidpoints = weightXMidpoints[weightY != 0]
+                y = y[weightY != 0]
+                # Generate spline with purged dataset
+                tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
+                # fill in the removed data using the spline function and original datapoints
+                smoothing_results = tck(xMidpoints, extrapolate=False)
             outputWorkspace.setY(index, smoothing_results)
 
         self.mantidSnapper.WashDishes(

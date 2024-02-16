@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.state import FocusGroup
@@ -30,7 +30,7 @@ class FarmFreshIngredients(BaseModel):
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
-    dBounds: Limit[float] = Limit(
+    crystalDBounds: Limit[float] = Limit(
         minimum=Config["constants.CrystallographicInfo.dMin"],
         maximum=Config["constants.CrystallographicInfo.dMax"],
     )
