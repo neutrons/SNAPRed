@@ -97,6 +97,10 @@ mantid:
           metric: "_calib_metrics,{metricName},{runNumber},{version}"
           timed_metric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
           mask: "_diffract_consts,mask,{runNumber},{version}"
+        normCal:
+          rawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
+          focusedRawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
+          smoothedFocusedRawVanadium: "{unit},{group},fitted_van_cor,{runNumber}"
         units:
           dSpacing: dsp
           timeOfFlight: tof

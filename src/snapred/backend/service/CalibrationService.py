@@ -108,6 +108,9 @@ class CalibrationService(Service):
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
         )
         ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
+        empties = [gpl for gpl in ingredients.groupedPeakLists if len(gpl.peaks) < 2]
+        if len(empties) > 0:
+            raise RuntimeError(f"Insufficient peaks for groups {[gpl.groupID for gpl in empties]}")
 
         # groceries
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()

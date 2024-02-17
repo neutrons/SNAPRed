@@ -48,6 +48,7 @@ class WorkflowImplementer:
     def request(self, path, payload=None):
         request = SNAPRequest(path=path, payload=payload)
         response = self.interfaceController.executeRequest(request)
+        self._handleComplications(response)
         self.requests.append(request)
         self.responses.append(response)
         return response
@@ -58,6 +59,10 @@ class WorkflowImplementer:
             return True
         except ValueError as e:
             return SNAPResponse(code=500, message=f"Missing Fields!{e}")
+
+    def _handleComplications(self, result):
+        if result.code >= 300:
+            raise RuntimeError(result.message)
 
     @property
     def widget(self):

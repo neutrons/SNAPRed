@@ -257,7 +257,7 @@ class TestGroceryService(unittest.TestCase):
     def test_diffcal_output_workspacename(self):
         # Test name generation for diffraction-calibration output workspace
         res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber)
-        assert "tof" in res
+        assert "dsp" in res
         assert self.runNumber in res
         assert "diffoc" in res
 

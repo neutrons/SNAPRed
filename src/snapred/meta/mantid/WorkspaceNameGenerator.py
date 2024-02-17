@@ -77,6 +77,12 @@ class _WorkspaceNameGenerator:
     _diffCalMetricTemplateKeys = ["metricName", "runNumber", "version"]
     _diffCalTimedMetricTemplate = Config[f"{_templateRoot}.diffCal.timed_metric"]
     _diffCalTimedMetricTemplateKeys = ["metricName", "runNumber", "timestamp"]
+    _rawVanadiumTemplate = Config[f"{_templateRoot}.normCal.rawVanadium"]
+    _rawVanadiumTemplateKeys = ["unit", "group", "runNumber"]
+    _focusedRawVanadiumTemplate = Config[f"{_templateRoot}.normCal.focusedRawVanadium"]
+    _focusedRawVanadiumTemplateKeys = ["unit", "group", "runNumber"]
+    _smoothedFocusedRawVanadiumTemplate = Config[f"{_templateRoot}.normCal.smoothedFocusedRawVanadium"]
+    _smoothedFocusedRawVanadiumTemplateKeys = ["unit", "group", "runNumber"]
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"
@@ -117,7 +123,7 @@ class _WorkspaceNameGenerator:
 
     def diffCalOutput(self):
         return NameBuilder(
-            self._diffCalOutputTemplate, self._diffCalOutputTemplateKeys, self._delimiter, unit=self.Units.TOF
+            self._diffCalOutputTemplate, self._diffCalOutputTemplateKeys, self._delimiter, unit=self.Units.DSP
         )
 
     def diffCalMask(self):
@@ -129,5 +135,26 @@ class _WorkspaceNameGenerator:
     def diffCalTimedMetric(self):
         return NameBuilder(self._diffCalTimedMetricTemplate, self._diffCalTimedMetricTemplateKeys, self._delimiter)
 
+      def rawVanadium(self):
+        return NameBuilder(
+            self._rawVanadiumTemplate,
+            self._rawVanadiumTemplateKeys,
+            self._delimiter,
+            unit=self.Units.TOF,
+            group=self.Groups.UNFOC,
+        )
+
+    def focusedRawVanadium(self):
+        return NameBuilder(
+            self._focusedRawVanadiumTemplate, self._focusedRawVanadiumTemplateKeys, self._delimiter, unit=self.Units.DSP
+        )
+
+    def smoothedFocusedRawVanadium(self):
+        return NameBuilder(
+            self._smoothedFocusedRawVanadiumTemplate,
+            self._smoothedFocusedRawVanadiumTemplateKeys,
+            self._delimiter,
+            unit=self.Units.DSP,
+        )
 
 WorkspaceNameGenerator = _WorkspaceNameGenerator()
