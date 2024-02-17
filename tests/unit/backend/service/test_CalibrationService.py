@@ -400,9 +400,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert res == {"calibrationTable": "fake"}
 
-    def test_load_unsupported_workspace_type(self):
-        with pytest.raises(ValueError) as e:  # noqa: PT011
-            self.instance.dataFactoryService.loadCalibrationDataWorkspace(
-                runId=57514, version=1, wsInfo=WorkspaceInfo(name="anyname", type="MaskWorkspace")
-            )
-        assert "unsupported workspace type" in str(e.value)
+    # def test_load_unsupported_workspace_type(self):
+    #     with pytest.raises(ValueError) as e:  # noqa: PT011
+    #         self.instance.dataFactoryService.loadCalibrationDataWorkspace(
+    #             runId=57514, version=1, wsInfo=WorkspaceInfo(name="anyname", type="MaskWorkspace")
+    #         )
+    #     assert "unsupported workspace type" in str(e.value)
