@@ -135,7 +135,7 @@ class _WorkspaceNameGenerator:
     def diffCalTimedMetric(self):
         return NameBuilder(self._diffCalTimedMetricTemplate, self._diffCalTimedMetricTemplateKeys, self._delimiter)
 
-      def rawVanadium(self):
+    def rawVanadium(self):
         return NameBuilder(
             self._rawVanadiumTemplate,
             self._rawVanadiumTemplateKeys,
@@ -156,5 +156,6 @@ class _WorkspaceNameGenerator:
             self._delimiter,
             unit=self.Units.DSP,
         )
+
 
 WorkspaceNameGenerator = _WorkspaceNameGenerator()
