@@ -16,6 +16,7 @@ from mantid.simpleapi import (
     WorkspaceFactory,
     mtd,
 )
+from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
@@ -123,7 +124,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             DataY=[1],
         )
 
-    def create_fake_diffcal_workspaces(self, calWSName, maskWSName):
+    def create_fake_diffcal_workspace(self, calWSName):
         ws = CreateEmptyTableWorkspace(OutputWorkspace=calWSName)
         ws.addColumn(type="int", name="detid", plottype=6)
         ws.addColumn(type="float", name="difc", plottype=6)
@@ -133,6 +134,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         nextRow = {"detid": 0, "difc": 1, "difa": 0, "tzero": 0, "tofmin": 0}
         ws.addRow(nextRow)
 
+    def create_fake_diffcal_mask_workspace(self, maskWSName):
         mask = WorkspaceFactory.create("SpecialWorkspace2D", NVectors=1, XLength=1, YLength=1)
         mtd[maskWSName] = mask
         LoadInstrument(
@@ -158,7 +160,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         if calWSName is not None:
             assert maskWSName is not None  # by design, a diffcal table must have a compatible masking table
-            self.create_fake_diffcal_workspaces(calWSName, maskWSName)
+            self.create_fake_diffcal_workspace(calWSName)
+            self.create_fake_diffcal_mask_workspace(maskWSName)
             path = os.path.join(path, calWSName) + "_" + wnvf.formatVersion(version) + ".h5"
             self.instance.groceryService.writeDiffCalTable(path, calibrationWS=calWSName, maskingWS=maskWSName)
 
@@ -396,3 +399,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.instance.groceryService.fetchGroceryDict.return_value,
         )
         assert res == {"calibrationTable": "fake"}
+
+    def test_load_unsupported_workspace_type(self):
+        with pytest.raises(ValueError) as e:  # noqa: PT011
+            self.instance.dataFactoryService.loadCalibrationDataWorkspace(
+                runId=57514, version=1, wsInfo=WorkspaceInfo(name="anyname", type="MaskWorkspace")
+            )
+        assert "unsupported workspace type" in str(e.value)

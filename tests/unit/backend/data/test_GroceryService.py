@@ -13,8 +13,10 @@ from mantid.simpleapi import (
     CreateGroupingWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
+    ExtractMask,
     LoadInstrument,
     SaveNexusProcessed,
+    WorkspaceFactory,
     mtd,
 )
 from pydantic import ValidationError
@@ -106,6 +108,25 @@ class TestGroceryService(unittest.TestCase):
         ws = CreateEmptyTableWorkspace(OutputWorkspace=wsname)
         ws.addColumn(type="int", name="detid", plottype=6)
         ws.addRow({"detid": 0})
+
+    def create_fake_diffcal_workspaces(self, calWSName, maskWSName):
+        ws = CreateEmptyTableWorkspace(OutputWorkspace=calWSName)
+        ws.addColumn(type="int", name="detid", plottype=6)
+        ws.addColumn(type="float", name="difc", plottype=6)
+        ws.addColumn(type="float", name="difa", plottype=6)
+        ws.addColumn(type="float", name="tzero", plottype=6)
+        ws.addColumn(type="float", name="tofmin", plottype=6)
+        nextRow = {"detid": 0, "difc": 1, "difa": 0, "tzero": 0, "tofmin": 0}
+        ws.addRow(nextRow)
+
+        mask = WorkspaceFactory.create("SpecialWorkspace2D", NVectors=1, XLength=1, YLength=1)
+        mtd[maskWSName] = mask
+        LoadInstrument(
+            Workspace=maskWSName,
+            Filename=Resource.getPath("inputs/pixel_grouping/SNAPLite_Definition.xml"),
+            RewriteSpectraMap=False,
+        )
+        ExtractMask(InputWorkspace=maskWSName, OutputWorkspace=maskWSName)
 
     # Check that wsname_1 has an extra token compared to wsname_2.
     # Note, the exact order of tokens and the location of the extra token within a name
@@ -284,6 +305,24 @@ class TestGroceryService(unittest.TestCase):
             self.instance.writeWorkspace(tmppath, name)
             assert os.path.exists(os.path.join(tmppath, name) + ".nxs")
         assert not os.path.exists(os.path.join(tmppath, name) + ".nxs")
+
+    def test_write_unsupported_workspace_type(self):
+        path = Resource.getPath("outputs")
+        name = "test_write_unsupported_workspace_type"
+        self.create_dumb_diffcal(name)
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmppath:
+            with pytest.raises(ValueError) as e:  # noqa: PT011
+                self.instance.writeWorkspace(tmppath, name)
+            assert "unsupported workspace type" in str(e.value)
+
+    def test_write_calibration_table_workspaces(self):
+        calWSName = "_diffract_consts_057514"
+        maskWSName = "_diffract_consts_mask_057514"
+        self.create_fake_diffcal_workspaces(calWSName, maskWSName)
+        path = Resource.getPath("outputs")
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmppath:
+            self.instance.writeCalibrationTableWorkspaces(tmppath, "57514", "1")
+            assert os.path.exists(os.path.join(tmppath, calWSName) + "_v0001" + ".h5")
 
     def test_writeGrouping(self):
         path = Resource.getPath("outputs")

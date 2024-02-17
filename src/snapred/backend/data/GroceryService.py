@@ -129,7 +129,7 @@ class GroceryService:
         if mantidType == "EventWorkspace" or mantidType == "Workspace2D":
             algo = "SaveNexusProcessed"
         else:
-            algo = "SaveNexus"
+            raise ValueError(f"unsupported workspace type in loadCalibrationDataWorkspace: {mantidType}")
         saveAlgo = AlgorithmManager.create(algo)
         saveAlgo.setProperty("InputWorkspace", name)
         saveAlgo.setProperty("Filename", path)
