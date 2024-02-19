@@ -3,7 +3,9 @@ import json
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 
-from snapred.backend.dao.StateConfig import StateConfig
+from pydantic import parse_raw_as
+
+from snapred.backend.dao.state import FocusGroup
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -14,7 +16,7 @@ class CustomGroupWorkspace(PythonAlgorithm):
 
     def PyInit(self):
         # declare properties
-        self.declareProperty("StateConfig", defaultValue="", direction=Direction.Input)
+        self.declareProperty("FocusGroups", defaultValue="", direction=Direction.Input)
         self.declareProperty(
             MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Optional),
             doc="Workspace to take the instrument object from",
@@ -26,12 +28,10 @@ class CustomGroupWorkspace(PythonAlgorithm):
 
     # TODO: This was largely copied from Malcolm's prototype and is due for a refactor
     def PyExec(self):
-        stateConfig = StateConfig.parse_raw(self.getProperty("StateConfig").value)
-        focusGroups = stateConfig.focusGroups
-        self.getProperty("InstrumentName").value
-        outputWorkspace = self.getProperty("OutputWorkspace").value
+        focusGroups = parse_raw_as(List[FocusGroup], self.getPropertyValue("FocusGroups"))
+        outputWorkspace = self.getPropertyValue("OutputWorkspace")
 
-        donorWorkspace = self.getProperty("InputWorkspace").value
+        donorWorkspace = self.getPropertyValue("InputWorkspace")
         loadEmptyInstrument = bool(not donorWorkspace)
         if loadEmptyInstrument:
             donorWorkspace = "idf"  # name doesn't matter

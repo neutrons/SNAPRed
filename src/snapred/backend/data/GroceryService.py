@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from mantid.api import AlgorithmManager, mtd
 
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.dao.state import DetectorState
+from snapred.backend.dao.state import DetectorState, GroupingMap
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.meta.Config import Config
@@ -40,6 +40,9 @@ class GroceryService:
         # Cache maps to workspace names, for various purposes
         self._loadedGroupings: Dict[Tuple[str, str, bool], str] = {}
         self._loadedInstruments: Dict[Tuple[str, bool], str] = {}
+
+        self._runToState: Dict[str, str] = {}
+        self._groupMapCache: Dict[str, GroupingMap]
 
         self.grocer = FetchGroceriesRecipe()
 
@@ -124,6 +127,7 @@ class GroceryService:
 
     ## FILENAME METHODS
 
+    @classmethod
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
         ipts = self.dataService.getIPTS(runNumber, instrumentName)
         return str(ipts)
@@ -135,6 +139,7 @@ class GroceryService:
         return self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext]
 
     def _createGroupingFilename(self, groupingScheme: str, useLiteMode: bool) -> str:
+        # TODO needs to be populated with a GroupingMap
         if groupingScheme == "Lite":
             return str(Config["instrument.lite.map.file"])
         instr = "lite" if useLiteMode else "native"

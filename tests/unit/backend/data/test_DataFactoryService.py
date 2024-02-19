@@ -50,7 +50,7 @@ with mock.patch.dict(
 
     def test_constructStateId():
         dataExportService = DataFactoryService()
-        dataExportService.lookupService_generateStateId = mock.Mock()
+        dataExportService.lookupService._generateStateId = mock.Mock()
         dataExportService.lookupService._generateStateId.return_value = "expected"
         actual = dataExportService.constructStateId(mock.Mock())
 

@@ -56,7 +56,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         # 8 CreateGroupWorkspace      TODO: Assess performance, use alternative Andrei came up with that is faster
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",
-            StateConfig=reductionIngredients.reductionState.stateConfig.json(),
+            FocusGroups=reductionIngredients.reductionState.stateConfig.json(),
             InputWorkspace="vanadium",
             OutputWorkSpace="CommonRed",
         )
