@@ -120,14 +120,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         numSpec = weightWorkspace.getNumberHistograms()
 
         for index in range(numSpec):
-            if np.all(weightWorkspace.readY(index) == 1):
-                self.mantidSnapper.CloneWorkspace(
-                    "Cloning workspace for no peaks...",
-                    InputWorkspace=self.inputWorkspaceName,
-                    outputWorkspace=self.outputWorkspaceName,
-                )
-                self.mantidSnapper.executeQueue()
-            else:
+            if np.any(weightWorkspace.readY(index) != 1):
                 x = inputWorkspace.readX(index)
                 y = inputWorkspace.readY(index)
 
