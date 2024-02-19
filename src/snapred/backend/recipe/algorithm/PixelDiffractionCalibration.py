@@ -340,6 +340,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         # now calculate and correct by offsets
         self.reexecute()
         self._counts += 1
+        self.setPropertyValue("CalibrationTable", self.DIFCpixel)
 
 
 # Register algorithm with Mantid
