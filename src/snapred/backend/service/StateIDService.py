@@ -26,6 +26,7 @@ logger = snapredLogger.getLogger(__name__)
     Looks up stae ID for a given run number
 """
 
+
 def _createFileNotFoundError(msg, filename):
     return FileNotFoundError(NOT_FOUND, os.strerror(NOT_FOUND) + " " + msg, filename)
 
@@ -68,7 +69,7 @@ class StateIDService:
                 raise _createFileNotFoundError("[calibration directory]", instrumentConfig.calibrationDirectory)
 
         return instrumentConfig
-    
+
     def _readInstrumentParameters(self) -> Dict[str, Any]:
         instrumentParameterMap: Dict[str, Any] = {}
         try:
@@ -80,6 +81,7 @@ class StateIDService:
 
     def _constructPVFilePath(self, runId: str):
         from snapred.backend.data.GroceryService import getIPTS
+
         iptsPath = getIPTS(runId)
         return (
             iptsPath

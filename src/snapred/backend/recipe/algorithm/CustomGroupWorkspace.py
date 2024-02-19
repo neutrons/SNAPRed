@@ -2,7 +2,6 @@ import json
 
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
-
 from pydantic import parse_raw_as
 
 from snapred.backend.dao.state import FocusGroup
