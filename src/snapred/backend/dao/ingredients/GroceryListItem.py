@@ -81,13 +81,15 @@ class GroceryListItem(BaseModel):
                     # the Lite grouping scheme reduces native resolution to Lite mode
                     if v.get("useLiteMode"):
                         logger.warning(
-                            "the lite-mode flag must be False for the 'lite' grouping scheme -- this cannot be overridden"
+                            "the lite-mode flag must be False for the 'lite' grouping scheme" +
+                            " -- this cannot be overridden"
                         )                    
                     v["useLiteMode"] = False  # the lite data map only works on native data
                     
                     if v.get("runNumber") is not None:
                         logger.warning(
-                            "the run number must not be specified for 'lite' grouping scheme -- this cannot be overridden"
+                            "the run number must not be specified for 'lite' grouping scheme" +
+                            " -- this cannot be overridden"
                         )                    
                     # the Lite grouping scheme uses the unmodified native instrument
                     v["runNumber"] = cls.RESERVED_NATIVE_RUNID
