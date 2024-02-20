@@ -99,7 +99,8 @@ class TestGroceryService(unittest.TestCase):
         self.instance = GroceryService()
         self.groupingItem = (
             GroceryListItem.builder()
-            .grouping(self.runNumber, self.groupingScheme)
+            .fromRun(self.runNumber)
+            .grouping(self.groupingScheme)
             .native()
             .source(InstrumentDonor=self.sampleWS)
             .build()
@@ -889,7 +890,7 @@ class TestGroceryService(unittest.TestCase):
         mockGroceryList.builder.return_value.grouping.return_value.build.return_value = mockLiteMapGroceryItem
 
         # call once and load
-        testItem = ("Lite", self.runNumber, False)
+        testItem = ("Lite", GroceryListItem.RESERVED_NATIVE_RUNID, False)
         groupingWorkspaceName = self.instance._createGroupingWorkspaceName(*testItem)
         groupKey = self.instance._key(*testItem)
 
@@ -904,7 +905,7 @@ class TestGroceryService(unittest.TestCase):
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).add()
         clerk.native().neutron(self.runNumber).dirty().add()
-        clerk.native().grouping(self.runNumber, self.groupingScheme).source(InstrumentDonor=self.sampleWS).add()
+        clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).source(InstrumentDonor=self.sampleWS).add()
         groceryList = clerk.buildList()
 
         # expected workspaces
@@ -1159,11 +1160,11 @@ class TestGroceryService(unittest.TestCase):
 
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).add()
-        clerk.native().grouping(self.runNumber, self.groupingScheme).source(InstrumentDonor=cleanWorkspace).add()
+        clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).source(InstrumentDonor=cleanWorkspace).add()
         groceryList = clerk.buildList()
 
         groupItemWithSource = (
-            clerk.native().grouping(self.runNumber, self.groupingScheme).source(InstrumentDonor=cleanWorkspace).build()
+            clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).source(InstrumentDonor=cleanWorkspace).build()
         )
 
         res = self.instance.fetchGroceryList(groceryList)
@@ -1345,7 +1346,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_dict(self, mockFetchList):
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).name("InputWorkspace").add()
-        clerk.native().grouping(self.runNumber, self.groupingScheme).name("GroupingWorkspace").add()
+        clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).name("GroupingWorkspace").add()
         groceryDict = clerk.buildDict()
 
         # expected workspaces
@@ -1362,7 +1363,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_dict_with_kwargs(self, mockFetchList):
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).name("InputWorkspace").add()
-        clerk.native().grouping(self.runNumber, self.groupingScheme).name("GroupingWorkspace").add()
+        clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).name("GroupingWorkspace").add()
         groceryDict = clerk.buildDict()
 
         # expected workspaces

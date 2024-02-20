@@ -5,6 +5,7 @@ from snapred.meta.Config import Config
 
 
 class GroceryListBuilder:
+    
     def __init__(
         self,
     ):
@@ -18,12 +19,15 @@ class GroceryListBuilder:
         self._tokens["runNumber"] = runId
         return self
 
-    def grouping(self, runId: str, groupingScheme: str):
+    def grouping(self, groupingScheme: str):
         self._tokens["workspaceType"] = "grouping"
-        self._tokens["runNumber"] = runId
         self._tokens["groupingScheme"] = groupingScheme
         return self
-
+    
+    def fromRun(self, runId: str):
+        self._tokens["runNumber"] = runId
+        return self
+    
     def specialOrder(self):
         self._tokens["isOutput"] = True
         return self
@@ -90,8 +94,8 @@ class GroceryListBuilder:
 
     def add(self):
         self._list.append(self.build())
-        self._hasInstrumentSource = False
         self._tokens = {}
+        self._hasInstrumentSource = False
 
     def buildList(self) -> List[GroceryListItem]:
         if self._tokens != {}:

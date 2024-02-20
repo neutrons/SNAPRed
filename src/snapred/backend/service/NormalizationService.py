@@ -67,7 +67,7 @@ class NormalizationService(Service):
         self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
             request.useLiteMode
         ).add()
-        self.groceryClerk.name("groupingWorkspace").grouping(request.runNumber, groupingScheme).useLiteMode(
+        self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(groupingScheme).useLiteMode(
             request.useLiteMode
         ).add()
 

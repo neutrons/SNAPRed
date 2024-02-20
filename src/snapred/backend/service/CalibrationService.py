@@ -111,7 +111,7 @@ class CalibrationService(Service):
 
         # groceries
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("groupingWorkspace").grouping(request.runNumber, request.focusGroup.name).useLiteMode(
+        self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(request.focusGroup.name).useLiteMode(
             request.useLiteMode
         ).add()
         self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).useLiteMode(

@@ -24,7 +24,6 @@ class GroceryService:
     Yeah, I can get that for you.
     Just send me a list.
     """
-
     dataService: "LocalDataService"
 
     def __init__(self, dataService: LocalDataService = None):
@@ -274,7 +273,9 @@ class GroceryService:
             loadEmptyInstrument.execute()
 
             # Initialize the instrument parameters
-            self._updateInstrumentParameters(runId, wsName)
+            # (Reserved IDs will use the unmodified instrument.)
+            if runId != GroceryListItem.RESERVED_NATIVE_RUNID and runId != GroceryListItem.RESERVED_LITE_RUNID:
+                self._updateInstrumentParameters(runId, wsName)
         self._loadedInstruments[key] = wsName
         return wsName
 
@@ -445,7 +446,7 @@ class GroceryService:
         return data
 
     def fetchLiteDataMap(self, runId: str) -> WorkspaceName:
-        item = GroceryListItem.builder().grouping(runId, "Lite").build()
+        item = GroceryListItem.builder().grouping("Lite").build()
         return self.fetchGroupingDefinition(item)["workspace"]
 
     def fetchGroupingDefinition(self, item: GroceryListItem) -> Dict[str, Any]:
