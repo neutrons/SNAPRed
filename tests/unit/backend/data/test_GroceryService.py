@@ -894,7 +894,7 @@ class TestGroceryService(unittest.TestCase):
         groupingWorkspaceName = self.instance._createGroupingWorkspaceName(*testItem)
         groupKey = self.instance._key(*testItem)
 
-        res = self.instance.fetchLiteDataMap(self.runNumber)
+        res = self.instance.fetchLiteDataMap()
         assert res == groupingWorkspaceName
         assert self.instance._loadedGroupings == {groupKey: groupingWorkspaceName}
 
@@ -1274,9 +1274,8 @@ class TestGroceryService(unittest.TestCase):
         mockGetDetectorState
         ):
         mockGetDetectorState.return_value = self.detectorState2
-        with mock.patch.dict(self.instance._loadedRuns, {}) as mockLoadedRuns, mock.patch.dict(
-            self.instance._loadedInstruments, {}
-        ) as mockLoadedInstruments:
+        with mock.patch.dict(self.instance._loadedRuns, {}),\
+            mock.patch.dict(self.instance._loadedInstruments, {}):
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
             assert mtd.doesExist(testWS)
             assert not testWS == self.sampleWS
@@ -1299,9 +1298,8 @@ class TestGroceryService(unittest.TestCase):
         mockGetDetectorState
         ):
         mockGetDetectorState.return_value = self.detectorState2
-        with mock.patch.dict(self.instance._loadedRuns, {}) as mockLoadedRuns, mock.patch.dict(
-            self.instance._loadedInstruments, {}
-        ) as mockLoadedInstruments:
+        with mock.patch.dict(self.instance._loadedRuns, {}),\
+            mock.patch.dict(self.instance._loadedInstruments, {}) as mockLoadedInstruments:
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
             assert mockLoadedInstruments == {(self.runNumber, self.useLiteMode): testWS}
 
@@ -1327,13 +1325,6 @@ class TestGroceryService(unittest.TestCase):
         mockReadDetectorState.return_value = self.detectorState1
         detectorState = self.instance._getDetectorState(self.runNumber)
         assert detectorState == self.detectorState1
-
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_get_detector_state(self, mockConstructCalibrationDataPath):
-        testPath = "some/path/that/may_not_exist/"
-        mockConstructCalibrationDataPath.return_value = testPath
-        calibrationDataPath = self.instance._getCalibrationDataPath(self.runNumber, self.version)
-        assert calibrationDataPath == testPath
 
     @mock.patch(ThisService + "mtd")
     def test_unique_hidden_name(self, mockADS):

@@ -246,37 +246,35 @@ class GroceryService:
         self._updateInstrumentCacheFromADS(runId, useLiteMode)
 
         key = self._key(runId, useLiteMode)
-        if self._loadedInstruments.get(key) is not None:
-            return self._loadedInstruments.get(key)
+        wsName = self._loadedInstruments.get(key)
+        if wsName is None:
+            self._updateNeutronCacheFromADS(runId, useLiteMode)
+            if self._loadedRuns.get(key) is not None:
+                # If possible, use a cached neutron-data workspace as an instrument donor
+                wsName = self._createRawNeutronWorkspaceName(runId, useLiteMode)
+            else:
+                # Otherwise, create an instrument donor.
+                #   Alternatively, depending on performance, loading the corresponding neutron-data workspace
+                #   could also be triggered here.
 
-        wsName = None
-        self._updateNeutronCacheFromADS(runId, useLiteMode)
-        if self._loadedRuns.get(key) is not None:
-            # If possible, use a cached neutron-data workspace as an instrument donor
-            wsName = self._createRawNeutronWorkspaceName(runId, useLiteMode)
-        else:
-            # Otherwise, create an instrument donor.
-            #   Alternatively, depending on performance, loading the corresponding neutron-data workspace
-            #   could also be triggered here.
+                wsName = self.uniqueHiddenName()
 
-            wsName = self.uniqueHiddenName()
+                # Load the bare instrument:
+                instrumentFilename = (
+                    Config["instrument.lite.definition.file"]
+                    if useLiteMode
+                    else Config["instrument.native.definition.file"]
+                )
+                loadEmptyInstrument = AlgorithmManager.create("LoadEmptyInstrument")
+                loadEmptyInstrument.setProperty("Filename", instrumentFilename)
+                loadEmptyInstrument.setProperty("OutputWorkspace", wsName)
+                loadEmptyInstrument.execute()
 
-            # Load the bare instrument:
-            instrumentFilename = (
-                Config["instrument.lite.definition.file"]
-                if useLiteMode
-                else Config["instrument.native.definition.file"]
-            )
-            loadEmptyInstrument = AlgorithmManager.create("LoadEmptyInstrument")
-            loadEmptyInstrument.setProperty("Filename", instrumentFilename)
-            loadEmptyInstrument.setProperty("OutputWorkspace", wsName)
-            loadEmptyInstrument.execute()
-
-            # Initialize the instrument parameters
-            # (Reserved IDs will use the unmodified instrument.)
-            if runId != GroceryListItem.RESERVED_NATIVE_RUNID and runId != GroceryListItem.RESERVED_LITE_RUNID:
-                self._updateInstrumentParameters(runId, wsName)
-        self._loadedInstruments[key] = wsName
+                # Initialize the instrument parameters
+                # (Reserved IDs will use the unmodified instrument.)
+                if runId != GroceryListItem.RESERVED_NATIVE_RUNID and runId != GroceryListItem.RESERVED_LITE_RUNID:
+                    self._updateInstrumentParameters(runId, wsName)
+            self._loadedInstruments[key] = wsName
         return wsName
 
     def _updateInstrumentParameters(self, runNumber: str, wsName: str):
@@ -445,7 +443,7 @@ class GroceryService:
         self._loadedRuns[key] += 1
         return data
 
-    def fetchLiteDataMap(self, runId: str) -> WorkspaceName:
+    def fetchLiteDataMap(self) -> WorkspaceName:
         item = GroceryListItem.builder().grouping("Lite").build()
         return self.fetchGroupingDefinition(item)["workspace"]
 
