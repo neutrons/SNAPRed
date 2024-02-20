@@ -169,18 +169,18 @@ class TestNormalizationService(unittest.TestCase):
         )
 
         self.instance = NormalizationService()
-        self.instance.sousChef.prepPeakIngredients = MagicMock()
+        self.instance.sousChef.prepDetectorPeaks = MagicMock(return_value={"groupID": 0, "peaks": []})
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
 
         mockRecipeInst = mockRecipe.return_value
 
         self.instance.smoothDataExcludingPeaks(mockRequest)
 
-        assert self.instance.sousChef.prepPeakIngredients.called_once_with(FarmFreshIngredients.return_value)
+        assert self.instance.sousChef.prepDetectorPeaks.called_once_with(FarmFreshIngredients.return_value)
         assert mockRecipeInst.executeRecipe.called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             OutputWorkspace=mockRequest.outputWorkspace,
-            Ingredients=self.instance.sousChef.prepPeakIngredients.return_value,
+            Ingredients=self.instance.sousChef.prepDetectorPeaks.return_value,
         )
 
     @patch("snapred.backend.service.NormalizationService.DataFactoryService")
@@ -206,9 +206,9 @@ class TestNormalizationService(unittest.TestCase):
         expected_record_mockId = "mock_normalization_record"
         assert result.mockId == expected_record_mockId
 
-    @patch("snapred.backend.service.NormalizationService.NormalizationService.vanadiumCorrection")
-    @patch("snapred.backend.service.NormalizationService.NormalizationService.focusSpectra")
-    @patch("snapred.backend.service.NormalizationService.NormalizationService.smoothDataExcludingPeaks")
+    @patch("snapred.backend.service.NormalizationService.RawVanadiumCorrectionRecipe")
+    @patch("snapred.backend.service.NormalizationService.FocusSpectraRecipe")
+    @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksRecipe")
     @patch("snapred.backend.service.NormalizationService.GroceryService")
     def test_normalization(
         self,
@@ -225,17 +225,19 @@ class TestNormalizationService(unittest.TestCase):
             "outputWorkspace": "output_ws",
         }
         mockGroceryService.workspaceDoesExist.return_value = False
-        mockVanadiumCorrection.return_value = "corrected_vanadium_ws"
-        mockFocusSpectra.return_value = "focussed_vanadium_ws"
-        mockSmoothDataExcludingPeaks.return_value = "smoothed_output_ws"
+        mockVanadiumCorrection.executeRecipe.return_value = "corrected_vanadium_ws"
+        mockFocusSpectra.executeRecipe.return_value = "focussed_vanadium_ws"
+        mockSmoothDataExcludingPeaks.executeRecipe.return_value = "smoothed_output_ws"
 
         self.instance = NormalizationService()
+        self.instance.sousChef.prepNormalizationIngredients = MagicMock(return_value=mock.Mock(detectorPeaks=[]))
+        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         result = self.instance.normalization(self.request)
 
         self.assertIsInstance(result, dict)  # noqa: PT009
         self.assertIn("correctedVanadium", result)  # noqa: PT009
-        self.assertIn("outputWorkspace", result)  # noqa: PT009
-        self.assertIn("smoothedOutput", result)  # noqa: PT009
+        self.assertIn("focusedVanadium", result)  # noqa: PT009
+        self.assertIn("smoothedVanadium", result)  # noqa: PT009
         mockGroceryService.fetchGroceryDict.assert_called_once()
         mockVanadiumCorrection.assert_called_once()
         mockFocusSpectra.assert_called_once()
@@ -243,10 +245,14 @@ class TestNormalizationService(unittest.TestCase):
 
     @patch("snapred.backend.service.NormalizationService.GroceryService")
     def test_cachedNormalization(self, mockGroceryService):
+        mockGroceryService.workSpaceDoesExist = mock.Mock(return_value=True)
         self.instance = NormalizationService()
+        self.instance.sousChef.prepNormalizationIngredients = MagicMock(return_value=mock.Mock(detectorPeaks=[]))
+        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         result = self.instance.normalization(self.request)
         assert result == {
             "correctedVanadium": "tof_unfoc_12345_raw_van_corr",
-            "outputWorkspace": f"tof_{self.request.focusGroup.name}_12345_s+f-vanadium",
-            "smoothedOutput": "dsp_apple_12345_fitted_van_cor",
+            "focusedVanadium": f"tof_{self.request.focusGroup.name}_12345_s+f-vanadium",
+            "smoothedVanadium": "dsp_apple_12345_fitted_van_cor",
+            "detectorPeaks": self.instance.sousChef.prepNormalizationIngredients.return_value.detectorPeaks,
         }

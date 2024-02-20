@@ -1,10 +1,12 @@
 import json
+from typing import List
 
+from pydantic import parse_raw_as
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao import SNAPRequest, SNAPResponse
+from snapred.backend.dao import GroupPeakList, SNAPRequest, SNAPResponse
 from snapred.backend.dao.normalization import NormalizationIndexEntry, NormalizationRecord
 from snapred.backend.dao.request import (
     NormalizationCalibrationRequest,
@@ -126,10 +128,11 @@ class NormalizationCalibrationWorkflow:
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
-        focusWorkspace = self.responses[-1].data["outputWorkspace"]
-        smoothWorkspace = self.responses[-1].data["smoothedOutput"]
+        focusWorkspace = self.responses[-1].data["focusedVanadium"]
+        smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+        peaks = parse_raw_as(List[GroupPeakList], self.responses[-1].data["detectorPeaks"])
 
-        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
         self.initializationComplete = True
         return response
 
@@ -155,29 +158,34 @@ class NormalizationCalibrationWorkflow:
 
         request = SNAPRequest(path="normalization/assessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
-
         self.responses.append(response)
+
         return response
 
     def _saveNormalizationCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
 
         normalizationRecord = self.responses[-1].data
-        normalizationRecord.workspaceNames.append(self.responses[-2].data["smoothedOutput"])
-        normalizationRecord.workspaceNames.append(self.responses[-2].data["outputWorkspace"])
+        normalizationRecord.workspaceNames.append(self.responses[-2].data["smoothedVanadium"])
+        normalizationRecord.workspaceNames.append(self.responses[-2].data["focusedVanadium"])
         normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
+
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
         )
+
         payload = NormalizationExportRequest(
-            normalizationRecord=normalizationRecord, normalizationIndexEntry=normalizationIndexEntry
+            normalizationRecord=normalizationRecord,
+            normalizationIndexEntry=normalizationIndexEntry,
         )
+
         request = SNAPRequest(path="normalization/save", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
+
         return response
 
     def callNormalizationCalibration(self, groupingFile, smoothingParameter, dMin):
@@ -194,28 +202,31 @@ class NormalizationCalibrationWorkflow:
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
-        focusWorkspace = self.responses[-1].data["outputWorkspace"]
-        smoothWorkspace = self.responses[-1].data["smoothedOutput"]
-
-        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+        focusWorkspace = self.responses[-1].data["focusedVanadium"]
+        smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+        peaks = parse_raw_as(List[GroupPeakList], self.responses[-1].data["detectorPeaks"])
+        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
     def applySmoothingUpdate(self, index, smoothingValue, dMin):
-        workspaces = self.responses[-1].data
+        focusWorkspace = self.responses[-1].data["focusedVanadium"]
+        smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+
         payload = SmoothDataExcludingPeaksRequest(
-            inputWorkspace=workspaces["outputWorkspace"],
-            outputWorkspace=workspaces["smoothedOutput"],
+            inputWorkspace=focusWorkspace,
+            outputWorkspace=smoothWorkspace,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=self.focusGroups[self.groupingFiles[index]],
             runNumber=self.runNumber,
             smoothingParameter=smoothingValue,
             crystalDMin=dMin,
         )
+
         request = SNAPRequest(path="normalization/smooth", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
-        focusWorkspace = workspaces["outputWorkspace"]
-        smoothWorkspace = response.data
-        self.responses[-1].data["smoothedOutput"] = response.data
-        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+        self.responses.append(response)
+
+        peaks = parse_raw_as(List[GroupPeakList], response.data)
+        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
     def onNormalizationValueChange(self, index, smoothingValue, dMin):  # noqa: ARG002
         if not self.initializationComplete:
@@ -236,10 +247,11 @@ class NormalizationCalibrationWorkflow:
             self.callNormalizationCalibration(self.groupingFiles[index], smoothingValue, dMin)
         elif smoothingValueChanged or dMinValueChanged:
             self.applySmoothingUpdate(index, smoothingValue, dMin)
-        elif "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
-            focusWorkspace = self.responses[-1].data["outputWorkspace"]
-            smoothWorkspace = self.responses[-1].data["smoothedOutput"]
-            self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+        elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
+            focusWorkspace = self.responses[-1].data["focusedVanadium"]
+            smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+            peaks = parse_raw_as(List[GroupPeakList], self.responses[-1].data["detectorPeaks"])
+            self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
         else:
             raise Exception("Expected data not found in the last response")
         self._specifyNormalizationView.enableRecalculateButton()

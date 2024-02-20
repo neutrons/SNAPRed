@@ -229,7 +229,7 @@ class LocalDataService:
 
     def _constructCalibrationStatePath(self, stateId):
         # TODO: Propagate pathlib through codebase
-        return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId}/"
+        return f"{self.instrumentConfig.calibrationDirectory}/Powder/{stateId}/"
 
     def _constructNormalizationCalibrationStatePath(self, stateId):
         # TODO: Propagate pathlib through codebase

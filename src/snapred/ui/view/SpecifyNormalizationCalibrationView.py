@@ -33,9 +33,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
         super().__init__(parent)
         self._jsonFormList = JsonFormList(name, jsonSchemaMap, parent=parent)
 
-        self.groupingSchema = None
-        self.subplots = []
-
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
@@ -177,15 +174,15 @@ class SpecifyNormalizationCalibrationView(QWidget):
             return
         self.signalValueChanged.emit(index, smoothingValue, dMin)
 
-    def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):
+    def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks):
         self.focusWorkspace = focusWorkspace
         self.smoothedWorkspace = smoothedWorkspace
         self.groupingSchema = (
             str(self.groupingDropDown.currentText()).split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
         )
-        self._updateGraphs()
+        self._updateGraphs(peaks)
 
-    def _updateGraphs(self):
+    def _updateGraphs(self, peaks):
         # get the updated workspaces and optimal graph grid
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
@@ -203,6 +200,11 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.set_title(f"Group ID: {i + 1}")
             ax.set_xlabel("d-Spacing (Å)")
             ax.set_ylabel("Intensity")
+            for peak in peaks[i].peaks:
+                # ax.fill_between(focusedWorkspace, wkspIndex=i, where=(x<peak.maximum and x>peak.minimum))
+                ax.vlines(peak.value, ymin=1e6, ymax=1e8, color="red")
+                ax.vlines(peak.minimum, ymin=1e6, ymax=1e8, color="orange")
+                ax.vlines(peak.maximum, ymin=1e6, ymax=1e8, color="orange")
 
         # resize window and redraw
         self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))

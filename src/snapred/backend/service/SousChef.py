@@ -47,7 +47,7 @@ class SousChef(Service):
         self.dataFactoryService = DataFactoryService()
         self._pixelGroupCache: Dict[Tuple[str, bool, str], PixelGroup] = {}
         self._calibrationCache: Dict[str, Calibration] = {}
-        self._peaksCache: Dict[Tuple[str, bool, str, float], List[GroupPeakList]] = {}
+        self._peaksCache: Dict[Tuple[str, bool, str, float, float, float], List[GroupPeakList]] = {}
         self._xtalCache: Dict[Tuple[str, float, float], CrystallographicInfo] = {}
         return
 
@@ -122,6 +122,8 @@ class SousChef(Service):
             ingredients.runNumber,
             ingredients.useLiteMode,
             ingredients.focusGroup.name,
+            ingredients.crystalDBounds.minimum,
+            ingredients.crystalDBounds.maximum,
             ingredients.peakIntensityThreshold,
         )
         if key not in self._peaksCache:
