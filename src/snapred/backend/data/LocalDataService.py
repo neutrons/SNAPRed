@@ -264,21 +264,31 @@ class LocalDataService:
             normalizationIndex = parse_file_as(List[NormalizationIndexEntry], indexPath)
         return normalizationIndex
 
+    def _parseAppliesTo(self, appliesTo: str):
+        symbols = [">=", "<=", "<", ">"]
+        # find first
+        symbol = next((s for s in symbols if s in appliesTo), None)
+        # parse runnumber
+        runNumber = appliesTo.split(symbol)[-1]
+        return symbol, runNumber
+
+    def _compareRunNumbers(self, runNumber1: str, runNumber2: str, symbol: str):
+        expressions = {
+            ">=": lambda x, y: x >= y,
+            "<=": lambda x, y: x <= y,
+            "<": lambda x, y: x < y,
+            ">": lambda x, y: x > y,
+        }
+        return expressions[symbol](int(runNumber1), int(runNumber2))
+
     def _isApplicableEntry(self, calibrationIndexEntry, runId):
         """
         Checks to see if an entry in the calibration index applies to a given run id via numerical comparison.
         """
         if calibrationIndexEntry.appliesTo == runId:
             return True
-        if calibrationIndexEntry.appliesTo.startswith(">"):
-            # get latest entry that applies to a runId greater than this runId
-            if int(runId) > int(calibrationIndexEntry.appliesTo[1:]):
-                return True
-        if calibrationIndexEntry.appliesTo.startswith("<"):
-            # get latest entry that applies to a runId less than this runId
-            if int(runId) < int(calibrationIndexEntry.appliesTo[1:]):
-                return True
-        return False
+        symbol, runNumber = self._parseAppliesTo(calibrationIndexEntry.appliesTo)
+        return self._compareRunNumbers(runId, runNumber, symbol)
 
     def _getVersionFromCalibrationIndex(self, runId: str):
         """
