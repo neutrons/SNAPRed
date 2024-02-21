@@ -200,11 +200,20 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.set_title(f"Group ID: {i + 1}")
             ax.set_xlabel("d-Spacing (Å)")
             ax.set_ylabel("Intensity")
+            # plot the min value for peaks
+            ax.axvline(x=float(self.fielddMin.field.text()), label="dMin", color="red")
+            # fill in the discovered peaks for easier viewing
+            x = mtd[focusedWorkspace].readX(i)
+            y = mtd[focusedWorkspace].readY(i)
+            # get the bin width to normalize the y-vector
+            dx = x[1:] - x[0:-1]
+            y = [yy / ddx for yy, ddx in zip(y, dx)]
+            # histograms have edges, the y-value at the center of both edges -- this matches x, y
+            x = 0.5 * (x[1:] + x[:-1])
+            # for each detected peak in this group, shade in the peak region
             for peak in peaks[i].peaks:
-                # ax.fill_between(focusedWorkspace, wkspIndex=i, where=(x<peak.maximum and x>peak.minimum))
-                ax.vlines(peak.value, ymin=1e6, ymax=1e8, color="red")
-                ax.vlines(peak.minimum, ymin=1e6, ymax=1e8, color="orange")
-                ax.vlines(peak.maximum, ymin=1e6, ymax=1e8, color="orange")
+                under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]
+                ax.fill_between(x, y, where=under_peaks, color="blue", alpha=0.5)
 
         # resize window and redraw
         self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))
