@@ -13,6 +13,7 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource
 
+
 class TestGroceryListItem(unittest.TestCase):
     # we only need this workspace made once for entire test suite
     @classmethod

@@ -1,29 +1,31 @@
-from typing import Literal, Optional, ClassVar
+from typing import ClassVar, Literal, Optional
 
 from pydantic import BaseModel, root_validator
 
-from snapred.meta.Config import Config
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import Config
 
 logger = snapredLogger.getLogger(__name__)
+
 
 class GroceryListItem(BaseModel):
     """
     Holds necessary information for a single item in grocery list
     """
+
     # Reserved instrument-cache run-number values:
-    RESERVED_NATIVE_RUNID: ClassVar[str] = "000000" # unmodified _native_ instrument:
-                                                    #   from 'SNAP_Definition.xml'
-    RESERVED_LITE_RUNID: ClassVar[str] = "000001"   # unmodified _lite_ instrument  :
-                                                    #   from 'SNAPLite.xml' 
+    RESERVED_NATIVE_RUNID: ClassVar[str] = "000000"  # unmodified _native_ instrument:
+    #   from 'SNAP_Definition.xml'
+    RESERVED_LITE_RUNID: ClassVar[str] = "000001"  # unmodified _lite_ instrument  :
+    #   from 'SNAPLite.xml'
 
     workspaceType: Literal["neutron", "grouping", "diffcal", "diffcal_output", "diffcal_table", "diffcal_mask"]
     useLiteMode: bool  # indicates if data should be reduced to lite mode
-    
-    # optional loader:    
+
+    # optional loader:
     # -- "" tells FetchGroceries to choose the loader
     loader: Literal["", "LoadGroupingDefinition", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed"] = ""
-    
+
     # the correct combinaton of the below must be set -- neutron and grouping require a runNumber,
     #   grouping additionally requires a groupingScheme
     runNumber: Optional[str]
@@ -42,10 +44,10 @@ class GroceryListItem(BaseModel):
     # if set to False, neutron data will not be loaded in a clean, cached way
     # this is faster and uses less memory, if you know you only need one copy
     keepItClean: bool = True
-    
+
     # name the property the workspace will be used for
     propertyName: Optional[str]
-    
+
     # flag to indicate if this is an _output_ workspace:
     # an output workspace will not be loaded,
     # it may or may not already exist in the ADS
@@ -81,16 +83,16 @@ class GroceryListItem(BaseModel):
                     # the Lite grouping scheme reduces native resolution to Lite mode
                     if v.get("useLiteMode"):
                         logger.warning(
-                            "the lite-mode flag must be False for the 'lite' grouping scheme" +
-                            " -- this cannot be overridden"
-                        )                    
+                            "the lite-mode flag must be False for the 'lite' grouping scheme"
+                            + " -- this cannot be overridden"
+                        )
                     v["useLiteMode"] = False  # the lite data map only works on native data
-                    
+
                     if v.get("runNumber") is not None:
                         logger.warning(
-                            "the run number must not be specified for 'lite' grouping scheme" +
-                            " -- this cannot be overridden"
-                        )                    
+                            "the run number must not be specified for 'lite' grouping scheme"
+                            + " -- this cannot be overridden"
+                        )
                     # the Lite grouping scheme uses the unmodified native instrument
                     v["runNumber"] = cls.RESERVED_NATIVE_RUNID
                 if v.get("runNumber") is None:

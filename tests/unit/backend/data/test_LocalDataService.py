@@ -422,7 +422,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         assert actual.runNumber == "57514"
 
     @mock.patch("h5py.File", return_value="not None")
-    def test_readPVFile(h5pyMock): # noqa: ARG001
+    def test_readPVFile(h5pyMock):  # noqa: ARG001
         localDataService = LocalDataService()
         localDataService.instrumentConfig = getMockInstrumentConfig()
         localDataService._constructPVFilePath = mock.Mock()
@@ -722,8 +722,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             mockConstructNormalizationCalibrationDataPath.return_value = str(basePath)
 
             # Workspace names need to match the names that are used in the test record.
-            runNumber = testNormalizationRecord.runNumber # noqa: F841
-            version = testNormalizationRecord.version # noqa: F841
+            runNumber = testNormalizationRecord.runNumber  # noqa: F841
+            version = testNormalizationRecord.version  # noqa: F841
             testWS0, testWS1, testWS2 = testNormalizationRecord.workspaceNames
 
             # Create sample workspaces.

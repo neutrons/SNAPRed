@@ -1,14 +1,14 @@
+import json
 import os
 from functools import cache
-from typing import Any, Dict, List, Tuple
 from pathlib import Path
-import json
+from typing import Any, Dict, List, Tuple
 
 from mantid.api import AlgorithmManager, mtd
 
+from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
@@ -24,6 +24,7 @@ class GroceryService:
     Yeah, I can get that for you.
     Just send me a list.
     """
+
     dataService: "LocalDataService"
 
     def __init__(self, dataService: LocalDataService = None):
@@ -163,7 +164,7 @@ class GroceryService:
     def _createGroupingWorkspaceName(self, groupingScheme: str, runId: str, useLiteMode: bool) -> WorkspaceName:
         # TODO: use WNG here!
         if groupingScheme == "Lite":
-            return f"lite_grouping_map"
+            return "lite_grouping_map"
         instr = "lite" if useLiteMode else "native"
         return f"{Config['grouping.workspacename.' + instr]}_{groupingScheme}_{runId}"
 

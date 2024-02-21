@@ -97,7 +97,9 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert item.workspaceType == "grouping"
 
         for useLite in [True, False]:
-            item = GroceryListBuilder().fromRun(self.runNumber).grouping(self.groupingScheme).useLiteMode(useLite).build()
+            item = (
+                GroceryListBuilder().fromRun(self.runNumber).grouping(self.groupingScheme).useLiteMode(useLite).build()
+            )
             assert item.groupingScheme == self.groupingScheme
             assert item.useLiteMode == useLite
             assert item.workspaceType == "grouping"
@@ -153,12 +155,12 @@ class TestGroceryListBuilder(unittest.TestCase):
     def test_nexus_with_instrument(self):
         with pytest.raises(ValueError) as e:
             GroceryListBuilder().neutron(self.runNumber).native().source(InstrumentName="SNAP").build()
-        assert "should not specify an instrument" in str(e.value)        
+        assert "should not specify an instrument" in str(e.value)
 
     def test_diffcal_output_with_instrument(self):
         with pytest.raises(ValueError) as e:
             GroceryListBuilder().diffcal_output(self.runNumber).native().source(InstrumentName="SNAP").build()
-        assert "should not specify an instrument" in str(e.value)        
+        assert "should not specify an instrument" in str(e.value)
 
     def test_nexus_clean_and_dirty(self):
         item = GroceryListBuilder().neutron(self.runNumber).native().clean().build()

@@ -987,7 +987,7 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_output_cached(self, mockCalibrationDataPath):
         # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`:
-        #   workspace already in ADS        
+        #   workspace already in ADS
         mockCalibrationDataPath.return_value = "/does/not/exist"
         groceryList = GroceryListItem.builder().native().diffcal_output(self.runNumber1).buildList()
         diffCalOutputName = wng.diffCalOutput().runNumber(self.runNumber1).build()
@@ -1025,7 +1025,7 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_table_cached(self, mockCalibrationDataPath):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
-        #   workspace already in ADS        
+        #   workspace already in ADS
         mockCalibrationDataPath.return_value = "/does/not/exist"
         groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1).buildList()
         diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
@@ -1089,7 +1089,7 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_mask_cached(self, mockCalibrationDataPath):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
-        #   workspace already in ADS        
+        #   workspace already in ADS
         mockCalibrationDataPath.return_value = "/does/not/exist"
         groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
         diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
@@ -1160,11 +1160,17 @@ class TestGroceryService(unittest.TestCase):
 
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).add()
-        clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).source(InstrumentDonor=cleanWorkspace).add()
+        clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).source(
+            InstrumentDonor=cleanWorkspace
+        ).add()
         groceryList = clerk.buildList()
 
         groupItemWithSource = (
-            clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).source(InstrumentDonor=cleanWorkspace).build()
+            clerk.native()
+            .fromRun(self.runNumber)
+            .grouping(self.groupingScheme)
+            .source(InstrumentDonor=cleanWorkspace)
+            .build()
         )
 
         res = self.instance.fetchGroceryList(groceryList)
@@ -1229,13 +1235,15 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
     @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
     @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_neutron_data(self,
-        mockUpdateInstrumentCacheFromADS, # noqa: ARG002
-        mockUpdateNeutronCacheFromADS, # noqa: ARG002
-        mockCreateRawNeutronWorkspaceName
+    def test_fetch_instrument_donor_neutron_data(
+        self,
+        mockUpdateInstrumentCacheFromADS,  # noqa: ARG002
+        mockUpdateNeutronCacheFromADS,  # noqa: ARG002
+        mockCreateRawNeutronWorkspaceName,
+    ):
+        with mock.patch.dict(self.instance._loadedRuns, {(self.runNumber, self.useLiteMode): 0}), mock.patch.dict(
+            self.instance._loadedInstruments, {}
         ):
-        with mock.patch.dict(self.instance._loadedRuns, {(self.runNumber, self.useLiteMode): 0}),\
-            mock.patch.dict(self.instance._loadedInstruments, {}):
             mockCreateRawNeutronWorkspaceName.return_value = self.sampleWS
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
             assert testWS == self.sampleWS
@@ -1243,39 +1251,43 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
     @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
     @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_neutron_data_is_cached(self,
-        mockUpdateInstrumentCacheFromADS, # noqa: ARG002
-        mockUpdateNeutronCacheFromADS, # noqa: ARG002
-        mockCreateRawNeutronWorkspaceName
-        ):
-        with mock.patch.dict(self.instance._loadedRuns, {(self.runNumber, self.useLiteMode): 0}),\
-            mock.patch.dict(self.instance._loadedInstruments, {}) as mockLoadedInstruments:
+    def test_fetch_instrument_donor_neutron_data_is_cached(
+        self,
+        mockUpdateInstrumentCacheFromADS,  # noqa: ARG002
+        mockUpdateNeutronCacheFromADS,  # noqa: ARG002
+        mockCreateRawNeutronWorkspaceName,
+    ):
+        with mock.patch.dict(self.instance._loadedRuns, {(self.runNumber, self.useLiteMode): 0}), mock.patch.dict(
+            self.instance._loadedInstruments, {}
+        ) as mockLoadedInstruments:
             mockCreateRawNeutronWorkspaceName.return_value = self.sampleWS
-            testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode) # noqa: F841
+            testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)  # noqa: F841
             assert mockLoadedInstruments == {(self.runNumber, self.useLiteMode): self.sampleWS}
 
     @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
     @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_cached(self,
-        mockUpdateInstrumentCacheFromADS, # noqa: ARG002
-        mockUpdateNeutronCacheFromADS # noqa: ARG002
+    def test_fetch_instrument_donor_cached(
+        self,
+        mockUpdateInstrumentCacheFromADS,  # noqa: ARG002
+        mockUpdateNeutronCacheFromADS,  # noqa: ARG002
+    ):
+        with mock.patch.dict(self.instance._loadedRuns, {}), mock.patch.dict(
+            self.instance._loadedInstruments, {(self.runNumber, self.useLiteMode): self.sampleWS}
         ):
-        with mock.patch.dict(self.instance._loadedRuns, {}),\
-            mock.patch.dict(self.instance._loadedInstruments, {(self.runNumber, self.useLiteMode): self.sampleWS}):
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
             assert testWS == self.sampleWS
 
     @mock.patch.object(GroceryService, "_getDetectorState")
     @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
     @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_empty_instrument(self,
-        mockUpdateInstrumentCacheFromADS, # noqa: ARG002
-        mockUpdateNeutronCacheFromADS, # noqa: ARG002
-        mockGetDetectorState
-        ):
+    def test_fetch_instrument_donor_empty_instrument(
+        self,
+        mockUpdateInstrumentCacheFromADS,  # noqa: ARG002
+        mockUpdateNeutronCacheFromADS,  # noqa: ARG002
+        mockGetDetectorState,
+    ):
         mockGetDetectorState.return_value = self.detectorState2
-        with mock.patch.dict(self.instance._loadedRuns, {}),\
-            mock.patch.dict(self.instance._loadedInstruments, {}):
+        with mock.patch.dict(self.instance._loadedRuns, {}), mock.patch.dict(self.instance._loadedInstruments, {}):
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
             assert mtd.doesExist(testWS)
             assert not testWS == self.sampleWS
@@ -1292,14 +1304,16 @@ class TestGroceryService(unittest.TestCase):
     @mock.patch.object(GroceryService, "_getDetectorState")
     @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
     @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_empty_instrument_is_cached(self,
-        mockUpdateInstrumentCacheFromADS, # noqa: ARG002
-        mockUpdateNeutronCacheFromADS, # noqa: ARG002
-        mockGetDetectorState
-        ):
+    def test_fetch_instrument_donor_empty_instrument_is_cached(
+        self,
+        mockUpdateInstrumentCacheFromADS,  # noqa: ARG002
+        mockUpdateNeutronCacheFromADS,  # noqa: ARG002
+        mockGetDetectorState,
+    ):
         mockGetDetectorState.return_value = self.detectorState2
-        with mock.patch.dict(self.instance._loadedRuns, {}),\
-            mock.patch.dict(self.instance._loadedInstruments, {}) as mockLoadedInstruments:
+        with mock.patch.dict(self.instance._loadedRuns, {}), mock.patch.dict(
+            self.instance._loadedInstruments, {}
+        ) as mockLoadedInstruments:
             testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
             assert mockLoadedInstruments == {(self.runNumber, self.useLiteMode): testWS}
 
