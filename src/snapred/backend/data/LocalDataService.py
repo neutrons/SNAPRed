@@ -524,7 +524,7 @@ class LocalDataService:
         for wsInfo in record.workspaceList:
             if wsInfo.type == "TableWorkspace" or wsInfo.type == "MaskWorkspace":
                 continue  # skip potential DiffCal workspaces until workspaceList is refactored
-            self.groceryService.writeWorkspace(calibrationPath, wsInfo.name)
+            self.groceryService.writeWorkspace(calibrationPath, wsInfo.name, version)
 
         # separately handle writing DiffCal workspaces until workspaceList is refactored
         self.groceryService.writeCalibrationTableWorkspaces(path=calibrationPath, runId=runNumber, version=str(version))

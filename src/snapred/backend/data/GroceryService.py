@@ -122,6 +122,7 @@ class GroceryService:
         """
         Writes a Mantid Workspace to disk.
         """
+        print(f"******** WRITING WORKSPACE: p:{path} n:{name} v:{version}")
         filename = name + "_" + wnvf.formatVersion(version) if version else name
         filename += ".nxs"
         path = os.path.join(path, filename)

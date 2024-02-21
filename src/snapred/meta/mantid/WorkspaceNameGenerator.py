@@ -70,7 +70,7 @@ class _WorkspaceNameGenerator:
     _diffCalTableTemplate = Config[f"{_templateRoot}.diffCal.table"]
     _diffCalTableTemplateKeys = ["runNumber", "version"]
     _diffCalOutputTemplate = Config[f"{_templateRoot}.diffCal.output"]
-    _diffCalOutputTemplateKeys = ["runNumber", "unit"]
+    _diffCalOutputTemplateKeys = ["unit", "runNumber"]
     _diffCalMaskTemplate = Config[f"{_templateRoot}.diffCal.mask"]
     _diffCalMaskTemplateKeys = ["runNumber", "version"]
     _diffCalMetricTemplate = Config[f"{_templateRoot}.diffCal.metric"]

@@ -109,8 +109,13 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         calibTableType = mtd[calibTableName].id()
         self.calibrationRecord.workspaceList.append(WorkspaceInfo(name=calibTableName, type=calibTableType))
 
+        maskWorkspaceName = self.responses[-2].data["maskWorkspace"]
+        maskWorkspaceType = mtd[maskWorkspaceName].id()
+        self.calibrationRecord.workspaceList.append(WorkspaceInfo(name=maskWorkspaceName, type=maskWorkspaceType))
+
         self.outputs.extend(assessmentResponse.metricWorkspaces)
         self.outputs.extend(self.calibrationRecord.workspaceList)
+
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
@@ -125,12 +130,6 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration save
-        calibrationRecord = self.responses[-1].data  # [-1]: response from CalibrationAssessmentRequest
-        # [-2]: response from DiffractionCalibrationRequest
-        wsName = self.responses[-2].data["calibrationTable"]
-        calibrationRecord.workspaceList.append(WorkspaceInfo(name=wsName, type=mtd[wsName].id()))
-        wsName = self.responses[-2].data["maskWorkspace"]
-        calibrationRecord.workspaceList.append(WorkspaceInfo(name=wsName, type=mtd[wsName].id()))
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
             comments=view.fieldComments.get(),
@@ -140,16 +139,12 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         # if this is not the first iteration, account for choice.
         if workflowPresenter.iteration > 1:
             iteration = int(self._saveCalibrationView.iterationDropdown.currentText())
-
-            for w in self.calibrationRecord.workspaceList:
-                wsName = self.renameTemplate.format(workspaceName=w.name, iteration=iteration)
-                wsType = mtd[wsName].id()
-                self.calibrationRecord.workspaceList.append(WorkspaceInfo(name=wsName, type=wsType))
-
-            # self.calibrationRecord.workspaceList = [
-            #     self.renameTemplate.format(workspaceName=w.name, iteration=iteration)
-            #     for w in self.calibrationRecord.workspaceList
-            # ]
+            self.calibrationRecord.workspaceList = [
+                WorkspaceInfo(
+                    name=self.renameTemplate.format(workspaceName=w.name, iteration=iteration), type=mtd[w.name].id()
+                )
+                for w in self.calibrationRecord.workspaceList
+            ]
 
         payload = CalibrationExportRequest(
             calibrationRecord=self.calibrationRecord, calibrationIndexEntry=calibrationIndexEntry
