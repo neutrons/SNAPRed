@@ -1,9 +1,15 @@
+from os import path
+
 from qtpy.QtWidgets import QMainWindow, QMessageBox
 
+from snapred.backend.api.InterfaceController import InterfaceController
+from snapred.backend.dao import SNAPRequest
+from snapred.backend.dao.request import ClearWorkspaceRequest
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.WorkflowView import WorkflowView
+from snapred.ui.widget.ActionPrompt import ActionPrompt
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -36,7 +42,23 @@ class WorkflowPresenter(object):
     def resetSoft(self):
         self.widget.reset(hard=False)
 
-    def resetHard(self):
+    def resetHard(self, promptClearWorkspaces=True):
+        def clearWorkspacesRequest():
+            interfaceController = InterfaceController()
+            clearWorkspacesRequest = ClearWorkspaceRequest(cache=True, exclude=[])
+            snapRequest = SNAPRequest(path="workspace/clear", payload=clearWorkspacesRequest.json())
+            interfaceController.executeRequest(snapRequest)
+
+        if promptClearWorkspaces:
+            ActionPrompt(
+                "Clear Workspaces?",
+                "Would you like to clear the workspaces? (Recommended)",
+                clearWorkspacesRequest,
+                self.view,
+            )
+        else:
+            clearWorkspacesRequest()
+
         self.widget.reset(hard=True)
 
     def iterate(self):
@@ -74,7 +96,17 @@ class WorkflowPresenter(object):
         self.iterate()
 
     def handleSkipButtonClicked(self):
+        self.advanceWorkflow()
+
+    def advanceWorkflow(self):
         self.view.advanceWorkflow()
+        if self.view.currentTab >= self.view.totalNodes - 1:
+            ActionPrompt(
+                "Workflow Complete",
+                "The workflow has been completed successfully!",
+                lambda: self.resetHard(False),
+                None,
+            )
 
     def handleContinueButtonClicked(self, model):
         self.view.continueButton.setEnabled(False)
@@ -87,7 +119,7 @@ class WorkflowPresenter(object):
         self.worker.finished.connect(lambda: self.view.cancelButton.setEnabled(True))
         self.worker.finished.connect(lambda: self.view.skipButton.setEnabled(True))
         self.worker.result.connect(self._handleComplications)
-        self.worker.success.connect(lambda success: self.view.advanceWorkflow() if success else None)
+        self.worker.success.connect(lambda success: self.advanceWorkflow() if success else None)
 
         self.worker_pool.submitWorker(self.worker)
 

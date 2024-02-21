@@ -1,9 +1,11 @@
 from qtpy.QtWidgets import QComboBox
 
+from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
 
 
+@Resettable
 class NormalizationCalibrationRequestView(BackendRequestView):
     def __init__(self, jsonForm, samplePaths=[], groups=[], parent=None):
         selection = "calibration/diffractionCalibration"

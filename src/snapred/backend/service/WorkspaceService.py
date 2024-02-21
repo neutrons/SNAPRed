@@ -33,4 +33,4 @@ class WorkspaceService(Service):
         """
         Clears the workspaces, excluding the given list of items and cache.
         """
-        self.groceryService.clearADS(request.exclude)
+        self.groceryService.clearADS(request.exclude, request.cache)

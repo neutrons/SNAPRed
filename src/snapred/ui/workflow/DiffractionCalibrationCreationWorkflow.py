@@ -53,12 +53,8 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
                 self._calibrationReductionView,
                 "Calibrating",
             )
-            .addNode(
-                self._assessCalibration,
-                self._calibrationAssessmentView,
-                "Assessing",
-            )
-            .addNode(self._saveCalibration, self._saveCalibrationView, name="Saving", iterate=True)
+            .addNode(self._assessCalibration, self._calibrationAssessmentView, "Assessing", iterate=True)
+            .addNode(self._saveCalibration, self._saveCalibrationView, name="Saving")
             .build()
         )
 
