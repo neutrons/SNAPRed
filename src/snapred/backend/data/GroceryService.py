@@ -163,7 +163,7 @@ class GroceryService:
     def _createGroupingWorkspaceName(self, groupingScheme: str, runId: str, useLiteMode: bool) -> WorkspaceName:
         # TODO: use WNG here!
         if groupingScheme == "Lite":
-            return f"lite_grouping_map_{runId}"
+            return f"lite_grouping_map"
         instr = "lite" if useLiteMode else "native"
         return f"{Config['grouping.workspacename.' + instr]}_{groupingScheme}_{runId}"
 

@@ -270,7 +270,7 @@ class TestGroceryService(unittest.TestCase):
     def test_litedatamap_workspacename(self):
         """Test the creation of name for Lite data map"""
         res = self.instance._createGroupingWorkspaceName("Lite", self.runNumber, True)
-        assert res == f"lite_grouping_map_{self.runNumber}"
+        assert res == "lite_grouping_map"
 
     def test_diffcal_input_workspacename(self):
         # Test name generation for diffraction-calibration input workspace
