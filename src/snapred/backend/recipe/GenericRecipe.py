@@ -2,7 +2,6 @@ import json
 from typing import Generic, TypeVar, get_args
 
 from mantid.simpleapi import ConvertTableToMatrixWorkspace
-
 from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger
@@ -30,7 +29,7 @@ class GenericRecipe(Generic[T]):
         self.mantidSnapper = MantidSnapper(None, self.algo)
 
     def _baseModelsToStrings(self, **kwargs):
-        print(f"BASE MODELS TO STRINGS")
+        print("BASE MODELS TO STRINGS")
         for key, value in kwargs.items():
             print(f"\tITEM {key}, {value.__class__}")
             # if isBaseModel(value.__class__):
@@ -42,8 +41,8 @@ class GenericRecipe(Generic[T]):
                 kwargs[key] = json.dumps([v.dict() for v in value])
                 print(f"\t\tLIST {kwargs[key]} -- type = {type(kwargs[key])}")
             else:
-                print(f"\t\tIT IS NOTHING!  NOOOOTTHING!!!")
-        print(f"DONE!")
+                print("\t\tIT IS NOTHING!  NOOOOTTHING!!!")
+        print("DONE!")
         return kwargs
 
     def executeRecipe(self, **kwargs):

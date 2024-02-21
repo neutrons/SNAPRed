@@ -71,7 +71,9 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             )
         # validate sources of smoothing parameter
         ingredientSmoothParam = None
-        ingredientSmoothParam = json.loads(self.getPropertyValue("DetectorPeakIngredients") or '{}').get("smoothingParameter")
+        ingredientSmoothParam = json.loads(self.getPropertyValue("DetectorPeakIngredients") or "{}").get(
+            "smoothingParameter"
+        )
         specifiedIngredients = ingredientSmoothParam is not None
         specifiedProperties = not self.getProperty("SmoothingParameter").isDefault
         if not specifiedIngredients and not specifiedProperties:
@@ -110,7 +112,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             "Calculating spectrum weights...",
             InputWorkspace=self.outputWorkspaceName,
             DetectorPeaks=self.getPropertyValue("DetectorPeaks"),
-            DetectorPeakIngredients=ingredients.json() if ingredients else '',
+            DetectorPeakIngredients=ingredients.json() if ingredients else "",
             WeightWorkspace=self.weightWorkspaceName,
         )
         self.mantidSnapper.executeQueue()
