@@ -9,3 +9,4 @@ Developer Docs
    resources
    deploy
    dao
+   dataSources

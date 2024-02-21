@@ -32,6 +32,10 @@ Glossary
         This is done by comparing the diffraction data to a known standard or previous Calibration, and adjusting the instrument to match.
         This is done by a series of algorithms that are triggered by a Recipe.
 
+    Calibrant Samples
+        A json configuration representing various phyiscal properties of known samples that are used to calibrate the instrument.
+        Most notably, the cif file that contains the known crystallographic properties of the sample.
+
     Calibration Index
         The data/file that contains a ledger of which Calibration applies to which Run in a given Instrument State.
 
@@ -73,8 +77,13 @@ Glossary
     Histogram
         TODO
 
-    Ingredients
+    IPTS
         TODO
+
+    Ingredients
+        The data required to perform a unit of calculations and produce a well cooked result.
+        These are typically the configuration input to a :term:`Recipe`.
+        They are also typically passed through a Recipe to the various algorithms it triggers.
 
     Instrument
         The phyiscal apparatus used to collect diffraction data. In the case of SNAP, it consists of a sample to shoot neutrons at,
@@ -173,7 +182,13 @@ Glossary
     Spectrum/Spectra
         TODO
 
+    State
+        The static positions of the detectors and any other distict configurable characteristics of the :term:`Instrument` recorded as part of a :term:`Run`.
+
     State Folder
+        The folder that contains all configurable data unique to a specific :term:`State`. It is named after the hash of the :term:`State` it represents. 
+
+    Vanadium
         TODO
 
     Vanadium
