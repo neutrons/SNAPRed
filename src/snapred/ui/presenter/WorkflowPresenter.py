@@ -99,14 +99,14 @@ class WorkflowPresenter(object):
         self.advanceWorkflow()
 
     def advanceWorkflow(self):
-        self.view.advanceWorkflow()
         if self.view.currentTab >= self.view.totalNodes - 1:
             ActionPrompt(
-                "Workflow Complete",
-                "The workflow has been completed successfully!",
+                "‧₊Workflow Complete‧₊",
+                "‧₊‧₊The workflow has been completed successfully!‧₊‧₊",
                 lambda: self.resetHard(False),
                 None,
             )
+        self.view.advanceWorkflow()
 
     def handleContinueButtonClicked(self, model):
         self.view.continueButton.setEnabled(False)
