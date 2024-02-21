@@ -3,6 +3,8 @@ from typing import Generic, TypeVar, get_args
 
 from mantid.simpleapi import ConvertTableToMatrixWorkspace
 
+from pydantic import BaseModel
+
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
@@ -28,17 +30,28 @@ class GenericRecipe(Generic[T]):
         self.mantidSnapper = MantidSnapper(None, self.algo)
 
     def _baseModelsToStrings(self, **kwargs):
+        print(f"BASE MODELS TO STRINGS")
         for key, value in kwargs.items():
-            if isBaseModel(value.__class__):
+            print(f"\tITEM {key}, {value.__class__}")
+            # if isBaseModel(value.__class__):
+            if issubclass(value.__class__, BaseModel):
                 kwargs[key] = value.json()
-            elif isListOfBaseModel(value.__class__):
+                print(f"\t\tNOT LIST {kwargs[key]}")
+            # elif isListOfBaseModel(value.__class__):
+            elif isinstance(value, list) and issubclass(value[0].__class__, BaseModel):
                 kwargs[key] = json.dumps([v.dict() for v in value])
+                print(f"\t\tLIST {kwargs[key]} -- type = {type(kwargs[key])}")
+            else:
+                print(f"\t\tIT IS NOTHING!  NOOOOTTHING!!!")
+        print(f"DONE!")
         return kwargs
 
     def executeRecipe(self, **kwargs):
         logger.info("Executing generic recipe for algo: %s" % self.algo)
-
+        print(f"**** DATA FOR {self.algo}****")
         kwargs = self._baseModelsToStrings(**kwargs)
+        for key, value in kwargs.items():
+            print(f"{key} -- {value}")
 
         outputs = None
         try:

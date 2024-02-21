@@ -124,7 +124,7 @@ class NormalizationService(Service):
         SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=focusedVanadium,
             DetectorPeaks=ingredients.detectorPeaks,
-            SmoothingParameter=request.smoothingParameter,
+            SmoothingParameter=str(request.smoothingParameter),
             OutputWorkspace=smoothedVanadium,
         )
         # done

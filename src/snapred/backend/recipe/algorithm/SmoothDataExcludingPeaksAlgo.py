@@ -48,10 +48,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients):
-        if self.getProperty("SmoothingParameter").isDefault:
-            self.lam = ingredients.smoothingParameter
-        else:
-            self.lam = float(self.getPropertyValue("SmoothingParameter"))
+        pass
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
@@ -73,7 +70,8 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
                 the list will be used and ingredients ignored"""
             )
         # validate sources of smoothing parameter
-        ingredientSmoothParam = json.loads(self.getPropertyValue("DetectorPeakIngredients")).get("smoothingParameter")
+        ingredientSmoothParam = None
+        ingredientSmoothParam = json.loads(self.getPropertyValue("DetectorPeakIngredients") or '{}').get("smoothingParameter")
         specifiedIngredients = ingredientSmoothParam is not None
         specifiedProperties = not self.getProperty("SmoothingParameter").isDefault
         if not specifiedIngredients and not specifiedProperties:
@@ -91,8 +89,13 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         self.log().notice("Removing peaks and smoothing data")
 
         # load ingredients
-        ingredients = Ingredients.parse_raw(self.getPropertyValue("DetectorPeakIngredients"))
-        self.chopIngredients(ingredients)
+        ingredients = None
+        if not self.getProperty("DetectorPeakIngredients").isDefault:
+            ingredients = Ingredients.parse_raw(self.getPropertyValue("DetectorPeakIngredients"))
+        if self.getProperty("SmoothingParameter").isDefault:
+            self.lam = ingredients.get("smoothingParameter", 0.0)
+        else:
+            self.lam = float(self.getPropertyValue("SmoothingParameter"))
         self.unbagGroceries()
 
         # copy input to make output workspace
@@ -107,7 +110,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             "Calculating spectrum weights...",
             InputWorkspace=self.outputWorkspaceName,
             DetectorPeaks=self.getPropertyValue("DetectorPeaks"),
-            DetectorPeakIngredients=ingredients.json(),
+            DetectorPeakIngredients=ingredients.json() if ingredients else '',
             WeightWorkspace=self.weightWorkspaceName,
         )
         self.mantidSnapper.executeQueue()

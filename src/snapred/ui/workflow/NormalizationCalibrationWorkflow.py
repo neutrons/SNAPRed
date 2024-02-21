@@ -130,7 +130,7 @@ class NormalizationCalibrationWorkflow:
 
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
-        peaks = parse_raw_as(List[GroupPeakList], self.responses[-1].data["detectorPeaks"])
+        peaks = self.responses[-1].data["detectorPeaks"]
 
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
         self.initializationComplete = True
@@ -204,7 +204,7 @@ class NormalizationCalibrationWorkflow:
 
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
-        peaks = parse_raw_as(List[GroupPeakList], self.responses[-1].data["detectorPeaks"])
+        peaks = self.responses[-1].data["detectorPeaks"]
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
     def applySmoothingUpdate(self, index, smoothingValue, dMin):
@@ -225,7 +225,7 @@ class NormalizationCalibrationWorkflow:
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
-        peaks = parse_raw_as(List[GroupPeakList], response.data)
+        peaks = response.data
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
     def onNormalizationValueChange(self, index, smoothingValue, dMin):  # noqa: ARG002
@@ -250,7 +250,7 @@ class NormalizationCalibrationWorkflow:
         elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
             focusWorkspace = self.responses[-1].data["focusedVanadium"]
             smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
-            peaks = parse_raw_as(List[GroupPeakList], self.responses[-1].data["detectorPeaks"])
+            peaks = self.responses[-1].data["detectorPeaks"]
             self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
         else:
             raise Exception("Expected data not found in the last response")
