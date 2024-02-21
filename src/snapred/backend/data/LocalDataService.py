@@ -728,7 +728,9 @@ class LocalDataService:
             sampleFiles.update(self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False))
         if len(sampleFiles) < 1:
             raise RuntimeError(f"No samples found in {sampleFolder} for extensions {extensions}")
-        return list(sampleFiles)
+        sampleFiles = list(sampleFiles)
+        sampleFiles.sort()
+        return sampleFiles
 
     def _readGroupingMap(self, stateId: str) -> GroupingMap:
         path = self._groupingMapPath(stateId)
@@ -768,6 +770,7 @@ class LocalDataService:
             groupingFiles.extend(self._findMatchingFileList(f"{groupingFolder}/*.{extension}", throws=False))
         if len(groupingFiles) < 1:
             raise RuntimeError(f"No grouping files found in {groupingFolder} for extensions {extensions}")
+        groupingFiles.sort()
         return groupingFiles
 
     def readFocusGroups(self):
