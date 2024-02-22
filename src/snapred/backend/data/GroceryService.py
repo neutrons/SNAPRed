@@ -1,6 +1,5 @@
 import json
 import os
-from functools import cache
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -642,7 +641,7 @@ class GroceryService:
         else:
             pass
 
-    def clearADS(self, exclude: List[str] = []):
+    def clearADS(self, exclude: List[str] = [], cache: bool = False):
         """
         Clears ads of all workspaces except those in the exclude list and cache.
         """
@@ -650,8 +649,11 @@ class GroceryService:
         # filter exclude
         workspacesToClear = [w for w in workspacesToClear if w not in exclude]
         # filter caches
-        workspaceCache = self.getCachedWorkspaces()
-        workspacesToClear = [w for w in workspacesToClear if w not in workspaceCache]
+        if not cache:
+            workspaceCache = self.getCachedWorkspaces()
+            workspacesToClear = [w for w in workspacesToClear if w not in workspaceCache]
         # clear the workspaces
         for workspace in workspacesToClear:
             self.deleteWorkspaceUnconditional(workspace)
+
+        self.rebuildCache()
