@@ -315,15 +315,6 @@ class TestGroceryService(unittest.TestCase):
                 self.instance.writeWorkspace(tmppath, name)
             assert "unsupported workspace type" in str(e.value)
 
-    def test_write_calibration_table_workspaces(self):
-        calWSName = "_diffract_consts_057514"
-        maskWSName = "_diffract_consts_mask_057514"
-        self.create_fake_diffcal_workspaces(calWSName, maskWSName)
-        path = Resource.getPath("outputs")
-        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmppath:
-            self.instance.writeCalibrationTableWorkspaces(tmppath, "57514", "1")
-            assert os.path.exists(os.path.join(tmppath, calWSName) + "_v0001" + ".h5")
-
     def test_writeGrouping(self):
         path = Resource.getPath("outputs")
         name = "test_write_grouping.hdf"

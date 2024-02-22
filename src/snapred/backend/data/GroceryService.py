@@ -147,15 +147,6 @@ class GroceryService:
         saveAlgo.setProperty("OutputFilename", os.path.join(path, name))
         saveAlgo.execute()
 
-    def writeCalibrationTableWorkspaces(self, path: str, runId: str, version: str):
-        calTableName = self._createDiffcalTableWorkspaceName(runId)
-        maskTableName = self._createDiffcalMaskWorkspaceName(runId)
-        filePath = os.path.join(path, calTableName)
-        if version:
-            filePath += "_" + wnvf.formatVersion(version)
-        filePath += ".h5"
-        self.writeDiffCalTable(path=filePath, calibrationWS=calTableName, maskingWS=maskTableName)
-
     def writeDiffCalTable(
         self,
         path: str,
