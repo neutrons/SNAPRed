@@ -21,6 +21,11 @@ from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 from snapred.meta.Config import Config
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
+from mantid.plots.datafunctions import get_spectrum
+
+from typing import List
+from pydantic import parse_obj_as
+from snapred.backend.dao import GroupPeakList
 
 
 class SpecifyNormalizationCalibrationView(QWidget):
@@ -186,6 +191,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
         # get the updated workspaces and optimal graph grid
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
+        peaks = parse_obj_as(List[GroupPeakList], peaks)
         numGraphs = focusedWorkspace.getNumberHistograms()
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
 
@@ -203,13 +209,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
             # plot the min value for peaks
             ax.axvline(x=float(self.fielddMin.field.text()), label="dMin", color="red")
             # fill in the discovered peaks for easier viewing
-            x = mtd[focusedWorkspace].readX(i)
-            y = mtd[focusedWorkspace].readY(i)
-            # get the bin width to normalize the y-vector
-            dx = x[1:] - x[0:-1]
-            y = [yy / ddx for yy, ddx in zip(y, dx)]
-            # histograms have edges, the y-value at the center of both edges -- this matches x, y
-            x = 0.5 * (x[1:] + x[:-1])
+            x, y, _, _ = get_spectrum(focusedWorkspace, i, normalize_by_bin_width=True)
             # for each detected peak in this group, shade in the peak region
             for peak in peaks[i].peaks:
                 under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]

@@ -212,6 +212,11 @@ class NormalizationService(Service):
             InputWorkspace=request.inputWorkspace,
             OutputWorkspace=request.outputWorkspace,
             DetectorPeaks=peaks,
-            SmoothingParameter=request.smoothingParameter,
+            SmoothingParameter=str(request.smoothingParameter),
         )
-        return peaks
+        return NormalizationResponse(
+            correctedVanadium="",
+            focusedVanadium=request.inputWorkspace,
+            smoothedVanadium=request.outputWorkspace,
+            detectorPeaks=peaks,
+        ).dict()

@@ -29,20 +29,13 @@ class GenericRecipe(Generic[T]):
         self.mantidSnapper = MantidSnapper(None, self.algo)
 
     def _baseModelsToStrings(self, **kwargs):
-        print("BASE MODELS TO STRINGS")
         for key, value in kwargs.items():
-            print(f"\tITEM {key}, {value.__class__}")
-            # if isBaseModel(value.__class__):
-            if issubclass(value.__class__, BaseModel):
+            if isBaseModel(value.__class__):
+                # if issubclass(value.__class__, BaseModel):
                 kwargs[key] = value.json()
-                print(f"\t\tNOT LIST {kwargs[key]}")
             # elif isListOfBaseModel(value.__class__):
             elif isinstance(value, list) and issubclass(value[0].__class__, BaseModel):
                 kwargs[key] = json.dumps([v.dict() for v in value])
-                print(f"\t\tLIST {kwargs[key]} -- type = {type(kwargs[key])}")
-            else:
-                print("\t\tIT IS NOTHING!  NOOOOTTHING!!!")
-        print("DONE!")
         return kwargs
 
     def executeRecipe(self, **kwargs):

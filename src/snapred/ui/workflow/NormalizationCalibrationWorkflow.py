@@ -225,7 +225,7 @@ class NormalizationCalibrationWorkflow:
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
-        peaks = response.data
+        peaks = response.data["detectorPeaks"]
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
     def onNormalizationValueChange(self, index, smoothingValue, dMin):  # noqa: ARG002
