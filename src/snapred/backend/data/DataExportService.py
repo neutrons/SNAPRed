@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
@@ -6,17 +8,20 @@ from snapred.backend.dao.normalization.NormalizationRecord import NormalizationR
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 @Singleton
 class DataExportService:
-    dataService: "LocalDataService"  # Optional[LocalDataService]
+    dataService: "LocalDataService"
 
     def __init__(self, dataService: LocalDataService = None) -> None:
-        if dataService:
-            self.dataService = dataService
-        else:
-            self.dataService = LocalDataService()
+        self.dataService = self._defaultClass(dataService, LocalDataService)
+
+    def _defaultClass(self, val, clazz):
+        if val is None:
+            val = clazz()
+        return val
 
     def exportCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         self.dataService.writeCalibrationIndexEntry(entry)
@@ -24,10 +29,10 @@ class DataExportService:
     def exportCalibrationRecord(self, record: CalibrationRecord):
         return self.dataService.writeCalibrationRecord(record)
 
-    def exportCalibrationReductionResult(self, runId: str, workspaceName: str):
-        return self.dataService.writeCalibrationReductionResult(runId, workspaceName)
+    def exportCalibrationWorkspaces(self, record: CalibrationRecord):
+        return self.dataService.writeCalibrationWorkspaces(record)
 
-    def writeCalibrantSampleFile(self, entry: CalibrantSamples):
+    def exportCalibrantSampleFile(self, entry: CalibrantSamples):
         self.dataService.writeCalibrantSample(entry)
 
     def exportCalibrationState(self, runId: str, calibration: Calibration):
@@ -39,8 +44,20 @@ class DataExportService:
     def exportNormalizationRecord(self, record: NormalizationRecord):
         return self.dataService.writeNormalizationRecord(record)
 
+    def exportNormalizationWorkspaces(self, record: NormalizationRecord):
+        return self.dataService.writeNormalizationWorkspaces(record)
+
+    def exportWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
+        """
+        Write a MatrixWorkspace (derived) workspace to disk in nexus format.
+        """
+        return self.dataService.writeWorkspace(path, filename, workspaceName)
+
     def initializeState(self, runId: str, name: str):
         return self.dataService.initializeState(runId, name)
 
-    def deleteWorkspace(self, workspaceName: str):
-        return self.dataService.deleteWorkspace(workspaceName)
+    def deleteWorkspace(self, name):
+        return self.groceryService.deleteWorkspace(name)
+
+    def deleteWorkspaceUnconditional(self, name):
+        return self.groceryService.deleteWorkspaceUnconditional(name)

@@ -9,7 +9,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 #######################################################
 # ATTENTION: Could be replaced by alignAndFocusPowder #
-# please confirm that attenutation correction before  #
+# please confirm that attenuation correction before  #
 # and after is equivalent                             #
 #######################################################
 class ReductionAlgorithm(PythonAlgorithm):

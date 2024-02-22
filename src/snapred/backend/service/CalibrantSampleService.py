@@ -22,6 +22,6 @@ class CalibrantSampleService(Service):
     @FromString
     def save_sample(self, calibrantSample: CalibrantSamples):
         try:
-            self.dataExportService.writeCalibrantSampleFile(calibrantSample)
+            self.dataExportService.exportCalibrantSampleFile(calibrantSample)
         except:
             raise

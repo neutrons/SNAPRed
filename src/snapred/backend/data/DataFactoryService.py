@@ -21,10 +21,10 @@ class DataFactoryService:
     cache: Dict[str, ReductionState] = {}
 
     def __init__(self, lookupService: LocalDataService = None, groceryService: GroceryService = None) -> None:
-        self.lookupService = self.defaultClass(lookupService, LocalDataService)
-        self.groceryService = self.defaultClass(groceryService, GroceryService)
+        self.lookupService = self._defaultClass(lookupService, LocalDataService)
+        self.groceryService = self._defaultClass(groceryService, GroceryService)
 
-    def defaultClass(self, val, clazz):
+    def _defaultClass(self, val, clazz):
         if val is None:
             val = clazz()
         return val
@@ -75,24 +75,12 @@ class DataFactoryService:
     def getWorkspaceForName(self, name):
         return self.groceryService.getWorkspaceForName(name)
 
-    def getClonedofWorkspace(self, name, copy):
+    def getCloneOfWorkspace(self, name, copy):
         return self.groceryService.getCloneOfWorkspace(name, copy)
 
-    def workspaceDoesExist(self, name):
-        return self.groceryService.workspaceDoesExist(name)
-
-    def deleteWorkspace(self, name):
-        return self.groceryService.deleteWorkspace(name)
-
-    def deleteWorkspaceUnconditional(self, name):
-        return self.groceryService.deleteWorkspaceUnconditional(name)
-
-    def loadCalibrationDataWorkspace(self, runId, version, name):
+    def getCalibrationDataWorkspace(self, runId, version, name):
         path = self.getCalibrationDataPath(runId, version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
-
-    def writeWorkspace(self, path, name):
-        return self.groceryService.writeWorkspace(path, name)
 
     def getWorkspaceCached(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataCached(runId, useLiteMode)
@@ -124,3 +112,12 @@ class DataFactoryService:
 
     def getCalibrationDataPath(self, runId: str, version: str):
         return self.lookupService._constructCalibrationDataPath(runId, version)
+
+    def workspaceDoesExist(self, name):
+        return self.groceryService.workspaceDoesExist(name)
+
+    def deleteWorkspace(self, name):
+        return self.groceryService.deleteWorkspace(name)
+
+    def deleteWorkspaceUnconditional(self, name):
+        return self.groceryService.deleteWorkspaceUnconditional(name)

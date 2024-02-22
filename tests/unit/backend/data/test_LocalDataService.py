@@ -8,6 +8,14 @@ from pathlib import Path
 from typing import List
 
 import pytest
+from mantid.api import ITableWorkspace, MatrixWorkspace
+from mantid.dataobjects import MaskWorkspace
+from mantid.simpleapi import (
+    CloneWorkspace,
+    CreateGroupingWorkspace,
+    LoadEmptyInstrument,
+    mtd,
+)
 from pydantic import parse_raw_as
 from pydantic.error_wrappers import ValidationError
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -15,12 +23,14 @@ from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import Calibrant
 # NOTE this is necessary to prevent mocking out needed functions
 from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 from snapred.meta.Config import Config, Resource
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as WNG
 from snapred.meta.redantic import write_model_pretty
+from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
 # Mock out of scope modules before importing DataExportService
-with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Mock()}):
+with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
     from snapred.backend.dao import StateConfig
     from snapred.backend.dao.calibration.Calibration import Calibration  # noqa: E402
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
@@ -34,6 +44,9 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
     from snapred.backend.dao.state.InstrumentState import InstrumentState
     from snapred.backend.data.LocalDataService import LocalDataService  # noqa: E402
 
+    ThisService = "snapred.backend.data.LocalDataService."
+
+    fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
     reductionIngredients = None
     with Resource.open("inputs/calibration/ReductionIngredients.json", "r") as file:
         reductionIngredients = parse_raw_as(ReductionIngredients, file.read())
@@ -82,7 +95,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._readNormalizationCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.normalizationCalibrant
         )
-        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
         localDataService._readPVFile = mock.Mock()
         fileMock = mock.Mock()
         localDataService._readPVFile.return_value = fileMock
@@ -118,7 +131,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._readNormalizationCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.normalizationCalibrant
         )
-        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
         localDataService._readPVFile = mock.Mock()
         fileMock = mock.Mock()
         localDataService._readPVFile.return_value = fileMock
@@ -155,7 +168,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._readNormalizationCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.normalizationCalibrant
         )
-        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
         localDataService._readPVFile = mock.Mock()
         fileMock = mock.Mock()
         localDataService._readPVFile.return_value = fileMock
@@ -195,7 +208,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._readNormalizationCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.normalizationCalibrant
         )
-        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
         localDataService._readPVFile = mock.Mock()
         fileMock = mock.Mock()
         localDataService._readPVFile.return_value = fileMock
@@ -241,7 +254,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService._readNormalizationCalibrant.return_value = (
                 reductionIngredients.reductionState.stateConfig.normalizationCalibrant
             )
-            localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+            localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
             localDataService._readPVFile = mock.Mock()
             fileMock = mock.Mock()
             localDataService._readPVFile.return_value = fileMock
@@ -288,7 +301,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             localDataService._readNormalizationCalibrant.return_value = (
                 reductionIngredients.reductionState.stateConfig.normalizationCalibrant
             )
-            localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+            localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
             localDataService._readPVFile = mock.Mock()
             fileMock = mock.Mock()
             localDataService._readPVFile.return_value = fileMock
@@ -300,6 +313,53 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             )
             localDataService.instrumentConfig = getMockInstrumentConfig()
             localDataService.readStateConfig("57514")
+
+    @mock.patch(ThisService + "GetIPTS")
+    def test_getIPTS(mockGetIPTS):
+        mockGetIPTS.return_value = "nowhere/"
+        localDataService = LocalDataService()
+        runNumber = "123456"
+        res = localDataService.getIPTS(runNumber)
+        assert res == mockGetIPTS.return_value
+        assert mockGetIPTS.called_with(
+            runNumber=runNumber,
+            instrumentName=Config["instrument.name"],
+        )
+        res = localDataService.getIPTS(runNumber, "CRACKLE")
+        assert res == mockGetIPTS.return_value
+        assert mockGetIPTS.called_with(
+            runNumber=runNumber,
+            instrumentName="CRACKLE",
+        )
+
+    def test_workspaceIsInstance():
+        localDataService = LocalDataService()
+        # Create a sample workspace.
+        testWS0 = "test_ws"
+        LoadEmptyInstrument(
+            Filename=fakeInstrumentFilePath,
+            OutputWorkspace=testWS0,
+        )
+        assert mtd.doesExist(testWS0)
+        assert localDataService.workspaceIsInstance(testWS0, MatrixWorkspace)
+
+        # Create diffraction-calibration table and mask workspaces.
+        tableWS = "test_table"
+        maskWS = "test_mask"
+        createCompatibleDiffCalTable(tableWS, testWS0)
+        createCompatibleMask(maskWS, testWS0, fakeInstrumentFilePath)
+        assert mtd.doesExist(tableWS)
+        assert mtd.doesExist(maskWS)
+        assert localDataService.workspaceIsInstance(tableWS, ITableWorkspace)
+        assert localDataService.workspaceIsInstance(maskWS, MaskWorkspace)
+        mtd.clear()
+
+    def test_workspaceIsInstance_no_ws():
+        localDataService = LocalDataService()
+        # A sample workspace which doesn't exist.
+        testWS0 = "test_ws"
+        assert not mtd.doesExist(testWS0)
+        assert not localDataService.workspaceIsInstance(testWS0, MatrixWorkspace)
 
     def test_write_model_pretty_StateConfig_excludes_grouping_map():
         # At present there is no `writeStateConfig` method, and there is no `readStateConfig` that doesn't
@@ -314,7 +374,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._readNormalizationCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.normalizationCalibrant
         )
-        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
         localDataService._readPVFile = mock.Mock()
         fileMock = mock.Mock()
         localDataService._readPVFile.return_value = fileMock
@@ -355,13 +415,14 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
     def test__readRunConfig():
         localDataService = LocalDataService()
-        localDataService.groceryService.getIPTS = mock.Mock(return_value="IPTS-123")
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
         localDataService.instrumentConfig = getMockInstrumentConfig()
         actual = localDataService._readRunConfig("57514")
         assert actual is not None
         assert actual.runNumber == "57514"
 
-    def test_readPVFile():
+    @mock.patch("h5py.File", return_value="not None")
+    def test_readPVFile(h5pyMock):  # noqa: ARG001
         localDataService = LocalDataService()
         localDataService.instrumentConfig = getMockInstrumentConfig()
         localDataService._constructPVFilePath = mock.Mock()
@@ -374,7 +435,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         localDataService._readPVFile = mock.Mock()
         fileMock = mock.Mock()
         localDataService._readPVFile.return_value = fileMock
-        fileMock.get.side_effect = [[0.1], [0.1], [0.1], [0.1], [1]]
+        fileMock.get.side_effect = [[0.1], [0.1], [0.1], [0.1], [1], [0.1], [0.1]]
         actual, _ = localDataService._generateStateId(mock.Mock())
         assert actual == "9618b936a4419a6e"
 
@@ -557,6 +618,51 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert actualRecord.runNumber == "57514"
         assert actualRecord == testCalibrationRecord
 
+    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
+    def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
+        localDataService = LocalDataService()
+        path = Resource.getPath("outputs")
+        testCalibrationRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
+            basePath = Path(basePath)
+            mockConstructCalibrationDataPath.return_value = str(basePath)
+
+            # Workspace names need to match the names that are used in the test record.
+            runNumber = testCalibrationRecord.runNumber
+            version = testCalibrationRecord.version
+            testWS0, testWS1, testWS2, tableWSName, maskWSName = testCalibrationRecord.workspaceNames
+            diffCalFilename = Path(WNG.diffCalTable().runNumber(runNumber).version(version).build() + ".h5")
+
+            # Create sample workspaces.
+            LoadEmptyInstrument(
+                Filename=fakeInstrumentFilePath,
+                OutputWorkspace=testWS0,
+            )
+            CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS1)
+            CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS2)
+            assert mtd.doesExist(testWS0)
+            assert mtd.doesExist(testWS1)
+            assert mtd.doesExist(testWS2)
+
+            # Create diffraction-calibration table and mask workspaces.
+            createCompatibleDiffCalTable(tableWSName, testWS0)
+            createCompatibleMask(maskWSName, testWS0, fakeInstrumentFilePath)
+            assert mtd.doesExist(tableWSName)
+            assert mtd.doesExist(maskWSName)
+
+            localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
+
+            diffCalFilename = Path(WNG.diffCalTable().runNumber(runNumber).version(version).build() + ".h5")
+            for wsName in testCalibrationRecord.workspaceNames:
+                ws = mtd[wsName]
+                filename = (
+                    Path(wsName + ".nxs")
+                    if not (isinstance(ws, ITableWorkspace) or isinstance(ws, MaskWorkspace))
+                    else diffCalFilename
+                )
+                assert (basePath / filename).exists()
+            mtd.clear()
+
     def test_readWriteNormalizationRecord_version_numbers():
         testNormalizationRecord = NormalizationRecord.parse_raw(
             Resource.read("inputs/normalization/NormalizationRecord.json")
@@ -604,6 +710,40 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         assert actualRecord.runNumber == "57514"
         assert actualRecord == testNormalizationRecord
 
+    @mock.patch.object(LocalDataService, "_constructNormalizationCalibrationDataPath")
+    def test_writeNormalizationWorkspaces(mockConstructNormalizationCalibrationDataPath):
+        localDataService = LocalDataService()
+        path = Resource.getPath("outputs")
+        testNormalizationRecord = NormalizationRecord.parse_raw(
+            Resource.read("inputs/normalization/NormalizationRecord.json")
+        )
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
+            basePath = Path(basePath)
+            mockConstructNormalizationCalibrationDataPath.return_value = str(basePath)
+
+            # Workspace names need to match the names that are used in the test record.
+            runNumber = testNormalizationRecord.runNumber  # noqa: F841
+            version = testNormalizationRecord.version  # noqa: F841
+            testWS0, testWS1, testWS2 = testNormalizationRecord.workspaceNames
+
+            # Create sample workspaces.
+            LoadEmptyInstrument(
+                Filename=fakeInstrumentFilePath,
+                OutputWorkspace=testWS0,
+            )
+            CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS1)
+            CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS2)
+            assert mtd.doesExist(testWS0)
+            assert mtd.doesExist(testWS1)
+            assert mtd.doesExist(testWS2)
+
+            localDataService.writeNormalizationWorkspaces(testNormalizationRecord)
+
+            for wsName in testNormalizationRecord.workspaceNames:
+                filename = Path(wsName + ".nxs")
+                assert (basePath / filename).exists()
+            mtd.clear()
+
     def test_getCalibrationRecordPath():
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
@@ -646,32 +786,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         ]
         actualFile = localDataService._getLatestFile("Powder/1234/v_*/CalibrationRecord.json")
         assert actualFile == "Powder/1234/v_2/CalibrationRecord.json"
-
-    def test_writeCalibrationReductionResult():
-        from snapred.backend.data.LocalDataService import LocalDataService as LocalDataService2
-
-        localDataService = LocalDataService2()
-        localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("123", "456")
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
-
-        filename = localDataService.writeCalibrationReductionResult("123", "ws", dryrun=True)
-        assert filename.endswith("tests/resources/outputs/123/ws_v1.nxs")
-
-    def test_writeCalibrationReductionResult_notdryrun():
-        from snapred.backend.data.LocalDataService import LocalDataService as LocalDataService2
-
-        localDataService = LocalDataService2()
-        localDataService.groceryService = mock.Mock()
-        localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("123", "456")
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
-
-        filename = localDataService.writeCalibrationReductionResult("123", "ws", dryrun=False)
-        assert filename.endswith("tests/resources/outputs/123/ws_v1.nxs")
-        assert localDataService.groceryService.writeWorkspace.called_once_with(filename, "ws")
 
     def test__isApplicableEntry_equals():
         localDataService = LocalDataService()
@@ -813,9 +927,29 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
         localDataService = LocalDataService()
         localDataService._readPVFile = mock.Mock()
+
         pvFileMock = mock.Mock()
-        pvFileMock.get.side_effect = [[1], [2], [1.1], [1.2], [1], [1], [2], [1.1], [1.2], [1], [1], [2]]
+        # 2X: seven required `readDetectorState` log entries:
+        #   * generated stateId hex-digest: 'ab8704b0bc2a2342',
+        #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
+        pvFileMock.get.side_effect = [
+            [1],
+            [2],
+            [1.1],
+            [1.2],
+            [1],
+            [1.0],
+            [2.0],
+            [1],
+            [2],
+            [1.1],
+            [1.2],
+            [1],
+            [1.0],
+            [2.0],
+        ]
         localDataService._readPVFile.return_value = pvFileMock
+
         testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
 
         localDataService.readInstrumentConfig = mock.Mock()
@@ -907,8 +1041,10 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
         ]
         result = localDataService.readGroupingFiles()
         # 6 because there are 3 file types and the mock returns 2 files per
+        expected = [f"/group{x}.{ext}" for ext in ["xml", "nxs", "hdf"] for x in [1, 2]]
+        expected.sort()
         assert len(result) == 6
-        assert result == [f"/group{x}.{ext}" for ext in ["xml", "nxs", "hdf"] for x in [1, 2]]
+        assert result == expected
 
     def test_readNoGroupingFiles():
         localDataService = LocalDataService()
@@ -929,12 +1065,13 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
             f"/group2.{path.split('/')[-1].split('.')[-1]}",
         ]
         result = localDataService.readFocusGroups()
+        expectedKeys = [f"/group{x}.{ext}" for ext in ["xml", "nxs", "hdf"] for x in [1, 2]]
+        expectedKeys.sort()
+        expectedVals = [FocusGroup(name=x.split("/")[-1].split(".")[0], definition=x) for x in expectedKeys]
         # 6 because there are 3 file types and the mock returns 2 files per
         assert len(result) == 6
-        assert list(result.keys()) == [f"/group{x}.{ext}" for ext in ["xml", "nxs", "hdf"] for x in [1, 2]]
-        assert list(result.values()) == [
-            FocusGroup(name=x.split("/")[-1].split(".")[0], definition=x) for x in list(result.keys())
-        ]
+        assert list(result.keys()) == expectedKeys
+        assert list(result.values()) == expectedVals
 
     @mock.patch("os.path.exists", return_value=True)
     def test_writeCalibrantSample_failure(mock1):  # noqa: ARG001
@@ -979,3 +1116,80 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock(), "h5py": mock.Moc
 
         result = localDataService.readCifFilePath("testid")
         assert result == "/SNS/SNAP/shared/Calibration_dynamic/CalibrantSamples/EntryWithCollCode52054_diamond.cif"
+
+    ## TESTS OF WORKSPACE WRITE METHODS
+
+    def test_writeWorkspace():
+        localDataService = LocalDataService()
+        path = Resource.getPath("outputs")
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
+            workspaceName = "test_workspace"
+            basePath = Path(tmpPath)
+            filename = Path(workspaceName + ".nxs")
+            # Create a test workspace to write.
+            LoadEmptyInstrument(
+                Filename=fakeInstrumentFilePath,
+                OutputWorkspace=workspaceName,
+            )
+            assert mtd.doesExist(workspaceName)
+            localDataService.writeWorkspace(basePath, filename, workspaceName)
+            assert (basePath / filename).exists()
+        mtd.clear()
+
+    def test_writeGroupingWorkspace():
+        localDataService = LocalDataService()
+        path = Resource.getPath("outputs")
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
+            workspaceName = "test_grouping"
+            basePath = Path(tmpPath)
+            filename = Path(workspaceName + ".h5")
+            # Create a test grouping workspace to write.
+            CreateGroupingWorkspace(
+                OutputWorkspace=workspaceName,
+                CustomGroupingString="1",
+                InstrumentFilename=fakeInstrumentFilePath,
+            )
+            localDataService.writeGroupingWorkspace(basePath, filename, workspaceName)
+            assert (basePath / filename).exists()
+        mtd.clear()
+
+    def test_writeDiffCalWorkspaces():
+        localDataService = LocalDataService()
+        path = Resource.getPath("outputs")
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
+            basePath = Path(basePath)
+            tableWSName = "test_table"
+            maskWSName = "test_mask"
+            filename = Path(tableWSName + ".h5")
+            # Create an instrument workspace.
+            instrumentDonor = "test_instrument_donor"
+            LoadEmptyInstrument(
+                Filename=fakeInstrumentFilePath,
+                OutputWorkspace=instrumentDonor,
+            )
+            assert mtd.doesExist(instrumentDonor)
+            # Create table and mask workspaces to write.
+            createCompatibleMask(maskWSName, instrumentDonor, fakeInstrumentFilePath)
+            assert mtd.doesExist(maskWSName)
+            createCompatibleDiffCalTable(tableWSName, instrumentDonor)
+            assert mtd.doesExist(tableWSName)
+            localDataService.writeDiffCalWorkspaces(
+                basePath, filename, tableWorkspaceName=tableWSName, maskWorkspaceName=maskWSName
+            )
+            assert (basePath / filename).exists()
+        mtd.clear()
+
+
+# this at teardown removes the loggers, eliminating logger error printouts
+# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
+@pytest.fixture(autouse=True)
+def clear_loggers():  # noqa: PT004
+    """Remove handlers from all loggers"""
+    import logging
+
+    yield  # ... teardown follows:
+    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
+    for logger in loggers:
+        handlers = getattr(logger, "handlers", [])
+        for handler in handlers:
+            logger.removeHandler(handler)
