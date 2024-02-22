@@ -84,6 +84,7 @@ calibration:
         - -2
         - 2
       peakTailCoefficient: 2.0
+      smoothing: 0.5
 
 mantid:
     workspace:
