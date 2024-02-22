@@ -77,7 +77,7 @@ class NormalizationService(Service):
 
         # prepare and check focus group workspaces -- see if grouping already calculated
         correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
-        focusedVanadium = wng.run().runNumber(request.runNumber).group(groupingScheme).auxilary("S+F-Vanadium").build()
+        focusedVanadium = wng.run().runNumber(request.runNumber).group(groupingScheme).auxiliary("S+F-Vanadium").build()
         smoothedVanadium = wng.smoothedFocusedRawVanadium().runNumber(request.runNumber).group(groupingScheme).build()
 
         if (
