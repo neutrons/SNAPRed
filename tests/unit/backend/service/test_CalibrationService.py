@@ -3,6 +3,7 @@ import os
 import tempfile
 import unittest
 import unittest.mock as mock
+from pathlib import Path
 from typing import List
 from unittest.mock import ANY, MagicMock, call, patch
 
@@ -64,6 +65,8 @@ with mock.patch.dict(
         calibrationService = CalibrationService()
         calibrationService.dataExportService.exportCalibrationRecord = mock.Mock()
         calibrationService.dataExportService.exportCalibrationRecord.return_value = MagicMock(version="1.0.0")
+        calibrationService.dataExportService.exportCalibrationWorkspaces = mock.Mock()
+        calibrationService.dataExportService.exportCalibrationWorkspaces.return_value = MagicMock(version="1.0.0")
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
         calibrationService.save(mock.Mock())
@@ -240,7 +243,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                     DataX=1,
                     DataY=1,
                 )
-                self.instance.dataFactoryService.writeWorkspace(os.path.join(tmpdir, ws_name + ".nxs"), ws_name)
+                filename = Path(ws_name + ".nxs")
+                self.instance.dataExportService.exportWorkspace(tmpdir, filename, ws_name)
 
             # Call the method to test. Use a mocked run and a mocked version
             runId = MagicMock()
@@ -267,7 +271,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                     DataX=1,
                     DataY=1,
                 )
-                self.instance.dataFactoryService.writeWorkspace(os.path.join(tmpdir, ws_name + ".nxs"), ws_name)
+                filename = Path(ws_name + ".nxs")
+                self.instance.dataExportService.exportWorkspace(tmpdir, filename, ws_name)
 
             # Call the method to test. Use a mocked run and a mocked version
             mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)

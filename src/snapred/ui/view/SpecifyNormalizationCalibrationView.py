@@ -23,10 +23,12 @@ from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.backend.dao import GroupPeakList
 from snapred.meta.Config import Config
+from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
+@Resettable
 class SpecifyNormalizationCalibrationView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)

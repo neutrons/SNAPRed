@@ -75,6 +75,7 @@ class NormalizationService(Service):
         )
         ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
 
+        # prepare and check focus group workspaces -- see if grouping already calculated
         correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
         focusedVanadium = wng.run().runNumber(request.runNumber).group(groupingScheme).auxilary("S+F-Vanadium").build()
         smoothedVanadium = wng.smoothedFocusedRawVanadium().runNumber(request.runNumber).group(groupingScheme).build()
@@ -96,9 +97,9 @@ class NormalizationService(Service):
         self.groceryClerk.name("backgroundWorkspace").neutron(request.backgroundRunNumber).useLiteMode(
             request.useLiteMode
         ).add()
-        self.groceryClerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(
+        self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(groupingScheme).useLiteMode(
             request.useLiteMode
-        ).fromPrev().add()
+        ).add()
         groceries = self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
         )
@@ -149,6 +150,7 @@ class NormalizationService(Service):
         entry = request.normalizationIndexEntry
         normalizationRecord = request.normalizationRecord
         normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
+        normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
         entry.version = normalizationRecord.version
         self.saveNormalizationToIndex(entry)
 

@@ -89,12 +89,12 @@ mantid:
     workspace:
       nameTemplate:
         delimiter: "_"
-        run: "{unit},{group},{lite},{runNumber},{auxilary}"
+        run: "{unit},{group},{lite},{runNumber},{auxiliary}"
         diffCal:
           input: "_{unit},{runNumber},raw"
-          table: "_DIFC,{runNumber}"
-          output: "_{unit},{runNumber},diffoc"
-          mask: "_DIFC,{runNumber},mask"
+          table: "_DIFC,{runNumber},{version}"
+          output: "_{unit},{runNumber},{version},diffoc"
+          mask: "_DIFC,{runNumber},{version},mask"
           metric: "{runNumber},{version},calibration_metrics,{metricName}"
         normCal:
           rawVanadium: "{unit},{group},{runNumber},raw_van_corr"
