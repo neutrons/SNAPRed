@@ -805,6 +805,22 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         entry.appliesTo = "<123"
         assert localDataService._isApplicableEntry(entry, "99")
 
+    def test_isApplicableEntry_lessThanEquals():
+        localDataService = LocalDataService()
+        entry = mock.Mock()
+        entry.appliesTo = "<=123"
+        assert localDataService._isApplicableEntry(entry, "123")
+        assert localDataService._isApplicableEntry(entry, "99")
+        assert not localDataService._isApplicableEntry(entry, "456")
+
+    def test_isApplicableEntry_greaterThanEquals():
+        localDataService = LocalDataService()
+        entry = mock.Mock()
+        entry.appliesTo = ">=123"
+        assert localDataService._isApplicableEntry(entry, "123")
+        assert localDataService._isApplicableEntry(entry, "456")
+        assert not localDataService._isApplicableEntry(entry, "99")
+
     def test__getVersionFromCalibrationIndex():
         localDataService = LocalDataService()
         localDataService.readCalibrationIndex = mock.Mock()
