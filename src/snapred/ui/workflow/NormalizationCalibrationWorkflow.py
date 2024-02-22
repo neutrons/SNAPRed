@@ -93,10 +93,18 @@ class NormalizationCalibrationWorkflow:
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
         self.sampleIndex = (view.sampleDropDown.currentIndex()) - 1
         self.initGroupingIndex = (view.groupingFileDropDown.currentIndex()) - 1
-        self.initSmoothingParameter = float(view.getFieldText("smoothingParameter"))
         self.samplePath = view.sampleDropDown.currentText()
         self.groupingPath = view.groupingFileDropDown.currentText()
         self.initDMin = float(self._specifyNormalizationView.fielddMin.field.text())
+
+        payload = NormalizationCalibrationRequest(
+            runNumber=self.runNumber,
+            backgroundRunNumber=self.backgroundRunNumber,
+            calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
+            focusGroup=self.focusGroups[str(self.groupingFiles[self.initGroupingIndex])],
+            crystalDMin=self.initDMin,
+        )
+        self.initSmoothingParameter = payload.smoothingParameter
 
         self._specifyNormalizationView.updateFields(
             sampleIndex=self.sampleIndex,
@@ -109,15 +117,6 @@ class NormalizationCalibrationWorkflow:
 
         self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
         self._saveNormalizationCalibrationView.updateBackgroundRunNumber(self.backgroundRunNumber)
-
-        payload = NormalizationCalibrationRequest(
-            runNumber=self.runNumber,
-            backgroundRunNumber=self.backgroundRunNumber,
-            calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
-            focusGroup=self.focusGroups[str(self.groupingFiles[self.initGroupingIndex])],
-            smoothingParameter=self.initSmoothingParameter,
-            crystalDMin=self.initDMin,
-        )
 
         request = SNAPRequest(path="normalization", payload=payload.json())
         response = self.interfaceController.executeRequest(request)

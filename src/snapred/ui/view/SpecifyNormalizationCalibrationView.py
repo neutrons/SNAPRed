@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSlider,
+    QVBoxLayout,
     QWidget,
 )
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
@@ -90,11 +91,12 @@ class SpecifyNormalizationCalibrationView(QWidget):
         )
 
         self.smoothingLineEdit = QLineEdit("1e-9")
-        self.smoothingLineEdit.setFixedWidth(50)
+        self.smoothingLineEdit.setMinimumWidth(128)
         self.smoothingSlider.valueChanged.connect(self.updateLineEditFromSlider)
         self.smoothingLineEdit.returnPressed.connect(
             lambda: self.updateSliderFromLineEdit(self.smoothingLineEdit.text())
         )
+        self.smoothingLabel = QLabel("Smoothing :")
 
         self.fielddMin = LabeledField("dMin :", QLineEdit(str(Config["constants.CrystallographicInfo.dMin"])), self)
 
@@ -102,16 +104,19 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.recalculationButton.clicked.connect(self.emitValueChange)
 
         smoothingLayout = QHBoxLayout()
+        smoothingLayout.addWidget(self.smoothingLabel)
         smoothingLayout.addWidget(self.smoothingSlider)
         smoothingLayout.addWidget(self.smoothingLineEdit)
         smoothingLayout.addWidget(self.fielddMin)
+
+        # self.fieldLayout = QGridLayout()
 
         # add all elements to the grid layout
         self.layout.addWidget(self.navigationBar, 0, 0)
         self.layout.addWidget(self.canvas, 1, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 2, 0)
         self.layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
-        self.layout.addLayout(smoothingLayout, 3, 0)
+        self.layout.addLayout(smoothingLayout, 3, 0, 1, 2)
         self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 4, 0)
         self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 4, 1)
         self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)

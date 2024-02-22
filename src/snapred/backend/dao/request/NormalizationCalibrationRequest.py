@@ -13,7 +13,7 @@ class NormalizationCalibrationRequest(BaseModel):
     useLiteMode: bool = True  # TODO turn this on inside the view and workflow
     focusGroup: FocusGroup
     calibrantSamplePath: str
-    smoothingParameter: float
+    smoothingParameter: float = Config["calibration.parameters.default.smoothing"]
     crystalDMin: float = Config["constants.CrystallographicInfo.dMin"]
     crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
