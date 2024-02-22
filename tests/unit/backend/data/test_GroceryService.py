@@ -968,15 +968,21 @@ class TestGroceryService(unittest.TestCase):
         self.instance._loadedRuns = {(0, "a"): rawWsName}
         self.instance._loadedGroupings = {(1, "c"): "d"}
 
+        rebuildCache = self.instance.rebuildCache
+        self.instance.rebuildCache = mock.Mock()
+
         self.create_dumb_workspace("b")
         self.instance.clearADS(exclude=self.exclude)
 
-        assert mtd.doesExist("b") is False
-
+        assert mtd.doesExist(rawWsName) is False
         self.create_dumb_workspace(rawWsName)
-        self.instance.clearADS(exclude=self.exclude)
+        assert mtd.doesExist(rawWsName) is True
+
+        self.instance.clearADS(exclude=self.exclude, cache=False)
 
         assert mtd.doesExist(rawWsName) is True
+        self.instance.rebuildCache.assert_called()
+        self.instance.rebuildCache = rebuildCache
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
