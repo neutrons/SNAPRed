@@ -99,15 +99,21 @@ class CalibrationService(Service):
             focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
+            peakFunction=request.peakFunction,
             # fiddly-bits
             peakIntensityThreshold=request.peakIntensityThreshold,
             convergenceThreshold=request.convergenceThreshold,
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
         )
         ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
-        empties = [gpl for gpl in ingredients.groupedPeakLists if len(gpl.peaks) < 2]
+        empties = [gpl for gpl in ingredients.groupedPeakLists if len(gpl.peaks) < 4]
         if len(empties) > 0:
-            raise RuntimeError(f"Insufficient peaks for groups {[gpl.groupID for gpl in empties]}")
+            raise RuntimeError(
+                (
+                    f"Insufficient peaks for groups {[gpl.groupID for gpl in empties]} \n"
+                    "Consider decreasing the Peak Intensity Threshold."
+                )
+            )
 
         # groceries
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()

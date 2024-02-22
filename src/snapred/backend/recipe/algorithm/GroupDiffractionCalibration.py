@@ -77,6 +77,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # from the pixel group, read the overall min/max TOF and binning
         self.TOF = ingredients.pixelGroup.timeOfFlight
 
+        self.peakFunction: str = ingredients.peakFunction.value
         # for each group, need a list of peaks and boundaries of peaks
         # this is found from the groupedPeakList in the ingredients
         self.groupIDs: List[int] = []
@@ -210,7 +211,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 f"Perform PDCalibration on group {groupID}",
                 InputWorkspace=self.outputWStof,
                 TofBinning=self.TOF.params,
-                PeakFunction="Gaussian",
+                PeakFunction=self.peakFunction,
                 BackgroundType="Linear",
                 PeakPositions=self.groupedPeaks[groupID],
                 PeakWindow=self.groupedPeakBoundaries[groupID],
