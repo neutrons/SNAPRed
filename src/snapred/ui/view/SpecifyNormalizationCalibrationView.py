@@ -1,8 +1,11 @@
 import math
 import unittest.mock as mock
+from typing import List
 
 import matplotlib.pyplot as plt
+from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
+from pydantic import parse_obj_as
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -18,14 +21,10 @@ from PyQt5.QtWidgets import (
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
+from snapred.backend.dao import GroupPeakList
 from snapred.meta.Config import Config
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
-from mantid.plots.datafunctions import get_spectrum
-
-from typing import List
-from pydantic import parse_obj_as
-from snapred.backend.dao import GroupPeakList
 
 
 class SpecifyNormalizationCalibrationView(QWidget):
