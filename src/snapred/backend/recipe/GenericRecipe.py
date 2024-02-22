@@ -41,8 +41,6 @@ class GenericRecipe(Generic[T]):
     def executeRecipe(self, **kwargs):
         logger.info("Executing generic recipe for algo: %s" % self.algo)
         kwargs = self._baseModelsToStrings(**kwargs)
-        for key, value in kwargs.items():
-            print(f"{key} -- {value}")
 
         outputs = None
         try:
@@ -54,9 +52,8 @@ class GenericRecipe(Generic[T]):
         logger.info("Finished executing recipe for algo: %s" % self.algo)
 
         # unwrap callback wrappers
-        if type(outputs) is tuple:
-            for i in range(len(outputs)):
-                outputs[i] = outputs[i].get()
+        if isinstance(outputs, tuple):
+            outputs = [x.get() for x in list(outputs)]
         else:
             outputs = outputs.get()
         return outputs

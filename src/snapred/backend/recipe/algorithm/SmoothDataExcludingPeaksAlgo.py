@@ -43,7 +43,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         )
         self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
-        self.declareProperty("SmoothingParameter", defaultValue="", direction=Direction.Input)
+        self.declareProperty("SmoothingParameter", defaultValue=0.0, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
