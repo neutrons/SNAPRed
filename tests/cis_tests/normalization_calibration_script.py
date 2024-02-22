@@ -63,7 +63,7 @@ ingredients = SousChef().getNormalizationIngredients(farmFresh)
 clerk = GroceryListItem.builder()
 clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
 clerk.name("backgroundWorkspace").neutron(backgroundRunNumber).useLiteMode(isLite).add()
-clerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(isLite).fromPrev().add()
+clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
 groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 CNA = CalibrationNormalizationAlgo()

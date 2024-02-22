@@ -52,6 +52,7 @@ class TestGroceryListItem(unittest.TestCase):
         try:
             GroceryListItem(
                 workspaceType="grouping",
+                runNumber=self.runNumber,
                 useLiteMode=True,
                 groupingScheme="Column",
                 instrumentPropertySource="InstrumentDonor",
@@ -68,11 +69,23 @@ class TestGroceryListItem(unittest.TestCase):
             )
             assert "you must set the run config" in e.msg()
 
+    def test_grouping_needs_runNumber(self):
+        # test needs runNumber
+        with pytest.raises(ValueError) as e:
+            GroceryListItem(
+                workspaceType="grouping",
+                groupingScheme="Column",
+                instrumentPropertySource="InstrumentDonor",
+                instrumentSource=self.instrumentDonor,
+            )
+            assert "run number" in e.msg()
+
     def test_grouping_needs_useLiteMode(self):
         # test needs useLiteMode
         with pytest.raises(ValueError) as e:
             GroceryListItem(
                 workspaceType="grouping",
+                runNumber=self.runNumber,
                 groupingScheme="Column",
                 instrumentPropertySource="InstrumentDonor",
                 instrumentSource=self.instrumentDonor,
@@ -84,33 +97,36 @@ class TestGroceryListItem(unittest.TestCase):
         with pytest.raises(ValueError) as e:
             GroceryListItem(
                 workspaceType="grouping",
+                runNumber=self.runNumber,
                 useLiteMode=True,
                 instrumentPropertySource="InstrumentDonor",
                 instrumentSource=self.instrumentDonor,
             )
             assert "grouping scheme" in e.msg()
 
-    def test_grouping_needs_propertySource(self):
-        # test needs instrument property source
+    def test_neutron_with_instrument(self):
+        # workspaceType "neutron" should not specify an instrument
         with pytest.raises(ValueError) as e:
             GroceryListItem(
-                workspaceType="grouping",
+                workspaceType="neutron",
+                runNumber=self.runNumber,
                 useLiteMode=True,
-                groupingScheme="Column",
+                instrumentPropertySource="InstrumentDonor",
                 instrumentSource=self.instrumentDonor,
             )
-            assert "instrument source" in e.msg()
+            assert "should not specify an instrument" in e.msg()
 
-    def test_grouping_needs_instrumentSource(self):
-        # test needs instrument source
+    def test_grouping_incomplete_instrumentSource(self):
+        # workspaceType "grouping" needs a complete instrument source
         with pytest.raises(ValueError) as e:
             GroceryListItem(
                 workspaceType="grouping",
+                runNumber=self.runNumber,
                 useLiteMode=True,
                 groupingScheme="Column",
                 instrumentPropertySource="InstrumentDonor",
             )
-            assert "instrument source" in e.msg()
+            assert "if 'instrumentPropertySource' is specified then 'instrumentSource' must be specified" in e.msg()
 
     def test_builder(self):
         builder = GroceryListItem.builder()

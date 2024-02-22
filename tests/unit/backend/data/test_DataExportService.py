@@ -1,5 +1,7 @@
 import unittest.mock as mock
 
+import pytest
+
 # Mock out of scope modules before importing DataExportService
 # mock.patch("snapred.backend.data"] = mock.Mock()
 with mock.patch.dict(
@@ -29,12 +31,12 @@ with mock.patch.dict(
         dataExportService.exportCalibrationRecord(mock.Mock())
         assert dataExportService.dataService.writeCalibrationRecord.called
 
-    def test_exportCalibrationReductionResult():
+    def test_exportCalibrationWorkspaces():
         dataExportService = DataExportService()
-        dataExportService.dataService.writeCalibrationReductionResult = mock.Mock()
-        dataExportService.dataService.writeCalibrationReductionResult.return_value = "expected"
-        dataExportService.exportCalibrationReductionResult(mock.Mock(), mock.Mock())
-        assert dataExportService.dataService.writeCalibrationReductionResult.called
+        dataExportService.dataService.writeCalibrationWorkspaces = mock.Mock()
+        dataExportService.dataService.writeCalibrationWorkspaces.return_value = "expected"
+        dataExportService.exportCalibrationWorkspaces(mock.Mock())
+        assert dataExportService.dataService.writeCalibrationWorkspaces.called
 
     def test_exportCalibrationState():
         dataExportService = DataExportService()
@@ -65,3 +67,25 @@ with mock.patch.dict(
         dataExportService.dataService.writeNormalizationRecord.return_value = "expected"
         dataExportService.exportNormalizationRecord(mock.Mock())
         assert dataExportService.dataService.writeNormalizationRecord.called
+
+    def test_exportNormalizationWorkspaces():
+        dataExportService = DataExportService()
+        dataExportService.dataService.writeNormalizationWorkspaces = mock.Mock()
+        dataExportService.dataService.writeNormalizationWorkspaces.return_value = "expected"
+        dataExportService.exportNormalizationWorkspaces(mock.Mock())
+        assert dataExportService.dataService.writeNormalizationWorkspaces.called
+
+
+# this at teardown removes the loggers, eliminating logger error printouts
+# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
+@pytest.fixture(autouse=True)
+def clear_loggers():  # noqa: PT004
+    """Remove handlers from all loggers"""
+    import logging
+
+    yield  # ... teardown follows:
+    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
+    for logger in loggers:
+        handlers = getattr(logger, "handlers", [])
+        for handler in handlers:
+            logger.removeHandler(handler)

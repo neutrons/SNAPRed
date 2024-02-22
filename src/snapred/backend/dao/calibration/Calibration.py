@@ -6,7 +6,7 @@ from snapred.backend.dao.state import InstrumentState
 
 
 class Calibration(BaseModel):
-    """This is actually a group of parameters(mostly) used to peform a fitting.
+    """This is actually a group of parameters(mostly) used to perform a fitting.
     The contents of which are static.
     """
 
