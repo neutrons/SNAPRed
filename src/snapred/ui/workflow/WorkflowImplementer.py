@@ -1,3 +1,5 @@
+from mantid.simpleapi import mtd
+
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import (
@@ -6,6 +8,7 @@ from snapred.backend.dao.request import (
 )
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
 from snapred.ui.view.IterateView import IterateView
 
 logger = snapredLogger.getLogger(__name__)
@@ -24,12 +27,11 @@ class WorkflowImplementer:
         self.workflow = None
 
     def _iterate(self, workflowPresenter):
-        # rename output workspaces
-        for i, workspaceName in enumerate(self.outputs.copy()):
-            newName = self.renameTemplate.format(workspaceName=workspaceName, iteration=workflowPresenter.iteration)
-            self.outputs[i] = newName
-            payload = RenameWorkspaceRequest(oldName=workspaceName, newName=newName)
+        for i, wsInfo in enumerate(self.outputs.copy()):
+            newName = self.renameTemplate.format(workspaceName=wsInfo.name, iteration=workflowPresenter.iteration)
+            payload = RenameWorkspaceRequest(oldName=wsInfo.name, newName=newName)
             response = self.request(path="workspace/rename", payload=payload.json())
+            self.outputs[i] = WorkspaceInfo(name=newName, type=mtd[newName].id())
 
         # add outputs to list of all outputs of every iteration
         self.collectiveOutputs.extend(self.outputs)
@@ -37,7 +39,7 @@ class WorkflowImplementer:
         self.outputs = []
 
         # clear every other workspace
-        payload = ClearWorkspaceRequest(exclude=self.collectiveOutputs)
+        payload = ClearWorkspaceRequest(exclude=[wsInfo.name for wsInfo in self.collectiveOutputs])
         response = self.request(path="workspace/clear", payload=payload.json())
         return response
 

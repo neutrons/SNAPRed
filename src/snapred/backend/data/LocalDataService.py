@@ -521,13 +521,25 @@ class LocalDataService:
         self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
 
         # write persistent workspaces
+        calTableWorkspaceName = None
+        maskWorkspaceName = None
         for wsInfo in record.workspaceList:
-            if wsInfo.type == "TableWorkspace" or wsInfo.type == "MaskWorkspace":
-                continue  # skip potential DiffCal workspaces until workspaceList is refactored
-            self.groceryService.writeWorkspace(calibrationPath, wsInfo.name, version)
+            if wsInfo.type == "TableWorkspace":
+                calTableWorkspaceName = wsInfo.name
+            elif wsInfo.type == "MaskWorkspace":
+                maskWorkspaceName = wsInfo.name
+            else:
+                self.groceryService.writeWorkspace(calibrationPath, wsInfo.name, version)
 
-        # separately handle writing DiffCal workspaces until workspaceList is refactored
-        self.groceryService.writeCalibrationTableWorkspaces(path=calibrationPath, runId=runNumber, version=str(version))
+        # separately handle writing DiffCal workspaces
+        if calTableWorkspaceName:
+            filePath = os.path.join(calibrationPath, calTableWorkspaceName)
+            if version:
+                filePath += "_" + wnvf.formatVersion(version)
+            filePath += ".h5"
+            self.groceryService.writeDiffCalTable(
+                path=filePath, calibrationWS=calTableWorkspaceName, maskingWS=maskWorkspaceName
+            )
 
         logger.info(f"Wrote CalibrationRecord: version: {version}")
 

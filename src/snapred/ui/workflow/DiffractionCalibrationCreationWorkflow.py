@@ -116,6 +116,8 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         self.outputs.extend(assessmentResponse.metricWorkspaces)
         self.outputs.extend(self.calibrationRecord.workspaceList)
 
+        self._calibrationAssessmentView.updateRunNumber(self.runNumber)
+
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002

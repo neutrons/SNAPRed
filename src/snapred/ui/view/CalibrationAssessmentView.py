@@ -79,3 +79,6 @@ class CalibrationAssessmentView(QWidget):
         msgBox.setText(msg)
         msgBox.setFixedSize(500, 200)
         msgBox.exec()
+
+    def updateRunNumber(self, runNumber):
+        self.signalRunNumberUpdate.emit(runNumber)
