@@ -41,9 +41,9 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="Workspace with removed peaks",
         )
-        self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("DetectorPeakIngredients", defaultValue="{}", direction=Direction.Input)
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
-        self.declareProperty("SmoothingParameter", defaultValue=0.0, direction=Direction.Input)
+        self.declareProperty("SmoothingParameter", defaultValue=-1.0, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -61,7 +61,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
         definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
         if len(definedWaysToGetPeaks) == 0:
-            msg = "Purse peaks requires either a list of peaks, or ingredients to detect peaks"
+            msg = "Purge peaks requires either a list of peaks, or ingredients to detect peaks"
             errors["DetectorPeaks"] = msg
             errors["DetectorPeakIngredients"] = msg
         elif len(definedWaysToGetPeaks) == 2:
@@ -70,12 +70,9 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
                 the list will be used and ingredients ignored"""
             )
         # validate sources of smoothing parameter
-        ingredientSmoothParam = None
-        ingredientSmoothParam = json.loads(self.getPropertyValue("DetectorPeakIngredients") or "{}").get(
-            "smoothingParameter"
-        )
-        specifiedIngredients = ingredientSmoothParam is not None
-        specifiedProperties = not self.getProperty("SmoothingParameter").isDefault
+        ingredients = json.loads(self.getPropertyValue("DetectorPeakIngredients"))
+        specifiedIngredients = ingredients.get("smoothingParameter") is not None
+        specifiedProperties = self.getProperty("SmoothingParameter").value >= 0
         if not specifiedIngredients and not specifiedProperties:
             msg = "You must specify smoothing parameter through either ingredients or property"
             errors["DetectorPeakIngredients"] = msg
