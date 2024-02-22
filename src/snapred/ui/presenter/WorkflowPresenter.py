@@ -42,24 +42,26 @@ class WorkflowPresenter(object):
     def resetSoft(self):
         self.widget.reset(hard=False)
 
-    def resetHard(self, promptClearWorkspaces=True):
-        def clearWorkspacesRequest():
-            interfaceController = InterfaceController()
-            clearWorkspacesRequest = ClearWorkspaceRequest(cache=True, exclude=[])
-            snapRequest = SNAPRequest(path="workspace/clear", payload=clearWorkspacesRequest.json())
-            interfaceController.executeRequest(snapRequest)
+    def clearWorkspacesRequest(self):
+        interfaceController = InterfaceController()
+        clearWorkspacesRequest = ClearWorkspaceRequest(cache=True, exclude=[])
+        snapRequest = SNAPRequest(path="workspace/clear", payload=clearWorkspacesRequest.json())
+        interfaceController.executeRequest(snapRequest)
 
-        if promptClearWorkspaces:
-            ActionPrompt(
-                "Clear Workspaces?",
-                "Would you like to clear the workspaces? (Recommended)",
-                clearWorkspacesRequest,
-                self.view,
-            )
-        else:
-            clearWorkspacesRequest()
-
+    def resetHard(self):
         self.widget.reset(hard=True)
+
+    def resetAndClear(self):
+        self.resetSoft()
+        self.clearWorkspacesRequest()
+
+    def cancel(self):
+        ActionPrompt(
+            "Are you sure?",
+            "Are you sure you want to cancel the workflow? This will clear all workspaces.",
+            self.resetAndClear,
+            self.view,
+        )
 
     def iterate(self):
         self._iteration += 1
@@ -89,7 +91,7 @@ class WorkflowPresenter(object):
             if self._cancelLambda:
                 widget.onCancelButtonClicked(self._cancelLambda)
             else:
-                widget.onCancelButtonClicked(self.resetHard)
+                widget.onCancelButtonClicked(self.cancel)
 
     def handleIterateButtonClicked(self):
         self._iterateLambda(self)
@@ -103,10 +105,12 @@ class WorkflowPresenter(object):
             ActionPrompt(
                 "‧₊Workflow Complete‧₊",
                 "‧₊‧₊The workflow has been completed successfully!‧₊‧₊",
-                lambda: self.resetHard(False),
-                None,
+                lambda: None,
+                self.view,
             )
-        self.view.advanceWorkflow()
+            self.resetAndClear()
+        else:
+            self.view.advanceWorkflow()
 
     def handleContinueButtonClicked(self, model):
         self.view.continueButton.setEnabled(False)

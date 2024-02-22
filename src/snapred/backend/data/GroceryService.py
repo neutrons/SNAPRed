@@ -489,3 +489,5 @@ class GroceryService:
         # clear the workspaces
         for workspace in workspacesToClear:
             self.deleteWorkspaceUnconditional(workspace)
+
+        self.rebuildCache()
