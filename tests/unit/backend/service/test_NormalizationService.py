@@ -169,7 +169,7 @@ class TestNormalizationService(unittest.TestCase):
         )
 
         self.instance = NormalizationService()
-        self.instance.sousChef.prepDetectorPeaks = MagicMock(return_value={"groupID": 0, "peaks": []})
+        self.instance.sousChef.prepDetectorPeaks = MagicMock(return_value=[{"groupID": 0, "peaks": []}])
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
 
         mockRecipeInst = mockRecipe.return_value

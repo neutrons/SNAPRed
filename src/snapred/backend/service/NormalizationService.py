@@ -5,7 +5,6 @@ from typing import Any, Dict
 from snapred.backend.dao import Limit
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
-    NormalizationIngredients,
 )
 from snapred.backend.dao.normalization import (
     Normalization,
@@ -76,10 +75,8 @@ class NormalizationService(Service):
         )
         ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
 
-        # outputWorkspace=wng.run().runNumber(request.runNumber).group(groupingScheme).auxilary("S+F-Vanadium").build()
         correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
         focusedVanadium = wng.run().runNumber(request.runNumber).group(groupingScheme).auxilary("S+F-Vanadium").build()
-        # focusedVanadium = wng.focusedRawVanadium().runNumber(request.runNumber).group(groupingScheme).build()
         smoothedVanadium = wng.smoothedFocusedRawVanadium().runNumber(request.runNumber).group(groupingScheme).build()
 
         if (

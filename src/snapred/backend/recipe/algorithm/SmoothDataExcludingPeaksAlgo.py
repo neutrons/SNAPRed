@@ -95,7 +95,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         if not self.getProperty("DetectorPeakIngredients").isDefault:
             ingredients = Ingredients.parse_raw(self.getPropertyValue("DetectorPeakIngredients"))
         if self.getProperty("SmoothingParameter").isDefault:
-            self.lam = ingredients.get("smoothingParameter", 0.0)
+            self.lam = ingredients.smoothingParameter
         else:
             self.lam = float(self.getPropertyValue("SmoothingParameter"))
         self.unbagGroceries()

@@ -1,12 +1,11 @@
 import json
-from typing import List
 
 from pydantic import parse_raw_as
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao import GroupPeakList, SNAPRequest, SNAPResponse
+from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.dao.normalization import NormalizationIndexEntry, NormalizationRecord
 from snapred.backend.dao.request import (
     NormalizationCalibrationRequest,

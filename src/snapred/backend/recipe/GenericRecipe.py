@@ -31,16 +31,15 @@ class GenericRecipe(Generic[T]):
     def _baseModelsToStrings(self, **kwargs):
         for key, value in kwargs.items():
             if isBaseModel(value.__class__):
-                # if issubclass(value.__class__, BaseModel):
                 kwargs[key] = value.json()
-            # elif isListOfBaseModel(value.__class__):
+            # NOTE the equivalent function isListOfBaseModel was not working
+            # in the case of the smoothing algo.  The below does work.
             elif isinstance(value, list) and issubclass(value[0].__class__, BaseModel):
                 kwargs[key] = json.dumps([v.dict() for v in value])
         return kwargs
 
     def executeRecipe(self, **kwargs):
         logger.info("Executing generic recipe for algo: %s" % self.algo)
-        print(f"**** DATA FOR {self.algo}****")
         kwargs = self._baseModelsToStrings(**kwargs)
         for key, value in kwargs.items():
             print(f"{key} -- {value}")
