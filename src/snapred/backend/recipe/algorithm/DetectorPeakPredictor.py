@@ -40,7 +40,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         )
         self.declareProperty(
             "PurgeDuplicates",
-            defaultValue=False,
+            defaultValue=True,
             direction=Direction.Input,
             doc="Purge duplicate peaks",
         )
@@ -99,14 +99,15 @@ class DetectorPeakPredictor(PythonAlgorithm):
                 widthLeft = fwhm * self.FWHMMultiplierLeft
                 widthRight = fwhm * self.FWHMMultiplierRight + self.peakTailCoefficient / beta_d
 
-                d = round(d, 5)
+                if self.purgeDuplicates:
+                    d = round(d, 5)
 
                 singleFocusGroupPeaks.append(
                     DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight))
                 )
 
             if self.purgeDuplicates:
-                singleFocusGroupPeaks = list(set(singleFocusGroupPeaks))
+                singleFocusGroupPeaks = list({peak.position.value: peak for peak in singleFocusGroupPeaks}.values())
 
             maxFwhm = self.FWHM * max(dList, default=0.0) * self.delDoD[groupID]
 
