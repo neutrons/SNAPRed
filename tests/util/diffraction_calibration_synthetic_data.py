@@ -118,7 +118,7 @@ class SyntheticData(object):
             groupedPeakLists=[
                 GroupPeakList(groupID=key, peaks=peakLists[key], maxfwhm=maxFWHM) for key in peakLists.keys()
             ],
-            peakFunction=SymmetricPeakEnum.Gaussian,
+            peakFunction=SymmetricPeakEnum.Gaussian.value,
             convergenceThreshold=0.5,
             calPath=Resource.getPath("outputs/calibration/"),
             maxOffset=100.0,  # bins: '100.0' seems to work
