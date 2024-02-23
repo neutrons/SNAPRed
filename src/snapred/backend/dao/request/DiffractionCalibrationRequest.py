@@ -18,7 +18,7 @@ class DiffractionCalibrationRequest(BaseModel):
     calibrantSamplePath: str
     focusGroup: FocusGroup
     useLiteMode: bool
-    peakFunction: SymmetricPeakEnum = Config["calibration.diffraction.peakFunction"]
+    peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     convergenceThreshold: Optional[float] = Config["calibration.diffraction.convergenceThreshold"]
     peakIntensityThreshold: Optional[float] = Config["calibration.diffraction.peakIntensityThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

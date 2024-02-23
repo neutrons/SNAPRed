@@ -68,7 +68,7 @@ calibration:
     nBinsAcrossPeakWidth: 10
     maximumOffset: 10
     maxDSpaceShiftFactor: 2.5
-    peakFunction: Gaussian
+    peakFunction: GAUSSIAN
     minimumPeaksPerGroup: 4
   parameters:
     default:

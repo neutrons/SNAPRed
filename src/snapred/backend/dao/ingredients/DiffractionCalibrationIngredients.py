@@ -16,5 +16,5 @@ class DiffractionCalibrationIngredients(BaseModel):
     pixelGroup: PixelGroup
     groupedPeakLists: List[GroupPeakList]
     convergenceThreshold: float
-    peakFunction: SymmetricPeakEnum = Config["calibration.diffraction.peakFunction"]
+    peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
