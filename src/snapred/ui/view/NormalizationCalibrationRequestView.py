@@ -15,15 +15,11 @@ class NormalizationCalibrationRequestView(BackendRequestView):
         self.backgroundRunNumberField = self._labeledField(
             "Background Run Number:", jsonForm.getField("backgroundRunNumber")
         )
-        self.smoothingParameterField = self._labeledField(
-            "Smoothing Parameter:", jsonForm.getField("smoothingParameter")
-        )
 
         self.litemodeToggle.setEnabled(False)
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.litemodeToggle, 0, 1)
         self.layout.addWidget(self.backgroundRunNumberField, 1, 0)
-        self.layout.addWidget(self.smoothingParameterField, 1, 1)
 
         self.sampleDropDown = QComboBox()
         self.sampleDropDown.addItem("Select Sample")
@@ -43,8 +39,6 @@ class NormalizationCalibrationRequestView(BackendRequestView):
             raise ValueError("Please select a sample")
         if self.groupingFileDropDown.currentIndex() == 0:
             raise ValueError("Please select a grouping file")
-        if self.smoothingParameterField.text() == "":
-            raise ValueError("Please enter a smoothing parameter")
         if self.runNumberField.text() == "":
             raise ValueError("Please enter a run number")
         if self.backgroundRunNumberField.text() == "":

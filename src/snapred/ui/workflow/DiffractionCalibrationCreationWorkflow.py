@@ -99,6 +99,7 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         assessmentResponse = response.data
         self.calibrationRecord = assessmentResponse.record
         self.calibrationRecord.workspaceNames.append(self.responses[-2].data["calibrationTable"])
+        self.calibrationRecord.workspaceNames.append(self.responses[-2].data["maskWorkspace"])
 
         self.outputs.extend(assessmentResponse.metricWorkspaces)
         self.outputs.extend(self.calibrationRecord.workspaceNames)
