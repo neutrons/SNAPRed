@@ -328,12 +328,12 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructCalibrationStatePath(stateId)
-        cablibrationVersionPath: str = statePath + "v_{}/".format(
+        calibrationVersionPath: str = statePath + "v_{}/".format(
             wnvf.formatVersion(version=version, use_v_prefix=False)
         )
-        print(f"************ CALIBRATION DATA PATH: {cablibrationVersionPath}")
+        print(f"************ CALIBRATION DATA PATH: {calibrationVersionPath}")
 
-        return cablibrationVersionPath
+        return calibrationVersionPath
 
     def _constructNormalizationDataPath(self, runId: str, version: str):
         """
