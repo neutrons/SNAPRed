@@ -38,6 +38,12 @@ class DetectorPeakPredictor(PythonAlgorithm):
             direction=Direction.Output,
             doc="The returned list of GroupPeakList objects",
         )
+        self.declareProperty(
+            "PurgeDuplicates",
+            defaultValue=False,
+            direction=Direction.Input,
+            doc="Purge duplicate peaks",
+        )
         self.setRethrows(True)
 
     def chopIngredients(self, ingredients: PeakIngredients) -> None:
@@ -66,6 +72,8 @@ class DetectorPeakPredictor(PythonAlgorithm):
         thresholdA = np.max(A) * ingredients.peakIntensityThreshold
         self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
 
+        self.purgeDuplicates = self.getProperty("PurgeDuplicates").value
+
         self.allGroupIDs = ingredients.pixelGroup.groupIDs
 
     def PyExec(self) -> None:
@@ -91,9 +99,14 @@ class DetectorPeakPredictor(PythonAlgorithm):
                 widthLeft = fwhm * self.FWHMMultiplierLeft
                 widthRight = fwhm * self.FWHMMultiplierRight + self.peakTailCoefficient / beta_d
 
+                d = round(d, 5)
+
                 singleFocusGroupPeaks.append(
                     DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight))
                 )
+
+            if self.purgeDuplicates:
+                singleFocusGroupPeaks = list(set(singleFocusGroupPeaks))
 
             maxFwhm = self.FWHM * max(dList, default=0.0) * self.delDoD[groupID]
 
