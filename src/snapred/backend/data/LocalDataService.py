@@ -4,7 +4,7 @@ import json
 import os
 from errno import ENOENT as NOT_FOUND
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 import h5py
 from mantid.kernel import PhysicalConstants
@@ -32,6 +32,7 @@ from snapred.backend.dao.state import (
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config, Resource
@@ -50,6 +51,7 @@ logger = snapredLogger.getLogger(__name__)
     TBD the interface such that it is fairly generic
     but intersects that of the potential oncat data service interface
 """
+RecoverableErrorType = Literal["State not initialized"]
 
 
 def _createFileNotFoundError(msg, filename):
@@ -714,10 +716,14 @@ class LocalDataService:
         stateID, _ = self._generateStateId(runId)
         calibrationStatePath: str = self._constructCalibrationStatePath(stateID)
 
-        if os.path.exists(calibrationStatePath):
-            return True
-        else:
-            return False
+        if not os.path.exists(calibrationStatePath):
+            raise RecoverableException(
+                exception=FileNotFoundError(f"{calibrationStatePath} not found"),
+                errorType="State not initialized",
+                filePath=calibrationStatePath,
+                runId=runId,
+            )
+        return True
 
     def readSamplePaths(self):
         sampleFolder = Config["instrument.calibration.sample.home"]

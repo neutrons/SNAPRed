@@ -9,7 +9,6 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Resource
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibrationCheckView
 from snapred.ui.widget.JsonForm import JsonForm
 from snapred.ui.workflow.DiffractionCalibrationCreationWorkflow import DiffractionCalibrationCreationWorkflow
 from snapred.ui.workflow.NormalizationCalibrationWorkflow import NormalizationCalibrationWorkflow
@@ -32,27 +31,20 @@ class TestPanelPresenter(object):
         self.jsonForm = JsonForm("Advanced Parameters", jsonSchema=jsonSchema, parent=view)
         self._loadDefaultJsonInput("config//runs", self.jsonForm)
         self.comboSelectionView = BackendRequestView(self.jsonForm, "config//runs", parent=self.view)
-        self.calibrationCheckView = InitializeCalibrationCheckView(parent=self.view)
 
         self.diffractionCalibrationLayout = QGridLayout()
         self.diffractionCalibrationWidget = QWidget()
         self.diffractionCalibrationWidget.setLayout(self.diffractionCalibrationLayout)
-
         self.diffractionCalibrationLayout.addWidget(self._createDiffractionCalibrationWorkflow())
-        self.diffractionCalibrationLayout.addWidget(self.calibrationCheckView)
-        self.diffractionCalibrationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
 
         self.calibrationNormalizationLayout = QGridLayout()
         self.calibrationNormalizationWidget = QWidget()
         self.calibrationNormalizationWidget.setLayout(self.calibrationNormalizationLayout)
-
         self.calibrationNormalizationLayout.addWidget(self._createCalibrationNormalizationWorkflow())
-        self.calibrationNormalizationLayout.addWidget(self.calibrationCheckView)
-        self.calibrationNormalizationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
 
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
-        self.view.tabWidget.addTab(ReductionWorkflow(self.view).widget, "Reduction")
         self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization Calibration")
+        self.view.tabWidget.addTab(ReductionWorkflow(self.view).widget, "Reduction")
 
     def _findSchemaForPath(self, path):
         currentVal = self.apiDict
