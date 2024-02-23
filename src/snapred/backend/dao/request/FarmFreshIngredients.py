@@ -5,6 +5,7 @@ from pydantic import BaseModel, validator
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.state import FocusGroup
 from snapred.meta.Config import Config
+from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
 class FarmFreshIngredients(BaseModel):
@@ -29,6 +30,7 @@ class FarmFreshIngredients(BaseModel):
     convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
+    peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
     crystalDBounds: Limit[float] = Limit(
         minimum=Config["constants.CrystallographicInfo.dMin"],

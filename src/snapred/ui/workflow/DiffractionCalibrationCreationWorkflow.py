@@ -70,12 +70,14 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.useLiteMode = view.litemodeToggle.field.getState()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
+        self.peakFunction = view.peakFunctionDropdown.currentText()
 
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             calibrantSamplePath=self.calibrantSamplePath,
             focusGroup=self.focusGroups[self.focusGroupPath],
             useLiteMode=self.useLiteMode,
+            peakFunction=self.peakFunction,
         )
         payload.convergenceThreshold = view.fieldConvergnceThreshold.get(payload.convergenceThreshold)
         payload.peakIntensityThreshold = view.fieldPeakIntensityThreshold.get(payload.peakIntensityThreshold)

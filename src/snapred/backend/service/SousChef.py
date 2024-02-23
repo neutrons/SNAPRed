@@ -156,6 +156,7 @@ class SousChef(Service):
             runConfig=self.prepRunConfig(ingredients.runNumber),
             pixelGroup=self.prepPixelGroup(ingredients),
             groupedPeakLists=self.prepDetectorPeaks(ingredients),
+            peakFunction=ingredients.peakFunction,
             convergenceThreshold=ingredients.convergenceThreshold,
             maxOffset=ingredients.maxOffset,
         )
