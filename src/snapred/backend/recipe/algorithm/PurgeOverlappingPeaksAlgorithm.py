@@ -62,6 +62,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             result = self.mantidSnapper.DetectorPeakPredictor(
                 "Predicting peaks...",
                 Ingredients=self.getProperty("DetectorPeakIngredients").value,
+                PurgeDuplicates=False,
             )
             self.mantidSnapper.executeQueue()
         else:
