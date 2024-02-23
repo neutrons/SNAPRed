@@ -22,7 +22,7 @@ snapredLogger._level = 20
 
 runNumber = '58882'#58409'
 cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif'
-groupingScheme = "All"
+groupingScheme = "Column"
 isLite = True
 # SET TO TRUE TO STOP WASHING DISHES
 Config._config['cis_mode'] = False
@@ -31,7 +31,7 @@ Config._config['cis_mode'] = False
 ### FETCH GROCERIES
 clerk = GroceryListItem.builder()
 clerk.neutron(runNumber).useLiteMode(isLite).add()
-clerk.grouping(groupingScheme).useLiteMode(isLite).fromPrev().add()
+clerk.grouping(groupingScheme).useLiteMode(isLite).fromRun(runNumber).add()
 groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 ConvertUnits(
@@ -61,9 +61,14 @@ farmFresh = FarmFreshIngredients(
 )
 peakList = SousChef().prepDetectorPeaks(farmFresh)
 
+numSpec = len(peakList)
+ncols = min(numSpec, 3)
+nrows = int(np.ceil( (numSpec-ncols)/ncols )) + 1
+
+figure = plt.figure(constrained_layout=True)
 for i,group in enumerate(peakList):
     tableName = f'peakProperties{i+1}'
-    fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})
+    ax = figure.add_subplot(nrows, ncols, i + 1, projection="mantid")
     ax.plot(mtd[groceries[0]], wkspIndex=i, normalize_by_bin_width=True)
     ax.axvline(x=farmFresh.crystalDBounds.minimum, color="red")
     ax.axvline(x=farmFresh.crystalDBounds.maximum, color="red")
@@ -71,4 +76,4 @@ for i,group in enumerate(peakList):
     for peak in group.peaks:
         ax.fill_between(x, y, where=[(peak.minimum < xx and xx < peak.maximum) for xx in x], color="blue", alpha=0.5)
     ax.legend() # show the legend
-    fig.show()
+figure.show()
