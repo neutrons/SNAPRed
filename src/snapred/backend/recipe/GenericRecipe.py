@@ -2,6 +2,7 @@ import json
 from typing import Generic, TypeVar, get_args
 
 from mantid.simpleapi import ConvertTableToMatrixWorkspace
+from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
@@ -31,13 +32,14 @@ class GenericRecipe(Generic[T]):
         for key, value in kwargs.items():
             if isBaseModel(value.__class__):
                 kwargs[key] = value.json()
-            elif isListOfBaseModel(value.__class__):
+            # NOTE the equivalent function isListOfBaseModel was not working
+            # in the case of the smoothing algo.  The below does work.
+            elif isinstance(value, list) and issubclass(value[0].__class__, BaseModel):
                 kwargs[key] = json.dumps([v.dict() for v in value])
         return kwargs
 
     def executeRecipe(self, **kwargs):
         logger.info("Executing generic recipe for algo: %s" % self.algo)
-
         kwargs = self._baseModelsToStrings(**kwargs)
 
         outputs = None
@@ -50,9 +52,8 @@ class GenericRecipe(Generic[T]):
         logger.info("Finished executing recipe for algo: %s" % self.algo)
 
         # unwrap callback wrappers
-        if type(outputs) is tuple:
-            for i in range(len(outputs)):
-                outputs[i] = outputs[i].get()
+        if isinstance(outputs, tuple):
+            outputs = [x.get() for x in list(outputs)]
         else:
             outputs = outputs.get()
         return outputs

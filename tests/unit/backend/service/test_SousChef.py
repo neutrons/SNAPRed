@@ -203,6 +203,8 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
+            Config["constants.CrystallographicInfo.dMin"],
+            Config["constants.CrystallographicInfo.dMax"],
             self.ingredients.peakIntensityThreshold,
         )
         # ensure the cache is clear
@@ -224,6 +226,8 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
+            Config["constants.CrystallographicInfo.dMin"],
+            Config["constants.CrystallographicInfo.dMax"],
             self.ingredients.peakIntensityThreshold,
         )
         # ensure the cache is prepared

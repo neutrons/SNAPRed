@@ -41,17 +41,14 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="Workspace with removed peaks",
         )
-        self.declareProperty("DetectorPeakIngredients", defaultValue="", direction=Direction.Input)
+        self.declareProperty("DetectorPeakIngredients", defaultValue="{}", direction=Direction.Input)
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
-        self.declareProperty("SmoothingParameter", defaultValue="", direction=Direction.Input)
+        self.declareProperty("SmoothingParameter", defaultValue=-1.0, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def chopIngredients(self, ingredients: Ingredients):
-        if self.getProperty("SmoothingParameter").isDefault:
-            self.lam = ingredients.smoothingParameter
-        else:
-            self.lam = float(self.getPropertyValue("SmoothingParameter"))
+        pass
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("InputWorkspace")
@@ -64,7 +61,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
         definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
         if len(definedWaysToGetPeaks) == 0:
-            msg = "Purse peaks requires either a list of peaks, or ingredients to detect peaks"
+            msg = "Purge peaks requires either a list of peaks, or ingredients to detect peaks"
             errors["DetectorPeaks"] = msg
             errors["DetectorPeakIngredients"] = msg
         elif len(definedWaysToGetPeaks) == 2:
@@ -73,9 +70,9 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
                 the list will be used and ingredients ignored"""
             )
         # validate sources of smoothing parameter
-        ingredientSmoothParam = json.loads(self.getPropertyValue("DetectorPeakIngredients")).get("smoothingParameter")
-        specifiedIngredients = ingredientSmoothParam is not None
-        specifiedProperties = not self.getProperty("SmoothingParameter").isDefault
+        ingredients = json.loads(self.getPropertyValue("DetectorPeakIngredients"))
+        specifiedIngredients = ingredients.get("smoothingParameter") is not None
+        specifiedProperties = self.getProperty("SmoothingParameter").value >= 0
         if not specifiedIngredients and not specifiedProperties:
             msg = "You must specify smoothing parameter through either ingredients or property"
             errors["DetectorPeakIngredients"] = msg
@@ -91,8 +88,13 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         self.log().notice("Removing peaks and smoothing data")
 
         # load ingredients
-        ingredients = Ingredients.parse_raw(self.getPropertyValue("DetectorPeakIngredients"))
-        self.chopIngredients(ingredients)
+        ingredients = None
+        if not self.getProperty("DetectorPeakIngredients").isDefault:
+            ingredients = Ingredients.parse_raw(self.getPropertyValue("DetectorPeakIngredients"))
+        if self.getProperty("SmoothingParameter").isDefault:
+            self.lam = ingredients.smoothingParameter
+        else:
+            self.lam = float(self.getPropertyValue("SmoothingParameter"))
         self.unbagGroceries()
 
         # copy input to make output workspace
@@ -107,7 +109,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             "Calculating spectrum weights...",
             InputWorkspace=self.outputWorkspaceName,
             DetectorPeaks=self.getPropertyValue("DetectorPeaks"),
-            DetectorPeakIngredients=ingredients.json(),
+            DetectorPeakIngredients=ingredients.json() if ingredients else "",
             WeightWorkspace=self.weightWorkspaceName,
         )
         self.mantidSnapper.executeQueue()

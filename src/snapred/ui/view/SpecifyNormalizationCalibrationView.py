@@ -1,8 +1,11 @@
 import math
 import unittest.mock as mock
+from typing import List
 
 import matplotlib.pyplot as plt
+from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
+from pydantic import parse_obj_as
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -18,6 +21,7 @@ from PyQt5.QtWidgets import (
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
+from snapred.backend.dao import GroupPeakList
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.JsonFormList import JsonFormList
@@ -34,9 +38,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
         super().__init__(parent)
         self._jsonFormList = JsonFormList(name, jsonSchemaMap, parent=parent)
-
-        self.groupingSchema = None
-        self.subplots = []
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
@@ -179,18 +180,19 @@ class SpecifyNormalizationCalibrationView(QWidget):
             return
         self.signalValueChanged.emit(index, smoothingValue, dMin)
 
-    def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):
+    def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks):
         self.focusWorkspace = focusWorkspace
         self.smoothedWorkspace = smoothedWorkspace
         self.groupingSchema = (
             str(self.groupingDropDown.currentText()).split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
         )
-        self._updateGraphs()
+        self._updateGraphs(peaks)
 
-    def _updateGraphs(self):
+    def _updateGraphs(self, peaks):
         # get the updated workspaces and optimal graph grid
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
+        peaks = parse_obj_as(List[GroupPeakList], peaks)
         numGraphs = focusedWorkspace.getNumberHistograms()
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
 
@@ -205,6 +207,14 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.set_title(f"Group ID: {i + 1}")
             ax.set_xlabel("d-Spacing (Å)")
             ax.set_ylabel("Intensity")
+            # plot the min value for peaks
+            ax.axvline(x=float(self.fielddMin.field.text()), label="dMin", color="red")
+            # fill in the discovered peaks for easier viewing
+            x, y, _, _ = get_spectrum(focusedWorkspace, i, normalize_by_bin_width=True)
+            # for each detected peak in this group, shade in the peak region
+            for peak in peaks[i].peaks:
+                under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]
+                ax.fill_between(x, y, where=under_peaks, color="blue", alpha=0.5)
 
         # resize window and redraw
         self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))

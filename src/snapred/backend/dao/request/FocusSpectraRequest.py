@@ -5,9 +5,10 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 
 
 class FocusSpectraRequest(BaseModel):
+    runNumber: str
+    useLiteMode: bool = True
+    focusGroup: FocusGroup
+
     inputWorkspace: str
     groupingWorkspace: str
-    runNumber: str
-    focusGroup: FocusGroup
-    useLiteMode: bool = True
     outputWorkspace: str
