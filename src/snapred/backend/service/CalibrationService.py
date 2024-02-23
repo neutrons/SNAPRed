@@ -212,21 +212,24 @@ class CalibrationService(Service):
             wkspaceExists = False
             for metricName in ["sigma", "strain"]:
                 wsName = (
-                    wng.diffCalMetric().metricName(metricName).runNumber(request.runId).version(request.version).build()
+                    wng.diffCalMetric()
+                    .metricName(metricName)
+                    .runNumber(calibrationRecord.runNumber)
+                    .version(str(calibrationRecord.version))
+                    .build()
                 )
                 if self.dataFactoryService.workspaceDoesExist(wsName):
                     wkspaceExists = True
                     break
             if not wkspaceExists:
                 for wsInfo in calibrationRecord.workspaceList:
-                    # wsName = wsInfo.name + "_" + wnvf.formatVersion(version)
-                    wsName = wsInfo.name
+                    wsName = wsInfo.name + "_" + wnvf.formatVersion(calibrationRecord.version)
                     if self.dataFactoryService.workspaceDoesExist(wsName):
                         wkspaceExists = True
                         break
             if wkspaceExists:
                 errorTxt = (
-                    f"Calibration assessment for Run {runId} Version {version} "
+                    f"Calibration assessment for Run {calibrationRecord.runNumber} Version {calibrationRecord.version} "
                     f"is already loaded: see workspace {wsName}."
                 )
                 logger.error(errorTxt)
@@ -241,11 +244,12 @@ class CalibrationService(Service):
         for wsInfo in calibrationRecord.workspaceList:
             if wsInfo.type == "TableWorkspace" or wsInfo.type == "MaskWorkspace":
                 continue  # skip potential DiffCal workspaces until workspaceList is refactored
-            wsInfo.name += "_" + wnvf.formatVersion(str(calibrationRecord.version))
             self.dataFactoryService.loadCalibrationDataWorkspace(
                 calibrationRecord.runNumber,
                 calibrationRecord.version,
-                wsInfo,
+                WorkspaceInfo(
+                    name=wsInfo.name + "_" + wnvf.formatVersion(str(calibrationRecord.version)), type=wsInfo.type
+                ),
             )
 
         # separately handle reading DiffCal workspaces until workspaceList is refactored

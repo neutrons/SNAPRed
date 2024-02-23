@@ -144,13 +144,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         ExtractMask(InputWorkspace=maskWSName, OutputWorkspace=maskWSName)
 
-    def create_fake_persistent_workspace_files(self, path, workspaceList, version: str):
+    def create_fake_cal_workspace_files(self, path, workspaceList, version: str):
         calWSName = None
         maskWSName = None
         for wsInfo in workspaceList:
             if wsInfo.type == "EventWorkspace" or wsInfo.type == "Workspace2D":
                 self.create_fake_table2D_workspace(wsInfo.name)
                 self.instance.dataFactoryService.writeWorkspace(path, wsInfo, version)
+                self.instance.dataFactoryService.deleteWorkspace(wsInfo.name)
+
             elif wsInfo.type == "TableWorkspace":
                 calWSName = wsInfo.name
             elif wsInfo.type == "MaskWorkspace":
@@ -164,6 +166,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.create_fake_diffcal_mask_workspace(maskWSName)
             path = os.path.join(path, calWSName) + "_" + wnvf.formatVersion(version) + ".h5"
             self.instance.groceryService.writeDiffCalTable(path, calibrationWS=calWSName, maskingWS=maskWSName)
+            self.instance.dataFactoryService.deleteWorkspace(calWSName)
+            self.instance.dataFactoryService.deleteWorkspace(maskWSName)
 
     @patch(thisService + "parse_raw_as")
     @patch(thisService + "CalibrationMetricExtractionRecipe")
@@ -297,7 +301,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
-            self.create_fake_persistent_workspace_files(tmpdir, calibRecord.workspaceList, str(calibRecord.version))
+            self.create_fake_cal_workspace_files(tmpdir, calibRecord.workspaceList, str(calibRecord.version))
 
             # Call the method to test. Use a mocked run and a mocked version
             runId = MagicMock()
@@ -319,7 +323,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
-            self.create_fake_persistent_workspace_files(tmpdir, calibRecord.workspaceList, str(calibRecord.version))
+            self.create_fake_cal_workspace_files(tmpdir, calibRecord.workspaceList, str(calibRecord.version))
 
             # Call the method to test. Use a mocked run and a mocked version
             mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
