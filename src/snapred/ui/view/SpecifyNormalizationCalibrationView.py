@@ -33,7 +33,7 @@ from snapred.ui.widget.LabeledField import LabeledField
 class SpecifyNormalizationCalibrationView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
-    signalValueChanged = pyqtSignal(int, float, float)
+    signalValueChanged = pyqtSignal(int, float, float, float, float)
     signalUpdateRecalculationButton = pyqtSignal(bool)
 
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
@@ -100,6 +100,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.smoothingLabel = QLabel("Smoothing :")
 
         self.fielddMin = LabeledField("dMin :", QLineEdit(str(Config["constants.CrystallographicInfo.dMin"])), self)
+        self.fielddMax = LabeledField("dMax :", QLineEdit(str(Config["constants.CrystallographicInfo.dMax"])), self)
+        self.fieldThreshold = LabeledField("intensity threshold :", QLineEdit(str(Config["constants.PeakIntensityFractionThreshold"])), self)
 
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
@@ -108,7 +110,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
         smoothingLayout.addWidget(self.smoothingLabel)
         smoothingLayout.addWidget(self.smoothingSlider)
         smoothingLayout.addWidget(self.smoothingLineEdit)
+        smoothingLayout.addWidget(self.fieldThreshold)
         smoothingLayout.addWidget(self.fielddMin)
+        smoothingLayout.addWidget(self.fielddMax)
 
         # self.fieldLayout = QGridLayout()
 
@@ -165,7 +169,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
         v = self.smoothingSlider.value() / 100.0
         smoothingValue = 10**v
         dMin = float(self.fielddMin.field.text())
-        dMax = float(Config["constants.CrystallographicInfo.dMax"])
+        dMax = float(self.fielddMax.field.text())
+        peakThreshold = float(self.fieldThreshold.text())
         if dMin < 0.1:
             response = QMessageBox.warning(
                 self,
@@ -183,7 +188,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(index, smoothingValue, dMin)
+        self.signalValueChanged.emit(index, smoothingValue, dMin, dMax, peakThreshold)
 
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks):
         self.focusWorkspace = focusWorkspace
@@ -212,14 +217,15 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.set_title(f"Group ID: {i + 1}")
             ax.set_xlabel("d-Spacing (Å)")
             ax.set_ylabel("Intensity")
-            # plot the min value for peaks
-            ax.axvline(x=float(self.fielddMin.field.text()), label="dMin", color="red")
             # fill in the discovered peaks for easier viewing
             x, y, _, _ = get_spectrum(focusedWorkspace, i, normalize_by_bin_width=True)
             # for each detected peak in this group, shade in the peak region
             for peak in peaks[i].peaks:
                 under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]
                 ax.fill_between(x, y, where=under_peaks, color="blue", alpha=0.5)
+            # plot the min value for peaks
+            ax.axvline(x=max(min(x),float(self.fielddMin.field.text())), label="dMin", color="red")
+            ax.axvline(x=min(max(x),float(self.fielddMax.field.text())), label="dMax", color="red")
 
         # resize window and redraw
         self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))
