@@ -16,4 +16,5 @@ class NormalizationCalibrationRequest(BaseModel):
     smoothingParameter: float = Config["calibration.parameters.default.smoothing"]
     crystalDMin: float = Config["constants.CrystallographicInfo.dMin"]
     crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
+    peakIntensityThreshold: float = Config["constants.PeakIntensityFractionThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

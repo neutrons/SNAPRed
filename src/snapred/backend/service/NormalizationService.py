@@ -72,6 +72,7 @@ class NormalizationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
+            peakIntensityThreshold=request.peakIntensityThreshold,
         )
         ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
 
@@ -204,6 +205,7 @@ class NormalizationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
+            peakIntensityThreshold=request.peakIntensityThreshold,
         )
         peaks = self.sousChef.prepDetectorPeaks(farmFresh)
 
