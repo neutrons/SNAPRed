@@ -23,6 +23,10 @@ class GroceryListBuilder:
         self._tokens["groupingScheme"] = groupingScheme
         return self
 
+    def fromRun(self, runId: str):
+        self._tokens["runNumber"] = runId
+        return self
+
     def specialOrder(self):
         self._tokens["isOutput"] = True
         return self
@@ -60,19 +64,15 @@ class GroceryListBuilder:
         return self
 
     def source(self, **kwarg):
+        # This setter is retained primarily to allow overriding the
+        #   automatic instrument-donor caching system.
         if len(kwarg.keys()) > 1:
             raise RuntimeError("You can only specify one instrument source")
         else:
             self._hasInstrumentSource = True
-            propuhdy, source = list(kwarg.items())[0]
-            self._tokens["instrumentPropertySource"] = propuhdy
-            self._tokens["instrumentSource"] = source
-        return self
-
-    def fromPrev(self):
-        self._hasInstrumentSource = True
-        self._tokens["instrumentPropertySource"] = "InstrumentDonor"
-        self._tokens["instrumentSource"] = "prev"
+            instrumentPropertySource, instrumentSource = list(kwarg.items())[0]
+            self._tokens["instrumentPropertySource"] = instrumentPropertySource
+            self._tokens["instrumentSource"] = instrumentSource
         return self
 
     def name(self, name: str):
@@ -88,17 +88,13 @@ class GroceryListBuilder:
         return self
 
     def build(self) -> GroceryListItem:
-        # if no instrument source set, use the instrument filename
-        if self._tokens["workspaceType"] == "grouping" and not self._hasInstrumentSource:
-            self._tokens["instrumentPropertySource"] = "InstrumentFilename"
-            self._tokens["instrumentSource"] = str(Config["instrument.native.definition.file"])
         # create the grocery item list, and return
         return GroceryListItem(**self._tokens)
 
     def add(self):
         self._list.append(self.build())
-        self._hasInstrumentSource = False
         self._tokens = {}
+        self._hasInstrumentSource = False
 
     def buildList(self) -> List[GroceryListItem]:
         if self._tokens != {}:

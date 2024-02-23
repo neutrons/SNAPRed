@@ -36,12 +36,44 @@
   -->
 
   <!--DETECTORS-->
-  <component type="Column1">
-    <location x="-2.0+value" z="-5.0+value"/>
+  <component type="East">
+    <location >
+      <parameter name="roty">
+        <logfile id="det_arc2" eq="180.0+value"/>
+      </parameter>
+      <parameter name="r-position">
+        <logfile id="det_lin2" eq="0.5+value" />
+      </parameter>
+      <parameter name="t-position">
+        <logfile id="det_arc2" />
+      </parameter>
+    </location>
   </component>
-  <component type="Column2">
-    <location x="+2.0+value" z="-5.0+value"/>
+  <component type="West">
+    <location >
+      <parameter name="roty">
+        <logfile id="det_arc1" eq="180.0+value"/>
+      </parameter>
+      <parameter name="r-position">
+        <logfile id="det_lin1" eq="0.5+value" />
+      </parameter>
+      <parameter name="t-position">
+        <logfile id="det_arc1" />
+      </parameter>
+    </location>
   </component>
+
+  <type name="East">
+    <component type="Column1">
+      <location x="-2.0+value" z="-5.0+value"/>
+    </component>
+  </type>
+  <type name="West">
+    <component type="Column2">
+      <location x="+2.0+value" z="-5.0+value"/>
+    </component>
+  </type>
+
 
   <type name="Column1">
     <component type="panel" idstart="0" idfillbyfirst="x" idstepbyrow="2" >

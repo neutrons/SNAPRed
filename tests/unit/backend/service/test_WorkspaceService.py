@@ -19,4 +19,4 @@ class TestWorkspaceService:
         service = WorkspaceService()
         service.groceryService = mockGroceryService
         service.clear('{"exclude": ["name"]}')
-        mockGroceryService.clearADS.assert_called_once_with(["name"])
+        mockGroceryService.clearADS.assert_called_once_with(["name"], False)

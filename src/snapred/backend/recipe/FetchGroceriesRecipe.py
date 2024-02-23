@@ -20,10 +20,12 @@ class FetchGroceriesRecipe:
     def executeRecipe(
         self,
         filename: str,
-        workspace: str,
+        workspace: str = "",
         loader: str = "",
         instrumentPropertySource=None,
         instrumentSource="",
+        *,
+        loaderArgs: str = "",
     ) -> Dict[str, Any]:
         """
         Wraps the fetch groceries algorithm
@@ -32,7 +34,8 @@ class FetchGroceriesRecipe:
         - workspace -- a string name for the workspace to load data into
         - loader -- the loading algorithm to use, if you think you already know
         - instrumentPropertySource -- (optional) the property to specify the instrument source
-        - instrumentSource -- (optional) the source of the instrument for grouping workspaces
+        - instrumentSource -- (optional) the source of the instrument for grouping and mask workspaces
+        - loaderArgs -- any required keyword arguments for the loader
         outputs a dictionary with keys
         - "result": true if everything ran correctly
         - "loader": the loader that was used by the algorithm, use it next time (is blank if loading skipped)
@@ -48,8 +51,9 @@ class FetchGroceriesRecipe:
         algo.setPropertyValue("Filename", filename)
         algo.setPropertyValue("OutputWorkspace", workspace)
         algo.setPropertyValue("LoaderType", loader)
+        algo.setPropertyValue("LoaderArgs", loaderArgs)
         if instrumentPropertySource is not None:
-            algo.setProperty(str(instrumentPropertySource), instrumentSource)
+            algo.setPropertyValue(str(instrumentPropertySource), instrumentSource)
         try:
             data["result"] = algo.execute()
             data["loader"] = algo.getPropertyValue("LoaderType")

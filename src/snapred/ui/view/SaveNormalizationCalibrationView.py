@@ -1,10 +1,12 @@
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QGridLayout, QLabel, QWidget
 
+from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
+@Resettable
 class SaveNormalizationCalibrationView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)

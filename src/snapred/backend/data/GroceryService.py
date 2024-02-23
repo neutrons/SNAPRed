@@ -1,11 +1,13 @@
+import json
 import os
-from functools import cache
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from mantid.api import AlgorithmManager, mtd
 
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGroupingDefinition
+from snapred.backend.dao.state import DetectorState
+from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
@@ -22,20 +24,42 @@ class GroceryService:
     Just send me a list.
     """
 
-    def __init__(self):
+    dataService: "LocalDataService"
+
+    def __init__(self, dataService: LocalDataService = None):
+        self.dataService = self._defaultClass(dataService, LocalDataService)
+
+        # _loadedRuns caches a count of the number of copies made from the neutron-data workspace
+        #   corresponding to a given (runId, isLiteMode) key:
+        #   This count is:
+        #     None: if a workspace is not loaded;
+        #        0: if it is loaded, but no copies have been made;
+        #       >0: if any copies have been made, since loading
         self._loadedRuns: Dict[Tuple[str, bool], int] = {}
-        self._loadedGroupings: Dict[Tuple[str, bool], str] = {}
+
+        # Cache maps to workspace names, for various purposes
+        self._loadedGroupings: Dict[Tuple[str, str, bool], str] = {}
+        self._loadedInstruments: Dict[Tuple[str, bool], str] = {}
+
         self.grocer = FetchGroceriesRecipe()
 
-    def _key(self, using: str, useLiteMode: bool) -> Tuple[str, bool]:
+    def _defaultClass(self, val, clazz):
+        if val is None:
+            val = clazz()
+        return val
+
+    def _key(self, *tokens: Tuple[Any, ...]) -> Tuple[Any, ...]:
         """
-        Creates keys used for accessing workspaces from the cache
+        Creates keys used for accessing workspaces from the various cache maps
         """
-        return (using, useLiteMode)
+        # Each token needs to be separately hashable, but beyond that,
+        #   enforcing key consistency over distinct cache maps seemed to be overkill.
+        return tokens
 
     def rebuildCache(self):
         self.rebuildNeutronCache()
         self.rebuildGroupingCache()
+        self.rebuildInstrumentCache()
 
     def rebuildNeutronCache(self):
         for loadedRun in self._loadedRuns.copy():
@@ -45,24 +69,63 @@ class GroceryService:
         for loadedGrouping in self._loadedGroupings.copy():
             self._updateGroupingCacheFromADS(loadedGrouping, self._loadedGroupings[loadedGrouping])
 
+    def rebuildInstrumentCache(self):
+        for loadedInstrument in self._loadedInstruments.copy():
+            self._updateInstrumentCacheFromADS(*loadedInstrument)
+
     def getCachedWorkspaces(self):
         """
         Returns a list of all workspaces cached in GroceryService
         """
-        cachedWorkspaces = []
-        cachedWorkspaces.extend(
+        cachedWorkspaces = set()
+        cachedWorkspaces.update(
             [self._createRawNeutronWorkspaceName(runId, useLiteMode) for runId, useLiteMode in self._loadedRuns.keys()]
         )
-        cachedWorkspaces.extend(self._loadedGroupings.values())
+        cachedWorkspaces.update(self._loadedGroupings.values())
+        cachedWorkspaces.update(self._loadedInstruments.values())
 
-        return cachedWorkspaces
+        return list(cachedWorkspaces)
+
+    def _updateNeutronCacheFromADS(self, runId: str, useLiteMode: bool):
+        """
+        If the workspace has been loaded, but is not represented in the cache
+        then update the cache to represent this condition
+        """
+        workspace = self._createRawNeutronWorkspaceName(runId, useLiteMode)
+        key = self._key(runId, useLiteMode)
+        if self.workspaceDoesExist(workspace) and self._loadedRuns.get(key) is None:
+            # 0 => loaded with no copies
+            self._loadedRuns[key] = 0
+        elif self._loadedRuns.get(key) is not None and not self.workspaceDoesExist(workspace):
+            del self._loadedRuns[key]
+
+    def _updateGroupingCacheFromADS(self, key, workspace):
+        """
+        Ensure cache consistency for a single grouping workspace.
+        """
+        if self.workspaceDoesExist(workspace) and self._loadedGroupings.get(key) is None:
+            self._loadedGroupings[key] = workspace
+        elif self._loadedGroupings.get(key) is not None and not self.workspaceDoesExist(workspace):
+            del self._loadedGroupings[key]
+
+    def _updateInstrumentCacheFromADS(self, runId: str, useLiteMode: bool):
+        """
+        Ensure cache consistency for a single instrument-donor workspace.
+        """
+        # The workspace name in the cache may be either a neutron data workspace or an empty-instrument workspace.
+        workspace = self._createRawNeutronWorkspaceName(runId, useLiteMode)
+        key = self._key(runId, useLiteMode)
+        if self.workspaceDoesExist(workspace) and self._loadedInstruments.get(key) is None:
+            self._loadedInstruments[key] = workspace
+        elif self._loadedInstruments.get(key) is not None:
+            workspace = self._loadedInstruments.get(key)
+            if not self.workspaceDoesExist(workspace):
+                del self._loadedInstruments[key]
 
     ## FILENAME METHODS
 
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
-        from mantid.simpleapi import GetIPTS
-
-        ipts = GetIPTS(runNumber, instrumentName)
+        ipts = self.dataService.getIPTS(runNumber, instrumentName)
         return str(ipts)
 
     def _createNeutronFilename(self, runNumber: str, useLiteMode: bool) -> str:
@@ -78,7 +141,7 @@ class GroceryService:
         home = "instrument.calibration.powder.grouping.home"
         pre = "grouping.filename.prefix"
         ext = "grouping.filename." + instr + ".extension"
-        return Config[home] + "/" + Config[pre] + groupingScheme + Config[ext]
+        return f"{Config[home]}/{Config[pre]}{groupingScheme}{Config[ext]}"
 
     ## WORKSPACE NAME METHODS
 
@@ -88,69 +151,52 @@ class GroceryService:
             runNameBuilder.lite(wng.Lite.TRUE)
         return runNameBuilder
 
-    def _createNeutronWorkspaceName(self, runId: str, useLiteMode: bool) -> str:
+    def _createNeutronWorkspaceName(self, runId: str, useLiteMode: bool) -> WorkspaceName:
         return self._createNeutronWorkspaceNameBuilder(runId, useLiteMode).build()
 
-    def _createRawNeutronWorkspaceName(self, runId: str, useLiteMode: bool) -> str:
-        return self._createNeutronWorkspaceNameBuilder(runId, useLiteMode).auxilary("Raw").build()
+    def _createRawNeutronWorkspaceName(self, runId: str, useLiteMode: bool) -> WorkspaceName:
+        return self._createNeutronWorkspaceNameBuilder(runId, useLiteMode).auxiliary("Raw").build()
 
-    def _createCopyNeutronWorkspaceName(self, runId: str, useLiteMode: bool, numCopies: int) -> str:
-        return self._createNeutronWorkspaceNameBuilder(runId, useLiteMode).auxilary(f"Copy{numCopies}").build()
+    def _createCopyNeutronWorkspaceName(self, runId: str, useLiteMode: bool, numCopies: int) -> WorkspaceName:
+        return self._createNeutronWorkspaceNameBuilder(runId, useLiteMode).auxiliary(f"Copy{numCopies}").build()
 
-    def _createGroupingWorkspaceName(self, groupingScheme: str, useLiteMode: bool):
+    def _createGroupingWorkspaceName(self, groupingScheme: str, runId: str, useLiteMode: bool) -> WorkspaceName:
+        # TODO: use WNG here!
         if groupingScheme == "Lite":
             return "lite_grouping_map"
         instr = "lite" if useLiteMode else "native"
-        return Config["grouping.workspacename." + instr] + groupingScheme
+        return f"{Config['grouping.workspacename.' + instr]}_{groupingScheme}_{runId}"
 
-    def _createDiffcalInputWorkspaceName(self, runId: str):
+    def _createDiffcalInputWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runId).build()
 
-    def _createDiffcalOutputWorkspaceName(self, runId: str):
+    def _createDiffcalOutputWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalOutput().runNumber(runId).build()
 
-    def _createDiffcalTableWorkspaceName(self, runId: str):
+    def _createDiffcalOutputWorkspaceFilename(self, runId: str, version: str) -> str:
+        return str(
+            Path(self._getCalibrationDataPath(runId, version))
+            / (self._createDiffcalOutputWorkspaceName(runId) + ".nxs")
+        )
+
+    def _createDiffcalTableWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalTable().runNumber(runId).build()
 
-    def _createDiffcalMaskWorkspaceName(self, runId: str):
+    def _createDiffcalMaskWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalMask().runNumber(runId).build()
 
-    ## WRITING TO DISK
-
-    def writeWorkspace(self, path: str, name: WorkspaceName):
-        """
-        Writes a Mantid Workspace to disk.
-        """
-        saveAlgo = AlgorithmManager.create("SaveNexus")
-        saveAlgo.setProperty("InputWorkspace", name)
-        saveAlgo.setProperty("Filename", os.path.join(path, name) + ".nxs")
-
-        saveAlgo.execute()
-
-    def writeGrouping(self, path: str, name: WorkspaceName):
-        """
-        Writes a Mantid Workspace to disk.
-        """
-        saveAlgo = AlgorithmManager.create("SaveGroupingDefinition")
-        saveAlgo.setProperty("GroupingWorkspace", name)
-        saveAlgo.setProperty("OutputFilename", os.path.join(path, name))
-        saveAlgo.execute()
-
-    def writeDiffCalTable(self, path: str, name: WorkspaceName, grouping: WorkspaceName = "", mask: WorkspaceName = ""):
-        """
-        Writes a diffcal table from a Mantid TableWorkspace to disk.
-        """
-        saveAlgo = AlgorithmManager.create("SaveDiffCal")
-        saveAlgo.setPropertyValue("CalibrationWorkspace", name)
-        saveAlgo.setPropertyValue("GroupingWorkspace", grouping)
-        saveAlgo.setPropertyValue("MaskWorkspace", mask)
-        saveAlgo.setPropertyValue("Filename", os.path.join(path, name))
-        saveAlgo.execute()
+    def _createDiffcalTableFilename(self, runId: str, version: str) -> str:
+        return str(
+            Path(self._getCalibrationDataPath(runId, version)) / (self._createDiffcalTableWorkspaceName(runId) + ".h5")
+        )
 
     ## ACCESSING WORKSPACES
     """
     These methods are for acccessing Mantid's ADS at the service layer
     """
+
+    def uniqueHiddenName(self):
+        return mtd.unique_hidden_name()
 
     def workspaceDoesExist(self, name: WorkspaceName):
         return mtd.doesExist(name)
@@ -190,52 +236,110 @@ class GroceryService:
             ws = None
         return ws
 
-    def _updateNeutronCacheFromADS(self, runId: str, useLiteMode: bool):
-        """
-        If the workspace has been loaded, but is not represented in the cache
-        then update the cache to represent this condition
-        """
-        workspace = self._createRawNeutronWorkspaceName(runId, useLiteMode)
-        key = self._key(runId, useLiteMode)
-        # if the raw data has been loaded but not represent in cache
-        if self.workspaceDoesExist(workspace) and self._loadedRuns.get(key) is None:
-            self._loadedRuns[key] = 0
-        # if the raw data has not been loaded but the cache thinks it has
-        if self._loadedRuns.get(key) is not None and not self.workspaceDoesExist(workspace):
-            del self._loadedRuns[key]
-
-    def _updateGroupingCacheFromADS(self, key, workspace):
-        """
-        If the workspace has been loaded, but is not represented in the cache
-        then update the cache to represent this condition
-        """
-        if self.workspaceDoesExist(workspace) and self._loadedGroupings.get(key) is None:
-            self._loadedGroupings[key] = workspace
-        if self._loadedGroupings.get(key) is not None and not self.workspaceDoesExist(workspace):
-            del self._loadedGroupings[key]
-
     ## FETCH METHODS
     """
-    The fetch methods orchestrate finding datas files, loading them into workspaces,
+    The fetch methods orchestrate finding data files, loading them into workspaces,
     and preserving a cache to prevent re-loading the same data files.
     """
 
-    def fetchWorkspace(self, path: str, name: WorkspaceName, loader: str = "") -> WorkspaceName:
+    def _fetchInstrumentDonor(self, runId: str, useLiteMode: bool) -> WorkspaceName:
+        self._updateInstrumentCacheFromADS(runId, useLiteMode)
+
+        key = self._key(runId, useLiteMode)
+        wsName = self._loadedInstruments.get(key)
+        if wsName is None:
+            self._updateNeutronCacheFromADS(runId, useLiteMode)
+            if self._loadedRuns.get(key) is not None:
+                # If possible, use a cached neutron-data workspace as an instrument donor
+                wsName = self._createRawNeutronWorkspaceName(runId, useLiteMode)
+            else:
+                # Otherwise, create an instrument donor.
+                #   Alternatively, depending on performance, loading the corresponding neutron-data workspace
+                #   could also be triggered here.
+
+                wsName = self.uniqueHiddenName()
+
+                # Load the bare instrument:
+                instrumentFilename = (
+                    Config["instrument.lite.definition.file"]
+                    if useLiteMode
+                    else Config["instrument.native.definition.file"]
+                )
+                loadEmptyInstrument = AlgorithmManager.create("LoadEmptyInstrument")
+                loadEmptyInstrument.setProperty("Filename", instrumentFilename)
+                loadEmptyInstrument.setProperty("OutputWorkspace", wsName)
+                loadEmptyInstrument.execute()
+
+                # Initialize the instrument parameters
+                # (Reserved IDs will use the unmodified instrument.)
+                if runId != GroceryListItem.RESERVED_NATIVE_RUNID and runId != GroceryListItem.RESERVED_LITE_RUNID:
+                    self._updateInstrumentParameters(runId, wsName)
+            self._loadedInstruments[key] = wsName
+        return wsName
+
+    def _updateInstrumentParameters(self, runNumber: str, wsName: str):
+        """
+        Update mutable instrument parameters
+        """
+        # Moved from `PixelGroupingParametersCalculationAlgorithm` for more general application here.
+
+        detectorState: DetectorState = self._getDetectorState(runNumber)
+
+        # Add sample logs with detector "arc" and "lin" parameters to the workspace
+        # NOTE after adding the logs, it is necessary to update the instrument to
+        #  factor in these new parameters, or else calculations will be inconsistent.
+        #  This is done with a call to `ws->populateInstrumentParameters()` from within mantid.
+        #  This call only needs to happen with the last log
+        logsAdded = 0
+        for paramName in ("arc", "lin"):
+            for index in range(2):
+                addSampleLog = AlgorithmManager.create("AddSampleLog")
+                addSampleLog.setProperty("Workspace", wsName)
+                addSampleLog.setProperty("LogName", "det_" + paramName + str(index + 1))
+                addSampleLog.setProperty("LogText", str(getattr(detectorState, paramName)[index]))
+                addSampleLog.setProperty("LogType", "Number Series")
+                addSampleLog.setProperty("UpdateInstrumentParameters", (logsAdded >= 3))
+                addSampleLog.execute()
+                logsAdded += 1
+
+    def _getDetectorState(self, runNumber: str) -> DetectorState:
+        """
+        Get the `DetectorState` associated with a given run number
+        """
+        # This method is provided to facilitate workspace loading with a _complete_ instrument state
+        return self.dataService.readDetectorState(runNumber)
+
+    def _getCalibrationDataPath(self, runNumber: str, version: str) -> str:
+        return self.dataService._constructCalibrationDataPath(runNumber, version)
+
+    def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> WorkspaceName:
         """
         Will fetch a workspace given a name and a path.
-        Returns the same workspace name, if the workspace exists or can be loaded.
+        inputs:
+        - "filePath": complete path to workspace file
+        - "name": workspace name
+        - "loader" -- (optional) the loader algorithm to use to load the data
+        outputs a dictionary with keys
+        - "result": true if everything ran correctly
+        - "loader": the loader that was used by the algorithm; use it next time
+        - "workspace": the name of the workspace created in the ADS
         """
+        data = None
         if self.workspaceDoesExist(name):
-            return name
+            data = {
+                "result": True,
+                "loader": "cached",
+                "workspace": name,
+            }
         else:
             try:
-                res = self.grocer.executeRecipe(path, name, loader)
+                data = self.grocer.executeRecipe(filePath, name, loader)
             except RuntimeError:
-                raise RuntimeError(f"Failed to load workspace {name} from {path}")
-            if res["result"] is True:
-                return res["workspace"]
-            else:
-                raise RuntimeError(f"Failed to load workspace {name} from {path}")
+                # Mantid's error message is not particularly useful, although it's logged in any case
+                data = {"result": False}
+            if not data["result"]:
+                raise RuntimeError(f"unable to load workspace {name} from {filePath}")
+        return data
 
     def fetchNeutronDataSingleUse(self, runId: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
         """
@@ -353,15 +457,11 @@ class GroceryService:
         - "loader", either "LoadGroupingDefinition" or "cached"
         - "workspace", the name of the new grouping workspace in the ADS
         """
-        itemTuple = (item.groupingScheme, item.useLiteMode)
-        workspaceName = self._createGroupingWorkspaceName(*itemTuple)
-        filename = self._createGroupingFilename(*itemTuple)
-        groupingLoader = "LoadGroupingDefinition"
-        key = self._key(*itemTuple)
+        key = self._key(item.groupingScheme, item.runNumber, item.useLiteMode)
+        workspaceName = self._createGroupingWorkspaceName(item.groupingScheme, item.runNumber, item.useLiteMode)
 
-        groupingIsLoaded = self._loadedGroupings.get(key) is not None and self.workspaceDoesExist(
-            self._loadedGroupings.get(key)
-        )
+        self._updateGroupingCacheFromADS(key, workspaceName)
+        groupingIsLoaded = self._loadedGroupings.get(key) is not None
 
         if groupingIsLoaded:
             data = {
@@ -370,16 +470,71 @@ class GroceryService:
                 "workspace": workspaceName,
             }
         else:
-            if self._loadedGroupings.get(key) is not None:
-                self.rebuildCache()
+            filename = self._createGroupingFilename(item.groupingScheme, item.useLiteMode)
+            groupingLoader = "LoadGroupingDefinition"
+
+            # Unless overridden: use a cached workspace as the instrument donor.
+            instrumentPropertySource, instrumentSource = (
+                ("InstrumentDonor", self._fetchInstrumentDonor(item.runNumber, item.useLiteMode))
+                if not item.instrumentPropertySource
+                else (item.instrumentPropertySource, item.instrumentSource)
+            )
             data = self.grocer.executeRecipe(
                 filename=filename,
                 workspace=workspaceName,
                 loader=groupingLoader,
-                instrumentPropertySource=item.instrumentPropertySource,
-                instrumentSource=item.instrumentSource,
+                instrumentPropertySource=instrumentPropertySource,
+                instrumentSource=instrumentSource,
             )
             self._loadedGroupings[key] = data["workspace"]
+
+        return data
+
+    def fetchCalibrationWorkspaces(self, item: GroceryListItem) -> Dict[str, Any]:
+        """
+        Fetch diffraction-calibration table and mask workspaces
+        inputs:
+        - item, a GroceryListItem
+        outputs a dictionary with
+        - "result", true if everything ran correctly
+        - "loader", either "LoadDiffractionCalibrationWorkspaces" or "cached"
+        - "workspace", the name of the new workspace in the ADS:
+          this defaults to the name of the calibration-table workspace, but the
+          mask workspace will be loaded as well
+        """
+
+        runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber)
+        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber)
+
+        if self.workspaceDoesExist(tableWorkspaceName):
+            data = {
+                "result": True,
+                "loader": "cached",
+                "workspace": tableWorkspaceName,
+            }
+        else:
+            # table + mask are in the same hdf5 file:
+            filename = self._createDiffcalTableFilename(runNumber, version)
+
+            # Unless overridden: use a cached workspace as the instrument donor.
+            instrumentPropertySource, instrumentSource = (
+                ("InstrumentDonor", self._fetchInstrumentDonor(runNumber, useLiteMode))
+                if not item.instrumentPropertySource
+                else (item.instrumentPropertySource, item.instrumentSource)
+            )
+            data = self.grocer.executeRecipe(
+                filename=filename,
+                # IMPORTANT: Both table and mask workspaces will be loaded,
+                #   however, the 'workspace' property needs to return
+                #   a `MatrixWorkspace`-derived property, otherwise Mantid gets confused.
+                workspace=maskWorkspaceName,
+                loader="LoadCalibrationWorkspaces",
+                instrumentPropertySource=instrumentPropertySource,
+                instrumentSource=instrumentSource,
+                loaderArgs=json.dumps({"CalibrationTable": tableWorkspaceName, "MaskWorkspace": maskWorkspaceName}),
+            )
+            data["workspace"] = tableWorkspaceName
 
         return data
 
@@ -391,7 +546,6 @@ class GroceryService:
         - the names of the workspaces, in the same order as items in the grocery list
         """
         groceries = []
-        prev: WorkspaceName = ""
         for item in groceryList:
             match item.workspaceType:
                 # for neutron data stored in a nexus file
@@ -400,28 +554,39 @@ class GroceryService:
                         res = self.fetchNeutronDataCached(item.runNumber, item.useLiteMode, item.loader)
                     else:
                         res = self.fetchNeutronDataSingleUse(item.runNumber, item.useLiteMode, item.loader)
-                    # save the most recently-loaded neutron data as a possible instrument donor
-                    prev = res["workspace"]
                 # for grouping definitions
                 case "grouping":
-                    # this flag indicates to use most recently-loaded nexus data as the instrument donor
-                    if item.instrumentSource == "prev":
-                        item.instrumentPropertySource = "InstrumentDonor"
-                        item.instrumentSource = prev
                     res = self.fetchGroupingDefinition(item)
                 case "diffcal":
-                    res = {"result": True, "workspace": self._createDiffcalInputWorkspaceName(item.runNumber)}
+                    res = {"result": False, "workspace": self._createDiffcalInputWorkspaceName(item.runNumber)}
                     raise RuntimeError(
                         "not implemented: no path available to fetch diffcal "
                         + f"input table workspace: '{res['workspace']}'"
                     )
-                # for output (i.e. special-order) workspaces
+                # for diffraction-calibration workspaces
                 case "diffcal_output":
-                    res = {"result": True, "workspace": self._createDiffcalOutputWorkspaceName(item.runNumber)}
+                    diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(item.runNumber)
+                    if item.isOutput:
+                        res = {"result": True, "workspace": diffcalOutputWorkspaceName}
+                    else:
+                        res = self.fetchWorkspace(
+                            self._createDiffcalOutputWorkspaceFilename(item.runNumber, item.version),
+                            diffcalOutputWorkspaceName,
+                        )
                 case "diffcal_table":
-                    res = {"result": True, "workspace": self._createDiffcalTableWorkspaceName(item.runNumber)}
+                    tableWorkspaceName = self._createDiffcalTableWorkspaceName(item.runNumber)
+                    if item.isOutput:
+                        res = {"result": True, "workspace": tableWorkspaceName}
+                    else:
+                        res = self.fetchCalibrationWorkspaces(item)
+                        res["workspace"] = tableWorkspaceName
                 case "diffcal_mask":
-                    res = {"result": True, "workspace": self._createDiffcalMaskWorkspaceName(item.runNumber)}
+                    maskWorkspaceName = self._createDiffcalMaskWorkspaceName(item.runNumber)
+                    if item.isOutput:
+                        res = {"result": True, "workspace": self._createDiffcalMaskWorkspaceName(item.runNumber)}
+                    else:
+                        res = self.fetchCalibrationWorkspaces(item)
+                        res["workspace"] = maskWorkspaceName
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
             # check that the fetch operation succeeded and if so append the workspace
@@ -476,7 +641,7 @@ class GroceryService:
         else:
             pass
 
-    def clearADS(self, exclude: List[str] = []):
+    def clearADS(self, exclude: List[str] = [], cache: bool = False):
         """
         Clears ads of all workspaces except those in the exclude list and cache.
         """
@@ -484,8 +649,11 @@ class GroceryService:
         # filter exclude
         workspacesToClear = [w for w in workspacesToClear if w not in exclude]
         # filter caches
-        workspaceCache = self.getCachedWorkspaces()
-        workspacesToClear = [w for w in workspacesToClear if w not in workspaceCache]
+        if not cache:
+            workspaceCache = self.getCachedWorkspaces()
+            workspacesToClear = [w for w in workspacesToClear if w not in workspaceCache]
         # clear the workspaces
         for workspace in workspacesToClear:
             self.deleteWorkspaceUnconditional(workspace)
+
+        self.rebuildCache()

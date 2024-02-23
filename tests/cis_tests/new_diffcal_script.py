@@ -54,7 +54,7 @@ ingredients = SousChef().prepDiffractionCalibrationIngredients(farmFresh)
 
 clerk = GroceryListItem.builder()
 clerk.neutron(runNumber).useLiteMode(isLite).add()
-clerk.grouping(groupingScheme).useLiteMode(isLite).add()
+clerk.fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
 groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 ### RUN PIXEL CALIBRATION ##########
@@ -102,7 +102,7 @@ assert False
 
 clerk = GroceryListItem.builder()
 clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
-clerk.name("groupingWorkspace").grouping(groupingScheme).useLiteMode(isLite).fromPrev().add()
+clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
 
 groceries = GroceryService().fetchGroceryDict(
     groceryDict=clerk.buildDict(),

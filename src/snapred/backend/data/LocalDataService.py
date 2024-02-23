@@ -7,7 +7,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Tuple
 
 import h5py
+from mantid.api import AlgorithmManager, ITableWorkspace
+from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import PhysicalConstants
+from mantid.simpleapi import GetIPTS, mtd
 from pydantic import parse_file_as
 
 from snapred.backend.dao import (
@@ -35,10 +38,12 @@ from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGroupingDefinition
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as WNG
 from snapred.meta.redantic import (
     write_model_list_pretty,
     write_model_pretty,
@@ -63,9 +68,9 @@ class LocalDataService:
     reductionParameterCache: Dict[str, Any] = {}
     iptsCache: Dict[str, Any] = {}
     stateIdCache: Dict[str, ObjectSHA] = {}
-    instrumentConfig: "InstrumentConfig"  # Optional[InstrumentConfig]
+    instrumentConfig: "InstrumentConfig"
     verifyPaths: bool = True
-    groceryService: GroceryService = GroceryService()
+
     # conversion factor from microsecond/Angstrom to meters
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
@@ -141,12 +146,22 @@ class LocalDataService:
             stateId=diffCalibration.instrumentState.id,
         )
 
+    def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
+        ipts = GetIPTS(runNumber, instrumentName)
+        return str(ipts)
+
+    def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
+        # Is the workspace an instance of the specified type.
+        if not mtd.doesExist(wsName):
+            return False
+        return isinstance(mtd[wsName], wsType)
+
     def readRunConfig(self, runId: str) -> RunConfig:
         return self._readRunConfig(runId)
 
     def _readRunConfig(self, runId: str) -> RunConfig:
-        # lookup IPST number
-        iptsPath = self.groceryService.getIPTS(runId)
+        # lookup path for IPTS number
+        iptsPath = self.getIPTS(runId)
 
         return RunConfig(
             IPTS=iptsPath,
@@ -173,7 +188,7 @@ class LocalDataService:
         if os.path.exists(fName):
             f = h5py.File(fName, "r")
         else:
-            raise FileNotFoundError("File {} does not exist".format(fName))
+            raise FileNotFoundError(f"PVFile '{fName}' does not exist")
         return f
 
     @ExceptionHandler(StateValidationException)
@@ -182,23 +197,17 @@ class LocalDataService:
             SHA = self.stateIdCache[runId]
             return SHA.hex, SHA.decodedKey
 
-        f = self._readPVFile(runId)
-
-        try:
-            det_arc1 = f.get("entry/DASlogs/det_arc1/value")[0]
-            det_arc2 = f.get("entry/DASlogs/det_arc2/value")[0]
-            wav = f.get("entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value")[0]
-            freq = f.get("entry/DASlogs/BL3:Det:TH:BL:Frequency/value")[0]
-            GuideIn = f.get("entry/DASlogs/BL3:Mot:OpticsPos:Pos/value")[0]
-        except:  # noqa: E722
-            raise ValueError("Could not find all required logs in file {}".format(self._constructPVFilePath(runId)))
-
+        detectorState = self.readDetectorState(runId)
         stateID = StateId(
-            vdet_arc1=det_arc1,
-            vdet_arc2=det_arc2,
-            WavelengthUserReq=wav,
-            Frequency=freq,
-            Pos=GuideIn,
+            vdet_arc1=detectorState.arc[0],
+            vdet_arc2=detectorState.arc[1],
+            WavelengthUserReq=detectorState.wav,
+            Frequency=detectorState.freq,
+            Pos=detectorState.guideStat,
+            # TODO: these should probably be added:
+            #   if they change with the runId, there will be a potential hash collision.
+            # det_lin1=detectorState.lin[0],
+            # det_lin2=detectorState.lin[1],
         )
         SHA = ObjectSHA.fromObject(stateID)
         self.stateIdCache[runId] = SHA
@@ -258,21 +267,31 @@ class LocalDataService:
             normalizationIndex = parse_file_as(List[NormalizationIndexEntry], indexPath)
         return normalizationIndex
 
+    def _parseAppliesTo(self, appliesTo: str):
+        symbols = [">=", "<=", "<", ">"]
+        # find first
+        symbol = next((s for s in symbols if s in appliesTo), "")
+        # parse runnumber
+        runNumber = appliesTo if symbol == "" else appliesTo.split(symbol)[-1]
+        return symbol, runNumber
+
+    def _compareRunNumbers(self, runNumber1: str, runNumber2: str, symbol: str):
+        expressions = {
+            ">=": lambda x, y: x >= y,
+            "<=": lambda x, y: x <= y,
+            "<": lambda x, y: x < y,
+            ">": lambda x, y: x > y,
+            "": lambda x, y: x == y,
+        }
+        return expressions[symbol](int(runNumber1), int(runNumber2))
+
     def _isApplicableEntry(self, calibrationIndexEntry, runId):
         """
         Checks to see if an entry in the calibration index applies to a given run id via numerical comparison.
         """
-        if calibrationIndexEntry.appliesTo == runId:
-            return True
-        if calibrationIndexEntry.appliesTo.startswith(">"):
-            # get latest entry that applies to a runId greater than this runId
-            if int(runId) > int(calibrationIndexEntry.appliesTo[1:]):
-                return True
-        if calibrationIndexEntry.appliesTo.startswith("<"):
-            # get latest entry that applies to a runId less than this runId
-            if int(runId) < int(calibrationIndexEntry.appliesTo[1:]):
-                return True
-        return False
+
+        symbol, runNumber = self._parseAppliesTo(calibrationIndexEntry.appliesTo)
+        return self._compareRunNumbers(runId, runNumber, symbol)
 
     def _getVersionFromCalibrationIndex(self, runId: str):
         """
@@ -434,7 +453,7 @@ class LocalDataService:
 
         return record
 
-    def writeNormalizationRecord(self, record: NormalizationRecord, version: int = None):  # noqa: F821
+    def writeNormalizationRecord(self, record: NormalizationRecord, version: int = None) -> NormalizationRecord:  # noqa: F821
         """
         Persists a `NormalizationRecord` to either a new version folder, or overwrite a specific version.
         -- side effect: updates version numbers of incoming `NormalizationRecord` and its nested `Normalization`.
@@ -459,10 +478,18 @@ class LocalDataService:
             os.makedirs(normalizationPath)
         # append to record and write to file
         write_model_pretty(record, recordPath)
-
-        for workspace in record.workspaceNames:
-            self.groceryService.writeWorkspace(normalizationPath, workspace)
         logger.info(f"wrote NormalizationRecord: version: {version}")
+        return record
+
+    def writeNormalizationWorkspaces(self, record: NormalizationRecord) -> NormalizationRecord:
+        """
+        Writes the workspaces associated with a `NormalizationRecord` to disk:
+        -- assumes that `writeNormalizationRecord` has already been called, and that the version folder exists
+        """
+        normalizationDataPath = Path(self._constructNormalizationCalibrationDataPath(record.runNumber, record.version))
+        for workspace in record.workspaceNames:
+            filename = Path(workspace + ".nxs")
+            self.writeWorkspace(normalizationDataPath, filename, workspace)
         return record
 
     def readCalibrationRecord(self, runId: str, version: str = None):
@@ -507,24 +534,41 @@ class LocalDataService:
         write_model_pretty(record, recordPath)
 
         self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
-        for workspace in record.workspaceNames:
-            self.groceryService.writeWorkspace(calibrationPath, workspace)
         logger.info(f"Wrote CalibrationRecord: version: {version}")
         return record
 
-    def writeCalibrationReductionResult(self, runId: str, workspaceName: WorkspaceName, dryrun: bool = False):
-        # use mantid to write workspace to file
-        stateId, _ = self._generateStateId(runId)
-        calibrationPath: str = self._constructCalibrationStatePath(stateId)
-        filenameFormat = f"{calibrationPath}{runId}/{workspaceName}" + "_v{}.nxs"
-        # find total number of files
-        foundFiles = self._findMatchingFileList(filenameFormat.format("*"), throws=False)
-        version = len(foundFiles) + 1
-
-        filename = filenameFormat.format(version)
-        if not dryrun:
-            self.groceryService.writeWorkspace(filename, workspaceName)
-        return filename
+    def writeCalibrationWorkspaces(self, record: CalibrationRecord):
+        """
+        Writes the workspaces associated with a `CalibrationRecord` to disk:
+        -- assumes that `writeCalibrationRecord` has already been called, and that the version folder exists
+        """
+        calibrationDataPath = Path(self._constructCalibrationDataPath(record.runNumber, record.version))
+        calibrationTable = None
+        maskWorkspace = None
+        for workspace in record.workspaceNames:
+            if self.workspaceIsInstance(workspace, ITableWorkspace):
+                calibrationTable = workspace
+                continue
+            if self.workspaceIsInstance(workspace, MaskWorkspace):
+                maskWorkspace = workspace
+                continue
+            workspaceFilename = Path(workspace + ".nxs")
+            self.writeWorkspace(calibrationDataPath, workspaceFilename, workspace)
+        if not calibrationTable:
+            logger.warning("the diffraction-calibration table is missing from the workspace list")
+        if not maskWorkspace:
+            logger.warning("the diffraction-calibration mask is missing from the workspace list")
+        if calibrationTable or maskWorkspace:
+            diffCalFilename = Path(
+                WNG.diffCalTable().runNumber(record.runNumber).version(record.version).build() + ".h5"
+            )
+            self.writeDiffCalWorkspaces(
+                calibrationDataPath,
+                diffCalFilename,
+                tableWorkspaceName=calibrationTable,
+                maskWorkspaceName=maskWorkspace,
+            )
+        return record
 
     def writeCalibrantSample(self, sample: CalibrantSamples):
         samplePath: str = Config["samples.home"]
@@ -652,19 +696,28 @@ class LocalDataService:
             os.makedirs(normalizationPath)
         write_model_pretty(normalization, normalizationParametersPath)
 
+    def readDetectorState(self, runId: str) -> DetectorState:
+        detectorState = None
+        pvFile = self._readPVFile(runId)
+        try:
+            detectorState = DetectorState(
+                arc=[pvFile.get("entry/DASlogs/det_arc1/value")[0], pvFile.get("entry/DASlogs/det_arc2/value")[0]],
+                wav=pvFile.get("entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value")[0],
+                freq=pvFile.get("entry/DASlogs/BL3:Det:TH:BL:Frequency/value")[0],
+                guideStat=pvFile.get("entry/DASlogs/BL3:Mot:OpticsPos:Pos/value")[0],
+                lin=[pvFile.get("entry/DASlogs/det_lin1/value")[0], pvFile.get("entry/DASlogs/det_lin2/value")[0]],
+            )
+        except:  # noqa: E722
+            raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")
+        return detectorState
+
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, name: str = None):
         stateId, _ = self._generateStateId(runId)
 
-        # pull pv data similar to how we generate stateId
-        pvFile = self._readPVFile(runId)
-        detectorState = DetectorState(
-            arc=[pvFile.get("entry/DASlogs/det_arc1/value")[0], pvFile.get("entry/DASlogs/det_arc2/value")[0]],
-            wav=pvFile.get("entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value")[0],
-            freq=pvFile.get("entry/DASlogs/BL3:Det:TH:BL:Frequency/value")[0],
-            guideStat=pvFile.get("entry/DASlogs/BL3:Mot:OpticsPos:Pos/value")[0],
-            lin=[pvFile.get("entry/DASlogs/det_lin1/value")[0], pvFile.get("entry/DASlogs/det_lin2/value")[0]],
-        )
+        # Read the detector state from the pv data file
+        detectorState = self.readDetectorState(runId)
+
         # then read data from the common calibration state parameters stored at root of calibration directory
         instrumentConfig = self.readInstrumentConfig()
         # then pull static values specified by Malcolm from resources
@@ -734,7 +787,9 @@ class LocalDataService:
             sampleFiles.update(self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False))
         if len(sampleFiles) < 1:
             raise RuntimeError(f"No samples found in {sampleFolder} for extensions {extensions}")
-        return list(sampleFiles)
+        sampleFiles = list(sampleFiles)
+        sampleFiles.sort()
+        return sampleFiles
 
     def _readGroupingMap(self, stateId: str) -> GroupingMap:
         path = self._groupingMapPath(stateId)
@@ -774,6 +829,7 @@ class LocalDataService:
             groupingFiles.extend(self._findMatchingFileList(f"{groupingFolder}/*.{extension}", throws=False))
         if len(groupingFiles) < 1:
             raise RuntimeError(f"No grouping files found in {groupingFolder} for extensions {extensions}")
+        groupingFiles.sort()
         return groupingFiles
 
     def readFocusGroups(self):
@@ -788,3 +844,45 @@ class LocalDataService:
 
     def groupingSchemaFromPath(self, path: str) -> str:
         return path.split("/")[-1].split("_")[-1].split(".")[0]
+
+    ## WRITING WORKSPACES TO DISK
+
+    def writeWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
+        """
+        Write a MatrixWorkspace (derived) workspace to disk in nexus format.
+        """
+        if filename.suffix != ".nxs":
+            raise RuntimeError(f"[writeWorkspace]: specify filename including '.nxs' extension, not {filename}")
+        saveAlgo = AlgorithmManager.create("SaveNexus")
+        saveAlgo.setProperty("InputWorkspace", workspaceName)
+        saveAlgo.setProperty("Filename", str(path / filename))
+        saveAlgo.execute()
+
+    def writeGroupingWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
+        """
+        Write a grouping workspace to disk in Mantid 'SaveDiffCal' hdf-5 format.
+        """
+        self.writeDiffCalWorkspaces(path, filename, groupingWorkspaceName=workspaceName)
+
+    def writeDiffCalWorkspaces(
+        self,
+        path: Path,
+        filename: Path,
+        tableWorkspaceName: WorkspaceName = "",
+        maskWorkspaceName: WorkspaceName = "",
+        groupingWorkspaceName: WorkspaceName = "",
+    ):
+        """
+        Writes any or all of the calibration table, mask and grouping workspaces to disk:
+        -- up to three workspaces may be written to one 'SaveDiffCal' hdf-5 format file.
+        """
+        if filename.suffix != ".h5":
+            raise RuntimeError(
+                f"[writeCalibrationWorkspaces]: specify filename including '.h5' extension, not {filename}"
+            )
+        saveAlgo = AlgorithmManager.create("SaveDiffCal")
+        saveAlgo.setPropertyValue("CalibrationWorkspace", tableWorkspaceName)
+        saveAlgo.setPropertyValue("MaskWorkspace", maskWorkspaceName)
+        saveAlgo.setPropertyValue("GroupingWorkspace", groupingWorkspaceName)
+        saveAlgo.setPropertyValue("Filename", str(path / filename))
+        saveAlgo.execute()

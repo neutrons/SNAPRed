@@ -64,7 +64,7 @@ ingredients.reductionState.stateConfig.tofMax = TOFBinParams[2]
 clerk = GroceryListItem.builder()
 clerk.neutron(VRun).useLiteMode(liteMode).add()
 clerk.neutron(VBRun).useLiteMode(liteMode).add()
-clerk.grouping(groupingScheme).useLiteMode(liteMode).add()
+clerk.fromRun(VRun).grouping(groupingScheme).useLiteMode(liteMode).add()
 groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 # CREATE MATERIAL ########################################################

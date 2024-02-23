@@ -35,15 +35,15 @@ class _WorkspaceNameGenerator:
     _templateRoot = "mantid.workspace.nameTemplate"
     _delimiter = Config[f"{_templateRoot}.delimiter"]
     _runTemplate = Config[f"{_templateRoot}.run"]
-    _runTemplateKeys = ["runNumber", "auxilary", "lite", "unit", "group"]
+    _runTemplateKeys = ["runNumber", "auxiliary", "lite", "unit", "group"]
     _diffCalInputTemplate = Config[f"{_templateRoot}.diffCal.input"]
     _diffCalInputTemplateKeys = ["runNumber", "unit"]
     _diffCalTableTemplate = Config[f"{_templateRoot}.diffCal.table"]
-    _diffCalTableTemplateKeys = ["runNumber"]
+    _diffCalTableTemplateKeys = ["runNumber", "version"]
     _diffCalOutputTemplate = Config[f"{_templateRoot}.diffCal.output"]
-    _diffCalOutputTemplateKeys = ["runNumber", "unit"]
+    _diffCalOutputTemplateKeys = ["runNumber", "version", "unit"]
     _diffCalMaskTemplate = Config[f"{_templateRoot}.diffCal.mask"]
-    _diffCalMaskTemplateKeys = ["runNumber"]
+    _diffCalMaskTemplateKeys = ["runNumber", "version"]
     _diffCalMetricTemplate = Config[f"{_templateRoot}.diffCal.metric"]
     _diffCalMetricTemplateKeys = ["runNumber", "version", "metricName"]
     _rawVanadiumTemplate = Config[f"{_templateRoot}.normCal.rawVanadium"]
@@ -76,7 +76,7 @@ class _WorkspaceNameGenerator:
             self._runTemplate,
             self._runTemplateKeys,
             self._delimiter,
-            auxilary="",
+            auxiliary="",
             unit=self.Units.TOF,
             group=self.Groups.ALL,
             lite=self.Lite.FALSE,
@@ -88,18 +88,22 @@ class _WorkspaceNameGenerator:
         )
 
     def diffCalTable(self):
-        return NameBuilder(self._diffCalTableTemplate, self._diffCalTableTemplateKeys, self._delimiter)
+        return NameBuilder(self._diffCalTableTemplate, self._diffCalTableTemplateKeys, self._delimiter, version="")
 
     def diffCalOutput(self):
         return NameBuilder(
-            self._diffCalOutputTemplate, self._diffCalOutputTemplateKeys, self._delimiter, unit=self.Units.DSP
+            self._diffCalOutputTemplate,
+            self._diffCalOutputTemplateKeys,
+            self._delimiter,
+            unit=self.Units.TOF,
+            version="",
         )
 
     def diffCalMask(self):
-        return NameBuilder(self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter)
+        return NameBuilder(self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter, version="")
 
     def diffCalMetrics(self):
-        return NameBuilder(self._diffCalMetricTemplate, self._diffCalMetricTemplateKeys, self._delimiter)
+        return NameBuilder(self._diffCalMetricTemplate, self._diffCalMetricTemplateKeys, self._delimiter, version="")
 
     def rawVanadium(self):
         return NameBuilder(
