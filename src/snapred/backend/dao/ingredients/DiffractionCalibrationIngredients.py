@@ -6,7 +6,7 @@ from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.meta.Config import Config
-from snapred.meta.mantid.PeakFunctionEnum import PeakFunctionEnum
+from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
 class DiffractionCalibrationIngredients(BaseModel):
@@ -16,5 +16,5 @@ class DiffractionCalibrationIngredients(BaseModel):
     pixelGroup: PixelGroup
     groupedPeakLists: List[GroupPeakList]
     convergenceThreshold: float
-    peakFunction: PeakFunctionEnum = Config["calibration.diffraction.peakFunction"]
+    peakFunction: SymmetricPeakEnum = Config["calibration.diffraction.peakFunction"]
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]

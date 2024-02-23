@@ -55,6 +55,7 @@ class CalibrationService(Service):
     dataFactoryService: "DataFactoryService"
     dataExportService: "DataExportService"
     MILLISECONDS_PER_SECOND = Config["constants.millisecondsPerSecond"]
+    MINIMUM_PEAKS_PER_GROUP = Config["calibration.diffraction.minimumPeaksPerGroup"]
 
     # register the service in ServiceFactory please!
     def __init__(self):
@@ -106,7 +107,7 @@ class CalibrationService(Service):
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
         )
         ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
-        empties = [gpl for gpl in ingredients.groupedPeakLists if len(gpl.peaks) < 4]
+        empties = [gpl for gpl in ingredients.groupedPeakLists if len(gpl.peaks) < self.MINIMUM_PEAKS_PER_GROUP]
         if len(empties) > 0:
             raise RuntimeError(
                 (

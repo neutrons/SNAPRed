@@ -2,7 +2,7 @@ from PyQt5.QtCore import pyqtSignal
 from qtpy.QtWidgets import QComboBox, QLineEdit
 
 from snapred.meta.decorators.Resettable import Resettable
-from snapred.meta.mantid.PeakFunctionEnum import PeakFunctionEnum
+from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
 
@@ -21,7 +21,7 @@ class CalibrationReductionRequestView(BackendRequestView):
         self.sampleDropdown = self._sampleDropDown("Sample", samples)
         self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
 
-        self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in PeakFunctionEnum])
+        self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
         self.litemodeToggle.setEnabled(True)
         self.layout.addWidget(self.runNumberField, 0, 0)

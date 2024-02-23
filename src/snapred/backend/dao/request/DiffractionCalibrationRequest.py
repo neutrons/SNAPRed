@@ -1,11 +1,11 @@
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
-from snapred.meta.mantid.PeakFunctionEnum import PeakFunctionEnum
+from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
 class DiffractionCalibrationRequest(BaseModel):
@@ -18,7 +18,7 @@ class DiffractionCalibrationRequest(BaseModel):
     calibrantSamplePath: str
     focusGroup: FocusGroup
     useLiteMode: bool
-    peakFunction: PeakFunctionEnum = Config["calibration.diffraction.peakFunction"]
+    peakFunction: SymmetricPeakEnum = Config["calibration.diffraction.peakFunction"]
     convergenceThreshold: Optional[float] = Config["calibration.diffraction.convergenceThreshold"]
     peakIntensityThreshold: Optional[float] = Config["calibration.diffraction.peakIntensityThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
