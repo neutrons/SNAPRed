@@ -207,14 +207,21 @@ class NormalizationService(Service):
         )
         peaks = self.sousChef.prepDetectorPeaks(farmFresh)
 
+        # execute recipe -- the output will be set by the algorithm
         SmoothDataExcludingPeaksRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             OutputWorkspace=request.outputWorkspace,
             DetectorPeaks=peaks,
             SmoothingParameter=request.smoothingParameter,
         )
+
+        # we need the corrected vanadium workspace name to be in response
+        # if this endpoint is being called, the vanadium already exists with the below name
+        correctedVanadium = wng.rawVanadium().runNumber(request.runNumber).build()
+
+        # return response
         return NormalizationResponse(
-            correctedVanadium="",
+            correctedVanadium=correctedVanadium,
             focusedVanadium=request.inputWorkspace,
             smoothedVanadium=request.outputWorkspace,
             detectorPeaks=peaks,
