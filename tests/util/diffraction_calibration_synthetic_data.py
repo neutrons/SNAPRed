@@ -10,6 +10,7 @@ import secrets
 from collections import namedtuple
 from collections.abc import Sequence
 from pathlib import Path
+from re import S
 from typing import Any, Dict, List, Tuple
 
 import mantid
@@ -34,6 +35,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.meta.Config import Resource
+from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from util.helpers import *
 
 Peak = namedtuple("Peak", "centre sigma height")
@@ -116,6 +118,7 @@ class SyntheticData(object):
             groupedPeakLists=[
                 GroupPeakList(groupID=key, peaks=peakLists[key], maxfwhm=maxFWHM) for key in peakLists.keys()
             ],
+            peakFunction=SymmetricPeakEnum.Gaussian,
             convergenceThreshold=0.5,
             calPath=Resource.getPath("outputs/calibration/"),
             maxOffset=100.0,  # bins: '100.0' seems to work

@@ -73,7 +73,7 @@ calibration:
     maximumOffset: 10
     maxDSpaceShiftFactor: 2.5
     peakFunction: Gaussian
-    minimumPeaksPerGroup: 1
+    minimumPeaksPerGroup: 2
   parameters:
     default:
       # degrees
