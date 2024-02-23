@@ -101,7 +101,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
         self.fielddMin = LabeledField("dMin :", QLineEdit(str(Config["constants.CrystallographicInfo.dMin"])), self)
         self.fielddMax = LabeledField("dMax :", QLineEdit(str(Config["constants.CrystallographicInfo.dMax"])), self)
-        self.fieldThreshold = LabeledField("intensity threshold :", QLineEdit(str(Config["constants.PeakIntensityFractionThreshold"])), self)
+        self.fieldThreshold = LabeledField(
+            "intensity threshold :", QLineEdit(str(Config["constants.PeakIntensityFractionThreshold"])), self
+        )
 
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
@@ -224,8 +226,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
                 under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]
                 ax.fill_between(x, y, where=under_peaks, color="blue", alpha=0.5)
             # plot the min value for peaks
-            ax.axvline(x=max(min(x),float(self.fielddMin.field.text())), label="dMin", color="red")
-            ax.axvline(x=min(max(x),float(self.fielddMax.field.text())), label="dMax", color="red")
+            ax.axvline(x=max(min(x), float(self.fielddMin.field.text())), label="dMin", color="red")
+            ax.axvline(x=min(max(x), float(self.fielddMax.field.text())), label="dMax", color="red")
 
         # resize window and redraw
         self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))

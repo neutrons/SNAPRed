@@ -226,7 +226,6 @@ class NormalizationCalibrationWorkflow:
         # disable recalculate button
         self._specifyNormalizationView.disableRecalculateButton()
 
-
         # if the grouping file change, redo whole calculation
         groupingFileChanged = index != self.prevGroupingIndex
         # if peaks will change, redo only the smoothing
