@@ -11,6 +11,7 @@ from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 
 
 @Singleton
@@ -97,9 +98,16 @@ class DataFactoryService:
             raise ValueError(f"unsupported workspace type in loadCalibrationDataWorkspace: {wsInfo.type}")
         return self.groceryService.fetchWorkspace(path, wsInfo.name, loader)
 
-    def loadCalibrationTableWorkspaces(self, runId, version):
+    def loadCalibrationTableWorkspaces(self, runId, version, calibrationWS, maskingWS=None, groupingWS=None):
         path = self.getCalibrationDataPath(runId, version)
-        return self.groceryService.readCalibrationTableWorkspaces(path, runId, version)
+        version_suffix = "_" + wnvf.formatVersion(version) if version else None
+        filePath = os.path.join(path, calibrationWS + version_suffix + ".h5")
+        return self.groceryService.readDiffCalTable(
+            filePath=filePath,
+            calibrationWS=calibrationWS + version_suffix,
+            maskingWS=maskingWS + version_suffix if maskingWS else None,
+            groupingWS=groupingWS + version_suffix if groupingWS else None,
+        )
 
     def writeWorkspace(self, path, wsInfo, version: str = None):
         return self.groceryService.writeWorkspace(path, wsInfo.name, version)

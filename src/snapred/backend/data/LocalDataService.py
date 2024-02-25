@@ -245,8 +245,6 @@ class LocalDataService:
         calibrationPath: str = self._constructCalibrationStatePath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
 
-        print(f"******************* CALIBRATION INDEX PATH: {indexPath}")
-
         calibrationIndex: List[CalibrationIndexEntry] = []
         if os.path.exists(indexPath):
             calibrationIndex = parse_file_as(List[CalibrationIndexEntry], indexPath)
@@ -257,8 +255,6 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runId)
         normalizationPath: str = self._constructNormalizationStatePath(stateId)
         indexPath: str = normalizationPath + "NormalizationIndex.json"
-
-        print(f"******************* NORMALIZATION INDEX PATH: {indexPath}")
 
         normalizationIndex: List[NormalizationIndexEntry] = []
         if os.path.exists(indexPath):
@@ -331,7 +327,6 @@ class LocalDataService:
         calibrationVersionPath: str = statePath + "v_{}/".format(
             wnvf.formatVersion(version=version, use_v_prefix=False)
         )
-        print(f"************ CALIBRATION DATA PATH: {calibrationVersionPath}")
 
         return calibrationVersionPath
 
@@ -344,7 +339,6 @@ class LocalDataService:
         normalizationVersionPath: str = statePath + "v_{}/".format(
             wnvf.formatVersion(version=version, use_v_prefix=False)
         )
-        print(f"************ NORMALIZATION DATA PATH: {normalizationVersionPath}")
 
         return normalizationVersionPath
 
@@ -617,8 +611,6 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runId)
         calibrationStatePath = self.getCalibrationStatePath(runId, "*")
 
-        print(f"************ in readCalibrationState: {runId} CALIBRATION STATE PATH IS: {calibrationStatePath}")
-
         latestFile = ""
         if version:
             latestFile = self._getFileOfVersion(calibrationStatePath, version)
@@ -635,8 +627,6 @@ class LocalDataService:
     def readNormalizationState(self, runId: str, version: str = None):
         stateId, _ = self._generateStateId(runId)
         normalizationStatePath = self.getNormalizationStatePath(runId, "*")
-
-        print(f"************ in readNormalizationState: {runId} NORMALIZATION STATE PATH IS: {normalizationStatePath}")
 
         latestFile = ""
         if version:

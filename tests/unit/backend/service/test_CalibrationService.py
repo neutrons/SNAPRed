@@ -344,7 +344,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Assert all "persistent" workspaces have been loaded
             for wsInfo in calibRecord.workspaceList:
-                assert self.instance.dataFactoryService.workspaceDoesExist(wsInfo.name)
+                assert self.instance.dataFactoryService.workspaceDoesExist(
+                    wsInfo.name + "_" + wnvf.formatVersion(calibRecord.version)
+                )
 
         self.clearoutWorkspaces()
 

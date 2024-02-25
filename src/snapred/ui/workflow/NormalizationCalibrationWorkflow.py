@@ -1,5 +1,6 @@
 import json
 
+from mantid.simpleapi import mtd
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
@@ -12,6 +13,7 @@ from snapred.backend.dao.request import (
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.mantid.WorkspaceInfo import WorkspaceInfo
 from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
 from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
 from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
@@ -163,9 +165,13 @@ class NormalizationCalibrationWorkflow:
         view = workflowPresenter.widget.tabView
 
         normalizationRecord = self.responses[-1].data
-        normalizationRecord.workspaceNames.append(self.responses[-2].data["smoothedOutput"])
-        normalizationRecord.workspaceNames.append(self.responses[-2].data["outputWorkspace"])
-        normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
+        for wsname in [
+            self.responses[-2].data["smoothedOutput"],
+            self.responses[-2].data["outputWorkspace"],
+            self.responses[-2].data["correctedVanadium"],
+        ]:
+            normalizationRecord.workspaceList.append(WorkspaceInfo(name=wsname, type=mtd[wsname].id()))
+
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),

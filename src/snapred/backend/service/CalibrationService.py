@@ -241,21 +241,28 @@ class CalibrationService(Service):
         )
 
         # load persistent workspaces
+        calWorkspaceName = None
+        maskWorkspaceName = None
         for wsInfo in calibrationRecord.workspaceList:
-            if wsInfo.type == "TableWorkspace" or wsInfo.type == "MaskWorkspace":
-                continue  # skip potential DiffCal workspaces until workspaceList is refactored
-            self.dataFactoryService.loadCalibrationDataWorkspace(
-                calibrationRecord.runNumber,
-                calibrationRecord.version,
-                WorkspaceInfo(
-                    name=wsInfo.name + "_" + wnvf.formatVersion(str(calibrationRecord.version)), type=wsInfo.type
-                ),
+            if wsInfo.type == "TableWorkspace":
+                calWorkspaceName = wsInfo.name
+            elif wsInfo.type == "MaskWorkspace":
+                maskWorkspaceName = wsInfo.name
+            else:
+                self.dataFactoryService.loadCalibrationDataWorkspace(
+                    calibrationRecord.runNumber,
+                    calibrationRecord.version,
+                    WorkspaceInfo(
+                        name=wsInfo.name + "_" + wnvf.formatVersion(str(calibrationRecord.version)), type=wsInfo.type
+                    ),
+                )
+        if calWorkspaceName:
+            self.dataFactoryService.loadCalibrationTableWorkspaces(
+                runId=calibrationRecord.runNumber,
+                version=str(calibrationRecord.version),
+                calibrationWS=calWorkspaceName,
+                maskingWS=maskWorkspaceName,
             )
-
-        # separately handle reading DiffCal workspaces until workspaceList is refactored
-        self.dataFactoryService.loadCalibrationTableWorkspaces(
-            runId=calibrationRecord.runNumber, version=str(calibrationRecord.version)
-        )
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):

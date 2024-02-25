@@ -122,7 +122,6 @@ class GroceryService:
         """
         Writes a Mantid Workspace to disk.
         """
-        print(f"******** WRITING WORKSPACE: p:{path} n:{name} v:{version}")
         filename = name + "_" + wnvf.formatVersion(version) if version else name
         filename += ".nxs"
         path = os.path.join(path, filename)
@@ -164,18 +163,16 @@ class GroceryService:
         saveAlgo.setPropertyValue("Filename", path)
         saveAlgo.execute()
 
-    def readCalibrationTableWorkspaces(self, path: str, runId: str, version: str):
-        calTableName = self._createDiffcalTableWorkspaceName(runId, version)
-        maskTableName = self._createDiffcalMaskWorkspaceName(runId, version)
-        filePath = os.path.join(path, calTableName) + ".h5"
-        self.readDiffCalTable(path=filePath, calibrationWS=calTableName, maskingWS=maskTableName)
-
     def readDiffCalTable(
-        self, path: str, calibrationWS: WorkspaceName, maskingWS: WorkspaceName = None, groupingWS: WorkspaceName = None
+        self,
+        filePath: str,
+        calibrationWS: WorkspaceName,
+        maskingWS: WorkspaceName = None,
+        groupingWS: WorkspaceName = None,
     ):
         loadAlgo = AlgorithmManager.create("LoadDiffCal")
         loadAlgo.setPropertyValue("WorkspaceName", calibrationWS)
-        loadAlgo.setPropertyValue("Filename", path)
+        loadAlgo.setPropertyValue("Filename", filePath)
 
         instrumentFilename = "tests/resources/inputs/pixel_grouping/SNAPLite_Definition.xml"
         loadAlgo.setPropertyValue("InstrumentFilename", instrumentFilename)
