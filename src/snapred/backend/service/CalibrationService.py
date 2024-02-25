@@ -45,7 +45,9 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
@@ -88,7 +90,7 @@ class CalibrationService(Service):
         return "calibration"
 
     @FromString
-    def fakeMethod(self):
+    def fakeMethod(self):  # pragma: no cover
         # NOTE this is not a real method
         # it's here to be used in the registered paths above, for the moment
         # when possible this and its registered paths should be deleted
@@ -122,9 +124,9 @@ class CalibrationService(Service):
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(
             request.focusGroup.name
         ).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).useLiteMode(
-            request.useLiteMode
-        ).add()
+        self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).unit(
+            wng.Units.TOF
+        ).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.specialOrder().name("calibrationTable").diffcal_table(request.runNumber).useLiteMode(
             request.useLiteMode
         ).add()
@@ -205,17 +207,7 @@ class CalibrationService(Service):
         return states
 
     def hasState(self, runId: str):
-        calibrationFile = self.dataFactoryService.checkCalibrationStateExists(runId)
-        if calibrationFile:
-            return True
-        else:
-            return False
-
-    def _getInstrumentDefinitionFilename(self, useLiteMode: bool):
-        if useLiteMode is True:
-            return Config["instrument.lite.definition.file"]
-        elif useLiteMode is False:
-            return Config["instrument.native.definition.file"]
+        return self.dataFactoryService.checkCalibrationStateExists(runId)
 
     # TODO make the inputs here actually work
     def _collectMetrics(self, focussedData, focusGroup, pixelGroup):
@@ -248,40 +240,58 @@ class CalibrationService(Service):
         # check if any of the workspaces already exist
         if request.checkExistent:
             wkspaceExists = False
+            wsName = None
             for metricName in ["sigma", "strain"]:
-                ws_name = (
-                    wng.diffCalMetrics()
-                    .runNumber(request.runId)
-                    .version(request.version)
-                    .metricName(metricName)
-                    .build()
-                )
-                if self.dataFactoryService.workspaceDoesExist(ws_name):
+                wsName = wng.diffCalMetric().metricName(metricName).runNumber(runId).version(version).build()
+                if self.dataFactoryService.workspaceDoesExist(wsName):
                     wkspaceExists = True
                     break
             if not wkspaceExists:
-                for ws_name in calibrationRecord.workspaceNames:
-                    if self.dataFactoryService.workspaceDoesExist(ws_name):
-                        wkspaceExists = True
-                        break
+                for wss in calibrationRecord.workspaces.values():
+                    for wsName in wss:
+                        if self.dataFactoryService.workspaceDoesExist(wsName):
+                            wkspaceExists = True
+                            break
             if wkspaceExists:
                 errorTxt = (
                     f"Calibration assessment for Run {runId} Version {version} "
-                    f"is already loaded: see workspace {ws_name}."
+                    f"is already loaded: see workspace {wsName}."
                 )
                 logger.error(errorTxt)
-                raise ValueError(errorTxt)
+                raise RuntimeError(errorTxt)
 
         # generate metrics workspaces
         GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
             CalibrationMetricsWorkspaceIngredients(calibrationRecord=calibrationRecord)
         )
 
-        # load persistent workspaces
-        for ws_name in calibrationRecord.workspaceNames:
-            self.dataFactoryService.getCalibrationDataWorkspace(
-                calibrationRecord.runNumber, calibrationRecord.version, ws_name
+        # load persistent data workspaces, assuming all workspaces are of WNG-type
+        workspaces = calibrationRecord.workspaces.copy()
+        for n, wsName in enumerate(workspaces.pop(wngt.DIFFCAL_OUTPUT, [])):
+            # The specific property name used here will not be used later, but there must be no collisions.
+            self.groceryClerk.name(wngt.DIFFCAL_OUTPUT + "_" + str(n).zfill(4))
+            if wng.Units.TOF.lower() in wsName:
+                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.TOF).add()
+            elif wng.Units.DSP.lower() in wsName:
+                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.DSP).add()
+            else:
+                raise RuntimeError(
+                    f"cannot load a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
+                )
+        for n, (tableWSName, maskWSName) in enumerate(
+            zip(
+                workspaces.pop(wngt.DIFFCAL_TABLE, []),
+                workspaces.pop(wngt.DIFFCAL_MASK, []),
             )
+        ):
+            # Diffraction calibration requires a complete pair 'table' + 'mask':
+            #   as above, the specific property name used here is not important.
+            self.groceryClerk.name(wngt.DIFFCAL_TABLE + "_" + str(n).zfill(4)).diffcal_table(runId, version).add()
+            self.groceryClerk.name(wngt.DIFFCAL_MASK + "_" + str(n).zfill(4)).diffcal_mask(runId, version).add()
+        if workspaces:
+            raise RuntimeError(f"not implemented: unable to load unexpected workspace types: {workspaces}")
+
+        self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
@@ -301,7 +311,7 @@ class CalibrationService(Service):
 
         # TODO: We Need to Fit the Data
         fitResults = FitMultiplePeaksRecipe().executeRecipe(
-            InputWorkspace=request.workspace, DetectorPeakIngredients=ingredients
+            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0], DetectorPeakIngredients=ingredients
         )
         metrics = self._collectMetrics(fitResults, request.focusGroup, ingredients.pixelGroup)
 
@@ -311,7 +321,7 @@ class CalibrationService(Service):
             calibrationFittingIngredients=self.sousChef.prepCalibration(request.run.runNumber),
             pixelGroups=[ingredients.pixelGroup],
             focusGroupCalibrationMetrics=metrics,
-            workspaceNames=[request.workspace],
+            workspaces=request.workspaces,
         )
 
         timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))

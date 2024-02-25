@@ -4,6 +4,7 @@ import json
 import os
 from errno import ENOENT as NOT_FOUND
 from pathlib import Path
+from copy import deepcopy
 from typing import Any, Dict, List, Tuple
 
 import h5py
@@ -41,8 +42,10 @@ from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGrouping
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as WNG
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import (
     write_model_list_pretty,
     write_model_pretty,
@@ -86,6 +89,8 @@ class LocalDataService:
 
         # look for the config file and verify it exists
         self.instrumentConfigPath = Config["instrument.config"]
+        if self.verifyPaths and not Path(self.instrumentConfigPath).exists():
+            raise _createFileNotFoundError(Config["instrument.config"], self.instrumentConfigFilePath)
 
     def readInstrumentConfig(self) -> InstrumentConfig:
         self._determineInstrConfigPaths()
@@ -211,6 +216,10 @@ class LocalDataService:
         return SHA.hex, SHA.decodedKey
 
     def _findMatchingFileList(self, pattern, throws=True) -> List[str]:
+        """
+        Find all files matching a glob pattern.
+        Optional: throws exception if nothing found.
+        """
         fileList: List[str] = []
         for fname in glob.glob(pattern, recursive=True):
             if os.path.isfile(fname):
@@ -222,8 +231,8 @@ class LocalDataService:
 
     def _findMatchingDirList(self, pattern, throws=True) -> List[str]:
         """
-        Similar to the above method `_findMatchingFileList` except for directories!
-        Throw if nothing found.(Or dont!)
+        Find all directories matching a glob pattern.
+        Optional: throws exception if nothing found.
         """
         fileList: List[str] = []
         for fname in glob.glob(pattern, recursive=True):
@@ -234,18 +243,22 @@ class LocalDataService:
 
         return fileList
 
-    def _constructCalibrationStateRootPath(self, stateId):
+    def _constructCalibrationStateRoot(self, stateId):
         # TODO: Propagate pathlib through codebase
-        return f"{self.instrumentConfig.calibrationDirectory}/Powder/{str(stateId)}/"
+        return f"{Config['instrument.calibration.powder.home']}/{str(stateId)}/"
+
+    def _constructCalibrationStatePath(self, stateId):
+        # TODO: Propagate pathlib through codebase
+        return f"{self._constructCalibrationStateRoot(stateId)}/diffraction/"
 
     def _constructNormalizationCalibrationStatePath(self, stateId):
         # TODO: Propagate pathlib through codebase
-        return f"{self.instrumentConfig.calibrationDirectory}/Powder/{stateId}/normalization/"
-
+        return f"{self._constructCalibrationStateRoot(stateId)}/normalization/"
+    
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
         stateId, _ = self._generateStateId(runId)
-        calibrationPath: str = self._constructCalibrationStateRootPath(stateId)
+        calibrationPath: str = self._constructCalibrationStatePath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         calibrationIndex: List[CalibrationIndexEntry] = []
         if os.path.exists(indexPath):
@@ -283,7 +296,7 @@ class LocalDataService:
         symbol, runNumber = self._parseAppliesTo(calibrationIndexEntry.appliesTo)
         return self._compareRunNumbers(runId, runNumber, symbol)
 
-    def _getVersionFromCalibrationIndex(self, runId: str):
+    def _getVersionFromCalibrationIndex(self, runId: str) -> str:
         """
         Loads calibration index and inspects all entries to attain latest calibration version that applies to the run id
         """
@@ -303,7 +316,7 @@ class LocalDataService:
             version = latestCalibration.version
         return version
 
-    def _getVersionFromNormalizationIndex(self, runId: str):
+    def _getVersionFromNormalizationIndex(self, runId: str) -> str:
         """
         Loads normalization index and inspects all entries to attain
         latest normalization version that applies to the run id
@@ -329,9 +342,11 @@ class LocalDataService:
         Generates the path for an instrument state's versioned calibration files.
         """
         stateId, _ = self._generateStateId(runId)
-        statePath = self._constructCalibrationStateRootPath(stateId)
-        cablibrationVersionPath: str = statePath + "v_{}/".format(version)
-        return cablibrationVersionPath
+        statePath = self._constructCalibrationStatePath(stateId)
+        calibrationVersionPath: str = statePath + "v_{}/".format(
+            wnvf.formatVersion(version=version, use_v_prefix=False)
+        )
+        return calibrationVersionPath
 
     def _constructNormalizationCalibrationDataPath(self, runId: str, version: str):
         """
@@ -339,21 +354,14 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructNormalizationCalibrationStatePath(stateId)
-        cablibrationVersionPath: str = statePath + "v_{}/".format(version)
-        return cablibrationVersionPath
-
-    def _getCalibrationDataPath(self, runId: str):
-        """
-        Given a run id, get the latest and greatest calibration file set's path for said run.
-        """
-        version = self._getVersionFromCalibrationIndex(runId)
-        if version is None:
-            raise ValueError(f"No calibration data found for runId {runId}")
-        return self._constructCalibrationDataPath(runId, version)
+        normalizationVersionPath: str = statePath + "v_{}/".format(
+            wnvf.formatVersion(version=version, use_v_prefix=False)
+        )
+        return normalizationVersionPath
 
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         stateId, _ = self._generateStateId(entry.runNumber)
-        calibrationPath: str = self._constructCalibrationStateRootPath(stateId)
+        calibrationPath: str = self._constructCalibrationStatePath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         # append to index and write to file
         calibrationIndex = self.readCalibrationIndex(entry.runNumber)
@@ -377,7 +385,7 @@ class LocalDataService:
         recordPath: str = f"{self._constructNormalizationCalibrationDataPath(runId, version)}NormalizationRecord.json"
         return recordPath
 
-    def _extractFileVersion(self, file: str):
+    def _extractFileVersion(self, file: str) -> int:
         return int(file.split("/v_")[-1].split("/")[0])
 
     def _getFileOfVersion(self, fileRegex: str, version):
@@ -385,7 +393,7 @@ class LocalDataService:
         returnFile = None
         for file in foundFiles:
             fileVersion = self._extractFileVersion(file)
-            if fileVersion == version:
+            if fileVersion == int(version):
                 returnFile = file
                 break
         return returnFile
@@ -401,11 +409,11 @@ class LocalDataService:
                 latestFile = file
         return latestFile
 
-    def _getLatestCalibrationVersion(self, stateId: str):
+    def _getLatestCalibrationVersionNumber(self, stateId: str) -> int:
         """
-        Ignoring the calibration index, whats the last set of calibration files to be generated.
+        Ignoring the calibration index, get the version number of the latest set of calibration files.
         """
-        calibrationStatePath = self._constructCalibrationStateRootPath(stateId)
+        calibrationStatePath = self._constructCalibrationStatePath(stateId)
         calibrationVersionPath = f"{calibrationStatePath}v_*/"
         latestVersion = 0
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
@@ -415,14 +423,14 @@ class LocalDataService:
                 latestVersion = version
         return latestVersion
 
-    def _getLatestNormalizationCalibrationVersion(self, stateId: str):
+    def _getLatestNormalizationCalibrationVersionNumber(self, stateId: str) -> int:
         """
-        Ignoring the calibration index, whats the last set of calibration files to be generated.
+        Ignoring the normalization index, get the version number of the latest set of normalization files.
         """
-        calibrationStatePath = self._constructNormalizationCalibrationStatePath(stateId)
-        calibrationVersionPath = f"{calibrationStatePath}v_*/"
+        normalizationStatePath = self._constructNormalizationCalibrationStatePath(stateId)
+        normalizationVersionPath = f"{normalizationStatePath}v_*/"
         latestVersion = 0
-        versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
+        versionDirs = self._findMatchingDirList(normalizationVersionPath, throws=False)
         for versionDir in versionDirs:
             version = int(versionDir.split("/")[-2].split("_")[-1])
             if version > latestVersion:
@@ -430,8 +438,8 @@ class LocalDataService:
         return latestVersion
 
     def readNormalizationRecord(self, runId: str, version: str = None):
-        recordPath: str = self.getNormalizationRecordPath(runId, "*")
         latestFile = ""
+        recordPath: str = self.getNormalizationRecordPath(runId, version if version else "*")
         if version:
             latestFile = self._getFileOfVersion(recordPath, version)
         else:
@@ -450,7 +458,7 @@ class LocalDataService:
         """
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
-        previousVersion = self._getLatestNormalizationCalibrationVersion(stateId)
+        previousVersion = self._getLatestNormalizationCalibrationVersionNumber(stateId)
         if not version:
             version = previousVersion + 1
         recordPath: str = self.getNormalizationRecordPath(runNumber, version)
@@ -478,7 +486,7 @@ class LocalDataService:
         """
         normalizationDataPath = Path(self._constructNormalizationCalibrationDataPath(record.runNumber, record.version))
         for workspace in record.workspaceNames:
-            filename = Path(workspace + ".nxs")
+            filename = Path(workspace + "_" + wnvf.formatVersion(record.version) + ".nxs")
             self.writeWorkspace(normalizationDataPath, filename, workspace)
         return record
 
@@ -496,17 +504,17 @@ class LocalDataService:
             record = parse_file_as(CalibrationRecord, recordFile)
         return record
 
-    def writeCalibrationRecord(self, record: CalibrationRecord, version: int = None):
+    def writeCalibrationRecord(self, record: CalibrationRecord, version: str = None):
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
         -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
         """
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
-        previousVersion = self._getLatestCalibrationVersion(stateId)
+        previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
         if not version:
             version = previousVersion + 1
-        recordPath: str = self.getCalibrationRecordPath(runNumber, version)
+        recordPath: str = self.getCalibrationRecordPath(runNumber, str(version))
         record.version = version
 
         # As above at 'writeNormalizationRecord':
@@ -516,14 +524,50 @@ class LocalDataService:
         # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
         record.calibrationFittingIngredients.version = version
 
-        calibrationPath = self._constructCalibrationDataPath(runNumber, version)
+        calibrationPath = self._constructCalibrationDataPath(runNumber, str(version))
         # check if directory exists for runId
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
-        # append to record and write to file
-        write_model_pretty(record, recordPath)
+        
+        # Update the to-be saved record's "workspaces" information
+        #   to correspond to the filenames that will actually be saved to disk.
+        savedWorkspaces = {}
+        workspaces = record.workspaces.copy()
+        wss = []
+        for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []): 
+            # Rebuild the workspace name to strip any "iteration" number:
+            #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
+            if wng.Units.TOF.lower() in wsName:
+                ws = wng.diffCalOutput().unit(wng.Units.TOF).runNumber(record.runNumber).version(record.version).build()
+            elif wng.Units.DSP.lower() in wsName:
+                ws = wng.diffCalOutput().unit(wng.Units.DSP).runNumber(record.runNumber).version(record.version).build()
+            else:
+                raise RuntimeError(
+                    f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
+                )        
+            wss.append(ws)
+        savedWorkspaces[wngt.DIFFCAL_OUTPUT] = wss
+        wss = []
+        for wsName in workspaces.pop(wngt.DIFFCAL_TABLE, []):
+            # Rebuild the workspace name to strip any "iteration" number:
+            #   * WARNING: this workaround does not work correctly if there are multiple table workspaces.
+            ws = wng.diffCalTable().runNumber(record.runNumber).version(record.version).build()
+            wss.append(ws)
+        savedWorkspaces[wngt.DIFFCAL_TABLE] = wss
+        wss = []
+        for wsName in workspaces.pop(wngt.DIFFCAL_MASK, []):
+            # Rebuild the workspace name to strip any "iteration" number:
+            #   * WARNING: this workaround does not work correctly if there are multiple mask workspaces.
+            ws = wng.diffCalMask().runNumber(record.runNumber).version(record.version).build()
+            wss.append(ws)
+        savedWorkspaces[wngt.DIFFCAL_MASK] = wss
+        savedRecord = deepcopy(record)
+        savedRecord.workspaces = savedWorkspaces                
+        # write record to file
+        write_model_pretty(savedRecord, recordPath)
+        
+        self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, str(version))
 
-        self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, version)
         logger.info(f"Wrote CalibrationRecord: version: {version}")
         return record
 
@@ -532,32 +576,37 @@ class LocalDataService:
         Writes the workspaces associated with a `CalibrationRecord` to disk:
         -- assumes that `writeCalibrationRecord` has already been called, and that the version folder exists
         """
-        calibrationDataPath = Path(self._constructCalibrationDataPath(record.runNumber, record.version))
-        calibrationTable = None
-        maskWorkspace = None
-        for workspace in record.workspaceNames:
-            if self.workspaceIsInstance(workspace, ITableWorkspace):
-                calibrationTable = workspace
-                continue
-            if self.workspaceIsInstance(workspace, MaskWorkspace):
-                maskWorkspace = workspace
-                continue
-            workspaceFilename = Path(workspace + ".nxs")
-            self.writeWorkspace(calibrationDataPath, workspaceFilename, workspace)
-        if not calibrationTable:
-            logger.warning("the diffraction-calibration table is missing from the workspace list")
-        if not maskWorkspace:
-            logger.warning("the diffraction-calibration mask is missing from the workspace list")
-        if calibrationTable or maskWorkspace:
-            diffCalFilename = Path(
-                WNG.diffCalTable().runNumber(record.runNumber).version(record.version).build() + ".h5"
-            )
+        calibrationDataPath = Path(self._constructCalibrationDataPath(record.runNumber, str(record.version)))
+
+        # Assumes all workspaces are of WNG-type:
+        workspaces = record.workspaces.copy()
+        for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []):
+            # Rebuild the filename to strip any "iteration" number:
+            #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
+            if wng.Units.TOF.lower() in wsName:
+                filename = Path(wng.diffCalOutput().unit(wng.Units.TOF).runNumber(record.runNumber).version(record.version).build() + ".nxs")
+            elif wng.Units.DSP.lower() in wsName:
+                filename = Path(wng.diffCalOutput().unit(wng.Units.DSP).runNumber(record.runNumber).version(record.version).build() + ".nxs")
+            else:
+                raise RuntimeError(
+                    f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
+                )
+            self.writeWorkspace(calibrationDataPath, filename, wsName)
+        for tableWSName, maskWSName in zip(
+            workspaces.pop(wngt.DIFFCAL_TABLE, []),
+            workspaces.pop(wngt.DIFFCAL_MASK, []),
+        ):
+            # Rebuild the filename to strip any "iteration" number:
+            #   * WARNING: this workaround does not work correctly if there are multiple table workspaces.
+            diffCalFilename = Path(wng.diffCalTable().runNumber(record.runNumber).version(record.version).build() + ".h5")
             self.writeDiffCalWorkspaces(
                 calibrationDataPath,
                 diffCalFilename,
-                tableWorkspaceName=calibrationTable,
-                maskWorkspaceName=maskWorkspace,
+                tableWorkspaceName=tableWSName,
+                maskWorkspaceName=maskWSName,
             )
+        if workspaces:
+            raise RuntimeError(f"not implemented: unable to save unexpected workspace types: {workspaces}")
         return record
 
     def writeCalibrantSample(self, sample: CalibrantSamples):
@@ -607,8 +656,7 @@ class LocalDataService:
         statePath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationParameters.json"
         return statePath
 
-    def getNormalizationStatePath(self, runId: str, version: str):
-        # TODO make its own path?
+    def _constructNormalizationParametersFilePath(self, runId: str, version: str):
         statePath: str = (
             f"{self._constructNormalizationCalibrationDataPath(runId, version)}NormalizationParameters.json"
         )
@@ -638,14 +686,14 @@ class LocalDataService:
 
     def readNormalizationState(self, runId: str, version: str = None):
         stateId, _ = self._generateStateId(runId)
-        normalizationStatePath = self.getNormalizationStatePath(runId, "*")
+        normalizationStatePathGlob = self._constructNormalizationParametersFilePath(runId, "*")
 
         latestFile = ""
         if version:
-            latestFile = self._getFileOfVersion(normalizationStatePath, version)
+            latestFile = self._getFileOfVersion(normalizationStatePathGlob, version)
         else:
             # TODO: This should refer to the calibration index
-            latestFile = self._getLatestFile(normalizationStatePath)
+            latestFile = self._getLatestFile(normalizationStatePathGlob)
 
         normalizationState = None
         if latestFile:
@@ -653,45 +701,46 @@ class LocalDataService:
 
         return normalizationState
 
-    def writeCalibrationState(self, runId: str, calibration: Calibration, version: int = None):
+    def writeCalibrationState(self, runId: str, calibration: Calibration, version: str = None):
         """
         Writes a `Calibration` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Calibration`.
         """
         stateId, _ = self._generateStateId(runId)
-        previousVersion = self._getLatestCalibrationVersion(stateId)
+        previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
         if not version:
             version = previousVersion + 1
 
         # Check for the existence of a calibration parameters file
-        calibrationParametersFilePath = self._constructCalibrationParametersFilePath(runId, version)
+        calibrationParametersFilePath = self._constructCalibrationParametersFilePath(runId, str(version))
         if os.path.exists(calibrationParametersFilePath):
             logger.warning(f"overwriting calibration parameters at {calibrationParametersFilePath}")
 
-        calibration.version = version
-        calibrationDataPath = self._constructCalibrationDataPath(runId, version)
+        calibration.version = int(version)
+        calibrationDataPath = self._constructCalibrationDataPath(runId, str(version))
         if not os.path.exists(calibrationDataPath):
             os.makedirs(calibrationDataPath)
         # write the calibration state.
         write_model_pretty(calibration, calibrationParametersFilePath)
 
-    def writeNormalizationState(self, runId: str, normalization: Normalization, version: int = None):  # noqa: F821
+    def writeNormalizationState(self, runId: str, normalization: Normalization, version: str = None):  # noqa: F821
         """
         Writes a `Normalization` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Normalization`.
         """
         stateId, _ = self._generateStateId(runId)
-        normalizationPath: str = self._constructNormalizationCalibrationStatePath(stateId)
-        previousVersion = self._getLatestCalibrationVersion(stateId)
+        previousVersion: int = self._getLatestNormalizationCalibrationVersionNumber(stateId)
         if not version:
             version = previousVersion + 1
-        # check for the existenece of a calibration parameters file
-        normalizationParametersPath = self.getNormalizationStatePath(runId, version)
+        # check for the existence of a normalization parameters file
+        normalizationParametersFilePath = self._constructNormalizationParametersFilePath(runId, str(version))
+        if os.path.exists(normalizationParametersFilePath):
+            logger.warning(f"overwriting normalization parameters at {normalizationParametersFilePath}")
         normalization.version = version
-        normalizationPath = self._constructNormalizationCalibrationDataPath(runId, version)
-        if not os.path.exists(normalizationPath):
-            os.makedirs(normalizationPath)
-        write_model_pretty(normalization, normalizationParametersPath)
+        normalizationDataPath = self._constructNormalizationCalibrationDataPath(runId, str(version))
+        if not os.path.exists(normalizationDataPath):
+            os.makedirs(normalizationDataPath)
+        write_model_pretty(normalization, normalizationParametersFilePath)
 
     def readDetectorState(self, runId: str) -> DetectorState:
         detectorState = None
@@ -760,7 +809,7 @@ class LocalDataService:
         )
 
         # Make sure that the state root directory has been initialized:
-        stateRootPath = self._constructCalibrationStateRootPath(stateId)
+        stateRootPath = self._constructCalibrationStateRoot(stateId)
         if not os.path.exists(stateRootPath):
             # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
@@ -774,7 +823,7 @@ class LocalDataService:
         """
         Create the state root directory, and populate it with any necessary metadata files.
         """
-        stateRootPath = self._constructCalibrationStateRootPath(stateId)
+        stateRootPath = self._constructCalibrationStateRoot(stateId)
         if not os.path.exists(stateRootPath):
             os.makedirs(stateRootPath)
 
@@ -803,7 +852,7 @@ class LocalDataService:
         # if found, try to construct the path and test if the path exists
         else:
             stateID, _ = self._generateStateId(runId)
-            calibrationStatePath: str = self._constructCalibrationStateRootPath(stateID)
+            calibrationStatePath: str = self._constructCalibrationStateRoot(stateID)
             if os.path.exists(calibrationStatePath):
                 return True
             else:
@@ -858,7 +907,7 @@ class LocalDataService:
         return GroupingMap.calibrationGroupingHome() / "defaultGroupingMap.json"
 
     def _groupingMapPath(self, stateId) -> Path:
-        return Path(self._constructCalibrationStateRootPath(stateId)) / "groupingMap.json"
+        return Path(self._constructCalibrationStateRoot(stateId)) / "groupingMap.json"
 
     ## WRITING WORKSPACES TO DISK
 
