@@ -50,6 +50,7 @@ with mock.patch.dict(
 
         ingredients = PeakIngredients.parse_file(Resource.getPath(ingredientsFile))
         algo = DetectorPeakPredictor()
+        algo.initialize()
         algo.chopIngredients(ingredients)
 
         # check various properties copied over
@@ -79,10 +80,30 @@ with mock.patch.dict(
         peakPredictorAlgo = DetectorPeakPredictor()
         peakPredictorAlgo.initialize()
         peakPredictorAlgo.setProperty("Ingredients", ingredients.json())
+        peakPredictorAlgo.setProperty("PurgeDuplicates", False)
         assert peakPredictorAlgo.execute()
 
         peaks_cal = parse_raw_as(List[GroupPeakList], peakPredictorAlgo.getProperty("DetectorPeaks").value)
         peaks_ref = parse_raw_as(List[GroupPeakList], Resource.read(peaksRefFile))
+        assert peaks_cal == peaks_ref
+
+    def test_execute_purge_duplicates():
+        ingredientsFile = "/inputs/predict_peaks/input_good_ingredients.json"
+        peaksRefFile = "/outputs/predict_peaks/peaks_purged.json"
+
+        ingredients = PeakIngredients.parse_raw(Resource.read(ingredientsFile))
+
+        peakPredictorAlgo = DetectorPeakPredictor()
+        peakPredictorAlgo.initialize()
+        peakPredictorAlgo.setProperty("Ingredients", ingredients.json())
+        peakPredictorAlgo.setProperty("PurgeDuplicates", True)
+        assert peakPredictorAlgo.execute()
+
+        peaks_cal = parse_raw_as(List[GroupPeakList], peakPredictorAlgo.getProperty("DetectorPeaks").value)
+        peaks_ref = parse_raw_as(List[GroupPeakList], Resource.read(peaksRefFile))
+        for peakList in peaks_ref:
+            for peak in peakList.peaks:
+                peak.position.value = round(peak.value, 5)
         assert peaks_cal == peaks_ref
 
     def test_bad_ingredients():
