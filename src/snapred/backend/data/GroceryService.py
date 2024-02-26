@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from mantid.api import AlgorithmManager, mtd
 
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.dao.state import DetectorState, GroupingMap
+from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.meta.Config import Config
@@ -40,9 +40,6 @@ class GroceryService:
         # Cache maps to workspace names, for various purposes
         self._loadedGroupings: Dict[Tuple[str, str, bool], str] = {}
         self._loadedInstruments: Dict[Tuple[str, bool], str] = {}
-
-        self._runToState: Dict[str, str] = {}
-        self._groupMapCache: Dict[str, GroupingMap]
 
         self.grocer = FetchGroceriesRecipe()
 
