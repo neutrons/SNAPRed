@@ -1,4 +1,4 @@
-import json
+from typing import List
 
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
