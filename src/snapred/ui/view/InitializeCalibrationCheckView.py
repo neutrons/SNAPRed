@@ -15,7 +15,7 @@ from snapred.ui.widget.Toggle import Toggle
 
 
 class CalibrationMenu(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, runNumber=None, parent=None):
         super(CalibrationMenu, self).__init__(parent)
         self.setWindowTitle("Calibration Menu")
         self.setFixedSize(400, 200)
@@ -26,6 +26,8 @@ class CalibrationMenu(QDialog):
 
         self.runNumberField = QLineEdit()
         self.runNumberField.setPlaceholderText("Enter Run Number")
+        if runNumber is not None:
+            self.runNumberField.setText(str(runNumber))
         layout.addWidget(self.runNumberField, 0, 0)
 
         self.beginFlowButton = QPushButton("Check")

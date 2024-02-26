@@ -27,13 +27,13 @@ class RecoverableException(Exception):
         logger.error(logMessage)
         super().__init__(self.message)
 
-    def handleStateMessage(self):
+    def handleStateMessage(self, runNumber, view):
         """
         Handles a specific 'state' message.
         """
         if self.errorType == "State not initialized":
             logger.info("Handling 'state' message.")
-            calibrationMenu = CalibrationMenu(parent=self)
+            calibrationMenu = CalibrationMenu(runNumber=runNumber, parent=view)
             calibrationMenu.exec_()
         else:
             logger.warning(

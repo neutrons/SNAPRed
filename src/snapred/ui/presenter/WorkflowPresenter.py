@@ -117,7 +117,7 @@ class WorkflowPresenter(object):
         self.view.continueButton.setEnabled(False)
         self.view.cancelButton.setEnabled(False)
         self.view.skipButton.setEnabled(False)
-        self.workflowAction(model)
+        self.workflowAction(model, self.view)
         # do action
         self.worker = self.worker_pool.createWorker(target=model.continueAction, args=(self))
         self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
@@ -148,12 +148,14 @@ class WorkflowPresenter(object):
             messageBox.setDetailedText(f"{result.message}")
             messageBox.exec()
 
-    def workflowAction(self, model):
+    def workflowAction(self, model, view):
         try:
             model.continueAction(self)
         except RecoverableException as e:
             if e.errorType == "State not initialized":
-                e.handleStateMessage()
+                # get runNumber from view pass on:
+                runNumber = view.getRunNumber()
+                e.handleStateMessage(runNumber, view)
             else:
                 logger.error(f"Unhandled recoverable exception: {e}")
                 raise e
