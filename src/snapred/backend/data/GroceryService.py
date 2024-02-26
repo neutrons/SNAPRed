@@ -127,7 +127,6 @@ class GroceryService:
 
     ## FILENAME METHODS
 
-    @classmethod
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
         ipts = self.dataService.getIPTS(runNumber, instrumentName)
         return str(ipts)
@@ -138,15 +137,14 @@ class GroceryService:
         ext = instr + ".extension"
         return self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext]
 
-    def _createGroupingFilename(self, groupingScheme: str, useLiteMode: bool) -> str:
+    def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
         # TODO needs to be populated with a GroupingMap
         if groupingScheme == "Lite":
-            return str(Config["instrument.lite.map.file"])
-        instr = "lite" if useLiteMode else "native"
-        home = "instrument.calibration.powder.grouping.home"
-        pre = "grouping.filename.prefix"
-        ext = "grouping.filename." + instr + ".extension"
-        return f"{Config[home]}/{Config[pre]}{groupingScheme}{Config[ext]}"
+            path = str(Config["instrument.lite.map.file"])
+        else:
+            stateConfig = self.dataService.readStateConfig(runNumber)
+            path = stateConfig.groupingMap.getMap(useLiteMode)[groupingScheme].definition
+        return path
 
     ## WORKSPACE NAME METHODS
 
@@ -475,7 +473,7 @@ class GroceryService:
                 "workspace": workspaceName,
             }
         else:
-            filename = self._createGroupingFilename(item.groupingScheme, item.useLiteMode)
+            filename = self._createGroupingFilename(item.runNumber, item.groupingScheme, item.useLiteMode)
             groupingLoader = "LoadGroupingDefinition"
 
             # Unless overridden: use a cached workspace as the instrument donor.

@@ -47,6 +47,12 @@ class GroupingMap(BaseModel):
     def isDirty(self) -> bool:
         return self._isDirty
 
+    def getMap(self, useLiteMode: bool) -> Dict[str, FocusGroup]:
+        if useLiteMode:
+            return self._liteMap
+        else:
+            return self._nativeMap
+
     def setDirty(self, flag: bool):
         object.__setattr__(self, "_isDirty", flag)
 

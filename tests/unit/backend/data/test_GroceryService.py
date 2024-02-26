@@ -216,21 +216,26 @@ class TestGroceryService(unittest.TestCase):
 
     def test_grouping_filename(self):
         """Test the creation of the grouping filename"""
+        runNumber = "123"
         uniqueGroupingScheme = "Fruitcake"
+        uniqueGroupingDefinition = "some/path/for/fruitcake"
         self.groupingItem.groupingScheme = uniqueGroupingScheme
-        res = self.instance._createGroupingFilename(uniqueGroupingScheme, False)
-        assert uniqueGroupingScheme in res
-        assert "lite" not in res.lower()
-        # test lite mode
-        res = self.instance._createGroupingFilename(uniqueGroupingScheme, True)
-        assert uniqueGroupingScheme in res
-        assert "lite" in res.lower()
+
+        # construct a mock state config with a mocked grouping map
+        mockFocusGroup = mock.Mock(name=uniqueGroupingScheme, definition=uniqueGroupingDefinition)
+        mockGroupMap = {uniqueGroupingScheme: mockFocusGroup}
+        mockStateConfig = mock.Mock(groupingMap=mock.Mock(getMap=mock.Mock(return_value=mockGroupMap)))
+        self.instance.dataService.readStateConfig = mock.Mock(return_value=mockStateConfig)
+
+        res = self.instance._createGroupingFilename(runNumber, uniqueGroupingScheme, False)
+        assert res == uniqueGroupingDefinition
 
     def test_litedatamap_filename(self):
         """Test it will return name of Lite data map"""
-        res = self.instance._createGroupingFilename("Lite", False)
+        runNumber = GroceryListItem.RESERVED_NATIVE_RUNID
+        res = self.instance._createGroupingFilename(runNumber, "Lite", False)
         assert res == str(Config["instrument.lite.map.file"])
-        res2 = self.instance._createGroupingFilename("Lite", True)
+        res2 = self.instance._createGroupingFilename(runNumber, "Lite", True)
         assert res2 == res
 
     ## TESTS OF WORKSPACE NAME METHODS
