@@ -46,12 +46,6 @@ nexus:
     prefix: SNAP_
 
 grouping:
-  filename:
-    prefix: SNAPFocGroup_
-    lite:
-      extension: .lite.nxs
-    native:
-      extension: .xml
   workspacename:
     lite: SNAPLite_grouping_
     native: SNAP_grouping_

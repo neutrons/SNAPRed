@@ -141,9 +141,6 @@ class GroceryService:
         else:
             stateConfig = self.dataService.readStateConfig(runNumber)
             path = stateConfig.groupingMap.getMap(useLiteMode)[groupingScheme].definition
-            if not os.path.isabs(path):
-                home = "instrument.calibration.powder.grouping.home"
-                path = f"{Config[home]}/{path}"
         return path
 
     ## WORKSPACE NAME METHODS

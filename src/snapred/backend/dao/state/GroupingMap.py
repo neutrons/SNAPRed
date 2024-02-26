@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List
 
@@ -81,7 +82,7 @@ class GroupingMap(BaseModel):
             for group in groups[mode].copy():
                 fp = Path(groups[mode][group].definition)
                 # Check if path is relative
-                if str(fp) == fp.name:
+                if not os.path.isabs(fp):
                     fp = Path.joinpath(cls.calibrationGroupingHome(), fp)
                 if not fp.exists():
                     logger.warning("File:" + str(fp) + " not found")
