@@ -1,6 +1,7 @@
 from typing import Any, Literal
 
 from snapred.backend.log.logger import snapredLogger
+from snapred.ui.view.InitializeCalibrationCheckView import CalibrationMenu
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -17,7 +18,6 @@ class RecoverableException(Exception):
         self.errorType = errorType
         self.message = f"A recoverable error occurred: {self.errorType}"
         self.extraContext = kwargs
-        self.stateMessageHandled = False
 
         logMessage = f"{self.message} Original exception: {str(exception)}"
 
@@ -33,7 +33,8 @@ class RecoverableException(Exception):
         """
         if self.errorType == "State not initialized":
             logger.info("Handling 'state' message.")
-            self.stateMessageHandled = True
+            calibrationMenu = CalibrationMenu()
+            calibrationMenu.exec_()
         else:
             logger.warning(
                 "The 'handleStateMessage' method was called, but the error type is not related to state initialization."

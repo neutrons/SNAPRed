@@ -60,20 +60,3 @@ class CalibrationMenu(QDialog):
 
     def getRunNumber(self):
         return self.runNumberField.text()
-
-
-class InitializeCalibrationCheckView(QWidget):
-    def __init__(self, parent=None):
-        super(InitializeCalibrationCheckView, self).__init__(parent)
-        self.layout = QGridLayout()
-        self.setLayout(self.layout)
-
-        self.beginFlowButton = QPushButton("Check Calibration Initialization")
-        self.layout.addWidget(self.beginFlowButton, 4, 0, 1, 2)
-
-        self.calibrationCheck = CalibrationCheck(self)
-        self.beginFlowButton.clicked.connect(lambda: self.launchCalibrationCheck())
-
-    def launchCalibrationCheck(self):
-        calibrationMenu = CalibrationMenu()
-        calibrationMenu.exec_()

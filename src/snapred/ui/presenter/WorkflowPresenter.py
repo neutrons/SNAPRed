@@ -5,6 +5,7 @@ from qtpy.QtWidgets import QMainWindow, QMessageBox
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import ClearWorkspaceRequest
+from snapred.backend.error import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
@@ -116,7 +117,7 @@ class WorkflowPresenter(object):
         self.view.continueButton.setEnabled(False)
         self.view.cancelButton.setEnabled(False)
         self.view.skipButton.setEnabled(False)
-
+        self.workflowAction(model)
         # do action
         self.worker = self.worker_pool.createWorker(target=model.continueAction, args=(self))
         self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
@@ -146,3 +147,13 @@ class WorkflowPresenter(object):
             )
             messageBox.setDetailedText(f"{result.message}")
             messageBox.exec()
+
+    def workflowAction(self, model):
+        try:
+            model.continueAction(self)
+        except RecoverableException as e:
+            if e.message == "state":
+                interfaceController = InterfaceController
+                interfaceController.executeRequest(e)
+            else:
+                pass

@@ -33,7 +33,8 @@ class InterfaceController:
                 message = self.getWarnings()
             response = SNAPResponse(code=200, message=message, data=result)
 
-        except RecoverableException:
+        except RecoverableException as e:
+            self.logger.error(f"Recoverable error occurred: {e.message}")
             response = SNAPResponse(code=400, message="state", data=None)
 
         except Exception as e:  # noqa BLE001
