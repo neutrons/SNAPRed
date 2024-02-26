@@ -33,7 +33,7 @@ class RecoverableException(Exception):
         """
         if self.errorType == "State not initialized":
             logger.info("Handling 'state' message.")
-            calibrationMenu = CalibrationMenu()
+            calibrationMenu = CalibrationMenu(parent=self)
             calibrationMenu.exec_()
         else:
             logger.warning(

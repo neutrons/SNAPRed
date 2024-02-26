@@ -152,8 +152,8 @@ class WorkflowPresenter(object):
         try:
             model.continueAction(self)
         except RecoverableException as e:
-            if e.message == "state":
-                interfaceController = InterfaceController
-                interfaceController.executeRequest(e)
+            if e.errorType == "State not initialized":
+                e.handleStateMessage()
             else:
-                pass
+                logger.error(f"Unhandled recoverable exception: {e}")
+                raise e
