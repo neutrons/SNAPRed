@@ -218,7 +218,7 @@ class TestGroceryService(unittest.TestCase):
         """Test the creation of the grouping filename"""
         runNumber = "123"
         uniqueGroupingScheme = "Fruitcake"
-        uniqueGroupingDefinition = "some/path/for/fruitcake"
+        uniqueGroupingDefinition = "/some/path/for/fruitcake"  # NOTE initial / to make "absolute"
         self.groupingItem.groupingScheme = uniqueGroupingScheme
 
         # construct a mock state config with a mocked grouping map
