@@ -72,6 +72,8 @@ calibration:
     maximumIterations: 5
     maximumOffset: 10
     maxDSpaceShiftFactor: 2.5
+    peakFunction: GAUSSIAN
+    minimumPeaksPerGroup: 2
   parameters:
     default:
       # degrees
@@ -84,6 +86,7 @@ calibration:
         - -2
         - 2
       peakTailCoefficient: 2.0
+      smoothing: 0.5
 
 mantid:
     workspace:

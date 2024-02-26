@@ -1,5 +1,6 @@
 import json
 
+from pydantic import parse_raw_as
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
@@ -54,9 +55,6 @@ class NormalizationCalibrationWorkflow:
             parent=parent,
         )
 
-        self.lastGroupingFile = None
-        self.lastSmoothingParameter = None
-
         self._specifyNormalizationView.signalValueChanged.connect(self.onNormalizationValueChange)
 
         self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
@@ -92,16 +90,28 @@ class NormalizationCalibrationWorkflow:
         self.runNumber = view.getFieldText("runNumber")
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
         self.sampleIndex = (view.sampleDropDown.currentIndex()) - 1
-        self.initGroupingIndex = (view.groupingFileDropDown.currentIndex()) - 1
-        self.initSmoothingParameter = float(view.getFieldText("smoothingParameter"))
+        self.prevGroupingIndex = (view.groupingFileDropDown.currentIndex()) - 1
         self.samplePath = view.sampleDropDown.currentText()
         self.groupingPath = view.groupingFileDropDown.currentText()
-        self.initDMin = float(self._specifyNormalizationView.fielddMin.field.text())
+        self.prevDMin = float(self._specifyNormalizationView.fielddMin.field.text())
+        self.prevDMax = float(self._specifyNormalizationView.fielddMax.field.text())
+        self.prevThreshold = float(self._specifyNormalizationView.fieldThreshold.field.text())
+
+        # init the payload
+        payload = NormalizationCalibrationRequest(
+            runNumber=self.runNumber,
+            backgroundRunNumber=self.backgroundRunNumber,
+            calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
+            focusGroup=self.focusGroups[str(self.groupingFiles[self.prevGroupingIndex])],
+            crystalDMin=self.prevDMin,
+        )
+        # take the default smoothing param from the default payload value
+        self.prevSmoothingParameter = payload.smoothingParameter
 
         self._specifyNormalizationView.updateFields(
             sampleIndex=self.sampleIndex,
-            groupingIndex=self.initGroupingIndex,
-            smoothingParameter=self.initSmoothingParameter,
+            groupingIndex=self.prevGroupingIndex,
+            smoothingParameter=self.prevSmoothingParameter,
         )
 
         self._specifyNormalizationView.updateRunNumber(self.runNumber)
@@ -110,136 +120,146 @@ class NormalizationCalibrationWorkflow:
         self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
         self._saveNormalizationCalibrationView.updateBackgroundRunNumber(self.backgroundRunNumber)
 
-        payload = NormalizationCalibrationRequest(
-            runNumber=self.runNumber,
-            backgroundRunNumber=self.backgroundRunNumber,
-            calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
-            focusGroup=self.focusGroups[str(self.groupingFiles[self.initGroupingIndex])],
-            smoothingParameter=self.initSmoothingParameter,
-            crystalDMin=self.initDMin,
-        )
-
         request = SNAPRequest(path="normalization", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
-        focusWorkspace = self.responses[-1].data["outputWorkspace"]
-        smoothWorkspace = self.responses[-1].data["smoothedOutput"]
+        focusWorkspace = self.responses[-1].data["focusedVanadium"]
+        smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+        peaks = self.responses[-1].data["detectorPeaks"]
 
-        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
         self.initializationComplete = True
         return response
 
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
-        if self.lastGroupingFile is not None and self.lastSmoothingParameter is not None:
-            payload = NormalizationCalibrationRequest(
-                runNumber=self.runNumber,
-                backgroundRunNumber=self.backgroundRunNumber,
-                calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
-                focusGroup=self.focusGroups[str(self.lastGroupingFile)],
-                smoothingParameter=self.lastSmoothingParameter,
-                crystalDMin=self.lastDMin,
-            )
-        else:
-            payload = NormalizationCalibrationRequest(
-                runNumber=self.runNumber,
-                backgroundRunNumber=self.backgroundRunNumber,
-                calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
-                focusGroup=self.focusGroups[str(self.groupingFiles[self.initGroupingIndex])],
-                smoothingParameter=self.initSmoothingParameter,
-                crystalDMin=self.initDMin,
-            )
+        payload = NormalizationCalibrationRequest(
+            runNumber=self.runNumber,
+            backgroundRunNumber=self.backgroundRunNumber,
+            calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
+            focusGroup=self.focusGroups[str(self.groupingFiles[self.prevGroupingIndex])],
+            smoothingParameter=self.prevSmoothingParameter,
+            crystalDMin=self.prevDMin,
+            crystalDMax=self.prevDMax,
+            peakIntensityThreshold=self.prevThreshold,
+        )
 
         request = SNAPRequest(path="normalization/assessment", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
-
         self.responses.append(response)
+
         return response
 
     def _saveNormalizationCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
 
         normalizationRecord = self.responses[-1].data
-        normalizationRecord.workspaceNames.append(self.responses[-2].data["smoothedOutput"])
-        normalizationRecord.workspaceNames.append(self.responses[-2].data["outputWorkspace"])
+        normalizationRecord.workspaceNames.append(self.responses[-2].data["smoothedVanadium"])
+        normalizationRecord.workspaceNames.append(self.responses[-2].data["focusedVanadium"])
         normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
+
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
         )
+
         payload = NormalizationExportRequest(
-            normalizationRecord=normalizationRecord, normalizationIndexEntry=normalizationIndexEntry
+            normalizationRecord=normalizationRecord,
+            normalizationIndexEntry=normalizationIndexEntry,
         )
+
         request = SNAPRequest(path="normalization/save", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
+
         return response
 
-    def callNormalizationCalibration(self, groupingFile, smoothingParameter, dMin):
+    def callNormalizationCalibration(self, index, smoothingParameter, dMin, dMax, peakThreshold):
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
-            focusGroup=self.focusGroups[groupingFile],
+            focusGroup=self.focusGroups[self.groupingFiles[index]],
             smoothingParameter=smoothingParameter,
             crystalDMin=dMin,
+            crystalDMax=dMax,
+            peakIntensityThreshold=peakThreshold,
         )
 
         request = SNAPRequest(path="normalization", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self.responses.append(response)
 
-        focusWorkspace = self.responses[-1].data["outputWorkspace"]
-        smoothWorkspace = self.responses[-1].data["smoothedOutput"]
+        focusWorkspace = self.responses[-1].data["focusedVanadium"]
+        smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+        peaks = self.responses[-1].data["detectorPeaks"]
+        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
-        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+    def applySmoothingUpdate(self, index, smoothingValue, dMin, dMax, peakThreshold):
+        focusWorkspace = self.responses[-1].data["focusedVanadium"]
+        smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
 
-    def applySmoothingUpdate(self, index, smoothingValue, dMin):
-        workspaces = self.responses[-1].data
         payload = SmoothDataExcludingPeaksRequest(
-            inputWorkspace=workspaces["outputWorkspace"],
-            outputWorkspace=workspaces["smoothedOutput"],
+            inputWorkspace=focusWorkspace,
+            outputWorkspace=smoothWorkspace,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=self.focusGroups[self.groupingFiles[index]],
             runNumber=self.runNumber,
             smoothingParameter=smoothingValue,
             crystalDMin=dMin,
+            crystalDMax=dMax,
+            peakIntensityThreshold=peakThreshold,
         )
+
         request = SNAPRequest(path="normalization/smooth", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
-        focusWorkspace = workspaces["outputWorkspace"]
-        smoothWorkspace = response.data
-        self.responses[-1].data["smoothedOutput"] = response.data
-        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+        self.responses.append(response)
 
-    def onNormalizationValueChange(self, index, smoothingValue, dMin):  # noqa: ARG002
+        peaks = response.data["detectorPeaks"]
+        self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
+
+    def onNormalizationValueChange(self, index, smoothingValue, dMin, dMax, peakThreshold):  # noqa: ARG002
         if not self.initializationComplete:
             return
         # disable recalculate button
         self._specifyNormalizationView.disableRecalculateButton()
 
-        self.lastGroupingFile = self.groupingFiles[index]
-        self.lastSmoothingParameter = smoothingValue
-        self.lastDMin = dMin
+        # if the grouping file change, redo whole calculation
+        groupingFileChanged = index != self.prevGroupingIndex
+        # if peaks will change, redo only the smoothing
+        smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
+        dMinValueChanged = dMin != self.prevDMin
+        dMaxValueChanged = dMax != self.prevDMax
+        thresholdChanged = peakThreshold != self.prevThreshold
+        peakListWillChange = smoothingValueChanged or dMinValueChanged or dMaxValueChanged or thresholdChanged
 
-        groupingFileChanged = self.groupingFiles[self.initGroupingIndex] != self.lastGroupingFile
-        smoothingValueChanged = self.initSmoothingParameter != self.lastSmoothingParameter
-        dMinValueChanged = self.initDMin != self.lastDMin
+        print(f"******* VALUE CHANGED? {thresholdChanged} -- {peakListWillChange} *******")
+
+        # check the case, apply correct update
         if groupingFileChanged:
-            self.initGroupingIndex = index
-            self.initSmoothingParameter = smoothingValue
-            self.callNormalizationCalibration(self.groupingFiles[index], smoothingValue, dMin)
-        elif smoothingValueChanged or dMinValueChanged:
-            self.applySmoothingUpdate(index, smoothingValue, dMin)
-        elif "outputWorkspace" in self.responses[-1].data and "smoothedOutput" in self.responses[-1].data:
-            focusWorkspace = self.responses[-1].data["outputWorkspace"]
-            smoothWorkspace = self.responses[-1].data["smoothedOutput"]
-            self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace)
+            self.callNormalizationCalibration(index, smoothingValue, dMin, dMax, peakThreshold)
+        elif peakListWillChange:
+            self.applySmoothingUpdate(index, smoothingValue, dMin, dMax, peakThreshold)
+        elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
+            # if nothing changed but this function was called anyway... just replot stuff with old values
+            focusWorkspace = self.responses[-1].data["focusedVanadium"]
+            smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+            peaks = self.responses[-1].data["detectorPeaks"]
+            self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
         else:
             raise Exception("Expected data not found in the last response")
+
+        # renable button when graph is updated
         self._specifyNormalizationView.enableRecalculateButton()
+
+        # update the values for next call to this method
+        self.prevGroupingIndex = index
+        self.prevSmoothingParameter = smoothingValue
+        self.prevDMin = dMin
+        self.prevDMax = dMax
+        self.prevThreshold = peakThreshold
 
     @property
     def widget(self):

@@ -1,8 +1,11 @@
 import math
 import unittest.mock as mock
+from typing import List
 
 import matplotlib.pyplot as plt
+from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
+from pydantic import parse_obj_as
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -13,11 +16,13 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSlider,
+    QVBoxLayout,
     QWidget,
 )
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
+from snapred.backend.dao import GroupPeakList
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.JsonFormList import JsonFormList
@@ -28,15 +33,12 @@ from snapred.ui.widget.LabeledField import LabeledField
 class SpecifyNormalizationCalibrationView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
-    signalValueChanged = pyqtSignal(int, float, float)
+    signalValueChanged = pyqtSignal(int, float, float, float, float)
     signalUpdateRecalculationButton = pyqtSignal(bool)
 
     def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
         super().__init__(parent)
         self._jsonFormList = JsonFormList(name, jsonSchemaMap, parent=parent)
-
-        self.groupingSchema = None
-        self.subplots = []
 
         self.layout = QGridLayout()
         self.setLayout(self.layout)
@@ -90,28 +92,38 @@ class SpecifyNormalizationCalibrationView(QWidget):
         )
 
         self.smoothingLineEdit = QLineEdit("1e-9")
-        self.smoothingLineEdit.setFixedWidth(50)
+        self.smoothingLineEdit.setMinimumWidth(128)
         self.smoothingSlider.valueChanged.connect(self.updateLineEditFromSlider)
         self.smoothingLineEdit.returnPressed.connect(
             lambda: self.updateSliderFromLineEdit(self.smoothingLineEdit.text())
         )
+        self.smoothingLabel = QLabel("Smoothing :")
 
         self.fielddMin = LabeledField("dMin :", QLineEdit(str(Config["constants.CrystallographicInfo.dMin"])), self)
+        self.fielddMax = LabeledField("dMax :", QLineEdit(str(Config["constants.CrystallographicInfo.dMax"])), self)
+        self.fieldThreshold = LabeledField(
+            "intensity threshold :", QLineEdit(str(Config["constants.PeakIntensityFractionThreshold"])), self
+        )
 
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
 
         smoothingLayout = QHBoxLayout()
+        smoothingLayout.addWidget(self.smoothingLabel)
         smoothingLayout.addWidget(self.smoothingSlider)
         smoothingLayout.addWidget(self.smoothingLineEdit)
+        smoothingLayout.addWidget(self.fieldThreshold)
         smoothingLayout.addWidget(self.fielddMin)
+        smoothingLayout.addWidget(self.fielddMax)
+
+        # self.fieldLayout = QGridLayout()
 
         # add all elements to the grid layout
         self.layout.addWidget(self.navigationBar, 0, 0)
         self.layout.addWidget(self.canvas, 1, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 2, 0)
         self.layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
-        self.layout.addLayout(smoothingLayout, 3, 0)
+        self.layout.addLayout(smoothingLayout, 3, 0, 1, 2)
         self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 4, 0)
         self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 4, 1)
         self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
@@ -159,7 +171,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
         v = self.smoothingSlider.value() / 100.0
         smoothingValue = 10**v
         dMin = float(self.fielddMin.field.text())
-        dMax = float(Config["constants.CrystallographicInfo.dMax"])
+        dMax = float(self.fielddMax.field.text())
+        peakThreshold = float(self.fieldThreshold.text())
         if dMin < 0.1:
             response = QMessageBox.warning(
                 self,
@@ -177,20 +190,21 @@ class SpecifyNormalizationCalibrationView(QWidget):
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(index, smoothingValue, dMin)
+        self.signalValueChanged.emit(index, smoothingValue, dMin, dMax, peakThreshold)
 
-    def updateWorkspaces(self, focusWorkspace, smoothedWorkspace):
+    def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks):
         self.focusWorkspace = focusWorkspace
         self.smoothedWorkspace = smoothedWorkspace
         self.groupingSchema = (
             str(self.groupingDropDown.currentText()).split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
         )
-        self._updateGraphs()
+        self._updateGraphs(peaks)
 
-    def _updateGraphs(self):
+    def _updateGraphs(self, peaks):
         # get the updated workspaces and optimal graph grid
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
+        peaks = parse_obj_as(List[GroupPeakList], peaks)
         numGraphs = focusedWorkspace.getNumberHistograms()
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
 
@@ -205,6 +219,15 @@ class SpecifyNormalizationCalibrationView(QWidget):
             ax.set_title(f"Group ID: {i + 1}")
             ax.set_xlabel("d-Spacing (Å)")
             ax.set_ylabel("Intensity")
+            # fill in the discovered peaks for easier viewing
+            x, y, _, _ = get_spectrum(focusedWorkspace, i, normalize_by_bin_width=True)
+            # for each detected peak in this group, shade in the peak region
+            for peak in peaks[i].peaks:
+                under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]
+                ax.fill_between(x, y, where=under_peaks, color="blue", alpha=0.5)
+            # plot the min value for peaks
+            ax.axvline(x=max(min(x), float(self.fielddMin.field.text())), label="dMin", color="red")
+            ax.axvline(x=min(max(x), float(self.fielddMax.field.text())), label="dMax", color="red")
 
         # resize window and redraw
         self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))

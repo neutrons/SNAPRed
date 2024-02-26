@@ -70,12 +70,14 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.useLiteMode = view.litemodeToggle.field.getState()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
+        self.peakFunction = view.peakFunctionDropdown.currentText()
 
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             calibrantSamplePath=self.calibrantSamplePath,
             focusGroup=self.focusGroups[self.focusGroupPath],
             useLiteMode=self.useLiteMode,
+            peakFunction=self.peakFunction,
         )
         payload.convergenceThreshold = view.fieldConvergnceThreshold.get(payload.convergenceThreshold)
         payload.peakIntensityThreshold = view.fieldPeakIntensityThreshold.get(payload.peakIntensityThreshold)
@@ -97,6 +99,7 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         assessmentResponse = response.data
         self.calibrationRecord = assessmentResponse.record
         self.calibrationRecord.workspaceNames.append(self.responses[-2].data["calibrationTable"])
+        self.calibrationRecord.workspaceNames.append(self.responses[-2].data["maskWorkspace"])
 
         self.outputs.extend(assessmentResponse.metricWorkspaces)
         self.outputs.extend(self.calibrationRecord.workspaceNames)
