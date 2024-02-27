@@ -84,6 +84,7 @@ class GroupingMap(BaseModel):
                 # Check if path is relative
                 if not os.path.isabs(fp):
                     fp = Path.joinpath(cls.calibrationGroupingHome(), fp)
+                    groups[mode][group].definition = fp
                 if not fp.exists():
                     logger.warning("File:" + str(fp) + " not found")
                     del groups[mode][group]

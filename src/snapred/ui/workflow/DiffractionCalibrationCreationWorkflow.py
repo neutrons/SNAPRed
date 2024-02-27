@@ -35,16 +35,19 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
 
         self.samplePaths = self.request(path="config/samplePaths").data
 
-        self.focusGroups = self.request(path="config/focusGroups").data
-        self.groupingFiles = list(self.focusGroups.keys())
+        # self.focusGroups = self.request(path="config/focusGroups").data
+        # self.groupingFiles = list(self.focusGroups.keys())
 
         self._calibrationReductionView = CalibrationReductionRequestView(
-            jsonForm, samples=self.samplePaths, groups=self.groupingFiles, parent=parent
+            jsonForm, samples=self.samplePaths, parent=parent
         )
         self._calibrationAssessmentView = CalibrationAssessmentView(
             "Assessing Calibration", self.assessmentSchema, parent=parent
         )
         self._saveCalibrationView = SaveCalibrationView(parent)
+
+        # connect signal to populate the grouping dropdown after run is selected
+        self._calibrationReductionView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=None, iterateLambda=self._iterate, parent=parent)
@@ -57,6 +60,19 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
             .addNode(self._saveCalibration, self._saveCalibrationView, name="Saving")
             .build()
         )
+
+    def _populateGroupingDropdown(self):
+        # when the run number is updated, grab the grouping map and populate grouping drop down
+        runNumber = self._calibrationReductionView.runNumberField.text()
+        useLiteMode = self._calibrationReductionView.litemodeToggle.field.getState()
+        request = {
+            "runNumber": runNumber,
+        }
+        response = self.request(path="config/groupingMap", payload=json.dumps(request))
+        self.focusGroups = {"Enter a Run Number": ""}
+        if response.code < 300:
+            self.focusGroups = response.data.getMap(useLiteMode)
+        self._calibrationReductionView.populateGroupingDropdown(list(self.focusGroups.keys()))
 
     def _triggerCalibrationReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView

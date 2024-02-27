@@ -44,3 +44,6 @@ class LabeledField(QWidget):
 
     def clear(self):
         self._field.clear()
+
+    def editingFinished(self):
+        return self._field.editingFinished()

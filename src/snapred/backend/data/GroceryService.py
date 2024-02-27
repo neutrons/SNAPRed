@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from mantid.api import AlgorithmManager, mtd
 
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.dao.state import DetectorState
+from snapred.backend.dao.state import DetectorState, GroupingMap
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.meta.Config import Config
@@ -40,6 +40,8 @@ class GroceryService:
         # Cache maps to workspace names, for various purposes
         self._loadedGroupings: Dict[Tuple[str, str, bool], str] = {}
         self._loadedInstruments: Dict[Tuple[str, bool], str] = {}
+
+        self._groupingMapCache: Dict[str, GroupingMap] = {}
 
         self.grocer = FetchGroceriesRecipe()
 
@@ -135,13 +137,15 @@ class GroceryService:
         return self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext]
 
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
-        # TODO needs to be populated with a GroupingMap
         if groupingScheme == "Lite":
             path = str(Config["instrument.lite.map.file"])
+        elif self._groupingMapCache.get(runNumber):
+            path = self._groupingMapCache[runNumber].getMap(useLiteMode)[groupingScheme].definition
         else:
-            stateConfig = self.dataService.readStateConfig(runNumber)
-            path = stateConfig.groupingMap.getMap(useLiteMode)[groupingScheme].definition
-        return path
+            groupingMap = self.dataService.readGroupingMap(runNumber)
+            self._groupingMapCache[runNumber] = groupingMap
+            path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
+        return str(path)
 
     ## WORKSPACE NAME METHODS
 

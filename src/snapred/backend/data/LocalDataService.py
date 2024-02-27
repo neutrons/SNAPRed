@@ -789,6 +789,10 @@ class LocalDataService:
             raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
         return parse_file_as(GroupingMap, path)
 
+    def readGroupingMap(self, runNumber: str):
+        stateId = self._generateStateId(runNumber)
+        return self._readGroupingMap(stateId)
+
     def _readDefaultGroupingMap(self) -> GroupingMap:
         path = self._defaultGroupingMapPath()
         if not path.exists():
@@ -812,6 +816,7 @@ class LocalDataService:
     def _groupingMapPath(self, stateId) -> Path:
         return Path(self._constructCalibrationStatePath(stateId)) / "groupingMap.json"
 
+    # TODO delete this
     def readGroupingFiles(self):
         groupingFolder = Config["instrument.calibration.powder.grouping.home"]
         extensions = Config["instrument.calibration.powder.grouping.extensions"]
@@ -824,6 +829,7 @@ class LocalDataService:
         groupingFiles.sort()
         return groupingFiles
 
+    # TODO delete this
     def readFocusGroups(self):
         groupingFiles = self.readGroupingFiles()
         focusGroups = {}
@@ -834,6 +840,7 @@ class LocalDataService:
             )
         return focusGroups
 
+    # TODO delete this
     def groupingSchemaFromPath(self, path: str) -> str:
         return path.split("/")[-1].split("_")[-1].split(".")[0]
 
