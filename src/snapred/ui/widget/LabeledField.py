@@ -49,4 +49,3 @@ class LabeledField(QWidget):
 
     def clear(self):
         self._field.clear()
-
