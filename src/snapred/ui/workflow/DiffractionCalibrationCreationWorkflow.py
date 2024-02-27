@@ -74,7 +74,7 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         else:
             try:
                 response = self.request(path="config/groupingMap", payload=runNumber)
-                self.focusGroups = response.data.getMap(useLiteMode)  
+                self.focusGroups = response.data.getMap(useLiteMode)
             except:
                 self.focusGroups = invalidRunNumberDict
         finally:
