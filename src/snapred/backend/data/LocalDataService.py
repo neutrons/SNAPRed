@@ -81,7 +81,7 @@ class LocalDataService:
         # verify parent directory exists
         self.dataPath = Path(Config["instrument.home"])
         if self.verifyPaths and not self.dataPath.exists():
-            raise _createFileNotFoundError("Config['instrument.home']", self.dataPath)
+            raise _createFileNotFoundError(Config["instrument.home"], self.dataPath)
 
         # look for the config file and verify it exists
         self.instrumentConfigPath = Config["instrument.config"]

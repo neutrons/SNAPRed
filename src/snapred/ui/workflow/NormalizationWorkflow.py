@@ -26,6 +26,8 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
     def __init__(self, jsonForm, parent=None):
         super().__init__(parent)
 
+        self.initializationComplete = False
+
         # TODO enable set by toggle
         self.useLiteMode = True
 
@@ -114,11 +116,8 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
 
     def _triggerNormalizationCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
-
-        try:
-            view.verify()
-        except ValueError as e:
-            return SNAPResponse(code=500, message=f"Missing Fields!{e}")
+        # pull fields from view for normalization
+        self.verifyForm(view)
 
         self.runNumber = view.getFieldText("runNumber")
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
@@ -196,8 +195,6 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
             normalizationIndexEntry=normalizationIndexEntry,
         )
         response = self.request(path="normalization/save", payload=payload.json())
-        self.responses.append(response)
-
         return response
 
     def callNormalizationCalibration(self, index, smoothingParameter, dMin, dMax, peakThreshold):
@@ -278,10 +275,3 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
         self.prevDMin = dMin
         self.prevDMax = dMax
         self.prevThreshold = peakThreshold
-
-    @property
-    def widget(self):
-        return self.workflow.presenter.widget
-
-    def show(self):
-        pass

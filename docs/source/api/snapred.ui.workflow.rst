@@ -4,10 +4,10 @@ snapred.ui.workflow package
 Submodules
 ----------
 
-snapred.ui.workflow.DiffractionCalibrationCreationWorkflow module
+snapred.ui.workflow.DiffCalWorkflow module
 -----------------------------------------------------------------
 
-.. automodule:: snapred.ui.workflow.DiffractionCalibrationCreationWorkflow
+.. automodule:: snapred.ui.workflow.DiffCalWorkflow
    :members:
    :undoc-members:
    :show-inheritance:

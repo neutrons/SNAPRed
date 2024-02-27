@@ -11,8 +11,8 @@ from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibrationCheckView
 from snapred.ui.widget.JsonForm import JsonForm
-from snapred.ui.workflow.DiffractionCalibrationCreationWorkflow import DiffractionCalibrationCreationWorkflow
-from snapred.ui.workflow.NormalizationCalibrationWorkflow import NormalizationCalibrationWorkflow
+from snapred.ui.workflow.DiffCalWorkflow import DiffCalWorkflow
+from snapred.ui.workflow.NormalizationWorkflow import NormalizationWorkflow
 from snapred.ui.workflow.ReductionWorkflow import ReductionWorkflow
 
 logger = snapredLogger.getLogger(__name__)
@@ -38,7 +38,7 @@ class TestPanelPresenter(object):
         self.diffractionCalibrationWidget = QWidget()
         self.diffractionCalibrationWidget.setLayout(self.diffractionCalibrationLayout)
 
-        self.diffractionCalibrationLayout.addWidget(self._createDiffractionCalibrationWorkflow())
+        self.diffractionCalibrationLayout.addWidget(self._createDiffCalWorkflow())
         self.diffractionCalibrationLayout.addWidget(self.calibrationCheckView)
         self.diffractionCalibrationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
 
@@ -46,7 +46,7 @@ class TestPanelPresenter(object):
         self.calibrationNormalizationWidget = QWidget()
         self.calibrationNormalizationWidget.setLayout(self.calibrationNormalizationLayout)
 
-        self.calibrationNormalizationLayout.addWidget(self._createCalibrationNormalizationWorkflow())
+        self.calibrationNormalizationLayout.addWidget(self._createNormalizationWorkflow())
         self.calibrationNormalizationLayout.addWidget(self.calibrationCheckView)
         self.calibrationNormalizationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
 
@@ -78,7 +78,7 @@ class TestPanelPresenter(object):
         else:
             logger.warning("No default values for path: {}".format(defaultFilePath))
 
-    def _createDiffractionCalibrationWorkflow(self):
+    def _createDiffCalWorkflow(self):
         path = "calibration/diffraction/request"
         logger.info("Creating workflow for path: {}".format(path))
         jsonSchema = self._getSchemaForSelection(path)
@@ -87,9 +87,9 @@ class TestPanelPresenter(object):
         logger.info("Created form for path: {}".format(newForm))
         self._loadDefaultJsonInput(path, newForm)
         logger.info("loaded default json input for path: {}".format(path))
-        return DiffractionCalibrationCreationWorkflow(newForm, parent=self.view).widget
+        return DiffCalWorkflow(newForm, parent=self.view).widget
 
-    def _createCalibrationNormalizationWorkflow(self):
+    def _createNormalizationWorkflow(self):
         path = "normalization//request"
         logger.info("Creating workflow for path: {}".format(path))
         jsonSchema = self._getSchemaForSelection(path)
@@ -98,7 +98,7 @@ class TestPanelPresenter(object):
         logger.info("Created form for path: {}".format(newForm))
         self._loadDefaultJsonInput(path, newForm)
         logger.info("loaded default json input for path: {}".format(path))
-        return NormalizationCalibrationWorkflow(newForm, parent=self.view).widget
+        return NormalizationWorkflow(newForm, parent=self.view).widget
 
     @property
     def widget(self):
