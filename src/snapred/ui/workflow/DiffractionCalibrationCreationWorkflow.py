@@ -35,9 +35,6 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
 
         self.samplePaths = self.request(path="config/samplePaths").data
 
-        # self.focusGroups = self.request(path="config/focusGroups").data
-        # self.groupingFiles = list(self.focusGroups.keys())
-
         self._calibrationReductionView = CalibrationReductionRequestView(
             jsonForm, samples=self.samplePaths, parent=parent
         )
@@ -65,20 +62,19 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         # when the run number is updated, grab the grouping map and populate grouping drop down
         runNumber = self._calibrationReductionView.runNumberField.text()
         useLiteMode = self._calibrationReductionView.litemodeToggle.field.getState()
-        invalidRunNumberDict = {"Enter a Run Number": ""}
-        # NOTE this error handling is not handling errors
-        try:
-            ipts = self.request(path="config/ipts", payload=runNumber)
-        except:
-            self.focusGroups = invalidRunNumberDict
-        else:
-            try:
-                response = self.request(path="config/groupingMap", payload=runNumber)
-                self.focusGroups = response.data.getMap(useLiteMode)  
-            except:
-                self.focusGroups = invalidRunNumberDict
-        finally:
+
+        # pre-screen the run number to make sure it is complete before any further checks
+        if len(runNumber) < 5:
+            return
+
+        # check if the state exists -- if so load its grouping map
+        hasState = self.request(path="calibration/hasState", payload=runNumber).data
+        if hasState:
+            response = self.request(path="config/groupingMap", payload=runNumber)
+            self.focusGroups = response.data.getMap(useLiteMode)
             self._calibrationReductionView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        else:
+            logger.warn(f"Could not find state folder for run {runNumber} -- verify run number field")
 
     def _triggerCalibrationReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView

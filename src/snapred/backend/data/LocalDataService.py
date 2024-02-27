@@ -762,8 +762,14 @@ class LocalDataService:
         return calibration
 
     def checkCalibrationFileExists(self, runId: str):
-        stateID, _ = self._generateStateId(runId)
-        calibrationStatePath: str = self._constructCalibrationStatePath(stateID)
+        # first make sure the run number has a valid IPTS
+        try:
+            GetIPTS(runId, Config["instrument.name"])
+        except RuntimeError:
+            return False
+        else:
+            stateID, _ = self._generateStateId(runId)
+            calibrationStatePath: str = self._constructCalibrationStatePath(stateID)
 
         if os.path.exists(calibrationStatePath):
             return True
