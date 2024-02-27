@@ -31,6 +31,11 @@ class LabeledField(QWidget):
     def field(self):
         return self._field
 
+    @property
+    def editingFinished(self):
+        # signal sent when the text field is no longer selected
+        return self._field.editingFinished
+
     def get(self, default=None):
         if "" == self._field.text():
             return default
@@ -45,5 +50,3 @@ class LabeledField(QWidget):
     def clear(self):
         self._field.clear()
 
-    def editingFinished(self):
-        return self._field.editingFinished()

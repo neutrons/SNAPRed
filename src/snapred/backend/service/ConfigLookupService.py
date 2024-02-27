@@ -22,12 +22,16 @@ class ConfigLookupService(Service):
         self.registerPath("groupingFiles", self.getGroupingFiles)
         self.registerPath("focusGroups", self.getFocusGroups)
         self.registerPath("groupingMap", self.getGroupingMap)
+        self.registerPath("ipts", self.getIPTS)
 
         return
 
     @staticmethod
     def name():
         return "config"
+
+    def getIPTS(self, runId: str):
+        return self.dataFactoryService.getIPTS(runId)
 
     def getGroupingMap(self, runId: str):
         return self.dataFactoryService.getGroupingMap(runId)

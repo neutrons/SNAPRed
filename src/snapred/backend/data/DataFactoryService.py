@@ -104,6 +104,9 @@ class DataFactoryService:
     def getGroupingMap(self, runId: str):
         return self.lookupService.readGroupingMap(runId)
 
+    def getIPTS(self, runId: str):
+        return self.lookupService.getIPTS(runId)
+
     def checkCalibrationStateExists(self, runId: str):
         return self.lookupService.checkCalibrationFileExists(runId)
 

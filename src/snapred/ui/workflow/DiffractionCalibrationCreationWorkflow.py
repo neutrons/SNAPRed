@@ -65,14 +65,20 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         # when the run number is updated, grab the grouping map and populate grouping drop down
         runNumber = self._calibrationReductionView.runNumberField.text()
         useLiteMode = self._calibrationReductionView.litemodeToggle.field.getState()
-        request = {
-            "runNumber": runNumber,
-        }
-        response = self.request(path="config/groupingMap", payload=json.dumps(request))
-        self.focusGroups = {"Enter a Run Number": ""}
-        if response.code < 300:
-            self.focusGroups = response.data.getMap(useLiteMode)
-        self._calibrationReductionView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        invalidRunNumberDict = {"Enter a Run Number": ""}
+        # NOTE this error handling is not handling errors
+        try:
+            ipts = self.request(path="config/ipts", payload=runNumber)
+        except:
+            self.focusGroups = invalidRunNumberDict
+        else:
+            try:
+                response = self.request(path="config/groupingMap", payload=runNumber)
+                self.focusGroups = response.data.getMap(useLiteMode)  
+            except:
+                self.focusGroups = invalidRunNumberDict
+        finally:
+            self._calibrationReductionView.populateGroupingDropdown(list(self.focusGroups.keys()))
 
     def _triggerCalibrationReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView

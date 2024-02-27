@@ -237,7 +237,7 @@ class LocalDataService:
 
     def _constructCalibrationStatePath(self, stateId):
         # TODO: Propagate pathlib through codebase
-        return f"{self.instrumentConfig.calibrationDirectory}/Powder/{stateId}/"
+        return f"{self.instrumentConfig.calibrationDirectory}/Powder/{str(stateId)}/"
 
     def _constructNormalizationCalibrationStatePath(self, stateId):
         # TODO: Propagate pathlib through codebase
@@ -790,7 +790,7 @@ class LocalDataService:
         return parse_file_as(GroupingMap, path)
 
     def readGroupingMap(self, runNumber: str):
-        stateId = self._generateStateId(runNumber)
+        stateId, _ = self._generateStateId(runNumber)
         return self._readGroupingMap(stateId)
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
