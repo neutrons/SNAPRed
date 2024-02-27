@@ -117,7 +117,6 @@ class WorkflowPresenter(object):
         self.view.continueButton.setEnabled(False)
         self.view.cancelButton.setEnabled(False)
         self.view.skipButton.setEnabled(False)
-        self.workflowAction(model, self.view)
         # do action
         self.worker = self.worker_pool.createWorker(target=model.continueAction, args=(self))
         self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
@@ -137,6 +136,28 @@ class WorkflowPresenter(object):
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
+        elif result.code == 400:
+            if "state" in result.message:
+                originalException = AttributeError(
+                    "AttributeError: 'NoneType' object has no attribute 'instrumentState'"
+                )
+                recoverableException = RecoverableException(
+                    exception=originalException,
+                    errorType="AttributeError: 'NoneType' object has no attribute 'instrumentState'",
+                )
+                runNumber = self.view.getRunNumber()
+                recoverableException.handleStateMessage(runNumber, self.view)
+            else:
+                logger.error(f"Unhandled scenario triggered by state message: {result.message}")
+                messageBox = QMessageBox(
+                    QMessageBox.Warning,
+                    "Warning",
+                    "Proccess completed successfully with warnings!",
+                    QMessageBox.Ok,
+                    self.view,
+                )
+            messageBox.setDetailedText(f"{result.message}")
+            messageBox.exec()
         elif result.message:
             messageBox = QMessageBox(
                 QMessageBox.Warning,
@@ -147,15 +168,3 @@ class WorkflowPresenter(object):
             )
             messageBox.setDetailedText(f"{result.message}")
             messageBox.exec()
-
-    def workflowAction(self, model, view):
-        try:
-            model.continueAction(self)
-        except RecoverableException as e:
-            if e.errorType == "State not initialized":
-                # get runNumber from view pass on:
-                runNumber = view.getRunNumber()
-                e.handleStateMessage(runNumber, view)
-            else:
-                logger.error(f"Unhandled recoverable exception: {e}")
-                raise e

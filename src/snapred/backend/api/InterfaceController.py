@@ -34,7 +34,7 @@ class InterfaceController:
             response = SNAPResponse(code=200, message=message, data=result)
 
         except RecoverableException as e:
-            self.logger.error(f"Recoverable error occurred: {e.message}")
+            self.logger.error(f"Recoverable error occurred: {str(e)}")
             response = SNAPResponse(code=400, message="state", data=None)
 
         except Exception as e:  # noqa BLE001

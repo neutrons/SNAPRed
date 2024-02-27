@@ -15,10 +15,12 @@ from snapred.ui.widget.Toggle import Toggle
 
 
 class CalibrationMenu(QDialog):
-    def __init__(self, runNumber=None, parent=None):
+    def __init__(self, interfaceController, runNumber=None, parent=None):
         super(CalibrationMenu, self).__init__(parent)
         self.setWindowTitle("Calibration Menu")
         self.setFixedSize(400, 200)
+
+        self.interfaceController = interfaceController
 
         layout = QGridLayout(self)
 
@@ -37,7 +39,7 @@ class CalibrationMenu(QDialog):
 
         self.setLayout(layout)
 
-        self.calibrationCheck = CalibrationCheck(self)
+        self.calibrationCheck = CalibrationCheck(self, self.interfaceController)
 
         try:
             self.beginFlowButton.clicked.disconnect()

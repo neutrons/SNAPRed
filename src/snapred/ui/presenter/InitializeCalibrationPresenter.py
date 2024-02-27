@@ -1,7 +1,6 @@
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
 from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 
-from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import SNAPResponse
@@ -11,7 +10,6 @@ from snapred.ui.view.PromptUserforCalibrationInputView import PromptUserforCalib
 
 class CalibrationCheck(QObject):
     worker_pool = WorkerPool()
-    interfaceController = InterfaceController()
 
     stateInitialized = pyqtSignal(SNAPResponse)
     """Emit when a state has been initialized.
@@ -25,10 +23,11 @@ class CalibrationCheck(QObject):
     :param SNAPResponse: The response from checking the state
     """
 
-    def __init__(self, view):
+    def __init__(self, view, interfaceController):
         super().__init__()
         self.view = view
         self.message_widgets = []
+        self.interfaceController = interfaceController
 
     def _removePreviousMessages(self):
         for widget in self.message_widgets:
