@@ -179,22 +179,27 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             Resource.getPath("inputs/calibration/CalibrationParameters.json")
         )
 
-        # `GroupingMap` JSON file doesn't exist => read default `GroupingMap`
-        localDataService._groupingMapPath = mock.Mock()
-        localDataService._groupingMapPath.return_value = Path(
-            Resource.getPath("inputs/pixel_grouping/does_not_exist.json")
-        )
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+            # `GroupingMap` JSON file doesn't exist =>
+            #     1) read default `GroupingMap`
+            #     2) coerce <grouping map>.stateId to match this state
+            #     3) write <grouping map> to <state root> as "groupingMap.json"
+            groupingMapFilePath = Path(tmpDir) / "groupingMap.json"
+            assert not groupingMapFilePath.exists()
+            localDataService._groupingMapPath = mock.Mock()
+            localDataService._groupingMapPath.return_value = groupingMapFilePath
+            
+            
+            defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+            localDataService._readDefaultGroupingMap = mock.Mock()
+            localDataService._readDefaultGroupingMap.return_value = defaultGroupingMap
 
-        defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
-        localDataService._readDefaultGroupingMap = mock.Mock()
-        localDataService._readDefaultGroupingMap.return_value = defaultGroupingMap
+            # localDataService._writeGroupingMap = mock.Mock()
 
-        localDataService._writeGroupingMap = mock.Mock()
+            localDataService.instrumentConfig = getMockInstrumentConfig()
 
-        localDataService.instrumentConfig = getMockInstrumentConfig()
-
-        actual = localDataService.readStateConfig("57514")
-        assert actual.groupingMap.stateId == actual.stateId
+            actual = localDataService.readStateConfig("57514")
+            assert actual.groupingMap.stateId == actual.stateId
 
     def test_readStateConfig_writes_grouping_map():
         # Test that the first time a `StateConfig` is initialized,
@@ -452,8 +457,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs")
+        localDataService._constructCalibrationStateRootPath = mock.Mock()
+        localDataService._constructCalibrationStateRootPath.return_value = Resource.getPath("outputs")
         assert len(localDataService.readCalibrationIndex("123")) == 0
 
     def test_readNormalizationIndexMissing():
@@ -462,8 +467,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs")
+        localDataService._constructCalibrationStateRootPath = mock.Mock()
+        localDataService._constructCalibrationStateRootPath.return_value = Resource.getPath("outputs")
         assert len(localDataService.readNormalizationIndex("123")) == 0
 
     def test_writeCalibrationIndexEntry():
@@ -472,8 +477,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs")
+        localDataService._constructCalibrationStateRootPath = mock.Mock()
+        localDataService._constructCalibrationStateRootPath.return_value = Resource.getPath("outputs")
         expectedFilePath = Resource.getPath("outputs") + "CalibrationIndex.json"
         localDataService.writeCalibrationIndexEntry(
             CalibrationIndexEntry(runNumber="57514", comments="test comment", author="test author")
@@ -522,8 +527,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
         localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs")
+        localDataService._constructCalibrationStateRootPath = mock.Mock()
+        localDataService._constructCalibrationStateRootPath.return_value = Resource.getPath("outputs")
         expectedFilePath = Resource.getPath("outputs") + "CalibrationIndex.json"
         localDataService.writeCalibrationIndexEntry(
             CalibrationIndexEntry(runNumber="57514", comments="test comment", author="test author")
@@ -566,8 +571,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
             localDataService._readReductionParameters = mock.Mock()
-            localDataService._constructCalibrationStatePath = mock.Mock()
-            localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService._constructCalibrationStateRootPath = mock.Mock()
+            localDataService._constructCalibrationStateRootPath.return_value = f"{tempdir}/"
             localDataService.groceryService = mock.Mock()
             # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
             #   and <incoming record>.calibrationFittingIngredients.version.
@@ -592,8 +597,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("123", "456")
             localDataService._readReductionParameters = mock.Mock()
-            localDataService._constructCalibrationStatePath = mock.Mock()
-            localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService._constructCalibrationStateRootPath = mock.Mock()
+            localDataService._constructCalibrationStateRootPath.return_value = f"{tempdir}/"
             localDataService.groceryService = mock.Mock()
             localDataService.writeCalibrationRecord(
                 CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
@@ -610,8 +615,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
             localDataService._readReductionParameters = mock.Mock()
-            localDataService._constructCalibrationStatePath = mock.Mock()
-            localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService._constructCalibrationStateRootPath = mock.Mock()
+            localDataService._constructCalibrationStateRootPath.return_value = f"{tempdir}/"
             localDataService.groceryService = mock.Mock()
             localDataService.writeCalibrationRecord(testCalibrationRecord)
             actualRecord = localDataService.readCalibrationRecord("57514")
@@ -748,8 +753,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
+        localDataService._constructCalibrationStateRootPath = mock.Mock()
+        localDataService._constructCalibrationStateRootPath.return_value = Resource.getPath("outputs/")
         actualPath = localDataService.getCalibrationRecordPath("57514", 1)
         assert actualPath == Resource.getPath("outputs") + "/v_1/CalibrationRecord.json"
 
@@ -867,21 +872,21 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         actualRecord = localDataService._getCurrentNormalizationRecord("123")
         assert actualRecord == mockRecord
 
-    def test_getCalibrationStatePath():
+    def test__constructCalibrationParametersFilePath():
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
-        actualPath = localDataService.getCalibrationStatePath("57514", 1)
+        localDataService._constructCalibrationStateRootPath = mock.Mock()
+        localDataService._constructCalibrationStateRootPath.return_value = Resource.getPath("outputs/")
+        actualPath = localDataService._constructCalibrationParametersFilePath("57514", 1)
         assert actualPath == Resource.getPath("outputs") + "/v_1/CalibrationParameters.json"
 
     def test_readCalibrationState():
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService.getCalibrationStatePath = mock.Mock()
-        localDataService.getCalibrationStatePath.return_value = Resource.getPath(
+        localDataService._constructCalibrationParametersFilePath = mock.Mock()
+        localDataService._constructCalibrationParametersFilePath.return_value = Resource.getPath(
             "ab8704b0bc2a2342/v_1/CalibrationParameters.json"
         )
         localDataService._getLatestFile = mock.Mock()
@@ -916,8 +921,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             localDataService = LocalDataService()
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("123", "456")
-            localDataService._constructCalibrationStatePath = mock.Mock()
-            localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
+            localDataService._constructCalibrationStateRootPath = mock.Mock()
+            localDataService._constructCalibrationStateRootPath.return_value = f"{tempdir}/"
             localDataService._getCurrentCalibrationRecord = mock.Mock()
             localDataService._getCurrentCalibrationRecord.return_value = Calibration.construct({"name": "test"})
             calibration = Calibration.parse_raw(Resource.read("/inputs/calibration/CalibrationParameters.json"))
@@ -1041,8 +1046,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             service = LocalDataService()
             stateId = "ab8704b0bc2a2342"
             stateRoot = Path(f"{tempdir}/{stateId}")
-            service._constructCalibrationStatePath = mock.Mock()
-            service._constructCalibrationStatePath.return_value = str(stateRoot)
+            service._constructCalibrationStateRootPath = mock.Mock()
+            service._constructCalibrationStateRootPath.return_value = str(stateRoot)
             stateRoot.mkdir()
             shutil.copy(Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json")), stateRoot)
             groupingMap = service._readGroupingMap(stateId)
