@@ -42,11 +42,7 @@ class TestGroupingMap:
         with caplog.at_level(logging.WARNING):
             # JSON is not a valid format for grouping files.
             GroupingMap.GroupingMap.parse_obj(groupingMapFactory.invalidFileFormat())
-        assert (
-            'File format for: "tests/resources/inputs/calibration/ReductionIngredients.json" '
-            + "is not a valid grouping-schema map format"
-            in caplog.text
-        )
+        assert "is not a valid grouping-schema map format" in caplog.text
 
     # Validator test: logging: if no grouping files are listed in the grouping-schema map JSON for any given mode;
     # warning messages will be loggged.

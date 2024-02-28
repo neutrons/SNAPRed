@@ -26,10 +26,12 @@ class SampleDropDown(QWidget):
         self._initItems()
 
     def currentIndex(self):
-        return self.dropDown.currentIndex()
+        # NOTE because the label is considered an index, must decrement by 1
+        return self.dropDown.currentIndex() - 1
 
     def setCurrentIndex(self, index):
-        self.dropDown.setCurrentIndex(index)
+        # NOTE because the label is considered an index, must incredment by 1
+        self.dropDown.setCurrentIndex(index + 1)
 
     def currentText(self):
         return self.dropDown.currentText()

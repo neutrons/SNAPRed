@@ -27,7 +27,7 @@ class NormalizationCalibrationRequestView(BackendRequestView):
         self.sampleDropDown.model().item(0).setEnabled(False)
 
         self.groupingFileDropDown = self._sampleDropDown("Select Grouping File", groups)
-        self.groupingFileDropDown.setDisabled(True)
+        self.groupingFileDropDown.setEnabled(False)
 
         self.layout.addWidget(self.sampleDropDown, 2, 0)
         self.layout.addWidget(self.groupingFileDropDown, 2, 1)
@@ -37,11 +37,11 @@ class NormalizationCalibrationRequestView(BackendRequestView):
         self.groupingFileDropDown.setItems(groups)
 
     def verify(self):
-        if self.sampleDropDown.currentIndex() == 0:
+        if self.sampleDropDown.currentIndex() < 0:
             raise ValueError("Please select a sample")
-        if self.groupingFileDropDown.currentIndex() == 0:
+        if self.groupingFileDropDown.currentIndex() < 0:
             raise ValueError("Please select a grouping file")
-        if self.groupingFileDropDown.currentText() == "Enter a Run Number":
+        if self.groupingFileDropDown.currentIndex() < 0:
             raise ValueError("You must enter a run number to select a grouping defintion")
         if self.runNumberField.text() == "":
             raise ValueError("Please enter a run number")

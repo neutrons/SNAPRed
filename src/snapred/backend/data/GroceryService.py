@@ -147,6 +147,17 @@ class GroceryService:
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
+    def _createDiffcalOutputWorkspaceFilename(self, runId: str, version: str) -> str:
+        return str(
+            Path(self._getCalibrationDataPath(runId, version))
+            / (self._createDiffcalOutputWorkspaceName(runId) + ".nxs")
+        )
+
+    def _createDiffcalTableFilename(self, runId: str, version: str) -> str:
+        return str(
+            Path(self._getCalibrationDataPath(runId, version)) / (self._createDiffcalTableWorkspaceName(runId) + ".h5")
+        )
+
     ## WORKSPACE NAME METHODS
 
     def _createNeutronWorkspaceNameBuilder(self, runNumber: str, useLiteMode: bool) -> NameBuilder:
@@ -177,22 +188,11 @@ class GroceryService:
     def _createDiffcalOutputWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalOutput().runNumber(runId).build()
 
-    def _createDiffcalOutputWorkspaceFilename(self, runId: str, version: str) -> str:
-        return str(
-            Path(self._getCalibrationDataPath(runId, version))
-            / (self._createDiffcalOutputWorkspaceName(runId) + ".nxs")
-        )
-
     def _createDiffcalTableWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalTable().runNumber(runId).build()
 
     def _createDiffcalMaskWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalMask().runNumber(runId).build()
-
-    def _createDiffcalTableFilename(self, runId: str, version: str) -> str:
-        return str(
-            Path(self._getCalibrationDataPath(runId, version)) / (self._createDiffcalTableWorkspaceName(runId) + ".h5")
-        )
 
     ## ACCESSING WORKSPACES
     """

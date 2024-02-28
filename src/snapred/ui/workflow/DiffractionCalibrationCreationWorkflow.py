@@ -62,6 +62,7 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         # when the run number is updated, grab the grouping map and populate grouping drop down
         runNumber = self._calibrationReductionView.runNumberField.text()
         useLiteMode = self._calibrationReductionView.litemodeToggle.field.getState()
+        self._calibrationReductionView.groupingFileDropdown.setEnabled(False)
 
         # pre-screen the run number to make sure it is complete before any further checks
         if len(runNumber) < 5:

@@ -17,36 +17,31 @@ from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCal
 from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
 from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
+from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
 logger = snapredLogger.getLogger(__name__)
 
 
-class NormalizationCalibrationWorkflow:
+class NormalizationCalibrationWorkflow(WorkflowImplementer):
     def __init__(self, jsonForm, parent=None):
-        self.requests = []
-        self.responses = []
-        self.initializationComplete = False
-        self.interfaceController = InterfaceController()
-        request = SNAPRequest(path="api/parameters", payload="normalization/assessment")
-        self.assessmentSchema = self.interfaceController.executeRequest(request).data
+        super().__init__(parent)
+
+        self.assessmentSchema = self.request(path="api/parameters", payload="normalization/assessment").data
         self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
 
-        request = SNAPRequest(path="api/parameters", payload="normalization/save")
-        self.saveSchema = self.interfaceController.executeRequest(request).data
+        self.saveSchema = self.request(path="api/parameters", payload="normalization/save").data
         self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
 
-        request = SNAPRequest(path="config/samplePaths")
-        self.samplePaths = self.interfaceController.executeRequest(request).data
+        self.samplePaths = self.request(path="config/samplePaths").data
 
         self._normalizationCalibrationView = NormalizationCalibrationRequestView(
             jsonForm,
-            self.samplePaths,
+            samplePaths=self.samplePaths,
             parent=parent,
         )
 
         self._specifyNormalizationView = SpecifyNormalizationCalibrationView(
-            "Specifying Normalization",
-            self.assessmentSchema,
+            jsonForm,
             samples=self.samplePaths,
             parent=parent,
         )
@@ -83,21 +78,22 @@ class NormalizationCalibrationWorkflow:
         # when the run number is updated, grab the grouping map and populate grouping drop down
         runNumber = self._normalizationCalibrationView.runNumberField.text()
         useLiteMode = self._normalizationCalibrationView.litemodeToggle.field.getState()
+        self._normalizationCalibrationView.groupingFileDropDown.setEnabled(False)
 
         # pre-screen the run number to make sure it is complete before any further checks
         if len(runNumber) < 5:
             return
 
         # check if the state exists -- if so load its grouping map
-        request = SNAPRequest(path="calibration/hasState", payload=runNumber)
-        hasState = self.interfaceController.executeRequest(request).data
+        hasState = self.request(path="calibration/hasState", payload=runNumber).data
         if hasState:
-            request = SNAPRequest(path="config/groupingMap", payload=runNumber)
-            response = self.interfaceController.executeRequest(request).data
+            response = self.request(path="config/groupingMap", payload=runNumber).data
             self.focusGroups = response.getMap(useLiteMode)
+            print(self.focusGroups)
             self.groupingFiles = list(self.focusGroups.keys())
-            self._normalizationCalibrationView.populateGroupingDropdown(list(self.focusGroups.keys()))
-            self._specifyNormalizationView.populateGroupingDropdown(list(self.focusGroups.keys()))
+            print(json.dumps(self.groupingFiles, indent=2))
+            self._normalizationCalibrationView.populateGroupingDropdown(self.groupingFiles)
+            self._specifyNormalizationView.populateGroupingDropdown(self.groupingFiles)
         else:
             logger.warn(f"Could not find state folder for run {runNumber} -- verify run number field")
 
@@ -111,8 +107,8 @@ class NormalizationCalibrationWorkflow:
 
         self.runNumber = view.getFieldText("runNumber")
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
-        self.sampleIndex = (view.sampleDropDown.currentIndex()) - 1
-        self.prevGroupingIndex = (view.groupingFileDropDown.currentIndex()) - 1
+        self.sampleIndex = view.sampleDropDown.currentIndex()
+        self.prevGroupingIndex = view.groupingFileDropDown.currentIndex()
         self.samplePath = view.sampleDropDown.currentText()
         self.groupingPath = view.groupingFileDropDown.currentText()
         self.prevDMin = float(self._specifyNormalizationView.fielddMin.field.text())
@@ -120,6 +116,9 @@ class NormalizationCalibrationWorkflow:
         self.prevThreshold = float(self._specifyNormalizationView.fieldThreshold.field.text())
 
         # init the payload
+        print(self.focusGroups)
+        print(json.dumps(self.groupingFiles, indent=2))
+        print(f"INDEX = {self.prevGroupingIndex}")
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
@@ -142,10 +141,7 @@ class NormalizationCalibrationWorkflow:
         self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
         self._saveNormalizationCalibrationView.updateBackgroundRunNumber(self.backgroundRunNumber)
 
-        request = SNAPRequest(path="normalization", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
-        self.responses.append(response)
-
+        response = self.request(path="normalization", payload=payload.json())
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
         peaks = self.responses[-1].data["detectorPeaks"]
@@ -155,6 +151,9 @@ class NormalizationCalibrationWorkflow:
         return response
 
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
+        print(self.focusGroups)
+        print(json.dumps(self.groupingFiles, indent=2))
+        print(f"INDEX = {self.prevGroupingIndex}")
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
@@ -165,11 +164,7 @@ class NormalizationCalibrationWorkflow:
             crystalDMax=self.prevDMax,
             peakIntensityThreshold=self.prevThreshold,
         )
-
-        request = SNAPRequest(path="normalization/assessment", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
-        self.responses.append(response)
-
+        response = self.request(path="normalization/assessment", payload=payload.json())
         return response
 
     def _saveNormalizationCalibration(self, workflowPresenter):
@@ -191,14 +186,15 @@ class NormalizationCalibrationWorkflow:
             normalizationRecord=normalizationRecord,
             normalizationIndexEntry=normalizationIndexEntry,
         )
-
-        request = SNAPRequest(path="normalization/save", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
+        response = self.request(path="normalization/save", payload=payload.json())
         self.responses.append(response)
 
         return response
 
     def callNormalizationCalibration(self, index, smoothingParameter, dMin, dMax, peakThreshold):
+        print(self.focusGroups)
+        print(json.dumps(self.groupingFiles, indent=2))
+        print(f"INDEX = {index}")
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
@@ -209,10 +205,7 @@ class NormalizationCalibrationWorkflow:
             crystalDMax=dMax,
             peakIntensityThreshold=peakThreshold,
         )
-
-        request = SNAPRequest(path="normalization", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
-        self.responses.append(response)
+        self.request(path="normalization", payload=payload.json())
 
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
@@ -223,6 +216,9 @@ class NormalizationCalibrationWorkflow:
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
 
+        print(self.focusGroups)
+        print(json.dumps(self.groupingFiles, indent=2))
+        print(f"INDEX = {index}")
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focusWorkspace,
             outputWorkspace=smoothWorkspace,
@@ -234,10 +230,7 @@ class NormalizationCalibrationWorkflow:
             crystalDMax=dMax,
             peakIntensityThreshold=peakThreshold,
         )
-
-        request = SNAPRequest(path="normalization/smooth", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
-        self.responses.append(response)
+        response = self.request(path="normalization/smooth", payload=payload.json())
 
         peaks = response.data["detectorPeaks"]
         self._specifyNormalizationView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
@@ -256,8 +249,6 @@ class NormalizationCalibrationWorkflow:
         dMaxValueChanged = dMax != self.prevDMax
         thresholdChanged = peakThreshold != self.prevThreshold
         peakListWillChange = smoothingValueChanged or dMinValueChanged or dMaxValueChanged or thresholdChanged
-
-        print(f"******* VALUE CHANGED? {thresholdChanged} -- {peakListWillChange} *******")
 
         # check the case, apply correct update
         if groupingFileChanged:
