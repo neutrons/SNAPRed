@@ -1031,6 +1031,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         localDataService.readInstrumentConfig = mock.Mock()
         localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
         localDataService.writeCalibrationState = mock.Mock()
+        localDataService._prepareStateRoot = mock.Mock()
         actual = localDataService.initializeState("123", "test")
         actual.creationDate = testCalibrationData.creationDate
 

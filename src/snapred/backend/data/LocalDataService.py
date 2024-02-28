@@ -774,7 +774,7 @@ class LocalDataService:
     def _prepareStateRoot(self, stateId: str):
         """
         Create the state root directory, and populate it with any necessary metadata files.
-        """
+        """        
         stateRootPath = self._constructCalibrationStateRootPath(stateId)
         if not os.path.exists(stateRootPath):
             os.makedirs(stateRootPath)
