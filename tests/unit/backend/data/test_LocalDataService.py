@@ -1,6 +1,8 @@
 import json
 import os
 import shutil
+import importlib
+import logging
 import socket
 import tempfile
 from pathlib import Path
@@ -45,8 +47,18 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
     from snapred.backend.dao.state.InstrumentState import InstrumentState
     from snapred.backend.data.LocalDataService import LocalDataService  # noqa: E402
 
+    LocalDataServiceModule = importlib.import_module(LocalDataService.__module__)
     ThisService = "snapred.backend.data.LocalDataService."
 
+    @pytest.fixture(autouse=True)
+    def _capture_logging(monkeypatch):
+        # For some reason pytest 'caplog' doesn't work with the SNAPRed logging setup.  (TODO: fix this!)
+        # This patch bypasses the issue, by renaming and
+        # patching the `LocalDataService` module's logger to a standard python `Logger`.
+        defaultLogger = logging.getLogger(LocalDataServiceModule.__name__ + "_patch")
+        defaultLogger.propagate = True
+        monkeypatch.setattr(LocalDataServiceModule, "logger", defaultLogger)
+    
     fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
     reductionIngredients = None
     with Resource.open("inputs/calibration/ReductionIngredients.json", "r") as file:
@@ -373,7 +385,34 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             with open(groupingMapFilePath, "r") as file:
                 groupingMap = parse_raw_as(GroupingMap, file.read())
             assert groupingMap.stateId == otherStateId
-
+    
+    def test_calibrationFileExists():
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+            assert Path(tmpDir).exists()
+            localDataService = LocalDataService()
+            localDataService._generateStateId = mock.Mock(
+                return_value = ("ab8704b0bc2a2342", None)
+            )
+            localDataService._constructCalibrationStateRootPath = mock.Mock(
+                return_value = tmpDir
+            )
+            runNumber = "654321"
+            assert localDataService.checkCalibrationFileExists(runNumber)        
+    
+    def test_calibrationFileExists_not():
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+            localDataService = LocalDataService()
+            localDataService._generateStateId = mock.Mock(
+                return_value = ("ab8704b0bc2a2342", None)
+            )
+            nonExistentPath = Path(tmpDir) / "1755"
+            assert not nonExistentPath.exists()
+            localDataService._constructCalibrationStateRootPath = mock.Mock(
+                return_value = str(nonExistentPath)
+            )
+            runNumber = "654321"
+            assert not localDataService.checkCalibrationFileExists(runNumber)        
+    
     @mock.patch(ThisService + "GetIPTS")
     def test_getIPTS(mockGetIPTS):
         mockGetIPTS.return_value = "nowhere/"
@@ -983,6 +1022,33 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             calibration = Calibration.parse_raw(Resource.read("/inputs/calibration/CalibrationParameters.json"))
             localDataService.writeCalibrationState("123", calibration)
             assert os.path.exists(tempdir + "/v_1/CalibrationParameters.json")
+
+    def test_writeCalibrationState_overwrite_warning(caplog):
+        # Test that overwriting an existing calibration logs a warning.
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+            with caplog.at_level(logging.WARNING):
+                calibrationDataPath = Path(tmpDir) / "v_1"
+                calibrationParametersFilePath = calibrationDataPath / "CalibrationParameters.json"
+                calibration = Calibration.parse_raw(Resource.read("/inputs/calibration/CalibrationParameters.json"))
+                os.makedirs(calibrationDataPath)
+                write_model_pretty(calibration, calibrationParametersFilePath)
+
+                localDataService = LocalDataService()
+                localDataService._generateStateId = mock.Mock()
+                localDataService._generateStateId.return_value = ("123", "456")
+                localDataService._constructCalibrationStateRootPath = mock.Mock()
+                localDataService._constructCalibrationStateRootPath.return_value = f"{tmpDir}/"
+                localDataService._getCurrentCalibrationRecord = mock.Mock()
+                localDataService._getCurrentCalibrationRecord.return_value = Calibration.construct({"name": "test"})
+                
+                # Force the output path: otherwise it will be written to "v_2".
+                localDataService._constructCalibrationParametersFilePath = mock.Mock()
+                localDataService._constructCalibrationParametersFilePath.return_value = calibrationParametersFilePath
+                
+                calibration = Calibration.parse_raw(Resource.read("/inputs/calibration/CalibrationParameters.json"))
+                localDataService.writeCalibrationState("123", calibration)
+                assert os.path.exists(calibrationParametersFilePath)
+            assert f"overwriting calibration parameters at {calibrationParametersFilePath}" in caplog.text
 
     def test_writeNormalizationState():
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:

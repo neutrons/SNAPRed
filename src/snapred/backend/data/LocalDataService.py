@@ -788,7 +788,6 @@ class LocalDataService:
         #   to its separate JSON file at <state root>.
         self._writeGroupingMap(stateId, groupingMap)
 
-
     def checkCalibrationFileExists(self, runId: str):
         stateID, _ = self._generateStateId(runId)
         calibrationStatePath: str = self._constructCalibrationStateRootPath(stateID)
