@@ -663,7 +663,7 @@ class LocalDataService:
         previousVersion = self._getLatestCalibrationVersion(stateId)
         if not version:
             version = previousVersion + 1
-        
+
         # Check for the existence of a calibration parameters file
         calibrationParametersFilePath = self._constructCalibrationParametersFilePath(runId, version)
         if os.path.exists(calibrationParametersFilePath):
@@ -774,7 +774,7 @@ class LocalDataService:
     def _prepareStateRoot(self, stateId: str):
         """
         Create the state root directory, and populate it with any necessary metadata files.
-        """        
+        """
         stateRootPath = self._constructCalibrationStateRootPath(stateId)
         if not os.path.exists(stateRootPath):
             os.makedirs(stateRootPath)

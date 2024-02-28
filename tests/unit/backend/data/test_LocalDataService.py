@@ -1,16 +1,15 @@
+import importlib
 import json
+import logging
 import os
 import shutil
-import importlib
-import logging
 import socket
 import tempfile
+import unittest.mock as mock
 from pathlib import Path
 from typing import List
 
-import unittest.mock as mock
 import pytest
-
 from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
@@ -58,7 +57,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         defaultLogger = logging.getLogger(LocalDataServiceModule.__name__ + "_patch")
         defaultLogger.propagate = True
         monkeypatch.setattr(LocalDataServiceModule, "logger", defaultLogger)
-    
+
     fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
     reductionIngredients = None
     with Resource.open("inputs/calibration/ReductionIngredients.json", "r") as file:
@@ -199,12 +198,8 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
 
         localDataService._groupingMapPath = mock.Mock()
         localDataService._groupingMapPath.side_effect = [
-            Path(
-                Resource.getPath("inputs/pixel_grouping/does_not_exist.json")
-            ),       
-            Path(
-                Resource.getPath("inputs/pixel_grouping/groupingMap.json")
-            ),
+            Path(Resource.getPath("inputs/pixel_grouping/does_not_exist.json")),
+            Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json")),
         ]
         stateGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/groupingMap.json"))
         localDataService._readGroupingMap = mock.Mock()
@@ -215,7 +210,7 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         actual = localDataService.readStateConfig("57514")
         assert actual is not None
         mockPrepareStateRoot.assert_called_once()
-        
+
     def test_prepareStateRoot_creates_state_root_directory():
         # Test that the <state root> directory is created when it doesn't exist.
         localDataService = LocalDataService()
@@ -224,23 +219,17 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             stateId = "ab8704b0bc2a2342"
             stateRootPath = Path(tmpDir) / stateId
             groupingMapFilePath = stateRootPath / "groupingMap.json"
-            localDataService._constructCalibrationStateRootPath = mock.Mock(
-                return_value=str(stateRootPath)
-            )
+            localDataService._constructCalibrationStateRootPath = mock.Mock(return_value=str(stateRootPath))
             defaultGroupingMap = GroupingMap.parse_file(
                 Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
             )
-            localDataService._readDefaultGroupingMap = mock.Mock(
-                return_value=defaultGroupingMap 
-            )
-            localDataService._groupingMapPath = mock.Mock(
-                return_value = groupingMapFilePath
-            )
+            localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
+            localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
 
-            assert not stateRootPath.exists() 
-            localDataService._prepareStateRoot(stateId)            
+            assert not stateRootPath.exists()
+            localDataService._prepareStateRoot(stateId)
             assert stateRootPath.exists()
-        
+
     def test_prepareStateRoot_existing_state_root():
         # Test that an already existing <state root> directory is not an error.
         localDataService = LocalDataService()
@@ -249,22 +238,16 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             stateId = "ab8704b0bc2a2342"
             stateRootPath = Path(tmpDir) / stateId
             os.makedirs(stateRootPath)
-            
+
             groupingMapFilePath = stateRootPath / "groupingMap.json"
-            localDataService._constructCalibrationStateRootPath = mock.Mock(
-                return_value=str(stateRootPath)
-            )
+            localDataService._constructCalibrationStateRootPath = mock.Mock(return_value=str(stateRootPath))
             defaultGroupingMap = GroupingMap.parse_file(
                 Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
             )
-            localDataService._readDefaultGroupingMap = mock.Mock(
-                return_value=defaultGroupingMap 
-            )
-            localDataService._groupingMapPath = mock.Mock(
-                return_value = groupingMapFilePath
-            )
-            assert stateRootPath.exists() 
-            localDataService._prepareStateRoot(stateId)            
+            localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
+            localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
+            assert stateRootPath.exists()
+            localDataService._prepareStateRoot(stateId)
 
     def test_prepareStateRoot_writes_grouping_map():
         # Test that the first time a <state root> directory is initialized,
@@ -275,21 +258,15 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             stateId = "ab8704b0bc2a2342"
             stateRootPath = Path(tmpDir) / stateId
             groupingMapFilePath = stateRootPath / "groupingMap.json"
-            localDataService._constructCalibrationStateRootPath = mock.Mock(
-                return_value=str(stateRootPath)
-            )
+            localDataService._constructCalibrationStateRootPath = mock.Mock(return_value=str(stateRootPath))
             defaultGroupingMap = GroupingMap.parse_file(
                 Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
             )
-            localDataService._readDefaultGroupingMap = mock.Mock(
-                return_value=defaultGroupingMap 
-            )
-            localDataService._groupingMapPath = mock.Mock(
-                return_value = groupingMapFilePath
-            )
+            localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
+            localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
 
             assert not groupingMapFilePath.exists()
-            localDataService._prepareStateRoot(stateId)            
+            localDataService._prepareStateRoot(stateId)
             assert groupingMapFilePath.exists()
 
     def test_prepareStateRoot_sets_grouping_map_stateid():
@@ -301,20 +278,14 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             stateId = "ab8704b0bc2a2342"
             stateRootPath = Path(tmpDir) / stateId
             groupingMapFilePath = stateRootPath / "groupingMap.json"
-            localDataService._constructCalibrationStateRootPath = mock.Mock(
-                return_value=str(stateRootPath)
-            )
+            localDataService._constructCalibrationStateRootPath = mock.Mock(return_value=str(stateRootPath))
             defaultGroupingMap = GroupingMap.parse_file(
                 Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
             )
-            localDataService._readDefaultGroupingMap = mock.Mock(
-                return_value=defaultGroupingMap 
-            )
-            localDataService._groupingMapPath = mock.Mock(
-                return_value = groupingMapFilePath
-            )
+            localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
+            localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
 
-            localDataService._prepareStateRoot(stateId)            
+            localDataService._prepareStateRoot(stateId)
 
             with open(groupingMapFilePath, "r") as file:
                 groupingMap = parse_raw_as(GroupingMap, file.read())
@@ -330,21 +301,15 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             stateId = "ab8704b0bc2a2342"
             stateRootPath = Path(tmpDir) / stateId
             groupingMapFilePath = stateRootPath / "groupingMap.json"
-            defaultGroupingMapFilePath =  Resource.getPath("inputs/pixel_grouping/does_not_exist.json")
+            defaultGroupingMapFilePath = Resource.getPath("inputs/pixel_grouping/does_not_exist.json")
             with pytest.raises(  # noqa: PT012
                 FileNotFoundError,
                 match=f'required default grouping-schema map "{defaultGroupingMapFilePath}" does not exist',
             ):
-                localDataService._constructCalibrationStateRootPath = mock.Mock(
-                    return_value=str(stateRootPath)
-                )
-                localDataService._defaultGroupingMapPath = mock.Mock(
-                    return_value=Path(defaultGroupingMapFilePath)
-                )
-                localDataService._groupingMapPath = mock.Mock(
-                    return_value = groupingMapFilePath
-                )
-                localDataService._prepareStateRoot(stateId)            
+                localDataService._constructCalibrationStateRootPath = mock.Mock(return_value=str(stateRootPath))
+                localDataService._defaultGroupingMapPath = mock.Mock(return_value=Path(defaultGroupingMapFilePath))
+                localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
+                localDataService._prepareStateRoot(stateId)
 
     def test_prepareStateRoot_does_not_overwrite_grouping_map():
         # If a 'groupingMap.json' file already exists at the <state root> directory,
@@ -355,10 +320,10 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             stateId = "ab8704b0bc2a2342"
             stateRootPath = Path(tmpDir) / stateId
             os.makedirs(stateRootPath)
-            
+
             defaultGroupingMapFilePath = Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
             groupingMapFilePath = stateRootPath / "groupingMap.json"
-            
+
             # Write a 'groupingMap.json' file to the <state root>, but with a different stateId;
             #   note that the _value_ of the stateId field is _not_ validated at this stage, except for its format.
             with open(defaultGroupingMapFilePath, "r") as file:
@@ -366,53 +331,37 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             otherStateId = "bbbbaaaabbbbeeee"
             groupingMap.coerceStateId(otherStateId)
             write_model_pretty(groupingMap, groupingMapFilePath)
-            
-            localDataService._constructCalibrationStateRootPath = mock.Mock(
-                return_value=str(stateRootPath)
-            )
-            defaultGroupingMap = GroupingMap.parse_file(
-                defaultGroupingMapFilePath
-            )
-            localDataService._readDefaultGroupingMap = mock.Mock(
-                return_value=defaultGroupingMap 
-            )
-            localDataService._groupingMapPath = mock.Mock(
-                return_value = groupingMapFilePath
-            )
 
-            localDataService._prepareStateRoot(stateId)            
+            localDataService._constructCalibrationStateRootPath = mock.Mock(return_value=str(stateRootPath))
+            defaultGroupingMap = GroupingMap.parse_file(defaultGroupingMapFilePath)
+            localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
+            localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
+
+            localDataService._prepareStateRoot(stateId)
 
             with open(groupingMapFilePath, "r") as file:
                 groupingMap = parse_raw_as(GroupingMap, file.read())
             assert groupingMap.stateId == otherStateId
-    
+
     def test_calibrationFileExists():
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
             assert Path(tmpDir).exists()
             localDataService = LocalDataService()
-            localDataService._generateStateId = mock.Mock(
-                return_value = ("ab8704b0bc2a2342", None)
-            )
-            localDataService._constructCalibrationStateRootPath = mock.Mock(
-                return_value = tmpDir
-            )
+            localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
+            localDataService._constructCalibrationStateRootPath = mock.Mock(return_value=tmpDir)
             runNumber = "654321"
-            assert localDataService.checkCalibrationFileExists(runNumber)        
-    
+            assert localDataService.checkCalibrationFileExists(runNumber)
+
     def test_calibrationFileExists_not():
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
             localDataService = LocalDataService()
-            localDataService._generateStateId = mock.Mock(
-                return_value = ("ab8704b0bc2a2342", None)
-            )
+            localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
             nonExistentPath = Path(tmpDir) / "1755"
             assert not nonExistentPath.exists()
-            localDataService._constructCalibrationStateRootPath = mock.Mock(
-                return_value = str(nonExistentPath)
-            )
+            localDataService._constructCalibrationStateRootPath = mock.Mock(return_value=str(nonExistentPath))
             runNumber = "654321"
-            assert not localDataService.checkCalibrationFileExists(runNumber)        
-    
+            assert not localDataService.checkCalibrationFileExists(runNumber)
+
     @mock.patch(ThisService + "GetIPTS")
     def test_getIPTS(mockGetIPTS):
         mockGetIPTS.return_value = "nowhere/"
@@ -1040,11 +989,11 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
                 localDataService._constructCalibrationStateRootPath.return_value = f"{tmpDir}/"
                 localDataService._getCurrentCalibrationRecord = mock.Mock()
                 localDataService._getCurrentCalibrationRecord.return_value = Calibration.construct({"name": "test"})
-                
+
                 # Force the output path: otherwise it will be written to "v_2".
                 localDataService._constructCalibrationParametersFilePath = mock.Mock()
                 localDataService._constructCalibrationParametersFilePath.return_value = calibrationParametersFilePath
-                
+
                 calibration = Calibration.parse_raw(Resource.read("/inputs/calibration/CalibrationParameters.json"))
                 localDataService.writeCalibrationState("123", calibration)
                 assert os.path.exists(calibrationParametersFilePath)
@@ -1141,14 +1090,12 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
             stateId = "ab8704b0bc2a2342"
             stateRootPath = Path(tmpDir) / stateId
-            localDataService._constructCalibrationStateRootPath = mock.Mock(
-                return_value=str(stateRootPath)
-            )
-        
-            assert not stateRootPath.exists() 
+            localDataService._constructCalibrationStateRootPath = mock.Mock(return_value=str(stateRootPath))
+
+            assert not stateRootPath.exists()
             localDataService.initializeState("123", "test")
             mockPrepareStateRoot.assert_called_once()
-                
+
     # NOTE: This test fails on analysis because the instrument home actually does exist!
     @pytest.mark.skipif(
         IS_ON_ANALYSIS_MACHINE, reason="This test fails on analysis because the instrument home actually does exist!"
