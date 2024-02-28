@@ -61,7 +61,7 @@ class WorkflowImplementer:
             return SNAPResponse(code=500, message=f"Missing Fields!{e}")
 
     def _handleComplications(self, result):
-        if result.code >= 300:
+        if result.code >= 450:
             raise RuntimeError(result.message)
 
     @property

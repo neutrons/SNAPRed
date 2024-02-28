@@ -1,7 +1,7 @@
 import inspect
 
 from snapred.backend.dao import SNAPRequest, SNAPResponse
-from snapred.backend.error import RecoverableException
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.service.ServiceFactory import ServiceFactory
 from snapred.meta.decorators.Singleton import Singleton
@@ -35,7 +35,7 @@ class InterfaceController:
 
         except RecoverableException as e:
             self.logger.error(f"Recoverable error occurred: {str(e)}")
-            response = SNAPResponse(code=400, message="state", data=None)
+            response = SNAPResponse(code=400, message="state")
 
         except Exception as e:  # noqa BLE001
             # handle exceptions, inform client if recoverable

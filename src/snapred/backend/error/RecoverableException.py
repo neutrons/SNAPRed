@@ -6,7 +6,7 @@ from snapred.ui.view.InitializeCalibrationCheckView import CalibrationMenu
 logger = snapredLogger.getLogger(__name__)
 
 RecoverableErrorType = Literal[
-    "AttributeError: 'NoneType' object has no attribute 'instrumentState'",
+    "'NoneType' object has no attribute 'instrumentState'",
     "etc",
 ]
 
@@ -19,8 +19,8 @@ class RecoverableException(Exception):
 
     def __init__(self, exception: Exception, errorType: RecoverableErrorType, **kwargs: Any):
         self.errorType = errorType
-        if errorType == "AttributeError: 'NoneType' object has no attribute 'instrumentState'":
-            self.message = f"A recoverable error occurred: {self.errorType}"
+        if errorType:
+            self.message = errorType
         else:
             self.message = "A unspecified recoverable error occurred."
         self.extraContext = kwargs
@@ -35,7 +35,7 @@ class RecoverableException(Exception):
         """
         Handles a specific 'state' message.
         """
-        if self.errorType == "AttributeError: 'NoneType' object has no attribute 'instrumentState'":
+        if self.message == "'NoneType' object has no attribute 'instrumentState'":
             logger.info("Handling 'state' message.")
             calibrationMenu = CalibrationMenu(runNumber=runNumber, parent=view)
             calibrationMenu.exec_()
