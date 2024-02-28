@@ -34,6 +34,7 @@ from snapred.backend.dao.state import (
     NormalizationCalibrant,
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGroupingDefinition
@@ -621,6 +622,7 @@ class LocalDataService:
         )
         return statePath
 
+    @ExceptionHandler(RecoverableException)
     def readCalibrationState(self, runId: str, version: str = None):
         # get stateId and check to see if such a folder exists, if not create it and initialize it
         stateId, _ = self._generateStateId(runId)
@@ -636,6 +638,11 @@ class LocalDataService:
         calibrationState = None
         if latestFile:
             calibrationState = parse_file_as(Calibration, latestFile)
+
+        if calibrationState is None:
+            errorMessage = "'NoneType' object has no attribute 'instrumentState'"
+            originalException = AttributeError(errorMessage)
+            raise RecoverableException(exception=originalException, errorType=errorMessage)
 
         return calibrationState
 
