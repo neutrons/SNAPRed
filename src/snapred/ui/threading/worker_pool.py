@@ -4,6 +4,7 @@ from typing import Dict, List
 from qtpy.QtCore import QObject, QThread, Signal
 
 from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.meta.decorators.Singleton import Singleton
 
 
@@ -28,6 +29,10 @@ class Worker(QObject):
             # results.code = 200 # set to 200 for testing
             self.result.emit(results)
             self.success.emit(results.code - 200 < 100)
+        except RecoverableException as e:
+            response = SNAPResponse(code=400, message=e.errorType)
+            self.result.emit(response)
+            self.success.emit(False)
         except Exception as e:  # noqa: BLE001
             # print stacktrace
             import traceback
