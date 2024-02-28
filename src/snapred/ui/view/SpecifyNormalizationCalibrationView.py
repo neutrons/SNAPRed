@@ -255,3 +255,6 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
     def enableRecalculateButton(self):
         self.signalUpdateRecalculationButton.emit(True)
+
+    def populateGroupingDropdown(self, groups=["Enter a Run Number"]):
+        self.groupingDropDown.addItems(groups)

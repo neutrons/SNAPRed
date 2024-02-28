@@ -18,6 +18,8 @@ from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCa
 from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
+logger = snapredLogger.getLogger(__name__)
+
 
 class NormalizationCalibrationWorkflow:
     def __init__(self, jsonForm, parent=None):
@@ -36,14 +38,9 @@ class NormalizationCalibrationWorkflow:
         request = SNAPRequest(path="config/samplePaths")
         self.samplePaths = self.interfaceController.executeRequest(request).data
 
-        request = SNAPRequest(path="config/focusGroups")
-        self.focusGroups = self.interfaceController.executeRequest(request).data
-        self.groupingFiles = list(self.focusGroups.keys())
-
         self._normalizationCalibrationView = NormalizationCalibrationRequestView(
             jsonForm,
             self.samplePaths,
-            self.groupingFiles,
             parent=parent,
         )
 
@@ -51,7 +48,6 @@ class NormalizationCalibrationWorkflow:
             "Specifying Normalization",
             self.assessmentSchema,
             samples=self.samplePaths,
-            groups=self.groupingFiles,
             parent=parent,
         )
 
@@ -62,6 +58,10 @@ class NormalizationCalibrationWorkflow:
             self.saveSchema,
             parent,
         )
+
+        # connect signal to populate the grouping dropdown after run is selected
+        self._normalizationCalibrationView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
+        self._specifyNormalizationView.fieldRunNumber.editingFinished.connect(self._populateGroupingDropdown)
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=None, parent=parent)
@@ -78,6 +78,28 @@ class NormalizationCalibrationWorkflow:
             .addNode(self._saveNormalizationCalibration, self._saveNormalizationCalibrationView, "Saving")
             .build()
         )
+
+    def _populateGroupingDropdown(self):
+        # when the run number is updated, grab the grouping map and populate grouping drop down
+        runNumber = self._normalizationCalibrationView.runNumberField.text()
+        useLiteMode = self._normalizationCalibrationView.litemodeToggle.field.getState()
+
+        # pre-screen the run number to make sure it is complete before any further checks
+        if len(runNumber) < 5:
+            return
+
+        # check if the state exists -- if so load its grouping map
+        request = SNAPRequest(path="calibration/hasState", payload=runNumber)
+        hasState = self.interfaceController.executeRequest(request).data
+        if hasState:
+            request = SNAPRequest(path="config/groupingMap", payload=runNumber)
+            response = self.interfaceController.executeRequest(request).data
+            self.focusGroups = response.getMap(useLiteMode)
+            self.groupingFiles = list(self.focusGroups.keys())
+            self._normalizationCalibrationView.populateGroupingDropdown(list(self.focusGroups.keys()))
+            self._specifyNormalizationView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        else:
+            logger.warn(f"Could not find state folder for run {runNumber} -- verify run number field")
 
     def _triggerNormalizationCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
