@@ -660,7 +660,6 @@ class LocalDataService:
         -- side effect: updates version number of incoming `Calibration`.
         """
         stateId, _ = self._generateStateId(runId)
-        calibrationPath: str = self._constructCalibrationStateRootPath(stateId)
         previousVersion = self._getLatestCalibrationVersion(stateId)
         if not version:
             version = previousVersion + 1
