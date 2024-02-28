@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 class ResponseCode(IntEnum):
     OK = 200
+    RECOVERABLE = 400
     ERROR = 500
 
 

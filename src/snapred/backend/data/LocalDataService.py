@@ -622,7 +622,7 @@ class LocalDataService:
         )
         return statePath
 
-    @ExceptionHandler(RecoverableException)
+    @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, version: str = None):
         # get stateId and check to see if such a folder exists, if not create it and initialize it
         stateId, _ = self._generateStateId(runId)
@@ -640,9 +640,7 @@ class LocalDataService:
             calibrationState = parse_file_as(Calibration, latestFile)
 
         if calibrationState is None:
-            errorMessage = "'NoneType' object has no attribute 'instrumentState'"
-            originalException = AttributeError(errorMessage)
-            raise RecoverableException(exception=originalException, errorType=errorMessage)
+            raise ValueError("calibrationState is None")
 
         return calibrationState
 
