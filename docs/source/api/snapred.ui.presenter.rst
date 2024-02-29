@@ -4,10 +4,10 @@ snapred.ui.presenter package
 Submodules
 ----------
 
-snapred.ui.presenter.InitializeCalibrationPresenter module
+snapred.ui.presenter.InitializeStatePresenter module
 ----------------------------------------------------------
 
-.. automodule:: snapred.ui.presenter.InitializeCalibrationPresenter
+.. automodule:: snapred.ui.presenter.InitializeStatePresenter
    :members:
    :undoc-members:
    :show-inheritance:

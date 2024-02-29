@@ -144,14 +144,7 @@ class WorkflowPresenter(object):
             )
         elif self._isRecoverableError(result.code):
             if "state" in result.message:
-                originalException = AttributeError(
-                    "AttributeError: 'NoneType' object has no attribute 'instrumentState'"
-                )
-                recoverableException = RecoverableException(
-                    exception=originalException,
-                    errorType="AttributeError: 'NoneType' object has no attribute 'instrumentState'",
-                )
-                recoverableException.handleStateMessage("", self.view)
+                self.handleStateMessage("", self.view)
             else:
                 logger.error(f"Unhandled scenario triggered by state message: {result.message}")
                 messageBox = QMessageBox(
@@ -161,8 +154,8 @@ class WorkflowPresenter(object):
                     QMessageBox.Ok,
                     self.view,
                 )
-            messageBox.setDetailedText(f"{result.message}")
-            messageBox.exec()
+                messageBox.setDetailedText(f"{result.message}")
+                messageBox.exec()
         elif result.message:
             messageBox = QMessageBox(
                 QMessageBox.Warning,
@@ -173,3 +166,17 @@ class WorkflowPresenter(object):
             )
             messageBox.setDetailedText(f"{result.message}")
             messageBox.exec()
+
+    def handleStateMessage(self, runNumber, view):
+        """
+        Handles a specific 'state' message.
+        """
+        from snapred.ui.view.InitializeCheckView import InitializationMenu
+
+        try:
+            logger.info("Handling 'state' message.")
+            initializationMenu = InitializationMenu(runNumber=runNumber, parent=view)
+            initializationMenu.finished.connect(lambda: initializationMenu.deleteLater())
+            initializationMenu.show()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"The 'state' handling method encountered an error:{str(e)}")

@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QComboBox
-from snapred.ui.view.InitializeCalibrationCheckView import CalibrationMenu
+from snapred.ui.view.InitializeStateCheckView import CalibrationMenu
 
 
 def test_run_number_field(qtbot):

@@ -5,7 +5,7 @@ from snapred.backend.log.logger import snapredLogger
 logger = snapredLogger.getLogger(__name__)
 
 RecoverableErrorType = Literal[
-    "'NoneType' object has no attribute 'instrumentState'",
+    "AttributeError: 'NoneType' object has no attribute 'instrumentState'",
     "etc",
 ]
 
@@ -29,18 +29,3 @@ class RecoverableException(Exception):
             logMessage += f" | Context: {self.extraContext}"
         logger.error(logMessage)
         super().__init__(self.message)
-
-    def handleStateMessage(self, runNumber, view):
-        """
-        Handles a specific 'state' message.
-        """
-        from snapred.ui.view.InitializeCalibrationCheckView import CalibrationMenu
-
-        if self.message == "'NoneType' object has no attribute 'instrumentState'":
-            logger.info("Handling 'state' message.")
-            calibrationMenu = CalibrationMenu(runNumber=runNumber, parent=view)
-            calibrationMenu.exec_()
-        else:
-            logger.warning(
-                "The 'handleStateMessage' method was called, but the error type is not related to state initialization."
-            )
