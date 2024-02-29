@@ -31,7 +31,7 @@ class CalibrationIndexEntry(BaseModel):
         if testValue is not None:
             symbol, _ = cls.parseAppliesTo(v)
             if symbol != "":
-                testValue = testValue[1:]
+                testValue = testValue.split(symbol)[-1]
             try:
                 int(testValue)
             except ValueError:
