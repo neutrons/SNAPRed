@@ -131,12 +131,10 @@ class LocalDataService:
         else:
             # If no `GroupingMap` JSON file is present at the <state root>,
             #   it is assumed that this is the first time that this state configuration has been initialized.
-            # Any `StateConfig`'s `GroupingMap` always starts as a copy of the default `GroupingMap`.
-            groupingMap = self._readDefaultGroupingMap()
-            groupingMap.coerceStateId(stateId)
-            # This is the _ONLY_ place that the grouping-schema map is written
-            #   to its separate JSON file at <state root>.
-            self._writeGroupingMap(stateId, groupingMap)
+            # WARNING: `_prepareStateRoot` is also called at `initializeState`: this allows
+            #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
+            self._prepareStateRoot(stateId)
+            groupingMap = self._readGroupingMap(stateId)
 
         return StateConfig(
             calibration=diffCalibration,
@@ -236,7 +234,7 @@ class LocalDataService:
 
         return fileList
 
-    def _constructCalibrationStatePath(self, stateId):
+    def _constructCalibrationStateRootPath(self, stateId):
         # TODO: Propagate pathlib through codebase
         return f"{self.instrumentConfig.calibrationDirectory}/Powder/{stateId}/"
 
@@ -248,7 +246,7 @@ class LocalDataService:
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
         stateId, _ = self._generateStateId(runId)
-        calibrationPath: str = self._constructCalibrationStatePath(stateId)
+        calibrationPath: str = self._constructCalibrationStateRootPath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         calibrationIndex: List[CalibrationIndexEntry] = []
         if os.path.exists(indexPath):
@@ -337,7 +335,7 @@ class LocalDataService:
         Generates the path for an instrument state's versioned calibration files.
         """
         stateId, _ = self._generateStateId(runId)
-        statePath = self._constructCalibrationStatePath(stateId)
+        statePath = self._constructCalibrationStateRootPath(stateId)
         cablibrationVersionPath: str = statePath + "v_{}/".format(version)
         return cablibrationVersionPath
 
@@ -361,7 +359,7 @@ class LocalDataService:
 
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         stateId, _ = self._generateStateId(entry.runNumber)
-        calibrationPath: str = self._constructCalibrationStatePath(stateId)
+        calibrationPath: str = self._constructCalibrationStateRootPath(stateId)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         # append to index and write to file
         calibrationIndex = self.readCalibrationIndex(entry.runNumber)
@@ -413,7 +411,7 @@ class LocalDataService:
         """
         Ignoring the calibration index, whats the last set of calibration files to be generated.
         """
-        calibrationStatePath = self._constructCalibrationStatePath(stateId)
+        calibrationStatePath = self._constructCalibrationStateRootPath(stateId)
         calibrationVersionPath = f"{calibrationStatePath}v_*/"
         latestVersion = 0
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
@@ -611,7 +609,7 @@ class LocalDataService:
         version = self._getVersionFromNormalizationIndex(runId)
         return self.readNormalizationRecord(runId, version)
 
-    def getCalibrationStatePath(self, runId: str, version: str):
+    def _constructCalibrationParametersFilePath(self, runId: str, version: str):
         statePath: str = f"{self._constructCalibrationDataPath(runId, version)}CalibrationParameters.json"
         return statePath
 
@@ -626,7 +624,7 @@ class LocalDataService:
     def readCalibrationState(self, runId: str, version: str = None):
         # get stateId and check to see if such a folder exists, if not create it and initialize it
         stateId, _ = self._generateStateId(runId)
-        calibrationStatePath = self.getCalibrationStatePath(runId, "*")
+        calibrationStatePath = self._constructCalibrationParametersFilePath(runId, "*")
 
         latestFile = ""
         if version:
@@ -667,18 +665,21 @@ class LocalDataService:
         -- side effect: updates version number of incoming `Calibration`.
         """
         stateId, _ = self._generateStateId(runId)
-        calibrationPath: str = self._constructCalibrationStatePath(stateId)
         previousVersion = self._getLatestCalibrationVersion(stateId)
         if not version:
             version = previousVersion + 1
-        # check for the existenece of a calibration parameters file
-        calibrationParametersPath = self.getCalibrationStatePath(runId, version)
+
+        # Check for the existence of a calibration parameters file
+        calibrationParametersFilePath = self._constructCalibrationParametersFilePath(runId, version)
+        if os.path.exists(calibrationParametersFilePath):
+            logger.warning(f"overwriting calibration parameters at {calibrationParametersFilePath}")
+
         calibration.version = version
-        calibrationPath = self._constructCalibrationDataPath(runId, version)
-        if not os.path.exists(calibrationPath):
-            os.makedirs(calibrationPath)
+        calibrationDataPath = self._constructCalibrationDataPath(runId, version)
+        if not os.path.exists(calibrationDataPath):
+            os.makedirs(calibrationDataPath)
         # write the calibration state.
-        write_model_pretty(calibration, calibrationParametersPath)
+        write_model_pretty(calibration, calibrationParametersFilePath)
 
     def writeNormalizationState(self, runId: str, normalization: Normalization, version: int = None):  # noqa: F821
         """
@@ -763,13 +764,38 @@ class LocalDataService:
             creationDate=datetime.datetime.now(),
             version=0,
         )
+
+        # Make sure that the state root directory has been initialized:
+        stateRootPath = self._constructCalibrationStateRootPath(stateId)
+        if not os.path.exists(stateRootPath):
+            # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
+            #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
+            self._prepareStateRoot(stateId)
+
         self.writeCalibrationState(runId, calibration)
 
         return calibration
 
+    def _prepareStateRoot(self, stateId: str):
+        """
+        Create the state root directory, and populate it with any necessary metadata files.
+        """
+        stateRootPath = self._constructCalibrationStateRootPath(stateId)
+        if not os.path.exists(stateRootPath):
+            os.makedirs(stateRootPath)
+
+        # If no `GroupingMap` JSON file is present at the <state root>,
+        #   it is assumed that this is the first time that this state configuration has been initialized.
+        # Any `StateConfig`'s `GroupingMap` always starts as a copy of the default `GroupingMap`.
+        groupingMap = self._readDefaultGroupingMap()
+        groupingMap.coerceStateId(stateId)
+        # This is the _ONLY_ place that the grouping-schema map is written
+        #   to its separate JSON file at <state root>.
+        self._writeGroupingMap(stateId, groupingMap)
+
     def checkCalibrationFileExists(self, runId: str):
         stateID, _ = self._generateStateId(runId)
-        calibrationStatePath: str = self._constructCalibrationStatePath(stateID)
+        calibrationStatePath: str = self._constructCalibrationStateRootPath(stateID)
 
         if os.path.exists(calibrationStatePath):
             return True
@@ -816,7 +842,7 @@ class LocalDataService:
         return GroupingMap.calibrationGroupingHome() / "defaultGroupingMap.json"
 
     def _groupingMapPath(self, stateId) -> Path:
-        return Path(self._constructCalibrationStatePath(stateId)) / "groupingMap.json"
+        return Path(self._constructCalibrationStateRootPath(stateId)) / "groupingMap.json"
 
     def readGroupingFiles(self):
         groupingFolder = Config["instrument.calibration.powder.grouping.home"]
