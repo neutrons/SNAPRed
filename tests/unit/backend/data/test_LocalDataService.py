@@ -86,7 +86,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
 
     def test_readStateConfig():
         localDataService = LocalDataService()
-        localDataService.readGroupingFiles = mock.Mock(return_value=["/grouping1.json"])
         localDataService._readDiffractionCalibrant = mock.Mock()
         localDataService._readDiffractionCalibrant.return_value = (
             reductionIngredients.reductionState.stateConfig.diffractionCalibrant
@@ -912,7 +911,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
 
     def test_writeCalibrationState():
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
-            print(f"TEMP DIR = {tempdir}")
             localDataService = LocalDataService()
             localDataService._generateStateId = mock.Mock()
             localDataService._generateStateId.return_value = ("123", "456")
@@ -1047,47 +1045,6 @@ with mock.patch.dict("sys.modules", {"mantid.api": mock.Mock()}):
             shutil.copy(Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json")), stateRoot)
             groupingMap = service._readGroupingMap(stateId)
             assert groupingMap.stateId == stateId
-
-    def test_readGroupingFiles():
-        localDataService = LocalDataService()
-        localDataService._findMatchingFileList = mock.Mock()
-        localDataService._findMatchingFileList.side_effect = lambda path, throws: [  # noqa: ARG005
-            f"/group1.{path.split('/')[-1].split('.')[-1]}",
-            f"/group2.{path.split('/')[-1].split('.')[-1]}",
-        ]
-        result = localDataService.readGroupingFiles()
-        # 6 because there are 3 file types and the mock returns 2 files per
-        expected = [f"/group{x}.{ext}" for ext in ["xml", "nxs", "hdf"] for x in [1, 2]]
-        expected.sort()
-        assert len(result) == 6
-        assert result == expected
-
-    def test_readNoGroupingFiles():
-        localDataService = LocalDataService()
-        localDataService._findMatchingFileList = mock.Mock()
-        localDataService._findMatchingFileList.return_value = []
-        try:
-            localDataService.readGroupingFiles()
-            pytest.fail("Should have thrown an exception")
-        except RuntimeError:
-            assert True
-
-    def test_readFocusGroups():
-        # test of `LocalDataService.readFocusGroups`
-        localDataService = LocalDataService()
-        localDataService._findMatchingFileList = mock.Mock()
-        localDataService._findMatchingFileList.side_effect = lambda path, throws: [  # noqa: ARG005
-            f"/group1.{path.split('/')[-1].split('.')[-1]}",
-            f"/group2.{path.split('/')[-1].split('.')[-1]}",
-        ]
-        result = localDataService.readFocusGroups()
-        expectedKeys = [f"/group{x}.{ext}" for ext in ["xml", "nxs", "hdf"] for x in [1, 2]]
-        expectedKeys.sort()
-        expectedVals = [FocusGroup(name=x.split("/")[-1].split(".")[0], definition=x) for x in expectedKeys]
-        # 6 because there are 3 file types and the mock returns 2 files per
-        assert len(result) == 6
-        assert list(result.keys()) == expectedKeys
-        assert list(result.values()) == expectedVals
 
     @mock.patch("os.path.exists", return_value=True)
     def test_writeCalibrantSample_failure(mock1):  # noqa: ARG001

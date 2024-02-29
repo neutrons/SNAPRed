@@ -189,9 +189,7 @@ class SpecifyNormalizationCalibrationView(BackendRequestView):
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks):
         self.focusWorkspace = focusWorkspace
         self.smoothedWorkspace = smoothedWorkspace
-        self.groupingSchema = (
-            str(self.groupingFileDropdown.currentText()).split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
-        )
+        self.groupingSchema = self.groupingFileDropdown.currentText()
         self._updateGraphs(peaks)
 
     def _updateGraphs(self, peaks):

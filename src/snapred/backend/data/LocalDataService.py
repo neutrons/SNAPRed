@@ -822,34 +822,6 @@ class LocalDataService:
     def _groupingMapPath(self, stateId) -> Path:
         return Path(self._constructCalibrationStatePath(stateId)) / "groupingMap.json"
 
-    # TODO delete this
-    def readGroupingFiles(self):
-        groupingFolder = Config["instrument.calibration.powder.grouping.home"]
-        extensions = Config["instrument.calibration.powder.grouping.extensions"]
-        # collect list of all files in folder that are applicable extensions
-        groupingFiles = []
-        for extension in extensions:
-            groupingFiles.extend(self._findMatchingFileList(f"{groupingFolder}/*.{extension}", throws=False))
-        if len(groupingFiles) < 1:
-            raise RuntimeError(f"No grouping files found in {groupingFolder} for extensions {extensions}")
-        groupingFiles.sort()
-        return groupingFiles
-
-    # TODO delete this
-    def readFocusGroups(self):
-        groupingFiles = self.readGroupingFiles()
-        focusGroups = {}
-        for file in groupingFiles:
-            focusGroups[file] = FocusGroup(
-                name=self.groupingSchemaFromPath(file),
-                definition=file,
-            )
-        return focusGroups
-
-    # TODO delete this
-    def groupingSchemaFromPath(self, path: str) -> str:
-        return path.split("/")[-1].split("_")[-1].split(".")[0]
-
     ## WRITING WORKSPACES TO DISK
 
     def writeWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):

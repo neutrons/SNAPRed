@@ -72,22 +72,6 @@ with mock.patch.dict(
 
         assert actual == "expected"
 
-    def test_getGroupingFile():
-        dataExportService = DataFactoryService()
-        dataExportService.lookupService.readGroupingFiles = mock.Mock()
-        dataExportService.lookupService.readGroupingFiles.return_value = "expected"
-        actual = dataExportService.getGroupingFiles()
-
-        assert actual == "expected"
-
-    def test_getFocusGroups():
-        dataExportService = DataFactoryService()
-        dataExportService.lookupService.readFocusGroups = mock.Mock()
-        dataExportService.lookupService.readFocusGroups.return_value = "expected"
-        actual = dataExportService.getFocusGroups()
-
-        assert actual == "expected"
-
     def test_getCalibrantSample():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrantSample = mock.Mock()

@@ -97,10 +97,6 @@ class DataFactoryService:
     def getCalibrationIndex(self, runId: str):
         return self.lookupService.readCalibrationIndex(runId)
 
-    # TODO delete this
-    def getFocusGroups(self):
-        return self.lookupService.readFocusGroups()
-
     def getGroupingMap(self, runId: str):
         return self.lookupService.readGroupingMap(runId)
 
@@ -109,10 +105,6 @@ class DataFactoryService:
 
     def getSamplePaths(self):
         return self.lookupService.readSamplePaths()
-
-    # TODO delete this
-    def getGroupingFiles(self):
-        return self.lookupService.readGroupingFiles()
 
     def getCalibrationDataPath(self, runId: str, version: str):
         return self.lookupService._constructCalibrationDataPath(runId, version)

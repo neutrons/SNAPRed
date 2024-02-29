@@ -89,9 +89,7 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
         if hasState:
             response = self.request(path="config/groupingMap", payload=runNumber).data
             self.focusGroups = response.getMap(useLiteMode)
-            print(self.focusGroups)
             self.groupingFiles = list(self.focusGroups.keys())
-            print(json.dumps(self.groupingFiles, indent=2))
             self._normalizationCalibrationView.populateGroupingDropdown(self.groupingFiles)
             self._specifyNormalizationView.populateGroupingDropdown(self.groupingFiles)
         else:
@@ -116,9 +114,6 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
         self.prevThreshold = float(self._specifyNormalizationView.fieldThreshold.field.text())
 
         # init the payload
-        print(self.focusGroups)
-        print(json.dumps(self.groupingFiles, indent=2))
-        print(f"INDEX = {self.prevGroupingIndex}")
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
@@ -151,9 +146,6 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
         return response
 
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
-        print(self.focusGroups)
-        print(json.dumps(self.groupingFiles, indent=2))
-        print(f"INDEX = {self.prevGroupingIndex}")
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
@@ -192,9 +184,6 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
         return response
 
     def callNormalizationCalibration(self, index, smoothingParameter, dMin, dMax, peakThreshold):
-        print(self.focusGroups)
-        print(json.dumps(self.groupingFiles, indent=2))
-        print(f"INDEX = {index}")
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
@@ -215,10 +204,6 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
     def applySmoothingUpdate(self, index, smoothingValue, dMin, dMax, peakThreshold):
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
-
-        print(self.focusGroups)
-        print(json.dumps(self.groupingFiles, indent=2))
-        print(f"INDEX = {index}")
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focusWorkspace,
             outputWorkspace=smoothWorkspace,
