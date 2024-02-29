@@ -263,12 +263,7 @@ class LocalDataService:
         return normalizationIndex
 
     def _parseAppliesTo(self, appliesTo: str):
-        symbols = [">=", "<=", "<", ">"]
-        # find first
-        symbol = next((s for s in symbols if s in appliesTo), "")
-        # parse runnumber
-        runNumber = appliesTo if symbol == "" else appliesTo.split(symbol)[-1]
-        return symbol, runNumber
+        return CalibrationIndexEntry.parseAppliesTo(appliesTo)
 
     def _compareRunNumbers(self, runNumber1: str, runNumber2: str, symbol: str):
         expressions = {
