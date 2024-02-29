@@ -37,5 +37,5 @@ class ConfigLookupService(Service):
     def getConfigs(self, runs: List[RunConfig]):
         data = {}
         for run in runs:
-            data[run.runId] = self.dataFactoryService.getReductionState(run.runNumber)
+            data[run.runNumber] = self.dataFactoryService.getReductionState(run.runNumber)
         return data
