@@ -5,6 +5,7 @@ from snapred.backend.dao.request import (
     RenameWorkspaceRequest,
 )
 from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.IterateView import IterateView
 
@@ -61,8 +62,10 @@ class WorkflowImplementer:
             return SNAPResponse(code=500, message=f"Missing Fields!{e}")
 
     def _handleComplications(self, result):
-        if result.code >= 450:
+        if result.code >= 499:
             raise RuntimeError(result.message)
+        if result.code >= 400:
+            raise RecoverableException(result.message, "state")
 
     @property
     def widget(self):

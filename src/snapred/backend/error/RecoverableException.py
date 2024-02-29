@@ -1,7 +1,6 @@
 from typing import Any, Literal
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.ui.view.InitializeCalibrationCheckView import CalibrationMenu
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -35,6 +34,8 @@ class RecoverableException(Exception):
         """
         Handles a specific 'state' message.
         """
+        from snapred.ui.view.InitializeCalibrationCheckView import CalibrationMenu
+
         if self.message == "'NoneType' object has no attribute 'instrumentState'":
             logger.info("Handling 'state' message.")
             calibrationMenu = CalibrationMenu(runNumber=runNumber, parent=view)

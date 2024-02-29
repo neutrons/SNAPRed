@@ -5,7 +5,7 @@ from qtpy.QtWidgets import QMainWindow, QMessageBox
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import ClearWorkspaceRequest
-from snapred.backend.error import RecoverableException
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
@@ -127,8 +127,14 @@ class WorkflowPresenter(object):
 
         self.worker_pool.submitWorker(self.worker)
 
+    def _isErrorCode(self, code):
+        return code - 499 > 0
+
+    def _isRecoverableError(self, code):
+        return 100 > code - 399 > 0
+
     def _handleComplications(self, result):
-        if result.code - 200 >= 100:
+        if self._isErrorCode(result.code):
             QMessageBox.critical(
                 self.view,
                 "Error",
@@ -136,7 +142,7 @@ class WorkflowPresenter(object):
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
-        elif result.code == 400:
+        elif self._isRecoverableError(result.code):
             if "state" in result.message:
                 originalException = AttributeError(
                     "AttributeError: 'NoneType' object has no attribute 'instrumentState'"
@@ -145,8 +151,7 @@ class WorkflowPresenter(object):
                     exception=originalException,
                     errorType="AttributeError: 'NoneType' object has no attribute 'instrumentState'",
                 )
-                runNumber = self.view.getRunNumber()
-                recoverableException.handleStateMessage(runNumber, self.view)
+                recoverableException.handleStateMessage("", self.view)
             else:
                 logger.error(f"Unhandled scenario triggered by state message: {result.message}")
                 messageBox = QMessageBox(
