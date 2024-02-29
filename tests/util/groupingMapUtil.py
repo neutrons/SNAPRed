@@ -1,6 +1,5 @@
-import os
-
 import pytest
+from snapred.meta.Config import Resource
 
 
 class GroupingMapTestFactory:
@@ -21,17 +20,13 @@ class GroupingMapTestFactory:
             "liteFocusGroups": [
                 {
                     "name": "Column",
-                    "definition": os.path.expanduser(
-                        "~/SNAPRed/tests/resources/inputs/calibration/ReductionIngredients.json"
-                    ),
+                    "definition": Resource.getPath("inputs/calibration/ReductionIngredients.json"),
                 }
             ],
             "nativeFocusGroups": [
                 {
                     "name": "Column",
-                    "definition": os.path.expanduser(
-                        "~/SNAPRed/tests/resources/inputs/calibration/ReductionIngredients.json"
-                    ),
+                    "definition": Resource.getPath("inputs/calibration/ReductionIngredients.json"),
                 }
             ],
         }
