@@ -354,7 +354,7 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
 
 
 @mock.patch(ThisService + "GetIPTS")
-def test_calibrationFileExists(mockGetIPTS):  # noqa ARG002
+def test_calibrationFileExists(GetIPTS):  # noqa ARG002
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         assert Path(tmpDir).exists()
         localDataService = LocalDataService()
@@ -364,7 +364,18 @@ def test_calibrationFileExists(mockGetIPTS):  # noqa ARG002
         assert localDataService.checkCalibrationFileExists(runNumber)
 
 
-def test_calibrationFileExists_not():
+@mock.patch(ThisService + "GetIPTS")
+def test_calibrationFileExists_bad_ipts(GetIPTS):
+    GetIPTS.side_effect = RuntimeError("YOU IDIOT!")
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+        assert Path(tmpDir).exists()
+        localDataService = LocalDataService()
+        runNumber = "654321"
+        assert not localDataService.checkCalibrationFileExists(runNumber)
+
+
+@mock.patch(ThisService + "GetIPTS")
+def test_calibrationFileExists_not(GetIPTS):  # noqa ARG002
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
@@ -1173,6 +1184,28 @@ def test_readSamplePaths():
     assert len(result) == 2
     assert "/sample1.json" in result
     assert "/sample2.json" in result
+
+
+def test_readGroupingMap_no():
+    localDataService = LocalDataService()
+    localDataService._generateStateId = mock.Mock(return_value=(mock.Mock(), mock.Mock()))
+
+    runNumber = "flan"
+    with pytest.raises(FileNotFoundError) as e:
+        localDataService.readGroupingMap(runNumber)
+    assert str(localDataService._generateStateId.return_value[0]) in str(e.value)
+
+
+@mock.patch(ThisService + "parse_file_as")
+def test_readGroupingMap_yes(parse_file_as):
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+        localDataService = LocalDataService()
+        localDataService._generateStateId = mock.Mock(return_value=(mock.Mock(), mock.Mock()))
+        localDataService._groupingMapPath = mock.Mock(return_value=Path(tmpDir))
+
+        runNumber = "flan"
+        res = localDataService.readGroupingMap(runNumber)
+        assert res == parse_file_as.return_value
 
 
 def test_readNoSamplePaths():
