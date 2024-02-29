@@ -171,7 +171,7 @@ class WorkflowPresenter(object):
         """
         Handles a specific 'state' message.
         """
-        from snapred.ui.view.InitializeCheckView import InitializationMenu
+        from snapred.ui.view.InitializeStateCheckView import InitializationMenu
 
         try:
             logger.info("Handling 'state' message.")
