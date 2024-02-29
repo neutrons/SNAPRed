@@ -795,7 +795,7 @@ class LocalDataService:
             return False
         else:
             stateID, _ = self._generateStateId(runId)
-            calibrationStatePath: str = self._constructCalibrationStatePath(stateID)
+            calibrationStatePath: str = self._constructCalibrationStateRootPath(stateID)
 
         if os.path.exists(calibrationStatePath):
             return True
