@@ -28,10 +28,10 @@ snapred.ui.view.FitMultiplePeaksView module
    :undoc-members:
    :show-inheritance:
 
-snapred.ui.view.InitializeCalibrationCheckView module
+snapred.ui.view.InitializeStateCheckView module
 -----------------------------------------------------
 
-.. automodule:: snapred.ui.view.InitializeCalibrationCheckView
+.. automodule:: snapred.ui.view.InitializeStateCheckView
    :members:
    :undoc-members:
    :show-inheritance:
