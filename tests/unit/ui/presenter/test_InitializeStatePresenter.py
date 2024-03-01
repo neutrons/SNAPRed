@@ -37,7 +37,7 @@ def test__initializeState(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     view.getRunNumber.return_value = "12345"
     view.getStateName.return_value = "Test State"
-    mock_response = SNAPResponse(code=ResponseCode.OK)  # Assuming OK is a valid response code
+    mock_response = SNAPResponse(code=ResponseCode.OK)
 
     with patch.object(workflow.interfaceController, "executeRequest", return_value=mock_response), patch(
         "PyQt5.QtWidgets.QMessageBox.information"
