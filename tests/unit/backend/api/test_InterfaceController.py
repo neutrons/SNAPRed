@@ -39,6 +39,18 @@ with mock.patch.dict(
         assert response.message is None
         assert response.data["result"] == "Success!"
 
+    def test_executeRequest_recoverableError():
+        """Test executeRequest with a recoverable error"""
+        interfaceController = mockedSuccessfulInterfaceController()
+
+        stateRequest = mock.Mock()
+
+        response = interfaceController.executeRequest(stateRequest)
+        assert response.code == 400
+        assert response.message == "state"
+        assert "Test Recoverable Error" in interfaceController.logger.error.call_args[0][0]
+        assert response.data is None
+
     def test_executeRequest_unsuccessful():
         """Test executeRequest with an unsuccessful service"""
         interfaceController = mockedSuccessfulInterfaceController()

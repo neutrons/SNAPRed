@@ -8,7 +8,7 @@ from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.ui.threading.worker_pool import WorkerPool
 
 
-class InitializationStatePresenter(QObject):
+class InitializeStatePresenter(QObject):
     worker_pool = WorkerPool()
     stateInitialized = pyqtSignal(SNAPResponse)
 
