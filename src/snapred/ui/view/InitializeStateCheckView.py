@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from snapred.ui.presenter.InitializeStatePresenter import InitializationStatePresenter
+from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresenter
 
 
 class InitializationMenu(QDialog):
@@ -24,7 +24,7 @@ class InitializationMenu(QDialog):
         self.layout = QGridLayout(self)
         self.setLayout(self.layout)
 
-        self.initializationWorkflow = InitializationStatePresenter(self)
+        self.initializationWorkflow = InitializeStatePresenter(self)
 
         instructionLabel = QLabel("Please enter a run number and state name to initialize:")
         instructionLabel.setWordWrap(True)
