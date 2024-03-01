@@ -16,15 +16,12 @@ class RecoverableException(Exception):
     Allows for custom error types and optional extra context.
     """
 
-    def __init__(self, exception: Exception, errorType: RecoverableErrorType, **kwargs: Any):
-        self.errorType = errorType
-        if errorType:
-            self.message = errorType
-        else:
-            self.message = "A unspecified recoverable error occurred."
+    def __init__(self, exception: Exception, errorMsg: RecoverableErrorType, **kwargs: Any):
+        self.message = errorMsg
         self.extraContext = kwargs
 
         logMessage = f"{self.message} Original exception: {str(exception)}"
+
         if self.extraContext:
             logMessage += f" | Context: {self.extraContext}"
         logger.error(logMessage)

@@ -5,6 +5,7 @@ import pytest
 from pydantic import BaseModel
 from qtpy.QtWidgets import QWidget
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.meta.decorators._Resettable import Resettable
 from snapred.meta.decorators.Builder import Builder
@@ -60,6 +61,19 @@ def test_stateExceptionHandler():
         throwsStateException()
         pytest.fail("should have thrown an exception")
     except StateValidationException:
+        assert True
+
+
+@ExceptionHandler(RecoverableException, "state")
+def throwsRecoverableException():
+    raise RuntimeError("'NoneType' object has no attribute 'instrumentState'")
+
+
+def test_recoverableExceptionHandler():
+    try:
+        throwsRecoverableException()
+        pytest.fail("should have thrown an exception")
+    except RecoverableException:
         assert True
 
 
