@@ -3,13 +3,13 @@ from unittest.mock import Mock, patch
 import pytest
 from PyQt5.QtWidgets import QMessageBox
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
-from snapred.ui.presenter.InitializeStatePresenter import InitializationStatePresenter
+from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresenter
 
 
 @pytest.fixture()
 def setup_view_and_workflow():
     view = Mock()
-    workflow = InitializationStatePresenter(view=view)
+    workflow = InitializeStatePresenter(view=view)
     return view, workflow
 
 
