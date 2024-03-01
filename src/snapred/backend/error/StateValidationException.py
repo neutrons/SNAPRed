@@ -1,6 +1,7 @@
 import re
 
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import Config
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -14,7 +15,7 @@ class StateValidationException(Exception):
         path_pattern = r"(/[^'\"]+)"
         match = re.search(path_pattern, exceptionStr)
 
-        if "/SNS/SNAP/" in exceptionStr and match:
+        if Config["instrument.home"] in exceptionStr and match:
             path = match.group(1)
             self.message = f"You don't have permission to write to analysis directory: {path}."
         else:

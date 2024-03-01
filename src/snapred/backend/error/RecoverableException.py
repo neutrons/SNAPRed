@@ -17,6 +17,7 @@ class RecoverableException(Exception):
     """
 
     def __init__(self, exception: Exception, errorMsg: RecoverableErrorType, **kwargs: Any):
+        self.errorMsg = errorMsg
         self.message = errorMsg
         self.extraContext = kwargs
 
