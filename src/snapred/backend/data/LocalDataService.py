@@ -788,19 +788,26 @@ class LocalDataService:
         self._writeGroupingMap(stateId, groupingMap)
 
     def checkCalibrationFileExists(self, runId: str):
+        # first perform some basic validation of the run ID
+        # - it must be a string of only digits
+        # - it must be greater than some minimal run number
+        if not runId.isdigit() or int(runId) < Config["instrument.startingRunNumber"]:
+            return False
+
         # first make sure the run number has a valid IPTS
         try:
             GetIPTS(runId, Config["instrument.name"])
+        # if no IPTS found, return false
         except RuntimeError:
             return False
+        # if found, try to construct the path and test if the path exists
         else:
             stateID, _ = self._generateStateId(runId)
             calibrationStatePath: str = self._constructCalibrationStateRootPath(stateID)
-
-        if os.path.exists(calibrationStatePath):
-            return True
-        else:
-            return False
+            if os.path.exists(calibrationStatePath):
+                return True
+            else:
+                return False
 
     def readSamplePaths(self):
         sampleFolder = Config["instrument.calibration.sample.home"]
@@ -822,8 +829,13 @@ class LocalDataService:
         return parse_file_as(GroupingMap, path)
 
     def readGroupingMap(self, runNumber: str):
-        stateId, _ = self._generateStateId(runNumber)
-        return self._readGroupingMap(stateId)
+        # if the state exists then lookup its grouping map
+        if self.checkCalibrationFileExists(runNumber):
+            stateId, _ = self._generateStateId(runNumber)
+            return self._readGroupingMap(stateId)
+        # otherwise return the default map
+        else:
+            return self._readDefaultGroupingMap()
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
         path = self._defaultGroupingMapPath()

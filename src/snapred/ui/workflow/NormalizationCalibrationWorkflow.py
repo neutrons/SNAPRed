@@ -26,6 +26,9 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
     def __init__(self, jsonForm, parent=None):
         super().__init__(parent)
 
+        # TODO enable set by toggle
+        self.useLiteMode = True
+
         self.assessmentSchema = self.request(path="api/parameters", payload="normalization/assessment").data
         self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
 
@@ -33,16 +36,21 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
         self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
 
         self.samplePaths = self.request(path="config/samplePaths").data
+        self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
+        self.groupingMap = self.defaultGroupingMap
+        self.focusGroups = self.groupingMap.getMap(self.useLiteMode)
 
         self._normalizationCalibrationView = NormalizationCalibrationRequestView(
             jsonForm,
             samplePaths=self.samplePaths,
+            groups=list(self.focusGroups.keys()),
             parent=parent,
         )
 
         self._specifyNormalizationView = SpecifyNormalizationCalibrationView(
             jsonForm,
             samples=self.samplePaths,
+            groups=list(self.focusGroups.keys()),
             parent=parent,
         )
 
@@ -55,8 +63,8 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
         )
 
         # connect signal to populate the grouping dropdown after run is selected
+        self._normalizationCalibrationView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
         self._normalizationCalibrationView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
-        self._specifyNormalizationView.fieldRunNumber.editingFinished.connect(self._populateGroupingDropdown)
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=None, parent=parent)
@@ -78,22 +86,31 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
         # when the run number is updated, grab the grouping map and populate grouping drop down
         runNumber = self._normalizationCalibrationView.runNumberField.text()
         useLiteMode = self._normalizationCalibrationView.litemodeToggle.field.getState()
-        self._normalizationCalibrationView.groupingFileDropDown.setEnabled(False)
 
-        # pre-screen the run number to make sure it is complete before any further checks
-        if len(runNumber) < 5:
-            return
+        self._normalizationCalibrationView.litemodeToggle.setEnabled(False)
+        self._normalizationCalibrationView.groupingFileDropdown.setEnabled(False)
 
         # check if the state exists -- if so load its grouping map
         hasState = self.request(path="calibration/hasState", payload=runNumber).data
         if hasState:
-            response = self.request(path="config/groupingMap", payload=runNumber).data
-            self.focusGroups = response.getMap(useLiteMode)
-            self.groupingFiles = list(self.focusGroups.keys())
-            self._normalizationCalibrationView.populateGroupingDropdown(self.groupingFiles)
-            self._specifyNormalizationView.populateGroupingDropdown(self.groupingFiles)
+            self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
         else:
-            logger.warn(f"Could not find state folder for run {runNumber} -- verify run number field")
+            self.groupingMap = self.defaultGroupingMap
+        self.focusGroups = self.defaultGroupingMap.getMap(useLiteMode)
+
+        # populate and reenable the drop down
+        self._normalizationCalibrationView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        self._normalizationCalibrationView.litemodeToggle.setEnabled(True)
+        self._normalizationCalibrationView.groupingFileDropdown.setEnabled(True)
+
+    def _switchLiteNativeGroups(self):
+        # when the run number is updated, freeze the drop down to populate it
+        useLiteMode = self._normalizationCalibrationView.litemodeToggle.field.getState()
+
+        self._normalizationCalibrationView.groupingFileDropdown.setEnabled(False)
+        self.focusGroups = self.groupingMap.getMap(useLiteMode)
+        self._normalizationCalibrationView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        self._normalizationCalibrationView.groupingFileDropdown.setEnabled(True)
 
     def _triggerNormalizationCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
@@ -105,10 +122,10 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
 
         self.runNumber = view.getFieldText("runNumber")
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
-        self.sampleIndex = view.sampleDropDown.currentIndex()
-        self.prevGroupingIndex = view.groupingFileDropDown.currentIndex()
-        self.samplePath = view.sampleDropDown.currentText()
-        self.groupingPath = view.groupingFileDropDown.currentText()
+        self.sampleIndex = view.sampleDropdown.currentIndex()
+        self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
+        self.samplePath = view.sampleDropdown.currentText()
+        self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.prevDMin = float(self._specifyNormalizationView.fielddMin.field.text())
         self.prevDMax = float(self._specifyNormalizationView.fielddMax.field.text())
         self.prevThreshold = float(self._specifyNormalizationView.fieldThreshold.field.text())
@@ -118,18 +135,18 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
-            focusGroup=self.focusGroups[str(self.groupingFiles[self.prevGroupingIndex])],
+            focusGroup=self.focusGroups[self.focusGroupPath],
             crystalDMin=self.prevDMin,
         )
         # take the default smoothing param from the default payload value
         self.prevSmoothingParameter = payload.smoothingParameter
 
+        # populate fields in future views
         self._specifyNormalizationView.updateFields(
             sampleIndex=self.sampleIndex,
             groupingIndex=self.prevGroupingIndex,
             smoothingParameter=self.prevSmoothingParameter,
         )
-
         self._specifyNormalizationView.updateRunNumber(self.runNumber)
         self._specifyNormalizationView.updateBackgroundRunNumber(self.backgroundRunNumber)
 
@@ -150,7 +167,7 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
-            focusGroup=self.focusGroups[str(self.groupingFiles[self.prevGroupingIndex])],
+            focusGroup=list(self.focusGroups.items())[self.prevGroupingIndex][1],
             smoothingParameter=self.prevSmoothingParameter,
             crystalDMin=self.prevDMin,
             crystalDMax=self.prevDMax,
@@ -188,7 +205,7 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
             runNumber=self.runNumber,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
-            focusGroup=self.focusGroups[self.groupingFiles[index]],
+            focusGroup=list(self.focusGroups.items())[index][1],
             smoothingParameter=smoothingParameter,
             crystalDMin=dMin,
             crystalDMax=dMax,
@@ -204,11 +221,13 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
     def applySmoothingUpdate(self, index, smoothingValue, dMin, dMax, peakThreshold):
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+
+        print(list(self.focusGroups.items()))
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focusWorkspace,
             outputWorkspace=smoothWorkspace,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
-            focusGroup=self.focusGroups[self.groupingFiles[index]],
+            focusGroup=list(self.focusGroups.items())[index][1],
             runNumber=self.runNumber,
             smoothingParameter=smoothingValue,
             crystalDMin=dMin,
@@ -228,6 +247,7 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
 
         # if the grouping file change, redo whole calculation
         groupingFileChanged = index != self.prevGroupingIndex
+        print(f"INDEX = {index} : {self.prevGroupingIndex}")
         # if peaks will change, redo only the smoothing
         smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
         dMinValueChanged = dMin != self.prevDMin

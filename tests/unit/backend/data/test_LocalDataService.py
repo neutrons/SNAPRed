@@ -365,6 +365,21 @@ def test_calibrationFileExists(GetIPTS):  # noqa ARG002
 
 
 @mock.patch(ThisService + "GetIPTS")
+def test_calibrationFileExists_stupid_number(GetIPTS):
+    localDataService = LocalDataService()
+
+    # try with a non-number
+    runNumber = "fruitcake"
+    assert not localDataService.checkCalibrationFileExists(runNumber)
+    assert not GetIPTS.called
+
+    # try with a too-small number
+    runNumber = "7"
+    assert not localDataService.checkCalibrationFileExists(runNumber)
+    assert not GetIPTS.called
+
+
+@mock.patch(ThisService + "GetIPTS")
 def test_calibrationFileExists_bad_ipts(GetIPTS):
     GetIPTS.side_effect = RuntimeError("YOU IDIOT!")
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
@@ -1186,26 +1201,33 @@ def test_readSamplePaths():
     assert "/sample2.json" in result
 
 
-def test_readGroupingMap_no():
-    localDataService = LocalDataService()
-    localDataService._generateStateId = mock.Mock(return_value=(mock.Mock(), mock.Mock()))
+@mock.patch(ThisService + "parse_file_as")
+def test_readGroupingMap_no(parse_file_as):
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+        localDataService = LocalDataService()
+        localDataService.checkCalibrationFileExists = mock.Mock(return_value=False)
+        localDataService._generateStateId = mock.Mock(side_effect=RuntimeError("YOU IDIOT!"))
+        localDataService._defaultGroupingMapPath = mock.Mock(return_value=Path(tmpDir))
 
-    runNumber = "flan"
-    with pytest.raises(FileNotFoundError) as e:
-        localDataService.readGroupingMap(runNumber)
-    assert str(localDataService._generateStateId.return_value[0]) in str(e.value)
+        runNumber = "flan"
+        res = localDataService.readGroupingMap(runNumber)
+        assert res == parse_file_as.return_value
+        assert not localDataService._generateStateId.called
 
 
 @mock.patch(ThisService + "parse_file_as")
 def test_readGroupingMap_yes(parse_file_as):
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         localDataService = LocalDataService()
+        localDataService.checkCalibrationFileExists = mock.Mock(return_value=True)
         localDataService._generateStateId = mock.Mock(return_value=(mock.Mock(), mock.Mock()))
         localDataService._groupingMapPath = mock.Mock(return_value=Path(tmpDir))
+        localDataService._readDefaultGroupingMap = mock.Mock(side_effect=RuntimeError("YOU IDIOT!"))
 
         runNumber = "flan"
         res = localDataService.readGroupingMap(runNumber)
         assert res == parse_file_as.return_value
+        assert not localDataService._readDefaultGroupingMap.called
 
 
 def test_readNoSamplePaths():

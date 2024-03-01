@@ -32,6 +32,7 @@ instrument:
       file: ${instrument.calibration.home}/Powder/SNAPLite.xml
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
+  startingRunNumber: 10000
 
 nexus:
   lite:

@@ -41,7 +41,7 @@ class SpecifyNormalizationCalibrationView(BackendRequestView):
     DMAX = Config["constants.CrystallographicInfo.dMax"]
     PEAK_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
 
-    def __init__(self, jsonForm, samples=[], parent=None):
+    def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = ""
         super().__init__(jsonForm, selection, parent=parent)
 
@@ -59,7 +59,7 @@ class SpecifyNormalizationCalibrationView(BackendRequestView):
 
         # create the other specification elements
         self.sampleDropdown = self._sampleDropDown("Sample", samples)
-        self.groupingFileDropdown = self._sampleDropDown("Grouping File", ["Enter a Run Number"])
+        self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
 
         # disable run number, background, sample -- cannot be changed now
         for x in [self.fieldRunNumber, self.fieldBackgroundRunNumber, self.sampleDropdown]:

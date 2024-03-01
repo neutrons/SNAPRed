@@ -9,7 +9,7 @@ from snapred.ui.widget.Toggle import Toggle
 
 @Resettable
 class CalibrationReductionRequestView(BackendRequestView):
-    def __init__(self, jsonForm, samples=[], parent=None):
+    def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = "calibration/diffractionCalibration"
         super().__init__(jsonForm, selection, parent=parent)
         self.runNumberField = self._labeledField("Run Number", QLineEdit(parent=self))
@@ -19,10 +19,9 @@ class CalibrationReductionRequestView(BackendRequestView):
 
         self.fieldNBinsAcrossPeakWidth = self._labeledField("Bins Across Peak Width", QLineEdit(parent=self))
         self.sampleDropdown = self._sampleDropDown("Sample", samples)
-        self.groupingFileDropdown = self._sampleDropDown("Grouping File", ["Enter a Run Number"])
+        self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
-        self.groupingFileDropdown.setEnabled(False)
         self.litemodeToggle.setEnabled(True)
         self.peakFunctionDropdown.setCurrentIndex(0)
 
@@ -35,9 +34,8 @@ class CalibrationReductionRequestView(BackendRequestView):
         self.layout.addWidget(self.groupingFileDropdown, 2, 1)
         self.layout.addWidget(self.peakFunctionDropdown, 2, 2)
 
-    def populateGroupingDropdown(self, groups=["Enter a Run Number"]):
+    def populateGroupingDropdown(self, groups):
         self.groupingFileDropdown.setItems(groups)
-        self.groupingFileDropdown.setEnabled(True)
 
     def verify(self):
         if self.sampleDropdown.currentIndex() < 0:
