@@ -51,7 +51,7 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         self._calibrationReductionView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
 
         self.workflow = (
-            WorkflowBuilder(cancelLambda=None, iterateLambda=self._iterate, parent=parent)
+            WorkflowBuilder(cancelLambda=self.resetWithPermission, iterateLambda=self._iterate, parent=parent)
             .addNode(
                 self._triggerCalibrationReduction,
                 self._calibrationReductionView,
