@@ -18,7 +18,9 @@ instrument:
       grouping:
         home: ${instrument.calibration.powder.home}/PixelGroupingDefinitions
         extensions:
-          - lite.hdf
+          - hdf
+          - xml
+          - nxs
   config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
     pixelResolution: 1179648
@@ -30,6 +32,7 @@ instrument:
       file: ${instrument.calibration.home}/Powder/SNAPLite.xml
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
+  startingRunNumber: 10000
 
 nexus:
   lite:
@@ -43,12 +46,6 @@ nexus:
     prefix: SNAP_
 
 grouping:
-  filename:
-    prefix: SNAPFocGroup_
-    lite:
-      extension: .lite.hdf
-    native:
-      extension: .xml
   workspacename:
     lite: SNAPLite_grouping_
     native: SNAP_grouping_

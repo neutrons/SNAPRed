@@ -34,17 +34,21 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
 
         self.samplePaths = self.request(path="config/samplePaths").data
-
-        self.focusGroups = self.request(path="config/focusGroups").data
-        self.groupingFiles = list(self.focusGroups.keys())
+        self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
+        self.groupingMap = self.defaultGroupingMap
+        self.focusGroups = self.groupingMap.lite
 
         self._calibrationReductionView = CalibrationReductionRequestView(
-            jsonForm, samples=self.samplePaths, groups=self.groupingFiles, parent=parent
+            jsonForm, samples=self.samplePaths, groups=list(self.focusGroups.keys()), parent=parent
         )
         self._calibrationAssessmentView = CalibrationAssessmentView(
             "Assessing Calibration", self.assessmentSchema, parent=parent
         )
         self._saveCalibrationView = SaveCalibrationView(parent)
+
+        # connect signal to populate the grouping dropdown after run is selected
+        self._calibrationReductionView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
+        self._calibrationReductionView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=None, iterateLambda=self._iterate, parent=parent)
@@ -57,6 +61,36 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
             .addNode(self._saveCalibration, self._saveCalibrationView, name="Saving")
             .build()
         )
+
+    def _populateGroupingDropdown(self):
+        # when the run number is updated, freeze the drop down to populate it
+        runNumber = self._calibrationReductionView.runNumberField.text()
+        useLiteMode = self._calibrationReductionView.litemodeToggle.field.getState()
+
+        self._calibrationReductionView.groupingFileDropdown.setEnabled(False)
+        self._calibrationReductionView.litemodeToggle.setEnabled(False)
+
+        # check if the state exists -- if so load its grouping map
+        hasState = self.request(path="calibration/hasState", payload=runNumber).data
+        if hasState:
+            self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
+        else:
+            self.groupingMap = self.defaultGroupingMap
+        self.focusGroups = self.groupingMap.getMap(useLiteMode)
+
+        # populate and reenable the drop down
+        self._calibrationReductionView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        self._calibrationReductionView.groupingFileDropdown.setEnabled(True)
+        self._calibrationReductionView.litemodeToggle.setEnabled(True)
+
+    def _switchLiteNativeGroups(self):
+        # when the run number is updated, freeze the drop down to populate it
+        useLiteMode = self._calibrationReductionView.litemodeToggle.field.getState()
+
+        self._calibrationReductionView.groupingFileDropdown.setEnabled(False)
+        self.focusGroups = self.groupingMap.getMap(useLiteMode)
+        self._calibrationReductionView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        self._calibrationReductionView.groupingFileDropdown.setEnabled(True)
 
     def _triggerCalibrationReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView

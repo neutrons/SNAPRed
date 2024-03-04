@@ -20,10 +20,11 @@ class CalibrationReductionRequestView(BackendRequestView):
         self.fieldNBinsAcrossPeakWidth = self._labeledField("Bins Across Peak Width", QLineEdit(parent=self))
         self.sampleDropdown = self._sampleDropDown("Sample", samples)
         self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
-
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
         self.litemodeToggle.setEnabled(True)
+        self.peakFunctionDropdown.setCurrentIndex(0)
+
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.litemodeToggle, 0, 1)
         self.layout.addWidget(self.fieldConvergnceThreshold, 1, 0)
@@ -33,11 +34,16 @@ class CalibrationReductionRequestView(BackendRequestView):
         self.layout.addWidget(self.groupingFileDropdown, 2, 1)
         self.layout.addWidget(self.peakFunctionDropdown, 2, 2)
 
+    def populateGroupingDropdown(self, groups):
+        self.groupingFileDropdown.setItems(groups)
+
     def verify(self):
-        if self.sampleDropdown.currentIndex() == 0:
+        if self.sampleDropdown.currentIndex() < 0:
             raise ValueError("Please select a sample")
-        if self.groupingFileDropdown.currentIndex() == 0:
+        if self.groupingFileDropdown.currentIndex() < 0:
             raise ValueError("Please select a grouping file")
-        if self.peakFunctionDropdown.currentIndex() == 0:
+        if self.groupingFileDropdown.currentIndex() < 0:
+            raise ValueError("You must enter a run number to select a grouping defintion")
+        if self.peakFunctionDropdown.currentIndex() < 0:
             raise ValueError("Please select a peak function")
         return True

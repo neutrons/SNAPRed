@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List
 
@@ -47,6 +48,12 @@ class GroupingMap(BaseModel):
     def isDirty(self) -> bool:
         return self._isDirty
 
+    def getMap(self, useLiteMode: bool) -> Dict[str, FocusGroup]:
+        if useLiteMode:
+            return self._liteMap
+        else:
+            return self._nativeMap
+
     def setDirty(self, flag: bool):
         object.__setattr__(self, "_isDirty", flag)
 
@@ -75,8 +82,9 @@ class GroupingMap(BaseModel):
             for group in groups[mode].copy():
                 fp = Path(groups[mode][group].definition)
                 # Check if path is relative
-                if str(fp) == fp.name:
+                if not os.path.isabs(fp):
                     fp = Path.joinpath(cls.calibrationGroupingHome(), fp)
+                    groups[mode][group].definition = fp
                 if not fp.exists():
                     logger.warning("File:" + str(fp) + " not found")
                     del groups[mode][group]

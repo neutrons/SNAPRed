@@ -25,33 +25,31 @@ from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 from snapred.backend.dao import GroupPeakList
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
+from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.JsonFormList import JsonFormList
-from snapred.ui.widget.LabeledField import LabeledField
+from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
-class SpecifyNormalizationCalibrationView(QWidget):
+class SpecifyNormalizationCalibrationView(BackendRequestView):
     signalRunNumberUpdate = pyqtSignal(str)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
     signalValueChanged = pyqtSignal(int, float, float, float, float)
     signalUpdateRecalculationButton = pyqtSignal(bool)
 
-    def __init__(self, name, jsonSchemaMap, samples=[], groups=[], parent=None):
-        super().__init__(parent)
-        self._jsonFormList = JsonFormList(name, jsonSchemaMap, parent=parent)
+    DMIN = Config["constants.CrystallographicInfo.dMin"]
+    DMAX = Config["constants.CrystallographicInfo.dMax"]
+    PEAK_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
 
-        self.layout = QGridLayout()
-        self.setLayout(self.layout)
+    def __init__(self, jsonForm, samples=[], groups=[], parent=None):
+        selection = ""
+        super().__init__(jsonForm, selection, parent=parent)
 
         # create the run number fields
-        self.fieldRunNumber = LabeledField("Run Number :", self._jsonFormList.getField("run.runNumber"), self)
-        self.fieldRunNumber.setEnabled(False)
+        self.fieldRunNumber = self._labeledField("Run Number", QLineEdit(parent=self))
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
 
-        self.fieldBackgroundRunNumber = LabeledField(
-            "Background Run Number :", self._jsonFormList.getField("run.backgroundRunNumber"), self
-        )
-        self.fieldBackgroundRunNumber.setEnabled(False)
+        self.fieldBackgroundRunNumber = self._labeledField("Background Run Number", QLineEdit(parent=self))
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
         # create the graph elements
@@ -60,14 +58,12 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.navigationBar = WorkbenchNavigationToolbar(self.canvas, self)
 
         # create the other specification elements
-        self.sampleDropDown = QComboBox()
-        self.sampleDropDown.setEnabled(False)
-        self.sampleDropDown.addItems(samples)
-        self.sampleDropDown.model().item(0).setEnabled(False)
+        self.sampleDropdown = self._sampleDropDown("Sample", samples)
+        self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
 
-        self.groupingDropDown = QComboBox()
-        self.groupingDropDown.setEnabled(True)
-        self.groupingDropDown.addItems(groups)
+        # disable run number, background, sample -- cannot be changed now
+        for x in [self.fieldRunNumber, self.fieldBackgroundRunNumber, self.sampleDropdown]:
+            x.setEnabled(False)
 
         self.smoothingSlider = QSlider(Qt.Horizontal)
         self.smoothingSlider.setMinimum(-1000)
@@ -99,11 +95,9 @@ class SpecifyNormalizationCalibrationView(QWidget):
         )
         self.smoothingLabel = QLabel("Smoothing :")
 
-        self.fielddMin = LabeledField("dMin :", QLineEdit(str(Config["constants.CrystallographicInfo.dMin"])), self)
-        self.fielddMax = LabeledField("dMax :", QLineEdit(str(Config["constants.CrystallographicInfo.dMax"])), self)
-        self.fieldThreshold = LabeledField(
-            "intensity threshold :", QLineEdit(str(Config["constants.PeakIntensityFractionThreshold"])), self
-        )
+        self.fielddMin = self._labeledField("dMin", QLineEdit(str(self.DMIN)))
+        self.fielddMax = self._labeledField("dMax", QLineEdit(str(self.DMAX)))
+        self.fieldThreshold = self._labeledField("intensity threshold :", QLineEdit(str(self.PEAK_THRESHOLD)))
 
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
@@ -124,8 +118,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.layout.addWidget(self.fieldRunNumber, 2, 0)
         self.layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
         self.layout.addLayout(smoothingLayout, 3, 0, 1, 2)
-        self.layout.addWidget(LabeledField("Sample :", self.sampleDropDown, self), 4, 0)
-        self.layout.addWidget(LabeledField("Grouping File :", self.groupingDropDown, self), 4, 1)
+        self.layout.addWidget(self.sampleDropdown, 4, 0)
+        self.layout.addWidget(self.groupingFileDropdown, 4, 1)
         self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
 
         self.layout.setRowStretch(1, 3)
@@ -148,8 +142,8 @@ class SpecifyNormalizationCalibrationView(QWidget):
         self.signalBackgroundRunNumberUpdate.emit(backgroundRunNumber)
 
     def updateFields(self, sampleIndex, groupingIndex, smoothingParameter):
-        self.sampleDropDown.setCurrentIndex(sampleIndex)
-        self.groupingDropDown.setCurrentIndex(groupingIndex)
+        self.sampleDropdown.setCurrentIndex(sampleIndex)
+        self.groupingFileDropdown.setCurrentIndex(groupingIndex)
         self.smoothingSlider.setValue(int(smoothingParameter * 100))
 
     def updateLineEditFromSlider(self, value):
@@ -167,7 +161,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
             raise Exception("Must be a numerical value.")
 
     def emitValueChange(self):
-        index = self.groupingDropDown.currentIndex()
+        index = self.groupingFileDropdown.currentIndex()
         v = self.smoothingSlider.value() / 100.0
         smoothingValue = 10**v
         dMin = float(self.fielddMin.field.text())
@@ -195,9 +189,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks):
         self.focusWorkspace = focusWorkspace
         self.smoothedWorkspace = smoothedWorkspace
-        self.groupingSchema = (
-            str(self.groupingDropDown.currentText()).split("/")[-1].split(".")[0].replace("SNAPFocGroup_", "")
-        )
+        self.groupingSchema = self.groupingFileDropdown.currentText()
         self._updateGraphs(peaks)
 
     def _updateGraphs(self, peaks):
@@ -255,3 +247,7 @@ class SpecifyNormalizationCalibrationView(QWidget):
 
     def enableRecalculateButton(self):
         self.signalUpdateRecalculationButton.emit(True)
+
+    def populateGroupingDropdown(self, groups=["Enter a Run Number"]):
+        self.groupingFileDropdown.setItems(groups)
+        self.groupingFileDropdown.setEnabled(True)

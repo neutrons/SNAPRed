@@ -9,19 +9,29 @@ class SampleDropDown(QWidget):
         self._items = items
 
         self.dropDown = QComboBox()
-        self.dropDown.addItem(str(self._label))
-        self.dropDown.addItems(self._items)
-        self.dropDown.model().item(0).setEnabled(False)
+        self._initItems()
 
         layout = QVBoxLayout()
         layout.addWidget(self.dropDown)
         self.setLayout(layout)
 
+    def _initItems(self):
+        self.dropDown.clear()
+        self.dropDown.addItem(str(self._label))
+        self.dropDown.addItems(self._items)
+        self.dropDown.model().item(0).setEnabled(False)
+
+    def setItems(self, items=[]):
+        self._items = items
+        self._initItems()
+
     def currentIndex(self):
-        return self.dropDown.currentIndex()
+        # NOTE because the label is considered an index, must decrement by 1
+        return self.dropDown.currentIndex() - 1
 
     def setCurrentIndex(self, index):
-        self.dropDown.setCurrentIndex(index)
+        # NOTE because the label is considered an index, must incredment by 1
+        self.dropDown.setCurrentIndex(index + 1)
 
     def currentText(self):
         return self.dropDown.currentText()

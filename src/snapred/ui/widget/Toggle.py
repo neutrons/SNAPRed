@@ -33,7 +33,7 @@ class Toggle(QWidget):
         self.animateClick()
 
     def connectUpdate(self, update):  # noqa: ARG002
-        self.toggleAnimation.finished.connect(self.update)
+        self.toggleAnimation.finished.connect(update)
 
     def _doNothing(self):
         pass

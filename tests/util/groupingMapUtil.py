@@ -1,4 +1,5 @@
 import pytest
+from snapred.meta.Config import Resource
 
 
 class GroupingMapTestFactory:
@@ -17,10 +18,16 @@ class GroupingMapTestFactory:
         return {
             "stateId": "deadbeef00000002",
             "liteFocusGroups": [
-                {"name": "Column", "definition": "tests/resources/inputs/calibration/ReductionIngredients.json"}
+                {
+                    "name": "Column",
+                    "definition": Resource.getPath("inputs/calibration/ReductionIngredients.json"),
+                }
             ],
             "nativeFocusGroups": [
-                {"name": "Column", "definition": "tests/resources/inputs/calibration/ReductionIngredients.json"}
+                {
+                    "name": "Column",
+                    "definition": Resource.getPath("inputs/calibration/ReductionIngredients.json"),
+                }
             ],
         }
 

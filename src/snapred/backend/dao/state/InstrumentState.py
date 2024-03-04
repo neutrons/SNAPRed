@@ -8,10 +8,6 @@ from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.ParticleBounds import ParticleBounds
 from snapred.backend.dao.state.DetectorState import DetectorState, GuideState
-from snapred.backend.dao.state.GroupingMap import GroupingMap
-from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.backend.dao.StateId import StateId
-from snapred.backend.error.StateValidationException import StateValidationException
 
 
 class InstrumentState(BaseModel):

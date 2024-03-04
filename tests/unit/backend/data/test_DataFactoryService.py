@@ -34,80 +34,68 @@ with mock.patch.dict(
 
     def test_getRunConfig():
         dataExportService = DataFactoryService()
-        dataExportService.lookupService.readRunConfig = mock.Mock()
-        dataExportService.lookupService.readRunConfig.return_value = RunConfig.construct()
+        dataExportService.lookupService.readRunConfig = mock.Mock(return_value=RunConfig.construct())
         actual = dataExportService.getRunConfig(mock.Mock())
 
         assert type(actual) == RunConfig
 
     def test_getStateConfig():
         dataExportService = DataFactoryService()
-        dataExportService.lookupService.readStateConfig = mock.Mock()
-        dataExportService.lookupService.readStateConfig.return_value = StateConfig.construct()
+        dataExportService.lookupService.readStateConfig = mock.Mock(return_value=StateConfig.construct())
         actual = dataExportService.getStateConfig(mock.Mock())
 
         assert type(actual) == StateConfig
 
     def test_constructStateId():
         dataExportService = DataFactoryService()
-        dataExportService.lookupService_generateStateId = mock.Mock()
-        dataExportService.lookupService._generateStateId.return_value = "expected"
+        dataExportService.lookupService._generateStateId = mock.Mock(return_value="expected")
         actual = dataExportService.constructStateId(mock.Mock())
 
         assert actual == "expected"
 
     def test_getCalibrationState():
         dataExportService = DataFactoryService()
-        dataExportService.lookupService.readCalibrationState = mock.Mock()
-        dataExportService.lookupService.readCalibrationState.return_value = "expected"
+        dataExportService.lookupService.readCalibrationState = mock.Mock(return_value="expected")
         actual = dataExportService.getCalibrationState(mock.Mock())
 
         assert actual == "expected"
 
+    def test_getGroupingMap():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.readGroupingMap = mock.Mock(return_value="expected")
+        actual = dataExportService.getGroupingMap(mock.Mock())
+        assert actual == "expected"
+
+    def test_checkCalibrationStateExists():
+        dataExportService = DataFactoryService()
+        dataExportService.lookupService.checkCalibrationFileExists = mock.Mock(return_value="expected")
+        actual = dataExportService.checkCalibrationStateExists(mock.Mock())
+        assert actual == "expected"
+
     def test_getSamplePaths():
         dataExportService = DataFactoryService()
-        dataExportService.lookupService.readSamplePaths = mock.Mock()
-        dataExportService.lookupService.readSamplePaths.return_value = "expected"
+        dataExportService.lookupService.readSamplePaths = mock.Mock(return_value="expected")
         actual = dataExportService.getSamplePaths()
-
-        assert actual == "expected"
-
-    def test_getGroupingFile():
-        dataExportService = DataFactoryService()
-        dataExportService.lookupService.readGroupingFiles = mock.Mock()
-        dataExportService.lookupService.readGroupingFiles.return_value = "expected"
-        actual = dataExportService.getGroupingFiles()
-
-        assert actual == "expected"
-
-    def test_getFocusGroups():
-        dataExportService = DataFactoryService()
-        dataExportService.lookupService.readFocusGroups = mock.Mock()
-        dataExportService.lookupService.readFocusGroups.return_value = "expected"
-        actual = dataExportService.getFocusGroups()
 
         assert actual == "expected"
 
     def test_getCalibrantSample():
         dataExportService = DataFactoryService()
-        dataExportService.lookupService.readCalibrantSample = mock.Mock()
-        dataExportService.lookupService.readCalibrantSample.return_value = "expected"
+        dataExportService.lookupService.readCalibrantSample = mock.Mock(return_value="expected")
         actual = dataExportService.getCalibrantSample("testId")
 
         assert actual == "expected"
 
     def test_getCifFilePath():
         dataExportService = DataFactoryService()
-        dataExportService.lookupService.readCifFilePath = mock.Mock()
-        dataExportService.lookupService.readCifFilePath.return_value = "expected"
+        dataExportService.lookupService.readCifFilePath = mock.Mock(return_value="expected")
         actual = dataExportService.getCifFilePath("testId")
 
         assert actual == "expected"
 
     def test_getNormalizationState():
         dataExportService = DataFactoryService()
-        dataExportService.lookupService.readNormalizationState = mock.Mock()
-        dataExportService.lookupService.readNormalizationState.return_value = "expected"
+        dataExportService.lookupService.readNormalizationState = mock.Mock(return_value="expected")
         actual = dataExportService.getNormalizationState(mock.Mock())
 
         assert actual == "expected"
