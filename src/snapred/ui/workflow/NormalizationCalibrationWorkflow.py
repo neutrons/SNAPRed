@@ -189,6 +189,7 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
+            appliesTo=view.fieldAppliesTo.get(),
         )
 
         payload = NormalizationExportRequest(
