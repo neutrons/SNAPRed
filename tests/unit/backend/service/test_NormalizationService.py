@@ -138,6 +138,7 @@ class TestNormalizationService(unittest.TestCase):
             crystalDMin=0.4,
         )
         self.instance = NormalizationService()
+        self.instance._sameStates = MagicMock(return_value=True)
         self.instance.sousChef.prepNormalizationIngredients = MagicMock()
         self.instance.dataFactoryService = MagicMock()
 
@@ -233,6 +234,7 @@ class TestNormalizationService(unittest.TestCase):
         mockSmoothDataExcludingPeaks.executeRecipe.return_value = "smoothed_output_ws"
 
         self.instance = NormalizationService()
+        self.instance._sameStates = MagicMock(return_value=True)
         self.instance.sousChef.prepNormalizationIngredients = MagicMock(return_value=mock.Mock(detectorPeaks=[]))
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         result = self.instance.normalization(self.request)
@@ -250,6 +252,7 @@ class TestNormalizationService(unittest.TestCase):
     def test_cachedNormalization(self, mockGroceryService):
         mockGroceryService.workSpaceDoesExist = mock.Mock(return_value=True)
         self.instance = NormalizationService()
+        self.instance._sameStates = MagicMock(return_value=True)
         self.instance.sousChef.prepNormalizationIngredients = MagicMock(return_value=mock.Mock(detectorPeaks=[]))
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         result = self.instance.normalization(self.request)
@@ -259,6 +262,25 @@ class TestNormalizationService(unittest.TestCase):
             "smoothedVanadium": "dsp_apple_12345_fitted_van_cor",
             "detectorPeaks": self.instance.sousChef.prepNormalizationIngredients.return_value.detectorPeaks,
         }
+
+    def test_nomaliztionStatesDontMatch(self):
+        self.instance = NormalizationService()
+        self.instance._sameStates = MagicMock(return_value=False)
+        with pytest.raises(ValueError, match="must be of the same Instrument State."):
+            self.instance.normalization(self.request)
+
+    def test_sameStates(self):
+        self.instance = NormalizationService()
+        self.instance.dataFactoryService.constructStateId = MagicMock()
+        self.instance.dataFactoryService.constructStateId.return_value = "state"
+        assert self.instance._sameStates("12345", "state")
+
+    def test_differentStates(self):
+        self.instance = NormalizationService()
+        # constructStateId must return different each call
+        self.instance.dataFactoryService.constructStateId = MagicMock()
+        self.instance.dataFactoryService.constructStateId.side_effect = ["state", "different_state"]
+        assert not self.instance._sameStates("12345", "different_state")
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

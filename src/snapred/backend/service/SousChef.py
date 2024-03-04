@@ -46,7 +46,6 @@ class SousChef(Service):
         self.groceryClerk = GroceryListItem.builder()
         self.dataFactoryService = DataFactoryService()
         self._pixelGroupCache: Dict[Tuple[str, bool, str], PixelGroup] = {}
-        self._calibrationCache: Dict[str, Calibration] = {}
         self._peaksCache: Dict[Tuple[str, bool, str, float, float, float], List[GroupPeakList]] = {}
         self._xtalCache: Dict[Tuple[str, float, float], CrystallographicInfo] = {}
         return
@@ -56,9 +55,7 @@ class SousChef(Service):
         return "souschef"
 
     def prepCalibration(self, runNumber: str) -> Calibration:
-        if runNumber not in self._calibrationCache:
-            self._calibrationCache[runNumber] = self.dataFactoryService.getCalibrationState(runNumber)
-        return self._calibrationCache[runNumber]
+        return self.dataFactoryService.getCalibrationState(runNumber)
 
     def prepInstrumentState(self, runNumber: str) -> InstrumentState:
         return self.prepCalibration(runNumber).instrumentState
