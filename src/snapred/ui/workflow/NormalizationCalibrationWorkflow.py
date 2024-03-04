@@ -96,7 +96,7 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
             self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
         else:
             self.groupingMap = self.defaultGroupingMap
-        self.focusGroups = self.defaultGroupingMap.getMap(useLiteMode)
+        self.focusGroups = self.groupingMap.getMap(useLiteMode)
 
         # populate and reenable the drop down
         self._normalizationCalibrationView.populateGroupingDropdown(list(self.focusGroups.keys()))
