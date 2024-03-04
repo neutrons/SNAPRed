@@ -8,7 +8,7 @@ from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
-class CalibrationReductionRequestView(BackendRequestView):
+class DiffCalRequestView(BackendRequestView):
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = "calibration/diffractionCalibration"
         super().__init__(jsonForm, selection, parent=parent)

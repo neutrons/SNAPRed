@@ -9,16 +9,16 @@ from snapred.backend.dao.request import (
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
-from snapred.ui.view.CalibrationAssessmentView import CalibrationAssessmentView
-from snapred.ui.view.CalibrationReductionRequestView import CalibrationReductionRequestView
-from snapred.ui.view.SaveCalibrationView import SaveCalibrationView
+from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
+from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
+from snapred.ui.view.DiffCalSaveView import DiffCalSaveView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
 logger = snapredLogger.getLogger(__name__)
 
 
-class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
+class DiffCalWorkflow(WorkflowImplementer):
     def __init__(self, jsonForm, parent=None):
         super().__init__(parent)
         # create a tree of flows for the user to successfully execute diffraction calibration
@@ -38,13 +38,13 @@ class DiffractionCalibrationCreationWorkflow(WorkflowImplementer):
         self.groupingMap = self.defaultGroupingMap
         self.focusGroups = self.groupingMap.lite
 
-        self._calibrationReductionView = CalibrationReductionRequestView(
+        self._calibrationReductionView = DiffCalRequestView(
             jsonForm, samples=self.samplePaths, groups=list(self.focusGroups.keys()), parent=parent
         )
-        self._calibrationAssessmentView = CalibrationAssessmentView(
+        self._calibrationAssessmentView = DiffCalAssessmentView(
             "Assessing Calibration", self.assessmentSchema, parent=parent
         )
-        self._saveCalibrationView = SaveCalibrationView(parent)
+        self._saveCalibrationView = DiffCalSaveView(parent)
 
         # connect signal to populate the grouping dropdown after run is selected
         self._calibrationReductionView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)

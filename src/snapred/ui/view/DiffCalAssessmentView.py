@@ -11,7 +11,7 @@ from snapred.ui.widget.LabeledField import LabeledField
 
 
 @Resettable
-class CalibrationAssessmentView(QWidget):
+class DiffCalAssessmentView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
     signalError = pyqtSignal(str)
 
