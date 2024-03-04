@@ -1,4 +1,5 @@
 import json
+from re import match
 from typing import List
 from unittest.mock import patch
 
@@ -71,6 +72,15 @@ def test_stateValidationExceptionWithInvalidState(mockLogger):  # noqa: ARG001
         assert str(e) == exception_msg  # noqa: PT017
 
 
+@patch("snapred.backend.error.StateValidationException.Config")
+def test_stateValidationExceptionWritePerms(mockConfig):
+    exceptionPath = "SNS/SNAP/expected/path/somefile.txt"
+    exceptionString = f"Error accessing {exceptionPath}"
+    mockConfig.__getitem__.return_value = exceptionPath
+    with pytest.raises(StateValidationException, match="You don't have permission to write to analysis directory: "):
+        raise StateValidationException(RuntimeError(exceptionString))
+
+
 @ExceptionHandler(StateValidationException)
 def throwsStateException():
     raise RuntimeError("I love exceptions!!! Ah ha ha!")
@@ -95,6 +105,13 @@ def test_recoverableExceptionHandler():
         pytest.fail("should have thrown an exception")
     except RecoverableException:
         assert True
+
+
+def test_recoverableExceptionKwargs():
+    exceptionPath = "SNS/SNAP/expected/path/somefile.txt"
+    exceptionString = f"Error accessing {exceptionPath}"
+    with pytest.raises(RecoverableException, match=exceptionString):
+        raise RecoverableException(RuntimeError(exceptionString), exceptionString, extraInfo="some extra info")
 
 
 def test_builder():
