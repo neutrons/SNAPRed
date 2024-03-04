@@ -24,7 +24,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
-        reductionIngredients = ReductionIngredients(**json.loads(self.getProperty("ReductionIngredients").value))
+        reductionIngredients = ReductionIngredients.parse_raw(self.getPropertyValue("ReductionIngredients"))
         focusGroups = reductionIngredients.reductionState.stateConfig.focusGroups
         # run the algo
         self.log().notice("Execution of ReductionAlgorithm START!")
@@ -56,7 +56,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         # 8 CreateGroupWorkspace      TODO: Assess performance, use alternative Andrei came up with that is faster
         groupingworkspace = self.mantidSnapper.CustomGroupWorkspace(
             "Creating Group Workspace...",
-            StateConfig=reductionIngredients.reductionState.stateConfig.json(),
+            FocusGroups=focusGroups,
             InputWorkspace="vanadium",
             OutputWorkSpace="CommonRed",
         )

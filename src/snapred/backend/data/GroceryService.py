@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 from mantid.api import AlgorithmManager, mtd
 
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.dao.state import DetectorState
+from snapred.backend.dao.state import DetectorState, GroupingMap
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.meta.Config import Config
@@ -134,14 +134,24 @@ class GroceryService:
         ext = instr + ".extension"
         return self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext]
 
-    def _createGroupingFilename(self, groupingScheme: str, useLiteMode: bool) -> str:
+    def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
         if groupingScheme == "Lite":
-            return str(Config["instrument.lite.map.file"])
-        instr = "lite" if useLiteMode else "native"
-        home = "instrument.calibration.powder.grouping.home"
-        pre = "grouping.filename.prefix"
-        ext = "grouping.filename." + instr + ".extension"
-        return f"{Config[home]}/{Config[pre]}{groupingScheme}{Config[ext]}"
+            path = str(Config["instrument.lite.map.file"])
+        else:
+            groupingMap = self.dataService.readGroupingMap(runNumber)
+            path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
+        return str(path)
+
+    def _createDiffcalOutputWorkspaceFilename(self, runId: str, version: str) -> str:
+        return str(
+            Path(self._getCalibrationDataPath(runId, version))
+            / (self._createDiffcalOutputWorkspaceName(runId) + ".nxs")
+        )
+
+    def _createDiffcalTableFilename(self, runId: str, version: str) -> str:
+        return str(
+            Path(self._getCalibrationDataPath(runId, version)) / (self._createDiffcalTableWorkspaceName(runId) + ".h5")
+        )
 
     ## WORKSPACE NAME METHODS
 
@@ -173,22 +183,11 @@ class GroceryService:
     def _createDiffcalOutputWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalOutput().runNumber(runId).build()
 
-    def _createDiffcalOutputWorkspaceFilename(self, runId: str, version: str) -> str:
-        return str(
-            Path(self._getCalibrationDataPath(runId, version))
-            / (self._createDiffcalOutputWorkspaceName(runId) + ".nxs")
-        )
-
     def _createDiffcalTableWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalTable().runNumber(runId).build()
 
     def _createDiffcalMaskWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalMask().runNumber(runId).build()
-
-    def _createDiffcalTableFilename(self, runId: str, version: str) -> str:
-        return str(
-            Path(self._getCalibrationDataPath(runId, version)) / (self._createDiffcalTableWorkspaceName(runId) + ".h5")
-        )
 
     ## ACCESSING WORKSPACES
     """
@@ -470,7 +469,7 @@ class GroceryService:
                 "workspace": workspaceName,
             }
         else:
-            filename = self._createGroupingFilename(item.groupingScheme, item.useLiteMode)
+            filename = self._createGroupingFilename(item.runNumber, item.groupingScheme, item.useLiteMode)
             groupingLoader = "LoadGroupingDefinition"
 
             # Unless overridden: use a cached workspace as the instrument donor.

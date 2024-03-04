@@ -236,11 +236,10 @@ class LocalDataService:
 
     def _constructCalibrationStateRootPath(self, stateId):
         # TODO: Propagate pathlib through codebase
-        return f"{self.instrumentConfig.calibrationDirectory}/Powder/{stateId}/"
+        return f"{self.instrumentConfig.calibrationDirectory}/Powder/{str(stateId)}/"
 
     def _constructNormalizationCalibrationStatePath(self, stateId):
         # TODO: Propagate pathlib through codebase
-        # return f"{self.instrumentConfig.calibrationDirectory / 'Powder' / stateId / 'normalization'}/"
         return f"{self.instrumentConfig.calibrationDirectory}/Powder/{stateId}/normalization/"
 
     def readCalibrationIndex(self, runId: str):
@@ -789,13 +788,26 @@ class LocalDataService:
         self._writeGroupingMap(stateId, groupingMap)
 
     def checkCalibrationFileExists(self, runId: str):
-        stateID, _ = self._generateStateId(runId)
-        calibrationStatePath: str = self._constructCalibrationStateRootPath(stateID)
-
-        if os.path.exists(calibrationStatePath):
-            return True
-        else:
+        # first perform some basic validation of the run ID
+        # - it must be a string of only digits
+        # - it must be greater than some minimal run number
+        if not runId.isdigit() or int(runId) < Config["instrument.startingRunNumber"]:
             return False
+
+        # first make sure the run number has a valid IPTS
+        try:
+            GetIPTS(runId, Config["instrument.name"])
+        # if no IPTS found, return false
+        except RuntimeError:
+            return False
+        # if found, try to construct the path and test if the path exists
+        else:
+            stateID, _ = self._generateStateId(runId)
+            calibrationStatePath: str = self._constructCalibrationStateRootPath(stateID)
+            if os.path.exists(calibrationStatePath):
+                return True
+            else:
+                return False
 
     def readSamplePaths(self):
         sampleFolder = Config["instrument.calibration.sample.home"]
@@ -815,6 +827,15 @@ class LocalDataService:
         if not path.exists():
             raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
         return parse_file_as(GroupingMap, path)
+
+    def readGroupingMap(self, runNumber: str):
+        # if the state exists then lookup its grouping map
+        if self.checkCalibrationFileExists(runNumber):
+            stateId, _ = self._generateStateId(runNumber)
+            return self._readGroupingMap(stateId)
+        # otherwise return the default map
+        else:
+            return self._readDefaultGroupingMap()
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
         path = self._defaultGroupingMapPath()
@@ -838,31 +859,6 @@ class LocalDataService:
 
     def _groupingMapPath(self, stateId) -> Path:
         return Path(self._constructCalibrationStateRootPath(stateId)) / "groupingMap.json"
-
-    def readGroupingFiles(self):
-        groupingFolder = Config["instrument.calibration.powder.grouping.home"]
-        extensions = Config["instrument.calibration.powder.grouping.extensions"]
-        # collect list of all files in folder that are applicable extensions
-        groupingFiles = []
-        for extension in extensions:
-            groupingFiles.extend(self._findMatchingFileList(f"{groupingFolder}/*.{extension}", throws=False))
-        if len(groupingFiles) < 1:
-            raise RuntimeError(f"No grouping files found in {groupingFolder} for extensions {extensions}")
-        groupingFiles.sort()
-        return groupingFiles
-
-    def readFocusGroups(self):
-        groupingFiles = self.readGroupingFiles()
-        focusGroups = {}
-        for file in groupingFiles:
-            focusGroups[file] = FocusGroup(
-                name=self.groupingSchemaFromPath(file),
-                definition=file,
-            )
-        return focusGroups
-
-    def groupingSchemaFromPath(self, path: str) -> str:
-        return path.split("/")[-1].split("_")[-1].split(".")[0]
 
     ## WRITING WORKSPACES TO DISK
 
