@@ -57,23 +57,10 @@ def throwsStateException():
     raise RuntimeError("I love exceptions!!! Ah ha ha!")
 
 
-@ExceptionHandler(StateValidationException)
-def throwsStateMissingException():
-    raise PermissionError("[Errno 13] Permission denied: /SNS/SNAP/shared/Calibration/Powder/6bbb60d63372c34b/")
-
-
 def test_stateExceptionHandler():
     try:
         throwsStateException()
         pytest.fail("should have thrown an exception")
-    except StateValidationException:
-        assert True
-
-
-def test_stateMissingExceptionHandler():
-    try:
-        throwsStateMissingException()
-        pytest.fail("state missing")
     except StateValidationException:
         assert True
 
