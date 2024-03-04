@@ -52,6 +52,25 @@ def test_FromStringOnListOfBaseModel():
     tester.assertIsListOfModel(json.dumps([SNAPRequest(path="test").dict()]))
 
 
+@patch("snapred.backend.log.logger.snapredLogger")
+@patch("snapred.meta.Config.Config", {"instrument.home": "/expected/path"})
+def test_stateValidationExceptionWithPermissionIssue(mockLogger):  # noqa: ARG001
+    exception_msg = "Instrument State for given Run Number is invalid! (see logs for details.)"
+    try:
+        raise StateValidationException(RuntimeError("Error accessing SNS/SNAP/expected/path/somefile.txt"))
+    except StateValidationException as e:
+        assert str(e) == exception_msg  # noqa: PT017
+
+
+@patch("snapred.backend.log.logger.snapredLogger")
+def test_stateValidationExceptionWithInvalidState(mockLogger):  # noqa: ARG001
+    exception_msg = "Instrument State for given Run Number is invalid! (see logs for details.)"
+    try:
+        raise StateValidationException(RuntimeError("Random error message"))
+    except StateValidationException as e:
+        assert str(e) == exception_msg  # noqa: PT017
+
+
 @ExceptionHandler(StateValidationException)
 def throwsStateException():
     raise RuntimeError("I love exceptions!!! Ah ha ha!")
