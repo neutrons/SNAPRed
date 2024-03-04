@@ -214,7 +214,7 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in res
         assert "lite" in res.lower()
 
-    def test_grouping_filename_nocache(self):
+    def test_grouping_filename(self):
         """Test the creation of the grouping filename"""
         runNumber = "123"
         uniqueGroupingScheme = "Fruitcake"
@@ -229,24 +229,6 @@ class TestGroceryService(unittest.TestCase):
         )
 
         res = self.instance._createGroupingFilename(runNumber, uniqueGroupingScheme, False)
-        assert res == uniqueGroupingDefinition
-
-    def test_grouping_filename_cache(self):
-        """Test the creation of the grouping filename"""
-        runNumber = "123"
-        uniqueGroupingScheme = "Fruitcake"
-        uniqueGroupingDefinition = "/some/path/for/fruitcake"  # NOTE initial / to make "absolute"
-        self.groupingItem.groupingScheme = uniqueGroupingScheme
-
-        # construct a mocked grouping map and add it to cache
-        mockFocusGroup = mock.Mock(name=uniqueGroupingScheme, definition=uniqueGroupingDefinition)
-        mockGroupMap = {uniqueGroupingScheme: mockFocusGroup}
-        self.instance._groupingMapCache = {runNumber: mock.Mock(getMap=mock.Mock(return_value=mockGroupMap))}
-        self.instance.dataService.readGroupingMap = mock.Mock()
-
-        # make sure correct group returned, and the data service was no called
-        res = self.instance._createGroupingFilename(runNumber, uniqueGroupingScheme, False)
-        assert self.instance.dataService.readGroupingMap.call_count == 0
         assert res == uniqueGroupingDefinition
 
     def test_litedatamap_filename(self):

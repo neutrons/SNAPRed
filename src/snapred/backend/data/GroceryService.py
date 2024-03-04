@@ -41,8 +41,6 @@ class GroceryService:
         self._loadedGroupings: Dict[Tuple[str, str, bool], str] = {}
         self._loadedInstruments: Dict[Tuple[str, bool], str] = {}
 
-        self._groupingMapCache: Dict[str, GroupingMap] = {}
-
         self.grocer = FetchGroceriesRecipe()
 
     def _defaultClass(self, val, clazz):
@@ -139,11 +137,8 @@ class GroceryService:
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
         if groupingScheme == "Lite":
             path = str(Config["instrument.lite.map.file"])
-        elif self._groupingMapCache.get(runNumber):
-            path = self._groupingMapCache[runNumber].getMap(useLiteMode)[groupingScheme].definition
         else:
             groupingMap = self.dataService.readGroupingMap(runNumber)
-            self._groupingMapCache[runNumber] = groupingMap
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
