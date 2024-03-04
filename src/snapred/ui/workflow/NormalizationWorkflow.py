@@ -220,7 +220,6 @@ class NormalizationWorkflow(WorkflowImplementer):
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
 
-        print(list(self.focusGroups.items()))
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focusWorkspace,
             outputWorkspace=smoothWorkspace,
@@ -245,7 +244,6 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         # if the grouping file change, redo whole calculation
         groupingFileChanged = index != self.prevGroupingIndex
-        print(f"INDEX = {index} : {self.prevGroupingIndex}")
         # if peaks will change, redo only the smoothing
         smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
         dMinValueChanged = dMin != self.prevDMin

@@ -11,12 +11,10 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
-from snapred.ui.view import (
-    DiffCalAssessmentView,
-    DiffCalRequestView,
-    DiffCalSaveView,
-    DiffCalTweakPeakView,
-)
+from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
+from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
+from snapred.ui.view.DiffCalSaveView import DiffCalSaveView
+from snapred.ui.view.DiffCalTweakPeakView import DiffCalTweakPeakView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
@@ -51,24 +49,25 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.groupingMap = self.defaultGroupingMap
         self.focusGroups = self.groupingMap.lite
 
-        self._calibrationReductionView = DiffCalRequestView(
-            jsonForm, samples=self.samplePaths, groups=list(self.focusGroups.keys()), parent=parent
-        )
-        self._peakViewerView = DiffCalTweakPeakView(
+        self._requestView = DiffCalRequestView(
             jsonForm,
             samples=self.samplePaths,
-            groups=self.groupingFiles,
+            groups=list(self.focusGroups.keys()),
             parent=parent,
         )
-        self._calibrationAssessmentView = DiffCalAssessmentView(
-            "Assessing Calibration", self.assessmentSchema, parent=parent
+        self._tweakPeakView = DiffCalTweakPeakView(
+            jsonForm,
+            samples=self.samplePaths,
+            groups=list(self.focusGroups.keys()),
+            parent=parent,
         )
-        self._saveCalibrationView = DiffCalSaveView(parent)
+        self._assessmentView = DiffCalAssessmentView("Assessing Calibration", self.assessmentSchema, parent=parent)
+        self._saveView = DiffCalSaveView(parent)
 
         # connect signal to populate the grouping dropdown after run is selected
-        self._calibrationReductionView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
-        self._calibrationReductionView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
-        self._peakViewerView.signalValueChanged.connect(self.onValueChange)
+        self._requestView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
+        self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
+        self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
 
         # 1. input run number and other basic parameters
         # 2. display peak graphs, allow adjustments to view
@@ -77,20 +76,20 @@ class DiffCalWorkflow(WorkflowImplementer):
         # 5. user may elect to save the calibration
         self.workflow = (
             WorkflowBuilder(cancelLambda=self.resetWithPermission, iterateLambda=self._iterate, parent=parent)
-            .addNode(self._specifyRun, self._diffCalRequestView, "Diffraction Calibration")
-            .addNode(self._triggerDiffractionCalibration, self._peakViewerView, "Tweak Peak Peek")
-            .addNode(self._assessCalibration, self._calibrationAssessmentView, "Assessing", iterate=True)
-            .addNode(self._saveCalibration, self._saveCalibrationView, name="Saving")
+            .addNode(self._specifyRun, self._requestView, "Diffraction Calibration")
+            .addNode(self._triggerDiffractionCalibration, self._tweakPeakView, "Tweak Peak Peek")
+            .addNode(self._assessCalibration, self._assessmentView, "Assessing", iterate=True)
+            .addNode(self._saveCalibration, self._saveView, name="Saving")
             .build()
         )
 
     def _populateGroupingDropdown(self):
         # when the run number is updated, freeze the drop down to populate it
-        runNumber = self._calibrationReductionView.runNumberField.text()
-        useLiteMode = self._calibrationReductionView.litemodeToggle.field.getState()
+        runNumber = self._requestView.runNumberField.text()
+        useLiteMode = self._requestView.litemodeToggle.field.getState()
 
-        self._calibrationReductionView.groupingFileDropdown.setEnabled(False)
-        self._calibrationReductionView.litemodeToggle.setEnabled(False)
+        self._requestView.groupingFileDropdown.setEnabled(False)
+        self._requestView.litemodeToggle.setEnabled(False)
 
         # check if the state exists -- if so load its grouping map
         hasState = self.request(path="calibration/hasState", payload=runNumber).data
@@ -101,18 +100,18 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.focusGroups = self.groupingMap.getMap(useLiteMode)
 
         # populate and reenable the drop down
-        self._calibrationReductionView.populateGroupingDropdown(list(self.focusGroups.keys()))
-        self._calibrationReductionView.groupingFileDropdown.setEnabled(True)
-        self._calibrationReductionView.litemodeToggle.setEnabled(True)
+        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        self._requestView.groupingFileDropdown.setEnabled(True)
+        self._requestView.litemodeToggle.setEnabled(True)
 
     def _switchLiteNativeGroups(self):
         # when the run number is updated, freeze the drop down to populate it
-        useLiteMode = self._calibrationReductionView.litemodeToggle.field.getState()
+        useLiteMode = self._requestView.litemodeToggle.field.getState()
 
-        self._calibrationReductionView.groupingFileDropdown.setEnabled(False)
+        self._requestView.groupingFileDropdown.setEnabled(False)
         self.focusGroups = self.groupingMap.getMap(useLiteMode)
-        self._calibrationReductionView.populateGroupingDropdown(list(self.focusGroups.keys()))
-        self._calibrationReductionView.groupingFileDropdown.setEnabled(True)
+        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        self._requestView.groupingFileDropdown.setEnabled(True)
 
     def _specifyRun(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
@@ -131,7 +130,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.nBinsAcrossPeakWidth = view.fieldNBinsAcrossPeakWidth.get(self.DEFAULT_NBINS)
         self.peakThreshold = view.fieldPeakIntensityThreshold.get(self.DEFAULT_PEAK_THRESHOLD)
 
-        self._peakViewerView.updateFields(
+        self._tweakPeakView.updateFields(
             self.runNumber,
             view.sampleDropdown.currentIndex(),
             view.groupingFileDropdown.currentIndex(),
@@ -170,15 +169,15 @@ class DiffCalWorkflow(WorkflowImplementer):
         )
         response = self.request(path="calibration/focus", payload=payload.json())
         self.focusedWorkspace = response.data[0]
-        self._peakViewerView.updateGraphs(self.focusedWorkspace, self.ingredients.groupedPeakLists)
+        self._tweakPeakView.updateGraphs(self.focusedWorkspace, self.ingredients.groupedPeakLists)
         return response
 
     def onValueChange(self, groupingIndex, dMin, dMax, peakThreshold):
         if groupingIndex < 0:
             raise RuntimeError("YOU IDIOT")
-        self._peakViewerView.disableRecalculateButton()
+        self._tweakPeakView.disableRecalculateButton()
 
-        self.focusGroupPath = self.groupingFiles[groupingIndex]
+        self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
 
         # if peaks will change, redo only the smoothing
         dMinValueChanged = dMin != self.prevDMin
@@ -192,10 +191,10 @@ class DiffCalWorkflow(WorkflowImplementer):
             self._renewFocus(groupingIndex)
             self._renewIngredients(dMin, dMax, peakThreshold)
 
-        self._peakViewerView.updateGraphs(self.focusedWorkspace, self.ingredients.groupedPeakLists)
+        self._tweakPeakView.updateGraphs(self.focusedWorkspace, self.ingredients.groupedPeakLists)
 
         # renable button when graph is updated
-        self._peakViewerView.enableRecalculateButton()
+        self._tweakPeakView.enableRecalculateButton()
 
         # update the values for next call to this method
         self.prevDMin = dMin
@@ -220,11 +219,12 @@ class DiffCalWorkflow(WorkflowImplementer):
         return response
 
     def _renewFocus(self, groupingIndex):
+        self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
         # send a request for the focused workspace
         payload = FocusSpectraRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
-            focusGroup=self.focusGroups[self.groupingFiles[groupingIndex]],
+            focusGroup=self.focusGroups[self.focusGroupPath],
             inputWorkspace=self.groceries["inputWorkspace"],
             groupingWorkspace=self.groceries["groupingWorkspace"],
         )
@@ -239,7 +239,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.verifyForm(view)
 
         self.runNumber = view.runNumberField.text()
-        self._saveCalibrationView.updateRunNumber(self.runNumber)
+        self._saveView.updateRunNumber(self.runNumber)
         self.focusGroupPath = view.groupingFileDropdown.currentText()
 
         payload = DiffractionCalibrationRequest(
@@ -279,11 +279,11 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
         if workflowPresenter.iteration > 1:
-            self._saveCalibrationView.enableIterationDropdown()
+            self._saveView.enableIterationDropdown()
             iterations = [str(i) for i in range(0, workflowPresenter.iteration)]
-            self._saveCalibrationView.iterationDropdown.clear()
-            self._saveCalibrationView.iterationDropdown.addItems(iterations)
-            self._saveCalibrationView.iterationDropdown.setCurrentIndex(workflowPresenter.iteration - 1)
+            self._saveView.iterationDropdown.clear()
+            self._saveView.iterationDropdown.addItems(iterations)
+            self._saveView.iterationDropdown.setCurrentIndex(workflowPresenter.iteration - 1)
         return self.responses[-1]  # [-1]: response from CalibrationAssessmentRequest for the calibration in progress
 
     def _saveCalibration(self, workflowPresenter):
@@ -297,7 +297,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # if this is not the first iteration, account for choice.
         if workflowPresenter.iteration > 1:
-            iteration = int(self._saveCalibrationView.iterationDropdown.currentText())
+            iteration = int(self._saveView.iterationDropdown.currentText())
             self.calibrationRecord.workspaceNames = [
                 self.renameTemplate.format(workspaceName=w, iteration=iteration)
                 for w in self.calibrationRecord.workspaceNames
