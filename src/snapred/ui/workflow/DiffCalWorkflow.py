@@ -11,11 +11,12 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from snapred.ui.view.CalibrationAssessmentView import CalibrationAssessmentView
-from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
-from snapred.ui.view.PeakViewerView import PeakViewerView
-from snapred.ui.view.SaveCalibrationView import SaveCalibrationView
+from snapred.ui.view import (
+    DiffCalAssessmentView,
+    DiffCalRequestView,
+    DiffCalSaveView,
+    DiffCalTweakPeakView,
+)
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
@@ -50,19 +51,19 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.groupingMap = self.defaultGroupingMap
         self.focusGroups = self.groupingMap.lite
 
-        self._calibrationReductionView = CalibrationReductionRequestView(
+        self._calibrationReductionView = DiffCalRequestView(
+            jsonForm, samples=self.samplePaths, groups=list(self.focusGroups.keys()), parent=parent
+        )
+        self._peakViewerView = DiffCalTweakPeakView(
             jsonForm,
             samples=self.samplePaths,
-            groups=list(self.focusGroups.keys()),
+            groups=self.groupingFiles,
             parent=parent,
         )
-        self._peakViewerView = PeakViewerView(
-            jsonForm, samples=self.samplePaths, groups=self.groupingFiles, parent=parent
-        )
-        self._calibrationAssessmentView = CalibrationAssessmentView(
+        self._calibrationAssessmentView = DiffCalAssessmentView(
             "Assessing Calibration", self.assessmentSchema, parent=parent
         )
-        self._saveCalibrationView = SaveCalibrationView(parent)
+        self._saveCalibrationView = DiffCalSaveView(parent)
 
         # connect signal to populate the grouping dropdown after run is selected
         self._calibrationReductionView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)

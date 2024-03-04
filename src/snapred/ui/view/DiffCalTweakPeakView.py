@@ -30,7 +30,7 @@ from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
-class PeakViewerView(BackendRequestView):
+class DiffCalTweakPeakView(BackendRequestView):
     signalValueChanged = pyqtSignal(int, float, float, float)
     signalUpdateRecalculationButton = pyqtSignal(bool)
 

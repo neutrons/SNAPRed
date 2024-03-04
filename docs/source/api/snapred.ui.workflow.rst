@@ -12,6 +12,14 @@ snapred.ui.workflow.DiffCalWorkflow module
    :undoc-members:
    :show-inheritance:
 
+snapred.ui.workflow.NormalizationWorkflow module
+-----------------------------------------------------------------
+
+.. automodule:: snapred.ui.workflow.NormalizationWorkflow
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.ui.workflow.WorkflowBuilder module
 ------------------------------------------
 
