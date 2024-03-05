@@ -129,6 +129,9 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.calibrantSamplePath = view.sampleDropdown.currentText()
         self.peakFunction = view.peakFunctionDropdown.currentText()
 
+        self._tweakPeakView.updateRunNumber(self.runNumber)
+        self._saveView.updateRunNumber(self.runNumber)
+
         # fields with defaults
         self.convergenceThreshold = view.fieldConvergenceThreshold.get(self.DEFAULT_CONV)
         self.nBinsAcrossPeakWidth = view.fieldNBinsAcrossPeakWidth.get(self.DEFAULT_NBINS)

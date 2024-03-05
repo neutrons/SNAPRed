@@ -31,6 +31,7 @@ from snapred.ui.widget.Toggle import Toggle
 
 @Resettable
 class DiffCalTweakPeakView(BackendRequestView):
+    signalRunNumberUpdate = pyqtSignal(str)
     signalValueChanged = pyqtSignal(int, float, float, float)
     signalUpdateRecalculationButton = pyqtSignal(bool)
 
@@ -45,6 +46,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         # create the run number field and lite mode toggle
         self.runNumberField = self._labeledField("Run Number")
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
+        self.signalRunNumberUpdate.connect(self._updateRunNumber)
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -91,8 +93,11 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
 
+    def _updateRunNumber(self, runNumber):
+        self.runNumberField.setText(runNumber)
+
     def updateRunNumber(self, runNumber):
-        self.self.runNumberField.setText(runNumber)
+        self.signalRunNumberUpdate.emit(runNumber)
 
     def updateFields(self, runNumber, sampleIndex, groupingIndex, peakIndex):  # noqa ARG002
         # NOTE uncommenting the below -- inexplicably -- causes a segfault
