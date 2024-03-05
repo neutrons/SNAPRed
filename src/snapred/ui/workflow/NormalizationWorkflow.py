@@ -48,7 +48,6 @@ class NormalizationWorkflow(WorkflowImplementer):
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
-
         self._tweakPeakView = NormalizationTweakPeakView(
             jsonForm,
             samples=self.samplePaths,

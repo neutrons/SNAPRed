@@ -298,6 +298,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             runNumber=view.fieldRunNumber.get(),
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
+            appliesTo=view.fieldAppliesTo.get(),
         )
 
         # if this is not the first iteration, account for choice.
