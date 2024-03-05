@@ -122,7 +122,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),
-            workspace=self.responses[-1].data["outputWorkspace"],
+            workspace=self.responses[-1].data["outputDSPWorkspace"],
             focusGroup=self.focusGroups[self.focusGroupPath],
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             useLiteMode=self.useLiteMode,

@@ -36,8 +36,13 @@ class GroceryListBuilder:
         self._tokens["runNumber"] = runId
         return self
 
-    def diffcal_output(self, runId: str):
-        self._tokens["workspaceType"] = "diffcal_output"
+    def diffcal_output_tof(self, runId: str):
+        self._tokens["workspaceType"] = "diffcal_output_tof"
+        self._tokens["runNumber"] = runId
+        return self
+
+    def diffcal_output_dsp(self, runId: str):
+        self._tokens["workspaceType"] = "diffcal_output_dsp"
         self._tokens["runNumber"] = runId
         return self
 

@@ -121,7 +121,10 @@ class CalibrationService(Service):
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(
             request.focusGroup.name
         ).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).useLiteMode(
+        self.groceryClerk.specialOrder().name("outputTOFWorkspace").diffcal_output_tof(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.specialOrder().name("outputDSPWorkspace").diffcal_output_dsp(request.runNumber).useLiteMode(
             request.useLiteMode
         ).add()
         self.groceryClerk.specialOrder().name("calibrationTable").diffcal_table(request.runNumber).useLiteMode(

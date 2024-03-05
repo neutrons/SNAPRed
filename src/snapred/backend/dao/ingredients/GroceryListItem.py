@@ -19,7 +19,9 @@ class GroceryListItem(BaseModel):
     RESERVED_LITE_RUNID: ClassVar[str] = "000001"  # unmodified _lite_ instrument  :
     #   from 'SNAPLite.xml'
 
-    workspaceType: Literal["neutron", "grouping", "diffcal", "diffcal_output", "diffcal_table", "diffcal_mask"]
+    workspaceType: Literal[
+        "neutron", "grouping", "diffcal", "diffcal_output_tof", "diffcal_output_dsp", "diffcal_table", "diffcal_mask"
+    ]
     useLiteMode: bool  # indicates if data should be reduced to lite mode
 
     # optional loader:
@@ -102,7 +104,7 @@ class GroceryListItem(BaseModel):
                 if v.get("runNumber") is None:
                     raise ValueError("diffraction-calibration input table workspace requires a run number")
             # output (i.e. special-order) workspaces
-            case "diffcal_output":
+            case "diffcal_output_tof" | "diffcal_output_dsp":
                 if v.get("runNumber") is None:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
                 if v.get("isOutput") is False:
