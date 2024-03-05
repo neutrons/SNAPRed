@@ -23,7 +23,6 @@ class DiffCalRequestView(BackendRequestView):
         self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
-
         self.litemodeToggle.setEnabled(True)
         self.peakFunctionDropdown.setCurrentIndex(0)
 
