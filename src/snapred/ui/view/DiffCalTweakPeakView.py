@@ -45,8 +45,6 @@ class DiffCalTweakPeakView(BackendRequestView):
         # create the run number field and lite mode toggle
         self.runNumberField = self._labeledField("Run Number")
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.runNumberField.setEnabled(False)
-        self.litemodeToggle.setEnabled(False)
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -58,9 +56,9 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
-        # set the dropdowns
-        self.sampleDropdown.setEnabled(False)
-        self.peakFunctionDropdown.setEnabled(False)
+        # disable run number, lite mode, sample, peak fucnction -- cannot be changed now
+        for x in [self.runNumberField, self.litemodeToggle, self.sampleDropdown, self.peakFunctionDropdown]:
+            x.setEnabled(False)
 
         # create the peak adustment controls
         self.fielddMin = self._labeledField("dMin", QLineEdit(str(self.DMIN)))
@@ -93,8 +91,11 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
 
+    def updateRunNumber(self, runNumber):
+        self.self.runNumberField.setText(runNumber)
+
     def updateFields(self, runNumber, sampleIndex, groupingIndex, peakIndex):  # noqa ARG002
-        # NOTE uncommenting this -- inexplicably -- causes a segfault
+        # NOTE uncommenting the below -- inexplicably -- causes a segfault
         # self.runNumberField.setText(runNumber)
         self.sampleDropdown.setCurrentIndex(sampleIndex)
         self.groupingFileDropdown.setCurrentIndex(groupingIndex)
@@ -173,6 +174,10 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def enableRecalculateButton(self):
         self.signalUpdateRecalculationButton.emit(True)
+
+    def populateGroupingDropdown(self, groups=["Enter a Run Number"]):
+        self.groupingFileDropdown.setItems(groups)
+        self.groupingFileDropdown.setEnabled(True)
 
     def verify(self):
         empties = [gpl for gpl in self.peaks if len(gpl.peaks) < 4]

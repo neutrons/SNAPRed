@@ -1,5 +1,4 @@
 import math
-import unittest.mock as mock
 from typing import List
 
 import matplotlib.pyplot as plt
@@ -27,6 +26,7 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.JsonFormList import JsonFormList
+from snapred.ui.widget.SmoothingSlider import SmoothingSlider
 from snapred.ui.widget.Toggle import Toggle
 
 
@@ -47,9 +47,9 @@ class NormalizationTweakPeakView(BackendRequestView):
 
         # create the run number fields
         self.fieldRunNumber = self._labeledField("Run Number", QLineEdit(parent=self))
-        self.signalRunNumberUpdate.connect(self._updateRunNumber)
-
         self.fieldBackgroundRunNumber = self._labeledField("Background Run Number", QLineEdit(parent=self))
+        # connect them to signals
+        self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
         # create the graph elements
@@ -65,59 +65,27 @@ class NormalizationTweakPeakView(BackendRequestView):
         for x in [self.fieldRunNumber, self.fieldBackgroundRunNumber, self.sampleDropdown]:
             x.setEnabled(False)
 
-        self.smoothingSlider = QSlider(Qt.Horizontal)
-        self.smoothingSlider.setMinimum(-1000)
-        self.smoothingSlider.setMaximum(-20)
-        self.smoothingSlider.setValue(-1000)
-        self.smoothingSlider.setTickInterval(1)
-        self.smoothingSlider.setSingleStep(1)
-        self.smoothingSlider.setStyleSheet(
-            "QSlider::groove:horizontal {"
-            "border: 1px solid #999999;"
-            "height: 8px;"
-            "background: red;"
-            "margin: 2px 0;"
-            "}"
-            "QSlider::handle:horizontal {"
-            "background: white;"
-            "border: 1px solid #5c5c5c;"
-            "width: 18px;"
-            "margin: -2px 0;"
-            "border-radius: 3px;"
-            "}"
-        )
-
-        self.smoothingLineEdit = QLineEdit("1e-9")
-        self.smoothingLineEdit.setMinimumWidth(128)
-        self.smoothingSlider.valueChanged.connect(self.updateLineEditFromSlider)
-        self.smoothingLineEdit.returnPressed.connect(
-            lambda: self.updateSliderFromLineEdit(self.smoothingLineEdit.text())
-        )
-        self.smoothingLabel = QLabel("Smoothing :")
-
+        # create the adjustment controls
+        self.smoothingSlider = self._labeledField("Smoothing", SmoothingSlider())
         self.fielddMin = self._labeledField("dMin", QLineEdit(str(self.DMIN)))
         self.fielddMax = self._labeledField("dMax", QLineEdit(str(self.DMAX)))
-        self.fieldThreshold = self._labeledField("intensity threshold :", QLineEdit(str(self.PEAK_THRESHOLD)))
+        self.fieldThreshold = self._labeledField("intensity threshold", QLineEdit(str(self.PEAK_THRESHOLD)))
+        peakControlLayout = QHBoxLayout()
+        peakControlLayout.addWidget(self.smoothingSlider, 2)
+        peakControlLayout.addWidget(self.fielddMin)
+        peakControlLayout.addWidget(self.fielddMax)
+        peakControlLayout.addWidget(self.fieldThreshold)
 
+        # a big ol recalculate button
         self.recalculationButton = QPushButton("Recalculate")
         self.recalculationButton.clicked.connect(self.emitValueChange)
-
-        smoothingLayout = QHBoxLayout()
-        smoothingLayout.addWidget(self.smoothingLabel)
-        smoothingLayout.addWidget(self.smoothingSlider)
-        smoothingLayout.addWidget(self.smoothingLineEdit)
-        smoothingLayout.addWidget(self.fieldThreshold)
-        smoothingLayout.addWidget(self.fielddMin)
-        smoothingLayout.addWidget(self.fielddMax)
-
-        # self.fieldLayout = QGridLayout()
 
         # add all elements to the grid layout
         self.layout.addWidget(self.navigationBar, 0, 0)
         self.layout.addWidget(self.canvas, 1, 0, 1, -1)
         self.layout.addWidget(self.fieldRunNumber, 2, 0)
         self.layout.addWidget(self.fieldBackgroundRunNumber, 2, 1)
-        self.layout.addLayout(smoothingLayout, 3, 0, 1, 2)
+        self.layout.addLayout(peakControlLayout, 3, 0, 1, 2)
         self.layout.addWidget(self.sampleDropdown, 4, 0)
         self.layout.addWidget(self.groupingFileDropdown, 4, 1)
         self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
@@ -144,26 +112,11 @@ class NormalizationTweakPeakView(BackendRequestView):
     def updateFields(self, sampleIndex, groupingIndex, smoothingParameter):
         self.sampleDropdown.setCurrentIndex(sampleIndex)
         self.groupingFileDropdown.setCurrentIndex(groupingIndex)
-        self.smoothingSlider.setValue(int(smoothingParameter * 100))
-
-    def updateLineEditFromSlider(self, value):
-        v = value / 100.0
-        s = 10**v
-        self.smoothingLineEdit.setText("{:.2e}".format(s))
-
-    def updateSliderFromLineEdit(self, text):
-        try:
-            s = float(text)
-            v = math.log10(s)
-            sliderValue = int(v * 100)
-            self.smoothingSlider.setValue(sliderValue)
-        except:  # noqa: E722
-            raise Exception("Must be a numerical value.")
+        self.smoothingSlider.field.setValue(smoothingParameter)
 
     def emitValueChange(self):
         index = self.groupingFileDropdown.currentIndex()
-        v = self.smoothingSlider.value() / 100.0
-        smoothingValue = 10**v
+        smoothingValue = self.smoothingSlider.field.value()
         dMin = float(self.fielddMin.field.text())
         dMax = float(self.fielddMax.field.text())
         peakThreshold = float(self.fieldThreshold.text())
@@ -209,8 +162,6 @@ class NormalizationTweakPeakView(BackendRequestView):
             ax.legend()
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {i + 1}")
-            ax.set_xlabel("d-Spacing (Å)")
-            ax.set_ylabel("Intensity")
             # fill in the discovered peaks for easier viewing
             x, y, _, _ = get_spectrum(focusedWorkspace, i, normalize_by_bin_width=True)
             # for each detected peak in this group, shade in the peak region

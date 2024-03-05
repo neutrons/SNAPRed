@@ -61,7 +61,11 @@ class DiffCalWorkflow(WorkflowImplementer):
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
-        self._assessmentView = DiffCalAssessmentView("Assessing Calibration", self.assessmentSchema, parent=parent)
+        self._assessmentView = DiffCalAssessmentView(
+            "Assessing Calibration",
+            self.assessmentSchema,
+            parent=parent,
+        )
         self._saveView = DiffCalSaveView(parent)
 
         # connect signal to populate the grouping dropdown after run is selected
@@ -130,6 +134,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.nBinsAcrossPeakWidth = view.fieldNBinsAcrossPeakWidth.get(self.DEFAULT_NBINS)
         self.peakThreshold = view.fieldPeakIntensityThreshold.get(self.DEFAULT_PEAK_THRESHOLD)
 
+        self._tweakPeakView.populateGroupingDropdown(list(self.groupingMap.getMap(self.useLiteMode).keys()))
         self._tweakPeakView.updateFields(
             self.runNumber,
             view.sampleDropdown.currentIndex(),
