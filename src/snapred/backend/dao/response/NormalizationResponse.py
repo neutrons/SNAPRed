@@ -1,6 +1,7 @@
 from typing import List
 
 from pydantic import BaseModel
+
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 
 
