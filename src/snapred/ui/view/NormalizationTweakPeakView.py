@@ -31,7 +31,7 @@ from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
-class SpecifyNormalizationCalibrationView(BackendRequestView):
+class NormalizationTweakPeakView(BackendRequestView):
     signalRunNumberUpdate = pyqtSignal(str)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
     signalValueChanged = pyqtSignal(int, float, float, float, float)

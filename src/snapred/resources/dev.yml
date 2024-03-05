@@ -2,4 +2,4 @@ instrument:
   name: SNAP
   home: /SNS/SNAP/
   calibration:
-    home: ${instrument.home}shared/Calibration_dynamic
+    home: ${instrument.home}shared/Calibration

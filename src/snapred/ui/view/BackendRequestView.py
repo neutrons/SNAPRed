@@ -28,7 +28,7 @@ class BackendRequestView(QWidget):
     def getField(self, key):
         return self.jsonForm.getField(key)
 
-    def _labeledField(self, label, field):
+    def _labeledField(self, label, field=None):
         return LabeledField(label, field, self)
 
     def _sampleDropDown(self, label, items=[]):
