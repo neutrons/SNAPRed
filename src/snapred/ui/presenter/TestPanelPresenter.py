@@ -10,8 +10,8 @@ from snapred.meta.Config import Resource
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.JsonForm import JsonForm
-from snapred.ui.workflow.DiffractionCalibrationCreationWorkflow import DiffractionCalibrationCreationWorkflow
-from snapred.ui.workflow.NormalizationCalibrationWorkflow import NormalizationCalibrationWorkflow
+from snapred.ui.workflow.DiffCalWorkflow import DiffCalWorkflow
+from snapred.ui.workflow.NormalizationWorkflow import NormalizationWorkflow
 from snapred.ui.workflow.ReductionWorkflow import ReductionWorkflow
 
 logger = snapredLogger.getLogger(__name__)
@@ -79,7 +79,7 @@ class TestPanelPresenter(object):
         logger.info("Created form for path: {}".format(newForm))
         self._loadDefaultJsonInput(path, newForm)
         logger.info("loaded default json input for path: {}".format(path))
-        return DiffractionCalibrationCreationWorkflow(newForm, parent=self.view).widget
+        return DiffCalWorkflow(newForm, parent=self.view).widget
 
     def _createCalibrationNormalizationWorkflow(self):
         path = "normalization//request"
@@ -90,7 +90,7 @@ class TestPanelPresenter(object):
         logger.info("Created form for path: {}".format(newForm))
         self._loadDefaultJsonInput(path, newForm)
         logger.info("loaded default json input for path: {}".format(path))
-        return NormalizationCalibrationWorkflow(newForm, parent=self.view).widget
+        return NormalizationWorkflow(newForm, parent=self.view).widget
 
     @property
     def widget(self):

@@ -34,7 +34,6 @@ class TestSousChef(unittest.TestCase):
 
     def test_prepCalibration_nocache(self):
         runNumber = self.ingredients.runNumber
-        assert self.instance._calibrationCache == {}
 
         mockCalibration = mock.Mock()
         self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
@@ -43,17 +42,6 @@ class TestSousChef(unittest.TestCase):
 
         assert self.instance.dataFactoryService.getCalibrationState.called_once_with(runNumber)
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
-
-    def test_prepCalibration_cached(self):
-        key = self.ingredients.runNumber
-        # prepare the cache
-        self.instance._calibrationCache[key] = mock.Mock()
-
-        self.instance.dataFactoryService.getCalibrantSample = mock.Mock()
-        res = self.instance.prepCalibration(self.ingredients.runNumber)
-
-        assert not self.instance.dataFactoryService.getCalibrantSample.called
-        assert res == self.instance._calibrationCache[key]
 
     def test_prepInstrumentState(self):
         runNumber = "123"

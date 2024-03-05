@@ -7,7 +7,7 @@ from snapred.ui.widget.LabeledField import LabeledField
 
 
 @Resettable
-class SaveNormalizationCalibrationView(QWidget):
+class NormalizationSaveView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
 

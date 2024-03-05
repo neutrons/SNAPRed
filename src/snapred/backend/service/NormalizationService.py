@@ -61,6 +61,9 @@ class NormalizationService(Service):
 
     @FromString
     def normalization(self, request: NormalizationCalibrationRequest):
+        if not self._sameStates(request.runNumber, request.backgroundRunNumber):
+            raise ValueError("Run number and background run number must be of the same Instrument State.")
+
         groupingScheme = request.focusGroup.name
 
         # prepare ingredients
@@ -105,6 +108,9 @@ class NormalizationService(Service):
             self.groceryClerk.buildDict(),
         )
 
+        # NOTE: This used to point at other methods in this service to accomplish the same thing
+        #       It looks like it got reverted accidentally?
+        #       I'm leaving them as is but this should be fixed.
         # 1. correctiom
         RawVanadiumCorrectionRecipe().executeRecipe(
             InputWorkspace=groceries["inputWorkspace"],
@@ -133,6 +139,11 @@ class NormalizationService(Service):
             smoothedVanadium=smoothedVanadium,
             detectorPeaks=ingredients.detectorPeaks,
         ).dict()
+
+    def _sameStates(self, runnumber1, runnumber2):
+        stateId1 = self.dataFactoryService.constructStateId(runnumber1)
+        stateId2 = self.dataFactoryService.constructStateId(runnumber2)
+        return stateId1 == stateId2
 
     @FromString
     def normalizationAssessment(self, request: NormalizationCalibrationRequest):

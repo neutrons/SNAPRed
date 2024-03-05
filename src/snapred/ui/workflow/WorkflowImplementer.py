@@ -8,6 +8,8 @@ from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.IterateView import IterateView
+from snapred.ui.widget.ActionPrompt import ActionPrompt
+from snapred.ui.widget.Workflow import Workflow
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -20,9 +22,8 @@ class WorkflowImplementer:
         self.collectiveOutputs = []
         self.interfaceController = InterfaceController()
         self.renameTemplate = "{workspaceName}_{iteration:02d}"
-
-        self._iterateView = IterateView(parent)
-        self.workflow = None
+        self.parent = parent
+        self.workflow: Workflow = None
 
     def _iterate(self, workflowPresenter):
         # rename output workspaces
@@ -42,9 +43,20 @@ class WorkflowImplementer:
         response = self.request(path="workspace/clear", payload=payload.json())
         return response
 
-    @property
-    def iterateStepTuple(self):
-        return (self._iterate, self._iterateView, "Go again?")
+    def reset(self):
+        self.workflow.presenter.resetAndClear()
+        self.requests = []
+        self.responses = []
+        self.outputs = []
+        self.collectiveOutputs = []
+
+    def resetWithPermission(self):
+        ActionPrompt(
+            "Are you sure?",
+            "Are you sure you want to cancel the workflow? This will clear all workspaces.",
+            self.reset,
+            self.workflow.widget,
+        )
 
     def request(self, path, payload=None):
         request = SNAPRequest(path=path, payload=payload)

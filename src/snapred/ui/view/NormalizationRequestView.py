@@ -4,10 +4,10 @@ from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
-class NormalizationCalibrationRequestView(BackendRequestView):
+class NormalizationRequestView(BackendRequestView):
     def __init__(self, jsonForm, samplePaths=[], groups=[], parent=None):
         selection = "calibration/diffractionCalibration"
-        super(NormalizationCalibrationRequestView, self).__init__(jsonForm, selection, parent=parent)
+        super(NormalizationRequestView, self).__init__(jsonForm, selection, parent=parent)
         self.runNumberField = self._labeledField("Run Number:", jsonForm.getField("runNumber"))
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
         self.backgroundRunNumberField = self._labeledField(

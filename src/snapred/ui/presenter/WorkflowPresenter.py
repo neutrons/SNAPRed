@@ -55,6 +55,7 @@ class WorkflowPresenter(object):
     def resetAndClear(self):
         self.resetSoft()
         self.clearWorkspacesRequest()
+        self._iteration = 1
 
     def cancel(self):
         ActionPrompt(

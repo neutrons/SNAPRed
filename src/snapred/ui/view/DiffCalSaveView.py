@@ -7,7 +7,7 @@ from snapred.ui.widget.LabeledField import LabeledField
 
 
 @Resettable
-class SaveCalibrationView(QWidget):
+class DiffCalSaveView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
 
     def __init__(self, parent=None):

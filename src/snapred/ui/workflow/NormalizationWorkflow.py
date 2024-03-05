@@ -13,16 +13,16 @@ from snapred.backend.dao.request import (
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.log.logger import snapredLogger
-from snapred.ui.view.NormalizationCalibrationRequestView import NormalizationCalibrationRequestView
-from snapred.ui.view.SaveNormalizationCalibrationView import SaveNormalizationCalibrationView
-from snapred.ui.view.SpecifyNormalizationCalibrationView import SpecifyNormalizationCalibrationView
+from snapred.ui.view.NormalizationRequestView import NormalizationRequestView
+from snapred.ui.view.NormalizationSaveView import NormalizationSaveView
+from snapred.ui.view.NormalizationTweakPeakView import NormalizationTweakPeakView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
 logger = snapredLogger.getLogger(__name__)
 
 
-class NormalizationCalibrationWorkflow(WorkflowImplementer):
+class NormalizationWorkflow(WorkflowImplementer):
     def __init__(self, jsonForm, parent=None):
         super().__init__(parent)
 
@@ -40,14 +40,14 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
         self.groupingMap = self.defaultGroupingMap
         self.focusGroups = self.groupingMap.getMap(self.useLiteMode)
 
-        self._normalizationCalibrationView = NormalizationCalibrationRequestView(
+        self._normalizationCalibrationView = NormalizationRequestView(
             jsonForm,
             samplePaths=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
 
-        self._specifyNormalizationView = SpecifyNormalizationCalibrationView(
+        self._specifyNormalizationView = NormalizationTweakPeakView(
             jsonForm,
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
@@ -56,7 +56,7 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
 
         self._specifyNormalizationView.signalValueChanged.connect(self.onNormalizationValueChange)
 
-        self._saveNormalizationCalibrationView = SaveNormalizationCalibrationView(
+        self._saveNormalizationCalibrationView = NormalizationSaveView(
             "Saving Normalization Calibration",
             self.saveSchema,
             parent,
@@ -149,6 +149,7 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
         )
         self._specifyNormalizationView.updateRunNumber(self.runNumber)
         self._specifyNormalizationView.updateBackgroundRunNumber(self.backgroundRunNumber)
+        self._specifyNormalizationView.populateGroupingDropdown(list(self.groupingMap.getMap(self.useLiteMode).keys()))
 
         self._saveNormalizationCalibrationView.updateRunNumber(self.runNumber)
         self._saveNormalizationCalibrationView.updateBackgroundRunNumber(self.backgroundRunNumber)
@@ -189,6 +190,7 @@ class NormalizationCalibrationWorkflow(WorkflowImplementer):
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
+            appliesTo=view.fieldAppliesTo.get(),
         )
 
         payload = NormalizationExportRequest(

@@ -12,10 +12,10 @@ snapred.ui.view.BackendRequestView module
    :undoc-members:
    :show-inheritance:
 
-snapred.ui.view.CalibrationReductionRequestView module
+snapred.ui.view.DiffCalRequestView module
 ------------------------------------------------------
 
-.. automodule:: snapred.ui.view.CalibrationReductionRequestView
+.. automodule:: snapred.ui.view.DiffCalRequestView
    :members:
    :undoc-members:
    :show-inheritance:
