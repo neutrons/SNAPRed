@@ -35,7 +35,7 @@ class SmoothingSlider(QWidget):
             "}"
         )
 
-        self._number = QLineEdit(state)
+        self._number = QLineEdit(str(state))
         self._number.setMinimumWidth(128)
 
         self.layout = QHBoxLayout()

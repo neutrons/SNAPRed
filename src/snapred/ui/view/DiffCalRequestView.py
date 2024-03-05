@@ -28,9 +28,7 @@ class DiffCalRequestView(BackendRequestView):
 
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.litemodeToggle, 0, 1)
-
         self.layout.addWidget(self.fieldConvergenceThreshold, 1, 0)
-
         self.layout.addWidget(self.fieldPeakIntensityThreshold, 1, 1)
         self.layout.addWidget(self.fieldNBinsAcrossPeakWidth, 1, 2)
         self.layout.addWidget(self.sampleDropdown, 2, 0)
