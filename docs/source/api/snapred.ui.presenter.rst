@@ -4,14 +4,6 @@ snapred.ui.presenter package
 Submodules
 ----------
 
-snapred.ui.presenter.InitializeStatePresenter module
-----------------------------------------------------------
-
-.. automodule:: snapred.ui.presenter.InitializeStatePresenter
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.ui.presenter.JsonFormPresenter module
 ---------------------------------------------
 
