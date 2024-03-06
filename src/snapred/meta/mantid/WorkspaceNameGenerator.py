@@ -1,4 +1,5 @@
 from enum import Enum
+import re
 from typing import Dict, List
 
 from snapred.meta.Config import Config
@@ -81,26 +82,33 @@ class _WorkspaceNameGenerator:
 
     _templateRoot = "mantid.workspace.nameTemplate"
     _delimiter = Config[f"{_templateRoot}.delimiter"]
-    _runTemplate = Config[f"{_templateRoot}.run"]
-    _runTemplateKeys = ["runNumber", "auxiliary", "lite", "unit", "group"]
-    _diffCalInputTemplate = Config[f"{_templateRoot}.diffCal.input"]
-    _diffCalInputTemplateKeys = ["unit", "runNumber"]
-    _diffCalTableTemplate = Config[f"{_templateRoot}.diffCal.table"]
-    _diffCalTableTemplateKeys = ["runNumber", "version"]
-    _diffCalOutputTemplate = Config[f"{_templateRoot}.diffCal.output"]
-    _diffCalOutputTemplateKeys = ["unit", "runNumber", "version"]
-    _diffCalMaskTemplate = Config[f"{_templateRoot}.diffCal.mask"]
-    _diffCalMaskTemplateKeys = ["runNumber", "version"]
-    _diffCalMetricTemplate = Config[f"{_templateRoot}.diffCal.metric"]
-    _diffCalMetricTemplateKeys = ["metricName", "runNumber", "version"]
-    _diffCalTimedMetricTemplate = Config[f"{_templateRoot}.diffCal.timed_metric"]
-    _diffCalTimedMetricTemplateKeys = ["metricName", "runNumber", "timestamp"]
-    _rawVanadiumTemplate = Config[f"{_templateRoot}.normCal.rawVanadium"]
-    _rawVanadiumTemplateKeys = ["unit", "group", "runNumber"]
-    _focusedRawVanadiumTemplate = Config[f"{_templateRoot}.normCal.focusedRawVanadium"]
-    _focusedRawVanadiumTemplateKeys = ["unit", "group", "runNumber"]
-    _smoothedFocusedRawVanadiumTemplate = Config[f"{_templateRoot}.normCal.smoothedFocusedRawVanadium"]
-    _smoothedFocusedRawVanadiumTemplateKeys = ["unit", "group", "runNumber"]
+
+    def __init__(self):
+        self._setupTemplateVars(Config[f"{self._templateRoot}.template"])
+
+    def _setupTemplateVars(self, templateDict, namePrefix=""):
+        for key, value in templateDict.items():
+            name = key
+            if namePrefix:
+                name = f"{namePrefix}{self._capFirst(name)}"
+
+            if isinstance(value, str):
+                template = value
+                self._setTemplateVar(template, name)
+            else:
+                self._setupTemplateVars(value, name)
+
+    def _capFirst(self, s: str) -> str:
+        return s[0].upper() + s[1:]
+
+    def _setTemplateVar(self, template: str, name: str):
+        setattr(self, f"_{name}Template", template)
+        setattr(self, f"_{name}TemplateKeys", self._parseTemplateKeys(template))
+
+    def _parseTemplateKeys(self, template: str) -> List[str]:
+        # regex for strings between {}
+        regex = r"\{([^\}]*)\}"
+        return re.findall(regex, template)
 
     class Units:
         _templateRoot = "mantid.workspace.nameTemplate.units"
@@ -159,8 +167,8 @@ class _WorkspaceNameGenerator:
 
     def rawVanadium(self):
         return NameBuilder(
-            self._rawVanadiumTemplate,
-            self._rawVanadiumTemplateKeys,
+            self._normCalRawVanadiumTemplate,
+            self._normCalRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.TOF,
             group=self.Groups.UNFOC,
@@ -168,13 +176,16 @@ class _WorkspaceNameGenerator:
 
     def focusedRawVanadium(self):
         return NameBuilder(
-            self._focusedRawVanadiumTemplate, self._focusedRawVanadiumTemplateKeys, self._delimiter, unit=self.Units.DSP
+            self._normCalFocusedRawVanadiumTemplate,
+            self._normCalFocusedRawVanadiumTemplateKeys,
+            self._delimiter,
+            unit=self.Units.DSP,
         )
 
     def smoothedFocusedRawVanadium(self):
         return NameBuilder(
-            self._smoothedFocusedRawVanadiumTemplate,
-            self._smoothedFocusedRawVanadiumTemplateKeys,
+            self._normCalSmoothedFocusedRawVanadiumTemplate,
+            self._normCalSmoothedFocusedRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
         )
