@@ -1,3 +1,5 @@
+# TODO this can probably be relaced in the code with FarmFreshIngredients
+
 from typing import Optional
 
 from pydantic import BaseModel
@@ -18,8 +20,10 @@ class DiffractionCalibrationRequest(BaseModel):
     calibrantSamplePath: str
     focusGroup: FocusGroup
     useLiteMode: bool
+    crystalDMin: float = Config["constants.CrystallographicInfo.dMin"]
+    crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
     peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
-    convergenceThreshold: Optional[float] = Config["calibration.diffraction.convergenceThreshold"]
-    peakIntensityThreshold: Optional[float] = Config["calibration.diffraction.peakIntensityThreshold"]
+    convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]
+    peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     maximumOffset: float = Config["calibration.diffraction.maximumOffset"]

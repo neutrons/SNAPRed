@@ -1,3 +1,5 @@
+from typing import Optional
+
 from matplotlib import use
 from pydantic import BaseModel
 
@@ -11,4 +13,4 @@ class FocusSpectraRequest(BaseModel):
 
     inputWorkspace: str
     groupingWorkspace: str
-    outputWorkspace: str
+    outputWorkspace: Optional[str]
