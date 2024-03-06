@@ -35,12 +35,14 @@ class TestPanelPresenter(object):
         self.diffractionCalibrationLayout = QGridLayout()
         self.diffractionCalibrationWidget = QWidget()
         self.diffractionCalibrationWidget.setLayout(self.diffractionCalibrationLayout)
-        self.diffractionCalibrationLayout.addWidget(self._createDiffractionCalibrationWorkflow())
+
+        self.diffractionCalibrationLayout.addWidget(self._createDiffCalWorkflow())
 
         self.calibrationNormalizationLayout = QGridLayout()
         self.calibrationNormalizationWidget = QWidget()
         self.calibrationNormalizationWidget.setLayout(self.calibrationNormalizationLayout)
-        self.calibrationNormalizationLayout.addWidget(self._createCalibrationNormalizationWorkflow())
+
+        self.calibrationNormalizationLayout.addWidget(self._createNormalizationWorkflow())
 
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
         self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization Calibration")
@@ -70,7 +72,7 @@ class TestPanelPresenter(object):
         else:
             logger.warning("No default values for path: {}".format(defaultFilePath))
 
-    def _createDiffractionCalibrationWorkflow(self):
+    def _createDiffCalWorkflow(self):
         path = "calibration/diffraction/request"
         logger.info("Creating workflow for path: {}".format(path))
         jsonSchema = self._getSchemaForSelection(path)
@@ -81,7 +83,7 @@ class TestPanelPresenter(object):
         logger.info("loaded default json input for path: {}".format(path))
         return DiffCalWorkflow(newForm, parent=self.view).widget
 
-    def _createCalibrationNormalizationWorkflow(self):
+    def _createNormalizationWorkflow(self):
         path = "normalization//request"
         logger.info("Creating workflow for path: {}".format(path))
         jsonSchema = self._getSchemaForSelection(path)

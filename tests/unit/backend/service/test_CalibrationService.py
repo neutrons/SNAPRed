@@ -9,7 +9,7 @@ from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
 from mantid.simpleapi import (
-    CreateWorkspace,
+    CreateSingleValuedWorkspace,
     mtd,
 )
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -238,11 +238,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
             for ws_name in calibRecord.workspaceNames:
-                CreateWorkspace(
-                    OutputWorkspace=ws_name,
-                    DataX=1,
-                    DataY=1,
-                )
+                CreateSingleValuedWorkspace(OutputWorkspace=ws_name)
                 filename = Path(ws_name + ".nxs")
                 self.instance.dataExportService.exportWorkspace(tmpdir, filename, ws_name)
 
@@ -266,11 +262,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
             for ws_name in calibRecord.workspaceNames:
-                CreateWorkspace(
-                    OutputWorkspace=ws_name,
-                    DataX=1,
-                    DataY=1,
-                )
+                CreateSingleValuedWorkspace(OutputWorkspace=ws_name)
                 filename = Path(ws_name + ".nxs")
                 self.instance.dataExportService.exportWorkspace(tmpdir, filename, ws_name)
 
@@ -294,27 +286,38 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
-    @patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
-    def test_diffractionCalibration_tooFewPeaks(
-        self,
-        DiffractionCalibrationRecipe,
-        FarmFreshIngredients,
-    ):
+    def test_prepDiffractionCalibrationIngredients(self, FarmFreshIngredients):
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
 
-        mockIngredients = mock.Mock(groupedPeakLists=[mock.Mock(peaks=["orange"], groupID="banana")])
+        mockIngredients = mock.Mock(groupedPeakLists=[mock.Mock(peaks=["orange", "apple"], groupID="banana")])
         self.instance.sousChef = mock.Mock(spec_set=SousChef)
         self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value = mockIngredients
 
-        DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
+        # Call the method with the provided parameters
+        request = mock.Mock(calibrantSamplePath="bundt/cake_egg.py")
+        res = self.instance.prepDiffractionCalibrationIngredients(request)
 
+        # Perform assertions to check the result and method calls
+        assert FarmFreshIngredients.call_count == 1
+        assert self.instance.sousChef.prepDiffractionCalibrationIngredients.called_once_with(
+            FarmFreshIngredients.return_value
+        )
+        assert res == self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value
+
+    def test_fetchDiffractionCalibrationGroceries(self):
+        self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
 
         # Call the method with the provided parameters
-        request = mock.Mock(calibrantSamplePath="bundt/cake_egg.py")
-        with pytest.raises(RuntimeError) as e:
-            self.instance.diffractionCalibration(request)
-        assert mockIngredients.groupedPeakLists[0].groupID in str(e.value)
+        request = mock.Mock()
+        res = self.instance.fetchDiffractionCalibrationGroceries(request)
+
+        # Perform assertions to check the result and method calls
+        assert self.instance.groceryClerk.buildDict.call_count == 1
+        assert self.instance.groceryService.fetchGroceryDict.called_once_with(
+            self.instance.groceryClerk.buildDict.return_value
+        )
+        assert res == self.instance.groceryService.fetchGroceryDict.return_value
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @patch(thisService + "DiffractionCalibrationRecipe", spec_set=DiffractionCalibrationRecipe)
@@ -348,3 +351,74 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.instance.groceryService.fetchGroceryDict.return_value,
         )
         assert res == {"calibrationTable": "fake"}
+
+    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @patch(thisService + "FocusSpectraRecipe")
+    def test_focusSpectra_not_exist(
+        self,
+        FocusSpectraRecipe,
+        FarmFreshIngredients,
+    ):
+        mockIngredients = mock.Mock()
+        self.instance.sousChef = mock.Mock(spec_set=SousChef)
+        self.instance.sousChef.prepPixelGroup.return_value = mockIngredients
+
+        FocusSpectraRecipe().executeRecipe.return_value = mock.Mock()
+
+        request = mock.Mock()
+        self.instance.groceryClerk = mock.Mock()
+        self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
+
+        focusedWorkspace = (
+            wng.run().runNumber(request.runNumber).group(request.focusGroup.name).auxiliary("F-dc").build()
+        )
+        assert not mtd.doesExist(focusedWorkspace)
+
+        # Call the method with the provided parameters
+        res = self.instance.focusSpectra(request)
+
+        # Perform assertions to check the result and method calls
+
+        groupingItem = self.instance.groceryClerk.build.return_value
+        groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
+        assert FarmFreshIngredients.call_count == 1
+        assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
+        assert self.instance.groceryService.fetchGroupingDefinition.called_once_with(groupingItem)
+        assert FocusSpectraRecipe().executeRecipe.called_once_with(
+            InputWorkspace=request.inputWorkspace,
+            GroupingWorkspace=groupingWorkspace,
+            Ingredients=self.instance.sousChef.prepPixelGroup.return_value,
+            OutputWorkspace=focusedWorkspace,
+        )
+        assert res == (focusedWorkspace, groupingWorkspace)
+
+    @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
+    @patch(thisService + "FocusSpectraRecipe")
+    def test_focusSpectra_exists(self, FocusSpectraRecipe, FarmFreshIngredients):
+        mockIngredients = mock.Mock()
+        self.instance.sousChef = mock.Mock(spec_set=SousChef)
+        self.instance.sousChef.prepPixelGroup.return_value = mockIngredients
+
+        request = mock.Mock()
+        self.instance.groceryClerk = mock.Mock()
+        self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
+
+        # create the focused wprkspace in the ADS
+        focusedWorkspace = (
+            wng.run().runNumber(request.runNumber).group(request.focusGroup.name).auxiliary("F-dc").build()
+        )
+        CreateSingleValuedWorkspace(OutputWorkspace=focusedWorkspace)
+
+        # Call the method with the provided parameters
+        res = self.instance.focusSpectra(request)
+
+        # assert the correct setup calls were made
+        groupingItem = self.instance.groceryClerk.build.return_value
+        groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
+        assert FarmFreshIngredients.call_count == 1
+        assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
+        assert self.instance.groceryService.fetchGroupingDefinition.called_once_with(groupingItem)
+
+        # assert that the recipe is not called and the correct workspaces are returned
+        assert FocusSpectraRecipe().executeRecipe.call_count == 0
+        assert res == (focusedWorkspace, groupingWorkspace)

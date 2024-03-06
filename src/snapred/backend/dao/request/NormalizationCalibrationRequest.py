@@ -1,3 +1,5 @@
+# TODO this can probably be replaced in the code with FarmFreshIngredients
+
 from pydantic import BaseModel
 
 from snapred.backend.dao import Limit
