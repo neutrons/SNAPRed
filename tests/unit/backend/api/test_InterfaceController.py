@@ -1,6 +1,7 @@
 import unittest.mock as mock
 
 import pytest
+from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.error.RecoverableException import RecoverableException
 
 # Mock out of scope modules before importing InterfaceController
@@ -45,7 +46,7 @@ with mock.patch.dict(
         reductionRequest = mock.Mock()
         reductionRequest.path = "Test Service"
         response = interfaceController.executeRequest(reductionRequest)
-        assert response.code == 200
+        assert response.code == ResponseCode.OK
         assert response.message is None
         assert response.data["result"] == "Success!"
 
@@ -57,7 +58,7 @@ with mock.patch.dict(
 
         response = interfaceController.executeRequest(stateCheckRequest)
 
-        assert response.code == 400
+        assert response.code == ResponseCode.RECOVERABLE
         assert response.message == "state"
         assert response.data is None
 
@@ -68,6 +69,6 @@ with mock.patch.dict(
         reductionRequest.path = "Non-existent Test Service"
         # mock orchestrateRecipe to raise an exception
         response = interfaceController.executeRequest(reductionRequest)
-        assert response.code == 500
+        assert response.code == ResponseCode.ERROR
         assert response.message is not None
         assert response.data is None

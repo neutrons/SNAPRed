@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QMessageBox
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.SNAPRequest import SNAPRequest
-from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.widget.SuccessDialog import SuccessDialog
 
@@ -37,7 +37,7 @@ class InitializeStatePresenter(QObject):
 
     def _handleResponse(self, response: SNAPResponse):
         self.view.beginFlowButton.setEnabled(True)
-        if response.code == 500:
+        if response.code == ResponseCode.ERROR:
             QMessageBox.critical(self.view, "Error", "Error: " + response.message)
         else:
             self.stateInitialized.emit(response)

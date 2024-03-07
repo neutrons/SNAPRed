@@ -3,6 +3,7 @@ import json
 
 from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
+from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.service.ServiceFactory import ServiceFactory
@@ -33,7 +34,7 @@ class InterfaceController:
             message = None
             if snapredLogger.hasWarnings():
                 message = self.getWarnings()
-            response = SNAPResponse(code=200, message=message, data=result)
+            response = SNAPResponse(code=ResponseCode.OK, message=message, data=result)
 
         except RecoverableException as e:
             self.logger.error(f"Recoverable error occurred: {str(e)}")
@@ -41,12 +42,12 @@ class InterfaceController:
             runNumber = payloadDict["runNumber"]
             if runNumber:
                 InitializeStateHandler.runId = runNumber
-            response = SNAPResponse(code=400, message="state")
+            response = SNAPResponse(code=ResponseCode.RECOVERABLE, message="state")
 
         except Exception as e:  # noqa BLE001
             # handle exceptions, inform client if recoverable
             self.logger.exception("Failed to call service")
-            response = SNAPResponse(code=500, message=str(e))
+            response = SNAPResponse(code=ResponseCode.ERROR, message=str(e))
 
         finally:
             snapredLogger.clearWarnings()

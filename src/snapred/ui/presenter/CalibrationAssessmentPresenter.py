@@ -7,7 +7,7 @@ from snapred.backend.dao.request import (
     CalibrationIndexRequest,
     CalibrationLoadAssessmentRequest,
 )
-from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.threading.worker_pool import WorkerPool
 
 
@@ -41,7 +41,7 @@ class CalibrationAssessmentPresenter(QObject):
         self.worker_pool.submitWorker(self.worker)
 
     def handleLoadAssessmentResult(self, response: SNAPResponse):
-        if response.code == 500:
+        if response.code == ResponseCode.ERROR:
             self.view.onError(response.message)
 
     def loadCalibrationIndex(self, runNumber: str):
@@ -57,7 +57,7 @@ class CalibrationAssessmentPresenter(QObject):
         self.worker_pool.submitWorker(self.worker)
 
     def handleLoadCalibrationIndexResult(self, response: SNAPResponse):
-        if response.code == 500:
+        if response.code == ResponseCode.ERROR:
             self.view.onError(response.message)
         else:
             self.view.updateCalibrationRecordList(response.data)
