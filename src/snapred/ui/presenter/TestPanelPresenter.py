@@ -25,7 +25,6 @@ class TestPanelPresenter(object):
     def __init__(self, view):
         reductionRequest = SNAPRequest(path="api", payload=None)
         self.apiDict = self.interfaceController.executeRequest(reductionRequest).data
-        # self.apiComboBox = self.setupApiComboBox(self.apiDict, view)
 
         jsonSchema = json.loads(self.apiDict["config"][""]["runs"])
         self.view = view
@@ -34,25 +33,15 @@ class TestPanelPresenter(object):
         self.comboSelectionView = BackendRequestView(self.jsonForm, "config//runs", parent=self.view)
         self.calibrationCheckView = InitializeCalibrationCheckView(parent=self.view)
 
-        self.diffractionCalibrationLayout = QGridLayout()
-        self.diffractionCalibrationWidget = QWidget()
-        self.diffractionCalibrationWidget.setLayout(self.diffractionCalibrationLayout)
-
-        self.diffractionCalibrationLayout.addWidget(self._createDiffCalWorkflow())
-        self.diffractionCalibrationLayout.addWidget(self.calibrationCheckView)
-        self.diffractionCalibrationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
-
-        self.calibrationNormalizationLayout = QGridLayout()
-        self.calibrationNormalizationWidget = QWidget()
-        self.calibrationNormalizationWidget.setLayout(self.calibrationNormalizationLayout)
-
-        self.calibrationNormalizationLayout.addWidget(self._createNormalizationWorkflow())
-        self.calibrationNormalizationLayout.addWidget(self.calibrationCheckView)
-        self.calibrationNormalizationLayout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
+        self.diffractionCalibrationWidget = self._createWorkflowWidget(self._createDiffCalWorkflow)
+        self.calibrationNormalizationWidget = self._createWorkflowWidget(self._createNormalizationWorkflow)
 
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
-        self.view.tabWidget.addTab(ReductionWorkflow(self.view).widget, "Reduction")
         self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization")
+
+        # TODO reenable in Phase 3
+        # self.reductionWidth = self._createWorkflowWidget(self._createReductionWorkflow)
+        # self.view.tabWidget.addTab(ReductionWorkflow(self.view).widget, "Reduction")
 
     def _findSchemaForPath(self, path):
         currentVal = self.apiDict
@@ -78,6 +67,16 @@ class TestPanelPresenter(object):
         else:
             logger.warning("No default values for path: {}".format(defaultFilePath))
 
+    def _createWorkflowWidget(self, method):
+        layout = QGridLayout()
+        widget = QWidget()
+        widget.setLayout(layout)
+
+        layout.addWidget(method())
+        layout.addWidget(self.calibrationCheckView)
+        layout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
+        return widget
+
     def _createDiffCalWorkflow(self):
         path = "calibration/diffraction/request"
         logger.info("Creating workflow for path: {}".format(path))
@@ -99,6 +98,10 @@ class TestPanelPresenter(object):
         self._loadDefaultJsonInput(path, newForm)
         logger.info("loaded default json input for path: {}".format(path))
         return NormalizationWorkflow(newForm, parent=self.view).widget
+
+    def _createReductionWorkflow(self):
+        # TODO in Phase 3
+        pass
 
     @property
     def widget(self):
