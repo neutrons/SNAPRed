@@ -1,4 +1,6 @@
-from mantid.api import AlgorithmFactory, PythonAlgorithm
+from typing import Dict
+
+from mantid.api import AlgorithmFactory, ITableWorkspaceProperty, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 
 from snapred.backend.dao.ingredients import ReductionIngredients
@@ -6,95 +8,76 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
+    def category(self):
+        return "SNAPRed Reduction"
+
     def PyInit(self):
         # declare properties
-        self.declareProperty("ReductionIngredients", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="", direction=Direction.Output)
+        # NOTE this must have identical properts to ReductionAlgorithm
+        self.declareProperty(MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory))
+        self.declareProperty(MatrixWorkspaceProperty("VanadiumWorkspace", "", Direction.Input, PropertyMode.Mandatory))
+        self.declareProperty(MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory))
+        self.declareProperty(MatrixWorkspaceProperty("MaskWorkspace", "", Direction.Input, PropertyMode.Mandatory))
+        self.declareProperty(
+            ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Output, PropertyMode.Mandatory)
+        )
+        self.declareProperty("Ingredients", default="", direction=Direction.Input, optional=PropertyMode.Mandatory)
+        self.declareProperty(MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory))
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
+    def validateInputs(self) -> Dict[str, str]:
+        return {}
+
+    def chopIngredients(self, ingredients: ReductionIngredients):
+        self.stateConfig = ingredients.reductionState.stateConfig
+        self.groupIDs = ingredients.pixelGroup.groupIDs
+        self.dMin = ingredients.pixelGroup.dMin()
+        self.dMax = ingredients.pixelGroup.dMax()
+        self.dBin = ingredients.pixelGroup.dBin()
+
+    def unbagGroceries(self):
+        self.outputWorkspace = self.getPropertyValue("OutputWorkspace")
+        self.vanadiumWorkspace = "tmp_vanadium"  # TODO use unique name genetator
+        self.mantidSnapper.CloneWorkspace(
+            "Clone copy of input to serve as output",
+            InputWorkspace=self.getPropertyValue("InputWorkspace"),
+            OutputWorkspace=self.outputWorkspace,
+        )
+        self.mantidSnapper.CloneWorkspace(
+            "clone copy of vanadium for editing",
+            InputWorkspace=self.getPropertyValue("VanadiumWorkspace"),
+            OutputWorkspace=self.vanadiumWorkspace,
+        )
+        self.groupingWorkspace = self.getPropertyValue("GroupingWorkspace")
+        self.maskWorkspace = self.getPropertyValue("MaskWorkspace")
+        self.calibrationTable = self.getPropertyValue("CalibrationWorkspace")
+
     def PyExec(self):
-        reductionIngredients = ReductionIngredients.parse_raw(self.getProperty("ReductionIngredients").value)
+        ingredients = ReductionIngredients.parse_raw(self.getPropertyValue("ReductionIngredients"))
+        self.chopIngredients(ingredients)
+        self.unbagGroceries()
         # run the algo
         self.log().notice("Execution of AlignAndFocusReductionAlgorithm START!")
 
-        # TODO: Reorg how filepaths are stored
-        ipts = reductionIngredients.runConfig.IPTS
-        rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
-        vanadiumFilePath = reductionIngredients.reductionState.stateConfig.vanadiumFilePath
-        diffCalPath = reductionIngredients.reductionState.stateConfig.diffractionCalibrant.diffCalPath
-
-        # raw_data = self.loadEventNexus(Filename=rawDataPath, OutputWorkspace="raw_data")
-        self.mantidSnapper.LoadNexus("loading vanadium file...", Filename=vanadiumFilePath, OutputWorkspace="vanadium")
-
-        self.mantidSnapper.CustomGroupWorkspace(
-            "Creating group workspace...",
-            StateConfig=reductionIngredients.reductionState.stateConfig.json(),
-            InputWorkspace="vanadium",
-        )
-
-        # 3 ApplyDiffCal  -- just apply to data
-        diffCalPrefix = "diffcal"
-        self.mantidSnapper.LoadDiffCal(
-            "Loading DiffCal for {} ...".format(diffCalPath),
-            InstrumentFilename="/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml",
-            MakeGroupingWorkspace=False,
-            MakeMaskWorkspace=True,
-            Filename=diffCalPath,
-            WorkspaceName=diffCalPrefix,
-        )
-
-        self.mantidSnapper.executeQueue()
-
-        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in reductionIngredients.pixelGroupingParameters}
-        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in reductionIngredients.pixelGroupingParameters}
-        dBin = {
-            pgp.groupID: pgp.dRelativeResolution / reductionIngredients.reductionState.instrumentConfig.NBins
-            for pgp in reductionIngredients.pixelGroupingParameters
-        }
-
-        groupIDs = [pgp.groupID for pgp in reductionIngredients.pixelGroupingParameters]
-        groupIDs.sort()
-        DMin = [dMin[groupID] for groupID in groupIDs]
-        DMax = [dMax[groupID] for groupID in groupIDs]
-        DeltaRagged = [dBin[groupID] for groupID in groupIDs]
-
-        self.mantidSnapper.AlignAndFocusPowderFromFiles(
+        self.mantidSnapper.AlignAndFocusPowder(
             "Executing AlignAndFocusPowder...",
-            Filename=rawDataPath,
+            InputWorkspace=self.outputWorkspace,
             MaxChunkSize=5,
             # UnfocussedWorkspace="?",
-            GroupingWorkspace="Column",
-            CalibrationWorkspace=diffCalPrefix + "_cal",
-            MaskWorkspace=diffCalPrefix + "_mask",
+            GroupingWorkspace=self.groupingWorkspace,
+            CalibrationWorkspace=self.calibrationTable,
+            MaskWorkspace=self.maskWorkspace,
             #   Params="",
-            DMin=DMin,
-            DMax=DMax,
-            DeltaRagged=DeltaRagged,
+            DMin=self.dMin,
+            DMax=self.dMax,
+            DeltaRagged=self.dBin,
             #   ReductionProperties="?",
-            OutputWorkspace="output",
+            OutputWorkspace=self.outputWorkspace,
         )
-
-        # self.enqueueAlgorithm("AlignAndFocusPowderFromFiles", "Executing AlignAndFocusPowder...", False,
-        #                       Filename=vanadiumFilePath,
-        #                       MaxChunkSize=5,
-        #                     # UnfocussedWorkspace="?",
-        #                       GroupingWorkspace="Column",
-        #                       CalibrationWorkspace=diffCalPrefix+"_cal",
-        #                       MaskWorkspace=diffCalPrefix+"_mask",
-        #                     #   Params="",
-        #                       DMin=DMin,
-        #                       DMax=DMax,
-        #                       DeltaRagged=DeltaRagged,
-        #                     #   ReductionProperties="?",
-        #                       OutputWorkspace="vanadium")
-
         self.mantidSnapper.executeQueue()
-
+        self.setPropertyValue("OutputWorkspace", self.outputWorkspace)
         self.log().notice("Execution of AlignAndFocusReductionAlgorithm COMPLETE!")
-        # return data
-
-        # set outputworkspace to data
 
 
 # Register algorithm with Mantid

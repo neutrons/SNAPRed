@@ -2,6 +2,7 @@ import socket
 import unittest.mock as mock
 
 import pytest
+from mantid.simpleapi import AddSampleLog
 
 with mock.patch.dict(
     "sys.modules",
@@ -11,65 +12,59 @@ with mock.patch.dict(
     },
 ):
     from snapred.backend.dao.ingredients import ReductionIngredients
-    from snapred.backend.dao.RunConfig import RunConfig
     from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm  # noqa: E402
     from snapred.meta.Config import Resource
+    from util.diffraction_calibration_synthetic_data import SyntheticData
+    from util.helpers import createCompatibleDiffCalTable
 
     IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
     def mock_reduction_ingredients():
-        runConfig = RunConfig.parse_raw(f'{{"runNumber":"1", "IPTS":"{Resource.getPath("inputs/reduction/")}"}}')
-        reductionIngredients = ReductionIngredients.parse_raw(Resource.read("/inputs/reduction/input_ingredients.json"))
-        reductionState = reductionIngredients.reductionState
-        reductionState.instrumentConfig.calibrationDirectory = Resource.getPath("inputs/reduction/")
-        reductionState.instrumentConfig.pixelGroupingDirectory = Resource.getPath("inputs/reduction/")
-        reductionState.instrumentConfig.sharedDirectory = Resource.getPath("inputs/reduction/")
-        reductionState.instrumentConfig.nexusDirectory = Resource.getPath("inputs/reduction/")
-        reductionState.instrumentConfig.reducedDataDirectory = Resource.getPath("inputs/reduction/")
-        reductionState.instrumentConfig.reductionRecordDirectory = Resource.getPath("inputs/reduction/")
-        reductionState.stateConfig.vanadiumFilePath = Resource.getPath("inputs/reduction/shared/lite/fake_vanadium.nxs")
-        pixelGroup = reductionIngredients.pixelGroup
-        return ReductionIngredients(runConfig=runConfig, reductionState=reductionState, pixelGroup=pixelGroup)
+        return ReductionIngredients.parse_raw(Resource.read("/inputs/reduction/input_ingredients.json"))
 
-    def test_init():
+    def test_exec():
         """Test ability to initialize ReductionAlgorithm"""
         reductionIngredients = mock_reduction_ingredients()
+        dataSynthesizer = SyntheticData()
+        dataSynthesizer.generateWorkspaces("input_ws", "grouping_ws", "mask_ws")
+        dataSynthesizer.generateWorkspaces("vanadium_ws", "grouping_ws", "mask)ws")
+        createCompatibleDiffCalTable("caltable", "input_ws")
+        reductionIngredients.pixelGroup = dataSynthesizer.ingredients.pixelGroup
+        # have to add a proton charge in order to normalize
+        AddSampleLog(
+            Workspace="input_ws",
+            LogName="gd_prtn_chrg",
+            LogText="10.0",
+            LogType="Number",
+        )
+
         algo = ReductionAlgorithm()
         algo.initialize()
-        algo.setProperty("ReductionIngredients", reductionIngredients.json())
-
-        ipts = reductionIngredients.runConfig.IPTS
-        rawDataPath = ipts + "shared/lite/SNAP_{}.lite.nxs.h5".format(reductionIngredients.runConfig.runNumber)
-        assert rawDataPath == Resource.getPath("inputs/reduction/shared/lite/SNAP_1.lite.nxs.h5")
-        initReductionIngredients = algo.getProperty("ReductionIngredients").value
-        assert initReductionIngredients == reductionIngredients.json()
-
-    def test_init_with_file():
-        """Test ability to initialize ReductionAlgorithm from a real file"""
-        reductionIngredients = ReductionIngredients.parse_raw(Resource.read("/inputs/reduction/input_ingredients.json"))
-        algo = ReductionAlgorithm()
-        algo.initialize()
-        algo.setProperty("ReductionIngredients", reductionIngredients.json())
-        initReductionIngredients = algo.getProperty("ReductionIngredients").value
-        assert initReductionIngredients == reductionIngredients.json()
-
-    # @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
-    # def test_exec_with_file():
-    #     """Test ability to execute ReductionAlgorithm with a real file"""
-    #     reductionIngredients = ReductionIngredients.parse_raw(
-    #    Resource.read("/inputs/reduction/input_ingredients.json"))
-    #     algo = ReductionAlgorithm()
-    #     algo.initialize()
-    #     algo.setProperty("ReductionIngredients", reductionIngredients.json())
-    #     assert algo.execute()
+        algo.setProperty("InputWorkspace", "input_ws")
+        algo.setProperty("VanadiumWorkspace", "vanadium_ws")
+        algo.setProperty("GroupingWorkspace", "grouping_ws")
+        algo.setProperty("MaskWorkspace", "mask_ws")
+        algo.setProperty("CalibrationWorkspace", "caltable")
+        algo.setProperty("Ingredients", reductionIngredients.json())
+        algo.setProperty("OutputWorkspace", "output_ws")
+        assert algo.execute()
 
     def test_failing_exec():
         """Test failure to execute ReductionAlgorithm with bad inputs"""
         reductionIngredients = ReductionIngredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
-        assert reductionIngredients.runConfig.runNumber == "nope"
-        assert reductionIngredients.runConfig.IPTS == "nope"
+        dataSynthesizer = SyntheticData()
+        dataSynthesizer.generateWorkspaces("input_ws", "grouping_ws", "mask_ws")
+        dataSynthesizer.generateWorkspaces("vanadium_ws", "grouping_ws", "mask)ws")
+        createCompatibleDiffCalTable("caltable", "input_ws")
+
         algo = ReductionAlgorithm()
         algo.initialize()
-        algo.setProperty("ReductionIngredients", reductionIngredients.json())
+        algo.setPropertyValue("InputWorkspace", "input_ws")
+        algo.setPropertyValue("VanadiumWorkspace", "vanadium_ws")
+        algo.setPropertyValue("GroupingWorkspace", "grouping_ws")
+        algo.setPropertyValue("MaskWorkspace", "mask_ws")
+        algo.setPropertyValue("CalibrationWorkspace", "caltable")
+        algo.setPropertyValue("Ingredients", reductionIngredients.json())
+        algo.setPropertyValue("OutputWorkspace", "output_ws")
         with pytest.raises(Exception):  # noqa: PT011
             algo.execute()
