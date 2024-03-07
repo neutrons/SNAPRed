@@ -125,7 +125,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
         self.outputWSdSpacing: str = ""
         if self.getProperty("OutputWorkspacedSpacing").isDefault:
-            print("USING WNG ----------------------------------------------------------")
             self.outputWSdSpacing = wng.diffCalOutputdSpacing().runNumber(self.runNumber).build()
             self.setPropertyValue("OutputWorkspacedSpacing", self.outputWSdSpacing)
         else:
@@ -289,10 +288,21 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             CalibrationWorkspace=self.DIFCfinal,
         )
         self.convertAndFocusAndReturn(self.wsTOF, self.outputWSdSpacing, "after", "dSpacing")
+
+        self.mantidSnapper.CloneWorkspace(
+            "Clone the final output that is in dSpacing units",
+            InputWorkspace=self.outputWSdSpacing,
+            OutputWorkspace=self.outputWStof,
+        )
+        self.mantidSnapper.ConvertUnits(
+            "Convert the clone of the final output back to TOF",
+            InputWorkspace=self.outputWStof,
+            OutputWorkspace=self.outputWStof,
+            Target="TOF",
+        )
+
         self.setPropertyValue("OutputWorkspaceTOF", self.outputWStof)
         self.setPropertyValue("OutputWorkspacedSpacing", self.outputWSdSpacing)
-        print("@@@@@@@@@@@@##########$$$$$$$$$")
-        print(self.outputWSdSpacing)
 
     def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str, units: str):
         # Use workspace name generator
