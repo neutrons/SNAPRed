@@ -15,12 +15,19 @@ class ReductionService(Service):
     def __init__(self):
         super().__init__()
         self.sousChef = SousChef()
-        self.registerPath("", self.reduce)
+        self.registerPath("", self.fakeMethod)
         return
 
     @staticmethod
     def name():
         return "reduction"
+
+    @FromString
+    def fakeMethod(self):
+        # NOTE this is not a real method
+        # it's here to be used in the registered paths above, for the moment
+        # when possible this should be deleted
+        return {}
 
     @FromString
     def reduce(self, runs: List[RunConfig]) -> Dict[Any, Any]:
