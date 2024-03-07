@@ -17,6 +17,7 @@ class ReductionAlgorithm(PythonAlgorithm):
     NOTE: this was originally written to work with a list of grouping workspaces,
     and apply the reudction operations on each memberof the list.
     This will now work with a single grouping workspace at a time.
+    NOTE: this algorithm is in-place
     """
 
     def category(self):
@@ -24,15 +25,14 @@ class ReductionAlgorithm(PythonAlgorithm):
 
     def PyInit(self):
         # declare properties
-        self.declareProperty(MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory))
-        self.declareProperty(MatrixWorkspaceProperty("VanadiumWorkspace", "", Direction.Input, PropertyMode.Mandatory))
+        self.declareProperty(MatrixWorkspaceProperty("InputWorkspace", "", Direction.InOut, PropertyMode.Mandatory))
+        self.declareProperty(MatrixWorkspaceProperty("VanadiumWorkspace", "", Direction.InOut, PropertyMode.Mandatory))
         self.declareProperty(MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory))
         self.declareProperty(MatrixWorkspaceProperty("MaskWorkspace", "", Direction.Input, PropertyMode.Mandatory))
         self.declareProperty(
-            ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Output, PropertyMode.Mandatory)
+            ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Input, PropertyMode.Mandatory)
         )
         self.declareProperty("Ingredients", "", Direction.Input)
-        self.declareProperty(MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory))
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -45,18 +45,8 @@ class ReductionAlgorithm(PythonAlgorithm):
         self.dBin = ingredients.pixelGroup.dBin()
 
     def unbagGroceries(self):
-        self.outputWorkspace = self.getPropertyValue("OutputWorkspace")
-        self.vanadiumWorkspace = "tmp_vanadium"  # TODO use unique name genetator
-        self.mantidSnapper.CloneWorkspace(
-            "Clone copy of input to serve as output",
-            InputWorkspace=self.getPropertyValue("InputWorkspace"),
-            OutputWorkspace=self.outputWorkspace,
-        )
-        self.mantidSnapper.CloneWorkspace(
-            "clone copy of vanadium for editing",
-            InputWorkspace=self.getPropertyValue("VanadiumWorkspace"),
-            OutputWorkspace=self.vanadiumWorkspace,
-        )
+        self.outputWorkspace = self.getPropertyValue("InputWorkspace")
+        self.vanadiumWorkspace = self.getPropertyValue("VanadiumWorkspace")
         self.groupingWorkspace = self.getPropertyValue("GroupingWorkspace")
         self.maskWorkspace = self.getPropertyValue("MaskWorkspace")
         self.calibrationTable = self.getPropertyValue("CalibrationWorkspace")
@@ -126,12 +116,8 @@ class ReductionAlgorithm(PythonAlgorithm):
             Delta=self.dBin,
             OutputWorkspace=self.outputWorkspace,
         )
-        self.mantidSnapper.WashDishes(
-            "Freeing workspace...",
-            Workspace=self.vanadiumWorkspace,
-        )
         self.mantidSnapper.executeQueue()
-        self.setPropertyValue("OutputWorkspace", self.outputWorkspace)
+        self.setPropertyValue("InputWorkspace", self.outputWorkspace)
 
 
 # Register algorithm with Mantid

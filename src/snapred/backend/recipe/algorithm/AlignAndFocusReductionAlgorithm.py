@@ -14,15 +14,14 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         # NOTE this must have identical properts to ReductionAlgorithm
-        self.declareProperty(MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory))
-        self.declareProperty(MatrixWorkspaceProperty("VanadiumWorkspace", "", Direction.Input, PropertyMode.Mandatory))
+        self.declareProperty(MatrixWorkspaceProperty("InputWorkspace", "", Direction.InOut, PropertyMode.Mandatory))
+        self.declareProperty(MatrixWorkspaceProperty("VanadiumWorkspace", "", Direction.InOut, PropertyMode.Mandatory))
         self.declareProperty(MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory))
         self.declareProperty(MatrixWorkspaceProperty("MaskWorkspace", "", Direction.Input, PropertyMode.Mandatory))
         self.declareProperty(
-            ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Output, PropertyMode.Mandatory)
+            ITableWorkspaceProperty("CalibrationWorkspace", "", Direction.Input, PropertyMode.Mandatory)
         )
         self.declareProperty("Ingredients", default="", direction=Direction.Input, optional=PropertyMode.Mandatory)
-        self.declareProperty(MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory))
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -37,18 +36,8 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         self.dBin = ingredients.pixelGroup.dBin()
 
     def unbagGroceries(self):
-        self.outputWorkspace = self.getPropertyValue("OutputWorkspace")
-        self.vanadiumWorkspace = "tmp_vanadium"  # TODO use unique name genetator
-        self.mantidSnapper.CloneWorkspace(
-            "Clone copy of input to serve as output",
-            InputWorkspace=self.getPropertyValue("InputWorkspace"),
-            OutputWorkspace=self.outputWorkspace,
-        )
-        self.mantidSnapper.CloneWorkspace(
-            "clone copy of vanadium for editing",
-            InputWorkspace=self.getPropertyValue("VanadiumWorkspace"),
-            OutputWorkspace=self.vanadiumWorkspace,
-        )
+        self.outputWorkspace = self.getPropertyValue("InputWorkspace")
+        self.vanadiumWorkspace = self.getPropertyValue("VanadiumWorkspace")
         self.groupingWorkspace = self.getPropertyValue("GroupingWorkspace")
         self.maskWorkspace = self.getPropertyValue("MaskWorkspace")
         self.calibrationTable = self.getPropertyValue("CalibrationWorkspace")
@@ -76,7 +65,7 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
             OutputWorkspace=self.outputWorkspace,
         )
         self.mantidSnapper.executeQueue()
-        self.setPropertyValue("OutputWorkspace", self.outputWorkspace)
+        self.setPropertyValue("InputWorkspace", self.outputWorkspace)
         self.log().notice("Execution of AlignAndFocusReductionAlgorithm COMPLETE!")
 
 

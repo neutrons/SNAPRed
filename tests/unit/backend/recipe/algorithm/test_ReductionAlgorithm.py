@@ -46,7 +46,6 @@ with mock.patch.dict(
         algo.setProperty("MaskWorkspace", "mask_ws")
         algo.setProperty("CalibrationWorkspace", "caltable")
         algo.setProperty("Ingredients", reductionIngredients.json())
-        algo.setProperty("OutputWorkspace", "output_ws")
         assert algo.execute()
 
     def test_failing_exec():
@@ -56,6 +55,13 @@ with mock.patch.dict(
         dataSynthesizer.generateWorkspaces("input_ws", "grouping_ws", "mask_ws")
         dataSynthesizer.generateWorkspaces("vanadium_ws", "grouping_ws", "mask)ws")
         createCompatibleDiffCalTable("caltable", "input_ws")
+        # have to add a proton charge in order to normalize
+        AddSampleLog(
+            Workspace="input_ws",
+            LogName="gd_prtn_chrg",
+            LogText="10.0",
+            LogType="Number",
+        )
 
         algo = ReductionAlgorithm()
         algo.initialize()
@@ -65,6 +71,5 @@ with mock.patch.dict(
         algo.setPropertyValue("MaskWorkspace", "mask_ws")
         algo.setPropertyValue("CalibrationWorkspace", "caltable")
         algo.setPropertyValue("Ingredients", reductionIngredients.json())
-        algo.setPropertyValue("OutputWorkspace", "output_ws")
         with pytest.raises(Exception):  # noqa: PT011
             algo.execute()
