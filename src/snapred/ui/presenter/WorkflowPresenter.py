@@ -5,6 +5,7 @@ from qtpy.QtWidgets import QMainWindow, QMessageBox
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import ClearWorkspaceRequest
+from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
@@ -129,10 +130,10 @@ class WorkflowPresenter(object):
         self.worker_pool.submitWorker(self.worker)
 
     def _isErrorCode(self, code):
-        return code - 499 > 0
+        return code >= ResponseCode.ERROR
 
     def _isRecoverableError(self, code):
-        return 100 > code - 399 > 0
+        return ResponseCode.RECOVERABLE <= code < ResponseCode.ERROR
 
     def _handleComplications(self, result):
         if self._isErrorCode(result.code):
