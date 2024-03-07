@@ -36,6 +36,8 @@ class NormalizationTweakPeakView(BackendRequestView):
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
     signalValueChanged = pyqtSignal(int, float, float, float, float)
     signalUpdateRecalculationButton = pyqtSignal(bool)
+    signalUpdateFields = pyqtSignal(int, int, float)
+    signalPopulateGroupingDropdown = pyqtSignal(list)
 
     DMIN = Config["constants.CrystallographicInfo.dMin"]
     DMAX = Config["constants.CrystallographicInfo.dMax"]
@@ -96,6 +98,8 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.initialLayoutHeight = self.size().height()
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
+        self.signalUpdateFields.connect(self._updateFields)
+        self.signalPopulateGroupingDropdown.connect(self._populateGroupingDropdown)
 
     def _updateRunNumber(self, runNumber):
         self.fieldRunNumber.setText(runNumber)
@@ -109,10 +113,13 @@ class NormalizationTweakPeakView(BackendRequestView):
     def updateBackgroundRunNumber(self, backgroundRunNumber):
         self.signalBackgroundRunNumberUpdate.emit(backgroundRunNumber)
 
-    def updateFields(self, sampleIndex, groupingIndex, smoothingParameter):
+    def _updateFields(self, sampleIndex, groupingIndex, smoothingParameter):
         self.sampleDropdown.setCurrentIndex(sampleIndex)
         self.groupingFileDropdown.setCurrentIndex(groupingIndex)
         self.smoothingSlider.field.setValue(smoothingParameter)
+
+    def updateFields(self, sampleIndex, groupingIndex, smoothingParameter):
+        self.signalUpdateFields.emit(sampleIndex, groupingIndex, smoothingParameter)
 
     def emitValueChange(self):
         index = self.groupingFileDropdown.currentIndex()
@@ -199,6 +206,9 @@ class NormalizationTweakPeakView(BackendRequestView):
     def enableRecalculateButton(self):
         self.signalUpdateRecalculationButton.emit(True)
 
-    def populateGroupingDropdown(self, groups=["Enter a Run Number"]):
+    def _populateGroupingDropdown(self, groups=["Enter a Run Number"]):
         self.groupingFileDropdown.setItems(groups)
         self.groupingFileDropdown.setEnabled(True)
+
+    def populateGroupingDropdown(self, groups=["Enter a Run Number"]):
+        self.signalPopulateGroupingDropdown.emit(groups)

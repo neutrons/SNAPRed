@@ -179,7 +179,6 @@ class WorkflowPresenter(object):
         try:
             logger.info("Handling 'state' message.")
             initializationMenu = InitializationMenu(runNumber=InitializeStateHandler.runId, parent=view)
-            breakpoint()
             initializationMenu.finished.connect(lambda: initializationMenu.deleteLater())
             initializationMenu.show()
         except Exception as e:  # noqa: BLE001
