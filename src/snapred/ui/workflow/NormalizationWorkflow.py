@@ -56,7 +56,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             parent=parent,
         )
         self._saveView = NormalizationSaveView(
-            "Saving Normalization Calibration",
+            "Saving Normalization",
             self.saveSchema,
             parent,
         )
