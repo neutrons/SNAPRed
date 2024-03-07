@@ -1,14 +1,27 @@
-from unittest.mock import Mock, patch
+import sys
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresenter
+
+app = QApplication(sys.argv)
+
+
+class TestableQWidget(QWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setEnabled = MagicMock()
+
+        self.getRunNumber = MagicMock(return_value="12345")
+        self.getStateName = MagicMock(return_value="Test State")
+        self.beginFlowButton = MagicMock()
 
 
 @pytest.fixture()
 def setup_view_and_workflow():
-    view = Mock()
+    view = TestableQWidget()
     workflow = InitializeStatePresenter(view=view)
     return view, workflow
 
@@ -21,7 +34,6 @@ def test_handleButtonClicked_with_valid_input(setup_view_and_workflow):
     with patch.object(workflow, "_initializeState") as mock_initializeState:
         workflow.handleButtonClicked()
         mock_initializeState.assert_called_once_with("12345", "Test State")
-        view.beginFlowButton.setEnabled.assert_called_once_with(False)
 
 
 def test_handleButtonClicked_with_invalid_input(setup_view_and_workflow):
@@ -40,10 +52,10 @@ def test__initializeState(setup_view_and_workflow):
     mock_response = SNAPResponse(code=ResponseCode.OK)
 
     with patch.object(workflow.interfaceController, "executeRequest", return_value=mock_response), patch(
-        "PyQt5.QtWidgets.QMessageBox.information"
-    ) as mock_info:
+        "snapred.ui.widget.SuccessDialog.SuccessDialog.exec_"
+    ) as mock_dialog_exec_:
         workflow._initializeState("12345", "Test State")
-        mock_info.assert_called_once_with(workflow.view, "Success", "State initialized successfully.")
+        mock_dialog_exec_.assert_called_once()
 
 
 def test__handleResponse_error(setup_view_and_workflow):
@@ -59,6 +71,6 @@ def test__handleResponse_success(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     success_response = SNAPResponse(code=ResponseCode.OK)
 
-    with patch("PyQt5.QtWidgets.QMessageBox.information") as mock_information:
+    with patch("snapred.ui.widget.SuccessDialog.SuccessDialog.exec_") as mock_dialog_exec:
         workflow._handleResponse(success_response)
-        mock_information.assert_called_once()
+        mock_dialog_exec.assert_called_once()

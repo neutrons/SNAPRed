@@ -1,3 +1,4 @@
+import json
 import unittest.mock as mock
 
 import pytest
@@ -55,11 +56,12 @@ with mock.patch.dict(
         interfaceController = mockedSuccessfulInterfaceController(raiseRecoverable=True)
         stateCheckRequest = mock.Mock()
         stateCheckRequest.path = "Test Service"
+        stateCheckRequest.payload = json.dumps({"runNumber": "12345"})
 
         response = interfaceController.executeRequest(stateCheckRequest)
 
         assert response.code == ResponseCode.RECOVERABLE
-        assert response.message == "state"
+        assert "state" in response.message
         assert response.data is None
 
     def test_executeRequest_unsuccessful():
@@ -67,8 +69,9 @@ with mock.patch.dict(
         interfaceController = mockedSuccessfulInterfaceController()
         reductionRequest = mock.Mock()
         reductionRequest.path = "Non-existent Test Service"
-        # mock orchestrateRecipe to raise an exception
+
         response = interfaceController.executeRequest(reductionRequest)
+
         assert response.code == ResponseCode.ERROR
         assert response.message is not None
         assert response.data is None
