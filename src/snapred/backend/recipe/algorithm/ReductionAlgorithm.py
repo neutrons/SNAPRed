@@ -15,9 +15,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 class ReductionAlgorithm(PythonAlgorithm):
     """
     NOTE: this was originally written to work with a list of grouping workspaces,
-    and apply the reudction operations on each memberof the list.  However, it
-    seemed to do so inconsistently, or at least in a way that was not clear, and
-    which at times seemed to confuse spectra and focus groups/grouping schema.
+    and apply the reudction operations on each memberof the list.
     This will now work with a single grouping workspace at a time.
     """
 
