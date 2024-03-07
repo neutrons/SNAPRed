@@ -4,14 +4,6 @@ snapred.ui.presenter package
 Submodules
 ----------
 
-snapred.ui.presenter.InitializeCalibrationPresenter module
-----------------------------------------------------------
-
-.. automodule:: snapred.ui.presenter.InitializeCalibrationPresenter
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.ui.presenter.JsonFormPresenter module
 ---------------------------------------------
 

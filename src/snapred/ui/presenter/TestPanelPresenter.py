@@ -9,7 +9,6 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Resource
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.view.InitializeCalibrationCheckView import InitializeCalibrationCheckView
 from snapred.ui.widget.JsonForm import JsonForm
 from snapred.ui.workflow.DiffCalWorkflow import DiffCalWorkflow
 from snapred.ui.workflow.NormalizationWorkflow import NormalizationWorkflow
@@ -31,7 +30,6 @@ class TestPanelPresenter(object):
         self.jsonForm = JsonForm("Advanced Parameters", jsonSchema=jsonSchema, parent=view)
         self._loadDefaultJsonInput("config//runs", self.jsonForm)
         self.comboSelectionView = BackendRequestView(self.jsonForm, "config//runs", parent=self.view)
-        self.calibrationCheckView = InitializeCalibrationCheckView(parent=self.view)
 
         self.diffractionCalibrationWidget = self._createWorkflowWidget(self._createDiffCalWorkflow)
         self.calibrationNormalizationWidget = self._createWorkflowWidget(self._createNormalizationWorkflow)

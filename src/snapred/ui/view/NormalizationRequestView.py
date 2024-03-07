@@ -40,3 +40,6 @@ class NormalizationRequestView(BackendRequestView):
         if self.backgroundRunNumberField.text() == "":
             raise ValueError("Please enter a background run number")
         return True
+
+    def getRunNumber(self):
+        return self.runNumberField.text()

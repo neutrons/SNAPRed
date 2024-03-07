@@ -48,3 +48,6 @@ class DiffCalRequestView(BackendRequestView):
         if self.peakFunctionDropdown.currentIndex() < 0:
             raise ValueError("Please select a peak function")
         return True
+
+    def getRunNumber(self):
+        return self.runNumberField.text()

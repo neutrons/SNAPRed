@@ -23,6 +23,7 @@ from mantid.simpleapi import (
 from pydantic import parse_raw_as
 from pydantic.error_wrappers import ValidationError
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as WNG
 from snapred.meta.redantic import write_model_pretty
@@ -1011,6 +1012,20 @@ def test_readCalibrationState():
     actualState = localDataService.readCalibrationState("57514")
 
     assert actualState == testCalibrationState
+
+
+def test_readCalibrationState_no_file():
+    localDataService = LocalDataService()
+    localDataService._generateStateId = mock.Mock()
+    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+    localDataService._constructCalibrationParametersFilePath = mock.Mock()
+    localDataService._constructCalibrationParametersFilePath.return_value = Resource.getPath(
+        "ab8704b0bc2a2342/v_1/CalibrationParameters.json"
+    )
+    localDataService._getLatestFile = mock.Mock()
+    localDataService._getLatestFile.return_value = None
+    with pytest.raises(RecoverableException):
+        localDataService.readCalibrationState("57514")
 
 
 def test_readNormalizationState():
