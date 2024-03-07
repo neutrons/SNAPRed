@@ -1,7 +1,7 @@
 import json
 from re import match
 from typing import List
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import BaseModel
@@ -11,6 +11,7 @@ from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.meta.decorators._Resettable import Resettable
 from snapred.meta.decorators.Builder import Builder
+from snapred.meta.decorators.EntryExitLogger import EntryExitLogger
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.FromString import FromString
 
@@ -146,3 +147,16 @@ def test_resettable(qtbot):
     assert widget.getText() == "goodbye"
     widget.reset()
     assert widget.getText() == "hello"
+
+
+def test_entryExitLogger():
+    mockLogger = MagicMock()
+
+    @EntryExitLogger(mockLogger)
+    def testFunc():
+        print("in testFunc")
+
+    testFunc()
+    assert mockLogger.debug.call_count == 2
+    assert mockLogger.debug.call_args_list[0][0][0] == "Entering testFunc"
+    assert mockLogger.debug.call_args_list[1][0][0] == "Exiting testFunc"
