@@ -285,10 +285,17 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in res
         assert "raw" in res
 
-    def test_diffcal_output_workspacename(self):
+    def test_diffcal_output_tof_workspacename(self):
         # Test name generation for diffraction-calibration focussed-data workspace
-        res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber)
+        res = self.instance._createDiffcalTOFOutputWorkspaceName(self.runNumber)
         assert "tof" in res
+        assert self.runNumber in res
+        assert "diffoc" in res
+
+    def test_diffcal_output_dsp_workspacename(self):
+        # Test name generation for diffraction-calibration focussed-data workspace
+        res = self.instance._createDiffcalDSPOutputWorkspaceName(self.runNumber)
+        assert "dsp" in res
         assert self.runNumber in res
         assert "diffoc" in res
 
@@ -953,7 +960,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_list_specialOrder_diffcal_output(self, mockDetectorState):
         # Test of workspace type "diffcal_output" as `Output` (i.e. "specialOrder") argument in the `GroceryList`
         mockDetectorState.return_value = self.detectorState1
-        groceryList = GroceryListItem.builder().specialOrder().native().diffcal_output(self.runNumber).buildList()
+        groceryList = GroceryListItem.builder().specialOrder().native().diffcal_output_tof(self.runNumber).buildList()
         items = self.instance.fetchGroceryList(groceryList)
         assert items[0] == wng.diffCalOutput().runNumber(self.runNumber).build()
 
@@ -979,7 +986,7 @@ class TestGroceryService(unittest.TestCase):
         path = Resource.getPath("outputs")
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
             mockCalibrationDataPath.return_value = tmpPath
-            groceryList = GroceryListItem.builder().native().diffcal_output(self.runNumber1).buildList()
+            groceryList = GroceryListItem.builder().native().diffcal_output_tof(self.runNumber1).buildList()
             diffCalOutputName = wng.diffCalOutput().runNumber(self.runNumber1).build()
             diffCalOutputFilename = diffCalOutputName + ".nxs"
             shutil.copy2(self.sampleWSFilePath, Path(tmpPath) / diffCalOutputFilename)
@@ -995,7 +1002,7 @@ class TestGroceryService(unittest.TestCase):
         # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
         mockCalibrationDataPath.return_value = "/does/not/exist"
-        groceryList = GroceryListItem.builder().native().diffcal_output(self.runNumber1).buildList()
+        groceryList = GroceryListItem.builder().native().diffcal_output_tof(self.runNumber1).buildList()
         diffCalOutputName = wng.diffCalOutput().runNumber(self.runNumber1).build()
         CloneWorkspace(
             InputWorkspace=self.sampleWS,
