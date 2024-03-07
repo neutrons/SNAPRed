@@ -145,7 +145,7 @@ class WorkflowPresenter(object):
             )
         elif self._isRecoverableError(result.code):
             if "state" in result.message:
-                self.handleStateMessage("", self.view)
+                self.handleStateMessage(self.view)
             else:
                 logger.error(f"Unhandled scenario triggered by state message: {result.message}")
                 messageBox = QMessageBox(
@@ -168,15 +168,17 @@ class WorkflowPresenter(object):
             messageBox.setDetailedText(f"{result.message}")
             messageBox.exec()
 
-    def handleStateMessage(self, runNumber, view):
+    def handleStateMessage(self, view):
         """
         Handles a specific 'state' message.
         """
+        from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
         from snapred.ui.view.InitializeStateCheckView import InitializationMenu
 
         try:
             logger.info("Handling 'state' message.")
-            initializationMenu = InitializationMenu(runNumber=runNumber, parent=view)
+            initializationMenu = InitializationMenu(runNumber=InitializeStateHandler.runId, parent=view)
+            breakpoint()
             initializationMenu.finished.connect(lambda: initializationMenu.deleteLater())
             initializationMenu.show()
         except Exception as e:  # noqa: BLE001

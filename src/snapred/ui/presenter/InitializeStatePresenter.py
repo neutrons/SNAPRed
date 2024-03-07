@@ -6,6 +6,7 @@ from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRe
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.ui.threading.worker_pool import WorkerPool
+from snapred.ui.widget.SuccessDialog import SuccessDialog
 
 
 class InitializeStatePresenter(QObject):
@@ -40,4 +41,5 @@ class InitializeStatePresenter(QObject):
             QMessageBox.critical(self.view, "Error", "Error: " + response.message)
         else:
             self.stateInitialized.emit(response)
-            QMessageBox.information(self.view, "Success", "State initialized successfully.")
+            successDialog = SuccessDialog(self.view)
+            successDialog.exec_()

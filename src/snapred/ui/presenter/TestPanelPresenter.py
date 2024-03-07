@@ -45,7 +45,7 @@ class TestPanelPresenter(object):
         self.calibrationNormalizationLayout.addWidget(self._createNormalizationWorkflow())
 
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
-        self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization Calibration")
+        self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization")
         self.view.tabWidget.addTab(ReductionWorkflow(self.view).widget, "Reduction")
 
     def _findSchemaForPath(self, path):

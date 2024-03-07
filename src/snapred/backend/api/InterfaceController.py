@@ -1,6 +1,8 @@
 import inspect
+import json
 
 from snapred.backend.dao import SNAPRequest, SNAPResponse
+from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.service.ServiceFactory import ServiceFactory
@@ -35,6 +37,10 @@ class InterfaceController:
 
         except RecoverableException as e:
             self.logger.error(f"Recoverable error occurred: {str(e)}")
+            payloadDict = json.loads(request.payload)
+            runNumber = payloadDict["runNumber"]
+            if runNumber:
+                InitializeStateHandler.runId = runNumber
             response = SNAPResponse(code=400, message="state")
 
         except Exception as e:  # noqa BLE001
