@@ -4,7 +4,8 @@ from snapred.backend.dao.request import (
     ClearWorkspaceRequest,
     RenameWorkspaceRequest,
 )
-from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.view.IterateView import IterateView
 from snapred.ui.widget.ActionPrompt import ActionPrompt
@@ -70,11 +71,13 @@ class WorkflowImplementer:
             form.verify()
             return True
         except ValueError as e:
-            return SNAPResponse(code=500, message=f"Missing Fields!{e}")
+            return SNAPResponse(code=ResponseCode.ERROR, message=f"Missing Fields!{e}")
 
     def _handleComplications(self, result):
-        if result.code >= 300:
+        if result.code >= ResponseCode.ERROR:
             raise RuntimeError(result.message)
+        if result.code >= ResponseCode.RECOVERABLE:
+            raise RecoverableException(result.message, "state")
 
     @property
     def widget(self):

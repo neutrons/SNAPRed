@@ -3,7 +3,8 @@ from typing import Dict, List
 
 from qtpy.QtCore import QObject, QThread, Signal
 
-from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.meta.decorators.Singleton import Singleton
 
 
@@ -27,7 +28,11 @@ class Worker(QObject):
             results = self.target(self.args)
             # results.code = 200 # set to 200 for testing
             self.result.emit(results)
-            self.success.emit(results.code - 200 < 100)
+            self.success.emit(results.code < ResponseCode.MAX_OK)
+        except RecoverableException as e:
+            results = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.errorMsg)
+            self.result.emit(results)
+            self.success.emit(False)
         except Exception as e:  # noqa: BLE001
             # print stacktrace
             import traceback
@@ -35,7 +40,7 @@ class Worker(QObject):
             print(e)
             traceback.print_exc()
 
-            results = SNAPResponse(code=500, message=str(e))
+            results = SNAPResponse(code=ResponseCode.ERROR, message=str(e))
 
             self.result.emit(results)
             self.success.emit(False)
