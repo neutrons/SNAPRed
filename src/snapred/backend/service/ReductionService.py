@@ -27,7 +27,7 @@ class ReductionService(Service):
         # NOTE this is not a real method
         # it's here to be used in the registered paths above, for the moment
         # when possible this should be deleted
-        return {}
+        raise NotImplementedError("The reduction service will not be connected until Phase 3.")
 
     @FromString
     def reduce(self, runs: List[RunConfig]) -> Dict[Any, Any]:

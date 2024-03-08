@@ -33,13 +33,12 @@ class TestPanelPresenter(object):
 
         self.diffractionCalibrationWidget = self._createWorkflowWidget(self._createDiffCalWorkflow)
         self.calibrationNormalizationWidget = self._createWorkflowWidget(self._createNormalizationWorkflow)
+        self.reductionWidget = self._createWorkflowWidget(self._createReductionWorkflow)
 
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
         self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization")
-
         # TODO reenable in Phase 3
-        # self.reductionWidth = self._createWorkflowWidget(self._createReductionWorkflow)
-        # self.view.tabWidget.addTab(ReductionWorkflow(self.view).widget, "Reduction")
+        # self.view.tabWidget.addTab(self.reductionWidget, "Reduction")
 
     def _findSchemaForPath(self, path):
         currentVal = self.apiDict
@@ -69,10 +68,7 @@ class TestPanelPresenter(object):
         layout = QGridLayout()
         widget = QWidget()
         widget.setLayout(layout)
-
         layout.addWidget(method())
-        layout.addWidget(self.calibrationCheckView)
-        layout.setAlignment(self.calibrationCheckView, Qt.AlignTop | Qt.AlignHCenter)
         return widget
 
     def _createDiffCalWorkflow(self):
@@ -98,8 +94,8 @@ class TestPanelPresenter(object):
         return NormalizationWorkflow(newForm, parent=self.view).widget
 
     def _createReductionWorkflow(self):
-        # TODO in Phase 3
-        pass
+        # TODO make more betterer in Phase 3
+        return ReductionWorkflow(parent=self.view).widget
 
     @property
     def widget(self):
