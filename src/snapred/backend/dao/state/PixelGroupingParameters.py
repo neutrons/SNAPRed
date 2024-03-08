@@ -1,10 +1,28 @@
-from pydantic import BaseModel
+import numpy as np
+from pydantic import BaseModel, Field, validator
 
 from snapred.backend.dao.Limit import Limit
 
 
 class PixelGroupingParameters(BaseModel):
     groupID: int
-    twoTheta: float  # the average two-theta (radians) for pixel grouping
-    dResolution: Limit[float]  # the minimum and maximum diffraction-resolvable d-spacing (Angstrom) for pixel grouping
-    dRelativeResolution: float  # the relative diffraction resolution for pixel grouping
+
+    # True => this group is fully masked
+    isMasked: bool
+
+    # the average two-theta (radians) for this pixel grouping
+    twoTheta: float = Field(ge=0.0, le=2.0 * np.pi)
+
+    # the minimum and maximum diffraction-resolvable d-spacing (Angstrom) for pixel grouping
+    dResolution: Limit[float]
+
+    # the relative diffraction resolution (Angstrom) for pixel grouping
+    dRelativeResolution: float = Field(gt=0.0)
+
+    @validator("dResolution", pre=True, allow_reuse=True)
+    def validate_resolution(cls, resolution):
+        # minimum <= maximum validated at `Limit` itself.
+        minimum = resolution.minimum if isinstance(resolution, Limit) else resolution.get("minimum")
+        if minimum <= 0.0:
+            raise ValueError("any valid d-spacing must be > 0.0")
+        return resolution

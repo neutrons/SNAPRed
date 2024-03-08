@@ -31,9 +31,11 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
     def chopIngredients(self, ingredients: ReductionIngredients):
         self.stateConfig = ingredients.reductionState.stateConfig
         self.groupIDs = ingredients.pixelGroup.groupIDs
-        self.dMin = ingredients.pixelGroup.dMin()
-        self.dMax = ingredients.pixelGroup.dMax()
-        self.dBin = ingredients.pixelGroup.dBin()
+        # Warning: <pixel grouping parameters>.isMasked will be set for fully-masked groups
+        #   "0.0" is used by 'Mantid::AlignAndFocusPowderFromFiles' as the _default_ value (=> a non-specified limit)
+        self.dMin = ingredients.pixelGroup.dMin(default=0.0)
+        self.dMax = ingredients.pixelGroup.dMax(default=0.0)
+        self.dBin = ingredients.pixelGroup.dBin(default=0.0)
 
     def unbagGroceries(self):
         self.outputWorkspace = self.getPropertyValue("InputWorkspace")

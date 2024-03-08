@@ -1,3 +1,4 @@
+from numpy import nan
 from typing import Dict
 
 from mantid.api import AlgorithmFactory, ITableWorkspaceProperty, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
@@ -40,9 +41,11 @@ class ReductionAlgorithm(PythonAlgorithm):
         return {}
 
     def chopIngredients(self, ingredients: ReductionIngredients):
-        self.dMin = ingredients.pixelGroup.dMin()
-        self.dMax = ingredients.pixelGroup.dMax()
-        self.dBin = ingredients.pixelGroup.dBin()
+        # Warning: <pixel grouping parameters>.dResolution will be None for fully-masked groups
+        #   "NaN" is interpreted by 'Mantid::RebinRagged' to indicate an unspecified value
+        self.dMin = ingredients.pixelGroup.dMin(default=nan)
+        self.dMax = ingredients.pixelGroup.dMax(default=nan)
+        self.dBin = ingredients.pixelGroup.dBin(default=nan)
 
     def unbagGroceries(self):
         self.outputWorkspace = self.getPropertyValue("InputWorkspace")

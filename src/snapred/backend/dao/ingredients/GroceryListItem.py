@@ -4,6 +4,7 @@ from pydantic import BaseModel, root_validator
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -14,9 +15,9 @@ class GroceryListItem(BaseModel):
     """
 
     # Reserved instrument-cache run-number values:
-    RESERVED_NATIVE_RUNID: ClassVar[str] = "000000"  # unmodified _native_ instrument:
+    RESERVED_NATIVE_RUNNUMBER: ClassVar[str] = "000000"  # unmodified _native_ instrument:
     #   from 'SNAP_Definition.xml'
-    RESERVED_LITE_RUNID: ClassVar[str] = "000001"  # unmodified _lite_ instrument  :
+    RESERVED_LITE_RUNNUMBER: ClassVar[str] = "000001"  # unmodified _lite_ instrument  :
     #   from 'SNAPLite.xml'
 
     workspaceType: Literal["neutron", "grouping", "diffcal", "diffcal_output", "diffcal_table", "diffcal_mask"]
@@ -26,11 +27,13 @@ class GroceryListItem(BaseModel):
     # -- "" tells FetchGroceries to choose the loader
     loader: Literal["", "LoadGroupingDefinition", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed"] = ""
 
-    # the correct combinaton of the below must be set -- neutron and grouping require a runNumber,
+    # the correct combination of the below must be set -- neutron and grouping require a runNumber,
     #   grouping additionally requires a groupingScheme
     runNumber: Optional[str]
     version: Optional[str]
     groupingScheme: Optional[str]
+
+    unit: Optional[Literal[wng.Units.TOF, wng.Units.DSP]]
 
     # SpecialWorkspace2D-derived workspaces (e.g. grouping or mask workspaces)
     #   require an instrument definition, these next two properties indicate
@@ -67,13 +70,16 @@ class GroceryListItem(BaseModel):
         if v.get("instrumentSource") is not None:
             if v.get("instrumentPropertySource") is None:
                 raise ValueError("if 'instrumentSource' is specified then 'instrumentPropertySource' must be specified")
-
+        if v.get("unit") is not None:
+            unit_ = v.get("unit")
+            if unit_ not in (wng.Units.TOF, wng.Units.DSP):
+                raise ValueError(f"unknown unit '{unit_}' specified")
         match v["workspaceType"]:
             case "neutron":
                 if v.get("runNumber") is None:
                     raise ValueError("Loading neutron data requires a run number")
                 if v.get("groupingScheme") is not None:
-                    v["groupingScheme"] = None
+                    del v["groupingScheme"]
                 if v.get("instrumentPropertySource") is not None:
                     raise ValueError("Loading neutron data should not specify an instrument")
             case "grouping":
@@ -94,7 +100,7 @@ class GroceryListItem(BaseModel):
                             + " -- this cannot be overridden"
                         )
                     # the Lite grouping scheme uses the unmodified native instrument
-                    v["runNumber"] = cls.RESERVED_NATIVE_RUNID
+                    v["runNumber"] = cls.RESERVED_NATIVE_RUNNUMBER
                 if v.get("runNumber") is None:
                     # A run number is required in order to cache instrument parameters
                     raise ValueError("Loading a grouping scheme requires a run number")
@@ -105,19 +111,15 @@ class GroceryListItem(BaseModel):
             case "diffcal_output":
                 if v.get("runNumber") is None:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
-                if v.get("isOutput") is False:
-                    raise ValueError(
-                        f"diffraction-calibration {v['workspaceType']} output specification is special-order only"
-                    )
                 if v.get("instrumentPropertySource") is not None:
                     raise ValueError("Loading diffcal-output data should not specify an instrument")
+                if not v.get("useLiteMode"):
+                    v["useLiteMode"] = True  # don't care
             case "diffcal_table" | "diffcal_mask":
                 if v.get("runNumber") is None:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
-                if v.get("isOutput") is False:
-                    raise ValueError(
-                        f"diffraction-calibration {v['workspaceType']} output specification is special-order only"
-                    )
+                if not v.get("useLiteMode"):
+                    v["useLiteMode"] = True  # don't care
             case _:
                 raise ValueError(f"unrecognized 'workspaceType': '{v['workspaceType']}'")
         return v

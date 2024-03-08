@@ -86,7 +86,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.layout.addWidget(self.peakFunctionDropdown, 4, 2)
         self.layout.addWidget(self.recalculationButton, 5, 0, 1, 2)
 
-        self.layout.setRowStretch(1, 3)
+        self.layout.setRowStretch(2, 10)
 
         # store the initial layout without graphs
         self.initialLayoutHeight = self.size().height()

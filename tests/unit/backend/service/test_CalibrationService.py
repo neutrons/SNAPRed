@@ -3,16 +3,27 @@ import os
 import tempfile
 import unittest
 import unittest.mock as mock
+from copy import deepcopy
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 from unittest.mock import ANY, MagicMock, call, patch
 
 import pytest
 from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
+    DeleteWorkspace,
+    LoadEmptyInstrument,
     mtd,
 )
+from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
+from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.StateConfig import StateConfig
+from snapred.meta.Config import Config
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 
 # Mock out of scope modules before importing DataExportService
 
@@ -36,13 +47,16 @@ with mock.patch.dict(
     from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
     from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
     from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
-    from snapred.backend.dao.RunConfig import RunConfig
     from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.FocusGroup import FocusGroup
     from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
     from snapred.backend.service.CalibrationService import CalibrationService
     from snapred.backend.service.SousChef import SousChef
-    from snapred.meta.Config import Config, Resource
+    from snapred.meta.Config import Resource
+    from util.helpers import (
+        createCompatibleDiffCalTable,
+        createCompatibleMask,
+    )
 
     thisService = "snapred.backend.service.CalibrationService."
 
@@ -93,9 +107,36 @@ from snapred.backend.service.CalibrationService import CalibrationService  # noq
 
 
 class TestCalibrationServiceMethods(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.runNumber = "555"
+        cls.version = "1"
+
+        cls.SNAPInstrumentFilePath = Config["instrument"]["native"]["definition"]["file"]
+        cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        Config["instrument"]["native"]["definition"]["file"] = cls.instrumentFilePath
+
+        cls.SNAPLiteInstrumentFilePath = Config["instrument"]["lite"]["definition"]["file"]
+        cls.instrumentLiteFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
+        Config["instrument"]["lite"]["definition"]["file"] = cls.instrumentLiteFilePath
+
+        # create some sample data
+        cls.sampleWS = "_sample_data"
+        cls.sampleTableWS = "_sample_diffcal_table"
+        cls.sampleMaskWS = "_sample_diffcal_mask"
+
+        LoadEmptyInstrument(
+            Filename=cls.instrumentFilePath,
+            OutputWorkspace=cls.sampleWS,
+        )
+        createCompatibleDiffCalTable(cls.sampleTableWS, cls.sampleWS)
+        createCompatibleMask(cls.sampleMaskWS, cls.sampleWS, cls.instrumentFilePath)
+
+        # cleanup at per-test teardown
+        cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS]
+
     def setUp(self):
         self.instance = CalibrationService()
-        self.runId = "test_run_id"
         self.outputNameFormat = "{}_calibration_reduction_result"
         # Mock the _calculatePixelGroupingParameters method to return a predefined value
         self.instance._calculatePixelGroupingParameters = lambda calib, focus_def, lite_mode, nBins: {  # noqa: ARG005
@@ -106,12 +147,38 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def clearoutWorkspaces(self) -> None:
         # Delete the workspaces created by loading
         for ws in mtd.getObjectNames():
-            self.instance.dataFactoryService.deleteWorkspace(ws)
+            if ws not in self.excludeAtTeardown:
+                DeleteWorkspace(ws)
 
     def tearDown(self) -> None:
         # At the end of each test, clear out the workspaces
         self.clearoutWorkspaces()
         return super().tearDown()
+
+    def create_fake_diffcal_files(self, path: Path, workspaces: Dict[WorkspaceType, List[WorkspaceName]], version: str):
+        tableWSName = None
+        maskWSName = None
+        # Note: this form allows testing of partial-write behavior:
+        #   e.g. no _mask_ or _table_ workspace in the 'workspaces' dict.
+        for key, wsNames in workspaces.items():
+            for wsName in wsNames:
+                match key:
+                    case wngt.DIFFCAL_TABLE:
+                        tableWSName = wsName
+                    case wngt.DIFFCAL_MASK:
+                        maskWSName = wsName
+                    case _:
+                        filename = Path(wsName + ".nxs")
+                        self.instance.dataExportService.exportWorkspace(path, filename, self.sampleWS)
+        # For the moment, only one set of 'table' + 'mask' workspace is assumed
+        if tableWSName or maskWSName:
+            filename = Path(tableWSName + ".h5")
+            self.instance.dataExportService.dataService.writeDiffCalWorkspaces(
+                path,
+                filename,
+                tableWorkspaceName=self.sampleTableWS if tableWSName else "",
+                maskWorkspaceName=self.sampleMaskWS if maskWSName else "",
+            )
 
     @patch(thisService + "parse_raw_as")
     @patch(thisService + "CalibrationMetricExtractionRecipe")
@@ -158,7 +225,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @patch(
         thisService + "CalibrationMetricsWorkspaceIngredients",
         return_value=MagicMock(
-            calibrationRecord=CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json")),
+            calibrationRecord=CalibrationRecord.parse_raw(
+                Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+            ),
             timestamp="123",
         ),
     )
@@ -189,8 +258,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Call the method to test
         request = CalibrationAssessmentRequest(
-            workspace="mock workspace",
-            run=RunConfig(runNumber="123"),
+            workspaces={
+                wngt.DIFFCAL_OUTPUT: [self.sampleWS],
+                wngt.DIFFCAL_TABLE: [self.sampleTableWS],
+                wngt.DIFFCAL_MASK: [self.sampleMaskWS],
+            },
+            run=RunConfig(runNumber=self.runNumber),
             useLiteMode=True,
             focusGroup={"name": fakeMetrics.focusGroupName, "definition": ""},
             calibrantSamplePath="egg/muffin/biscuit",
@@ -207,12 +280,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Assert expected calibration metric workspaces have been generated
         for metric in ["sigma", "strain"]:
-            ws_name = wng.diffCalMetrics().runNumber("57514").version("ts123").metricName(metric).build()
-            assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
+            wsName = wng.diffCalTimedMetric().runNumber("57514").timestamp("123").metricName(metric).build()
+            assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 
     def test_load_quality_assessment_no_calibration_record_exception(self):
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=None)
-        mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
+        mockRequest = MagicMock(runId=self.runNumber, version=self.version, checkExistent=False)
         with pytest.raises(ValueError) as excinfo:  # noqa: PT011
             self.instance.loadQualityAssessment(mockRequest)
         assert str(mockRequest.runId) in str(excinfo.value)
@@ -223,67 +296,147 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self,
         mockCalibrationMetricsWorkspaceIngredients,
     ):
-        mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
-        calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
+        mockRequest = MagicMock(runId=self.runNumber, version=self.version, checkExistent=False)
+        calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
         with pytest.raises(Exception) as excinfo:  # noqa: PT011
             self.instance.loadQualityAssessment(mockRequest)
         assert "The input table is empty" in str(excinfo.value)
 
-    def test_load_quality_assessment_check_existent(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
+    def test_load_quality_assessment_check_existent_metrics(self):
+        path = Resource.getPath("outputs")
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpDir:
+            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
-            self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
-            for ws_name in calibRecord.workspaceNames:
-                CreateSingleValuedWorkspace(OutputWorkspace=ws_name)
-                filename = Path(ws_name + ".nxs")
-                self.instance.dataExportService.exportWorkspace(tmpdir, filename, ws_name)
+            self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpDir)
+            self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
-            # Call the method to test. Use a mocked run and a mocked version
-            runId = MagicMock()
-            version = MagicMock()
-            mockRequest = MagicMock(runId=runId, version=version, checkExistent=False)
+            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+            self.instance.groceryService._getCalibrationDataPath = MagicMock(return_value=tmpDir)
+            self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
+
+            # Load the assessment workspaces:
             self.instance.loadQualityAssessment(mockRequest)
-            with pytest.raises(ValueError) as excinfo:  # noqa: PT011
-                self.instance.loadQualityAssessment(MagicMock(runId=runId, version=version, checkExistent=True))
+
+            # Delete any existing _data_ workspaces:
+            for wss in calibRecord.workspaces.values():
+                for ws in wss:
+                    DeleteWorkspace(Workspace=ws)
+
+            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=True)
+            with pytest.raises(RuntimeError) as excinfo:  # noqa: PT011
+                self.instance.loadQualityAssessment(mockRequest)
             assert "is already loaded" in str(excinfo.value)
-            with pytest.raises(ValueError) as excinfo:  # noqa: PT011
-                self.instance.loadQualityAssessment(MagicMock(runId="57514", version="7", checkExistent=True))
+
+    def test_load_quality_assessment_check_existent_data(self):
+        path = Resource.getPath("outputs")
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpDir:
+            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+
+            # Under a mocked calibration data path, create fake "persistent" workspace files
+            self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpDir)
+            self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
+
+            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+            self.instance.groceryService._getCalibrationDataPath = MagicMock(return_value=tmpDir)
+            self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
+
+            # Load the assessment workspaces:
+            self.instance.loadQualityAssessment(mockRequest)
+
+            # Delete any existing _metric_ workspaces:
+            for ws in mtd.getObjectNames():
+                if "sigma" in ws or "strain" in ws:
+                    DeleteWorkspace(Workspace=ws)
+
+            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=True)
+            with pytest.raises(RuntimeError) as excinfo:  # noqa: PT011
+                self.instance.loadQualityAssessment(mockRequest)
             assert "is already loaded" in str(excinfo.value)
 
     def test_load_quality_assessment(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord.json"))
+        path = Resource.getPath("outputs")
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpDir:
+            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
-            self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpdir)
-            for ws_name in calibRecord.workspaceNames:
-                CreateSingleValuedWorkspace(OutputWorkspace=ws_name)
-                filename = Path(ws_name + ".nxs")
-                self.instance.dataExportService.exportWorkspace(tmpdir, filename, ws_name)
+            self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpDir)
+            self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
             # Call the method to test. Use a mocked run and a mocked version
-            mockRequest = MagicMock(runId=MagicMock(), version=MagicMock(), checkExistent=False)
+            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+            self.instance.groceryService._getCalibrationDataPath = MagicMock(return_value=tmpDir)
+            self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
             self.instance.loadQualityAssessment(mockRequest)
 
             # Assert the expected calibration metric workspaces have been generated
             for metric in ["sigma", "strain"]:
                 ws_name = (
-                    wng.diffCalMetrics()
+                    wng.diffCalMetric()
+                    .metricName(metric)
                     .runNumber(calibRecord.runNumber)
-                    .version("v" + str(calibRecord.version))
+                    .version(str(calibRecord.version))
                     .metricName(metric)
                     .build()
                 )
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
-            # Assert the "persistent" workspaces have been loaded
-            for ws_name in calibRecord.workspaceNames:
-                assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
+            # Assert all "persistent" workspaces have been loaded
+            for wsNames in calibRecord.workspaces.values():
+                for wsName in wsNames:
+                    assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
+
+    def test_load_quality_assessment_no_units(self):
+        with pytest.raises(RuntimeError, match=r"without a units token in its name"):  # noqa: PT012
+            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+            calibRecord.workspaces = {
+                "diffCalOutput": ["_diffoc_057514"],
+                "diffCalTable": ["_diffract_consts_057514"],
+                "diffCalMask": ["_diffract_consts_mask_057514"],
+            }
+            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+
+            # Call the method to test. Use a mocked run and a mocked version
+            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+            self.instance.loadQualityAssessment(mockRequest)
+
+    def test_load_quality_assessment_dsp_and_tof(self):
+        calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+        calibRecord.workspaces = {
+            "diffCalOutput": ["_dsp_diffoc_057514", "_tof_diffoc_057514"],
+            "diffCalTable": ["_diffract_consts_057514"],
+            "diffCalMask": ["_diffract_consts_mask_057514"],
+        }
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
+
+        mockFetchGroceryDict = mock.Mock(return_value={})
+        self.instance.groceryService.fetchGroceryDict = mockFetchGroceryDict
+
+        # Call the method to test. Use a mocked run and a mocked version
+        mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+        self.instance.loadQualityAssessment(mockRequest)
+        calledWithDict = mockFetchGroceryDict.call_args[0][0]
+        assert calledWithDict["diffCalOutput_0000"].unit == wng.Units.DSP
+        assert calledWithDict["diffCalOutput_0001"].unit == wng.Units.TOF
+
+    def test_load_quality_assessment_unexpected_type(self):
+        with pytest.raises(RuntimeError, match=r"not implemented: unable to load unexpected"):  # noqa: PT012
+            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+            calibRecord.workspaces = {
+                "diffCalOutput": ["_tof_diffoc_057514"],
+                "diffCalTable": ["_diffract_consts_057514"],
+                "diffCalMask": ["_diffract_consts_mask_057514"],
+                "rawVanadium": ["_unexpected_workspace_type"],
+            }
+            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+
+            # Call the method to test. Use a mocked run and a mocked version
+            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+            self.instance.loadQualityAssessment(mockRequest)
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     def test_prepDiffractionCalibrationIngredients(self, FarmFreshIngredients):
@@ -427,3 +580,54 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_reduction(self):
         with pytest.raises(NotImplementedError):
             self.instance.fakeMethod()
+    def test_initializeState(self):
+        testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        mockInitializeState = mock.Mock(return_value=testCalibration.instrumentState)
+        self.instance.dataExportService.initializeState = mockInitializeState
+        request = InitializeStateRequest(
+            runId=testCalibration.seedRun,
+            humanReadableName="friendly name",
+        )
+        self.instance.initializeState(request)
+        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName)
+
+    def test_getState(self):
+        testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        testConfig = StateConfig.construct()
+        testConfig.calibration = testCalibration
+        states = [deepcopy(testConfig), deepcopy(testConfig), deepcopy(testConfig)]
+        states[0].calibration.instrumentState.id = "0000000000000000"
+        states[1].calibration.instrumentState.id = "1111111111111111"
+        states[2].calibration.instrumentState.id = "2222222222222222"
+        runs = [RunConfig(runNumber="0"), RunConfig(runNumber="1"), RunConfig(runNumber="2")]
+        mockDataFactoryService = mock.Mock()
+        mockDataFactoryService.getStateConfig.side_effect = states
+        self.instance.dataFactoryService = mockDataFactoryService
+        actual = self.instance.getState(runs)
+        assert actual == states
+
+    def test_hasState(self):
+        mockCheckCalibrationStateExists = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.checkCalibrationStateExists = mockCheckCalibrationStateExists
+        self.instance.hasState(self.runNumber)
+        mockCheckCalibrationStateExists.assert_called_once_with(self.runNumber)
+
+    # TODO remove this --- it only exists to make codecov happy
+    def test_reduction(self):
+        with pytest.raises(NotImplementedError):
+            self.instance.fakeMethod()
+
+
+# this at teardown removes the loggers, eliminating logger error printouts
+# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
+@pytest.fixture(autouse=True)
+def clear_loggers():  # noqa: PT004
+    """Remove handlers from all loggers"""
+    import logging
+
+    yield  # ... teardown follows:
+    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
+    for logger in loggers:
+        handlers = getattr(logger, "handlers", [])
+        for handler in handlers:
+            logger.removeHandler(handler)

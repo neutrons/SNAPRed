@@ -26,13 +26,13 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
         runId = ingredients.calibrationRecord.runNumber
 
         if ingredients.timestamp is not None:
-            calibVersionOrTimeStamp = "ts" + str(ingredients.timestamp)
-            logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {calibVersionOrTimeStamp}")
+            timestamp = str(ingredients.timestamp)
+            ws_table = wng.diffCalTimedMetric().runNumber(runId).timestamp(timestamp).metricName("table").build()
+            logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {timestamp}")
         else:
-            calibVersionOrTimeStamp = "v" + str(ingredients.calibrationRecord.version)
-            logger.info(f"Executing recipe {__name__} for run: {runId} calibration version: {calibVersionOrTimeStamp}")
-
-        ws_table = wng.diffCalMetrics().runNumber(runId).version(calibVersionOrTimeStamp).metricName("table").build()
+            version = str(ingredients.calibrationRecord.version)
+            ws_table = wng.diffCalMetric().runNumber(runId).version(version).metricName("table").build()
+            logger.info(f"Executing recipe {__name__} for run: {runId} calibration version: {version}")
 
         try:
             # create a table workspace with all metrics
@@ -43,9 +43,12 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
             outputs = []
             # convert the table workspace to 2 matrix workspaces: sigma vs. twoTheta and strain vs. twoTheta
             for metric in ["sigma", "strain"]:
-                ws_metric = (
-                    wng.diffCalMetrics().runNumber(runId).version(calibVersionOrTimeStamp).metricName(metric).build()
-                )
+                if ingredients.timestamp is not None:
+                    ws_metric = (
+                        wng.diffCalTimedMetric().metricName(metric).runNumber(runId).timestamp(timestamp).build()
+                    )
+                else:
+                    ws_metric = wng.diffCalMetric().metricName(metric).runNumber(runId).version(version).build()
                 ConvertTableToMatrixWorkspaceRecipe().executeRecipe(
                     InputWorkspace=ws_table,
                     ColumnX="twoThetaAverage",

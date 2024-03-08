@@ -13,10 +13,11 @@ class FarmFreshIngredients(BaseModel):
     from these, the Sous Chef can make everything
     """
 
-    # NOTE this class ia a REQUEST object, despite its name
+    # NOTE this class is a REQUEST object, despite its name
     # Do NOT use inside ingredients for algorithms
 
     runNumber: str
+    version: Optional[str]
     useLiteMode: bool
     focusGroup: FocusGroup
 

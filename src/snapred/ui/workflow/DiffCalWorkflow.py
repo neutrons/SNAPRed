@@ -11,6 +11,7 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
 from snapred.ui.view.DiffCalSaveView import DiffCalSaveView
@@ -268,7 +269,11 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),
-            workspace=self.responses[-1].data["outputWorkspace"],
+            workspaces={
+                wngt.DIFFCAL_OUTPUT: [response.data["outputWorkspace"]],
+                wngt.DIFFCAL_TABLE: [response.data["calibrationTable"]],
+                wngt.DIFFCAL_MASK: [response.data["maskWorkspace"]],
+            },
             focusGroup=self.focusGroups[self.focusGroupPath],
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             useLiteMode=self.useLiteMode,
@@ -278,11 +283,11 @@ class DiffCalWorkflow(WorkflowImplementer):
         response = self.request(path="calibration/assessment", payload=payload.json())
         assessmentResponse = response.data
         self.calibrationRecord = assessmentResponse.record
-        self.calibrationRecord.workspaceNames.append(self.responses[-2].data["calibrationTable"])
-        self.calibrationRecord.workspaceNames.append(self.responses[-2].data["maskWorkspace"])
 
         self.outputs.extend(assessmentResponse.metricWorkspaces)
-        self.outputs.extend(self.calibrationRecord.workspaceNames)
+        for calibrationWorkspaces in self.calibrationRecord.workspaces.values():
+            self.outputs.extend(calibrationWorkspaces)
+        self._assessmentView.updateRunNumber(self.runNumber)
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
@@ -307,10 +312,10 @@ class DiffCalWorkflow(WorkflowImplementer):
         # if this is not the first iteration, account for choice.
         if workflowPresenter.iteration > 1:
             iteration = int(self._saveView.iterationDropdown.currentText())
-            self.calibrationRecord.workspaceNames = [
-                self.renameTemplate.format(workspaceName=w, iteration=iteration)
-                for w in self.calibrationRecord.workspaceNames
-            ]
+            self.calibrationRecord.workspaces = {
+                wsKey: [self.renameTemplate.format(workspaceName=wsName, iteration=iteration) for wsName in wsNames]
+                for wsKey, wsNames in self.calibrationRecord.workspaces.items()
+            }
 
         payload = CalibrationExportRequest(
             calibrationRecord=self.calibrationRecord, calibrationIndexEntry=calibrationIndexEntry

@@ -127,6 +127,27 @@ def maskGroups(maskWS: MaskWorkspace, groupingWS: GroupingWorkspace, gs: Sequenc
             maskWS.setValue(int(det), True)
 
 
+def maskComponentByName(maskWSName: str, componentName: str):
+    """
+    Set mask values for all (non-monitor) detectors contributing to a component
+    -- maskWSName: name of MaskWorkspace to modify
+    (warning: only mask values will be changed, not detector mask flags)
+    -- componentName: the name of a component in the workspace's instrument
+    To enable the masking of multiple components, mask values are only set,
+    and never cleared.
+    """
+    mask = mtd[maskWSName]
+    detectors = mask.detectorInfo()
+    idFromIndex = detectors.detectorIDs()
+    info = mask.componentInfo()
+    componentDetectorIndices = info.detectorsInSubtree(info.indexOfAny(componentName))
+
+    for ix in componentDetectorIndices:
+        if detectors.isMonitor(int(ix)):
+            continue
+        mask.setValue(int(idFromIndex[ix]), True)
+
+
 def mutableWorkspaceClones(
     sourceWorkspaceNames: Sequence[str], uniquePrefix: str, name_only: bool = False
 ) -> Tuple[Any]:

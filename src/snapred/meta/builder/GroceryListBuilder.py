@@ -36,19 +36,22 @@ class GroceryListBuilder:
         self._tokens["runNumber"] = runId
         return self
 
-    def diffcal_output(self, runId: str):
+    def diffcal_output(self, runId: str, version: str = ""):
         self._tokens["workspaceType"] = "diffcal_output"
         self._tokens["runNumber"] = runId
+        self._tokens["version"] = version
         return self
 
-    def diffcal_table(self, runId: str):
+    def diffcal_table(self, runId: str, version: str = ""):
         self._tokens["workspaceType"] = "diffcal_table"
         self._tokens["runNumber"] = runId
+        self._tokens["version"] = version
         return self
 
-    def diffcal_mask(self, runId: str):
+    def diffcal_mask(self, runId: str, version: str = ""):
         self._tokens["workspaceType"] = "diffcal_mask"
         self._tokens["runNumber"] = runId
+        self._tokens["version"] = version
         return self
 
     def native(self):
@@ -61,6 +64,10 @@ class GroceryListBuilder:
 
     def useLiteMode(self, useLiteMode: bool):
         self._tokens["useLiteMode"] = useLiteMode
+        return self
+
+    def unit(self, unit_: str):
+        self._tokens["unit"] = unit_
         return self
 
     def source(self, **kwarg):
