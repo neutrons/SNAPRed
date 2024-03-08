@@ -71,8 +71,7 @@ class TestPanelPresenter(object):
         layout.addWidget(method())
         return widget
 
-    def _createDiffCalWorkflow(self):
-        path = "calibration/diffraction/request"
+    def _createFormFromPath(self, path):
         logger.info("Creating workflow for path: {}".format(path))
         jsonSchema = self._getSchemaForSelection(path)
         logger.info("Schema for path: {}".format(jsonSchema))
@@ -80,17 +79,16 @@ class TestPanelPresenter(object):
         logger.info("Created form for path: {}".format(newForm))
         self._loadDefaultJsonInput(path, newForm)
         logger.info("loaded default json input for path: {}".format(path))
+        return newForm
+
+    def _createDiffCalWorkflow(self):
+        path = "calibration/diffraction/request"
+        newForm = self._createFormFromPath(path)
         return DiffCalWorkflow(newForm, parent=self.view).widget
 
     def _createNormalizationWorkflow(self):
-        path = "normalization//request"
-        logger.info("Creating workflow for path: {}".format(path))
-        jsonSchema = self._getSchemaForSelection(path)
-        logger.info("Schema for path: {}".format(jsonSchema))
-        newForm = JsonForm(path.split("/")[-1], jsonSchema=jsonSchema, parent=self.view)
-        logger.info("Created form for path: {}".format(newForm))
-        self._loadDefaultJsonInput(path, newForm)
-        logger.info("loaded default json input for path: {}".format(path))
+        path = "normalization//request"  # NOTE double '/' is necessary
+        newForm = self._createFormFromPath(path)
         return NormalizationWorkflow(newForm, parent=self.view).widget
 
     def _createReductionWorkflow(self):
