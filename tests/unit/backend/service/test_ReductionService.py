@@ -46,4 +46,5 @@ class TestReductionService(unittest.TestCase):
 
     # TODO remove this --- ot only exists to make codecov happy
     def test_reduction(self):
-        assert {} == ReductionService().fakeMethod()
+        with pytest.raises(NotImplementedError):
+            ReductionService().fakeMethod()
