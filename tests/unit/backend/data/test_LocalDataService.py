@@ -16,11 +16,11 @@ from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
     CloneWorkspace,
-    CreateSampleWorkspace,
-    CreateGroupingWorkspace,
-    LoadInstrument,
-    LoadEmptyInstrument,
     ConvertUnits,
+    CreateGroupingWorkspace,
+    CreateSampleWorkspace,
+    LoadEmptyInstrument,
+    LoadInstrument,
     mtd,
 )
 from pydantic import parse_raw_as
@@ -666,8 +666,12 @@ def readReductionIngredientsFromFile():
 
 
 def test_readWriteCalibrationRecord_version_numbers():
-    testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
-    testCalibrationRecord_v0002 = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0002.json"))
+    testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
+        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+    )
+    testCalibrationRecord_v0002 = CalibrationRecord.parse_raw(
+        Resource.read("inputs/calibration/CalibrationRecord_v0002.json")
+    )
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
@@ -695,8 +699,12 @@ def test_readWriteCalibrationRecord_version_numbers():
 
 
 def test_readWriteCalibrationRecord_specified_version():
-    testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
-    testCalibrationRecord_v0002 = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0002.json"))
+    testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
+        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+    )
+    testCalibrationRecord_v0002 = CalibrationRecord.parse_raw(
+        Resource.read("inputs/calibration/CalibrationRecord_v0002.json")
+    )
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
@@ -741,7 +749,9 @@ def test_readWriteCalibrationRecord_with_version():
 
 
 def test_readWriteCalibrationRecord():
-    testCalibrationRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+    testCalibrationRecord = CalibrationRecord.parse_raw(
+        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+    )
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
@@ -761,7 +771,9 @@ def test_readWriteCalibrationRecord():
 def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
-    testCalibrationRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+    testCalibrationRecord = CalibrationRecord.parse_raw(
+        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+    )
     with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
         basePath = Path(basePath)
         mockConstructCalibrationDataPath.return_value = str(basePath)
@@ -823,24 +835,26 @@ def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
 @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
 def test_writeCalibrationWorkspaces_no_units(
     mockConstructCalibrationDataPath,
-    mockWriteWorkspace  # noqa: ARG001
-    ):
+    mockWriteWorkspace,  # noqa: ARG001
+):
     # test that diffraction-calibration output workspace names require units
     localDataService = LocalDataService()
-    testCalibrationRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+    testCalibrationRecord = CalibrationRecord.parse_raw(
+        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+    )
     testCalibrationRecord.workspaces = {
-      wngt.DIFFCAL_OUTPUT: ["_diffoc_057514_v0001", "_dsp_diffoc_057514_v0001"],
-      wngt.DIFFCAL_TABLE: ["_diffract_consts_057514_v0001"],
-      wngt.DIFFCAL_MASK: ["_diffract_consts_mask_057514_v0001"]
+        wngt.DIFFCAL_OUTPUT: ["_diffoc_057514_v0001", "_dsp_diffoc_057514_v0001"],
+        wngt.DIFFCAL_TABLE: ["_diffract_consts_057514_v0001"],
+        wngt.DIFFCAL_MASK: ["_diffract_consts_mask_057514_v0001"],
     }
-    with pytest.raises( # noqa: PT012
-            RuntimeError,
-            match=f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name",
-        ):
+    with pytest.raises(  # noqa: PT012
+        RuntimeError,
+        match=f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name",
+    ):
         mockConstructCalibrationDataPath.return_value = "not/a/path"
         localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
 
- 
+
 def test_readWriteNormalizationRecord_version_numbers():
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
@@ -870,6 +884,7 @@ def test_readWriteNormalizationRecord_version_numbers():
     assert actualRecord.runNumber == "57514"
     assert actualRecord == testNormalizationRecord
 
+
 def test_readWriteNormalizationRecord_specified_version():
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
@@ -897,6 +912,7 @@ def test_readWriteNormalizationRecord_specified_version():
         assert actualRecord.version == 1
         actualRecord = localDataService.readNormalizationRecord("57514", "2")
         assert actualRecord.version == 2
+
 
 def test_readWriteNormalizationRecord():
     testNormalizationRecord = NormalizationRecord.parse_raw(
@@ -1219,10 +1235,10 @@ def test_readDetectorState():
         [2.0],
     ]
     localDataService._readPVFile.return_value = pvFileMock
-    
+
     testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
     testDetectorState = testCalibration.instrumentState.detectorState
-    
+
     actualDetectorState = localDataService.readDetectorState("123")
     assert actualDetectorState == testDetectorState
 
@@ -1560,10 +1576,10 @@ def test_writeDiffCalWorkspaces():
 def test_writeDiffCalWorkspaces_bad_path():
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
-    with pytest.raises( # noqa: PT012
+    with pytest.raises(  # noqa: PT012
         RuntimeError,
         match="specify filename including '.h5' extension",
-        ):
+    ):
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
             basePath = Path(basePath)
             tableWSName = "test_table"

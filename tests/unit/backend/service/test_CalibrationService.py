@@ -225,7 +225,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @patch(
         thisService + "CalibrationMetricsWorkspaceIngredients",
         return_value=MagicMock(
-            calibrationRecord=CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json")),
+            calibrationRecord=CalibrationRecord.parse_raw(
+                Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+            ),
             timestamp="123",
         ),
     )
@@ -386,9 +388,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Assert all "persistent" workspaces have been loaded
             for wsNames in calibRecord.workspaces.values():
                 for wsName in wsNames:
-                    assert self.instance.dataFactoryService.workspaceDoesExist(
-                        wsName
-                    )
+                    assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 
     def test_load_quality_assessment_no_units(self):
         with pytest.raises(RuntimeError, match=r"without a units token in its name"):  # noqa: PT012

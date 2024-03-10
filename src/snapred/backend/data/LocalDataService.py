@@ -2,9 +2,9 @@ import datetime
 import glob
 import json
 import os
+from copy import deepcopy
 from errno import ENOENT as NOT_FOUND
 from pathlib import Path
-from copy import deepcopy
 from typing import Any, Dict, List, Tuple
 
 import h5py
@@ -254,7 +254,7 @@ class LocalDataService:
     def _constructNormalizationCalibrationStatePath(self, stateId):
         # TODO: Propagate pathlib through codebase
         return f"{self._constructCalibrationStateRoot(stateId)}/normalization/"
-    
+
     def readCalibrationIndex(self, runId: str):
         # Need to run this because of its side effect, TODO: Remove side effect
         stateId, _ = self._generateStateId(runId)
@@ -528,13 +528,13 @@ class LocalDataService:
         # check if directory exists for runId
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
-        
+
         # Update the to-be saved record's "workspaces" information
         #   to correspond to the filenames that will actually be saved to disk.
         savedWorkspaces = {}
         workspaces = record.workspaces.copy()
         wss = []
-        for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []): 
+        for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []):
             # Rebuild the workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
             if wng.Units.TOF.lower() in wsName:
@@ -544,7 +544,7 @@ class LocalDataService:
             else:
                 raise RuntimeError(
                     f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
-                )        
+                )
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_OUTPUT] = wss
         wss = []
@@ -562,10 +562,10 @@ class LocalDataService:
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_MASK] = wss
         savedRecord = deepcopy(record)
-        savedRecord.workspaces = savedWorkspaces                
+        savedRecord.workspaces = savedWorkspaces
         # write record to file
         write_model_pretty(savedRecord, recordPath)
-        
+
         self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, str(version))
 
         logger.info(f"Wrote CalibrationRecord: version: {version}")
@@ -584,9 +584,15 @@ class LocalDataService:
             # Rebuild the filename to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
             if wng.Units.TOF.lower() in wsName:
-                filename = Path(wng.diffCalOutput().unit(wng.Units.TOF).runNumber(record.runNumber).version(record.version).build() + ".nxs")
+                filename = Path(
+                    wng.diffCalOutput().unit(wng.Units.TOF).runNumber(record.runNumber).version(record.version).build()
+                    + ".nxs"
+                )
             elif wng.Units.DSP.lower() in wsName:
-                filename = Path(wng.diffCalOutput().unit(wng.Units.DSP).runNumber(record.runNumber).version(record.version).build() + ".nxs")
+                filename = Path(
+                    wng.diffCalOutput().unit(wng.Units.DSP).runNumber(record.runNumber).version(record.version).build()
+                    + ".nxs"
+                )
             else:
                 raise RuntimeError(
                     f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
@@ -598,7 +604,9 @@ class LocalDataService:
         ):
             # Rebuild the filename to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple table workspaces.
-            diffCalFilename = Path(wng.diffCalTable().runNumber(record.runNumber).version(record.version).build() + ".h5")
+            diffCalFilename = Path(
+                wng.diffCalTable().runNumber(record.runNumber).version(record.version).build() + ".h5"
+            )
             self.writeDiffCalWorkspaces(
                 calibrationDataPath,
                 diffCalFilename,
