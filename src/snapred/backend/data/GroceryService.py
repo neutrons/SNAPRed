@@ -312,7 +312,7 @@ class GroceryService:
     def _getCalibrationDataPath(self, runNumber: str, version: str) -> str:
         return self.dataService._constructCalibrationDataPath(runNumber, version)
 
-    def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> WorkspaceName:
+    def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> Dict[str, Any]:
         """
         Will fetch a workspace given a name and a path.
         inputs:
@@ -647,7 +647,7 @@ class GroceryService:
 
     def clearADS(self, exclude: List[str] = [], cache: bool = False):
         """
-        Clears ads of all workspaces except those in the exclude list and cache.
+        Clears ADS of all workspaces except those in the exclude list and cache.
         """
         workspacesToClear = mtd.getObjectNames()
         # filter exclude
