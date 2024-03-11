@@ -29,7 +29,8 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
 
         self.fakeRawData = "_test_diffcal_rx"
         self.fakeGroupingWorkspace = "_test_diffcal_rx_grouping"
-        self.fakeOutputWorkspace = "_test_diffcal_rx_output"
+        self.fakeTOFOutputWorkspace = "_test_diffcal_rx_tof_output"
+        self.fakeDSPOutputWorkspace = "_test_diffcal_rx_dsp_output"
         self.fakeTableWorkspace = "_test_diffcal_rx_table"
         self.fakeMaskWorkspace = "_test_diffcal_rx_mask"
         self.syntheticInputs.generateWorkspaces(self.fakeRawData, self.fakeGroupingWorkspace, self.fakeMaskWorkspace)
@@ -37,7 +38,8 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         self.groceryList = {
             "inputWorkspace": self.fakeRawData,
             "groupingWorkspace": self.fakeGroupingWorkspace,
-            "outputWorkspace": self.fakeOutputWorkspace,
+            "outputTOFWorkspace": self.fakeTOFOutputWorkspace,
+            "outputDSPWorkspace": self.fakeDSPOutputWorkspace,
             "calibrationTable": self.fakeTableWorkspace,
             "maskWorkspace": self.fakeMaskWorkspace,
         }
@@ -71,7 +73,7 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         assert result["result"]
         assert result["steps"] == [{"medianOffset": x} for x in [4, 2, 1, 0.5]]
         assert result["calibrationTable"] == "passed"
-        assert result["outputWorkspace"] == "passed"
+        assert result["outputTOFWorkspace"] == "passed"
         assert result["maskWorkspace"] == "passed"
 
     @mock.patch(PixelCalAlgo)
@@ -153,7 +155,7 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         maxIterations = Config["calibration.diffraction.maximumIterations"]
         assert result["steps"] == [{"medianOffset": 11 - i} for i in range(maxIterations)]
         assert result["calibrationTable"] == "fake"
-        assert result["outputWorkspace"] == "fake"
+        assert result["outputTOFWorkspace"] == "fake"
         assert result["maskWorkspace"] == "fake"
         # change the config then run again
         maxIterations = 7
@@ -163,7 +165,7 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         assert result["result"]
         assert result["steps"] == [{"medianOffset": 11 - i} for i in range(maxIterations)]
         assert result["calibrationTable"] == "fake"
-        assert result["outputWorkspace"] == "fake"
+        assert result["outputTOFWorkspace"] == "fake"
         assert result["maskWorkspace"] == "fake"
 
     @mock.patch(PixelCalAlgo)
@@ -177,7 +179,7 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         assert result["result"]
         assert result["steps"] == [{"medianOffset": i} for i in [2, 1]]
         assert result["calibrationTable"] == "fake"
-        assert result["outputWorkspace"] == "fake"
+        assert result["outputTOFWorkspace"] == "fake"
         assert result["maskWorkspace"] == "fake"
 
 

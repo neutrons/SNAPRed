@@ -301,10 +301,18 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in res
         assert "raw" in res
 
-    def test_diffcal_output_workspacename(self):
+    def test_diffcal_output_tof_workspacename(self):
         # Test name generation for diffraction-calibration focussed-data workspace
         res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber, self.version, wng.Units.TOF)
         assert "tof" in res
+        assert self.runNumber in res
+        assert self.version in res
+        assert "diffoc" in res
+
+    def test_diffcal_output_dsp_workspacename(self):
+        # Test name generation for diffraction-calibration focussed-data workspace
+        res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber, self.version, wng.Units.DSP)
+        assert "dsp" in res
         assert self.runNumber in res
         assert self.version in res
         assert "diffoc" in res

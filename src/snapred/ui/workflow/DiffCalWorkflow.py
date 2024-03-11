@@ -270,7 +270,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),
             workspaces={
-                wngt.DIFFCAL_OUTPUT: [response.data["outputWorkspace"]],
+                wngt.DIFFCAL_OUTPUT: [response.data["outputDSPWorkspace"], response.data["outputTOFWorkspace"]],
                 wngt.DIFFCAL_TABLE: [response.data["calibrationTable"]],
                 wngt.DIFFCAL_MASK: [response.data["maskWorkspace"]],
             },

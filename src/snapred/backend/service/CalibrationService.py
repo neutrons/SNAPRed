@@ -53,6 +53,7 @@ from snapred.meta.redantic import list_to_raw
 logger = snapredLogger.getLogger(__name__)
 
 
+# import pdb
 @Singleton
 class CalibrationService(Service):
     dataFactoryService: "DataFactoryService"
@@ -124,8 +125,11 @@ class CalibrationService(Service):
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(
             request.focusGroup.name
         ).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).unit(
+        self.groceryClerk.specialOrder().name("outputTOFWorkspace").diffcal_output(request.runNumber).unit(
             wng.Units.TOF
+        ).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.specialOrder().name("outputDSPWorkspace").diffcal_output(request.runNumber).unit(
+            wng.Units.DSP
         ).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.specialOrder().name("calibrationTable").diffcal_table(request.runNumber).useLiteMode(
             request.useLiteMode
@@ -160,7 +164,12 @@ class CalibrationService(Service):
         groupingWorkspace = self.groceryService.fetchGroupingDefinition(self.groceryClerk.build())["workspace"]
         # now focus
         focusedWorkspace = (
-            wng.run().runNumber(request.runNumber).group(request.focusGroup.name).auxiliary("F-dc").build()
+            wng.run()
+            .runNumber(request.runNumber)
+            .group(request.focusGroup.name)
+            .unit(wng.Units.DSP)
+            .auxiliary("F-dc")
+            .build()
         )
         if not self.groceryService.workspaceDoesExist(focusedWorkspace):
             FocusSpectraRecipe().executeRecipe(
