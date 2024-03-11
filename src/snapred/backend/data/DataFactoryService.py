@@ -112,6 +112,7 @@ class DataFactoryService:
     def workspaceDoesExist(self, name):
         return self.groceryService.workspaceDoesExist(name)
 
+    # TODO: these are _write_ methods: move to `DataExportService` via `LocalDataService`
     def deleteWorkspace(self, name):
         return self.groceryService.deleteWorkspace(name)
 

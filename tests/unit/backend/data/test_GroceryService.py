@@ -4,7 +4,6 @@ import os
 import shutil
 import tempfile
 import unittest
-from curses import raw
 from pathlib import Path
 from typing import Dict, Tuple
 from unittest import mock
@@ -34,6 +33,7 @@ from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 from util.instrument_helpers import mapFromSampleLogs
@@ -53,7 +53,6 @@ class TestGroceryService(unittest.TestCase):
         cls.version = "1"
         cls.runNumber1 = "556"
         cls.useLiteMode = False
-        cls.version = None
         cls.sampleWSFilePath = Resource.getPath(f"inputs/test_{cls.runNumber}_groceryservice.nxs")
 
         cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
@@ -80,6 +79,7 @@ class TestGroceryService(unittest.TestCase):
         cls.detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
         cls.detectorState2 = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
 
+        cls.difc_name = "diffract_consts"
         cls.sampleDiffCalFilePath = Resource.getPath(f"inputs/test_diffcal_{cls.runNumber}_groceryservice.h5")
         cls.sampleTableWS = "_table_grocery_to_fetch"
         createCompatibleDiffCalTable(cls.sampleTableWS, cls.sampleWS)
@@ -93,7 +93,11 @@ class TestGroceryService(unittest.TestCase):
         )
         assert os.path.exists(cls.sampleDiffCalFilePath)
 
-        cls.exclude = [cls.sampleWS, cls.fetchedWSname, cls.sampleTableWS, cls.sampleMaskWS]
+        # cleanup at per-test teardown
+        cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS]
+
+        # cleanup during running tests:
+        cls.exclude = cls.excludeAtTeardown + [cls.fetchedWSname]
 
     def setUp(self):
         self.instance = GroceryService()
@@ -110,7 +114,7 @@ class TestGroceryService(unittest.TestCase):
     def clearoutWorkspaces(self) -> None:
         """Delete the workspaces created by loading"""
         for ws in mtd.getObjectNames():
-            if ws not in (self.sampleWS, self.sampleTableWS, self.sampleMaskWS):
+            if ws not in self.excludeAtTeardown:
                 DeleteWorkspace(ws)
 
     def tearDown(self):
@@ -138,6 +142,17 @@ class TestGroceryService(unittest.TestCase):
             DataX=[1],
             DataY=[1],
         )
+
+    # Check that string wsname_1 has a new token in comparison to wsname_2.
+    # Note, the exact order of tokens and the location of the extra token within the string
+    # are up to WorkspaceNameGenerator, which isn't the objective of this check method.
+    def check_workspace_name_has_extra_token(self, wsname_1: str, wsname_2: str, extra_token: str) -> bool:
+        delimiter = "_"
+        tokens_1 = wsname_1.split(delimiter)
+        tokens_2 = wsname_2.split(delimiter)
+        diff_12 = [x for x in tokens_1 if x not in tokens_2]
+        diff_21 = [x for x in tokens_2 if x not in tokens_1]
+        return diff_12 == [extra_token] and diff_21 == []
 
     ## TESTS OF FILENAME METHODS
 
@@ -178,9 +193,9 @@ class TestGroceryService(unittest.TestCase):
     def test_key_grouping(self):
         """ensure the key is a unique identifier for run number and lite mode"""
         runId1 = "2462"
-        grouping1 = "555"
+        grouping1 = "column"
         runId2 = "2463"
-        grouping2 = "556"
+        grouping2 = "bank"
 
         lite = True
         native = False
@@ -244,23 +259,24 @@ class TestGroceryService(unittest.TestCase):
     def test_neutron_workspacename_plain(self):
         """Test the creation of a plain nexus workspace name"""
         res = self.instance._createNeutronWorkspaceName(self.runNumber, False)
-        assert res == f"tof_all_{self.runNumber}"
+        fRunNumber = wnvf.formatRunNumber(self.runNumber)
+        assert res == f"tof_all_{fRunNumber}"
         # now use lite mode
         res = self.instance._createNeutronWorkspaceName(self.runNumber, True)
-        assert res == f"tof_all_lite_{self.runNumber}"
+        assert res == f"tof_all_lite_{fRunNumber}"
 
     def test_neutron_workspacename_raw(self):
         """Test the creation of a raw nexus workspace name"""
-        res = self.instance._createRawNeutronWorkspaceName(self.runNumber, False)
-        plain = self.instance._createNeutronWorkspaceName(self.runNumber, False)
-        assert res == plain + "_raw"
+        plainName = self.instance._createNeutronWorkspaceName(self.runNumber, False)
+        rawName = self.instance._createRawNeutronWorkspaceName(self.runNumber, False)
+        assert self.check_workspace_name_has_extra_token(rawName, plainName, "raw")
 
     def test_neutron_workspacename_copy(self):
         """Test the creation of a copy nexus workspace name"""
         fakeCopies = 117
-        res = self.instance._createCopyNeutronWorkspaceName(self.runNumber, False, fakeCopies)
-        plain = self.instance._createNeutronWorkspaceName(self.runNumber, False)
-        assert res == plain + f"_copy{fakeCopies}"
+        plainName = self.instance._createNeutronWorkspaceName(self.runNumber, False)
+        copyName = self.instance._createCopyNeutronWorkspaceName(self.runNumber, False, fakeCopies)
+        assert self.check_workspace_name_has_extra_token(copyName, plainName, f"copy{fakeCopies}")
 
     def test_grouping_workspacename(self):
         """Test the creation of a grouping workspace name"""
@@ -275,7 +291,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_litedatamap_workspacename(self):
         """Test the creation of name for Lite data map"""
-        res = self.instance._createGroupingWorkspaceName("Lite", self.runNumber, True)
+        res = self.instance._createGroupingWorkspaceName("Lite", self.runNumber, False)
         assert res == "lite_grouping_map"
 
     def test_diffcal_input_workspacename(self):
@@ -287,22 +303,25 @@ class TestGroceryService(unittest.TestCase):
 
     def test_diffcal_output_workspacename(self):
         # Test name generation for diffraction-calibration focussed-data workspace
-        res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber)
+        res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber, self.version, wng.Units.TOF)
         assert "tof" in res
         assert self.runNumber in res
+        assert self.version in res
         assert "diffoc" in res
 
     def test_diffcal_table_workspacename(self):
         # Test name generation for diffraction-calibration output table
-        res = self.instance._createDiffcalTableWorkspaceName(self.runNumber)
-        assert "difc" in res
+        res = self.instance._createDiffcalTableWorkspaceName(self.runNumber, self.version)
+        assert self.difc_name in res
         assert self.runNumber in res
+        assert self.version in res
 
     def test_diffcal_mask_workspacename(self):
         # Test name generation for diffraction-calibration output mask
-        res = self.instance._createDiffcalMaskWorkspaceName(self.runNumber)
-        assert "difc" in res
+        res = self.instance._createDiffcalMaskWorkspaceName(self.runNumber, self.version)
+        assert self.difc_name in res
         assert self.runNumber in res
+        assert self.version in res
         assert "mask" in res
 
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
@@ -310,8 +329,9 @@ class TestGroceryService(unittest.TestCase):
         # Test name generation for diffraction-calibration table filename
         mockConstructCalibrationDataPath.return_value = "nowhere/"
         res = self.instance._createDiffcalTableFilename(self.runNumber, self.version)
-        assert "difc" in res
+        assert self.difc_name in res
         assert self.runNumber in res
+        assert self.version in res
         assert ".h5" in res
 
     ## TESTS OF ACCESS METHODS
@@ -953,9 +973,16 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_list_specialOrder_diffcal_output(self, mockDetectorState):
         # Test of workspace type "diffcal_output" as `Output` (i.e. "specialOrder") argument in the `GroceryList`
         mockDetectorState.return_value = self.detectorState1
-        groceryList = GroceryListItem.builder().specialOrder().native().diffcal_output(self.runNumber).buildList()
+        groceryList = (
+            GroceryListItem.builder()
+            .specialOrder()
+            .native()
+            .diffcal_output(self.runNumber)
+            .unit(wng.Units.TOF)
+            .buildList()
+        )
         items = self.instance.fetchGroceryList(groceryList)
-        assert items[0] == wng.diffCalOutput().runNumber(self.runNumber).build()
+        assert items[0] == wng.diffCalOutput().unit(wng.Units.TOF).runNumber(self.runNumber).build()
 
     @mock.patch.object(GroceryService, "_getDetectorState")
     def test_fetch_grocery_list_specialOrder_diffcal_table(self, mockDetectorState):
@@ -979,8 +1006,10 @@ class TestGroceryService(unittest.TestCase):
         path = Resource.getPath("outputs")
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
             mockCalibrationDataPath.return_value = tmpPath
-            groceryList = GroceryListItem.builder().native().diffcal_output(self.runNumber1).buildList()
-            diffCalOutputName = wng.diffCalOutput().runNumber(self.runNumber1).build()
+            groceryList = (
+                GroceryListItem.builder().native().diffcal_output(self.runNumber1).unit(wng.Units.TOF).buildList()
+            )
+            diffCalOutputName = wng.diffCalOutput().runNumber(self.runNumber1).unit(wng.Units.TOF).build()
             diffCalOutputFilename = diffCalOutputName + ".nxs"
             shutil.copy2(self.sampleWSFilePath, Path(tmpPath) / diffCalOutputFilename)
             assert (Path(tmpPath) / diffCalOutputFilename).exists()
@@ -995,8 +1024,8 @@ class TestGroceryService(unittest.TestCase):
         # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
         mockCalibrationDataPath.return_value = "/does/not/exist"
-        groceryList = GroceryListItem.builder().native().diffcal_output(self.runNumber1).buildList()
-        diffCalOutputName = wng.diffCalOutput().runNumber(self.runNumber1).build()
+        groceryList = GroceryListItem.builder().native().diffcal_output(self.runNumber1).unit(wng.Units.TOF).buildList()
+        diffCalOutputName = wng.diffCalOutput().unit(wng.Units.TOF).runNumber(self.runNumber1).build()
         CloneWorkspace(
             InputWorkspace=self.sampleWS,
             OutputWorkspace=diffCalOutputName,

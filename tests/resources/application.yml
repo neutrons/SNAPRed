@@ -87,17 +87,18 @@ mantid:
     workspace:
       nameTemplate:
         delimiter: "_"
-        run: "{unit},{group},{lite},{runNumber},{auxiliary}"
+        run: "{unit},{group},{lite},{auxiliary},{runNumber}"
         diffCal:
           input: "_{unit},{runNumber},raw"
-          table: "_DIFC,{runNumber},{version}"
-          output: "_{unit},{runNumber},{version},diffoc"
-          mask: "_DIFC,{runNumber},{version},mask"
-          metric: "{runNumber},{version},calibration_metrics,{metricName}"
+          table: "_diffract_consts,{runNumber},{version}"
+          output: "_{unit},diffoc,{runNumber},{version}"
+          mask: "_diffract_consts,mask,{runNumber},{version}"
+          metric: "_calib_metrics,{metricName},{runNumber},{version}"
+          timed_metric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
         normCal:
-          rawVanadium: "{unit},{group},{runNumber},raw_van_corr"
-          focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr"
-          smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_cor"
+          rawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
+          focusedRawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
+          smoothedFocusedRawVanadium: "{unit},{group},fitted_van_cor,{runNumber}"
         units:
           dSpacing: dsp
           timeOfFlight: tof
