@@ -68,25 +68,25 @@ class PixelGroup(BaseModel):
 
     # these are not properties, but they reflect the actual data consumption
 
-    def dMax(self) -> List[float]:
+    def dMax(self, default=0.0) -> List[float]:
         # Warning: if the pixel-group is fully masked, it requires special treatment:
         #   different Mantid algorithms use either "0.0" or "NaN" to indicate an unspecified value,
         #   so these values may need to be filtered.
         return [
             self.pixelGroupingParameters[gid].dResolution.maximum
             if not self.pixelGroupingParameters[gid].isMasked
-            else 0.0
+            else default
             for gid in self.groupIDs
         ]
 
-    def dMin(self) -> List[float]:
+    def dMin(self, default=0.0) -> List[float]:
         # Warning: if the pixel-group is fully masked, it requires special treatment:
         #   different Mantid algorithms use either "0.0" or "NaN" to indicate an unspecified value,
         #   so these values may need to be filtered.
         return [
             self.pixelGroupingParameters[gid].dResolution.minimum
             if not self.pixelGroupingParameters[gid].isMasked
-            else 0.0
+            else default
             for gid in self.groupIDs
         ]
 

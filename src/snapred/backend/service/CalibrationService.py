@@ -95,7 +95,7 @@ class CalibrationService(Service):
         # NOTE this is not a real method
         # it's here to be used in the registered paths above, for the moment
         # when possible this and its registered paths should be deleted
-        return {}
+        raise NotImplementedError("You tried to access an invalid path in the calibration service.")
 
     @FromString
     def prepDiffractionCalibrationIngredients(
