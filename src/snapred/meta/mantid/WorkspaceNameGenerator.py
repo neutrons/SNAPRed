@@ -148,15 +148,6 @@ class _WorkspaceNameGenerator:
             version="",
         )
 
-    def diffCalOutputdSpacing(self):
-        return NameBuilder(
-            self._diffCalOutputTemplate,
-            self._diffCalOutputTemplateKeys,
-            self._delimiter,
-            unit=self.Units.DSP,
-            version="",
-        )
-
     def diffCalMask(self):
         return NameBuilder(self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter, version="")
 
