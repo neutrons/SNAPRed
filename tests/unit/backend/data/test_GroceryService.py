@@ -311,9 +311,10 @@ class TestGroceryService(unittest.TestCase):
 
     def test_diffcal_output_dsp_workspacename(self):
         # Test name generation for diffraction-calibration focussed-data workspace
-        res = self.instance._createDiffcalDSPOutputWorkspaceName(self.runNumber)
+        res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber, self.version, wng.Units.DSP)
         assert "dsp" in res
         assert self.runNumber in res
+        assert self.version in res
         assert "diffoc" in res
 
     def test_diffcal_table_workspacename(self):

@@ -569,7 +569,7 @@ class GroceryService:
                         item.runNumber, item.version, item.unit
                     )
                     if item.isOutput:
-                        res = {"result": True, "workspace": diffcalTOFOutputWorkspaceName}
+                        res = {"result": True, "workspace": diffcalOutputWorkspaceName}
                     else:
                         res = self.fetchWorkspace(
                             self._createDiffcalOutputWorkspaceFilename(item.runNumber, item.version, item.unit),

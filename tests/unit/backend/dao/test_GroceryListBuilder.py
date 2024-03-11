@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
 class TestGroceryListBuilder(unittest.TestCase):
@@ -43,16 +44,16 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert item.workspaceType == "diffcal"
 
     def test_diffcal_output_tof(self):
-        item = GroceryListBuilder().specialOrder().diffcal_output_tof(self.runNumber).lite().build()
+        item = GroceryListBuilder().specialOrder().diffcal_output(self.runNumber).unit(wng.Units.TOF).lite().build()
         assert item.runNumber == self.runNumber
         assert item.isOutput is True
-        assert item.workspaceType == "diffcal_output_tof"
+        assert item.workspaceType == "diffcal_output"
 
     def test_diffcal_output_dsp(self):
-        item = GroceryListBuilder().specialOrder().diffcal_output_dsp(self.runNumber).lite().build()
+        item = GroceryListBuilder().specialOrder().diffcal_output(self.runNumber).unit(wng.Units.DSP).lite().build()
         assert item.runNumber == self.runNumber
         assert item.isOutput is True
-        assert item.workspaceType == "diffcal_output_dsp"
+        assert item.workspaceType == "diffcal_output"
 
     def test_diffcal_table(self):
         item = GroceryListBuilder().specialOrder().diffcal_table(self.runNumber).lite().build()
@@ -165,7 +166,7 @@ class TestGroceryListBuilder(unittest.TestCase):
 
     def test_diffcal_output_with_instrument(self):
         with pytest.raises(ValueError) as e:
-            GroceryListBuilder().diffcal_output_dsp(self.runNumber).native().source(InstrumentName="SNAP").build()
+            GroceryListBuilder().diffcal_output(self.runNumber).native().source(InstrumentName="SNAP").build()
         assert "should not specify an instrument" in str(e.value)
 
     def test_nexus_clean_and_dirty(self):

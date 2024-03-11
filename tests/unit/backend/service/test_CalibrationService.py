@@ -523,7 +523,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
 
         focusedWorkspace = (
-            wng.run().runNumber(request.runNumber).group(request.focusGroup.name).auxiliary("F-dc").build()
+            wng.run().runNumber(request.runNumber).group(request.focusGroup.name).unit(wng.Units.DSP).auxiliary("F-dc").build()
         )
         assert not mtd.doesExist(focusedWorkspace)
 
@@ -558,7 +558,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # create the focused wprkspace in the ADS
         focusedWorkspace = (
-            wng.run().runNumber(request.runNumber).group(request.focusGroup.name).auxiliary("F-dc").build()
+            wng.run().runNumber(request.runNumber).group(request.focusGroup.name).unit(wng.Units.DSP).auxiliary("F-dc").build()
         )
         CreateSingleValuedWorkspace(OutputWorkspace=focusedWorkspace)
 
