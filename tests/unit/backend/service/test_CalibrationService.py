@@ -580,6 +580,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_reduction(self):
         with pytest.raises(NotImplementedError):
             self.instance.fakeMethod()
+
     def test_initializeState(self):
         testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
         mockInitializeState = mock.Mock(return_value=testCalibration.instrumentState)
@@ -611,11 +612,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.checkCalibrationStateExists = mockCheckCalibrationStateExists
         self.instance.hasState(self.runNumber)
         mockCheckCalibrationStateExists.assert_called_once_with(self.runNumber)
-
-    # TODO remove this --- it only exists to make codecov happy
-    def test_reduction(self):
-        with pytest.raises(NotImplementedError):
-            self.instance.fakeMethod()
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
