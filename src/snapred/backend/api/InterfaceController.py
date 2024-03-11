@@ -1,6 +1,10 @@
 import inspect
+import json
 
 from snapred.backend.dao import SNAPRequest, SNAPResponse
+from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
+from snapred.backend.dao.SNAPResponse import ResponseCode
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.service.ServiceFactory import ServiceFactory
 from snapred.meta.decorators.Singleton import Singleton
@@ -23,22 +27,30 @@ class InterfaceController:
         try:
             self.logger.debug(f"Request Received: {request.json()}")
             snapredLogger.clearWarnings()
-            # leaving this a separate line makes stack traces make more sense
+
             service = self.serviceFactory.getService(request.path)
-            # run the recipe
             result = service.orchestrateRecipe(request)
-            # convert the response into object to communicate with
 
             message = None
             if snapredLogger.hasWarnings():
                 message = self.getWarnings()
-                snapredLogger.clearWarnings()
-            response = SNAPResponse(code=200, message=message, data=result)
+            response = SNAPResponse(code=ResponseCode.OK, message=message, data=result)
+
+        except RecoverableException as e:
+            self.logger.error(f"Recoverable error occurred: {str(e)}")
+            payloadDict = json.loads(request.payload)
+            runNumber = payloadDict["runNumber"]
+            if runNumber:
+                InitializeStateHandler.runId = runNumber
+            response = SNAPResponse(code=ResponseCode.RECOVERABLE, message="state")
+
         except Exception as e:  # noqa BLE001
             # handle exceptions, inform client if recoverable
             self.logger.exception("Failed to call service")
-            response = SNAPResponse(code=500, message=str(e))
-            return response
+            response = SNAPResponse(code=ResponseCode.ERROR, message=str(e))
+
+        finally:
+            snapredLogger.clearWarnings()
 
         self.logger.debug(response.json())
         return response

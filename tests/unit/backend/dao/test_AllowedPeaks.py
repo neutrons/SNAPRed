@@ -2,6 +2,7 @@ import pytest
 from pydantic.error_wrappers import ValidationError
 from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
 from snapred.meta.mantid.AllowedPeakTypes import allowed_peak_type_list
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 
 
 def test_literal_bad():
@@ -10,7 +11,7 @@ def test_literal_bad():
     with pytest.raises(ValidationError) as e:
         CalibrationAssessmentRequest(
             run={"runNumber": "123"},
-            workspace="nope",
+            workspaces={wngt.DIFFCAL_OUTPUT: ["nope"]},
             focusGroup={"name": "nope", "definition": "nope"},
             calibrantSamplePath="nope",
             useLiteMode=False,
@@ -24,11 +25,11 @@ def test_literal_good():
         try:
             CalibrationAssessmentRequest(
                 run={"runNumber": "123"},
-                workspace="nope",
+                workspaces={wngt.DIFFCAL_OUTPUT: ["nope"]},
                 focusGroup={"name": "nope", "definition": "nope"},
                 calibrantSamplePath="nope",
                 useLiteMode=False,
                 peakType=good,
             )
         except ValidationError:
-            assert pytest.fails()
+            pytest.fail("unexpected `ValidationError` during test")

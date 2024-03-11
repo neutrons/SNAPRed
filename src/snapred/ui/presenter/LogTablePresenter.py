@@ -5,7 +5,7 @@ from qtpy.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.SNAPRequest import SNAPRequest
-from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.threading.worker_pool import WorkerPool
 
 
@@ -34,4 +34,4 @@ class LogTablePresenter(object):
         return win
 
     def _responseOK(self, response: SNAPResponse):
-        return response.code - 200 < 100
+        return response.code < ResponseCode.MAX_OK

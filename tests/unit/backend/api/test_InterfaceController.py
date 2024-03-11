@@ -1,6 +1,9 @@
+import json
 import unittest.mock as mock
 
 import pytest
+from snapred.backend.dao.SNAPResponse import ResponseCode
+from snapred.backend.error.RecoverableException import RecoverableException
 
 # Mock out of scope modules before importing InterfaceController
 with mock.patch.dict(
@@ -14,15 +17,24 @@ with mock.patch.dict(
 ):
     from snapred.backend.api.InterfaceController import InterfaceController  # noqa: E402
 
-    def mockedSuccessfulInterfaceController():
+    def mockedSuccessfulInterfaceController(raiseRecoverable=False):
         """Mock InterfaceController"""
         interfaceController = InterfaceController()
         interfaceController.serviceFactory = mock.Mock()
         interfaceController.getWarnings = mock.Mock()
         interfaceController.getWarnings.return_value = None
-        # when serviceFactory.getService is called with value 'Test Service', return a mock service
+
+        def orchestrateRecipe_side_effect(request):  # noqa: ARG001
+            if raiseRecoverable:
+                raise RecoverableException(
+                    exception=AttributeError("'NoneType' object has no attribute 'instrumentState'"),
+                    errorMsg="AttributeError: 'NoneType' object has no attribute 'instrumentState'",
+                )
+            else:
+                return {"result": "Success!"}
+
         mockService = mock.Mock()
-        mockService.orchestrateRecipe.return_value = {"result": "Success!"}
+        mockService.orchestrateRecipe.side_effect = orchestrateRecipe_side_effect
 
         interfaceController.serviceFactory.getService.side_effect = (
             lambda x: mockService if x == "Test Service" else None
@@ -35,17 +47,31 @@ with mock.patch.dict(
         reductionRequest = mock.Mock()
         reductionRequest.path = "Test Service"
         response = interfaceController.executeRequest(reductionRequest)
-        assert response.code == 200
+        assert response.code == ResponseCode.OK
         assert response.message is None
         assert response.data["result"] == "Success!"
+
+    def test_executeRequest_recoverable():
+        """Test executeRequest with a recoverable service"""
+        interfaceController = mockedSuccessfulInterfaceController(raiseRecoverable=True)
+        stateCheckRequest = mock.Mock()
+        stateCheckRequest.path = "Test Service"
+        stateCheckRequest.payload = json.dumps({"runNumber": "12345"})
+
+        response = interfaceController.executeRequest(stateCheckRequest)
+
+        assert response.code == ResponseCode.RECOVERABLE
+        assert "state" in response.message
+        assert response.data is None
 
     def test_executeRequest_unsuccessful():
         """Test executeRequest with an unsuccessful service"""
         interfaceController = mockedSuccessfulInterfaceController()
         reductionRequest = mock.Mock()
         reductionRequest.path = "Non-existent Test Service"
-        # mock orchestrateRecipe to raise an exception
+
         response = interfaceController.executeRequest(reductionRequest)
-        assert response.code == 500
+
+        assert response.code == ResponseCode.ERROR
         assert response.message is not None
         assert response.data is None

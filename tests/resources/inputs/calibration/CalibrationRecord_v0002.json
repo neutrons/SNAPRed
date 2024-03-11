@@ -624,12 +624,10 @@
         }
       ]
     },
-    "workspaceNames": [
-      "fitted_strippedFocussedData_stripped_0",
-      "fitted_strippedFocussedData_stripped_1",
-      "fitted_strippedFocussedData_stripped_2",
-      "_difc_57514",
-      "_difc_57514_mask"
-    ],
-    "version": 7
+    "workspaces": {
+      "diffCalOutput": ["_tof_diffoc_057514_v0002"],
+      "diffCalTable": ["_diffract_consts_057514_v0002"],
+      "diffCalMask": ["_diffract_consts_mask_057514_v0002"]
+    },
+    "version": 2
   }

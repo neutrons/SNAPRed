@@ -1,8 +1,6 @@
 import json
 import time
-from datetime import date
-from functools import lru_cache
-from typing import List, Tuple
+from typing import Dict, List
 
 from pydantic import parse_file_as, parse_raw_as
 
@@ -15,6 +13,7 @@ from snapred.backend.dao.calibration import (
 )
 from snapred.backend.dao.ingredients import (
     CalibrationMetricsWorkspaceIngredients,
+    DiffractionCalibrationIngredients,
     GroceryListItem,
 )
 from snapred.backend.dao.request import (
@@ -24,6 +23,7 @@ from snapred.backend.dao.request import (
     CalibrationLoadAssessmentRequest,
     DiffractionCalibrationRequest,
     FarmFreshIngredients,
+    FocusSpectraRequest,
     InitializeStateRequest,
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
@@ -36,6 +36,7 @@ from snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe import Gen
 from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
     FitMultiplePeaksRecipe,
+    FocusSpectraRecipe,
     GenerateTableWorkspaceFromListOfDictRecipe,
 )
 from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
@@ -44,7 +45,9 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
@@ -66,6 +69,9 @@ class CalibrationService(Service):
         self.groceryClerk = GroceryListItem.builder()
         self.sousChef = SousChef()
         self.registerPath("reduction", self.fakeMethod)
+        self.registerPath("ingredients", self.prepDiffractionCalibrationIngredients)
+        self.registerPath("groceries", self.fetchDiffractionCalibrationGroceries)
+        self.registerPath("focus", self.focusSpectra)
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
         self.registerPath("initializeState", self.initializeState)
@@ -84,15 +90,17 @@ class CalibrationService(Service):
         return "calibration"
 
     @FromString
-    def fakeMethod(self):
+    def fakeMethod(self):  # pragma: no cover
         # NOTE this is not a real method
         # it's here to be used in the registered paths above, for the moment
         # when possible this and its registered paths should be deleted
         return {}
 
     @FromString
-    def diffractionCalibration(self, request: DiffractionCalibrationRequest):
-        # ingredients
+    def prepDiffractionCalibrationIngredients(
+        self, request: DiffractionCalibrationRequest
+    ) -> DiffractionCalibrationIngredients:
+        # fetch the ingredients needed to focus and plot the peaks
         cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
@@ -100,33 +108,25 @@ class CalibrationService(Service):
             focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
-            peakFunction=request.peakFunction,
             # fiddly-bits
+            peakFunction=request.peakFunction,
+            crystalDBounds={"minimum": request.crystalDMin, "maximum": request.crystalDMax},
             peakIntensityThreshold=request.peakIntensityThreshold,
             convergenceThreshold=request.convergenceThreshold,
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
         )
-        ingredients = self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
-        empties = [gpl for gpl in ingredients.groupedPeakLists if len(gpl.peaks) < self.MINIMUM_PEAKS_PER_GROUP]
-        if len(empties) > 0:
-            raise RuntimeError(
-                (
-                    f"Insufficient peaks for groups {[gpl.groupID for gpl in empties]} \n"
-                    "Consider decreasing the Peak Intensity Threshold."
-                )
-            )
+        return self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
 
+    @FromString
+    def fetchDiffractionCalibrationGroceries(self, request: DiffractionCalibrationRequest) -> Dict[str, str]:
         # groceries
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(
             request.focusGroup.name
         ).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.specialOrder().name("outputTOFWorkspace").diffcal_output_tof(request.runNumber).useLiteMode(
-            request.useLiteMode
-        ).add()
-        self.groceryClerk.specialOrder().name("outputDSPWorkspace").diffcal_output_dsp(request.runNumber).useLiteMode(
-            request.useLiteMode
-        ).add()
+        self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).unit(
+            wng.Units.TOF
+        ).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.specialOrder().name("calibrationTable").diffcal_table(request.runNumber).useLiteMode(
             request.useLiteMode
         ).add()
@@ -134,10 +134,42 @@ class CalibrationService(Service):
             request.useLiteMode
         ).add()
 
-        groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
+        return self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
+
+    @FromString
+    def diffractionCalibration(self, request: DiffractionCalibrationRequest):
+        # ingredients
+        ingredients = self.prepDiffractionCalibrationIngredients(request)
+        # groceries
+        groceries = self.fetchDiffractionCalibrationGroceries(request)
 
         # now have all ingredients and groceries, run recipe
         return DiffractionCalibrationRecipe().executeRecipe(ingredients, groceries)
+
+    @FromString
+    def focusSpectra(self, request: FocusSpectraRequest):
+        # prep the ingredients -- a pixel group
+        farmFresh = FarmFreshIngredients(
+            runNumber=request.runNumber,
+            useLiteMode=request.useLiteMode,
+            focusGroup=request.focusGroup,
+        )
+        ingredients = self.sousChef.prepPixelGroup(farmFresh)
+        # fetch the grouping workspace
+        self.groceryClerk.grouping(request.focusGroup.name).fromRun(request.runNumber).useLiteMode(request.useLiteMode)
+        groupingWorkspace = self.groceryService.fetchGroupingDefinition(self.groceryClerk.build())["workspace"]
+        # now focus
+        focusedWorkspace = (
+            wng.run().runNumber(request.runNumber).group(request.focusGroup.name).auxiliary("F-dc").build()
+        )
+        if not self.groceryService.workspaceDoesExist(focusedWorkspace):
+            FocusSpectraRecipe().executeRecipe(
+                InputWorkspace=request.inputWorkspace,
+                GroupingWorkspace=groupingWorkspace,
+                Ingredients=ingredients,
+                OutputWorkspace=focusedWorkspace,
+            )
+        return focusedWorkspace, groupingWorkspace
 
     @FromString
     def save(self, request: CalibrationExportRequest):
@@ -175,17 +207,7 @@ class CalibrationService(Service):
         return states
 
     def hasState(self, runId: str):
-        calibrationFile = self.dataFactoryService.checkCalibrationStateExists(runId)
-        if calibrationFile:
-            return True
-        else:
-            return False
-
-    def _getInstrumentDefinitionFilename(self, useLiteMode: bool):
-        if useLiteMode is True:
-            return Config["instrument.lite.definition.file"]
-        elif useLiteMode is False:
-            return Config["instrument.native.definition.file"]
+        return self.dataFactoryService.checkCalibrationStateExists(runId)
 
     # TODO make the inputs here actually work
     def _collectMetrics(self, focussedData, focusGroup, pixelGroup):
@@ -218,40 +240,58 @@ class CalibrationService(Service):
         # check if any of the workspaces already exist
         if request.checkExistent:
             wkspaceExists = False
+            wsName = None
             for metricName in ["sigma", "strain"]:
-                ws_name = (
-                    wng.diffCalMetrics()
-                    .runNumber(request.runId)
-                    .version(request.version)
-                    .metricName(metricName)
-                    .build()
-                )
-                if self.dataFactoryService.workspaceDoesExist(ws_name):
+                wsName = wng.diffCalMetric().metricName(metricName).runNumber(runId).version(version).build()
+                if self.dataFactoryService.workspaceDoesExist(wsName):
                     wkspaceExists = True
                     break
             if not wkspaceExists:
-                for ws_name in calibrationRecord.workspaceNames:
-                    if self.dataFactoryService.workspaceDoesExist(ws_name):
-                        wkspaceExists = True
-                        break
+                for wss in calibrationRecord.workspaces.values():
+                    for wsName in wss:
+                        if self.dataFactoryService.workspaceDoesExist(wsName):
+                            wkspaceExists = True
+                            break
             if wkspaceExists:
                 errorTxt = (
                     f"Calibration assessment for Run {runId} Version {version} "
-                    f"is already loaded: see workspace {ws_name}."
+                    f"is already loaded: see workspace {wsName}."
                 )
                 logger.error(errorTxt)
-                raise ValueError(errorTxt)
+                raise RuntimeError(errorTxt)
 
         # generate metrics workspaces
         GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
             CalibrationMetricsWorkspaceIngredients(calibrationRecord=calibrationRecord)
         )
 
-        # load persistent workspaces
-        for ws_name in calibrationRecord.workspaceNames:
-            self.dataFactoryService.getCalibrationDataWorkspace(
-                calibrationRecord.runNumber, calibrationRecord.version, ws_name
+        # load persistent data workspaces, assuming all workspaces are of WNG-type
+        workspaces = calibrationRecord.workspaces.copy()
+        for n, wsName in enumerate(workspaces.pop(wngt.DIFFCAL_OUTPUT, [])):
+            # The specific property name used here will not be used later, but there must be no collisions.
+            self.groceryClerk.name(wngt.DIFFCAL_OUTPUT + "_" + str(n).zfill(4))
+            if wng.Units.TOF.lower() in wsName:
+                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.TOF).add()
+            elif wng.Units.DSP.lower() in wsName:
+                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.DSP).add()
+            else:
+                raise RuntimeError(
+                    f"cannot load a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
+                )
+        for n, (tableWSName, maskWSName) in enumerate(
+            zip(
+                workspaces.pop(wngt.DIFFCAL_TABLE, []),
+                workspaces.pop(wngt.DIFFCAL_MASK, []),
             )
+        ):
+            # Diffraction calibration requires a complete pair 'table' + 'mask':
+            #   as above, the specific property name used here is not important.
+            self.groceryClerk.name(wngt.DIFFCAL_TABLE + "_" + str(n).zfill(4)).diffcal_table(runId, version).add()
+            self.groceryClerk.name(wngt.DIFFCAL_MASK + "_" + str(n).zfill(4)).diffcal_mask(runId, version).add()
+        if workspaces:
+            raise RuntimeError(f"not implemented: unable to load unexpected workspace types: {workspaces}")
+
+        self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
@@ -271,7 +311,7 @@ class CalibrationService(Service):
 
         # TODO: We Need to Fit the Data
         fitResults = FitMultiplePeaksRecipe().executeRecipe(
-            InputWorkspace=request.workspace, DetectorPeakIngredients=ingredients
+            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0], DetectorPeakIngredients=ingredients
         )
         metrics = self._collectMetrics(fitResults, request.focusGroup, ingredients.pixelGroup)
 
@@ -281,7 +321,7 @@ class CalibrationService(Service):
             calibrationFittingIngredients=self.sousChef.prepCalibration(request.run.runNumber),
             pixelGroups=[ingredients.pixelGroup],
             focusGroupCalibrationMetrics=metrics,
-            workspaceNames=[request.workspace],
+            workspaces=request.workspaces,
         )
 
         timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))

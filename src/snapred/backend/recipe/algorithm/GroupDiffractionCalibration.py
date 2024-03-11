@@ -141,7 +141,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # TODO: use workspace namer
         self.DIFCprev: str = ""
         if self.getProperty("PreviousCalibrationTable").isDefault:
-            self.DIFCprev = f"difc_prev_{self.runNumber}"
+            self.DIFCprev = f"diffract_consts_prev_{self.runNumber}"
             self.mantidSnapper.CalculateDiffCalTable(
                 "Initialize the DIFC table from input",
                 InputWorkspace=self.wsTOF,

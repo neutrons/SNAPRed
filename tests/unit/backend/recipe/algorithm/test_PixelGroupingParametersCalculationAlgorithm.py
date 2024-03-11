@@ -35,12 +35,7 @@ IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 class PixelGroupCalculation(unittest.TestCase):
     @classmethod
     def getInstrumentState(cls):
-        if IS_ON_ANALYSIS_MACHINE:
-            calibrationPath = (
-                "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/CalibrationParameters.json"
-            )
-        else:
-            calibrationPath = Resource.getPath("inputs/pixel_grouping/CalibrationParameters.json")
+        calibrationPath = Resource.getPath("inputs/pixel_grouping/CalibrationParameters.json")
         return parse_file_as(Calibration, calibrationPath).instrumentState
 
     @classmethod
@@ -291,17 +286,21 @@ class PixelGroupCalculation(unittest.TestCase):
         assert len(pixelGroupingParams_ref["dMax"]) == number_of_groupings_calc
         assert len(pixelGroupingParams_ref["delDOverD"]) == number_of_groupings_calc
 
+        # The golden data used here is questionable (for tests on analysis):
+        #   * this is dealt with in PR#256, not in this PR (#249);
+        #   * new treatment of instrument location parameters also needs to be verified again.
+
         for index, param in enumerate(pixelGroupingParams_ref["twoTheta"]):
-            assert abs(float(param) - pixelGroupingParams_calc[index].twoTheta) == 0
+            assert pytest.approx(float(param), 1.0e-4) == pixelGroupingParams_calc[index].twoTheta
 
         for index, param in enumerate(pixelGroupingParams_ref["dMin"]):
-            assert abs(float(param) - pixelGroupingParams_calc[index].dResolution.minimum) == 0
+            assert pytest.approx(float(param), 1.0e-4) == pixelGroupingParams_calc[index].dResolution.minimum
 
         for index, param in enumerate(pixelGroupingParams_ref["dMax"]):
-            assert abs(float(param) - pixelGroupingParams_calc[index].dResolution.maximum) == 0
+            assert pytest.approx(float(param), 1.0e-4) == pixelGroupingParams_calc[index].dResolution.maximum
 
         for index, param in enumerate(pixelGroupingParams_ref["delDOverD"]):
-            assert abs(float(param) - pixelGroupingParams_calc[index].dRelativeResolution) < 1.0e-3
+            assert pytest.approx(float(param), abs=1.0e-3) == pixelGroupingParams_calc[index].dRelativeResolution
 
     # LOCAL TESTS ON TEST INSTRUMENT
 

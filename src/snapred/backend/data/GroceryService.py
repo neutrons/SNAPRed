@@ -142,21 +142,16 @@ class GroceryService:
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
-    def _createDiffcalTOFOutputWorkspaceFilename(self, runId: str, version: str) -> str:
+    def _createDiffcalOutputWorkspaceFilename(self, runId: str, version: str, unit: str) -> str:
         return str(
             Path(self._getCalibrationDataPath(runId, version))
-            / (self._createDiffcalTOFOutputWorkspaceName(runId) + ".nxs")
-        )
-
-    def _createDiffcalDSPOutputWorkspaceFilename(self, runId: str, version: str) -> str:
-        return str(
-            Path(self._getCalibrationDataPath(runId, version))
-            / (self._createDiffcalDSPOutputWorkspaceName(runId) + ".nxs")
+            / (self._createDiffcalOutputWorkspaceName(runId, version, unit) + ".nxs")
         )
 
     def _createDiffcalTableFilename(self, runId: str, version: str) -> str:
         return str(
-            Path(self._getCalibrationDataPath(runId, version)) / (self._createDiffcalTableWorkspaceName(runId) + ".h5")
+            Path(self._getCalibrationDataPath(runId, version))
+            / (self._createDiffcalTableWorkspaceName(runId, version) + ".h5")
         )
 
     ## WORKSPACE NAME METHODS
@@ -186,17 +181,14 @@ class GroceryService:
     def _createDiffcalInputWorkspaceName(self, runId: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runId).build()
 
-    def _createDiffcalTOFOutputWorkspaceName(self, runId: str) -> WorkspaceName:
-        return wng.diffCalOutput().runNumber(runId).build()
+    def _createDiffcalOutputWorkspaceName(self, runId: str, version: str, unit: str) -> WorkspaceName:
+        return wng.diffCalOutput().unit(unit).runNumber(runId).version(version).build()
 
-    def _createDiffcalDSPOutputWorkspaceName(self, runId: str) -> WorkspaceName:
-        return wng.diffCalOutputdSpacing().runNumber(runId).build()
+    def _createDiffcalTableWorkspaceName(self, runId: str, version: str = "") -> WorkspaceName:
+        return wng.diffCalTable().runNumber(runId).version(version).build()
 
-    def _createDiffcalTableWorkspaceName(self, runId: str) -> WorkspaceName:
-        return wng.diffCalTable().runNumber(runId).build()
-
-    def _createDiffcalMaskWorkspaceName(self, runId: str) -> WorkspaceName:
-        return wng.diffCalMask().runNumber(runId).build()
+    def _createDiffcalMaskWorkspaceName(self, runId: str, version: str = "") -> WorkspaceName:
+        return wng.diffCalMask().runNumber(runId).version(version).build()
 
     ## ACCESSING WORKSPACES
     """
@@ -512,8 +504,8 @@ class GroceryService:
         """
 
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
-        tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber)
-        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber)
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber, version)
+        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, version)
 
         if self.workspaceDoesExist(tableWorkspaceName):
             data = {
@@ -572,35 +564,28 @@ class GroceryService:
                         + f"input table workspace: '{res['workspace']}'"
                     )
                 # for diffraction-calibration workspaces
-                case "diffcal_output_tof":
-                    diffcalTOFOutputWorkspaceName = self._createDiffcalTOFOutputWorkspaceName(item.runNumber)
+                case "diffcal_output":
+                    diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(
+                        item.runNumber, item.version, item.unit
+                    )
                     if item.isOutput:
                         res = {"result": True, "workspace": diffcalTOFOutputWorkspaceName}
                     else:
                         res = self.fetchWorkspace(
-                            self._createDiffcalTOFOutputWorkspaceFilename(item.runNumber, item.version),
-                            diffcalTOFOutputWorkspaceName,
-                        )
-                case "diffcal_output_dsp":
-                    diffcalDSPOutputWorkspaceName = self._createDiffcalDSPOutputWorkspaceName(item.runNumber)
-                    if item.isOutput:
-                        res = {"result": True, "workspace": diffcalDSPOutputWorkspaceName}
-                    else:
-                        res = self.fetchWorkspace(
-                            self._createDiffcalDSPOutputWorkspaceFilename(item.runNumber, item.version),
-                            diffcalDSPOutputWorkspaceName,
+                            self._createDiffcalOutputWorkspaceFilename(item.runNumber, item.version, item.unit),
+                            diffcalOutputWorkspaceName,
                         )
                 case "diffcal_table":
-                    tableWorkspaceName = self._createDiffcalTableWorkspaceName(item.runNumber)
+                    tableWorkspaceName = self._createDiffcalTableWorkspaceName(item.runNumber, item.version)
                     if item.isOutput:
                         res = {"result": True, "workspace": tableWorkspaceName}
                     else:
                         res = self.fetchCalibrationWorkspaces(item)
                         res["workspace"] = tableWorkspaceName
                 case "diffcal_mask":
-                    maskWorkspaceName = self._createDiffcalMaskWorkspaceName(item.runNumber)
+                    maskWorkspaceName = self._createDiffcalMaskWorkspaceName(item.runNumber, item.version)
                     if item.isOutput:
-                        res = {"result": True, "workspace": self._createDiffcalMaskWorkspaceName(item.runNumber)}
+                        res = {"result": True, "workspace": maskWorkspaceName}
                     else:
                         res = self.fetchCalibrationWorkspaces(item)
                         res["workspace"] = maskWorkspaceName
@@ -637,6 +622,7 @@ class GroceryService:
 
     ## CLEANUP METHODS
 
+    # TODO: move `deleteWorkspace` methods to `DataExportService` via `LocalDataService`
     def deleteWorkspace(self, name: WorkspaceName):
         """
         Deletes a workspace from Mantid.
@@ -646,6 +632,7 @@ class GroceryService:
         deleteAlgo.setProperty("Workspace", name)
         deleteAlgo.execute()
 
+    # TODO: move `deleteWorkspace` methods to `DataExportService` via `LocalDataService`
     def deleteWorkspaceUnconditional(self, name: WorkspaceName):
         """
         Deletes a workspace from Mantid, regardless of CIS mode.

@@ -86,7 +86,7 @@ class TestNormalizationService(unittest.TestCase):
 
     def clearoutWorkspaces(self) -> None:
         for ws in mtd.getObjectNames():
-            self.instance.dataExportService.deleteWorkspace(ws)
+            self.instance.groceryService.deleteWorkspace(ws)
 
     def tearDown(self) -> None:
         self.clearoutWorkspaces()
@@ -257,9 +257,9 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         result = self.instance.normalization(self.request)
         assert result == {
-            "correctedVanadium": "tof_unfoc_12345_raw_van_corr",
-            "focusedVanadium": f"tof_{self.request.focusGroup.name}_12345_s+f-vanadium",
-            "smoothedVanadium": "dsp_apple_12345_fitted_van_cor",
+            "correctedVanadium": "tof_unfoc_raw_van_corr_012345",
+            "focusedVanadium": f"tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
+            "smoothedVanadium": "dsp_apple_fitted_van_cor_012345",
             "detectorPeaks": self.instance.sousChef.prepNormalizationIngredients.return_value.detectorPeaks,
         }
 
