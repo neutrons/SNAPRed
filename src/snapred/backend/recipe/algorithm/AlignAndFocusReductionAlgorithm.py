@@ -35,7 +35,7 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
         #   "0.0" is used by 'Mantid::AlignAndFocusPowderFromFiles' as the _default_ value (=> a non-specified limit)
         self.dMin = ingredients.pixelGroup.dMin(default=0.0)
         self.dMax = ingredients.pixelGroup.dMax(default=0.0)
-        self.dBin = ingredients.pixelGroup.dBin(default=0.0)
+        self.dBin = ingredients.pixelGroup.dBin()
 
     def unbagGroceries(self):
         self.outputWorkspace = self.getPropertyValue("InputWorkspace")

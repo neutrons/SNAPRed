@@ -45,7 +45,7 @@ class ReductionAlgorithm(PythonAlgorithm):
         #   "NaN" is interpreted by 'Mantid::RebinRagged' to indicate an unspecified value
         self.dMin = ingredients.pixelGroup.dMin(default=nan)
         self.dMax = ingredients.pixelGroup.dMax(default=nan)
-        self.dBin = ingredients.pixelGroup.dBin(default=nan)
+        self.dBin = ingredients.pixelGroup.dBin()
 
     def unbagGroceries(self):
         self.outputWorkspace = self.getPropertyValue("InputWorkspace")
