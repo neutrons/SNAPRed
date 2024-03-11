@@ -1,3 +1,4 @@
+import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 
@@ -46,8 +47,16 @@ class AlignAndFocusReductionAlgorithm(PythonAlgorithm):
 
         self.mantidSnapper.executeQueue()
 
-        dMin = {pgp.groupID: pgp.dResolution.minimum for pgp in reductionIngredients.pixelGroupingParameters}
-        dMax = {pgp.groupID: pgp.dResolution.maximum for pgp in reductionIngredients.pixelGroupingParameters}
+        # Warning: <pixel grouping parameters>.isMasked will be set for fully-masked groups
+        #   "0.0" is used by 'Mantid::AlignAndFocusPowderFromFiles' as the _default_ value (=> a non-specified limit)
+        dMin = {
+            pgp.groupID: pgp.dResolution.minimum if not pgp.isMasked else 0.0
+            for pgp in reductionIngredients.pixelGroupingParameters
+        }
+        dMax = {
+            pgp.groupID: pgp.dResolution.maximum if not pgp.isMasked else 0.0
+            for pgp in reductionIngredients.pixelGroupingParameters
+        }
         dBin = {
             pgp.groupID: pgp.dRelativeResolution / reductionIngredients.reductionState.instrumentConfig.NBins
             for pgp in reductionIngredients.pixelGroupingParameters

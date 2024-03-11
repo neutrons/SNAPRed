@@ -80,7 +80,9 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
 
             sigmaAverage = np.average(sigmas)
             strainAverage = np.average(strains)
-            twoThetaAverage = pixelGroupingParameters[index].twoTheta
+
+            # Convert to degrees from radians (?)
+            twoThetaAverage = pixelGroupingParameters[index].twoTheta * (180.0 / np.pi)
 
             sigmaStandardDeviation = np.std(sigmas)
             strainStandardDeviation = np.std(strains)

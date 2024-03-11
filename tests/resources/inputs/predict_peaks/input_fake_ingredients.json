@@ -72,6 +72,7 @@
     "pixelGroupingParameters": [
       {
         "groupID": 0,
+        "isMasked": false,
         "twoTheta": 2.1108948177427838,
         "dResolution": {
           "minimum": 0.40224298673776404,
@@ -81,6 +82,7 @@
       },
       {
         "groupID": 1,
+        "isMasked": false,
         "twoTheta": 1.82310673131693,
         "dResolution": {
           "minimum": 0.44278229953817677,
@@ -90,6 +92,7 @@
       },
       {
         "groupID": 2,
+        "isMasked": false,
         "twoTheta": 1.5352228379083572,
         "dResolution": {
           "minimum": 0.5040188478793922,
@@ -99,6 +102,7 @@
       },
       {
         "groupID": 3,
+        "isMasked": false,
         "twoTheta": 1.440276389170165,
         "dResolution": {
           "minimum": 0.530714277849788,

@@ -21,17 +21,19 @@ class TestPixelGroup(unittest.TestCase):
     def setUpClass(cls):
         cls.nBinsAcrossPeakWidth = 7
         cls.groupIDs = [2, 3, 7, 11]
+        cls.isMasked = [False, False, False, False]
         cls.twoTheta = [0.1, 0.2, 0.3, 0.4]
         cls.dResolution = [
-            Limit(minimum=0, maximum=1),
-            Limit(minimum=1, maximum=2),
-            Limit(minimum=2, maximum=3),
-            Limit(minimum=3, maximum=4),
+            Limit(minimum=1.0e-3, maximum=1.0),
+            Limit(minimum=1.0e-3, maximum=2.0),
+            Limit(minimum=1.0e-4, maximum=1.5),
+            Limit(minimum=1.0e-4, maximum=1.0),
         ]
         cls.dRelativeResolution = [0.03, 0.05, 0.07, 0.09]
         cls.pixelGroupingParametersList = [
             PixelGroupingParameters(
                 groupID=cls.groupIDs[i],
+                isMasked=False,
                 twoTheta=cls.twoTheta[i],
                 dResolution=cls.dResolution[i],
                 dRelativeResolution=cls.dRelativeResolution[i],
@@ -74,6 +76,7 @@ class TestPixelGroup(unittest.TestCase):
         try:
             pg = PixelGroup(
                 groupIDs=self.groupIDs,
+                isMasked=self.isMasked,
                 twoTheta=self.twoTheta,
                 dResolution=self.dResolution,
                 dRelativeResolution=self.dRelativeResolution,
