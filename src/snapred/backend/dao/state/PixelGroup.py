@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import Dict, List, Optional, Union
-import numpy as np
 
+import numpy as np
 from pydantic import BaseModel, parse_obj_as
 
 from snapred.backend.dao.Limit import BinnedValue, Limit
@@ -72,13 +72,23 @@ class PixelGroup(BaseModel):
         # Warning: if the pixel-group is fully masked, it requires special treatment:
         #   different Mantid algorithms use either "0.0" or "NaN" to indicate an unspecified value,
         #   so these values may need to be filtered.
-        return [self.pixelGroupingParameters[gid].dResolution.maximum if not self.pixelGroupingParameters[gid].isMasked else 0.0 for gid in self.groupIDs]
+        return [
+            self.pixelGroupingParameters[gid].dResolution.maximum
+            if not self.pixelGroupingParameters[gid].isMasked
+            else 0.0
+            for gid in self.groupIDs
+        ]
 
     def dMin(self) -> List[float]:
         # Warning: if the pixel-group is fully masked, it requires special treatment:
         #   different Mantid algorithms use either "0.0" or "NaN" to indicate an unspecified value,
         #   so these values may need to be filtered.
-        return [self.pixelGroupingParameters[gid].dResolution.minimum if not self.pixelGroupingParameters[gid].isMasked else 0.0 for gid in self.groupIDs]
+        return [
+            self.pixelGroupingParameters[gid].dResolution.minimum
+            if not self.pixelGroupingParameters[gid].isMasked
+            else 0.0
+            for gid in self.groupIDs
+        ]
 
     def dBin(self) -> List[float]:
         Nbin = self.nBinsAcrossPeakWidth

@@ -11,6 +11,6 @@ class CalibrationMetric(BaseModel):
     sigmaStandardDeviation: float
     strainAverage: float
     strainStandardDeviation: float
-    
+
     # units: degrees (?)
     twoThetaAverage: float

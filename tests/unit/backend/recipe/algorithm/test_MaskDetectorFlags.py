@@ -1,28 +1,22 @@
 from collections.abc import Sequence
 from typing import Any, Dict, List, Tuple
 
-
 import pytest
-
 from mantid.simpleapi import (
-    LoadEmptyInstrument,
-    LoadDetectorsGroupingFile,
     CloneWorkspace,
     CompareWorkspaces,
+    LoadDetectorsGroupingFile,
+    LoadEmptyInstrument,
     mtd,
 )
-
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.log.logger import snapredLogger
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.MaskDetectorFlags import (
-    MaskDetectorFlags
-)
+from snapred.backend.recipe.algorithm.MaskDetectorFlags import MaskDetectorFlags
 from snapred.meta.Config import Resource
-
 from util.helpers import (
     createCompatibleMask,
     deleteWorkspaceNoThrow,
@@ -30,8 +24,8 @@ from util.helpers import (
 
 logger = snapredLogger.getLogger(__name__)
 
-class TestMaskDetectorFlags:
 
+class TestMaskDetectorFlags:
     @classmethod
     def setup_class(cls):
         instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
@@ -51,28 +45,28 @@ class TestMaskDetectorFlags:
         )
 
         cls.exclude = [cls.instrumentWS, cls.maskWS, cls.groupingWS]
-          
+
     @classmethod
     def teardown_class(cls):
         mtd.clear()
-        
+
     def setup_method(self):
         self.testInstrumentWS = mtd.unique_hidden_name()
         self.testMaskWS = mtd.unique_hidden_name()
         self.testGroupingWS = mtd.unique_hidden_name()
         CloneWorkspace(
-            InputWorkspace = self.instrumentWS,
-            OutputWorkspace = self.testInstrumentWS,
+            InputWorkspace=self.instrumentWS,
+            OutputWorkspace=self.testInstrumentWS,
         )
         CloneWorkspace(
-            InputWorkspace = self.maskWS,
-            OutputWorkspace = self.testMaskWS,
+            InputWorkspace=self.maskWS,
+            OutputWorkspace=self.testMaskWS,
         )
         CloneWorkspace(
-            InputWorkspace = self.groupingWS,
-            OutputWorkspace = self.testGroupingWS,
+            InputWorkspace=self.groupingWS,
+            OutputWorkspace=self.testGroupingWS,
         )
-            
+
     def teardown_method(self):
         for ws in mtd.getObjectNames():
             if ws not in self.exclude:
@@ -101,7 +95,7 @@ class TestMaskDetectorFlags:
                 mask.setValue(int(id_), True)
                 maskedCount += 1
         assert mask.getNumberMasked() == maskedCount
-        
+
         algo = MaskDetectorFlags()
         algo.initialize()
         algo.setProperty("MaskWorkspace", self.testMaskWS)
@@ -123,7 +117,7 @@ class TestMaskDetectorFlags:
                     break
         assert testCount == maskedCount
         assert flag
-        
+
     def test_exec_no_clear(self):
         """Test that no workspace values are modified"""
         mask = mtd[self.testMaskWS]
@@ -138,7 +132,7 @@ class TestMaskDetectorFlags:
                 mask.setValue(int(id_), True)
                 maskedCount += 1
         assert mask.getNumberMasked() == maskedCount
-        
+
         algo = MaskDetectorFlags()
         algo.initialize()
         algo.setProperty("MaskWorkspace", self.testMaskWS)
@@ -150,7 +144,7 @@ class TestMaskDetectorFlags:
             Workspace1=self.testInstrumentWS,
             Workspace2=self.instrumentWS,
         )
-        assert result        
+        assert result
 
     def test_exec_with_group(self):
         """Test that a grouping-workspace's detector flags are set"""
@@ -166,7 +160,7 @@ class TestMaskDetectorFlags:
                 mask.setValue(int(id_), True)
                 maskedCount += 1
         assert mask.getNumberMasked() == maskedCount
-        
+
         algo = MaskDetectorFlags()
         algo.initialize()
         algo.setProperty("MaskWorkspace", self.testMaskWS)
@@ -188,7 +182,7 @@ class TestMaskDetectorFlags:
                     break
         assert testCount == maskedCount
         assert flag
-        
+
     def test_exec_with_group_no_clear(self):
         """Test that a grouping-workspace's values are not modified"""
         mask = mtd[self.testMaskWS]
@@ -203,7 +197,7 @@ class TestMaskDetectorFlags:
                 mask.setValue(int(id_), True)
                 maskedCount += 1
         assert mask.getNumberMasked() == maskedCount
-        
+
         algo = MaskDetectorFlags()
         algo.initialize()
         algo.setProperty("MaskWorkspace", self.testMaskWS)
@@ -215,17 +209,17 @@ class TestMaskDetectorFlags:
             Workspace1=self.testGroupingWS,
             Workspace2=self.groupingWS,
         )
-        assert result 
-        
+        assert result
+
     def test_exec_with_other_mask(self):
         """Test that a mask workspace's detector flags are set"""
         testOtherMaskWS = mtd.unique_hidden_name()
-        CloneWorkspace (
+        CloneWorkspace(
             InputWorkspace=self.maskWS,
             OutputWorkspace=testOtherMaskWS,
         )
         assert mtd[testOtherMaskWS].getNumberMasked() == 0
-        
+
         mask = mtd[self.testMaskWS]
         assert mask.getNumberMasked() == 0
         # mask _odd_ detector ids
@@ -238,7 +232,7 @@ class TestMaskDetectorFlags:
                 mask.setValue(int(id_), True)
                 maskedCount += 1
         assert mask.getNumberMasked() == maskedCount
-        
+
         algo = MaskDetectorFlags()
         algo.initialize()
         algo.setProperty("MaskWorkspace", self.testMaskWS)
@@ -260,16 +254,16 @@ class TestMaskDetectorFlags:
                     break
         assert testCount == maskedCount
         assert flag
-                
+
     def test_exec_with_other_mask_no_clear(self):
         """Test that a mask workspace's values are not modified"""
         testOtherMaskWS = mtd.unique_hidden_name()
-        CloneWorkspace (
+        CloneWorkspace(
             InputWorkspace=self.maskWS,
             OutputWorkspace=testOtherMaskWS,
         )
         assert mtd[testOtherMaskWS].getNumberMasked() == 0
-        
+
         mask = mtd[self.testMaskWS]
         assert mask.getNumberMasked() == 0
         # mask _odd_ detector ids
@@ -282,7 +276,7 @@ class TestMaskDetectorFlags:
                 mask.setValue(int(id_), True)
                 maskedCount += 1
         assert mask.getNumberMasked() == maskedCount
-        
+
         algo = MaskDetectorFlags()
         algo.initialize()
         algo.setProperty("MaskWorkspace", self.testMaskWS)
@@ -294,8 +288,9 @@ class TestMaskDetectorFlags:
             Workspace1=testOtherMaskWS,
             Workspace2=self.maskWS,
         )
-        assert result 
-        
+        assert result
+
+
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
 @pytest.fixture(autouse=True)
@@ -309,4 +304,3 @@ def clear_loggers():  # noqa: PT004
         handlers = getattr(logger, "handlers", [])
         for handler in handlers:
             logger.removeHandler(handler)
-

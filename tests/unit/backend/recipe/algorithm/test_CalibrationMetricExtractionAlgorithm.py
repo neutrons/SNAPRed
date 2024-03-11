@@ -1,10 +1,9 @@
 import unittest
 from typing import List
-import numpy as np
-
 from unittest.mock import MagicMock, patch
-import pytest
 
+import numpy as np
+import pytest
 from mantid.api import AlgorithmManager
 from mantid.kernel import Direction
 from pydantic import parse_raw_as
@@ -12,6 +11,7 @@ from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.state import PixelGroup, PixelGroupingParameters
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.meta.Config import Resource
+
 
 def _removeWhitespace(string):
     return "".join(string.split())
@@ -38,13 +38,25 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         }
         fakePixelGroupingParameterss = [
             PixelGroupingParameters(
-                groupID=0, isMasked=False, twoTheta=30.0 * (np.pi / 180.0), dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1
+                groupID=0,
+                isMasked=False,
+                twoTheta=30.0 * (np.pi / 180.0),
+                dResolution={"minimum": 0.1, "maximum": 0.2},
+                dRelativeResolution=0.1,
             ),
             PixelGroupingParameters(
-                groupID=1, isMasked=False, twoTheta=40.0 * (np.pi / 180.0), dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1
+                groupID=1,
+                isMasked=False,
+                twoTheta=40.0 * (np.pi / 180.0),
+                dResolution={"minimum": 0.1, "maximum": 0.2},
+                dRelativeResolution=0.1,
             ),
             PixelGroupingParameters(
-                groupID=2, isMasked=False, twoTheta=50.0 * (np.pi / 180.0), dResolution={"minimum": 0.1, "maximum": 0.2}, dRelativeResolution=0.1
+                groupID=2,
+                isMasked=False,
+                twoTheta=50.0 * (np.pi / 180.0),
+                dResolution={"minimum": 0.1, "maximum": 0.2},
+                dRelativeResolution=0.1,
             ),
         ]
         fakePixelGroup = PixelGroup(
@@ -71,7 +83,7 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
 
         # Test data is currently not the greatest
         expected = parse_raw_as(List[CalibrationMetric], Resource.read("outputs/calibration/metrics/expected.json"))
-       
+
         # Assert the output metrics are as expected
         for metric in output_metrics[0].dict():
             assert pytest.approx(expected[0].dict()[metric], 1.0e-6) == output_metrics[0].dict()[metric]

@@ -10,7 +10,7 @@ class PixelGroupingIngredients(BaseModel):
     """Class to hold the ingredients necessary for pixel grouping parameter calculation."""
 
     instrumentState: InstrumentState
-    
+
     groupingScheme: Optional[str]
-    
+
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

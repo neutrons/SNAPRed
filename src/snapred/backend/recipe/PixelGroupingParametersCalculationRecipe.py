@@ -7,12 +7,12 @@ from pydantic import parse_raw_as
 from snapred.backend.dao.ingredients import PixelGroupingIngredients
 from snapred.backend.dao.Limit import BinnedValue
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
     PixelGroupingParametersCalculationAlgorithm,
 )
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -24,7 +24,9 @@ class PixelGroupingParametersCalculationRecipe:
     def __init__(self):
         pass
 
-    def executeRecipe(self, ingredients: PixelGroupingIngredients, groceries: Dict[str, WorkspaceName]) -> Dict[str, Any]:
+    def executeRecipe(
+        self, ingredients: PixelGroupingIngredients, groceries: Dict[str, WorkspaceName]
+    ) -> Dict[str, Any]:
         logger.info("Executing recipe for: %s" % ingredients.groupingScheme)
         data: Dict[str, Any] = {}
 

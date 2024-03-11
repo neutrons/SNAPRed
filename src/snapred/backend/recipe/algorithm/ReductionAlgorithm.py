@@ -1,6 +1,6 @@
 import json
-import numpy as np
 
+import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm, mtd
 from mantid.kernel import Direction
 
@@ -185,8 +185,14 @@ class ReductionAlgorithm(PythonAlgorithm):
 
         # Warning: <pixel grouping parameters>.dResolution will be None for fully-masked groups
         #   "NaN" is interpreted by 'Mantid::RebinRagged' to indicate an unspecified value
-        dMin = {pgp.groupID: pgp.dResolution.minimum if pgp.dResolution else np.nan for pgp in reductionIngredients.pixelGroupingParameters}
-        dMax = {pgp.groupID: pgp.dResolution.maximum if pgp.dResolution else np.nan for pgp in reductionIngredients.pixelGroupingParameters}
+        dMin = {
+            pgp.groupID: pgp.dResolution.minimum if pgp.dResolution else np.nan
+            for pgp in reductionIngredients.pixelGroupingParameters
+        }
+        dMax = {
+            pgp.groupID: pgp.dResolution.maximum if pgp.dResolution else np.nan
+            for pgp in reductionIngredients.pixelGroupingParameters
+        }
         dBin = {
             pgp.groupID: pgp.dRelativeResolution / reductionIngredients.reductionState.instrumentConfig.NBins
             for pgp in reductionIngredients.pixelGroupingParameters

@@ -18,7 +18,11 @@ with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
         # mock algorithm execution result and output
         mockAlgo.execute.return_value = "passed"
         params = PixelGroupingParameters(
-            groupID=1, isMasked=False, twoTheta=3.14, dResolution=Limit(minimum=0.1, maximum=1.0), dRelativeResolution=0.01
+            groupID=1,
+            isMasked=False,
+            twoTheta=3.14,
+            dResolution=Limit(minimum=0.1, maximum=1.0),
+            dRelativeResolution=0.01,
         )
         mock_output_val = [params]
         mockAlgo.getProperty("OutputParameters").value = list_to_raw(mock_output_val)

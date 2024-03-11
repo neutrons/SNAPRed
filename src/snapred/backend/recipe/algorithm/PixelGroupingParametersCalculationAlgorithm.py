@@ -10,15 +10,15 @@ from mantid.api import (
     PropertyMode,
     PythonAlgorithm,
 )
-from mantid.simpleapi import mtd
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction, PhysicalConstants
+from mantid.simpleapi import mtd
 
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
-from snapred.backend.recipe.algorithm.MaskDetectorFlags import MaskDetectorFlags
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.algorithm.MaskDetectorFlags import MaskDetectorFlags
 from snapred.meta.Config import Config
 from snapred.meta.redantic import list_to_raw
 
@@ -39,8 +39,8 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         )
         self.declareProperty(
             MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Input, PropertyMode.Mandatory),
-            doc="The grouping workspace defining this grouping scheme,\n" + 
-                "with instrument-location parameters initialized according to the run number",
+            doc="The grouping workspace defining this grouping scheme,\n"
+            + "with instrument-location parameters initialized according to the run number",
         )
         self.declareProperty(
             MaskWorkspaceProperty("MaskWorkspace", "", Direction.Input, PropertyMode.Mandatory),
@@ -66,7 +66,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.delTheta = ingredients.instrumentState.delTh
         return
 
-    def unbagGroceries(self, ingredients: PixelGroupingIngredients): # noqa: ARG002
+    def unbagGroceries(self, ingredients: PixelGroupingIngredients):  # noqa: ARG002
         self.groupingWorkspaceName: str = self.getPropertyValue("GroupingWorkspace")
         self.maskWorkspaceName: str = self.getPropertyValue("MaskWorkspace")
         self.resolutionWorkspaceName: str = "pgp_resolution"  # TODO use WNG
@@ -93,7 +93,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             OutputWorkspace=tmpGroupingWSName,
         )
         self.mantidSnapper.executeQueue()
-        
+
         # Create a grouped-by-detector workspace from the grouping workspace
         # and estimate the relative resolution for all pixel groupings.
         # These algorithms use detector mask-flag information from the 'InputWorkspace'.
@@ -104,7 +104,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             CopyGroupingFromWorkspace=tmpGroupingWSName,
             OutputWorkspace=self.resolutionWorkspaceName,
         )
-        
+
         #  => resolution will be _zero_ for any fully-masked pixel group
         self.mantidSnapper.EstimateResolutionDiffraction(
             "Estimating diffraction resolution...",
@@ -161,7 +161,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                     )
                 )
             else:
-                # Construct a `PixelGroupingParameters` instance corresponding to a fully-masked group:                
+                # Construct a `PixelGroupingParameters` instance corresponding to a fully-masked group:
                 #
                 #   * The cleanest approach here would have been to use `None` as the `PixelGroupingParameters` for a
                 #     fully-masked group; however, this breaks too many things later in the code.
@@ -169,7 +169,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                 #   * To avoid out-of-range positions, values from the first detector in the group are used:
                 #     consuming methods need to check either the `PixelGroupingParameters.isMasked` flag,
                 #     or equivalently, test for an _empty_ `dResolution` `Limit` domain.
-                #     
+                #
                 detID = detIDs[0]
                 detIndex = detectorInfo.indexOf(int(detID))
                 twoTheta = detectorInfo.twoTheta(int(detIndex))
@@ -178,28 +178,24 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                 allGroupingParams.append(
                     PixelGroupingParameters(
                         groupID=groupID,
-                        
                         # Fully-masked group
                         isMasked=True,
-                        
                         twoTheta=twoTheta,
-                        
                         # Empty limit domain
                         dResolution=Limit(minimum=dMin, maximum=dMin),
-                        
                         # Resolution value for fully-masked group (as set by `EstimateResolutionDiffraction`):
-                        #   -- depending on end use, it may be necessary to modify this value. 
+                        #   -- depending on end use, it may be necessary to modify this value.
                         dRelativeResolution=delta_d_over_d,
                     )
                 )
-                
-                
+
         self.setProperty("OutputParameters", list_to_raw(allGroupingParams))
         self.mantidSnapper.WashDishes(
             "Cleaning up workspaces",
             WorkspaceList=[self.resolutionWorkspaceName, tmpGroupingWSName],
         )
         self.mantidSnapper.executeQueue()
+
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(PixelGroupingParametersCalculationAlgorithm)

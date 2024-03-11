@@ -79,7 +79,10 @@ class GroceryService:
         """
         cachedWorkspaces = set()
         cachedWorkspaces.update(
-            [self._createRawNeutronWorkspaceName(runNumber, useLiteMode) for runNumber, useLiteMode in self._loadedRuns.keys()]
+            [
+                self._createRawNeutronWorkspaceName(runNumber, useLiteMode)
+                for runNumber, useLiteMode in self._loadedRuns.keys()
+            ]
         )
         cachedWorkspaces.update(self._loadedGroupings.values())
         cachedWorkspaces.update(self._loadedInstruments.values())
@@ -272,7 +275,10 @@ class GroceryService:
 
                 # Initialize the instrument parameters
                 # (Reserved run-numbers will use the unmodified instrument.)
-                if runNumber != GroceryListItem.RESERVED_NATIVE_RUNNUMBER and runNumber != GroceryListItem.RESERVED_LITE_RUNNUMBER:
+                if (
+                    runNumber != GroceryListItem.RESERVED_NATIVE_RUNNUMBER
+                    and runNumber != GroceryListItem.RESERVED_LITE_RUNNUMBER
+                ):
                     detectorState: DetectorState = self._getDetectorState(runNumber)
                     self.updateInstrumentParameters(wsName, detectorState)
             self._loadedInstruments[key] = wsName
