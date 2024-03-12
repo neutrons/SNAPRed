@@ -131,6 +131,7 @@
     "pixelGroupingParameters": [
       {
         "groupID": 1,
+        "isMasked": false,
         "twoTheta": 2.1108948177427838,
         "dResolution": {
           "minimum": 0.40224298673776404,
@@ -140,6 +141,7 @@
       },
       {
         "groupID": 2,
+        "isMasked": false,
         "twoTheta": 1.82310673131693,
         "dResolution": {
           "minimum": 0.44278229953817677,
@@ -149,6 +151,7 @@
       },
       {
         "groupID": 3,
+        "isMasked": false,
         "twoTheta": 1.5352228379083572,
         "dResolution": {
           "minimum": 0.5040188478793922,
@@ -158,6 +161,7 @@
       },
       {
         "groupID": 4,
+        "isMasked": false,
         "twoTheta": 1.440276389170165,
         "dResolution": {
           "minimum": 0.530714277849788,
@@ -167,6 +171,7 @@
       },
       {
         "groupID": 5,
+        "isMasked": false,
         "twoTheta": 1.1543988461042238,
         "dResolution": {
           "minimum": 0.6414024711539658,
@@ -176,6 +181,7 @@
       },
       {
         "groupID": 6,
+        "isMasked": false,
         "twoTheta": 0.8690010092470938,
         "dResolution": {
           "minimum": 0.831438096217031,

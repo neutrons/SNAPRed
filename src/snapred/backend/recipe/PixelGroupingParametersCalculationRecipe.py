@@ -12,6 +12,7 @@ from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorith
     PixelGroupingParametersCalculationAlgorithm,
 )
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -23,14 +24,19 @@ class PixelGroupingParametersCalculationRecipe:
     def __init__(self):
         pass
 
-    def executeRecipe(self, ingredients: PixelGroupingIngredients, groupingWorkspace: str) -> Dict[str, Any]:
+    def executeRecipe(
+        self, ingredients: PixelGroupingIngredients, groceries: Dict[str, WorkspaceName]
+    ) -> Dict[str, Any]:
         logger.info("Executing recipe for: %s" % ingredients.groupingScheme)
         data: Dict[str, Any] = {}
 
         algo = AlgorithmManager.create(self.PixelGroupingParametersCalculationAlgorithmName)
 
         algo.setProperty("Ingredients", ingredients.json())
-        algo.setProperty("GroupingWorkspace", groupingWorkspace)
+        algo.setProperty("GroupingWorkspace", groceries["groupingWorkspace"])
+
+        # MaskWorkspace: optional argument
+        algo.setProperty("MaskWorkspace", groceries.get("maskWorkspace", ""))
 
         try:
             data["result"] = algo.execute()

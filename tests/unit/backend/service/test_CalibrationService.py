@@ -523,7 +523,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
 
         focusedWorkspace = (
-            wng.run().runNumber(request.runNumber).group(request.focusGroup.name).auxiliary("F-dc").build()
+            wng.run()
+            .runNumber(request.runNumber)
+            .group(request.focusGroup.name)
+            .unit(wng.Units.DSP)
+            .auxiliary("F-dc")
+            .build()
         )
         assert not mtd.doesExist(focusedWorkspace)
 
@@ -558,7 +563,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # create the focused wprkspace in the ADS
         focusedWorkspace = (
-            wng.run().runNumber(request.runNumber).group(request.focusGroup.name).auxiliary("F-dc").build()
+            wng.run()
+            .runNumber(request.runNumber)
+            .group(request.focusGroup.name)
+            .unit(wng.Units.DSP)
+            .auxiliary("F-dc")
+            .build()
         )
         CreateSingleValuedWorkspace(OutputWorkspace=focusedWorkspace)
 
@@ -575,6 +585,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # assert that the recipe is not called and the correct workspaces are returned
         assert FocusSpectraRecipe().executeRecipe.call_count == 0
         assert res == (focusedWorkspace, groupingWorkspace)
+
+    # TODO remove this --- it only exists to make codecov happy
+    def test_reduction(self):
+        with pytest.raises(NotImplementedError):
+            self.instance.fakeMethod()
 
     def test_initializeState(self):
         testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))

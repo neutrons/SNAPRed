@@ -248,7 +248,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_litedatamap_filename(self):
         """Test it will return name of Lite data map"""
-        runNumber = GroceryListItem.RESERVED_NATIVE_RUNID
+        runNumber = GroceryListItem.RESERVED_NATIVE_RUNNUMBER
         res = self.instance._createGroupingFilename(runNumber, "Lite", False)
         assert res == str(Config["instrument.lite.map.file"])
         res2 = self.instance._createGroupingFilename(runNumber, "Lite", True)
@@ -301,10 +301,18 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in res
         assert "raw" in res
 
-    def test_diffcal_output_workspacename(self):
+    def test_diffcal_output_tof_workspacename(self):
         # Test name generation for diffraction-calibration focussed-data workspace
         res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber, self.version, wng.Units.TOF)
         assert "tof" in res
+        assert self.runNumber in res
+        assert self.version in res
+        assert "diffoc" in res
+
+    def test_diffcal_output_dsp_workspacename(self):
+        # Test name generation for diffraction-calibration focussed-data workspace
+        res = self.instance._createDiffcalOutputWorkspaceName(self.runNumber, self.version, wng.Units.DSP)
+        assert "dsp" in res
         assert self.runNumber in res
         assert self.version in res
         assert "diffoc" in res
@@ -916,7 +924,7 @@ class TestGroceryService(unittest.TestCase):
         mockGroceryList.builder.return_value.grouping.return_value.build.return_value = mockLiteMapGroceryItem
 
         # call once and load
-        testItem = ("Lite", GroceryListItem.RESERVED_NATIVE_RUNID, False)
+        testItem = ("Lite", GroceryListItem.RESERVED_NATIVE_RUNNUMBER, False)
         groupingWorkspaceName = self.instance._createGroupingWorkspaceName(*testItem)
         groupKey = self.instance._key(*testItem)
 
@@ -1213,9 +1221,7 @@ class TestGroceryService(unittest.TestCase):
         assert mockFetchGroup.called_with(groupItemWithSource)
         assert mockFetchClean.called_with(self.runNumber, False, "")
 
-    @mock.patch.object(GroceryService, "_getDetectorState")
-    def test_update_instrument_parameters(self, mockGetDetectorState):
-        mockGetDetectorState.return_value = self.detectorState1
+    def test_update_instrument_parameters(self):
         tmpName = mtd.unique_hidden_name()
         CloneWorkspace(
             InputWorkspace=self.sampleWS,
@@ -1231,7 +1237,7 @@ class TestGroceryService(unittest.TestCase):
         assert ws.getInstrument().getComponentByName("East").getRelativeRot() == Quat(1.0, 0.0, 0.0, 0.0)
         assert ws.getInstrument().getComponentByName("East").getRelativePos() == V3D(0.0, 0.0, 0.0)
 
-        self.instance._updateInstrumentParameters(self.runNumber, tmpName)
+        self.instance.updateInstrumentParameters(tmpName, self.detectorState1)
 
         # Verify that all of the log-derived parameters have been added
         sampleLogs = mapFromSampleLogs(tmpName, ("det_lin1", "det_lin2", "det_arc1", "det_arc2"))

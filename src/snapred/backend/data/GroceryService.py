@@ -359,29 +359,30 @@ class GroceryService:
                 loadEmptyInstrument.execute()
 
                 # Initialize the instrument parameters
-                # (Reserved IDs will use the unmodified instrument.)
+                # (Reserved run-numbers will use the unmodified instrument.)
                 if (
-                    runNumber != GroceryListItem.RESERVED_NATIVE_RUNID
-                    and runNumber != GroceryListItem.RESERVED_LITE_RUNID
+                    runNumber != GroceryListItem.RESERVED_NATIVE_RUNNUMBER
+                    and runNumber != GroceryListItem.RESERVED_LITE_RUNNUMBER
                 ):
-                    self._updateInstrumentParameters(runNumber, wsName)
+                    detectorState: DetectorState = self._getDetectorState(runNumber)
+                    self.updateInstrumentParameters(wsName, detectorState)
             self._loadedInstruments[key] = wsName
         return wsName
-
-    def _updateInstrumentParameters(self, runNumber: str, wsName: WorkspaceName):
+    
+    def updateInstrumentParameters(self, wsName: WorkspaceName, detectorState: DetectorState):
         """
         The SNAP instrument has moveable panels, and certain properties of a calculation will depend on how the panels
         are oriented (the instrument state).  For mantid algorithms to correctly use the instrument state, the parameters
         specifying the positions of the panels must be updated within the workspace's logs.
+        -- this public method allows override during algorithm testing
+        separately from the recipe system (i.e. not using `GroceryService` loading).
 
-        :param runNumber: a run number in the desired state, for looking up the state
-        :type runNumber: str
         :param wsName: the workspace with the instrument to be updated
         :type wsName: WorkspaceName
+        :param detectorState: the detector state which contains the mutable parameters to be applied
+        :type detectorSttate: DetectorState
         """
         # Moved from `PixelGroupingParametersCalculationAlgorithm` for more general application here.
-
-        detectorState: DetectorState = self._getDetectorState(runNumber)
 
         # Add sample logs with detector "arc" and "lin" parameters to the workspace
         # NOTE after adding the logs, it is necessary to update the instrument to

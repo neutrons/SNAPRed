@@ -15,9 +15,9 @@ class GroceryListItem(BaseModel):
     """
 
     # Reserved instrument-cache run-number values:
-    RESERVED_NATIVE_RUNID: ClassVar[str] = "000000"  # unmodified _native_ instrument:
+    RESERVED_NATIVE_RUNNUMBER: ClassVar[str] = "000000"  # unmodified _native_ instrument:
     #   from 'SNAP_Definition.xml'
-    RESERVED_LITE_RUNID: ClassVar[str] = "000001"  # unmodified _lite_ instrument  :
+    RESERVED_LITE_RUNNUMBER: ClassVar[str] = "000001"  # unmodified _lite_ instrument  :
     #   from 'SNAPLite.xml'
 
     workspaceType: Literal["neutron", "grouping", "diffcal", "diffcal_output", "diffcal_table", "diffcal_mask"]
@@ -100,7 +100,7 @@ class GroceryListItem(BaseModel):
                             + " -- this cannot be overridden"
                         )
                     # the Lite grouping scheme uses the unmodified native instrument
-                    v["runNumber"] = cls.RESERVED_NATIVE_RUNID
+                    v["runNumber"] = cls.RESERVED_NATIVE_RUNNUMBER
                 if v.get("runNumber") is None:
                     # A run number is required in order to cache instrument parameters
                     raise ValueError("Loading a grouping scheme requires a run number")

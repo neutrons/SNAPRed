@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
 class TestGroceryListBuilder(unittest.TestCase):
@@ -42,8 +43,14 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert item.useLiteMode is False
         assert item.workspaceType == "diffcal"
 
-    def test_diffcal_output(self):
-        item = GroceryListBuilder().specialOrder().diffcal_output(self.runNumber).lite().build()
+    def test_diffcal_output_tof(self):
+        item = GroceryListBuilder().specialOrder().diffcal_output(self.runNumber).unit(wng.Units.TOF).lite().build()
+        assert item.runNumber == self.runNumber
+        assert item.isOutput is True
+        assert item.workspaceType == "diffcal_output"
+
+    def test_diffcal_output_dsp(self):
+        item = GroceryListBuilder().specialOrder().diffcal_output(self.runNumber).unit(wng.Units.DSP).lite().build()
         assert item.runNumber == self.runNumber
         assert item.isOutput is True
         assert item.workspaceType == "diffcal_output"
