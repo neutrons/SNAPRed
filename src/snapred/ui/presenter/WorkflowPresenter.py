@@ -25,6 +25,7 @@ class WorkflowPresenter(object):
         self.model = model
         self._cancelLambda = cancelLambda
         self._iterateLambda = iterateLambda
+        self.resetLambda = self.resetAndClear
         self._hookupSignals()
 
     @property
@@ -111,9 +112,12 @@ class WorkflowPresenter(object):
                 lambda: None,
                 self.view,
             )
-            self.resetAndClear()
+            self.resetLambda()
         else:
             self.view.advanceWorkflow()
+
+    def setResetLambda(self, resetLambda):
+        self.resetLambda = resetLambda
 
     def handleContinueButtonClicked(self, model):
         self.view.continueButton.setEnabled(False)
