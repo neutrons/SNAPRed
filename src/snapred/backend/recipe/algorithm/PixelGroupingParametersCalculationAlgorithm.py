@@ -87,7 +87,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             InputWorkspace=self.groupingWorkspaceName,
             OutputWorkspace=tmpGroupingWSName,
         )
-        
+
         # If the optional mask workspace is present, apply it to the grouping workspace:
         if self.maskWorkspaceName:
             self.mantidSnapper.MaskDetectorFlags(
