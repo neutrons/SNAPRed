@@ -87,15 +87,23 @@ class _WorkspaceNameGenerator:
         self._setupTemplateVars(Config[f"{self._templateRoot}.template"])
 
     def _setupTemplateVars(self, templateDict, namePrefix=""):
+        """
+        Recursively sets up template variables from a dictionary
+        that may contain nested dictionaries of templates.
+        """
         for key, value in templateDict.items():
             name = key
             if namePrefix:
                 name = f"{namePrefix}{self._capFirst(name)}"
 
             if isinstance(value, str):
+                # is an instance of a template
+                # parse!
                 template = value
                 self._setTemplateVar(template, name)
             else:
+                # is another dictionary of more templates
+                # recurse!
                 self._setupTemplateVars(value, name)
 
     def _capFirst(self, s: str) -> str:
