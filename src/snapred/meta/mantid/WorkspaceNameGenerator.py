@@ -1,5 +1,5 @@
-from enum import Enum
 import re
+from enum import Enum
 from typing import Dict, List
 
 from snapred.meta.Config import Config
