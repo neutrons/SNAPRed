@@ -12,6 +12,7 @@ class SmoothingSlider(QWidget):
     for either rapid exploration of smoothing levels or specific value input.
 
     Key Features:
+
     - Dual Interface: Incorporates a QSlider for graphical adjustments alongside a QLineEdit for
       precise value entry.
     - Custom Value Mapping: Logarithmically maps the slider's range (-1000 to 0) to a broad and
@@ -21,6 +22,7 @@ class SmoothingSlider(QWidget):
       with warnings for incorrect inputs.
 
     Functionalities:
+
     - Value Conversion: Employs a logarithmic conversion mechanism for intuitive and resolution-friendly
       parameter adjustment.
     - Synchronization Between Controls: Maintains consistency between slider and text field,
@@ -29,6 +31,7 @@ class SmoothingSlider(QWidget):
       displaying warnings for invalid inputs to safeguard against erroneous data manipulations.
     - Programmatic Value Setting: Facilitates dynamic value updates through a setValue method,
       enabling easy integration into larger workflows or automated setups.
+
     """
 
     def __init__(self, parent=None, state=1.0):

@@ -10,15 +10,17 @@ class ObjectSHA(BaseModel):
     Provides a standardized object identifier digest to support filesystem-as-database requirements.
 
     This class allows for:
+
     - Verification that JSON files representing objects have not been arbitrarily moved.
       This is ensured by making the SHA a component of the object's path on the filesystem.
     - Verification of nested objects where components may be loaded from separate JSON files.
       This is achieved by making the SHA equivalent to the SHA of the parent object.
 
     Attributes:
-        hex (str): A 16-character lowercase hex string representing the SHA.
-        decodedKey (Optional[str]): If the original JSON is still available, it is retained for possible re-use,
-        but it is not required for the object's functionality.
+
+    - hex (str): A 16-character lowercase hex string representing the SHA.
+    - decodedKey (Optional[str]): If the original JSON is still available, it is retained for possible re-use,
+      but it is not required for the object's functionality.
     """
 
     hex: str = Field(

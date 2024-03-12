@@ -31,6 +31,7 @@ class NormalizationWorkflow(WorkflowImplementer):
     PyQt5 widgets and custom views to guide users through each step interactively.
 
     Core Functionalities:
+
     - Initializes with default settings, loading necessary configurations and sample paths for the normalization
       process.
     - Sets up a series of interactive views, including NormalizationRequestView, NormalizationTweakPeakView, and
@@ -40,6 +41,7 @@ class NormalizationWorkflow(WorkflowImplementer):
       available configurations and user selections.
 
     Workflow Steps:
+
     1. Normalization Calibration Request: Captures essential inputs like run numbers and sample paths from the user
        and initiates the normalization calibration process.
     2. Parameter Tweaking: Allows users to interactively adjust parameters such as smoothing, dMin, dMax, and peak
@@ -48,17 +50,21 @@ class NormalizationWorkflow(WorkflowImplementer):
        to complete the normalization process.
 
     Dynamic Configuration and Adaptation:
+
     - Seamlessly connects UI elements with backend operations for a responsive and interactive user experience,
       ensuring that the workflow remains adaptable and efficient regardless of the specific normalization tasks at hand.
 
     Signal-Slot Mechanism for Asynchronous Updates:
+
     - Employs PyQt's signal-slot mechanism to manage asynchronous updates, enhancing the application's responsiveness
       and ensuring that users receive timely feedback on their interactions and the progress of normalization tasks.
 
     Validation and Error Handling:
+
     - Implements validation checks and error handling throughout the workflow to ensure that user inputs and
       configurations are valid and within expected ranges, thus enhancing the overall robustness and reliability
       of the normalization process.
+
     """
 
     def __init__(self, jsonForm, parent=None):

@@ -506,8 +506,8 @@ class GroceryService:
         - "result", true if everything ran correctly
         - "loader", either "LoadDiffractionCalibrationWorkspaces" or "cached"
         - "workspace", the name of the new workspace in the ADS:
-          this defaults to the name of the calibration-table workspace, but the
-          mask workspace will be loaded as well
+        this defaults to the name of the calibration-table workspace, but the
+        mask workspace will be loaded as well
         """
 
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode

@@ -15,12 +15,14 @@ class NormalizationSaveView(QWidget):
     user-friendly manner prior to finalizing the save operation.
 
     Components and Functionalities:
+
     - Inherits from QWidget, establishing a graphical interface component.
     - Utilizes JsonFormList to dynamically generate form fields based on a provided JSON schema map,
       enhancing data consistency and validation.
     - Employs a QGridLayout to efficiently organize UI elements.
 
     UI Elements:
+
     - Interaction Text: Guides the user with a prompt regarding the saving of normalization data.
     - Field Elements: LabeledField widgets for inputting/displaying normalization information like
       run numbers, version, applicability, comments, and authorship. Certain fields are disabled or
@@ -29,6 +31,7 @@ class NormalizationSaveView(QWidget):
       thread-safe UI interactions.
 
     Signal-Slot Mechanism:
+
     - Implements pyqtSignal instances for thread-safe UI updates related to run numbers.
     - Slots `_updateRunNumber` and `_updateBackgroundRunNumber` receive signals to update UI
       elements with provided values, facilitating smooth and safe UI interactions.
@@ -36,6 +39,7 @@ class NormalizationSaveView(QWidget):
     This class streamlines the process of saving normalization data, offering a clear and efficient
     interface for users to review and confirm the details of normalization operations before
     committing them to persistent storage.
+
     """
 
     signalRunNumberUpdate = pyqtSignal(str)

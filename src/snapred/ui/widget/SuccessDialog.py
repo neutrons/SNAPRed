@@ -10,12 +10,14 @@ class SuccessDialog(QDialog):
     the user experience by affirming positive outcomes of operations.
 
     Key Features and Functionality:
+
     - Window Options: Employs Qt.WindowCloseButtonHint and Qt.WindowTitleHint to present a focused,
       minimalistic dialog emphasizing the message.
     - Fixed Size: Maintains a consistent display across various platforms with a set size of
       300x120 pixels, optimizing readability and interface consistency.
 
     Layout and Content:
+
     - Vertical Layout: Utilizes QVBoxLayout for an efficient, linear arrangement of components
       including a message label and an acknowledgment button.
     - Message Label: Conveys the success message ("State initialized successfully.") directly,
@@ -26,6 +28,7 @@ class SuccessDialog(QDialog):
 
     This class embodies a streamlined approach to user feedback in GUI applications, providing
     essential information with minimal distraction, thereby fostering a positive user experience.
+
     """
 
     def __init__(self, parent=None):
