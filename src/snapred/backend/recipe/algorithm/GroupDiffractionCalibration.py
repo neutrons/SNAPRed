@@ -16,6 +16,7 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.Config import Config
 
 
 class GroupDiffractionCalibration(PythonAlgorithm):
@@ -223,6 +224,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=self.outputWStof,
                 TofBinning=self.TOF.params,
                 PeakFunction=self.peakFunction,
+                MaxChiSq=Config["constants.GroupDiffractionCalibration.MaxChiSq"],
                 BackgroundType="Linear",
                 PeakPositions=self.groupedPeaks[groupID],
                 PeakWindow=self.groupedPeakBoundaries[groupID],
