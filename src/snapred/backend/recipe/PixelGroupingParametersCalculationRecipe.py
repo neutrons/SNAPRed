@@ -34,7 +34,9 @@ class PixelGroupingParametersCalculationRecipe:
 
         algo.setProperty("Ingredients", ingredients.json())
         algo.setProperty("GroupingWorkspace", groceries["groupingWorkspace"])
-        algo.setProperty("MaskWorkspace", groceries["maskWorkspace"])
+        
+        # MaskWorkspace: optional argument
+        algo.setProperty("MaskWorkspace", groceries.get("maskWorkspace", ""))
 
         try:
             data["result"] = algo.execute()
