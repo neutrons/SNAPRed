@@ -13,7 +13,7 @@ Submodules
 ----------
 
 snapred.backend.dao.state.DetectorState module
----------------------------------------------
+----------------------------------------------
 
 .. automodule:: snapred.backend.dao.state.DetectorState
    :members:

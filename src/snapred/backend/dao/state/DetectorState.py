@@ -15,6 +15,6 @@ class DetectorState(BaseModel):
     arc: Tuple[float, float]
     wav: float
     freq: float
-    guideStat: Literal[GuideState.IN, GuideState.OUT]
+    guideStat: Literal[1, 2]
     # two additional values that don't define state, but are useful
     lin: Tuple[float, float]
