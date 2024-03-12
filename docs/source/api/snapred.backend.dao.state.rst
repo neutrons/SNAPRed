@@ -12,6 +12,14 @@ Subpackages
 Submodules
 ----------
 
+snapred.backend.dao.state.DetectorPeak module
+---------------------------------------------
+
+.. automodule:: snapred.backend.dao.state.DetectorPeak
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.dao.state.DiffractionCalibrant module
 -----------------------------------------------------
 
