@@ -321,8 +321,9 @@ class GroceryService:
         """
         The grouping workspaces require an instrument definition, and do not always have their own instrument definition
         saved with them (such as XML groupings).  Therefore, when loading groupings, it is necessary to match them to
-        the proper instrument definition *with the proper instrument state params*.  This uses the run number (and lite mode)
-        to locate the proper state, and from that the proper instrument definition with instrument params for that state.
+        the proper instrument definition *with the proper instrument state params*.
+        This uses the run number (and lite mode)to locate the proper state, and from that the proper instrument
+        definition with instrument params for that state.
 
         :param runNumber: a run number that was taken in the desired instrument state
         :type runNumber: str
@@ -371,8 +372,9 @@ class GroceryService:
 
     def updateInstrumentParameters(self, wsName: WorkspaceName, detectorState: DetectorState):
         """
-        The SNAP instrument has moveable panels, and certain properties of a calculation will depend on how the panels
-        are oriented (the instrument state).  For mantid algorithms to correctly use the instrument state, the parameters
+        The SNAP instrument has moveable panels, and certain properties of a calculation will depend
+        on how the panels are oriented (the instrument state).
+        For mantid algorithms to correctly use the instrument state, the parameters
         specifying the positions of the panels must be updated within the workspace's logs.
         -- this public method allows override during algorithm testing
         separately from the recipe system (i.e. not using `GroceryService` loading).
@@ -814,7 +816,7 @@ class GroceryService:
         :type exclude: List[WorkspaceName]
         :param cache: whether or not to clear cached workspaces (True = yes, clear the cache), optional (defaults to False)
         :type cache: bool
-        """
+        """  # noqa E501
         workspacesToClear = mtd.getObjectNames()
         # filter exclude
         workspacesToClear = [w for w in workspacesToClear if w not in exclude]
