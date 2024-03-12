@@ -50,18 +50,18 @@ class NormalizationService(Service):
     across operations.
 
     Attributes:
-        dataFactoryService (DataFactoryService): Manages creation and retrieval of data objects for
-            normalization tasks.
-        dataExportService (DataExportService): Enables the export of processed data to persistent
-            storage systems.
-        groceryService (GroceryService): Interfaces with the data layer to fetch and manage
-            normalization-relevant data.
-        groceryClerk (GroceryListItem.builder): Utilizes the builder pattern to assemble required
-            data items for normalization processes.
-        diffractionCalibrationService (CalibrationService): Specializes in calibration tasks for
-            diffraction data, ensuring precision and accuracy.
-        sousChef (SousChef): Prepares the necessary ingredients for the normalization recipe,
-            optimizing the preparation phase.
+        - dataFactoryService (DataFactoryService): Manages creation and retrieval of data objects for
+          normalization tasks.
+        - dataExportService (DataExportService): Enables the export of processed data to persistent
+          storage systems.
+        - groceryService (GroceryService): Interfaces with the data layer to fetch and manage
+          normalization-relevant data.
+        - groceryClerk (GroceryListItem.builder): Utilizes the builder pattern to assemble required
+          data items for normalization processes.
+        - diffractionCalibrationService (CalibrationService): Specializes in calibration tasks for
+          diffraction data, ensuring precision and accuracy.
+        - sousChef (SousChef): Prepares the necessary ingredients for the normalization recipe,
+          optimizing the preparation phase.
 
     Key Operations:
         - Handles the entire normalization workflow, including correction, focusing, and smoothing
