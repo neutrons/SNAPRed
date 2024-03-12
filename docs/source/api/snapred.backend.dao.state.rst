@@ -12,10 +12,10 @@ Subpackages
 Submodules
 ----------
 
-snapred.backend.dao.state.DetectorPeak module
+snapred.backend.dao.state.DetectorState module
 ---------------------------------------------
 
-.. automodule:: snapred.backend.dao.state.DetectorPeak
+.. automodule:: snapred.backend.dao.state.DetectorState
    :members:
    :undoc-members:
    :show-inheritance:
