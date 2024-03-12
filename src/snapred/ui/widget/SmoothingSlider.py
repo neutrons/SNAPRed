@@ -1,16 +1,36 @@
 import math
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
-    QHBoxLayout,
-    QLineEdit,
-    QMessageBox,
-    QSlider,
-    QWidget,
-)
+from PyQt5.QtWidgets import QHBoxLayout, QLineEdit, QMessageBox, QSlider, QWidget
 
 
 class SmoothingSlider(QWidget):
+    """
+    A custom QWidget in PyQt5 tailored for adjusting a smoothing parameter via both a graphical
+    slider and a precise numerical input field. This design marries the intuitive adjustability
+    of a slider with the exactitude of direct number entry, accommodating diverse user preferences
+    for either rapid exploration of smoothing levels or specific value input.
+
+    Key Features:
+    - Dual Interface: Incorporates a QSlider for graphical adjustments alongside a QLineEdit for
+      precise value entry.
+    - Custom Value Mapping: Logarithmically maps the slider's range (-1000 to 0) to a broad and
+      finely controllable range of smoothing parameter values.
+    - Styling: Enhances user interaction through customized CSS styling for the slider.
+    - Validation and Error Handling: Ensures validity of entered numerical values, prompting users
+      with warnings for incorrect inputs.
+
+    Functionalities:
+    - Value Conversion: Employs a logarithmic conversion mechanism for intuitive and resolution-friendly
+      parameter adjustment.
+    - Synchronization Between Controls: Maintains consistency between slider and text field,
+      updating each based on changes to the other to prevent user confusion and errors.
+    - Error Handling: Implements input validation to restrict entries to non-negative numbers,
+      displaying warnings for invalid inputs to safeguard against erroneous data manipulations.
+    - Programmatic Value Setting: Facilitates dynamic value updates through a setValue method,
+      enabling easy integration into larger workflows or automated setups.
+    """
+
     def __init__(self, parent=None, state=1.0):
         super().__init__(parent)
         self._slider = QSlider(Qt.Horizontal)

@@ -36,6 +36,14 @@ snapred.backend.recipe.FetchGroceriesRecipe module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe module
+-----------------------------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.GenerateCalibrationMetricsWorkspaceRecipe
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.recipe.GenericRecipe module
 -------------------------------------------
 

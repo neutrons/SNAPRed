@@ -14,6 +14,13 @@ Glossary
         Agnostic of frontend implementation, it recieves requests from the frontend and forwards them to the corresponding Service.
         In addition it is also responsible for catching errors, and returning a human readable error message to the frontend.
 
+    Background Run ID
+        The identifier for a background run, which is a measurement taken under the same conditions as a
+        primary experimental run but without the sample present. This data is used to subtract background noise
+        and artifacts from the experimental data, enabling more accurate analysis. In the context of SNAP, the
+        Background Run ID refers to the unique ID associated with such a run, used in processes like
+        :term:`Normalization` to correct the primary data set.
+
     Calibration
         The process by which the instrument state configuration is calibrated to account for the effects of the instrument on the diffraction data.
         This is done by comparing the diffraction data to a known standard or previous Calibration, and adjusting the instrument to match.
@@ -77,6 +84,14 @@ Glossary
         A thin wrapper around the Mantid Algorithm API that allows for meta processes to be performed around a queue of algorithms.
         Examples may include: Progress reporting, Quality of Life improvements, multi-threading, etc.
 
+    Normalization
+        The process of adjusting diffraction data to correct for variations in instrumental performance and experimental conditions.
+        Normalization ensures that data from different runs or different :term: `instrument states <Instrument State>` can be directly
+        compared or combined without bias due to instrument efficiency, sample positioning, or other systemic factors. This is typically
+        achieved by dividing the raw data by a normalization standard, such as a vanadium run, which represents the instrument response.
+        The process involves a series of algorithms, often encapsulated within a Recipe, to apply these corrections and produce normalized
+        data suitable for further analysis or interpretation.
+
     Orchestration Layer
         The architectural layer that handles the stitching together of the various :term:`Service Components <Service Component>`, `Data Components <Data Component>`, and `Recipe Components <Recipe Component>` to achieve and abstract goal.
         This may include handling :term:`User Requests <User Request>`, or performing :term:`Data State Management`.
@@ -121,6 +136,13 @@ Glossary
         Examples include: Data Reduction, Calibration Quality Assessment, Instrument State Initialization, etc.
         It provides this functionality by orchestrating Data and Recipes Components to produce the expected results.
 
+    Smoothing Parameter
+        A numerical value used to control the degree of smoothing applied to diffraction data during processing.
+        Smoothing is a technique used to reduce noise and enhance signal clarity, making it easier to identify and
+        analyze peaks in the data. The smoothing parameter determines the extent of this smoothing effect, with
+        higher values leading to a smoother signal. It is often adjusted as part of the :term:`Normalization` or
+        :term:`Reduction` processes and is applied via algorithms within a :term:`Recipe`.
+
     Software Metadata
         This refers data about how SNAPRed operates.
         A prime example of this is the current mappings the InterfaceController has to the various services.
@@ -130,7 +152,11 @@ Glossary
         TODO
 
     Vanadium
-        TODO
+        A reference material commonly used in neutron diffraction experiments for calibration and normalization
+        purposes due to its well-understood scattering properties. Vanadium calibration is essential for
+        instrument performance verification and for correcting systematic errors in diffraction data. It plays a
+        crucial role in the :term:`Calibration` and :term:`Normalization` processes within SNAP, ensuring accurate
+        and reliable data analysis.
 
     User Request
         A request made by the backend consumer to perform a specific task given sufficent input data.

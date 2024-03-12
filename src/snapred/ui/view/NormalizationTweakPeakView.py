@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
 from pydantic import parse_obj_as
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QComboBox,
     QGridLayout,
@@ -26,12 +26,53 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.JsonFormList import JsonFormList
+from snapred.ui.widget.LabeledField import LabeledField
 from snapred.ui.widget.SmoothingSlider import SmoothingSlider
 from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
 class NormalizationTweakPeakView(BackendRequestView):
+    """
+    A PyQt5-based GUI component tailored for fine-tuning peak normalization parameters in
+    SNAPRed. Inherits from BackendRequestView and incorporates a blend of interactive
+    elements—input fields, dropdowns, sliders, and a matplotlib plot area—for real-time
+    visualization and adjustment of normalization settings.
+
+    Structure and Features:
+    - Initializes with configurable parameters, arranging UI layout and establishing signal-slot
+      connections for asynchronous updates. A matplotlib canvas is configured for dynamic data
+      visualization.
+    - Fields for run number and background run number are initialized, with optional disabling
+      to safeguard against unintended alterations during the tweaking phase.
+
+    UI Components:
+    - Graphical Elements: Embeds a matplotlib figure for plotting data and detected peaks,
+      facilitating visual assessment and comparison.
+    - Input Fields and Controls: Incorporates inputs for run numbers, sample and grouping file
+      selection, and sliders for parameters adjustment like smoothing level, dMin, dMax, and
+      peak intensity threshold.
+    - Action Buttons: Features a "Recalculate" button to apply changes, enabling visual feedback
+      on the normalization and peak detection process.
+
+    Interactivity and Signal Handling:
+    - Utilizes PyQt signals for UI action handling, connecting user interactions with respective
+      methods for a responsive experience. This includes updating UI elements based on user
+      actions or external data changes.
+
+    Data Visualization and Adjustment:
+    - Updates the plot area in response to parameter adjustments, offering instant visual feedback
+      on the effects of modifications. Implements functionality for clear presentation of data
+      and peaks within the plot area.
+
+    Validation and Warnings:
+    - Ensures input validation and displays warnings for potential issues with parameter settings,
+      guiding users towards appropriate adjustments and preventing erroneous processing requests.
+
+    This class significantly enhances the user experience in fine-tuning normalization processes,
+    providing a powerful tool for interactive data analysis and parameter optimization.
+    """
+
     signalRunNumberUpdate = pyqtSignal(str)
     signalBackgroundRunNumberUpdate = pyqtSignal(str)
     signalValueChanged = pyqtSignal(int, float, float, float, float)
