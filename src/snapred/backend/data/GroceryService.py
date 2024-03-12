@@ -368,7 +368,7 @@ class GroceryService:
                     self.updateInstrumentParameters(wsName, detectorState)
             self._loadedInstruments[key] = wsName
         return wsName
-    
+
     def updateInstrumentParameters(self, wsName: WorkspaceName, detectorState: DetectorState):
         """
         The SNAP instrument has moveable panels, and certain properties of a calculation will depend on how the panels
