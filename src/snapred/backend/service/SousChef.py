@@ -75,14 +75,12 @@ class SousChef(Service):
                 instrumentState=instrumentState,
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
-            self.groceryClerk.name("groupingWorkspace")\
-            .fromRun(ingredients.runNumber)\
-            .grouping(ingredients.focusGroup.name)\
-            .useLiteMode(ingredients.useLiteMode)\
-            .add()
+            self.groceryClerk.name("groupingWorkspace").fromRun(ingredients.runNumber).grouping(
+                ingredients.focusGroup.name
+            ).useLiteMode(ingredients.useLiteMode).add()
             groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
             data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelIngredients, groceries)
-            
+
             self._pixelGroupCache[key] = PixelGroup(
                 focusGroup=ingredients.focusGroup,
                 pixelGroupingParameters=data["parameters"],
