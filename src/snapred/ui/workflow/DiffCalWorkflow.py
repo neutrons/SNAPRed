@@ -87,6 +87,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             .addNode(self._saveCalibration, self._saveView, name="Saving")
             .build()
         )
+        self.workflow.presenter.setResetLambda(self.reset)
 
     def _populateGroupingDropdown(self):
         # when the run number is updated, freeze the drop down to populate it

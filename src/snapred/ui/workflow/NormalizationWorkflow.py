@@ -73,6 +73,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             .addNode(self._saveNormalizationCalibration, self._saveView, "Saving")
             .build()
         )
+        self.workflow.presenter.setResetLambda(self.reset)
 
     @EntryExitLogger(logger=logger)
     def _populateGroupingDropdown(self):
