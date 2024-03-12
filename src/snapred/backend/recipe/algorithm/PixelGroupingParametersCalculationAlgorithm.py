@@ -43,7 +43,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             + "with instrument-location parameters initialized according to the run number",
         )
         self.declareProperty(
-            MaskWorkspaceProperty("MaskWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MaskWorkspaceProperty("MaskWorkspace", "", Direction.Input, PropertyMode.Optional),
             doc="The mask workspace for a specified calibration run number and version",
         )
         self.declareProperty(
@@ -87,11 +87,14 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             InputWorkspace=self.groupingWorkspaceName,
             OutputWorkspace=tmpGroupingWSName,
         )
-        self.mantidSnapper.MaskDetectorFlags(
-            "Setting grouping workspace mask flags",
-            MaskWorkspace=self.maskWorkspaceName,
-            OutputWorkspace=tmpGroupingWSName,
-        )
+
+        # If the optional mask workspace is present, apply it to the grouping workspace:
+        if self.maskWorkspaceName:
+            self.mantidSnapper.MaskDetectorFlags(
+                "Setting grouping workspace mask flags",
+                MaskWorkspace=self.maskWorkspaceName,
+                OutputWorkspace=tmpGroupingWSName,
+            )
         self.mantidSnapper.executeQueue()
 
         # Create a grouped-by-detector workspace from the grouping workspace
