@@ -55,9 +55,3 @@ class DataExportService:
 
     def initializeState(self, runId: str, name: str):
         return self.dataService.initializeState(runId, name)
-
-    def deleteWorkspace(self, name):
-        return self.groceryService.deleteWorkspace(name)
-
-    def deleteWorkspaceUnconditional(self, name):
-        return self.groceryService.deleteWorkspaceUnconditional(name)

@@ -24,7 +24,6 @@ class TestPanelPresenter(object):
     def __init__(self, view):
         reductionRequest = SNAPRequest(path="api", payload=None)
         self.apiDict = self.interfaceController.executeRequest(reductionRequest).data
-        # self.apiComboBox = self.setupApiComboBox(self.apiDict, view)
 
         jsonSchema = json.loads(self.apiDict["config"][""]["runs"])
         self.view = view
@@ -32,21 +31,14 @@ class TestPanelPresenter(object):
         self._loadDefaultJsonInput("config//runs", self.jsonForm)
         self.comboSelectionView = BackendRequestView(self.jsonForm, "config//runs", parent=self.view)
 
-        self.diffractionCalibrationLayout = QGridLayout()
-        self.diffractionCalibrationWidget = QWidget()
-        self.diffractionCalibrationWidget.setLayout(self.diffractionCalibrationLayout)
-
-        self.diffractionCalibrationLayout.addWidget(self._createDiffCalWorkflow())
-
-        self.calibrationNormalizationLayout = QGridLayout()
-        self.calibrationNormalizationWidget = QWidget()
-        self.calibrationNormalizationWidget.setLayout(self.calibrationNormalizationLayout)
-
-        self.calibrationNormalizationLayout.addWidget(self._createNormalizationWorkflow())
+        self.diffractionCalibrationWidget = self._createWorkflowWidget(self._createDiffCalWorkflow)
+        self.calibrationNormalizationWidget = self._createWorkflowWidget(self._createNormalizationWorkflow)
+        self.reductionWidget = self._createWorkflowWidget(self._createReductionWorkflow)
 
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
         self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization")
-        self.view.tabWidget.addTab(ReductionWorkflow(self.view).widget, "Reduction")
+        # TODO reenable in Phase 3
+        # self.view.tabWidget.addTab(self.reductionWidget, "Reduction")
 
     def _findSchemaForPath(self, path):
         currentVal = self.apiDict
@@ -72,8 +64,14 @@ class TestPanelPresenter(object):
         else:
             logger.warning("No default values for path: {}".format(defaultFilePath))
 
-    def _createDiffCalWorkflow(self):
-        path = "calibration/diffraction/request"
+    def _createWorkflowWidget(self, method):
+        layout = QGridLayout()
+        widget = QWidget()
+        widget.setLayout(layout)
+        layout.addWidget(method())
+        return widget
+
+    def _createFormFromPath(self, path):
         logger.info("Creating workflow for path: {}".format(path))
         jsonSchema = self._getSchemaForSelection(path)
         logger.info("Schema for path: {}".format(jsonSchema))
@@ -81,18 +79,21 @@ class TestPanelPresenter(object):
         logger.info("Created form for path: {}".format(newForm))
         self._loadDefaultJsonInput(path, newForm)
         logger.info("loaded default json input for path: {}".format(path))
+        return newForm
+
+    def _createDiffCalWorkflow(self):
+        path = "calibration/diffraction/request"
+        newForm = self._createFormFromPath(path)
         return DiffCalWorkflow(newForm, parent=self.view).widget
 
     def _createNormalizationWorkflow(self):
-        path = "normalization//request"
-        logger.info("Creating workflow for path: {}".format(path))
-        jsonSchema = self._getSchemaForSelection(path)
-        logger.info("Schema for path: {}".format(jsonSchema))
-        newForm = JsonForm(path.split("/")[-1], jsonSchema=jsonSchema, parent=self.view)
-        logger.info("Created form for path: {}".format(newForm))
-        self._loadDefaultJsonInput(path, newForm)
-        logger.info("loaded default json input for path: {}".format(path))
+        path = "normalization//request"  # NOTE double '/' is necessary
+        newForm = self._createFormFromPath(path)
         return NormalizationWorkflow(newForm, parent=self.view).widget
+
+    def _createReductionWorkflow(self):
+        # TODO make more betterer in Phase 3
+        return ReductionWorkflow(parent=self.view).widget
 
     @property
     def widget(self):

@@ -1,11 +1,14 @@
-# NOTE the remote tests depend pn files in the analysis filesystem
-# if those are changed or moved, it could cause unexpected test failure
+# NOTE that the remote tests depend on files on the analysis filesystem:
+# * if those files are changed or moved, it will cause test failure;
+# * GOLDEN DATA must be IDENTICAL between local and remote tests.
 
 import json
 import socket
 import unittest
 import unittest.mock as mock
-from typing import Dict, List
+from datetime import date
+from pathlib import Path
+from typing import Dict, List, Union
 
 import pytest
 from mantid.simpleapi import (
@@ -24,28 +27,33 @@ from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorithm import (
     PixelGroupingParametersCalculationAlgorithm as ThisAlgo,
 )
 from snapred.meta.Config import Resource
+from util.helpers import (
+    createCompatibleMask,
+    maskComponentByName,
+)
 
-IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
+GENERATE_GOLDEN_DATA = False
+GOLDEN_DATA_DATE = "2024-02-26"  # date.today().isoformat()
+
+# Override to run "as if" on analysis machine (but don't require access to SNS filesystem):
+REMOTE_OVERRIDE = False
+IS_ON_ANALYSIS_MACHINE = REMOTE_OVERRIDE or socket.gethostname().startswith("analysis")
 
 
 class PixelGroupCalculation(unittest.TestCase):
     @classmethod
     def getInstrumentState(cls):
-        if IS_ON_ANALYSIS_MACHINE:
-            calibrationPath = (
-                "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/CalibrationParameters.json"
-            )
-        else:
-            calibrationPath = Resource.getPath("inputs/pixel_grouping/CalibrationParameters.json")
+        calibrationPath = Resource.getPath("inputs/pixel_grouping/CalibrationParameters.json")
         return parse_file_as(Calibration, calibrationPath).instrumentState
 
     @classmethod
     def getInstrumentDefinitionFilePath(cls, isLiteInstrument):
-        if IS_ON_ANALYSIS_MACHINE:
+        if IS_ON_ANALYSIS_MACHINE and not REMOTE_OVERRIDE:
             if isLiteInstrument:
                 return "/SNS/SNAP/shared/Calibration/Powder/SNAPLite.xml"
             else:
@@ -57,10 +65,41 @@ class PixelGroupCalculation(unittest.TestCase):
                 return Resource.getPath("inputs/pixel_grouping/SNAP_Definition.xml")
 
     @classmethod
+    def loadGroupingFile(cls, groupingWSName, groupingFilePath, instrumentWSName):
+        if Path(groupingFilePath).suffix.upper() == ".HDF":
+            LoadDiffCal(
+                Filename=groupingFilePath,
+                MakeGroupingWorkspace=True,
+                MakeCalWorkspace=False,
+                MakeMaskWorkspace=False,
+                WorkspaceName=groupingWSName,
+                InputWorkspace=instrumentWSName,
+            )
+            # Remove the "_group" suffix, which is added by LoadDiffCal to the output workspace name
+            RenameWorkspace(
+                "Renaming grouping workspace...",
+                InputWorkspace=groupingWSName + "_group",
+                OutputWorkspace=groupingWSName,
+            )
+        else:
+            if Path(groupingFilePath).suffix.upper() != ".XML":
+                raise RuntimeError(
+                    f"not implemented: loading grouping file with extension {Path(groupingFilePath).suffix[1:]}"
+                )
+            LoadDetectorsGroupingFile(
+                InputFile=groupingFilePath,
+                InputWorkspace=instrumentWSName,
+                OutputWorkspace=groupingWSName,
+            )
+
+    @classmethod
     def setUpClass(cls):
+        cls.groceryService = GroceryService()
+
         # closest thing to an enum in python
         cls.isLite, cls.isFull, cls.isTest = (0, 1, 2)
         cls.all, cls.bank, cls.column, cls.natural = (3, 4, 5, 6)
+        cls.unmasked, cls.westMasked, cls.eastMasked = (7, 8, 9)
 
         # state corresponding to local test instrument
         cls.localInstrumentState = InstrumentState.parse_raw(
@@ -84,6 +123,10 @@ class PixelGroupCalculation(unittest.TestCase):
             OutputWorkspace=cls.localInstrumentWorkspace,
             Filename=cls.localInstrumentFilename,
         )
+        # Instrument workspace _not_ loaded by the grocery service => update its mutable instrument parameters.
+        cls.groceryService.updateInstrumentParameters(
+            cls.localInstrumentWorkspace, cls.localInstrumentState.detectorState
+        )
 
         # grouping workspaces on local instrument
         cls.localGroupingWorkspace: Dict[int, str] = {
@@ -97,35 +140,52 @@ class PixelGroupCalculation(unittest.TestCase):
                 OutputWorkspace=cls.localGroupingWorkspace[x],
             )
 
-        # set up workspaces as instrument donors
-        liteInstrument: str = "test_pgp_idf_lite"
-        nativeInstrument: str = "test_pgp_idf_native"
-        LoadEmptyInstrument(
-            OutputWorkspace=liteInstrument,
-            Filename=cls.getInstrumentDefinitionFilePath(True),
-        )
-        LoadEmptyInstrument(
-            OutputWorkspace=nativeInstrument,
-            Filename=cls.getInstrumentDefinitionFilePath(False),
-        )
+        # prepare mask workspaces with local instrument
+        cls.localMaskWorkspace: Dict[int, str] = {
+            cls.unmasked: "test_mask_unmasked",
+            cls.westMasked: "test_mask_west",
+            cls.eastMasked: "test_mask_east",
+        }
+        for x in [cls.unmasked, cls.westMasked, cls.eastMasked]:
+            maskWSName = cls.localMaskWorkspace[x]
+            createCompatibleMask(
+                maskWSName=maskWSName,
+                templateWSName=cls.localInstrumentWorkspace,
+                instrumentFilePath=cls.localInstrumentFilename,
+            )
+
+            match x:
+                case cls.eastMasked:
+                    maskComponentByName(maskWSName=maskWSName, componentName="East")
+                case cls.westMasked:
+                    maskComponentByName(maskWSName=maskWSName, componentName="West")
 
         if IS_ON_ANALYSIS_MACHINE:
-            cls.referenceFileFolder = "/SNS/SNAP/shared/Calibration_Prototype/Powder/04bd2c53f6bf6754/"
+            # Instrument state is the same for both SNAP and SNAPLite instruments:
+            cls.SNAPInstrumentState = cls.getInstrumentState()
 
             # load the SNAP instrument
             cls.SNAPInstrumentFilename = cls.getInstrumentDefinitionFilePath(isLiteInstrument=False)
-            cls.SNAPInstrumentWorkspace = "SNAP_intstrument_idf"
+            cls.SNAPInstrumentWorkspace = "SNAP_instrument_idf"
             LoadEmptyInstrument(
                 OutputWorkspace=cls.SNAPInstrumentWorkspace,
                 Filename=cls.SNAPInstrumentFilename,
             )
+            # Instrument workspace _not_ loaded by the grocery service => update its mutable instrument parameters.
+            cls.groceryService.updateInstrumentParameters(
+                cls.SNAPInstrumentWorkspace, cls.SNAPInstrumentState.detectorState
+            )
 
             # load the SNAPLite instrument
             cls.SNAPLiteInstrumentFilename = cls.getInstrumentDefinitionFilePath(isLiteInstrument=True)
-            cls.SNAPLiteInstrumentWorkspace = "SNAPLite_intstrument_idf"
+            cls.SNAPLiteInstrumentWorkspace = "SNAPLite_instrument_idf"
             LoadEmptyInstrument(
                 OutputWorkspace=cls.SNAPLiteInstrumentWorkspace,
                 Filename=cls.SNAPLiteInstrumentFilename,
+            )
+            # Instrument workspace _not_ loaded by the grocery service => update its mutable instrument parameters.
+            cls.groceryService.updateInstrumentParameters(
+                cls.SNAPLiteInstrumentWorkspace, cls.SNAPInstrumentState.detectorState
             )
 
             # prepare loading of SNAP grouping workspaces
@@ -134,12 +194,40 @@ class PixelGroupCalculation(unittest.TestCase):
                 cls.bank: "test_grouping_workspace_SNAP_bank",
                 cls.column: "test_grouping_workspace_SNAP_column",
             }
-            pixelGroupPath = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/"
-            cls.SNAPGroupingFilename = {
-                cls.all: f"{pixelGroupPath}SNAPFocGroup_All.xml",
-                cls.bank: f"{pixelGroupPath}SNAPFocGroup_Bank.xml",
-                cls.column: f"{pixelGroupPath}SNAPFocGroup_Column.xml",
+
+            if not REMOTE_OVERRIDE:
+                pixelGroupPath = "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/"
+                cls.SNAPGroupingFilename = {
+                    cls.all: f"{pixelGroupPath}SNAPFocGroup_All.xml",
+                    cls.bank: f"{pixelGroupPath}SNAPFocGroup_Bank.xml",
+                    cls.column: f"{pixelGroupPath}SNAPFocGroup_Column.xml",
+                }
+            else:
+                pixelGroupPath = Resource.getPath("inputs/pixel_grouping/")
+                cls.SNAPGroupingFilename = {
+                    cls.all: f"{pixelGroupPath}SNAPFocGroup_All.hdf",
+                    cls.bank: f"{pixelGroupPath}SNAPFocGroup_Bank.hdf",
+                    cls.column: f"{pixelGroupPath}SNAPFocGroup_Column.hdf",
+                }
+
+            # prepare mask workspaces with SNAP instrument
+            cls.SNAPMaskWorkspace: Dict[int, str] = {
+                cls.unmasked: "test_mask_SNAP_unmasked",
+                cls.westMasked: "test_mask_SNAP_west",
+                cls.eastMasked: "test_mask_SNAP_east",
             }
+            for x in [cls.unmasked, cls.westMasked, cls.eastMasked]:
+                maskWSName = cls.SNAPMaskWorkspace[x]
+                createCompatibleMask(
+                    maskWSName=maskWSName,
+                    templateWSName=cls.SNAPInstrumentWorkspace,
+                    instrumentFilePath=cls.SNAPInstrumentFilename,
+                )
+                match x:
+                    case cls.westMasked:
+                        maskComponentByName(maskWSName=maskWSName, componentName="West")
+                    case cls.eastMasked:
+                        maskComponentByName(maskWSName=maskWSName, componentName="East")
 
             # prepare loading of SNAPLite grouping workspaces
             cls.SNAPLiteGroupingWorkspace = {
@@ -153,19 +241,41 @@ class PixelGroupCalculation(unittest.TestCase):
                 cls.column: f"{pixelGroupPath}SNAPFocGroup_Column.lite.hdf",
             }
 
+            # prepare mask workspaces with SNAPLite instrument
+            cls.SNAPLiteMaskWorkspace: Dict[int, str] = {
+                cls.unmasked: "test_mask_SNAPLite_unmasked",
+                cls.westMasked: "test_mask_SNAPLite_west",
+                cls.eastMasked: "test_mask_SNAPLite_east",
+            }
+            for x in [cls.unmasked, cls.westMasked, cls.eastMasked]:
+                maskWSName = cls.SNAPLiteMaskWorkspace[x]
+                createCompatibleMask(
+                    maskWSName=maskWSName,
+                    templateWSName=cls.SNAPLiteInstrumentWorkspace,
+                    instrumentFilePath=cls.SNAPLiteInstrumentFilename,
+                )
+                match x:
+                    case cls.westMasked:
+                        maskComponentByName(maskWSName=maskWSName, componentName="West")
+                    case cls.eastMasked:
+                        maskComponentByName(maskWSName=maskWSName, componentName="East")
+
         else:
             # the SNAPLite tests are fast enough to run locally
-            cls.SNAPLiteInstrumentFilename = cls.getInstrumentDefinitionFilePath(isLiteInstrument=True)
-            cls.SNAPLiteGroupingFilename: Dict[int, str] = {
-                cls.all: Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_All.lite.hdf"),
-                cls.bank: Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Bank.lite.hdf"),
-                cls.column: Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.lite.hdf"),
-            }
 
+            # Instrument state is the same for both SNAP and SNAPLite instruments:
+            cls.SNAPInstrumentState = cls.getInstrumentState()
+
+            # load the SNAPLite instrument
+            cls.SNAPLiteInstrumentFilename = cls.getInstrumentDefinitionFilePath(isLiteInstrument=True)
             cls.SNAPLiteInstrumentWorkspace = "SNAPLite_intstrument_idf"
             LoadEmptyInstrument(
                 OutputWorkspace=cls.SNAPLiteInstrumentWorkspace,
                 Filename=cls.SNAPLiteInstrumentFilename,
+            )
+            # Instrument workspace not loaded by the grocery service => update its mutable instrument parameters.
+            cls.groceryService.updateInstrumentParameters(
+                cls.SNAPLiteInstrumentWorkspace, cls.SNAPInstrumentState.detectorState
             )
 
             cls.SNAPLiteGroupingWorkspace = {
@@ -174,21 +284,37 @@ class PixelGroupCalculation(unittest.TestCase):
                 cls.column: "test_grouping_workspace_SNAPLite_column",
             }
 
+            cls.SNAPLiteGroupingFilename: Dict[int, str] = {
+                cls.all: Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_All.lite.hdf"),
+                cls.bank: Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Bank.lite.hdf"),
+                cls.column: Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.lite.hdf"),
+            }
+
             for x in [cls.all, cls.bank, cls.column]:
-                LoadDiffCal(
-                    Filename=cls.SNAPLiteGroupingFilename[x],
-                    MakeGroupingWorkspace=True,
-                    MakeCalWorkspace=False,
-                    MakeMaskWorkspace=False,
-                    WorkspaceName=cls.SNAPLiteGroupingWorkspace[x],
-                    InputWorkspace=cls.SNAPLiteInstrumentWorkspace,
+                cls.loadGroupingFile(
+                    cls.SNAPLiteGroupingWorkspace[x],
+                    cls.SNAPLiteGroupingFilename[x],
+                    cls.SNAPLiteInstrumentWorkspace,
                 )
-                # Remove the "_group" suffix, which is added by LoadDiffCal to the output workspace name
-                RenameWorkspace(
-                    "Renaming grouping workspace...",
-                    InputWorkspace=cls.SNAPLiteGroupingWorkspace[x] + "_group",
-                    OutputWorkspace=cls.SNAPLiteGroupingWorkspace[x],
+
+            # prepare mask workspaces with SNAPLite instrument
+            cls.SNAPLiteMaskWorkspace: Dict[int, str] = {
+                cls.unmasked: "test_mask_SNAPLite_unmasked",
+                cls.westMasked: "test_mask_SNAPLite_west",
+                cls.eastMasked: "test_mask_SNAPLite_east",
+            }
+            for x in [cls.unmasked, cls.westMasked, cls.eastMasked]:
+                maskWSName = cls.SNAPLiteMaskWorkspace[x]
+                createCompatibleMask(
+                    maskWSName=maskWSName,
+                    templateWSName=cls.SNAPLiteInstrumentWorkspace,
+                    instrumentFilePath=cls.SNAPLiteInstrumentFilename,
                 )
+                match x:
+                    case cls.westMasked:
+                        maskComponentByName(maskWSName=maskWSName, componentName="West")
+                    case cls.eastMasked:
+                        maskComponentByName(maskWSName=maskWSName, componentName="East")
 
         super().setUpClass()
 
@@ -219,37 +345,11 @@ class PixelGroupCalculation(unittest.TestCase):
         assert algo.delL == algo.L * algo.delLOverL
         assert algo.delTheta == self.localInstrumentState.instrumentConfig.delThWithGuide
 
-    def test_loadNeededLogs(self):
-        algo = ThisAlgo()
-        algo.initialize()
-        LoadEmptyInstrument(
-            OutputWorkspace="test_logs",
-            Filename=self.localInstrumentFilename,
-        )
-        algo.loadNeededLogs("test_logs", self.localIngredients)
-        assert "" == CheckForSampleLogs(
-            Workspace="test_logs",
-            LogNames="det_arc1",
-        )
-        assert "" == CheckForSampleLogs(
-            Workspace="test_logs",
-            LogNames="det_arc2",
-        )
-        assert "" == CheckForSampleLogs(
-            Workspace="test_logs",
-            LogNames="det_lin1",
-        )
-        assert "" == CheckForSampleLogs(
-            Workspace="test_logs",
-            LogNames="det_lin2",
-        )
-        # TODO assert instrument was updated
-
-    def run_test(self, instrumentState, groupingWorkspace, referenceParametersFile):
-        pixelGroupingParams_calc = self.createPixelGroupingParameters(instrumentState, groupingWorkspace)
+    def run_test(self, instrumentState, groupingWorkspace, maskWorkspace, referenceParametersFile):
+        pixelGroupingParams_calc = self.createPixelGroupingParameters(instrumentState, groupingWorkspace, maskWorkspace)
         self.compareToReference(pixelGroupingParams_calc, referenceParametersFile)
 
-    def createPixelGroupingParameters(self, instrumentState, groupingWorkspace):
+    def createPixelGroupingParameters(self, instrumentState, groupingWorkspace, maskWorkspace):
         """Test execution of PixelGroupingParametersCalculationAlgorithm"""
 
         ingredients = PixelGroupingIngredients(
@@ -261,6 +361,7 @@ class PixelGroupCalculation(unittest.TestCase):
         pixelGroupingAlgo.initialize()
         pixelGroupingAlgo.setProperty("Ingredients", ingredients.json())
         pixelGroupingAlgo.setProperty("GroupingWorkspace", groupingWorkspace)
+        pixelGroupingAlgo.setProperty("MaskWorkspace", maskWorkspace)
         assert pixelGroupingAlgo.execute()
 
         # parse the algorithm output and create a list of PixelGroupingParameters
@@ -280,28 +381,50 @@ class PixelGroupCalculation(unittest.TestCase):
         return pixelGroupingParams_calc
 
     def compareToReference(self, pixelGroupingParams_calc, referenceParametersFile):
-        # parse the reference file. Note, in the reference file each kind of parameter is grouped into its own list
-        with open(referenceParametersFile) as f:
-            pixelGroupingParams_ref = json.load(f)
+        if Path(referenceParametersFile).exists():
+            # parse the reference file. Note, in the reference file each kind of parameter is grouped into its own list
+            with open(referenceParametersFile) as f:
+                pixelGroupingParams_ref = json.load(f)
 
-        # compare calculated and reference parameters
-        number_of_groupings_calc = len(pixelGroupingParams_calc)
-        assert len(pixelGroupingParams_ref["twoTheta"]) == number_of_groupings_calc
-        assert len(pixelGroupingParams_ref["dMin"]) == number_of_groupings_calc
-        assert len(pixelGroupingParams_ref["dMax"]) == number_of_groupings_calc
-        assert len(pixelGroupingParams_ref["delDOverD"]) == number_of_groupings_calc
+            # compare calculated and reference parameters
+            number_of_groupings_calc = len(pixelGroupingParams_calc)
+            assert len(pixelGroupingParams_ref["isMasked"]) == number_of_groupings_calc
+            assert len(pixelGroupingParams_ref["twoTheta"]) == number_of_groupings_calc
+            assert len(pixelGroupingParams_ref["dMin"]) == number_of_groupings_calc
+            assert len(pixelGroupingParams_ref["dMax"]) == number_of_groupings_calc
+            assert len(pixelGroupingParams_ref["delDOverD"]) == number_of_groupings_calc
 
-        for index, param in enumerate(pixelGroupingParams_ref["twoTheta"]):
-            assert abs(float(param) - pixelGroupingParams_calc[index].twoTheta) == 0
+            for index, param in enumerate(pixelGroupingParams_ref["isMasked"]):
+                assert param is pixelGroupingParams_calc[index].isMasked
 
-        for index, param in enumerate(pixelGroupingParams_ref["dMin"]):
-            assert abs(float(param) - pixelGroupingParams_calc[index].dResolution.minimum) == 0
+            for index, param in enumerate(pixelGroupingParams_ref["twoTheta"]):
+                assert pytest.approx(param, 1.0e-6) == pixelGroupingParams_calc[index].twoTheta
 
-        for index, param in enumerate(pixelGroupingParams_ref["dMax"]):
-            assert abs(float(param) - pixelGroupingParams_calc[index].dResolution.maximum) == 0
+            for index, param in enumerate(pixelGroupingParams_ref["dMin"]):
+                assert pytest.approx(param, 1.0e-6) == pixelGroupingParams_calc[index].dResolution.minimum
 
-        for index, param in enumerate(pixelGroupingParams_ref["delDOverD"]):
-            assert abs(float(param) - pixelGroupingParams_calc[index].dRelativeResolution) < 1.0e-3
+            for index, param in enumerate(pixelGroupingParams_ref["dMax"]):
+                assert pytest.approx(param, 1.0e-6) == pixelGroupingParams_calc[index].dResolution.maximum
+
+            for index, param in enumerate(pixelGroupingParams_ref["delDOverD"]):
+                assert pytest.approx(param, 1.0e-6) == pixelGroupingParams_calc[index].dRelativeResolution
+        elif GENERATE_GOLDEN_DATA:
+            # GENERATE new GOLDEN data:
+            pixelGroupingParams_ref: Dict[str, List[Union[float, bool]]] = {
+                "isMasked": [],
+                "twoTheta": [],
+                "dMin": [],
+                "dMax": [],
+                "delDOverD": [],
+            }
+            for index in range(len(pixelGroupingParams_calc)):
+                pixelGroupingParams_ref["isMasked"].append(pixelGroupingParams_calc[index].isMasked)
+                pixelGroupingParams_ref["twoTheta"].append(pixelGroupingParams_calc[index].twoTheta)
+                pixelGroupingParams_ref["dMin"].append(pixelGroupingParams_calc[index].dResolution.minimum)
+                pixelGroupingParams_ref["dMax"].append(pixelGroupingParams_calc[index].dResolution.maximum)
+                pixelGroupingParams_ref["delDOverD"].append(pixelGroupingParams_calc[index].dRelativeResolution)
+            with open(referenceParametersFile, "w") as f:
+                f.write(json.dumps(pixelGroupingParams_ref, indent=2))
 
     # LOCAL TESTS ON TEST INSTRUMENT
 
@@ -310,6 +433,7 @@ class PixelGroupCalculation(unittest.TestCase):
         pgp = self.createPixelGroupingParameters(
             instrumentState=self.localInstrumentState,
             groupingWorkspace=self.localGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.localMaskWorkspace[self.unmasked],
         )
         assert len(pgp) > 0
 
@@ -318,6 +442,7 @@ class PixelGroupCalculation(unittest.TestCase):
         pgp = self.createPixelGroupingParameters(
             instrumentState=self.localInstrumentState,
             groupingWorkspace=self.localGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.localMaskWorkspace[self.unmasked],
         )
         assert len(pgp) > 0
 
@@ -326,33 +451,132 @@ class PixelGroupCalculation(unittest.TestCase):
     @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
     def test_local_SNAPLite_column(self):
         groupingScheme = self.column
-        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Column_parameters.lite.json")
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Column_parameters.lite.{GOLDEN_DATA_DATE}.json"
+        )
 
         self.run_test(
             instrumentState=self.getInstrumentState(),
             groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.unmasked],
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
     def test_local_SNAPLite_bank(self):
         groupingScheme = self.bank
-        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/Bank_parameters.lite.json")
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Bank_parameters.lite.{GOLDEN_DATA_DATE}.json"
+        )
 
         self.run_test(
             instrumentState=self.getInstrumentState(),
             groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.unmasked],
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
     def test_local_SNAPLite_all(self):
         groupingScheme = self.all
-        referenceParametersFile = Resource.getPath("outputs/pixel_grouping/All_parameters.lite.json")
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/All_parameters.lite.{GOLDEN_DATA_DATE}.json"
+        )
 
         self.run_test(
             instrumentState=self.getInstrumentState(),
             groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.unmasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
+    def test_local_SNAPLite_column_west(self):
+        # Test masking all detectors contributing to "west" component[s]
+        groupingScheme = self.column
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Column_parameters.lite.west.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.westMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
+    def test_local_SNAPLite_bank_west(self):
+        # Test masking all detectors contributing to "west" component[s]
+        groupingScheme = self.bank
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Bank_parameters.lite.west.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.westMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
+    def test_local_SNAPLite_all_west(self):
+        # Test masking all detectors contributing to "west" component[s]
+        groupingScheme = self.all
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/All_parameters.lite.west.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.westMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
+    def test_local_SNAPLite_column_east(self):
+        # Test masking all detectors contributing to "east" component[s]
+        groupingScheme = self.column
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Column_parameters.lite.east.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.eastMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
+    def test_local_SNAPLite_bank_east(self):
+        # Test masking all detectors contributing to "east" component[s]
+        groupingScheme = self.bank
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Bank_parameters.lite.east.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.eastMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(IS_ON_ANALYSIS_MACHINE, reason="use remote version instead")
+    def test_local_SNAPLite_all_east(self):
+        # Test masking all detectors contributing to "east" component[s]
+        groupingScheme = self.all
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/All_parameters.lite.east.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.eastMasked],
             referenceParametersFile=referenceParametersFile,
         )
 
@@ -365,125 +589,374 @@ class PixelGroupCalculation(unittest.TestCase):
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_all_full(self):
         groupingScheme = self.all
-        referenceParametersFile = self.referenceFileFolder + "All_parameters_newCalc.json"
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/All_parameters.{GOLDEN_DATA_DATE}.json"
+        )
 
-        LoadDetectorsGroupingFile(
-            InputFile=self.SNAPGroupingFilename[groupingScheme],
-            InputWorkspace=self.SNAPInstrumentWorkspace,
-            OutputWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+        self.loadGroupingFile(
+            self.SNAPGroupingWorkspace[groupingScheme],
+            self.SNAPGroupingFilename[groupingScheme],
+            self.SNAPInstrumentWorkspace,
         )
 
         self.run_test(
             instrumentState=self.getInstrumentState(),
             groupingWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPMaskWorkspace[self.unmasked],
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_bank_full(self):
         groupingScheme = self.bank
-        referenceParametersFile = self.referenceFileFolder + "Bank_parameters_newCalc.json"
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Bank_parameters.{GOLDEN_DATA_DATE}.json"
+        )
 
-        LoadDetectorsGroupingFile(
-            InputFile=self.SNAPGroupingFilename[groupingScheme],
-            InputWorkspace=self.SNAPInstrumentWorkspace,
-            OutputWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+        self.loadGroupingFile(
+            self.SNAPGroupingWorkspace[groupingScheme],
+            self.SNAPGroupingFilename[groupingScheme],
+            self.SNAPInstrumentWorkspace,
         )
 
         self.run_test(
             instrumentState=self.getInstrumentState(),
             groupingWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPMaskWorkspace[self.unmasked],
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_column_full(self):
         groupingScheme = self.column
-        referenceParametersFile = self.referenceFileFolder + "Column_parameters_newCalc.json"
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Column_parameters.{GOLDEN_DATA_DATE}.json"
+        )
 
-        LoadDetectorsGroupingFile(
-            InputFile=self.SNAPGroupingFilename[groupingScheme],
-            InputWorkspace=self.SNAPInstrumentWorkspace,
-            OutputWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+        self.loadGroupingFile(
+            self.SNAPGroupingWorkspace[groupingScheme],
+            self.SNAPGroupingFilename[groupingScheme],
+            self.SNAPInstrumentWorkspace,
         )
 
         self.run_test(
             instrumentState=self.getInstrumentState(),
             groupingWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPMaskWorkspace[self.unmasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_all_full_west(self):
+        groupingScheme = self.all
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/All_parameters.west.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPGroupingWorkspace[groupingScheme],
+            self.SNAPGroupingFilename[groupingScheme],
+            self.SNAPInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPMaskWorkspace[self.westMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_bank_full_west(self):
+        groupingScheme = self.bank
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Bank_parameters.west.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPGroupingWorkspace[groupingScheme],
+            self.SNAPGroupingFilename[groupingScheme],
+            self.SNAPInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPMaskWorkspace[self.westMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_column_full_west(self):
+        groupingScheme = self.column
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Column_parameters.west.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPGroupingWorkspace[groupingScheme],
+            self.SNAPGroupingFilename[groupingScheme],
+            self.SNAPInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPMaskWorkspace[self.westMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_all_full_east(self):
+        groupingScheme = self.all
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/All_parameters.east.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPGroupingWorkspace[groupingScheme],
+            self.SNAPGroupingFilename[groupingScheme],
+            self.SNAPInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPMaskWorkspace[self.eastMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_bank_full_east(self):
+        groupingScheme = self.bank
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Bank_parameters.east.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPGroupingWorkspace[groupingScheme],
+            self.SNAPGroupingFilename[groupingScheme],
+            self.SNAPInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPMaskWorkspace[self.eastMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_column_full_east(self):
+        groupingScheme = self.column
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Column_parameters.east.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPGroupingWorkspace[groupingScheme],
+            self.SNAPGroupingFilename[groupingScheme],
+            self.SNAPInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPMaskWorkspace[self.eastMasked],
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_all_lite(self):
         groupingScheme = self.all
-        referenceParametersFile = self.referenceFileFolder + "All_parameters_newCalc.lite.json"
-
-        LoadDiffCal(
-            Filename=self.SNAPLiteGroupingFilename[groupingScheme],
-            MakeGroupingWorkspace=True,
-            MakeCalWorkspace=False,
-            MakeMaskWorkspace=False,
-            WorkspaceName=self.SNAPLiteGroupingWorkspace[groupingScheme],
-            InputWorkspace=self.SNAPLiteInstrumentWorkspace,
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/All_parameters.lite.{GOLDEN_DATA_DATE}.json"
         )
-        # Remove the "_group" suffix, which is added by LoadDiffCal to the output workspace name
-        RenameWorkspace(
-            InputWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme] + "_group",
-            OutputWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+
+        self.loadGroupingFile(
+            self.SNAPLiteGroupingWorkspace[groupingScheme],
+            self.SNAPLiteGroupingFilename[groupingScheme],
+            self.SNAPLiteInstrumentWorkspace,
         )
 
         self.run_test(
             instrumentState=self.getInstrumentState(),
             groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.unmasked],
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_bank_lite(self):
         groupingScheme = self.bank
-        referenceParametersFile = self.referenceFileFolder + "Bank_parameters_newCalc.lite.json"
-
-        LoadDiffCal(
-            Filename=self.SNAPLiteGroupingFilename[groupingScheme],
-            MakeGroupingWorkspace=True,
-            MakeCalWorkspace=False,
-            MakeMaskWorkspace=False,
-            WorkspaceName=self.SNAPLiteGroupingWorkspace[groupingScheme],
-            InputWorkspace=self.SNAPLiteInstrumentWorkspace,
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Bank_parameters.lite.{GOLDEN_DATA_DATE}.json"
         )
-        # Remove the "_group" suffix, which is added by LoadDiffCal to the output workspace name
-        RenameWorkspace(
-            InputWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme] + "_group",
-            OutputWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+
+        self.loadGroupingFile(
+            self.SNAPLiteGroupingWorkspace[groupingScheme],
+            self.SNAPLiteGroupingFilename[groupingScheme],
+            self.SNAPLiteInstrumentWorkspace,
         )
 
         self.run_test(
             instrumentState=self.getInstrumentState(),
             groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.unmasked],
             referenceParametersFile=referenceParametersFile,
         )
 
     @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
     def test_remote_column_lite(self):
         groupingScheme = self.column
-        referenceParametersFile = self.referenceFileFolder + "Column_parameters_newCalc.lite.json"
-
-        LoadDiffCal(
-            Filename=self.SNAPLiteGroupingFilename[groupingScheme],
-            MakeGroupingWorkspace=True,
-            MakeCalWorkspace=False,
-            MakeMaskWorkspace=False,
-            WorkspaceName=self.SNAPLiteGroupingWorkspace[groupingScheme],
-            InputWorkspace=self.SNAPLiteInstrumentWorkspace,
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Column_parameters.lite.{GOLDEN_DATA_DATE}.json"
         )
-        # Remove the "_group" suffix, which is added by LoadDiffCal to the output workspace name
-        RenameWorkspace(
-            InputWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme] + "_group",
-            OutputWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+
+        self.loadGroupingFile(
+            self.SNAPLiteGroupingWorkspace[groupingScheme],
+            self.SNAPLiteGroupingFilename[groupingScheme],
+            self.SNAPLiteInstrumentWorkspace,
         )
 
         self.run_test(
             instrumentState=self.getInstrumentState(),
             groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.unmasked],
             referenceParametersFile=referenceParametersFile,
         )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_all_lite_west(self):
+        groupingScheme = self.all
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/All_parameters.lite.west.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPLiteGroupingWorkspace[groupingScheme],
+            self.SNAPLiteGroupingFilename[groupingScheme],
+            self.SNAPLiteInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.westMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_bank_lite_west(self):
+        groupingScheme = self.bank
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Bank_parameters.lite.west.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPLiteGroupingWorkspace[groupingScheme],
+            self.SNAPLiteGroupingFilename[groupingScheme],
+            self.SNAPLiteInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.westMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_column_lite_west(self):
+        groupingScheme = self.column
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Column_parameters.lite.west.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPLiteGroupingWorkspace[groupingScheme],
+            self.SNAPLiteGroupingFilename[groupingScheme],
+            self.SNAPLiteInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.westMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_all_lite_east(self):
+        groupingScheme = self.all
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/All_parameters.lite.east.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPLiteGroupingWorkspace[groupingScheme],
+            self.SNAPLiteGroupingFilename[groupingScheme],
+            self.SNAPLiteInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.eastMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_bank_lite_east(self):
+        groupingScheme = self.bank
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Bank_parameters.lite.east.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPLiteGroupingWorkspace[groupingScheme],
+            self.SNAPLiteGroupingFilename[groupingScheme],
+            self.SNAPLiteInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.eastMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+    @pytest.mark.skipif(not IS_ON_ANALYSIS_MACHINE, reason="requires analysis datafiles")
+    def test_remote_column_lite_east(self):
+        groupingScheme = self.column
+        referenceParametersFile = Resource.getPath(
+            f"outputs/pixel_grouping/golden_data/Column_parameters.lite.east.{GOLDEN_DATA_DATE}.json"
+        )
+
+        self.loadGroupingFile(
+            self.SNAPLiteGroupingWorkspace[groupingScheme],
+            self.SNAPLiteGroupingFilename[groupingScheme],
+            self.SNAPLiteInstrumentWorkspace,
+        )
+
+        self.run_test(
+            instrumentState=self.getInstrumentState(),
+            groupingWorkspace=self.SNAPLiteGroupingWorkspace[groupingScheme],
+            maskWorkspace=self.SNAPLiteMaskWorkspace[self.eastMasked],
+            referenceParametersFile=referenceParametersFile,
+        )
+
+
+# this at teardown removes the loggers, eliminating logger error printouts
+# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
+@pytest.fixture(autouse=True)
+def clear_loggers():  # noqa: PT004
+    """Remove handlers from all loggers"""
+    import logging
+
+    yield  # ... teardown follows:
+    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
+    for logger in loggers:
+        handlers = getattr(logger, "handlers", [])
+        for handler in handlers:
+            logger.removeHandler(handler)

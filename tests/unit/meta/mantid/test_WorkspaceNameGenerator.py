@@ -1,44 +1,63 @@
 import pytest
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
+runNumber = 123
+fRunNumber = str(runNumber).zfill(6)
+version = 1
+fVersion = "v" + str(version).zfill(4)
+
 
 def testRunNames():
-    assert "tof_all_123" == wng.run().runNumber(123).build()
-    assert "dsp_all_123" == wng.run().runNumber(123).unit(wng.Units.DSP).build()
-    assert "dsp_column_123" == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).build()
+    assert "tof_all_" + fRunNumber == wng.run().runNumber(runNumber).build()
+    assert "dsp_all_" + fRunNumber == wng.run().runNumber(runNumber).unit(wng.Units.DSP).build()
     assert (
-        "dsp_column_123_test"
-        == wng.run().runNumber(123).unit(wng.Units.DSP).group(wng.Groups.COLUMN).auxiliary("Test").build()
+        "dsp_column_" + fRunNumber
+        == wng.run().runNumber(runNumber).unit(wng.Units.DSP).group(wng.Groups.COLUMN).build()
+    )
+    assert (
+        "dsp_column_test_" + fRunNumber
+        == wng.run().runNumber(runNumber).unit(wng.Units.DSP).group(wng.Groups.COLUMN).auxiliary("Test").build()
     )
 
 
 def testDiffCalInputNames():
-    assert "_tof_123_raw" == wng.diffCalInput().runNumber(123).build()
-    assert "_dsp_123_raw" == wng.diffCalInput().runNumber(123).unit(wng.Units.DSP).build()
+    assert "_tof_" + fRunNumber + "_raw" == wng.diffCalInput().runNumber(runNumber).build()
+    assert "_dsp_" + fRunNumber + "_raw" == wng.diffCalInput().runNumber(runNumber).unit(wng.Units.DSP).build()
 
 
-def testDiffCalTableNames():
-    assert "_difc_123" == wng.diffCalTable().runNumber(123).build()
-    assert "_difc_123_24" == wng.diffCalTable().runNumber(123).version(24).build()
+def testDiffCalOutputName():
+    assert f"_tof_diffoc_{fRunNumber}" == wng.diffCalOutput().runNumber(runNumber).build()
+    assert f"_tof_diffoc_{fRunNumber}_{fVersion}" == wng.diffCalOutput().runNumber(runNumber).version(version).build()
 
 
-def testDiffCalOutputNames():
-    assert "_tof_123_diffoc" == wng.diffCalOutput().runNumber(123).build()
-    assert "_dsp_123_diffoc" == wng.diffCalOutput().runNumber(123).unit(wng.Units.DSP).build()
-    assert "_dsp_123_25_diffoc" == wng.diffCalOutput().runNumber(123).unit(wng.Units.DSP).version(25).build()
+def testDiffCalTableName():
+    assert f"_diffract_consts_{fRunNumber}" == wng.diffCalTable().runNumber(runNumber).build()
+    assert (
+        f"_diffract_consts_{fRunNumber}_{fVersion}" == wng.diffCalTable().runNumber(runNumber).version(version).build()
+    )
 
 
-def testDiffCalMaskNames():
-    assert "_difc_123_mask" == wng.diffCalMask().runNumber(123).build()
-    assert "_difc_123_26_mask" == wng.diffCalMask().runNumber(123).version(26).build()
+def testDiffCalMaskName():
+    assert f"_diffract_consts_mask_{fRunNumber}" == wng.diffCalMask().runNumber(runNumber).build()
+    assert (
+        f"_diffract_consts_mask_{fRunNumber}_{fVersion}"
+        == wng.diffCalMask().runNumber(runNumber).version(version).build()
+    )
 
 
 def testDiffCalMetricsNames():
-    assert "123_calibration_metrics_strain" == wng.diffCalMetrics().runNumber(123).metricName("strain").build()
     assert (
-        "123_1_calibration_metrics_strain"
-        == wng.diffCalMetrics().runNumber(123).version(1).metricName("strain").build()
+        f"_calib_metrics_strain_{fRunNumber}" == wng.diffCalMetric().runNumber(runNumber).metricName("strain").build()
     )
+    assert (
+        f"_calib_metrics_strain_{fRunNumber}_{fVersion}"
+        == wng.diffCalMetric().metricName("strain").runNumber(runNumber).version(version).build()
+    )
+
+
+def testInvalidKey():
+    with pytest.raises(RuntimeError, match=r"Key \[unit\] not a valid property"):
+        wng.diffCalMask().runNumber(runNumber).unit(wng.Units.TOF).build()
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

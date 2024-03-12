@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -6,7 +6,7 @@ from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
 class CalibrationRecord(BaseModel):
@@ -15,7 +15,7 @@ class CalibrationRecord(BaseModel):
     runNumber: str
     crystalInfo: CrystallographicInfo
     calibrationFittingIngredients: Calibration
-    pixelGroups: Optional[List[PixelGroup]]  # TODO: really shouldnt be optional, will be when sns data fixed
+    pixelGroups: Optional[List[PixelGroup]]  # TODO: really shouldn't be optional, will be when sns data fixed
     focusGroupCalibrationMetrics: FocusGroupMetric
-    workspaceNames: List[WorkspaceName]
+    workspaces: Dict[WorkspaceType, List[WorkspaceName]]
     version: Optional[int]
