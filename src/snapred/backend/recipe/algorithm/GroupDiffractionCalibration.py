@@ -15,8 +15,8 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.Config import Config
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
 class GroupDiffractionCalibration(PythonAlgorithm):
@@ -24,6 +24,8 @@ class GroupDiffractionCalibration(PythonAlgorithm):
     Calculate the group-aligned DIFC associated with a given workspace.
     One part of diffraction calibration.
     """
+
+    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def category(self):
         return "SNAPRed Diffraction Calibration"
@@ -224,7 +226,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=self.outputWStof,
                 TofBinning=self.TOF.params,
                 PeakFunction=self.peakFunction,
-                MaxChiSq=Config["constants.GroupDiffractionCalibration.MaxChiSq"],
+                MaxChiSq=self.MAX_CHI_SQ,
                 BackgroundType="Linear",
                 PeakPositions=self.groupedPeaks[groupID],
                 PeakWindow=self.groupedPeakBoundaries[groupID],
