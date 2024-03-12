@@ -32,8 +32,14 @@ from snapred.ui.widget.Toggle import Toggle
 @Resettable
 class DiffCalTweakPeakView(BackendRequestView):
     signalRunNumberUpdate = pyqtSignal(str)
+    """
+    """
     signalValueChanged = pyqtSignal(int, float, float, float)
+    """
+    """
     signalUpdateRecalculationButton = pyqtSignal(bool)
+    """
+    """
 
     DMIN = Config["constants.CrystallographicInfo.dMin"]
     DMAX = Config["constants.CrystallographicInfo.dMax"]

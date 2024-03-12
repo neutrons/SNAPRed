@@ -8,6 +8,10 @@ from snapred.ui.widget.LabeledField import LabeledField
 class ReductionView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
 
+    """
+    TODO
+    """
+
     def __init__(self, parent=None):
         super().__init__(parent)
 

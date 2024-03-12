@@ -13,7 +13,11 @@ from snapred.ui.widget.LabeledField import LabeledField
 @Resettable
 class DiffCalAssessmentView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
+    """
+    """
     signalError = pyqtSignal(str)
+    """
+    """
 
     def __init__(self, name, jsonSchemaMap, parent=None):
         super().__init__(parent)

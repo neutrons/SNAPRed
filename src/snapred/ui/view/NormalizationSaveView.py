@@ -8,6 +8,10 @@ from snapred.ui.widget.LabeledField import LabeledField
 
 @Resettable
 class NormalizationSaveView(QWidget):
+    signalRunNumberUpdate = pyqtSignal(str)
+    """
+    """
+    signalBackgroundRunNumberUpdate = pyqtSignal(str)
     """
     Provides a PyQt5 widget interface for saving normalization data post-assessment within SNAPRed.
     Adorned with the @Resettable decorator, this class enables users to input and review
@@ -41,9 +45,6 @@ class NormalizationSaveView(QWidget):
     committing them to persistent storage.
 
     """
-
-    signalRunNumberUpdate = pyqtSignal(str)
-    signalBackgroundRunNumberUpdate = pyqtSignal(str)
 
     def __init__(self, name, jsonSchemaMap, parent=None):
         super().__init__(parent)
