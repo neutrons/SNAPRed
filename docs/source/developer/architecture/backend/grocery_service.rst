@@ -25,6 +25,7 @@ Inside most services, this will usually be initialized inside the `__init__`, ca
 Any service methods which need to get workspace data can then create their list using
 
 .. code-block:: python
+
     self.groceryClerk.neutron(<runNumber>).useLiteMode(<useLiteMode>).add()
     self.groceryClerk.grouping(<focusGroupName>).fromRun(<runNumber>).useLiteMode(<useLiteMode>).add()
     groceryList = self.groceryClerk.buildList()
@@ -33,6 +34,7 @@ A preferable alternative, for easier use inside algorithms and recipes, is to cr
 which will assign each loaded workspace a name corresponding to an algorithm's inputs.
 
 .. code-block:: python
+
     self.groceryClerk.name("InputWorkspace").neutron(<runNumber>).useLiteMode(<useLiteMode>).add()
     self.groceryClerk.name("GroupingWorkspace").grouping(<focusGroupName>).fromRun(<runNumber>).useLiteMode(<useLiteMode>).add()
     groceryDict = self.groceryClerk.buildDict()
@@ -40,25 +42,26 @@ which will assign each loaded workspace a name corresponding to an algorithm's i
 If only a single workspace is needed, then a single `GroceryListItem` can be created with
 
 .. code-block:: python
+
     groceryItem = self.groceryClerk.neutron(<runNumber>).useLiteMode(<useLiteMode>).build()
 
 
 `fetchGroceryList`
 ------------------
 
-Make a list of `GroceryListItem`s specofying all needed workspaces for an operation, then pass the list.
+Make a list of `GroceryListItem` s specofying all needed workspaces for an operation, then pass the list.
 This method will handle finding the correct loders.
 
 Inputs
 ''''''
 
 * groceryList: List[GroceryListItem]
-    A list of `GroceryListItems`s, preferably created as above using the builder.
+    A list of `GroceryListItems` , preferably created as above using the builder.
 
 Outputs
 '''''''
 
-Returns a list of `WorkspaceName`s corresponding to the requested data.
+Returns a list of `WorkspaceName` s corresponding to the requested data.
 
 `fetchGroceryDict`
 ------------------
@@ -79,25 +82,47 @@ Outputs
 Returns a dictionary that matches the original keys from the input, to the loaded workspace names.
 
 
-.. `fetchWorkspace`
-.. ----------------
+All Together Now
+-----------------
 
-.. Returns a dictionary with the following keys:
+The below will illustrate a service that used the grocery service to fetch workspace data,
+which is used inside of a recipe.
 
-.. * result: boolean
-..     A boolean value, `True` if the file was loaded successfully.
-.. * loader: str
-..     The loader that was used by mantid, for future reference.
-.. * workspace: WorkspaceName
-..     The name of the workspace that was loaded into the ADS (same as the passed name argument).
+.. code-block:: python
 
-.. `fetchNeutronDataSingleUse`
-.. ------------------
+    from snapred.backend.dao.ingredients import GroceryListItem
+    from snapred.backend.data.GroceryService import GroceryService
+    from snapred.backend.service.Service import Service
 
-.. Will load neutron scattering data without any caching.
-.. This can save time and memory, but only use if you are very sure the same data will not be needed later.
+    @Singleton
+    class SomeService(Service):
 
-.. Inputs
-.. ''''''
-.. * runId: str
-..     The run number given to the
+        def __init__(self):
+            super().__init__()
+            self.groceryClerk = GroceryListItem.builder()
+            self.groceryService = GroceryService()
+
+
+        def someEndpointNeedingGroceries(self, runNumber: str, useLiteMode: bool, focusGroup: FocusGroup):
+            # build the dictionary
+            self.groceryClerk.name("InputWorkspace").neutron(runNumber).useLiteMode(useLiteMode).add()
+            self.groceryClerk.name("GroupingWorkspace").fromRun(runNumber).useLiteMode(useLiteMode).grouping(focusGroup.name).add()
+
+            # fetch the groceries, and tag on an output workspace name
+            groceries = self.groceryService.fetchGroceryDict(
+                self.groceryClerk.buildDict(),
+                OutputWorkspace="output_ws_name",
+            )
+
+            # run whatever recipe needed these
+            return SomeRecipeNeedingGroceries(
+                InputWorkspace = groceries["InputWorkspace"],
+                GroupingWorkspace = groceries["GroupingWorkspace"],
+                OutputWorkspace = groceries["OutputWorkspace"],
+            )
+
+            ## or, alternatively, if the recipe only has workspace inputs
+            # return SomeRecipeNeedingGroceries(**groceries)
+
+This illustration is using the dictionary methods. These are recommended, as then the return lists
+aren't tied to an order but to a property name.

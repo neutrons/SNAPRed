@@ -62,3 +62,4 @@ For a simplified breakdown of where you may want to implement parts of your code
    :caption: Index
 
    recipe
+   grocery_service
