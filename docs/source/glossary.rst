@@ -14,7 +14,7 @@ Glossary
         Agnostic of frontend implementation, it recieves requests from the frontend and forwards them to the corresponding Service.
         In addition it is also responsible for catching errors, and returning a human readable error message to the frontend.
 
-    Background Run ID
+    Background Run Number
         The identifier for a background run, which is a measurement taken under the same conditions as a
         primary experimental run but without the sample present. This data is used to subtract background noise
         and artifacts from the experimental data, enabling more accurate analysis. In the context of SNAP, the
