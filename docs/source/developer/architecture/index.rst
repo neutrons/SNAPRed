@@ -4,5 +4,5 @@ Architecture
    :maxdepth: 1
    :caption: Index
 
-   frontend
    backend/index
+   frontend/index
