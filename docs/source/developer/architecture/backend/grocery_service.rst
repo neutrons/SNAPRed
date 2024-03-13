@@ -1,18 +1,18 @@
 Grocery Service
 ================
 
-A data service specializing in loading workspace data from disk into mantid's ADS, for use inside algorithms.
+A :term:`DataComponent` specializing in loading :term:`workspace` data from disk into :term:`mantid`'s "term:`ADS`, for use inside :term:`algorithm` s.
 The grocery service handles loading neutron scattering data, grouping workspaces, calibration tables, and masking workspaces.
 The goal of the grocery service is to centralize and minimize loading operations.
 On the first load of a file, it is cached in its initial condition.
 Any future operations calling for the same workspace data will clone a copy of the cached workspace,
 making it safe to deform the clone.
 
-The primary way to interact with the grocery service is to send it a grocery list.
+The primary way to interact with the grocery service is to send it a :term:`grocery` list.
 A grocery list is a list of `GroceryListItem`s.  Each item contains the data needed for the grocery service
-to locate the correct file and load the file into a workspace in the ADS.
+to locate the correct file and load the file into a workspace in the :term:`ADS`.
 Which properties of a `GroceryListItem` must be set will depend on the kind of data it corresponds to.
-The service will properly handle loading all the items on the list into the ADS then return to you a list of loaded workspaces.
+The service will properly handle loading all the items on the list into the :term:`ADS` then return to you a list of loaded workspaces.
 
 The `GroceryListBuilder` is intended to handle constructing grocery lists or dictionaries.
 These can be be passed to either the `fetchGroceryList` or the `fetchGroceryDict` methods inside grocery service.
@@ -20,7 +20,7 @@ These can be be passed to either the `fetchGroceryList` or the `fetchGroceryDict
 `GroceryListBuilder`
 ---------------------
 
-Inside most services, this will usually be initialized inside the `__init__`, called `groceryClerk`.
+Inside most :term:`service` s, this will usually be initialized inside the `__init__`, called `groceryClerk`.
 
 Any service methods which need to get workspace data can then create their list using
 
