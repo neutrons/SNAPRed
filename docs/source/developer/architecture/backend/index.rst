@@ -69,6 +69,7 @@ For a simplified breakdown of where you may want to implement parts of your code
    api/normalization_service
    api/normalization
    api/object_sha
+   data/index
    recipe
    grocery_service
    api/smooth_data_excluding_peaks_request
