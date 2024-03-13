@@ -25,7 +25,10 @@ class Worker(QObject):
     def run(self):
         """Long-running task."""
         try:
-            results = self.target(self.args)
+            if self.args is not None:
+                results = self.target(self.args)
+            else:
+                results = self.target()
             # results.code = 200 # set to 200 for testing
             self.result.emit(results)
             self.success.emit(results.code < ResponseCode.MAX_OK)

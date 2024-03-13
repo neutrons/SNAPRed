@@ -1,6 +1,7 @@
 from PyQt5.QtCore import pyqtSignal
 from qtpy.QtWidgets import QComboBox, QLineEdit
 
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.ui.view.BackendRequestView import BackendRequestView
@@ -39,6 +40,8 @@ class DiffCalRequestView(BackendRequestView):
         self.groupingFileDropdown.setItems(groups)
 
     def verify(self):
+        if not self.runNumberField.text().isdigit():
+            raise ValueError("Please enter a valid run number")
         if self.sampleDropdown.currentIndex() < 0:
             raise ValueError("Please select a sample")
         if self.groupingFileDropdown.currentIndex() < 0:
@@ -47,7 +50,7 @@ class DiffCalRequestView(BackendRequestView):
             raise ValueError("You must enter a run number to select a grouping defintion")
         if self.peakFunctionDropdown.currentIndex() < 0:
             raise ValueError("Please select a peak function")
-        return True
+        return SNAPResponse(code=ResponseCode.OK, data=True)
 
     def getRunNumber(self):
         return self.runNumberField.text()

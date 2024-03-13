@@ -1,6 +1,7 @@
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QWidget
 
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
@@ -63,3 +64,10 @@ class DiffCalSaveView(QWidget):
     def setIterationDropdown(self, iterations):
         self.iterationDropdown.clear()
         self.iterationDropdown.addItems(iterations)
+
+    def verify(self):
+        if self.fieldAuthor.text() == "":
+            raise ValueError("You must specify the author")
+        if self.fieldComments.text() == "":
+            raise ValueError("You must add comments")
+        return SNAPResponse(code=ResponseCode.OK, data=True)

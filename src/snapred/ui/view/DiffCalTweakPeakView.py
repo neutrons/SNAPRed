@@ -20,6 +20,7 @@ from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigur
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.backend.dao import GroupPeakList
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
@@ -99,18 +100,25 @@ class DiffCalTweakPeakView(BackendRequestView):
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
 
-    def updateFields(self, runNumber, sampleIndex, groupingIndex, peakIndex):  # noqa ARG002
-        # NOTE uncommenting the below -- inexplicably -- causes a segfault
-        # self.runNumberField.setText(runNumber)
+    def updateFields(self, sampleIndex, groupingIndex, peakIndex):
         self.sampleDropdown.setCurrentIndex(sampleIndex)
         self.groupingFileDropdown.setCurrentIndex(groupingIndex)
         self.peakFunctionDropdown.setCurrentIndex(peakIndex)
 
     def emitValueChange(self):
-        groupingIndex = self.groupingFileDropdown.currentIndex()
-        dMin = float(self.fielddMin.field.text())
-        dMax = float(self.fielddMax.field.text())
-        peakThreshold = float(self.fieldThreshold.text())
+        try:
+            groupingIndex = self.groupingFileDropdown.currentIndex()
+            dMin = float(self.fielddMin.field.text())
+            dMax = float(self.fielddMax.field.text())
+            peakThreshold = float(self.fieldThreshold.text())
+        except ValueError as e:
+            QMessageBox.warning(
+                self,
+                "Invalid Peak Parameters",
+                f"One of dMin, dMax, or threshold have error {str(e)}",
+                QMessageBox.Ok,
+            )
+            return
         if dMin < 0.1:
             response = QMessageBox.warning(
                 self,
@@ -187,10 +195,9 @@ class DiffCalTweakPeakView(BackendRequestView):
     def verify(self):
         empties = [gpl for gpl in self.peaks if len(gpl.peaks) < 4]
         if len(empties) > 0:
-            raise ValueError(
-                "Proper calibration requires at least 4 peaks per group.  "
-                + f"Groups {[empty.groupID for empty in empties]} have "
-                + f"{[len(empty.peaks) for empty in empties]} peaks.  "
-                + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
-            )
-        return True
+            msg = "Proper calibration requires at least 4 peaks per group.\n"
+            for empty in empties:
+                msg = msg + f"\tgroup {empty.groupID} has \t {len(empty.peaks)} peaks\n"
+            msg = msg + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
+            raise ValueError(msg)
+        return SNAPResponse(code=ResponseCode.OK, data=True)

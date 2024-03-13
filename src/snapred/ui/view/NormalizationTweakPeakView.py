@@ -22,6 +22,7 @@ from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigur
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.backend.dao import GroupPeakList
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
@@ -212,3 +213,7 @@ class NormalizationTweakPeakView(BackendRequestView):
 
     def populateGroupingDropdown(self, groups=["Enter a Run Number"]):
         self.signalPopulateGroupingDropdown.emit(groups)
+
+    def verify(self):
+        # TODO verify
+        return SNAPResponse(code=ResponseCode.OK, data=True)

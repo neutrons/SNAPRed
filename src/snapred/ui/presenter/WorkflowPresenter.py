@@ -120,14 +120,21 @@ class WorkflowPresenter(object):
         self.resetLambda = resetLambda
 
     def handleContinueButtonClicked(self, model):
-        self.view.continueButton.setEnabled(False)
-        self.view.cancelButton.setEnabled(False)
-        self.view.skipButton.setEnabled(False)
+        # verify this form first
+        self.verifyWorker = self.worker_pool.createWorker(target=self.view.tabView.verify, args=None)
+        self.verifyWorker.result.connect(self._handleComplications)
+        self.verifyWorker.success.connect(lambda success: self._continueAfterVerify(model) if success else None)
+        self.worker_pool.submitWorker(self.verifyWorker)
+
+    def _continueAfterVerify(self, model):
+        buttons = [self.view.continueButton, self.view.cancelButton, self.view.skipButton]
+        for button in buttons:
+            button.setEnabled(False)
         # do action
+        # if self.verifyWorker.success:
         self.worker = self.worker_pool.createWorker(target=model.continueAction, args=(self))
-        self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
-        self.worker.finished.connect(lambda: self.view.cancelButton.setEnabled(True))
-        self.worker.finished.connect(lambda: self.view.skipButton.setEnabled(True))
+        for button in buttons:
+            self.worker.finished.connect(lambda: button.setEnabled(True))
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(lambda success: self.advanceWorkflow() if success else None)
 

@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushButton, QWidget
 
 from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentPresenter
 from snapred.ui.widget.JsonFormList import JsonFormList
@@ -82,3 +83,7 @@ class DiffCalAssessmentView(QWidget):
 
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
+
+    def verify(self):
+        # TODO verify
+        return SNAPResponse(code=ResponseCode.OK, data=True)
