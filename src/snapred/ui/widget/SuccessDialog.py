@@ -4,30 +4,14 @@ from PyQt5.QtWidgets import QDialog, QLabel, QPushButton, QVBoxLayout
 
 class SuccessDialog(QDialog):
     """
-    A PyQt5 dialog designed to succinctly inform users of successful operations, specifically
-    tailored for instances such as confirming the successful initialization of a state. This class
-    adheres to GUI design best practices by delivering clear, concise feedback to users, enhancing
-    the user experience by affirming positive outcomes of operations.
 
-    Key Features and Functionality:
-
-    - Window Options: Employs Qt.WindowCloseButtonHint and Qt.WindowTitleHint to present a focused,
-      minimalistic dialog emphasizing the message.
-    - Fixed Size: Maintains a consistent display across various platforms with a set size of
-      300x120 pixels, optimizing readability and interface consistency.
-
-    Layout and Content:
-
-    - Vertical Layout: Utilizes QVBoxLayout for an efficient, linear arrangement of components
-      including a message label and an acknowledgment button.
-    - Message Label: Conveys the success message ("State initialized successfully.") directly,
-      prioritizing clear communication with the user.
-    - OK Button: Facilitates dialog closure and user acknowledgment with a single action button.
-      Connected to the accept method, it ensures a seamless exit from the dialog, including the
-      closure of the parent window if applicable, streamlining the user's progression through tasks.
-
-    This class embodies a streamlined approach to user feedback in GUI applications, providing
-    essential information with minimal distraction, thereby fostering a positive user experience.
+    This PyQt5 dialog is crafted to provide users with immediate, clear feedback on successful operations,
+    like confirming the successful setup of a state, aligning with GUI design principles for straightforward
+    communication. It features a simple, minimalistic design with a fixed size and essential window options
+    to focus user attention on the success message. The layout includes a vertically arranged message label
+    and an "OK" button, ensuring easy readability and quick user acknowledgment. By prioritizing efficient
+    information delivery and facilitating a smooth continuation of tasks, this dialog enhances the overall
+    user experience in applications by affirming positive action outcomes without unnecessary complexity.
 
     """
 

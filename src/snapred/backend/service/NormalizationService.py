@@ -42,38 +42,11 @@ logger = snapredLogger.getLogger(__name__)
 @Singleton
 class NormalizationService(Service):
     """
-    Implements the NormalizationService class, handling the normalization process within SNAPRed.
 
     This service orchestrates various normalization tasks such as calibration and smoothing of
     scientific data, utilizing a range of data objects, services, and recipes. It is a pivotal
-    component designed to streamline the normalization workflow, ensuring efficiency and accuracy
-    across operations.
+    component designed to streamline the normalization workflow, ensuring efficiency and accuracy across operations.
 
-    Attributes:
-        - dataFactoryService (DataFactoryService): Manages creation and retrieval of data objects for
-          normalization tasks.
-        - dataExportService (DataExportService): Enables the export of processed data to persistent
-          storage systems.
-        - groceryService (GroceryService): Interfaces with the data layer to fetch and manage
-          normalization-relevant data.
-        - groceryClerk (GroceryListItem.builder): Utilizes the builder pattern to assemble required
-          data items for normalization processes.
-        - diffractionCalibrationService (CalibrationService): Specializes in calibration tasks for
-          diffraction data, ensuring precision and accuracy.
-        - sousChef (SousChef): Prepares the necessary ingredients for the normalization recipe,
-          optimizing the preparation phase.
-
-    Key Operations:
-        - Handles the entire normalization workflow, including correction, focusing, and smoothing
-          of data.
-        - Validates the consistency of instrument states across runs.
-        - Assesses the outcomes of normalization, facilitating data quality evaluation.
-        - Persists normalization data and metadata following user validation.
-        - Manages the indexing of normalization records for efficient retrieval.
-
-    Through its comprehensive suite of functionalities, the NormalizationService ensures that
-    normalization processes are executed with high precision, contributing significantly to the
-    integrity and reproducibility of scientific data analysis within the SNAPRed ecosystem.
     """
 
     def __init__(self):

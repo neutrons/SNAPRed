@@ -6,36 +6,13 @@ from snapred.ui.widget.Toggle import Toggle
 @Resettable
 class NormalizationRequestView(BackendRequestView):
     """
-    Constructs and manages the UI for submitting normalization requests within SNAPRed, extending
-    BackendRequestView. This class is decorated with @Resettable, supporting reset operations to
-    clear and restart the workflow as needed.
 
-    Key Components and Functionalities:
-
-    - Initializes with paths for calibration and diffraction calibration, incorporating UI elements
-      from a provided JSON form structure.
-    - Facilitates user input through fields for run numbers, lite mode toggle, and background run
-      numbers, leveraging jsonForm data.
-    - Provides dropdown menus for sample and grouping file selection, populated with samplePaths
-      and groups respectively.
-    - Arranges UI elements thoughtfully within the layout to enhance user experience.
-
-    UI Elements:
-
-    - Run Number Field: Allows input of the run identifier for normalization.
-    - Lite Mode Toggle: Toggle switch to enable or disable lite mode, optimizing resource usage.
-    - Background Run Number Field: Field for inputting the associated background run's identifier.
-    - Sample Dropdown: Enables sample selection from predefined paths.
-    - Grouping File Dropdown: Allows for the selection of a grouping file from available options.
-
-    Functions include:
-
-    - populateGroupingDropdown: Dynamically updates grouping file dropdown items.
-    - verify: Validates user inputs, ensuring all required fields are completed before submission.
-    - getRunNumber: Retrieves the run number from user input for processing.
-
-    This class effectively bridges user inputs and the normalization request process, ensuring a
-    seamless and intuitive interface for initiating normalization operations.
+    The UI class in SNAPRed is designed to streamline the submission of normalization requests, enhancing the user
+    experience within the platform. By extending BackendRequestView and incorporating the @Resettable decorator,
+    it enables users to easily manage and reset normalization workflows as needed. Through intuitive features like
+    run number fields, lite mode toggles, and dropdown menus for sample selection, the class ensures that users can
+    provide necessary inputs effectively. Overall, its purpose is to simplify the normalization request process,
+    facilitating efficient data processing and analysis within SNAPRed.
 
     """
 

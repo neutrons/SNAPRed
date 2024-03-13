@@ -25,45 +25,15 @@ logger = snapredLogger.getLogger(__name__)
 
 class NormalizationWorkflow(WorkflowImplementer):
     """
-    Orchestrates a comprehensive workflow for normalization tasks within an application, specifically designed for
-    scientific data normalization. This workflow encompasses the full spectrum of normalization activities,
-    from calibration through parameter adjustment to the final saving of normalization data, utilizing a series of
-    PyQt5 widgets and custom views to guide users through each step interactively.
 
-    Core Functionalities:
-
-    - Initializes with default settings, loading necessary configurations and sample paths for the normalization
-      process.
-    - Sets up a series of interactive views, including NormalizationRequestView, NormalizationTweakPeakView, and
-      NormalizationSaveView, to facilitate each step of the normalization process from user input through final data
-      saving.
-    - Dynamically adapts to different datasets and normalization requirements by populating dropdown lists based on
-      available configurations and user selections.
-
-    Workflow Steps:
-
-    1. Normalization Calibration Request: Captures essential inputs like run numbers and sample paths from the user
-       and initiates the normalization calibration process.
-    2. Parameter Tweaking: Allows users to interactively adjust parameters such as smoothing, dMin, dMax, and peak
-       intensity thresholds, with changes visualized in real-time through graphical plots.
-    3. Saving Normalization Data: Gathers final details required for saving, including comments and author information,
-       to complete the normalization process.
-
-    Dynamic Configuration and Adaptation:
-
-    - Seamlessly connects UI elements with backend operations for a responsive and interactive user experience,
-      ensuring that the workflow remains adaptable and efficient regardless of the specific normalization tasks at hand.
-
-    Signal-Slot Mechanism for Asynchronous Updates:
-
-    - Employs PyQt's signal-slot mechanism to manage asynchronous updates, enhancing the application's responsiveness
-      and ensuring that users receive timely feedback on their interactions and the progress of normalization tasks.
-
-    Validation and Error Handling:
-
-    - Implements validation checks and error handling throughout the workflow to ensure that user inputs and
-      configurations are valid and within expected ranges, thus enhancing the overall robustness and reliability
-      of the normalization process.
+    This system orchestrates a full workflow for scientific data normalization, guiding users through each step with
+    interactive PyQt5 widgets and custom views. Starting with default settings for initialization, it progresses
+    through calibration, parameter adjustments, and ends with saving normalization data, offering views like
+    NormalizationRequestView, NormalizationTweakPeakView, and NormalizationSaveView for an interactive user workflow.
+    The workflow dynamically adjusts to different datasets and requirements, ensuring adaptability. Key phases include
+    capturing initial user inputs, interactive parameter tweaking with real-time visualization, and collecting final
+    details for data saving. This approach not only ensures a responsive and user-friendly experience but also maintains
+    workflow flexibility and data integrity through comprehensive validation and error handling mechanisms.
 
     """
 

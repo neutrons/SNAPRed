@@ -6,31 +6,12 @@ from PyQt5.QtWidgets import QHBoxLayout, QLineEdit, QMessageBox, QSlider, QWidge
 
 class SmoothingSlider(QWidget):
     """
-    A custom QWidget in PyQt5 tailored for adjusting a smoothing parameter via both a graphical
-    slider and a precise numerical input field. This design marries the intuitive adjustability
-    of a slider with the exactitude of direct number entry, accommodating diverse user preferences
-    for either rapid exploration of smoothing levels or specific value input.
 
-    Key Features:
-
-    - Dual Interface: Incorporates a QSlider for graphical adjustments alongside a QLineEdit for
-      precise value entry.
-    - Custom Value Mapping: Logarithmically maps the slider's range (-1000 to 0) to a broad and
-      finely controllable range of smoothing parameter values.
-    - Styling: Enhances user interaction through customized CSS styling for the slider.
-    - Validation and Error Handling: Ensures validity of entered numerical values, prompting users
-      with warnings for incorrect inputs.
-
-    Functionalities:
-
-    - Value Conversion: Employs a logarithmic conversion mechanism for intuitive and resolution-friendly
-      parameter adjustment.
-    - Synchronization Between Controls: Maintains consistency between slider and text field,
-      updating each based on changes to the other to prevent user confusion and errors.
-    - Error Handling: Implements input validation to restrict entries to non-negative numbers,
-      displaying warnings for invalid inputs to safeguard against erroneous data manipulations.
-    - Programmatic Value Setting: Facilitates dynamic value updates through a setValue method,
-      enabling easy integration into larger workflows or automated setups.
+    This PyQt5 custom QWidget is designed to facilitate the adjustment of a smoothing parameter, combining a graphical
+    slider for intuitive control with a numerical input for precision. It caters to user preferences for either a quick
+    visual adjustment or specific numerical entry, enhancing the usability of applications requiring fine-tuned
+    parameter settings. The widget features logarithmic mapping for the slider to cover a broad range of values and
+    includes synchronization between controls to ensure consistency and accuracy.
 
     """
 

@@ -14,17 +14,12 @@ class InitializeStatePresenter(QObject):
     stateInitialized = pyqtSignal(SNAPResponse)
 
     """
+
     Manages interactions between the UI and the backend for state initialization processes.
 
     This presenter handles user inputs from the UI, validates them, and initiates requests to the backend
     to initialize the state of an instrument or a process based on provided parameters. It updates the UI
     based on the outcomes of these requests.
-
-    Attributes:
-
-        - worker_pool (WorkerPool): Manages background tasks, improving UI responsiveness.
-        - stateInitialized (pyqtSignal): Signal emitted when a state initialization is successfully completed.
-        - view: The view component this presenter is associated with, typically a form or a UI dialog.
 
     """
 

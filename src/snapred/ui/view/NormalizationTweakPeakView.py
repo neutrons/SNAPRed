@@ -57,48 +57,16 @@ class NormalizationTweakPeakView(BackendRequestView):
     PEAK_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
 
     """
-    A PyQt5-based GUI component tailored for fine-tuning peak normalization parameters in
-    SNAPRed. Inherits from BackendRequestView and incorporates a blend of interactive
-    elements—input fields, dropdowns, sliders, and a matplotlib plot area—for real-time
-    visualization and adjustment of normalization settings.
 
-    Structure and Features:
-
-    - Initializes with configurable parameters, arranging UI layout and establishing signal-slot
-      connections for asynchronous updates. A matplotlib canvas is configured for dynamic data
-      visualization.
-    - Fields for run number and background run number are initialized, with optional disabling
-      to safeguard against unintended alterations during the tweaking phase.
-
-    UI Components:
-
-    - Graphical Elements: Embeds a matplotlib figure for plotting data and detected peaks,
-      facilitating visual assessment and comparison.
-    - Input Fields and Controls: Incorporates inputs for run numbers, sample and grouping file
-      selection, and sliders for parameters adjustment like smoothing level, dMin, dMax, and
-      peak intensity threshold.
-    - Action Buttons: Features a "Recalculate" button to apply changes, enabling visual feedback
-      on the normalization and peak detection process.
-
-    Interactivity and Signal Handling:
-
-    - Utilizes PyQt signals for UI action handling, connecting user interactions with respective
-      methods for a responsive experience. This includes updating UI elements based on user
-      actions or external data changes.
-
-    Data Visualization and Adjustment:
-
-    - Updates the plot area in response to parameter adjustments, offering instant visual feedback
-      on the effects of modifications. Implements functionality for clear presentation of data
-      and peaks within the plot area.
-
-    Validation and Warnings:
-
-    - Ensures input validation and displays warnings for potential issues with parameter settings,
-      guiding users towards appropriate adjustments and preventing erroneous processing requests.
-
-    This class significantly enhances the user experience in fine-tuning normalization processes,
-    providing a powerful tool for interactive data analysis and parameter optimization.
+    This PyQt5 GUI component is designed for adjusting peak normalization parameters in SNAPRed,
+    offering a user-friendly interface that combines input fields, dropdowns, sliders, and a
+    real-time matplotlib plot area. It is built for dynamic interaction and visualization, allowing
+    users to see the impact of their adjustments on the normalization settings instantly. Key
+    features include a configurable layout with signal-slot connections for real-time updates,
+    matplotlib integration for data plotting, and various controls for precise parameter tuning.
+    This setup not only facilitates an interactive adjustment process but also provides immediate
+    visual feedback and validation, significantly improving the user experience in optimizing
+    normalization parameters for data analysis.
 
     """
 

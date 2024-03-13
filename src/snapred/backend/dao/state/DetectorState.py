@@ -3,8 +3,6 @@ from typing import Literal, Tuple
 
 from pydantic import BaseModel
 
-# class syntax
-
 
 class GuideState(IntEnum):
     IN = 1
