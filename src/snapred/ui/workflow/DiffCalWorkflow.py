@@ -1,4 +1,5 @@
 import json
+from sys import version
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.calibration import CalibrationIndexEntry
@@ -303,6 +304,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
             appliesTo=view.fieldAppliesTo.get(),
+            version=view.fieldVersion.get(None),
         )
 
         # if this is not the first iteration, account for choice.

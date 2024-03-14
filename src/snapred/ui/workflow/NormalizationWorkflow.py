@@ -1,4 +1,5 @@
 import json
+from sys import version
 
 from pydantic import parse_raw_as
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
@@ -185,6 +186,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
             appliesTo=view.fieldAppliesTo.get(),
+            version=view.fieldVersion.get(None),
         )
 
         payload = NormalizationExportRequest(
