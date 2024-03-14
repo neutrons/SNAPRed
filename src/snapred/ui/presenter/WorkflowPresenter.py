@@ -120,9 +120,7 @@ class WorkflowPresenter(object):
 
     def handleContinueButtonClicked(self, model):
         # disable navigation buttons during run
-        buttons = [self.view.continueButton, self.view.cancelButton, self.view.skipButton]
-        for button in buttons:
-            button.setEnabled(False)
+        self._enableButtons(False)
 
         # scoped action to verify before running
         def verifyAndContinue():
@@ -133,15 +131,16 @@ class WorkflowPresenter(object):
 
         # do action
         self.worker = self.worker_pool.createWorker(target=verifyAndContinue, args=None)
-        # NOTE it is stupidly impossible to use this for loop, so each must be written out
-        # for button in buttons:
-        #     self.worker.finished.connect(lambda: button.setEnabled(True))
-        self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
-        self.worker.finished.connect(lambda: self.view.cancelButton.setEnabled(True))
-        self.worker.finished.connect(lambda: self.view.skipButton.setEnabled(True))
+        self.worker.finished.connect(lambda: self._enableButtons(True))  # renable buttons on finish
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(lambda success: self.advanceWorkflow() if success else None)
         self.worker_pool.submitWorker(self.worker)
+
+    def _enableButtons(self, enable):
+        # NOTE this is necessary in order for the buttons to actually be updated from worker
+        buttons = [self.view.continueButton, self.view.cancelButton, self.view.skipButton]
+        for button in buttons:
+            button.setEnabled(enable)
 
     def _isErrorCode(self, code):
         return code >= ResponseCode.ERROR
