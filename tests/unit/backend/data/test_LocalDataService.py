@@ -859,6 +859,7 @@ def test_readWriteNormalizationRecord_version_numbers():
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
+    testNormalizationRecord.version = None
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
@@ -877,6 +878,7 @@ def test_readWriteNormalizationRecord_version_numbers():
         assert actualRecord.version == 1
         assert actualRecord.calibration.version == 1
         # write: version == 2
+        testNormalizationRecord.version = 2
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord("57514")
         assert actualRecord.version == 2
@@ -889,6 +891,7 @@ def test_readWriteNormalizationRecord_specified_version():
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
+    testNormalizationRecord.version = None
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
@@ -907,6 +910,7 @@ def test_readWriteNormalizationRecord_specified_version():
         assert actualRecord.version == 1
         assert actualRecord.calibration.version == 1
         # write: version == 2
+        testNormalizationRecord.version = None
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord("57514", "1")
         assert actualRecord.version == 1
