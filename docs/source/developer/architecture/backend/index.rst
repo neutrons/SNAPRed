@@ -61,13 +61,13 @@ For a simplified breakdown of where you may want to implement parts of your code
    :maxdepth: 1
    :caption: Index
 
-   normalization_calibration_request
-   normalization_export_request
-   normalization_index_entry
-   normalization_record
-   normalization_response
-   normalization_service
-   normalization
-   object_sha
+   api/normalization_calibration_request
+   api/normalization_export_request
+   api/normalization_index_entry
+   api/normalization_record
+   api/normalization_response
+   api/normalization_service
+   api/normalization
+   api/object_sha
    recipe
-   smooth_data_excluding_peaks_request
+   api/smooth_data_excluding_peaks_request
