@@ -6,7 +6,6 @@ from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import ClearWorkspaceRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode
-from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
@@ -120,24 +119,28 @@ class WorkflowPresenter(object):
         self.resetLambda = resetLambda
 
     def handleContinueButtonClicked(self, model):
-        # verify this form first
-        self.verifyWorker = self.worker_pool.createWorker(target=self.view.tabView.verify, args=None)
-        self.verifyWorker.result.connect(self._handleComplications)
-        self.verifyWorker.success.connect(lambda success: self._continueAfterVerify(model) if success else None)
-        self.worker_pool.submitWorker(self.verifyWorker)
-
-    def _continueAfterVerify(self, model):
+        # disable navigation buttons during run
         buttons = [self.view.continueButton, self.view.cancelButton, self.view.skipButton]
         for button in buttons:
             button.setEnabled(False)
+
+        # scoped action to verify before running
+        def verifyAndContinue():
+            # This will toss any exceptions and stop the continue
+            self.view.tabView.verify()
+            # this will handle the request if no verification failed, getting the true snapresponse
+            return model.continueAction(self)
+
         # do action
-        # if self.verifyWorker.success:
-        self.worker = self.worker_pool.createWorker(target=model.continueAction, args=(self))
-        for button in buttons:
-            self.worker.finished.connect(lambda: button.setEnabled(True))
+        self.worker = self.worker_pool.createWorker(target=verifyAndContinue, args=None)
+        # NOTE it is stupidly impossible to use this for loop, so each must be written out
+        # for button in buttons:
+        #     self.worker.finished.connect(lambda: button.setEnabled(True))
+        self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
+        self.worker.finished.connect(lambda: self.view.cancelButton.setEnabled(True))
+        self.worker.finished.connect(lambda: self.view.skipButton.setEnabled(True))
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(lambda success: self.advanceWorkflow() if success else None)
-
         self.worker_pool.submitWorker(self.worker)
 
     def _isErrorCode(self, code):

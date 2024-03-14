@@ -3,7 +3,6 @@ from unittest.mock import MagicMock
 import pytest
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QGridLayout, QPushButton, QWidget
-from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.presenter.WorkflowPresenter import WorkflowPresenter
 from snapred.ui.view.WorkflowView import WorkflowView
@@ -27,7 +26,7 @@ class _TestView(QWidget):
         pass
 
     def verify(self):
-        return SNAPResponse(code=ResponseCode.OK, data=True)
+        return True
 
 
 def _generateWorkflow():

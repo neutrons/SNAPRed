@@ -17,7 +17,6 @@ from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigur
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.backend.dao import GroupPeakList
-from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
@@ -197,4 +196,4 @@ class DiffCalTweakPeakView(BackendRequestView):
                 msg = msg + f"\tgroup {empty.groupID} has \t {len(empty.peaks)} peaks\n"
             msg = msg + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
             raise ValueError(msg)
-        return SNAPResponse(code=ResponseCode.OK, data=True)
+        return True

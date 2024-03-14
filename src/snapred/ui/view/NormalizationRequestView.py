@@ -1,4 +1,3 @@
-from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
@@ -42,7 +41,7 @@ class NormalizationRequestView(BackendRequestView):
             raise ValueError("Please select a sample")
         if self.groupingFileDropdown.currentIndex() < 0:
             raise ValueError("Please select a grouping file")
-        return SNAPResponse(code=ResponseCode.OK, data=True)
+        return True
 
     def getRunNumber(self):
         return self.runNumberField.text()

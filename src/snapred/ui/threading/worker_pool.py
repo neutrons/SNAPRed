@@ -30,12 +30,8 @@ class Worker(QObject):
             else:
                 results = self.target()
             # results.code = 200 # set to 200 for testing
-            self.result.emit(results)
-            self.success.emit(results.code < ResponseCode.MAX_OK)
         except RecoverableException as e:
             results = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.errorMsg)
-            self.result.emit(results)
-            self.success.emit(False)
         except Exception as e:  # noqa: BLE001
             # print stacktrace
             import traceback
@@ -44,9 +40,8 @@ class Worker(QObject):
             traceback.print_exc()
 
             results = SNAPResponse(code=ResponseCode.ERROR, message=str(e))
-
-            self.result.emit(results)
-            self.success.emit(False)
+        self.result.emit(results)
+        self.success.emit(results.code < ResponseCode.MAX_OK)
         self.finished.emit()
 
 

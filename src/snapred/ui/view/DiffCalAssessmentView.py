@@ -87,4 +87,4 @@ class DiffCalAssessmentView(QWidget):
 
     def verify(self):
         # TODO vwhat fields need to be verified?
-        return SNAPResponse(code=ResponseCode.OK, data=True)
+        return True

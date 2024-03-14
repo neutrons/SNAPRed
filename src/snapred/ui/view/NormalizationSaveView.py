@@ -1,7 +1,6 @@
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QGridLayout, QLabel, QWidget
 
-from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
@@ -83,4 +82,4 @@ class NormalizationSaveView(QWidget):
             raise ValueError("You must specify the author")
         if self.fieldComments.text() == "":
             raise ValueError("You must add comments")
-        return SNAPResponse(code=ResponseCode.OK, data=True)
+        return True
