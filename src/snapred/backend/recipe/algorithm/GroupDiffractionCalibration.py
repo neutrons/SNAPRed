@@ -7,16 +7,20 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    mtd,
 )
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+
+logger = snapredLogger.getLogger(__name__)
 
 
 class GroupDiffractionCalibration(PythonAlgorithm):
@@ -226,7 +230,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=self.outputWStof,
                 TofBinning=self.TOF.params,
                 PeakFunction=self.peakFunction,
-                MaxChiSq=self.MAX_CHI_SQ,
                 BackgroundType="Linear",
                 PeakPositions=self.groupedPeaks[groupID],
                 PeakWindow=self.groupedPeakBoundaries[groupID],
@@ -304,6 +307,20 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             OutputWorkspace=self.outputWStof,
             Target="TOF",
         )
+
+        tab = mtd["_PDCal_diag_1"]
+        tabDict = tab.getItem(0).toDict()
+        chi2 = tabDict["chi2"]
+        lowChi2 = 0
+        if len(chi2) > 2:
+            for i in chi2:
+                if i < 100:
+                    lowChi2 = lowChi2 + 1
+            if lowChi2 < 2:
+                logger.warning(
+                    "Insufficient number of well fitted peaks (chi2 < 100)."
+                    + "Try to adjust parameters in Tweak Peak Peek tab"
+                )
 
         self.setPropertyValue("OutputWorkspaceTOF", self.outputWStof)
         self.setPropertyValue("OutputWorkspacedSpacing", self.outputWSdSpacing)
