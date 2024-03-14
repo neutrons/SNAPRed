@@ -7,6 +7,7 @@ from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
+# TODO rebase on BackendRequestView
 @Resettable
 class NormalizationSaveView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)

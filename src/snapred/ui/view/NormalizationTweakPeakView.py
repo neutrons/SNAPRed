@@ -7,16 +7,10 @@ from mantid.simpleapi import mtd
 from pydantic import parse_obj_as
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
-    QComboBox,
-    QGridLayout,
     QHBoxLayout,
-    QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QSlider,
-    QVBoxLayout,
-    QWidget,
 )
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
@@ -26,7 +20,6 @@ from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.SmoothingSlider import SmoothingSlider
 from snapred.ui.widget.Toggle import Toggle
 
@@ -123,11 +116,22 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.signalUpdateFields.emit(sampleIndex, groupingIndex, smoothingParameter)
 
     def emitValueChange(self):
-        index = self.groupingFileDropdown.currentIndex()
-        smoothingValue = self.smoothingSlider.field.value()
-        dMin = float(self.fielddMin.field.text())
-        dMax = float(self.fielddMax.field.text())
-        peakThreshold = float(self.fieldThreshold.text())
+        # verify the fields before recalculation
+        try:
+            index = self.groupingFileDropdown.currentIndex()
+            smoothingValue = self.smoothingSlider.field.value()
+            dMin = float(self.fielddMin.field.text())
+            dMax = float(self.fielddMax.field.text())
+            peakThreshold = float(self.fieldThreshold.text())
+        except ValueError as e:
+            QMessageBox.warning(
+                self,
+                "Invalid Peak Parameters",
+                f"One of dMin, dMax, smoothing, or peak threshold is invalid: {str(e)}",
+                QMessageBox.Ok,
+            )
+            return
+        # perform some checks on dMin, dMax values
         if dMin < 0.1:
             response = QMessageBox.warning(
                 self,
@@ -215,5 +219,5 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.signalPopulateGroupingDropdown.emit(groups)
 
     def verify(self):
-        # TODO verify
+        # TODO what needs to be verified?
         return SNAPResponse(code=ResponseCode.OK, data=True)

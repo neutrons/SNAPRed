@@ -8,13 +8,10 @@ from mantid.simpleapi import mtd
 from pydantic import parse_obj_as
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import (
-    QComboBox,
-    QGridLayout,
     QHBoxLayout,
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QWidget,
 )
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
@@ -25,8 +22,6 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.widget.JsonFormList import JsonFormList
-from snapred.ui.widget.LabeledField import LabeledField
 from snapred.ui.widget.Toggle import Toggle
 
 
@@ -106,6 +101,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.peakFunctionDropdown.setCurrentIndex(peakIndex)
 
     def emitValueChange(self):
+        # verify the fields before recalculation
         try:
             groupingIndex = self.groupingFileDropdown.currentIndex()
             dMin = float(self.fielddMin.field.text())
@@ -115,10 +111,11 @@ class DiffCalTweakPeakView(BackendRequestView):
             QMessageBox.warning(
                 self,
                 "Invalid Peak Parameters",
-                f"One of dMin, dMax, or threshold have error {str(e)}",
+                f"One of dMin, dMax, or peak threshold is invalid: {str(e)}",
                 QMessageBox.Ok,
             )
             return
+        # perform some checks on dMin, dMax values
         if dMin < 0.1:
             response = QMessageBox.warning(
                 self,
