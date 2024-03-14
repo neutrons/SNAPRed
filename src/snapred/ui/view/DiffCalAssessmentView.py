@@ -10,6 +10,7 @@ from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
+# TODO rebase on BackendRequestView
 @Resettable
 class DiffCalAssessmentView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
@@ -86,3 +87,7 @@ class DiffCalAssessmentView(QWidget):
 
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
+
+    def verify(self):
+        # TODO vwhat fields need to be verified?
+        return True

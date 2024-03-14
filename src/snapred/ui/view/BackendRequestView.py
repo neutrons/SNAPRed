@@ -33,3 +33,6 @@ class BackendRequestView(QWidget):
 
     def _sampleDropDown(self, label, items=[]):
         return SampleDropDown(label, items, self)
+
+    def verify(self):
+        raise NotImplementedError("The verification for this step was not completed.")

@@ -25,6 +25,9 @@ class _TestView(QWidget):
     def handleContinueButtonClicked(self):
         pass
 
+    def verify(self):
+        return True
+
 
 def _generateWorkflow():
     # Create a mock WorkflowNodeModel
