@@ -6,6 +6,7 @@ from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
+# TODO rebase on BackendRequestView
 @Resettable
 class NormalizationSaveView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
@@ -75,3 +76,10 @@ class NormalizationSaveView(QWidget):
 
     def updateBackgroundRunNumber(self, backgroundRunNumber):
         self.signalBackgroundRunNumberUpdate.emit(backgroundRunNumber)
+
+    def verify(self):
+        if self.fieldAuthor.text() == "":
+            raise ValueError("You must specify the author")
+        if self.fieldComments.text() == "":
+            raise ValueError("You must add comments")
+        return True

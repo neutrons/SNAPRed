@@ -2,10 +2,10 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QWidget
 
 from snapred.meta.decorators.Resettable import Resettable
-from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
+# TODO rebase on BackendRequestView
 @Resettable
 class DiffCalSaveView(QWidget):
     signalRunNumberUpdate = pyqtSignal(str)
@@ -63,3 +63,10 @@ class DiffCalSaveView(QWidget):
     def setIterationDropdown(self, iterations):
         self.iterationDropdown.clear()
         self.iterationDropdown.addItems(iterations)
+
+    def verify(self):
+        if self.fieldAuthor.text() == "":
+            raise ValueError("You must specify the author")
+        if self.fieldComments.text() == "":
+            raise ValueError("You must add comments")
+        return True

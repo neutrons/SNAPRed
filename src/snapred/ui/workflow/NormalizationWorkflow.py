@@ -111,7 +111,6 @@ class NormalizationWorkflow(WorkflowImplementer):
     def _triggerNormalizationCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for normalization
-        self.verifyForm(view)
 
         self.runNumber = view.getFieldText("runNumber")
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")

@@ -6,7 +6,6 @@ from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import ClearWorkspaceRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode
-from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
@@ -120,18 +119,28 @@ class WorkflowPresenter(object):
         self.resetLambda = resetLambda
 
     def handleContinueButtonClicked(self, model):
-        self.view.continueButton.setEnabled(False)
-        self.view.cancelButton.setEnabled(False)
-        self.view.skipButton.setEnabled(False)
+        # disable navigation buttons during run
+        self._enableButtons(False)
+
+        # scoped action to verify before running
+        def verifyAndContinue():
+            # This will toss any exceptions and stop the continue
+            self.view.tabView.verify()
+            # this will handle the request if no verification failed, getting the true snapresponse
+            return model.continueAction(self)
+
         # do action
-        self.worker = self.worker_pool.createWorker(target=model.continueAction, args=(self))
-        self.worker.finished.connect(lambda: self.view.continueButton.setEnabled(True))
-        self.worker.finished.connect(lambda: self.view.cancelButton.setEnabled(True))
-        self.worker.finished.connect(lambda: self.view.skipButton.setEnabled(True))
+        self.worker = self.worker_pool.createWorker(target=verifyAndContinue, args=None)
+        self.worker.finished.connect(lambda: self._enableButtons(True))  # renable buttons on finish
         self.worker.result.connect(self._handleComplications)
         self.worker.success.connect(lambda success: self.advanceWorkflow() if success else None)
-
         self.worker_pool.submitWorker(self.worker)
+
+    def _enableButtons(self, enable):
+        # NOTE this is necessary in order for the buttons to actually be updated from worker
+        buttons = [self.view.continueButton, self.view.cancelButton, self.view.skipButton]
+        for button in buttons:
+            button.setEnabled(enable)
 
     def _isErrorCode(self, code):
         return code >= ResponseCode.ERROR

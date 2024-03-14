@@ -121,8 +121,6 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def _specifyRun(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
-        # pull fields from view
-        self.verifyForm(view)
 
         # fetch the data from the view
         self.runNumber = view.runNumberField.text()
@@ -141,7 +139,6 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         self._tweakPeakView.populateGroupingDropdown(list(self.groupingMap.getMap(self.useLiteMode).keys()))
         self._tweakPeakView.updateFields(
-            self.runNumber,
             view.sampleDropdown.currentIndex(),
             view.groupingFileDropdown.currentIndex(),
             view.peakFunctionDropdown.currentIndex(),
@@ -245,8 +242,6 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def _triggerDiffractionCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
-        # pull fields from view for diffraction calibration
-        self.verifyForm(view)
 
         self.runNumber = view.runNumberField.text()
         self._saveView.updateRunNumber(self.runNumber)
