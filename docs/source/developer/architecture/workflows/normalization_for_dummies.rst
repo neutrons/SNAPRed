@@ -30,7 +30,7 @@ This recipe component executes a series of operations on the input ingredients. 
 2. Spectra Focussing
 3. Peak Smoothing
 
-### Outputs
+#### Outputs
 The output of trigger normalization creation is a dictionary of workspaces including processed data containing vanadium corrected, smoothed and
 focused spectra. This dictionary is returned to the calling component for further processing and assessment.
 
@@ -55,15 +55,15 @@ Once the user is satisfied with the quality of the normalization, a service requ
 to retain the final values selected by the user. These values include: run number, background run number, smoothing parameter,
 the associated calibration (if one exists), and dMin value. This metadata is retained for comprehensive documentation of the normalization process.
 
-#### Save Normalization Data
-### Inputs
+### Save Normalization Data
+#### Inputs
 The record object produced by the previous step is passed to this last step. The associated view consists of text fields. These fields include
 (non-editable) run number, background run number, (editable) comments, author, and version.
 The user provides these details within the appropriate fields. This information is sent to initialize another service which initializes an index
 entry object. The metadata included within this object includes the normalization record, the workspaces processed, and the aforementioned user
 entered text.
 
-### Outputs
+#### Outputs
 SNAPRed persists this information to disk within a formated json file called "NormalizationIndex.json".
 The storage location for this data is determined by the path hierarchy specified in the application.yml file, influenced by the processed run number
 and a version identifier that distinguishes between different processing instances of the same dataset associated with a particular run executed at
