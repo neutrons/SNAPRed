@@ -21,6 +21,9 @@ Glossary
         Background Run ID refers to the unique ID associated with such a run, used in processes like
         :term:`Normalization` to correct the primary data set.
 
+    Calibrant Samples
+        TODO
+
     Calibration
         The process by which the instrument state configuration is calibrated to account for the effects of the instrument on the diffraction data.
         This is done by comparing the diffraction data to a known standard or previous Calibration, and adjusting the instrument to match.
@@ -63,6 +66,9 @@ Glossary
     Histogram
         TODO
 
+    Ingredients
+        TODO
+
     Instrument
         The phyiscal apparatus used to collect diffraction data. In the case of SNAP, it consists of a sample to shoot neutrons at,
         a source that provides said neutrons, and a few detectors whos positions may vary depending on the experiment.
@@ -76,9 +82,15 @@ Glossary
         The architectural layer that provides the single point of interaction between the backend and frontend.
         Agnostic of frontend implementation, it recieves requests from the frontend and forwards them to the Orchestration Layer.
 
+    IPTS
+        TODO
+
     Layer
         A collection of :term:`Components <Component>` that work together to provide a single unit of high level Developer Requirements
         Examples include: API, Orchestration, Data Processing, etc.
+
+    Lite Mode
+        TODO
 
     Mantid Snapper
         A thin wrapper around the Mantid Algorithm API that allows for meta processes to be performed around a queue of algorithms.
@@ -149,6 +161,9 @@ Glossary
         Another example may be the current version of SNAPRed or its various configurations stored in the :ref:`application.yml <applicationyml>`.
 
     Spectrum/Spectra
+        TODO
+
+    State Folder
         TODO
 
     Vanadium
