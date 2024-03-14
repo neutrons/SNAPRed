@@ -6,3 +6,4 @@ Architecture
 
    backend/index
    frontend/index
+   workflows/index
