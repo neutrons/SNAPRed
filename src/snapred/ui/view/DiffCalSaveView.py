@@ -12,7 +12,7 @@ class DiffCalSaveView(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        self.currentIterationText = "Current"
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
@@ -39,7 +39,8 @@ class DiffCalSaveView(QWidget):
         self.fieldAuthor.setToolTip("Author of the calibration.")
 
         self.iterationDropdown = QComboBox(parent=self)
-        self.iterationDropdown.setVisible(False)
+        self.iterationWidget = LabeledField("Iteration :", self.iterationDropdown, self)
+        self.iterationWidget.setVisible(False)
 
         self.layout.addWidget(self.interactionText)
         self.layout.addWidget(self.fieldRunNumber)
@@ -57,12 +58,13 @@ class DiffCalSaveView(QWidget):
         self.signalRunNumberUpdate.emit(runNumber)
 
     def enableIterationDropdown(self):
-        self.iterationDropdown.setVisible(True)
-        self.layout.addWidget(self.iterationDropdown)
+        self.iterationWidget.setVisible(True)
+        self.layout.addWidget(self.iterationWidget)
 
     def setIterationDropdown(self, iterations):
         self.iterationDropdown.clear()
         self.iterationDropdown.addItems(iterations)
+        self.iterationDropdown.setItemText(0, self.currentIterationText)
 
     def verify(self):
         if self.fieldAuthor.text() == "":
