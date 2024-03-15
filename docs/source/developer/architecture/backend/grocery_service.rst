@@ -1,7 +1,7 @@
 Grocery Service
 ================
 
-A :term:`DataComponent` specializing in loading :term:`workspace` data from disk into :term:`mantid`'s "term:`ADS`, for use inside :term:`algorithm` s.
+A :term:`Data Component` specializing in loading :term:`workspace` data from disk into :term:`Mantid`'s :term:`ADS`, for use inside :term:`algorithm` s.
 The grocery service handles loading neutron scattering data, grouping workspaces, calibration tables, and masking workspaces.
 The goal of the grocery service is to centralize and minimize loading operations.
 On the first load of a file, it is cached in its initial condition.
@@ -20,7 +20,7 @@ These can be be passed to either the `fetchGroceryList` or the `fetchGroceryDict
 `GroceryListBuilder`
 ---------------------
 
-Inside most :term:`service` s, this will usually be initialized inside the `__init__`, called `groceryClerk`.
+Inside most services, this will usually be initialized inside the `__init__`, called `groceryClerk`.
 
 Any service methods which need to get workspace data can then create their list using
 

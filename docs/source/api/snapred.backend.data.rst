@@ -20,14 +20,6 @@ snapred.backend.data.DataFactoryService module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.data.GroceryService module
-------------------------------------------
-
-.. automodule:: snapred.backend.data.GroceryService
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.data.LocalDataService module
 --------------------------------------------
 

@@ -3,6 +3,9 @@ Glossary
 .. TODO: Provide links to a term's page if it exists
 .. glossary::
 
+    ADS
+        Analysis Data Service, the internal list held by :term:`Mantid` of all workspaces.
+
     Algorithm
         A set of instructions that can be executed to produce a result.
         In the context of SNAP, this mostly refers to Mantid Algorithms or collections of Mantid Algorithms triggered by a Recipe.
@@ -63,6 +66,10 @@ Glossary
         A predetermined set of parameters used to split diffraction data into useful formations, i.e. like slices vs squares of pizza
         This may include predetermined data such as dimmensions and tolerances, or derrived values such as Pixel Grouping Parameters
 
+    grocery
+        Within SNAPRed code, this refers to workspace data (as opposed to ingredient data) which are needed for an operation.
+        They are requested by handing the Grocery Service a grocery list of workspaces to fetch.
+
     Histogram
         TODO
 
@@ -91,6 +98,9 @@ Glossary
 
     Lite Mode
         TODO
+
+    Mantid
+        Neutron scattering data reduction code maintained by the `Mantid Project <https://www.mantidproject.org/>`_.
 
     Mantid Snapper
         A thin wrapper around the Mantid Algorithm API that allows for meta processes to be performed around a queue of algorithms.
@@ -175,3 +185,6 @@ Glossary
 
     User Request
         A request made by the backend consumer to perform a specific task given sufficent input data.
+
+    workspace
+        A data object used by mantid to store most data, including neutron scattering data and grouping maps.
