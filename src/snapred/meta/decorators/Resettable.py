@@ -1,6 +1,6 @@
 from functools import wraps
 
-from PyQt5.QtWidgets import QHBoxLayout, QWidget
+from qtpy.QtWidgets import QHBoxLayout, QWidget
 
 
 def Resettable(orig_cls):

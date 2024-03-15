@@ -1,7 +1,7 @@
 import math
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QHBoxLayout, QLineEdit, QMessageBox, QSlider, QWidget
+from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QMessageBox, QSlider, QWidget
 
 
 class SmoothingSlider(QWidget):

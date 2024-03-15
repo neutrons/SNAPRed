@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
 from pydantic import parse_obj_as
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QMessageBox,
@@ -39,16 +39,16 @@ class NormalizationTweakPeakView(BackendRequestView):
 
     """
 
-    signalRunNumberUpdate = pyqtSignal(str)
-    signalBackgroundRunNumberUpdate = pyqtSignal(str)
-    signalValueChanged = pyqtSignal(int, float, float, float, float)
-    signalUpdateRecalculationButton = pyqtSignal(bool)
-    signalUpdateFields = pyqtSignal(int, int, float)
-    signalPopulateGroupingDropdown = pyqtSignal(list)
-
     DMIN = Config["constants.CrystallographicInfo.dMin"]
     DMAX = Config["constants.CrystallographicInfo.dMax"]
     PEAK_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+
+    signalRunNumberUpdate = Signal(str)
+    signalBackgroundRunNumberUpdate = Signal(str)
+    signalValueChanged = Signal(int, float, float, float, float)
+    signalUpdateRecalculationButton = Signal(bool)
+    signalUpdateFields = Signal(int, int, float)
+    signalPopulateGroupingDropdown = Signal(list)
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = ""
