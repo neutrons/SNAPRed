@@ -26,6 +26,7 @@ snapred.ui.presenter.InitializeStatePresenter module
 .. automodule:: snapred.ui.presenter.InitializeStatePresenter
    :members:
    :undoc-members:
+   :exclude-members: stateInitialized
    :show-inheritance:
 
 snapred.ui.presenter.JsonFormPresenter module
