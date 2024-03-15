@@ -52,6 +52,14 @@ snapred.backend.service.LiteDataService module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.service.NormalizationService module
+---------------------------------------------------
+
+.. automodule:: snapred.backend.service.NormalizationService
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.service.ReductionService module
 -----------------------------------------------
 
@@ -88,6 +96,14 @@ snapred.backend.service.StateIdLookupService module
 ---------------------------------------------------
 
 .. automodule:: snapred.backend.service.StateIdLookupService
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.service.WorkspaceService module
+-----------------------------------------------
+
+.. automodule:: snapred.backend.service.WorkspaceService
    :members:
    :undoc-members:
    :show-inheritance:

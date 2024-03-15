@@ -41,6 +41,14 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class NormalizationService(Service):
+    """
+
+    This service orchestrates various normalization tasks such as calibration and smoothing of
+    scientific data, utilizing a range of data objects, services, and recipes. It is a pivotal
+    component designed to streamline the normalization workflow, ensuring efficiency and accuracy across operations.
+
+    """
+
     def __init__(self):
         super().__init__()
         self.dataFactoryService = DataFactoryService()

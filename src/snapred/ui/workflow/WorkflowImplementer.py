@@ -67,11 +67,8 @@ class WorkflowImplementer:
         return response
 
     def verifyForm(self, form):
-        try:
-            form.verify()
-            return True
-        except ValueError as e:
-            return SNAPResponse(code=ResponseCode.ERROR, message=f"Missing Fields!{e}")
+        form.verify()
+        return True
 
     def _handleComplications(self, result):
         if result.code >= ResponseCode.ERROR:

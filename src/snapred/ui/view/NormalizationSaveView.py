@@ -1,15 +1,25 @@
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QGridLayout, QLabel, QWidget
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QGridLayout, QLabel, QWidget
 
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
+# TODO rebase on BackendRequestView
 @Resettable
 class NormalizationSaveView(QWidget):
-    signalRunNumberUpdate = pyqtSignal(str)
-    signalBackgroundRunNumberUpdate = pyqtSignal(str)
+    """
+    This class creates a PyQt5 widget interface for efficiently saving normalization data in SNAPRed
+    after user assessment. It provides a structured and intuitive environment for users to input and
+    review important details such as run numbers and versioning. By leveraging dynamic form generation
+    and organized UI elements, it ensures data consistency and facilitates user interaction. The main
+    goal is to streamline the confirmation and saving process of normalization data, enhancing both
+    the user experience and the integrity of stored data.
+    """
+
+    signalRunNumberUpdate = Signal(str)
+    signalBackgroundRunNumberUpdate = Signal(str)
 
     def __init__(self, name, jsonSchemaMap, parent=None):
         super().__init__(parent)
@@ -62,8 +72,6 @@ class NormalizationSaveView(QWidget):
         self.layout.addWidget(self.fieldComments)
         self.layout.addWidget(self.fieldAuthor)
 
-    # This signal boilerplate mumbo jumbo is necessary because worker threads cant update the gui directly
-    # So we have to send a signal to the main thread to update the gui, else we get an unhelpful segfault
     def _updateRunNumber(self, runNumber):
         self.fieldRunNumber.setText(runNumber)
 
@@ -75,3 +83,10 @@ class NormalizationSaveView(QWidget):
 
     def updateBackgroundRunNumber(self, backgroundRunNumber):
         self.signalBackgroundRunNumberUpdate.emit(backgroundRunNumber)
+
+    def verify(self):
+        if self.fieldAuthor.text() == "":
+            raise ValueError("You must specify the author")
+        if self.fieldComments.text() == "":
+            raise ValueError("You must add comments")
+        return True

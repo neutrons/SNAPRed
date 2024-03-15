@@ -12,10 +12,10 @@ snapred.backend.recipe.algorithm.AlignAndFocusReductionAlgorithm module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.PixelDiffractionCalibration module
----------------------------------------------------------------------
+snapred.backend.recipe.algorithm.CalculateDiffCalTable module
+-------------------------------------------------------------
 
-.. automodule:: snapred.backend.recipe.algorithm.PixelDiffractionCalibration
+.. automodule:: snapred.backend.recipe.algorithm.CalculateDiffCalTable
    :members:
    :undoc-members:
    :show-inheritance:
@@ -24,6 +24,14 @@ snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm module
 ----------------------------------------------------------------------------
 
 .. automodule:: snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.recipe.algorithm.CrystallographicInfoAlgorithm module
+---------------------------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.CrystallographicInfoAlgorithm
    :members:
    :undoc-members:
    :show-inheritance:
@@ -76,18 +84,26 @@ snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.GroupDiffractionCalibration module
---------------------------------------------------------------------
+snapred.backend.recipe.algorithm.FocusSpectraAlgorithm module
+-------------------------------------------------------------
 
-.. automodule:: snapred.backend.recipe.algorithm.GroupDiffractionCalibration
+.. automodule:: snapred.backend.recipe.algorithm.FocusSpectraAlgorithm
    :members:
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.recipe.algorithm.CrystallographicInfoAlgorithm module
----------------------------------------------------------------------------
+snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict module
+----------------------------------------------------------------------------
 
-.. automodule:: snapred.backend.recipe.algorithm.CrystallographicInfoAlgorithm
+.. automodule:: snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.recipe.algorithm.GroupDiffractionCalibration module
+--------------------------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.GroupDiffractionCalibration
    :members:
    :undoc-members:
    :show-inheritance:
@@ -100,6 +116,14 @@ snapred.backend.recipe.algorithm.LiteDataCreationAlgo module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.recipe.algorithm.LoadCalibrationWorkspaces module
+-----------------------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.LoadCalibrationWorkspaces
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.recipe.algorithm.LoadGroupingDefinition module
 --------------------------------------------------------------
 
@@ -108,10 +132,26 @@ snapred.backend.recipe.algorithm.LoadGroupingDefinition module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.recipe.algorithm.MakeDirtyDish module
+-----------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.MakeDirtyDish
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.recipe.algorithm.MantidSnapper module
 -----------------------------------------------------
 
 .. automodule:: snapred.backend.recipe.algorithm.MantidSnapper
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.recipe.algorithm.PixelDiffractionCalibration module
+---------------------------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.PixelDiffractionCalibration
    :members:
    :undoc-members:
    :show-inheritance:
@@ -128,6 +168,14 @@ snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm module
 ----------------------------------------------------------------------
 
 .. automodule:: snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm module
+----------------------------------------------------------------------
+
+.. automodule:: snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm
    :members:
    :undoc-members:
    :show-inheritance:

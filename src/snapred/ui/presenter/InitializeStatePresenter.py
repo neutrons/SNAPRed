@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import QMessageBox
+from qtpy.QtCore import QObject, Signal
+from qtpy.QtWidgets import QMessageBox
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
@@ -10,8 +10,16 @@ from snapred.ui.widget.SuccessDialog import SuccessDialog
 
 
 class InitializeStatePresenter(QObject):
+    """
+    Manages interactions between the UI and the backend for state initialization processes.
+
+    This presenter handles user inputs from the UI, validates them, and initiates requests to the backend
+    to initialize the state of an instrument or a process based on provided parameters. It updates the UI
+    based on the outcomes of these requests.
+    """
+
     worker_pool = WorkerPool()
-    stateInitialized = pyqtSignal(SNAPResponse)
+    stateInitialized = Signal(SNAPResponse)
 
     def __init__(self, view):
         super().__init__()

@@ -1,18 +1,18 @@
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QWidget
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QWidget
 
 from snapred.meta.decorators.Resettable import Resettable
-from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
+# TODO rebase on BackendRequestView
 @Resettable
 class DiffCalSaveView(QWidget):
-    signalRunNumberUpdate = pyqtSignal(str)
+    signalRunNumberUpdate = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        self.currentIterationText = "Current"
         self.layout = QGridLayout()
         self.setLayout(self.layout)
 
@@ -39,7 +39,8 @@ class DiffCalSaveView(QWidget):
         self.fieldAuthor.setToolTip("Author of the calibration.")
 
         self.iterationDropdown = QComboBox(parent=self)
-        self.iterationDropdown.setVisible(False)
+        self.iterationWidget = LabeledField("Iteration :", self.iterationDropdown, self)
+        self.iterationWidget.setVisible(False)
 
         self.layout.addWidget(self.interactionText)
         self.layout.addWidget(self.fieldRunNumber)
@@ -57,9 +58,17 @@ class DiffCalSaveView(QWidget):
         self.signalRunNumberUpdate.emit(runNumber)
 
     def enableIterationDropdown(self):
-        self.iterationDropdown.setVisible(True)
-        self.layout.addWidget(self.iterationDropdown)
+        self.iterationWidget.setVisible(True)
+        self.layout.addWidget(self.iterationWidget)
 
     def setIterationDropdown(self, iterations):
         self.iterationDropdown.clear()
         self.iterationDropdown.addItems(iterations)
+        self.iterationDropdown.setItemText(0, self.currentIterationText)
+
+    def verify(self):
+        if self.fieldAuthor.text() == "":
+            raise ValueError("You must specify the author")
+        if self.fieldComments.text() == "":
+            raise ValueError("You must add comments")
+        return True

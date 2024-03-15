@@ -4,7 +4,15 @@ from pydantic import BaseModel, validator
 
 
 class NormalizationIndexEntry(BaseModel):
-    """Class to hold Normalization Index Entry data."""
+    """
+
+    This class represents a Normalization Index Entry object with various attributes and a custom validator.
+    The purpose of this class is to model a normalization index entry with attributes like runNumber,
+    backgroundRunNumber, version, appliesTo, comments, author, and timestamp. It also includes a custom
+    validator method called appliesToFormatChecker to validate the format of the appliesTo attribute if it
+    is present.
+
+    """
 
     runNumber: str
     backgroundRunNumber: str
@@ -17,8 +25,10 @@ class NormalizationIndexEntry(BaseModel):
     @validator("appliesTo", allow_reuse=True)
     def appliesToFormatChecker(cls, v):
         """
-        This validator ensures that if appliesTo is present,
-        it is in the format of 'runNumber', '>runNumber', or '<runNumber'.
+
+        Validator ensures 'appliesTo' adheres to the specified format if present, enhancing the
+        integrity of data referencing.
+
         """
         testValue = v
         if testValue is not None:

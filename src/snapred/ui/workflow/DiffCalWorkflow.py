@@ -87,6 +87,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             .addNode(self._saveCalibration, self._saveView, name="Saving")
             .build()
         )
+        self.workflow.presenter.setResetLambda(self.reset)
 
     def _populateGroupingDropdown(self):
         # when the run number is updated, freeze the drop down to populate it
@@ -120,8 +121,6 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def _specifyRun(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
-        # pull fields from view
-        self.verifyForm(view)
 
         # fetch the data from the view
         self.runNumber = view.runNumberField.text()
@@ -140,7 +139,6 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         self._tweakPeakView.populateGroupingDropdown(list(self.groupingMap.getMap(self.useLiteMode).keys()))
         self._tweakPeakView.updateFields(
-            self.runNumber,
             view.sampleDropdown.currentIndex(),
             view.groupingFileDropdown.currentIndex(),
             view.peakFunctionDropdown.currentIndex(),
@@ -244,8 +242,6 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def _triggerDiffractionCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
-        # pull fields from view for diffraction calibration
-        self.verifyForm(view)
 
         self.runNumber = view.runNumberField.text()
         self._saveView.updateRunNumber(self.runNumber)
@@ -294,10 +290,19 @@ class DiffCalWorkflow(WorkflowImplementer):
         if workflowPresenter.iteration > 1:
             self._saveView.enableIterationDropdown()
             iterations = [str(i) for i in range(0, workflowPresenter.iteration)]
-            self._saveView.iterationDropdown.clear()
-            self._saveView.iterationDropdown.addItems(iterations)
-            self._saveView.iterationDropdown.setCurrentIndex(workflowPresenter.iteration - 1)
+            self._saveView.setIterationDropdown(iterations)
         return self.responses[-1]  # [-1]: response from CalibrationAssessmentRequest for the calibration in progress
+
+    def _getSaveSelection(self, dropDown):
+        selection = dropDown.currentText()
+        if selection == self._saveView.currentIterationText:
+            return self.calibrationRecord.workspaces
+
+        iteration = int(selection)
+        return {
+            wsKey: [self.renameTemplate.format(workspaceName=wsName, iteration=iteration) for wsName in wsNames]
+            for wsKey, wsNames in self.calibrationRecord.workspaces.items()
+        }
 
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
@@ -311,11 +316,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # if this is not the first iteration, account for choice.
         if workflowPresenter.iteration > 1:
-            iteration = int(self._saveView.iterationDropdown.currentText())
-            self.calibrationRecord.workspaces = {
-                wsKey: [self.renameTemplate.format(workspaceName=wsName, iteration=iteration) for wsName in wsNames]
-                for wsKey, wsNames in self.calibrationRecord.workspaces.items()
-            }
+            self.calibrationRecord.workspaces = self._getSaveSelection(self._saveView.iterationDropdown)
 
         payload = CalibrationExportRequest(
             calibrationRecord=self.calibrationRecord, calibrationIndexEntry=calibrationIndexEntry
