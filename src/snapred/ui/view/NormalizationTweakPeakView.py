@@ -25,29 +25,6 @@ from snapred.ui.widget.Toggle import Toggle
 
 @Resettable
 class NormalizationTweakPeakView(BackendRequestView):
-    signalRunNumberUpdate = pyqtSignal(str)
-    """
-    """
-    signalBackgroundRunNumberUpdate = pyqtSignal(str)
-    """
-    """
-    signalValueChanged = pyqtSignal(int, float, float, float, float)
-    """
-    """
-    signalUpdateRecalculationButton = pyqtSignal(bool)
-    """
-    """
-    signalUpdateFields = pyqtSignal(int, int, float)
-    """
-    """
-    signalPopulateGroupingDropdown = pyqtSignal(list)
-    """
-    """
-
-    DMIN = Config["constants.CrystallographicInfo.dMin"]
-    DMAX = Config["constants.CrystallographicInfo.dMax"]
-    PEAK_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
-
     """
 
     This PyQt5 GUI component is designed for adjusting peak normalization parameters in SNAPRed,
@@ -61,6 +38,17 @@ class NormalizationTweakPeakView(BackendRequestView):
     normalization parameters for data analysis.
 
     """
+
+    signalRunNumberUpdate = pyqtSignal(str)
+    signalBackgroundRunNumberUpdate = pyqtSignal(str)
+    signalValueChanged = pyqtSignal(int, float, float, float, float)
+    signalUpdateRecalculationButton = pyqtSignal(bool)
+    signalUpdateFields = pyqtSignal(int, int, float)
+    signalPopulateGroupingDropdown = pyqtSignal(list)
+
+    DMIN = Config["constants.CrystallographicInfo.dMin"]
+    DMAX = Config["constants.CrystallographicInfo.dMax"]
+    PEAK_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = ""

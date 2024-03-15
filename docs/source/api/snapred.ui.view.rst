@@ -26,6 +26,7 @@ snapred.ui.view.DiffCalAssessmentView module
 .. automodule:: snapred.ui.view.DiffCalAssessmentView
    :members:
    :undoc-members:
+   :exclude-members: signalRunNumberUpdate, signalError
    :show-inheritance:
 
 snapred.ui.view.DiffCalRequestView module
@@ -42,6 +43,7 @@ snapred.ui.view.DiffCalSaveView module
 .. automodule:: snapred.ui.view.DiffCalSaveView
    :members:
    :undoc-members:
+   :exclude-members: signalRunNumberUpdate
    :show-inheritance:
 
 snapred.ui.view.DiffCalTweakPeakView module
@@ -50,6 +52,7 @@ snapred.ui.view.DiffCalTweakPeakView module
 .. automodule:: snapred.ui.view.DiffCalTweakPeakView
    :members:
    :undoc-members:
+   :exclude-members: signalRunNumberUpdate, signalValueChanged, signalUpdateRecalculationButton
    :show-inheritance:
 
 snapred.ui.view.FitMultiplePeaksView module
@@ -114,6 +117,7 @@ snapred.ui.view.NormalizationSaveView module
 .. automodule:: snapred.ui.view.NormalizationSaveView
    :members:
    :undoc-members:
+   :exclude-members: signalRunNumberUpdate, signalBackgroundRunNumberUpdate
    :show-inheritance:
 
 snapred.ui.view.NormalizationTweakPeakView module
@@ -122,6 +126,8 @@ snapred.ui.view.NormalizationTweakPeakView module
 .. automodule:: snapred.ui.view.NormalizationTweakPeakView
    :members:
    :undoc-members:
+   :exclude-members: signalRunNumberUpdate, signalBackgroundRunNumberUpdate, signalValueChanged, signalUpdateRecalculationButton, signalUpdateFields,
+                     signalPopulateGroupingDropdown
    :show-inheritance:
 
 snapred.ui.view.PromptUserforCalibrationInputView module
@@ -139,6 +145,7 @@ snapred.ui.view.ReductionView module
 .. automodule:: snapred.ui.view.ReductionView
    :members:
    :undoc-members:
+   :exclude-members: signalRunNumberUpdate
    :show-inheritance:
 
 snapred.ui.view.TestPanelView module

@@ -9,10 +9,6 @@ from snapred.ui.widget.LabeledField import LabeledField
 # TODO rebase on BackendRequestView
 @Resettable
 class NormalizationSaveView(QWidget):
-    signalRunNumberUpdate = pyqtSignal(str)
-    """
-    """
-    signalBackgroundRunNumberUpdate = pyqtSignal(str)
     """
 
     This class creates a PyQt5 widget interface for efficiently saving normalization data in SNAPRed
@@ -23,6 +19,9 @@ class NormalizationSaveView(QWidget):
     the user experience and the integrity of stored data.
 
     """
+
+    signalRunNumberUpdate = pyqtSignal(str)
+    signalBackgroundRunNumberUpdate = pyqtSignal(str)
 
     def __init__(self, name, jsonSchemaMap, parent=None):
         super().__init__(parent)
