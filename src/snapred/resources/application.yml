@@ -136,3 +136,6 @@ constants:
 
   DetectorPeakPredictor:
     fwhm: 1.17741002252 # used to convert gaussian to fwhm (2 * log_e(2))
+
+  GroupDiffractionCalibration:
+    MaxChiSq: 100

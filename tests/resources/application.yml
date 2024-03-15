@@ -154,4 +154,4 @@ constants:
     fwhm: 2.35482004503 # used to convert gaussian to fwhm 2 * sqrt(2 * log_e(2))
 
   GroupDiffractionCalibration:
-    MaxChiSq: 10000000000
+    MaxChiSq: 100
