@@ -7,7 +7,6 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
-    mtd,
 )
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction, StringMandatoryValidator
@@ -28,8 +27,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
     Calculate the group-aligned DIFC associated with a given workspace.
     One part of diffraction calibration.
     """
-
-    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def category(self):
         return "SNAPRed Diffraction Calibration"
