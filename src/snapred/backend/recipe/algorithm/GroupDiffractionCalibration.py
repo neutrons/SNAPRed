@@ -187,6 +187,24 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # must convert to d-spacing, diffraction focus, ragged rebin, then convert back to TOF
         self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "before", "TOF")
 
+    def verifyChiSq(self, diagnosticWSgroup):
+        diagnosticWs = self.mantidSnapper.mtd[diagnosticWSgroup]
+        tab = self.mantidSnapper.mtd[diagnosticWs.getNames()[0]]
+        tabDict = tab.toDict()
+        chi2 = tabDict["chi2"]
+        totalLowChi2 = 0
+        if len(chi2) > 2:
+            for i in chi2:
+                if i < 100:
+                    totalLowChi2 = totalLowChi2 + 1
+            if totalLowChi2 < 2:
+                logger.warning(
+                    "Insufficient number of well fitted peaks (chi2 < 100)."
+                    + "Try to adjust parameters in Tweak Peak Peek tab"
+                )
+            else:
+                logger.info(f"Sufficient number of well fitted peaks (chi2 < 100).: {totalLowChi2}")
+
     def PyExec(self) -> None:
         """
         Execute the group-by-group calibration algorithm.
@@ -279,6 +297,8 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                     InputWorkspace=self.DIFCfinal,
                     OutputWorkspace=self.DIFCprev,
                 )
+            self.mantidSnapper.executeQueue()
+            self.verifyChiSq(diagnosticWSgroup)
             self.mantidSnapper.WashDishes(
                 "Cleanup leftover workspaces",
                 WorkspaceList=[
@@ -286,7 +306,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                     diagnosticWSgroup,
                 ],
             )
-            self.mantidSnapper.executeQueue()
 
         # apply the calibration table to input data, then re-focus
         self.mantidSnapper.ApplyDiffCal(
@@ -307,20 +326,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             OutputWorkspace=self.outputWStof,
             Target="TOF",
         )
-
-        tab = mtd["_PDCal_diag_1"]
-        tabDict = tab.getItem(0).toDict()
-        chi2 = tabDict["chi2"]
-        lowChi2 = 0
-        if len(chi2) > 2:
-            for i in chi2:
-                if i < 100:
-                    lowChi2 = lowChi2 + 1
-            if lowChi2 < 2:
-                logger.warning(
-                    "Insufficient number of well fitted peaks (chi2 < 100)."
-                    + "Try to adjust parameters in Tweak Peak Peek tab"
-                )
 
         self.setPropertyValue("OutputWorkspaceTOF", self.outputWStof)
         self.setPropertyValue("OutputWorkspacedSpacing", self.outputWSdSpacing)

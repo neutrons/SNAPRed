@@ -131,7 +131,7 @@ class WorkflowPresenter(object):
         self.worker_pool.submitWorker(self.worker)
 
     def _handleComplications(self, result):
-        SNAPResponseHandler(result, self.view)
+        SNAPResponseHandler().handle(result, self.view)
 
     def handleStateMessage(self, view):
         """

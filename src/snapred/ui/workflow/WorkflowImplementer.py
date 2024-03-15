@@ -76,7 +76,7 @@ class WorkflowImplementer:
 
     def _handleComplications(self, result):
         view = self.parent if not self.workflow else self.workflow.widget
-        SNAPResponseHandler(result, view)
+        SNAPResponseHandler().handle(result, view)
 
     @property
     def widget(self):

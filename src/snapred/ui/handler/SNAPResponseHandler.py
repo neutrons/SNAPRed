@@ -1,4 +1,4 @@
-from qtpy.QtCore import Signal
+from qtpy.QtCore import QObject, Signal
 from qtpy.QtWidgets import QMessageBox, QWidget
 
 from snapred.backend.dao.SNAPResponse import ResponseCode
@@ -7,13 +7,12 @@ from snapred.backend.log.logger import snapredLogger
 logger = snapredLogger.getLogger(__name__)
 
 
-class SNAPResponseHandler(QWidget):
-    signal = Signal(str, object)
+class SNAPResponseHandler(QObject):
+    signal = Signal(int, str, object)
 
-    def __init__(self, result, view):
+    def __init__(self):
         super().__init__(None)
 
-        self._handleComplications(result, view)
         self.signal.connect(self._handleComplications)
 
     def _isErrorCode(self, code):
@@ -22,20 +21,23 @@ class SNAPResponseHandler(QWidget):
     def _isRecoverableError(self, code):
         return ResponseCode.RECOVERABLE <= code < ResponseCode.ERROR
 
-    def _handleComplications(self, result, view):
-        if self._isErrorCode(result.code):
+    def handle(self, result, view):
+        self.signal.emit(result.code, result.message, view)
+
+    def _handleComplications(self, code, message, view):
+        if self._isErrorCode(code):
             QMessageBox.critical(
                 view,
                 "Error",
-                f"Error {result.code}: {result.message}",
+                f"Error {code}: {message}",
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
-        elif self._isRecoverableError(result.code):
-            if "state" in result.message:
+        elif self._isRecoverableError(code):
+            if "state" in message:
                 self.handleStateMessage(self.view)
             else:
-                logger.error(f"Unhandled scenario triggered by state message: {result.message}")
+                logger.error(f"Unhandled scenario triggered by state message: {message}")
                 messageBox = QMessageBox(
                     QMessageBox.Warning,
                     "Warning",
@@ -43,9 +45,9 @@ class SNAPResponseHandler(QWidget):
                     QMessageBox.Ok,
                     view,
                 )
-                messageBox.setDetailedText(f"{result.message}")
+                messageBox.setDetailedText(f"{message}")
                 messageBox.exec()
-        elif result.message:
+        elif message:
             messageBox = QMessageBox(
                 QMessageBox.Warning,
                 "Warning",
@@ -53,6 +55,5 @@ class SNAPResponseHandler(QWidget):
                 QMessageBox.Ok,
                 view,
             )
-            messageBox.setDetailedText(f"{result.message}")
+            messageBox.setDetailedText(f"{message}")
             messageBox.exec()
-        self.signal.emit(result.message, view)
