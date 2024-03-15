@@ -70,4 +70,5 @@ For a simplified breakdown of where you may want to implement parts of your code
    api/normalization
    api/object_sha
    recipe
+   grocery_service
    api/smooth_data_excluding_peaks_request
