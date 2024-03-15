@@ -1,4 +1,5 @@
-from qtpy.QtWidgets import QMessageBox
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QMessageBox, QWidget
 
 from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.log.logger import snapredLogger
@@ -6,9 +7,14 @@ from snapred.backend.log.logger import snapredLogger
 logger = snapredLogger.getLogger(__name__)
 
 
-class Hanlder(object):
+class SNAPResponseHandler(QWidget):
+    signal = Signal(str, object)
+
     def __init__(self, result, view):
+        super().__init__(None)
+
         self._handleComplications(result, view)
+        self.signal.connect(self._handleComplications)
 
     def _isErrorCode(self, code):
         return code >= ResponseCode.ERROR
@@ -49,3 +55,4 @@ class Hanlder(object):
             )
             messageBox.setDetailedText(f"{result.message}")
             messageBox.exec()
+        self.signal.emit(result.message, view)

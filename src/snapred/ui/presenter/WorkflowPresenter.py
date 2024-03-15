@@ -8,7 +8,7 @@ from snapred.backend.dao.request import ClearWorkspaceRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
-from snapred.ui.handler.Handler import Hanlder
+from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.WorkflowView import WorkflowView
@@ -130,46 +130,8 @@ class WorkflowPresenter(object):
 
         self.worker_pool.submitWorker(self.worker)
 
-    def _isErrorCode(self, code):
-        return code >= ResponseCode.ERROR
-
-    def _isRecoverableError(self, code):
-        return ResponseCode.RECOVERABLE <= code < ResponseCode.ERROR
-
     def _handleComplications(self, result):
-        Hanlder(result, self.view)
-        # if self._isErrorCode(result.code):
-        #     QMessageBox.critical(
-        #         self.view,
-        #         "Error",
-        #         f"Error {result.code}: {result.message}",
-        #         QMessageBox.Ok,
-        #         QMessageBox.Ok,
-        #     )
-        # elif self._isRecoverableError(result.code):
-        #     if "state" in result.message:
-        #         self.handleStateMessage(self.view)
-        #     else:
-        #         logger.error(f"Unhandled scenario triggered by state message: {result.message}")
-        #         messageBox = QMessageBox(
-        #             QMessageBox.Warning,
-        #             "Warning",
-        #             "Proccess completed successfully with warnings!",
-        #             QMessageBox.Ok,
-        #             self.view,
-        #         )
-        #         messageBox.setDetailedText(f"{result.message}")
-        #         messageBox.exec()
-        # elif result.message:
-        #     messageBox = QMessageBox(
-        #         QMessageBox.Warning,
-        #         "Warning",
-        #         "Proccess completed successfully with warnings!",
-        #         QMessageBox.Ok,
-        #         self.view,
-        #     )
-        #     messageBox.setDetailedText(f"{result.message}")
-        #     messageBox.exec()
+        SNAPResponseHandler(result, self.view)
 
     def handleStateMessage(self, view):
         """
