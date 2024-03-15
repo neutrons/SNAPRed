@@ -87,18 +87,19 @@ mantid:
     workspace:
       nameTemplate:
         delimiter: "_"
-        run: "{unit},{group},{lite},{auxiliary},{runNumber}"
-        diffCal:
-          input: "_{unit},{runNumber},raw"
-          table: "_diffract_consts,{runNumber},{version}"
-          output: "_{unit},diffoc,{runNumber},{version}"
-          mask: "_diffract_consts,mask,{runNumber},{version}"
-          metric: "_calib_metrics,{metricName},{runNumber},{version}"
-          timed_metric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
-        normCal:
-          rawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
-          focusedRawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
-          smoothedFocusedRawVanadium: "{unit},{group},fitted_van_cor,{runNumber}"
+        template:
+          run: "{unit},{group},{lite},{auxiliary},{runNumber}"
+          diffCal:
+            input: "_{unit},{runNumber},raw"
+            table: "_diffract_consts,{runNumber},{version}"
+            output: "_{unit},diffoc,{runNumber},{version}"
+            mask: "_diffract_consts,mask,{runNumber},{version}"
+            metric: "_calib_metrics,{metricName},{runNumber},{version}"
+            timedMetric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
+          normCal:
+            rawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
+            focusedRawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
+            smoothedFocusedRawVanadium: "{unit},{group},fitted_van_cor,{runNumber}"
         units:
           dSpacing: dsp
           timeOfFlight: tof

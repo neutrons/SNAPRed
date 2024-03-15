@@ -8,8 +8,10 @@ Subpackages
    :maxdepth: 4
 
    snapred.backend.dao.calibration
+   snapred.backend.dao.normalization
    snapred.backend.dao.ingredients
    snapred.backend.dao.request
+   snapred.backend.dao.response
    snapred.backend.dao.state
 
 Submodules
@@ -39,18 +41,18 @@ snapred.backend.dao.DetectorPeak module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.dao.GSASParameters module
------------------------------------------
-
-.. automodule:: snapred.backend.dao.GSASParameters
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.dao.GroupPeakList module
 ----------------------------------------
 
 .. automodule:: snapred.backend.dao.GroupPeakList
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.dao.GSASParameters module
+-----------------------------------------
+
+.. automodule:: snapred.backend.dao.GSASParameters
    :members:
    :undoc-members:
    :show-inheritance:
@@ -67,6 +69,14 @@ snapred.backend.dao.Limit module
 --------------------------------
 
 .. automodule:: snapred.backend.dao.Limit
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.dao.ObjectSHA module
+------------------------------------
+
+.. automodule:: snapred.backend.dao.ObjectSHA
    :members:
    :undoc-members:
    :show-inheritance:

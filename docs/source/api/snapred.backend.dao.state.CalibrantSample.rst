@@ -4,6 +4,14 @@ snapred.backend.dao.state.CalibrantSample package
 Submodules
 ----------
 
+snapred.backend.dao.state.CalibrantSample.Atom module
+-----------------------------------------------------
+
+.. automodule:: snapred.backend.dao.state.CalibrantSample.Atom
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.dao.state.CalibrantSample.CalibrantSamples module
 -----------------------------------------------------------------
 

@@ -4,10 +4,26 @@ snapred.backend.dao.ingredients package
 Submodules
 ----------
 
+snapred.backend.dao.ingredients.CalibrationMetricsWorkspaceIngredients module
+-----------------------------------------------------------------------------
+
+.. automodule:: snapred.backend.dao.ingredients.CalibrationMetricsWorkspaceIngredients
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.dao.ingredients.DiffractionCalibrationIngredients module
 ------------------------------------------------------------------------
 
 .. automodule:: snapred.backend.dao.ingredients.DiffractionCalibrationIngredients
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.dao.ingredients.GroceryListItem module
+------------------------------------------------------
+
+.. automodule:: snapred.backend.dao.ingredients.GroceryListItem
    :members:
    :undoc-members:
    :show-inheritance:

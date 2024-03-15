@@ -3,6 +3,9 @@ Glossary
 .. TODO: Provide links to a term's page if it exists
 .. glossary::
 
+    ADS
+        Analysis Data Service, the internal list held by :term:`Mantid` of all workspaces.
+
     Algorithm
         A set of instructions that can be executed to produce a result.
         In the context of SNAP, this mostly refers to Mantid Algorithms or collections of Mantid Algorithms triggered by a Recipe.
@@ -13,6 +16,16 @@ Glossary
         The architectural layer that provides the single point of interaction between the backend and frontend.
         Agnostic of frontend implementation, it recieves requests from the frontend and forwards them to the corresponding Service.
         In addition it is also responsible for catching errors, and returning a human readable error message to the frontend.
+
+    Background Run Number
+        The identifier for a background run, which is a measurement taken under the same conditions as a
+        primary experimental run but without the sample present. This data is used to subtract background noise
+        and artifacts from the experimental data, enabling more accurate analysis. In the context of SNAP, the
+        Background Run ID refers to the unique ID associated with such a run, used in processes like
+        :term:`Normalization` to correct the primary data set.
+
+    Calibrant Samples
+        TODO
 
     Calibration
         The process by which the instrument state configuration is calibrated to account for the effects of the instrument on the diffraction data.
@@ -53,7 +66,14 @@ Glossary
         A predetermined set of parameters used to split diffraction data into useful formations, i.e. like slices vs squares of pizza
         This may include predetermined data such as dimmensions and tolerances, or derrived values such as Pixel Grouping Parameters
 
+    grocery
+        Within SNAPRed code, this refers to workspace data (as opposed to ingredient data) which are needed for an operation.
+        They are requested by handing the Grocery Service a grocery list of workspaces to fetch.
+
     Histogram
+        TODO
+
+    Ingredients
         TODO
 
     Instrument
@@ -69,13 +89,30 @@ Glossary
         The architectural layer that provides the single point of interaction between the backend and frontend.
         Agnostic of frontend implementation, it recieves requests from the frontend and forwards them to the Orchestration Layer.
 
+    IPTS
+        TODO
+
     Layer
         A collection of :term:`Components <Component>` that work together to provide a single unit of high level Developer Requirements
         Examples include: API, Orchestration, Data Processing, etc.
 
+    Lite Mode
+        TODO
+
+    Mantid
+        Neutron scattering data reduction code maintained by the `Mantid Project <https://www.mantidproject.org/>`_.
+
     Mantid Snapper
         A thin wrapper around the Mantid Algorithm API that allows for meta processes to be performed around a queue of algorithms.
         Examples may include: Progress reporting, Quality of Life improvements, multi-threading, etc.
+
+    Normalization
+        The process of adjusting diffraction data to correct for variations in instrumental performance and experimental conditions.
+        Normalization ensures that data from different runs or different :term: `instrument states <Instrument State>` can be directly
+        compared or combined without bias due to instrument efficiency, sample positioning, or other systemic factors. This is typically
+        achieved by dividing the raw data by a normalization standard, such as a vanadium run, which represents the instrument response.
+        The process involves a series of algorithms, often encapsulated within a Recipe, to apply these corrections and produce normalized
+        data suitable for further analysis or interpretation.
 
     Orchestration Layer
         The architectural layer that handles the stitching together of the various :term:`Service Components <Service Component>`, `Data Components <Data Component>`, and `Recipe Components <Recipe Component>` to achieve and abstract goal.
@@ -121,6 +158,13 @@ Glossary
         Examples include: Data Reduction, Calibration Quality Assessment, Instrument State Initialization, etc.
         It provides this functionality by orchestrating Data and Recipes Components to produce the expected results.
 
+    Smoothing Parameter
+        A numerical value used to control the degree of smoothing applied to diffraction data during processing.
+        Smoothing is a technique used to reduce noise and enhance signal clarity, making it easier to identify and
+        analyze peaks in the data. The smoothing parameter determines the extent of this smoothing effect, with
+        higher values leading to a smoother signal. It is often adjusted as part of the :term:`Normalization` or
+        :term:`Reduction` processes and is applied via algorithms within a :term:`Recipe`.
+
     Software Metadata
         This refers data about how SNAPRed operates.
         A prime example of this is the current mappings the InterfaceController has to the various services.
@@ -129,8 +173,18 @@ Glossary
     Spectrum/Spectra
         TODO
 
-    Vanadium
+    State Folder
         TODO
+
+    Vanadium
+        A reference material commonly used in neutron diffraction experiments for calibration and normalization
+        purposes due to its well-understood scattering properties. Vanadium calibration is essential for
+        instrument performance verification and for correcting systematic errors in diffraction data. It plays a
+        crucial role in the :term:`Calibration` and :term:`Normalization` processes within SNAP, ensuring accurate
+        and reliable data analysis.
 
     User Request
         A request made by the backend consumer to perform a specific task given sufficent input data.
+
+    workspace
+        A data object used by mantid to store most data, including neutron scattering data and grouping maps.

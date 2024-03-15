@@ -77,7 +77,7 @@ class SNAPRedGUI(QMainWindow):
             import traceback
 
             traceback.print_exception(e)
-            from PyQt5.QtWidgets import QMessageBox
+            from qtpy.QtWidgets import QMessageBox
 
             errorPopup = QMessageBox()
             errorPopup.setIcon(QMessageBox.Critical)

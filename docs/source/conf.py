@@ -111,8 +111,12 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
     from snapred.backend.dao.calibration import __all__ as calibrationAll
     from snapred.backend.dao.ingredients import *
     from snapred.backend.dao.ingredients import __all__ as ingredientsAll
+    from snapred.backend.dao.normalization import *
+    from snapred.backend.dao.normalization import __all__ as normalizationAll
     from snapred.backend.dao.request import *
     from snapred.backend.dao.request import __all__ as requestAll
+    from snapred.backend.dao.response import *
+    from snapred.backend.dao.response import __all__ as responseAll
     from snapred.backend.dao.state import *
     from snapred.backend.dao.state import __all__ as stateAll
     from snapred.backend.dao.state.CalibrantSample import *
@@ -121,8 +125,10 @@ with mock.patch("builtins.__import__", side_effect=import_mock):
     daoClasses = []
     daoClasses.extend(daoAll)
     daoClasses.extend(calibrationAll)
+    daoClasses.extend(normalizationAll)
     daoClasses.extend(ingredientsAll)
     daoClasses.extend(requestAll)
+    daoClasses.extend(responseAll)
     daoClasses.extend(stateAll)
     daoClasses.extend(calibrantSampleAll)
 

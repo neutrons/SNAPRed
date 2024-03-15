@@ -4,6 +4,14 @@ snapred.ui.widget package
 Submodules
 ----------
 
+snapred.ui.widget.ActionPrompt module
+-------------------------------------
+
+.. automodule:: snapred.ui.widget.ActionPrompt
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.ui.widget.FitPeaksPlot module
 -------------------------------------
 
@@ -28,6 +36,14 @@ snapred.ui.widget.JsonFormList module
    :undoc-members:
    :show-inheritance:
 
+snapred.ui.widget.LabeledField module
+-------------------------------------
+
+.. automodule:: snapred.ui.widget.LabeledField
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.ui.widget.LogTable module
 ---------------------------------
 
@@ -36,10 +52,34 @@ snapred.ui.widget.LogTable module
    :undoc-members:
    :show-inheritance:
 
+snapred.ui.widget.SampleDropDown module
+---------------------------------------
+
+.. automodule:: snapred.ui.widget.SampleDropDown
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.ui.widget.Section module
 --------------------------------
 
 .. automodule:: snapred.ui.widget.Section
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.ui.widget.SmoothingSlider module
+----------------------------------------
+
+.. automodule:: snapred.ui.widget.SmoothingSlider
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.ui.widget.SuccessDialog module
+--------------------------------------
+
+.. automodule:: snapred.ui.widget.SuccessDialog
    :members:
    :undoc-members:
    :show-inheritance:

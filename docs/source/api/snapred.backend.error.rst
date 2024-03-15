@@ -12,6 +12,14 @@ snapred.backend.error.AlgorithmException module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.error.RecoverableException module
+-------------------------------------------------
+
+.. automodule:: snapred.backend.error.RecoverableException
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.error.UserException module
 ------------------------------------------
 

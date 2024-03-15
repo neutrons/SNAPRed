@@ -5,18 +5,12 @@ import matplotlib.pyplot as plt
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
 from pydantic import parse_obj_as
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (
-    QComboBox,
-    QGridLayout,
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import (
     QHBoxLayout,
-    QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QSlider,
-    QVBoxLayout,
-    QWidget,
 )
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
@@ -25,23 +19,36 @@ from snapred.backend.dao import GroupPeakList
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.SmoothingSlider import SmoothingSlider
 from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
 class NormalizationTweakPeakView(BackendRequestView):
-    signalRunNumberUpdate = pyqtSignal(str)
-    signalBackgroundRunNumberUpdate = pyqtSignal(str)
-    signalValueChanged = pyqtSignal(int, float, float, float, float)
-    signalUpdateRecalculationButton = pyqtSignal(bool)
-    signalUpdateFields = pyqtSignal(int, int, float)
-    signalPopulateGroupingDropdown = pyqtSignal(list)
+    """
+
+    This PyQt5 GUI component is designed for adjusting peak normalization parameters in SNAPRed,
+    offering a user-friendly interface that combines input fields, dropdowns, sliders, and a
+    real-time matplotlib plot area. It is built for dynamic interaction and visualization, allowing
+    users to see the impact of their adjustments on the normalization settings instantly. Key
+    features include a configurable layout with signal-slot connections for real-time updates,
+    matplotlib integration for data plotting, and various controls for precise parameter tuning.
+    This setup not only facilitates an interactive adjustment process but also provides immediate
+    visual feedback and validation, significantly improving the user experience in optimizing
+    normalization parameters for data analysis.
+
+    """
 
     DMIN = Config["constants.CrystallographicInfo.dMin"]
     DMAX = Config["constants.CrystallographicInfo.dMax"]
     PEAK_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+
+    signalRunNumberUpdate = Signal(str)
+    signalBackgroundRunNumberUpdate = Signal(str)
+    signalValueChanged = Signal(int, float, float, float, float)
+    signalUpdateRecalculationButton = Signal(bool)
+    signalUpdateFields = Signal(int, int, float)
+    signalPopulateGroupingDropdown = Signal(list)
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = ""
@@ -122,11 +129,22 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.signalUpdateFields.emit(sampleIndex, groupingIndex, smoothingParameter)
 
     def emitValueChange(self):
-        index = self.groupingFileDropdown.currentIndex()
-        smoothingValue = self.smoothingSlider.field.value()
-        dMin = float(self.fielddMin.field.text())
-        dMax = float(self.fielddMax.field.text())
-        peakThreshold = float(self.fieldThreshold.text())
+        # verify the fields before recalculation
+        try:
+            index = self.groupingFileDropdown.currentIndex()
+            smoothingValue = self.smoothingSlider.field.value()
+            dMin = float(self.fielddMin.field.text())
+            dMax = float(self.fielddMax.field.text())
+            peakThreshold = float(self.fieldThreshold.text())
+        except ValueError as e:
+            QMessageBox.warning(
+                self,
+                "Invalid Peak Parameters",
+                f"One of dMin, dMax, smoothing, or peak threshold is invalid: {str(e)}",
+                QMessageBox.Ok,
+            )
+            return
+        # perform some checks on dMin, dMax values
         if dMin < 0.1:
             response = QMessageBox.warning(
                 self,
@@ -212,3 +230,7 @@ class NormalizationTweakPeakView(BackendRequestView):
 
     def populateGroupingDropdown(self, groups=["Enter a Run Number"]):
         self.signalPopulateGroupingDropdown.emit(groups)
+
+    def verify(self):
+        # TODO what needs to be verified?
+        return True

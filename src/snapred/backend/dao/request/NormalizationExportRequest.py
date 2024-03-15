@@ -6,9 +6,14 @@ from snapred.backend.dao.normalization.NormalizationRecord import NormalizationR
 
 class NormalizationExportRequest(BaseModel):
     """
-    Once a normalizaiton is completed and assessed as satisfactory
-    a user may request to persist it to disk
-    This request is mostly passing back the result of that assessment step.
+
+    This class is utilized to encapsulate the necessary data for saving a completed normalization
+    process to disk, following a satisfactory assessment by the user. It packages both the
+    comprehensive details of the normalization process and its contextual metadata, ensuring that
+    significant normalization efforts are archived in a structured and accessible manner. This
+    approach facilitates not only the preservation of critical scientific data but also supports
+    data governance, compliance, and reproducibility within the research workflow.
+
     """
 
     normalizationRecord: NormalizationRecord

@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QComboBox, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QComboBox, QVBoxLayout, QWidget
 
 
 class SampleDropDown(QWidget):

@@ -6,15 +6,12 @@ import matplotlib.pyplot as plt
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
 from pydantic import parse_obj_as
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (
-    QComboBox,
-    QGridLayout,
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QWidget,
 )
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
@@ -24,20 +21,18 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 from snapred.ui.view.BackendRequestView import BackendRequestView
-from snapred.ui.widget.JsonFormList import JsonFormList
-from snapred.ui.widget.LabeledField import LabeledField
 from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
 class DiffCalTweakPeakView(BackendRequestView):
-    signalRunNumberUpdate = pyqtSignal(str)
-    signalValueChanged = pyqtSignal(int, float, float, float)
-    signalUpdateRecalculationButton = pyqtSignal(bool)
-
     DMIN = Config["constants.CrystallographicInfo.dMin"]
     DMAX = Config["constants.CrystallographicInfo.dMax"]
     THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+
+    signalRunNumberUpdate = Signal(str)
+    signalValueChanged = Signal(int, float, float, float)
+    signalUpdateRecalculationButton = Signal(bool)
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = "calibration/diffractionCalibration"
@@ -99,18 +94,27 @@ class DiffCalTweakPeakView(BackendRequestView):
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
 
-    def updateFields(self, runNumber, sampleIndex, groupingIndex, peakIndex):  # noqa ARG002
-        # NOTE uncommenting the below -- inexplicably -- causes a segfault
-        # self.runNumberField.setText(runNumber)
+    def updateFields(self, sampleIndex, groupingIndex, peakIndex):
         self.sampleDropdown.setCurrentIndex(sampleIndex)
         self.groupingFileDropdown.setCurrentIndex(groupingIndex)
         self.peakFunctionDropdown.setCurrentIndex(peakIndex)
 
     def emitValueChange(self):
-        groupingIndex = self.groupingFileDropdown.currentIndex()
-        dMin = float(self.fielddMin.field.text())
-        dMax = float(self.fielddMax.field.text())
-        peakThreshold = float(self.fieldThreshold.text())
+        # verify the fields before recalculation
+        try:
+            groupingIndex = self.groupingFileDropdown.currentIndex()
+            dMin = float(self.fielddMin.field.text())
+            dMax = float(self.fielddMax.field.text())
+            peakThreshold = float(self.fieldThreshold.text())
+        except ValueError as e:
+            QMessageBox.warning(
+                self,
+                "Invalid Peak Parameters",
+                f"One of dMin, dMax, or peak threshold is invalid: {str(e)}",
+                QMessageBox.Ok,
+            )
+            return
+        # perform some checks on dMin, dMax values
         if dMin < 0.1:
             response = QMessageBox.warning(
                 self,
@@ -187,10 +191,9 @@ class DiffCalTweakPeakView(BackendRequestView):
     def verify(self):
         empties = [gpl for gpl in self.peaks if len(gpl.peaks) < 4]
         if len(empties) > 0:
-            raise ValueError(
-                "Proper calibration requires at least 4 peaks per group.  "
-                + f"Groups {[empty.groupID for empty in empties]} have "
-                + f"{[len(empty.peaks) for empty in empties]} peaks.  "
-                + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
-            )
+            msg = "Proper calibration requires at least 4 peaks per group.\n"
+            for empty in empties:
+                msg = msg + f"\tgroup {empty.groupID} has \t {len(empty.peaks)} peaks\n"
+            msg = msg + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
+            raise ValueError(msg)
         return True
