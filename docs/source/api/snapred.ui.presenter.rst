@@ -4,6 +4,31 @@ snapred.ui.presenter package
 Submodules
 ----------
 
+snapred.ui.presenter.ActionPromptPresenter module
+-------------------------------------------------
+
+.. automodule:: snapred.ui.presenter.ActionPromptPresenter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.ui.presenter.CalibrationAssessmentPresenter module
+----------------------------------------------------------
+
+.. automodule:: snapred.ui.presenter.CalibrationAssessmentPresenter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.ui.presenter.InitializeStatePresenter module
+-----------------------------------------------------
+
+.. automodule:: snapred.ui.presenter.InitializeStatePresenter
+   :members:
+   :undoc-members:
+   :exclude-members: stateInitialized
+   :show-inheritance:
+
 snapred.ui.presenter.JsonFormPresenter module
 ---------------------------------------------
 

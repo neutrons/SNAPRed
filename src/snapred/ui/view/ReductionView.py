@@ -1,12 +1,12 @@
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QGridLayout, QLabel, QLineEdit, QWidget
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QGridLayout, QLabel, QLineEdit, QWidget
 
 from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
 class ReductionView(QWidget):
-    signalRunNumberUpdate = pyqtSignal(str)
+    signalRunNumberUpdate = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)

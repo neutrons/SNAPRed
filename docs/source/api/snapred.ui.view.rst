@@ -4,6 +4,14 @@ snapred.ui.view package
 Submodules
 ----------
 
+snapred.ui.view.ActionPromptView.py module
+------------------------------------------
+
+.. automodule:: snapred.ui.view.ActionPromptView
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.ui.view.BackendRequestView module
 -----------------------------------------
 
@@ -12,12 +20,39 @@ snapred.ui.view.BackendRequestView module
    :undoc-members:
    :show-inheritance:
 
+snapred.ui.view.DiffCalAssessmentView module
+--------------------------------------------
+
+.. automodule:: snapred.ui.view.DiffCalAssessmentView
+   :members:
+   :undoc-members:
+   :exclude-members: signalRunNumberUpdate, signalError
+   :show-inheritance:
+
 snapred.ui.view.DiffCalRequestView module
 ------------------------------------------------------
 
 .. automodule:: snapred.ui.view.DiffCalRequestView
    :members:
    :undoc-members:
+   :show-inheritance:
+
+snapred.ui.view.DiffCalSaveView module
+--------------------------------------
+
+.. automodule:: snapred.ui.view.DiffCalSaveView
+   :members:
+   :undoc-members:
+   :exclude-members: signalRunNumberUpdate
+   :show-inheritance:
+
+snapred.ui.view.DiffCalTweakPeakView module
+-------------------------------------------
+
+.. automodule:: snapred.ui.view.DiffCalTweakPeakView
+   :members:
+   :undoc-members:
+   :exclude-members: signalRunNumberUpdate, signalValueChanged, signalUpdateRecalculationButton
    :show-inheritance:
 
 snapred.ui.view.FitMultiplePeaksView module
@@ -29,9 +64,17 @@ snapred.ui.view.FitMultiplePeaksView module
    :show-inheritance:
 
 snapred.ui.view.InitializeStateCheckView module
------------------------------------------------------
+-----------------------------------------------
 
 .. automodule:: snapred.ui.view.InitializeStateCheckView
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.ui.view.IterateView module
+----------------------------------
+
+.. automodule:: snapred.ui.view.IterateView
    :members:
    :undoc-members:
    :show-inheritance:
@@ -60,6 +103,33 @@ snapred.ui.view.LogTableView module
    :undoc-members:
    :show-inheritance:
 
+snapred.ui.view.NormalizationRequestView module
+-----------------------------------------------
+
+.. automodule:: snapred.ui.view.NormalizationRequestView
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.ui.view.NormalizationSaveView module
+-----------------------------------------------
+
+.. automodule:: snapred.ui.view.NormalizationSaveView
+   :members:
+   :undoc-members:
+   :exclude-members: signalRunNumberUpdate, signalBackgroundRunNumberUpdate
+   :show-inheritance:
+
+snapred.ui.view.NormalizationTweakPeakView module
+-------------------------------------------------
+
+.. automodule:: snapred.ui.view.NormalizationTweakPeakView
+   :members:
+   :undoc-members:
+   :exclude-members: signalRunNumberUpdate, signalBackgroundRunNumberUpdate, signalValueChanged, signalUpdateRecalculationButton, signalUpdateFields,
+                     signalPopulateGroupingDropdown
+   :show-inheritance:
+
 snapred.ui.view.PromptUserforCalibrationInputView module
 --------------------------------------------------------
 
@@ -68,6 +138,15 @@ snapred.ui.view.PromptUserforCalibrationInputView module
    :undoc-members:
    :show-inheritance:
    :exclude-members: dataEntered
+
+snapred.ui.view.ReductionView module
+------------------------------------
+
+.. automodule:: snapred.ui.view.ReductionView
+   :members:
+   :undoc-members:
+   :exclude-members: signalRunNumberUpdate
+   :show-inheritance:
 
 snapred.ui.view.TestPanelView module
 ------------------------------------

@@ -1,9 +1,5 @@
 import json
 
-from pydantic import parse_raw_as
-from PyQt5.QtCore import QObject, Qt, pyqtSignal
-from PyQt5.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
-
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.dao.normalization import NormalizationIndexEntry, NormalizationRecord
@@ -24,6 +20,19 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class NormalizationWorkflow(WorkflowImplementer):
+    """
+
+    This system orchestrates a full workflow for scientific data normalization, guiding users through each step with
+    interactive PyQt5 widgets and custom views. Starting with default settings for initialization, it progresses
+    through calibration, parameter adjustments, and ends with saving normalization data, offering views like
+    NormalizationRequestView, NormalizationTweakPeakView, and NormalizationSaveView for an interactive user workflow.
+    The workflow dynamically adjusts to different datasets and requirements, ensuring adaptability. Key phases include
+    capturing initial user inputs, interactive parameter tweaking with real-time visualization, and collecting final
+    details for data saving. This approach not only ensures a responsive and user-friendly experience but also maintains
+    workflow flexibility and data integrity through comprehensive validation and error handling mechanisms.
+
+    """
+
     def __init__(self, jsonForm, parent=None):
         super().__init__(parent)
 

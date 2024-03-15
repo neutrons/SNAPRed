@@ -2,6 +2,8 @@
 src/snapred/_version.py
 conda.recipe/
 src/snapred/resources/dev.yml
+docs/source/developer/dao.rst
+docs/source/developer/snapred/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
+from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
 
 
 class LabeledField(QWidget):

@@ -5,6 +5,17 @@ from snapred.ui.widget.Toggle import Toggle
 
 @Resettable
 class NormalizationRequestView(BackendRequestView):
+    """
+
+    The UI class in SNAPRed is designed to streamline the submission of normalization requests, enhancing the user
+    experience within the platform. By extending BackendRequestView and incorporating the @Resettable decorator,
+    it enables users to easily manage and reset normalization workflows as needed. Through intuitive features like
+    run number fields, lite mode toggles, and dropdown menus for sample selection, the class ensures that users can
+    provide necessary inputs effectively. Overall, its purpose is to simplify the normalization request process,
+    facilitating efficient data processing and analysis within SNAPRed.
+
+    """
+
     def __init__(self, jsonForm, samplePaths=[], groups=[], parent=None):
         super(NormalizationRequestView, self).__init__(jsonForm, "", parent=parent)
 

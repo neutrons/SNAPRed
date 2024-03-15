@@ -1,5 +1,5 @@
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QWidget
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QComboBox, QGridLayout, QLabel, QLineEdit, QWidget
 
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.LabeledField import LabeledField
@@ -8,7 +8,7 @@ from snapred.ui.widget.LabeledField import LabeledField
 # TODO rebase on BackendRequestView
 @Resettable
 class DiffCalSaveView(QWidget):
-    signalRunNumberUpdate = pyqtSignal(str)
+    signalRunNumberUpdate = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)

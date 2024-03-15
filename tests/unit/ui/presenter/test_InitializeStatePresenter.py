@@ -2,7 +2,7 @@ import sys
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
+from qtpy.QtWidgets import QApplication, QMessageBox, QWidget
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresenter
 
@@ -40,7 +40,7 @@ def test_handleButtonClicked_with_invalid_input(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     view.getRunNumber.return_value = "invalid"
 
-    with patch("PyQt5.QtWidgets.QMessageBox.warning") as mock_warning:
+    with patch("qtpy.QtWidgets.QMessageBox.warning") as mock_warning:
         workflow.handleButtonClicked()
         mock_warning.assert_called_once()
 
@@ -62,7 +62,7 @@ def test__handleResponse_error(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     error_response = SNAPResponse(code=ResponseCode.ERROR, message="Error message")
 
-    with patch("PyQt5.QtWidgets.QMessageBox.critical") as mock_critical:
+    with patch("qtpy.QtWidgets.QMessageBox.critical") as mock_critical:
         workflow._handleResponse(error_response)
         mock_critical.assert_called_once()
 

@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
 from pydantic import parse_obj_as
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QMessageBox,
@@ -25,16 +25,30 @@ from snapred.ui.widget.Toggle import Toggle
 
 @Resettable
 class NormalizationTweakPeakView(BackendRequestView):
-    signalRunNumberUpdate = pyqtSignal(str)
-    signalBackgroundRunNumberUpdate = pyqtSignal(str)
-    signalValueChanged = pyqtSignal(int, float, float, float, float)
-    signalUpdateRecalculationButton = pyqtSignal(bool)
-    signalUpdateFields = pyqtSignal(int, int, float)
-    signalPopulateGroupingDropdown = pyqtSignal(list)
+    """
+
+    This PyQt5 GUI component is designed for adjusting peak normalization parameters in SNAPRed,
+    offering a user-friendly interface that combines input fields, dropdowns, sliders, and a
+    real-time matplotlib plot area. It is built for dynamic interaction and visualization, allowing
+    users to see the impact of their adjustments on the normalization settings instantly. Key
+    features include a configurable layout with signal-slot connections for real-time updates,
+    matplotlib integration for data plotting, and various controls for precise parameter tuning.
+    This setup not only facilitates an interactive adjustment process but also provides immediate
+    visual feedback and validation, significantly improving the user experience in optimizing
+    normalization parameters for data analysis.
+
+    """
 
     DMIN = Config["constants.CrystallographicInfo.dMin"]
     DMAX = Config["constants.CrystallographicInfo.dMax"]
     PEAK_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+
+    signalRunNumberUpdate = Signal(str)
+    signalBackgroundRunNumberUpdate = Signal(str)
+    signalValueChanged = Signal(int, float, float, float, float)
+    signalUpdateRecalculationButton = Signal(bool)
+    signalUpdateFields = Signal(int, int, float)
+    signalPopulateGroupingDropdown = Signal(list)
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = ""

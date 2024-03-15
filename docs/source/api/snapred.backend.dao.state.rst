@@ -36,6 +36,14 @@ snapred.backend.dao.state.FocusGroup module
    :undoc-members:
    :show-inheritance:
 
+snapred.backend.dao.state.GroupingMap module
+--------------------------------------------
+
+.. automodule:: snapred.backend.dao.state.GroupingMap
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 snapred.backend.dao.state.InstrumentState module
 ------------------------------------------------
 
@@ -48,6 +56,14 @@ snapred.backend.dao.state.NormalizationCalibrant module
 -------------------------------------------------------
 
 .. automodule:: snapred.backend.dao.state.NormalizationCalibrant
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+snapred.backend.dao.state.PixelGroup module
+-------------------------------------------
+
+.. automodule:: snapred.backend.dao.state.PixelGroup
    :members:
    :undoc-members:
    :show-inheritance:

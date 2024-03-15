@@ -1,7 +1,8 @@
 from typing import List, Tuple
 
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushButton, QWidget
+# from qtpy import signals and widgets
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushButton, QWidget
 
 from snapred.backend.dao.calibration import CalibrationIndexEntry
 from snapred.meta.decorators.Resettable import Resettable
@@ -13,8 +14,8 @@ from snapred.ui.widget.LabeledField import LabeledField
 # TODO rebase on BackendRequestView
 @Resettable
 class DiffCalAssessmentView(QWidget):
-    signalRunNumberUpdate = pyqtSignal(str)
-    signalError = pyqtSignal(str)
+    signalRunNumberUpdate = Signal(str)
+    signalError = Signal(str)
 
     def __init__(self, name, jsonSchemaMap, parent=None):
         super().__init__(parent)

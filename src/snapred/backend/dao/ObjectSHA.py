@@ -1,10 +1,3 @@
-""" @file: ObjectSHA.py:
-  Standardized <object id> digest to support filesystem-as-database requirements:
-    * Allow verification that JSON files representing objects have not been arbitrarily moved:
-      => SHA == component of object's path on filesystem;
-    * Allow verification of nested objects where components may be loaded from separate JSON files:
-      => SHA == SHA of parent object.
-"""
 import hashlib
 import json
 from typing import Any, Optional
@@ -13,6 +6,19 @@ from pydantic import BaseModel, Field, validator
 
 
 class ObjectSHA(BaseModel):
+    """
+
+    Provides a standardized object identifier digest to support filesystem-as-database requirements.
+
+    This class allows for:
+
+    - Verification that JSON files representing objects have not been arbitrarily moved.
+      This is ensured by making the SHA a component of the object's path on the filesystem.
+    - Verification of nested objects where components may be loaded from separate JSON files.
+      This is achieved by making the SHA equivalent to the SHA of the parent object.
+
+    """
+
     hex: str = Field(
         description="16-character lowercase hex string", min_length=16, max_length=16, pattern=r"[0-9a-f]+"
     )
