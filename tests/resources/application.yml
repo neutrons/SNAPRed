@@ -1,12 +1,16 @@
 environment: test
 
+IPTS:
+  default: /SNS
+  root: /SNS  
+    
 orchestration:
   path:
     delimiter: /
 
 instrument:
   name: SNAP
-  home: /SNS/SNAP/
+  home: ${IPTS.root}/SNAP/
   calibration:
     home: ${instrument.home}shared/Calibration
     sample:
@@ -122,7 +126,7 @@ logging:
     format: '%Y-%m-%d %H:%M:%S,%i - %p - %s - %t'
 
 samples:
-  home: ${instrument.calibration.home}/CalibrantSamples
+  home: ${instrument.calibration.sample.home}
 
 
 test:

@@ -82,7 +82,7 @@ class GroupingMap(BaseModel):
             for group in groups[mode].copy():
                 fp = Path(groups[mode][group].definition)
                 # Check if path is relative
-                if not os.path.isabs(fp):
+                if not fp.is_absolute():
                     fp = Path.joinpath(cls.calibrationGroupingHome(), fp)
                     groups[mode][group].definition = fp
                 if not fp.exists():

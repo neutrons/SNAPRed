@@ -148,7 +148,20 @@ class LocalDataService:
         )
 
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
-        ipts = GetIPTS(runNumber, instrumentName)
+        if Config["IPTS.root"] == Config["IPTS.default"]:
+            ipts = GetIPTS(runNumber, instrumentName)
+        else:
+            # Allow local run with a defined IPTS-mirror root:
+            with os.scandir(Path(Config["IPTS.root"]) / instrumentName) as it:
+                for entry in it:
+                    if entry.name.startswith("IPTS") and entry.is_dir():
+                        with os.scandir(Path(entry) / "nexus") as runData:
+                            for run in runData:
+                                if runNumber in run.name:
+                                    ipts = str(Path(Config["IPTS.root"]) / instrumentName / entry.name) + os.sep
+            if not ipts:
+                raise RuntimeError(f"Cannot find IPTS directory for \'{runNumber}\'")
+            
         return str(ipts)
 
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
@@ -650,7 +663,10 @@ class LocalDataService:
             raise ValueError(f"the file '{filePath}' does not exist")
         with open(filePath, "r") as f:
             calibrantSampleDict = json.load(f)
-        return calibrantSampleDict["crystallography"]["cifFile"]
+        filePath = Path(calibrantSampleDict["crystallography"]["cifFile"])
+        if not filePath.is_absolute():
+            filePath = Path(Config["samples.home"]).joinpath(filePath)
+        return str(filePath)
 
     def _getCurrentCalibrationRecord(self, runId: str):
         version = self._getVersionFromCalibrationIndex(runId)
@@ -853,7 +869,7 @@ class LocalDataService:
 
         # first make sure the run number has a valid IPTS
         try:
-            GetIPTS(runId, Config["instrument.name"])
+            self.getIPTS(runId, Config["instrument.name"])
         # if no IPTS found, return false
         except RuntimeError:
             return False
