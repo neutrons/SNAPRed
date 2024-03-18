@@ -88,7 +88,6 @@ class TestSousChef(unittest.TestCase):
         res = self.instance.prepCalibrantSample(self.ingredients)
         assert res == self.instance.dataFactoryService.lookupService.readCalibrantSample.return_value
 
-    @mock.patch(thisService + "os.path.isfile", mock.Mock(return_value=True))
     @mock.patch(thisService + "PixelGroup")
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     @mock.patch(thisService + "PixelGroupingIngredients")
@@ -109,7 +108,10 @@ class TestSousChef(unittest.TestCase):
         self.instance.groceryService.fetchGroceryList = mock.Mock(return_value="banana")
 
         # call the method to be tested
-        res = self.instance.prepPixelGroup(self.ingredients)
+        # make sure the focus group definition exists, by pointing it to a tmp file
+        with tempfile.NamedTemporaryFile() as existent:
+            self.ingredients.focusGroup.definition = existent.name
+            res = self.instance.prepPixelGroup(self.ingredients)
 
         # make necessary assertions
         assert PixelGroupingIngredients.called_once_with(
