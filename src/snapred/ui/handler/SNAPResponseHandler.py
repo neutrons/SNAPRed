@@ -35,7 +35,7 @@ class SNAPResponseHandler(QObject):
             )
         elif self._isRecoverableError(code):
             if "state" in message:
-                self.handleStateMessage(self.view)
+                self.handleStateMessage(view)
             else:
                 logger.error(f"Unhandled scenario triggered by state message: {message}")
                 messageBox = QMessageBox(
