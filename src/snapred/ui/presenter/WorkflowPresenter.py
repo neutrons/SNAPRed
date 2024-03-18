@@ -145,18 +145,3 @@ class WorkflowPresenter(object):
 
     def _handleComplications(self, result):
         SNAPResponseHandler().handle(result, self.view)
-
-    def handleStateMessage(self, view):
-        """
-        Handles a specific 'state' message.
-        """
-        from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
-        from snapred.ui.view.InitializeStateCheckView import InitializationMenu
-
-        try:
-            logger.info("Handling 'state' message.")
-            initializationMenu = InitializationMenu(runNumber=InitializeStateHandler.runId, parent=view)
-            initializationMenu.finished.connect(lambda: initializationMenu.deleteLater())
-            initializationMenu.show()
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"The 'state' handling method encountered an error:{str(e)}")
