@@ -183,10 +183,11 @@ class CalibrationService(Service):
     @FromString
     def save(self, request: CalibrationExportRequest):
         entry = request.calibrationIndexEntry
+        version = entry.version
         calibrationRecord = request.calibrationRecord
+        calibrationRecord.version = version
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         calibrationRecord = self.dataExportService.exportCalibrationWorkspaces(calibrationRecord)
-        entry.version = calibrationRecord.version
         self.saveCalibrationToIndex(entry)
 
     @FromString
