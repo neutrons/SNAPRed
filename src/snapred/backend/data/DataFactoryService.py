@@ -45,6 +45,9 @@ class DataFactoryService:
 
         return reductionState
 
+    def fileExists(self, filepath: str) -> bool:
+        return self.lookupService.fileExists(filepath)
+
     def getRunConfig(self, runId: str) -> RunConfig:  # noqa: ARG002
         return self.lookupService.readRunConfig(runId)
 

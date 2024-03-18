@@ -68,7 +68,7 @@ class SousChef(Service):
         return self.dataFactoryService.getCalibrantSample(calibrantSamplePath)
 
     def prepFocusGroup(self, ingredients: FarmFreshIngredients) -> FocusGroup:
-        if os.path.isfile(ingredients.focusGroup.definition):
+        if self.dataFactoryService.fileExists(ingredients.focusGroup.definition):
             return ingredients.focusGroup
         else:
             groupingMap = self.dataFactoryService.getGroupingMap(ingredients.runNumber)

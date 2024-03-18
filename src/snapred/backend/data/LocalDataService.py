@@ -79,6 +79,9 @@ class LocalDataService:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
         self.instrumentConfig = self.readInstrumentConfig()
 
+    def fileExists(self, path):
+        return os.path.isfile(path)
+
     def _determineInstrConfigPaths(self) -> None:
         """This method locates the instrument configuration path and
         sets the instance variable ``instrumentConfigPath``."""

@@ -1,3 +1,5 @@
+import os.path
+import tempfile
 import unittest.mock as mock
 from unittest.mock import MagicMock
 
@@ -15,12 +17,23 @@ from snapred.backend.dao.StateConfig import StateConfig
 with mock.patch.dict(
     "sys.modules",
     {
-        "snapred.backend.data.LocalDataService": mock.Mock(),
         "snapred.backend.log": mock.Mock(),
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
     from snapred.backend.data.DataFactoryService import DataFactoryService
+
+    def test_fileExists_yes():
+        # create a temp file that exists, and verify it exists
+        with tempfile.NamedTemporaryFile(suffix=".biscuit") as existent:
+            assert DataFactoryService().fileExists(existent.name)
+
+    def test_fileExists_no():
+        # assert that a file that does not exist, does not exist
+        with tempfile.TemporaryDirectory() as tmpdir:
+            nonexistent = tmpdir + "/0x0f.biscuit"
+            assert not os.path.isfile(nonexistent)
+            assert not DataFactoryService().fileExists(nonexistent)
 
     def test_getReductionState():
         dataExportService = DataFactoryService()
