@@ -1,3 +1,4 @@
+import os.path
 import tempfile
 import unittest
 from unittest import mock
@@ -41,15 +42,20 @@ class TestSousChef(unittest.TestCase):
             res = self.instance.prepFocusGroup(self.ingredients)
             assert res == self.ingredients.focusGroup
 
-    @mock.patch(thisService + "os.path.isfile", mock.Mock(return_value=False))
     def test_prepFocusGroup_notExists(self):
-        # ensure the file does not exist by mocking out os.path.isfile to say it doesn't exist
+        # ensure the file does not exist
         # make sure the grouping map is accessed in this case instead
+
+        # create the mock grouping map dictionary
         mockGroupingDictionary = {self.ingredients.focusGroup.name: "passed"}
         mockGroupingMap = mock.Mock(getMap=mock.Mock(return_value=mockGroupingDictionary))
         self.instance.dataFactoryService.getGroupingMap = mock.Mock(return_value=mockGroupingMap)
 
-        res = self.instance.prepFocusGroup(self.ingredients)
+        # ensure the file does not exist by looking inside a temporary file
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self.ingredients.focusGroup.definition = tmpdir + "/muffin.egg"
+            assert not os.path.isfile(self.ingredients.focusGroup.definition)
+            res = self.instance.prepFocusGroup(self.ingredients)
 
         assert res == mockGroupingDictionary[self.ingredients.focusGroup.name]
 
