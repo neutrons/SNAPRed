@@ -1,3 +1,4 @@
+import tempfile
 import unittest
 from unittest import mock
 
@@ -32,6 +33,26 @@ class TestSousChef(unittest.TestCase):
         for ws in mtd.getObjectNames():
             DeleteWorkspace(ws)
 
+    def test_prepFocusGroup_exists(self):
+        # create a temp file to be used a the path for the focus group
+        # since it exists, prepFocusGroup should jsut return the focusGroup in the ingredients
+        with tempfile.NamedTemporaryFile(suffix=".xml") as existingFocusGroup:
+            self.ingredients.focusGroup.definition = existingFocusGroup.name
+            res = self.instance.prepFocusGroup(self.ingredients)
+            assert res == self.ingredients.focusGroup
+
+    @mock.patch(thisService + "os.path.isfile", mock.Mock(return_value=False))
+    def test_prepFocusGroup_notExists(self):
+        # ensure the file does not exist by mocking out os.path.isfile to say it doesn't exist
+        # make sure the grouping map is accessed in this case instead
+        mockGroupingDictionary = {self.ingredients.focusGroup.name: "passed"}
+        mockGroupingMap = mock.Mock(getMap=mock.Mock(return_value=mockGroupingDictionary))
+        self.instance.dataFactoryService.getGroupingMap = mock.Mock(return_value=mockGroupingMap)
+
+        res = self.instance.prepFocusGroup(self.ingredients)
+
+        assert res == mockGroupingDictionary[self.ingredients.focusGroup.name]
+
     def test_prepCalibration_nocache(self):
         runNumber = self.ingredients.runNumber
 
@@ -61,6 +82,7 @@ class TestSousChef(unittest.TestCase):
         res = self.instance.prepCalibrantSample(self.ingredients)
         assert res == self.instance.dataFactoryService.lookupService.readCalibrantSample.return_value
 
+    @mock.patch(thisService + "os.path.isfile", mock.Mock(return_value=True))
     @mock.patch(thisService + "PixelGroup")
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     @mock.patch(thisService + "PixelGroupingIngredients")
