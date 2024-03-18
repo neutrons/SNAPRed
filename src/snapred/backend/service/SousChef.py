@@ -1,4 +1,5 @@
 import json
+import os.path
 import time
 from datetime import date
 from functools import lru_cache
@@ -66,36 +67,44 @@ class SousChef(Service):
     def prepCalibrantSample(self, calibrantSamplePath: str) -> CalibrantSamples:
         return self.dataFactoryService.getCalibrantSample(calibrantSamplePath)
 
-    def prepPixelGroup(self, ingredients: FarmFreshIngredients):
+    def prepFocusGroup(self, ingredients: FarmFreshIngredients) -> FocusGroup:
+        if self.dataFactoryService.fileExists(ingredients.focusGroup.definition):
+            return ingredients.focusGroup
+        else:
+            groupingMap = self.dataFactoryService.getGroupingMap(ingredients.runNumber)
+            return groupingMap.getMap(ingredients.useLiteMode)[ingredients.focusGroup.name]
+
+    def prepPixelGroup(self, ingredients: FarmFreshIngredients) -> PixelGroup:
         groupingSchema = ingredients.focusGroup.name
         key = (ingredients.runNumber, ingredients.useLiteMode, groupingSchema)
         if key not in self._pixelGroupCache:
+            focusGroup = self.prepFocusGroup(ingredients)
             instrumentState = self.prepInstrumentState(ingredients.runNumber)
             pixelIngredients = PixelGroupingIngredients(
                 instrumentState=instrumentState,
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
             self.groceryClerk.name("groupingWorkspace").fromRun(ingredients.runNumber).grouping(
-                ingredients.focusGroup.name
+                focusGroup.name
             ).useLiteMode(ingredients.useLiteMode).add()
             groceries = self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
             data = PixelGroupingParametersCalculationRecipe().executeRecipe(pixelIngredients, groceries)
 
             self._pixelGroupCache[key] = PixelGroup(
-                focusGroup=ingredients.focusGroup,
+                focusGroup=focusGroup,
                 pixelGroupingParameters=data["parameters"],
                 timeOfFlight=data["tof"],
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
             )
         return self._pixelGroupCache[key]
 
-    def _getInstrumentDefinitionFilename(self, useLiteMode: bool):
+    def _getInstrumentDefinitionFilename(self, useLiteMode: bool) -> str:
         if useLiteMode is True:
             return Config["instrument.lite.definition.file"]
         elif useLiteMode is False:
             return Config["instrument.native.definition.file"]
 
-    def prepCrystallographicInfo(self, ingredients: FarmFreshIngredients):
+    def prepCrystallographicInfo(self, ingredients: FarmFreshIngredients) -> CrystallographicInfo:
         if not ingredients.cifPath:
             samplePath = ingredients.calibrantSamplePath.split("/")[-1].split(".")[0]
             ingredients.cifPath = self.dataFactoryService.getCifFilePath(samplePath)
