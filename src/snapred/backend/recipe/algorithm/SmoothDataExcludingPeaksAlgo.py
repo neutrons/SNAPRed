@@ -1,14 +1,15 @@
 # Logic notes:
 """
-    load nexus
-    num spe = num groups (instrument state) --> consitant with workspace
-    state & crystal info --> consitant with workspace
-    call diffraction spectrum peak predictor --> to get peaks (num groups)
-    call diffraction spectrum weight calc (send one spectra only)
-    extract x and y data from a workspace (numpy arrray)
-    implement csaps
-    create new workspace with csaps data
+load nexus
+num spe = num groups (instrument state) --> consitant with workspace
+state & crystal info --> consitant with workspace
+call diffraction spectrum peak predictor --> to get peaks (num groups)
+call diffraction spectrum weight calc (send one spectra only)
+extract x and y data from a workspace (numpy arrray)
+implement csaps
+create new workspace with csaps data
 """
+
 import json
 from datetime import datetime
 from typing import Dict
