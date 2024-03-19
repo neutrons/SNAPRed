@@ -23,6 +23,10 @@ class GroceryListBuilder:
         self._tokens["groupingScheme"] = groupingScheme
         return self
 
+    def group(self, groupingScheme: str):
+        self._tokens["groupingScheme"] = groupingScheme
+        return self
+
     def fromRun(self, runId: str):
         self._tokens["runNumber"] = runId
         return self
