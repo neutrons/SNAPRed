@@ -86,6 +86,7 @@ groupAlgo.setPropertyValue("Ingredients", ingredients.json())
 groupAlgo.setPropertyValue("InputWorkspace", groceries[0])
 groupAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
 groupAlgo.setPropertyValue("PreviousCalibrationTable", DIFCprev)
+groupAlgo.setPropertyValue("OutputWorkspaceDSpacing", "out_ws")
 groupAlgo.execute()
 
 ### PAUSE
