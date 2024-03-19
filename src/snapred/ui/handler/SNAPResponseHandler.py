@@ -10,10 +10,12 @@ logger = snapredLogger.getLogger(__name__)
 
 class SNAPResponseHandler(QWidget):
     signal = Signal(object)
+    signalWarning = Signal(str, object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.signal.connect(self._handle)
+        self.signalWarning.connect(SNAPResponseHandler._handleWarning)
 
     def handle(self, result):
         self.signal.emit(result)
@@ -33,7 +35,7 @@ class SNAPResponseHandler(QWidget):
         if result.code >= ResponseCode.RECOVERABLE:
             raise RecoverableException(result.message, "state")
         if result.message:
-            SNAPResponseHandler._handleWarning(result.message, self)
+            self.signalWarning.emit(result.message, self)
 
     @staticmethod
     def _handleComplications(code, message, view):
