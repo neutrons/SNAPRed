@@ -1,31 +1,43 @@
-from qtpy.QtCore import QObject, Signal
+from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QMessageBox, QWidget
 
 from snapred.backend.dao.SNAPResponse import ResponseCode
+from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 
 logger = snapredLogger.getLogger(__name__)
 
 
-class SNAPResponseHandler(QObject):
-    signal = Signal(int, str, object)
+class SNAPResponseHandler(QWidget):
+    signal = Signal(object)
 
-    def __init__(self):
-        super().__init__(None)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.signal.connect(self._handle)
 
-        self.signal.connect(self._handleComplications)
+    def handle(self, result):
+        self.signal.emit(result)
 
-    def _isErrorCode(self, code):
+    def _handle(self, result):
+        SNAPResponseHandler._handleComplications(result.code, result.message, self)
+
+    def _isErrorCode(code):
         return code >= ResponseCode.ERROR
 
-    def _isRecoverableError(self, code):
+    def _isRecoverableError(code):
         return ResponseCode.RECOVERABLE <= code < ResponseCode.ERROR
 
-    def handle(self, result, view):
-        self.signal.emit(result.code, result.message, view)
+    def rethrow(self, result):
+        if result.code >= ResponseCode.ERROR:
+            raise RuntimeError(result.message)
+        if result.code >= ResponseCode.RECOVERABLE:
+            raise RecoverableException(result.message, "state")
+        if result.message:
+            SNAPResponseHandler._handleWarning(result.message, self)
 
-    def _handleComplications(self, code, message, view):
-        if self._isErrorCode(code):
+    @staticmethod
+    def _handleComplications(code, message, view):
+        if SNAPResponseHandler._isErrorCode(code):
             QMessageBox.critical(
                 view,
                 "Error",
@@ -33,9 +45,9 @@ class SNAPResponseHandler(QObject):
                 QMessageBox.Ok,
                 QMessageBox.Ok,
             )
-        elif self._isRecoverableError(code):
+        elif SNAPResponseHandler._isRecoverableError(code):
             if "state" in message:
-                self.handleStateMessage(view)
+                SNAPResponseHandler.handleStateMessage(view)
             else:
                 logger.error(f"Unhandled scenario triggered by state message: {message}")
                 messageBox = QMessageBox(
@@ -48,17 +60,22 @@ class SNAPResponseHandler(QObject):
                 messageBox.setDetailedText(f"{message}")
                 messageBox.exec()
         elif message:
-            messageBox = QMessageBox(
-                QMessageBox.Warning,
-                "Warning",
-                "Proccess completed successfully with warnings!",
-                QMessageBox.Ok,
-                view,
-            )
-            messageBox.setDetailedText(f"{message}")
-            messageBox.exec()
+            SNAPResponseHandler._handleWarning(message, view)
 
-    def handleStateMessage(self, view):
+    @staticmethod
+    def _handleWarning(message, view):
+        messageBox = QMessageBox(
+            QMessageBox.Warning,
+            "Warning",
+            "Proccess completed successfully with warnings!",
+            QMessageBox.Ok,
+            view,
+        )
+        messageBox.setDetailedText(f"{message}")
+        messageBox.exec()
+
+    @staticmethod
+    def handleStateMessage(view):
         """
         Handles a specific 'state' message.
         """

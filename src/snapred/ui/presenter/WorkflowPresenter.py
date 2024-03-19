@@ -27,6 +27,7 @@ class WorkflowPresenter(object):
         self._iterateLambda = iterateLambda
         self.resetLambda = self.resetAndClear
         self._hookupSignals()
+        self.responseHandler = SNAPResponseHandler(self.view)
 
     @property
     def widget(self):
@@ -144,4 +145,4 @@ class WorkflowPresenter(object):
             button.setEnabled(enable)
 
     def _handleComplications(self, result):
-        SNAPResponseHandler().handle(result, self.view)
+        self.responseHandler.handle(result)
