@@ -1,4 +1,5 @@
 import json
+from sys import version
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest, SNAPResponse
@@ -194,6 +195,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
             appliesTo=view.fieldAppliesTo.get(),
+            version=view.fieldVersion.get(None),
         )
 
         payload = NormalizationExportRequest(

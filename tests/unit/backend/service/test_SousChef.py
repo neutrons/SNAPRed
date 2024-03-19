@@ -1,3 +1,5 @@
+import os.path
+import tempfile
 import unittest
 from unittest import mock
 
@@ -31,6 +33,31 @@ class TestSousChef(unittest.TestCase):
     def tearDownClass(cls):
         for ws in mtd.getObjectNames():
             DeleteWorkspace(ws)
+
+    def test_prepFocusGroup_exists(self):
+        # create a temp file to be used a the path for the focus group
+        # since it exists, prepFocusGroup should jsut return the focusGroup in the ingredients
+        with tempfile.NamedTemporaryFile(suffix=".xml") as existingFocusGroup:
+            self.ingredients.focusGroup.definition = existingFocusGroup.name
+            res = self.instance.prepFocusGroup(self.ingredients)
+            assert res == self.ingredients.focusGroup
+
+    def test_prepFocusGroup_notExists(self):
+        # ensure the file does not exist
+        # make sure the grouping map is accessed in this case instead
+
+        # create the mock grouping map dictionary
+        mockGroupingDictionary = {self.ingredients.focusGroup.name: "passed"}
+        mockGroupingMap = mock.Mock(getMap=mock.Mock(return_value=mockGroupingDictionary))
+        self.instance.dataFactoryService.getGroupingMap = mock.Mock(return_value=mockGroupingMap)
+
+        # ensure the file does not exist by looking inside a temporary file
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self.ingredients.focusGroup.definition = tmpdir + "/muffin.egg"
+            assert not os.path.isfile(self.ingredients.focusGroup.definition)
+            res = self.instance.prepFocusGroup(self.ingredients)
+
+        assert res == mockGroupingDictionary[self.ingredients.focusGroup.name]
 
     def test_prepCalibration_nocache(self):
         runNumber = self.ingredients.runNumber
@@ -81,7 +108,10 @@ class TestSousChef(unittest.TestCase):
         self.instance.groceryService.fetchGroceryList = mock.Mock(return_value="banana")
 
         # call the method to be tested
-        res = self.instance.prepPixelGroup(self.ingredients)
+        # make sure the focus group definition exists, by pointing it to a tmp file
+        with tempfile.NamedTemporaryFile() as existent:
+            self.ingredients.focusGroup.definition = existent.name
+            res = self.instance.prepPixelGroup(self.ingredients)
 
         # make necessary assertions
         assert PixelGroupingIngredients.called_once_with(

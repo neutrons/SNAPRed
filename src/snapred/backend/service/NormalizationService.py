@@ -168,10 +168,11 @@ class NormalizationService(Service):
     @FromString
     def saveNormalization(self, request: NormalizationExportRequest):
         entry = request.normalizationIndexEntry
+        version = entry.version
         normalizationRecord = request.normalizationRecord
+        normalizationRecord.version = version
         normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
         normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
-        entry.version = normalizationRecord.version
         self.saveNormalizationToIndex(entry)
 
     def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
