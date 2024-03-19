@@ -317,19 +317,21 @@ class CalibrationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
         )
-        ingredients = self.sousChef.prepPeakIngredients(farmFresh)
+        pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
+        detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh)
 
         # TODO: We Need to Fit the Data
         fitResults = FitMultiplePeaksRecipe().executeRecipe(
-            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0], DetectorPeakIngredients=ingredients
+            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0],
+            DetectorPeaks=detectorPeaks,
         )
-        metrics = self._collectMetrics(fitResults, request.focusGroup, ingredients.pixelGroup)
+        metrics = self._collectMetrics(fitResults, request.focusGroup, pixelGroup)
 
         record = CalibrationRecord(
             runNumber=request.run.runNumber,
-            crystalInfo=ingredients.crystalInfo,
+            crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
             calibrationFittingIngredients=self.sousChef.prepCalibration(request.run.runNumber),
-            pixelGroups=[ingredients.pixelGroup],
+            pixelGroups=[pixelGroup],
             focusGroupCalibrationMetrics=metrics,
             workspaces=request.workspaces,
         )

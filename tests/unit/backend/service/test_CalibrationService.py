@@ -57,6 +57,7 @@ with mock.patch.dict(
         createCompatibleDiffCalTable,
         createCompatibleMask,
     )
+    from util.ScullionBoy import ScullionBoy
 
     thisService = "snapred.backend.service.CalibrationService."
 
@@ -251,8 +252,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         fakeMetrics = FocusGroupMetric(focusGroupName=fakeFocusGroup.name, calibrationMetric=[fakeMetrics])
 
         # Mock the necessary method calls
-        self.instance.sousChef.prepPeakIngredients = MagicMock()
-        self.instance.sousChef.prepCalibration = MagicMock()
+        self.instance.sousChef = ScullionBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="good/cif/path")
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
 
@@ -272,8 +272,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Assert correct method calls
         assert FarmFreshIngredients.call_count == 1
-        assert self.instance.sousChef.prepPeakIngredients.called_once_with(FarmFreshIngredients.return_value)
-        assert FitMultiplePeaksRecipe.called_once_with(self.instance.sousChef.prepPeakIngredients.return_value)
+        assert FitMultiplePeaksRecipe.called_once_with(self.instance.sousChef.prepPeakIngredients({}))
 
         # Assert the result is as expected
         assert response == CalibrationAssessmentResponse.return_value
