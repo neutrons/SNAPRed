@@ -161,6 +161,7 @@ class _WorkspaceNameGenerator:
             self._diffCalOutputTemplateKeys,
             self._delimiter,
             unit=self.Units.TOF,
+            group=self.Groups.UNFOC,
             version="",
         )
 
