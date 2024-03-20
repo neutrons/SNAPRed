@@ -25,6 +25,7 @@ class WorkflowImplementer:
         self.renameTemplate = "{workspaceName}_{iteration:02d}"
         self.parent = parent
         self.workflow: Workflow = None
+        self.responseHandler = SNAPResponseHandler(self.parent)
 
     def _iterate(self, workflowPresenter):
         # rename output workspaces
@@ -72,8 +73,7 @@ class WorkflowImplementer:
         return True
 
     def _handleComplications(self, result):
-        view = self.parent if not self.workflow else self.workflow.widget
-        SNAPResponseHandler().handle(result, view)
+        self.responseHandler.rethrow(result)
 
     @property
     def widget(self):
