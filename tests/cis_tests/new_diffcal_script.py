@@ -127,7 +127,7 @@ diffcalRequest = DiffractionCalibrationRequest(
     runNumber = runNumber,
     calibrantSamplePath = calibrantSamplePath,
     useLiteMode = isLite,
-    focusGroupPath = ingredients.focusGroup.definition,
+    focusGroup = {"name": groupingScheme, "definition": ""},
     convergenceThreshold = offsetConvergenceLimit,
     peakIntensityThreshold = peakThreshold,
 )
