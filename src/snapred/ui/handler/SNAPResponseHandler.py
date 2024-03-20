@@ -55,7 +55,7 @@ class SNAPResponseHandler(QWidget):
                 messageBox = QMessageBox(
                     QMessageBox.Warning,
                     "Warning",
-                    "The backend completed a step with warning(s)",
+                    "The backend has encountered warning(s)",
                     QMessageBox.Ok,
                     view,
                 )
@@ -69,7 +69,7 @@ class SNAPResponseHandler(QWidget):
         messageBox = QMessageBox(
             QMessageBox.Warning,
             "Warning",
-            "The backend completed a step with warning(s)",
+            "The backend has encountered warning(s)",
             QMessageBox.Ok,
             view,
         )
