@@ -13,9 +13,13 @@ from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+
+logger = snapredLogger.getLogger(__name__)
 
 
 class GroupDiffractionCalibration(PythonAlgorithm):
@@ -26,6 +30,8 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
     def category(self):
         return "SNAPRed Diffraction Calibration"
+
+    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def PyInit(self):
         # declare properties
@@ -180,6 +186,35 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # must convert to d-spacing, diffraction focus, ragged rebin, then convert back to TOF
         self.convertAndFocusAndReturn(self.wsTOF, self.outputWStof, "before", "TOF")
 
+    def verifyChiSq(self, diagnosticWSgroup):
+        diagnosticWs = self.mantidSnapper.mtd[diagnosticWSgroup]
+        tab = self.mantidSnapper.mtd[diagnosticWs.getNames()[0]]
+        tabDict = tab.toDict()
+        chi2 = tabDict["chi2"]
+        totalLowChi2 = 0
+        badPeaks = []
+        if len(chi2) > 2:
+            for index, item in enumerate(chi2):
+                if item < self.MAX_CHI_SQ:
+                    totalLowChi2 = totalLowChi2 + 1
+                else:
+                    badPeaks.append(
+                        {
+                            "Spectrum": tabDict["wsindex"][index],
+                            "Peak Location": tabDict["centre"][index],
+                            "Chi2": tabDict["chi2"][index],
+                        }
+                    )
+            if totalLowChi2 < 2:
+                logger.warning(
+                    f"Insufficient number of well-fitted peaks (chi2 < {self.MAX_CHI_SQ})."
+                    + "Try to adjust parameters in Tweak Peak Peek tab"
+                    + f"Bad peaks info: {badPeaks}"
+                )
+                print(tabDict)
+            else:
+                logger.info(f"Sufficient number of well-fitted peaks (chi2 < {self.MAX_CHI_SQ}).: {totalLowChi2}")
+
     def PyExec(self) -> None:
         """
         Execute the group-by-group calibration algorithm.
@@ -223,6 +258,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=self.outputWStof,
                 TofBinning=self.TOF.params,
                 PeakFunction=self.peakFunction,
+                MaxChiSq=self.MAX_CHI_SQ,
                 BackgroundType="Linear",
                 PeakPositions=self.groupedPeaks[groupID],
                 PeakWindow=self.groupedPeakBoundaries[groupID],
@@ -272,6 +308,8 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                     InputWorkspace=self.DIFCfinal,
                     OutputWorkspace=self.DIFCprev,
                 )
+            self.mantidSnapper.executeQueue()
+            self.verifyChiSq(diagnosticWSgroup)
             self.mantidSnapper.WashDishes(
                 "Cleanup leftover workspaces",
                 WorkspaceList=[
@@ -279,7 +317,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                     diagnosticWSgroup,
                 ],
             )
-            self.mantidSnapper.executeQueue()
 
         # apply the calibration table to input data, then re-focus
         self.mantidSnapper.ApplyDiffCal(
