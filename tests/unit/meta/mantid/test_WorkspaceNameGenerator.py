@@ -26,8 +26,11 @@ def testDiffCalInputNames():
 
 
 def testDiffCalOutputName():
-    assert f"_tof_diffoc_{fRunNumber}" == wng.diffCalOutput().runNumber(runNumber).build()
-    assert f"_tof_diffoc_{fRunNumber}_{fVersion}" == wng.diffCalOutput().runNumber(runNumber).version(version).build()
+    assert f"_tof_unfoc_{fRunNumber}" == wng.diffCalOutput().runNumber(runNumber).unit(wng.Units.TOF).build()
+    assert (
+        f"_tof_unfoc_{fRunNumber}_{fVersion}"
+        == wng.diffCalOutput().runNumber(runNumber).unit(wng.Units.TOF).version(version).build()
+    )
 
 
 def testDiffCalTableName():
