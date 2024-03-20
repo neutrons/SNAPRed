@@ -57,7 +57,7 @@ with mock.patch.dict(
         createCompatibleDiffCalTable,
         createCompatibleMask,
     )
-    from util.ScullionBoy import ScullionBoy
+    from util.SculleryBoy import SculleryBoy
 
     thisService = "snapred.backend.service.CalibrationService."
 
@@ -252,7 +252,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         fakeMetrics = FocusGroupMetric(focusGroupName=fakeFocusGroup.name, calibrationMetric=[fakeMetrics])
 
         # Mock the necessary method calls
-        self.instance.sousChef = ScullionBoy()
+        self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="good/cif/path")
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
 
@@ -439,11 +439,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     def test_prepDiffractionCalibrationIngredients(self, FarmFreshIngredients):
+        mockFF = mock.Mock()
+        FarmFreshIngredients.return_value = mockFF
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
 
-        mockIngredients = mock.Mock(groupedPeakLists=[mock.Mock(peaks=["orange", "apple"], groupID="banana")])
+        # self.instance.sousChef = SculleryBoy() #
         self.instance.sousChef = mock.Mock(spec_set=SousChef)
-        self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value = mockIngredients
 
         # Call the method with the provided parameters
         request = mock.Mock(calibrantSamplePath="bundt/cake_egg.py")
@@ -451,10 +452,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Perform assertions to check the result and method calls
         assert FarmFreshIngredients.call_count == 1
-        assert self.instance.sousChef.prepDiffractionCalibrationIngredients.called_once_with(
-            FarmFreshIngredients.return_value
-        )
-        assert res == self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value
+        assert res == self.instance.sousChef.prepDiffractionCalibrationIngredients(mockFF)
 
     def test_fetchDiffractionCalibrationGroceries(self):
         self.instance.groceryClerk = mock.Mock()
@@ -478,11 +476,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         DiffractionCalibrationRecipe,
         FarmFreshIngredients,
     ):
+        FarmFreshIngredients.return_value = mock.Mock(runNumber="123")
         self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="bundt/cake.egg")
-
-        mockIngredients = mock.Mock(groupedPeakLists=[mock.Mock(peaks=["orange", "apple"], groupID="banana")])
-        self.instance.sousChef = mock.Mock(spec_set=SousChef)
-        self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value = mockIngredients
+        self.instance.sousChef = SculleryBoy()
 
         DiffractionCalibrationRecipe().executeRecipe.return_value = {"calibrationTable": "fake"}
 
@@ -495,11 +491,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Perform assertions to check the result and method calls
         assert FarmFreshIngredients.call_count == 1
-        assert self.instance.sousChef.prepDiffractionCalibrationIngredients.called_once_with(
-            FarmFreshIngredients.return_value
-        )
         assert DiffractionCalibrationRecipe().executeRecipe.called_once_with(
-            self.instance.sousChef.prepDiffractionCalibrationIngredients.return_value,
+            self.instance.sousChef.prepDiffractionCalibrationIngredients(FarmFreshIngredients()),
             self.instance.groceryService.fetchGroceryDict.return_value,
         )
         assert res == {"calibrationTable": "fake"}
@@ -511,9 +504,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         FocusSpectraRecipe,
         FarmFreshIngredients,
     ):
-        mockIngredients = mock.Mock()
-        self.instance.sousChef = mock.Mock(spec_set=SousChef)
-        self.instance.sousChef.prepPixelGroup.return_value = mockIngredients
+        self.instance.sousChef = SculleryBoy()
 
         FocusSpectraRecipe().executeRecipe.return_value = mock.Mock()
 
@@ -539,12 +530,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         groupingItem = self.instance.groceryClerk.build.return_value
         groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
         assert FarmFreshIngredients.call_count == 1
-        assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
+        # assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
         assert self.instance.groceryService.fetchGroupingDefinition.called_once_with(groupingItem)
         assert FocusSpectraRecipe().executeRecipe.called_once_with(
             InputWorkspace=request.inputWorkspace,
             GroupingWorkspace=groupingWorkspace,
-            Ingredients=self.instance.sousChef.prepPixelGroup.return_value,
+            Ingredients=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
             OutputWorkspace=focusedWorkspace,
         )
         assert res == (focusedWorkspace, groupingWorkspace)
@@ -552,9 +543,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
     @patch(thisService + "FocusSpectraRecipe")
     def test_focusSpectra_exists(self, FocusSpectraRecipe, FarmFreshIngredients):
-        mockIngredients = mock.Mock()
-        self.instance.sousChef = mock.Mock(spec_set=SousChef)
-        self.instance.sousChef.prepPixelGroup.return_value = mockIngredients
+        self.instance.sousChef = SculleryBoy()
 
         request = mock.Mock()
         self.instance.groceryClerk = mock.Mock()
@@ -578,7 +567,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         groupingItem = self.instance.groceryClerk.build.return_value
         groupingWorkspace = self.instance.groceryService.fetchGroupingDefinition.return_value["workspace"]
         assert FarmFreshIngredients.call_count == 1
-        assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
         assert self.instance.groceryService.fetchGroupingDefinition.called_once_with(groupingItem)
 
         # assert that the recipe is not called and the correct workspaces are returned

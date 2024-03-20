@@ -16,11 +16,11 @@ with mock.patch.dict(
     )
     from snapred.meta.Config import Resource
     from snapred.meta.redantic import list_to_raw
-    from util.ScullionBoy import ScullionBoy
+    from util.SculleryBoy import SculleryBoy
 
     def test_validate():
         """Test ability to initialize purge overlapping peaks algo"""
-        peaks = ScullionBoy().prepDetectorPeaks({})
+        peaks = SculleryBoy().prepDetectorPeaks({})
         purgeAlgo = PurgeOverlappingPeaksAlgorithm()
         purgeAlgo.initialize()
         purgeAlgo.setProperty("DetectorPeaks", list_to_raw(peaks))
@@ -30,7 +30,7 @@ with mock.patch.dict(
     # TODO this sample data has no overlapping peaks, so that the result of DetectorPeakPredictor
     # and PurgeOverlappingPeaks are the same.  Needs data with overlapping peaks to check if purged.
     def test_execute():
-        peaks = ScullionBoy().prepDetectorPeaks({"good": "", "purge": False})
+        peaks = SculleryBoy().prepDetectorPeaks({"good": "", "purge": False})
         purgeAlgo = PurgeOverlappingPeaksAlgorithm()
         purgeAlgo.initialize()
         purgeAlgo.setProperty("DetectorPeaks", list_to_raw(peaks))

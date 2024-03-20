@@ -19,7 +19,7 @@ from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo as Algo
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import list_to_raw
-from util.ScullionBoy import ScullionBoy
+from util.SculleryBoy import SculleryBoy
 
 
 class TestSmoothDataAlgo(unittest.TestCase):
@@ -67,7 +67,7 @@ class TestSmoothDataAlgo(unittest.TestCase):
         )
 
         # populate ingredients
-        peaks = ScullionBoy().prepDetectorPeaks({})
+        peaks = SculleryBoy().prepDetectorPeaks({})
 
         # initialize and run smoothdata algo
         smoothDataAlgo = Algo()

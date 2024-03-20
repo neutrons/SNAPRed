@@ -19,13 +19,13 @@ with mock.patch.dict(
     )
     from snapred.meta.Config import Resource
     from snapred.meta.redantic import list_to_raw
-    from util.ScullionBoy import ScullionBoy
+    from util.SculleryBoy import SculleryBoy
 
     def test_init():
         """Test ability to initialize fit multiple peaks algo"""
         wsName = "testWS"
         CreateSingleValuedWorkspace(OutputWorkspace=wsName)
-        peaks = ScullionBoy().prepDetectorPeaks({})
+        peaks = SculleryBoy().prepDetectorPeaks({})
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
         fmpAlgo.setPropertyValue("InputWorkspace", wsName)
@@ -43,7 +43,7 @@ with mock.patch.dict(
             DataY=[1] * 6,
             NSpec=6,
         )
-        peaks = ScullionBoy().prepDetectorPeaks({"good": ""})
+        peaks = SculleryBoy().prepDetectorPeaks({"good": ""})
         fmpAlgo = FitMultiplePeaksAlgorithm()
         fmpAlgo.initialize()
         fmpAlgo.setPropertyValue("InputWorkspace", wsName)

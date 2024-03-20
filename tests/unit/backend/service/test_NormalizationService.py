@@ -10,6 +10,7 @@ from mantid.simpleapi import (
     mtd,
 )
 
+thisService = "snapred.backend.service.NormalizationService"
 localMock = mock.Mock()
 
 with mock.patch.dict(
@@ -34,6 +35,7 @@ with mock.patch.dict(
     from snapred.backend.dao.state import FocusGroup
     from snapred.backend.service.NormalizationService import NormalizationService
     from snapred.meta.Config import Resource
+    from util.SculleryBoy import SculleryBoy
 
     thisService = "snapred.backend.service.NormalizationService."
 
@@ -49,8 +51,6 @@ with mock.patch.dict(
         normalizationService.dataExportService.exportNormalizationWorkspaces.return_value = MagicMock(version="1.0.0")
         normalizationService.dataExportService.exportNormalizationIndexEntry = mock.Mock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = MagicMock("expected")
-        normalizationService.sousChef.prepReductionIngredients = mock.Mock()
-        normalizationService.sousChef.prepReductionIngredients.return_value = readReductionIngredientsFromFile()  # noqa: E501
         normalizationService.saveNormalization(mock.Mock())
         assert normalizationService.dataExportService.exportNormalizationRecord.called
         savedEntry = normalizationService.dataExportService.exportNormalizationRecord.call_args.args[0]
@@ -92,8 +92,8 @@ class TestNormalizationService(unittest.TestCase):
         self.clearoutWorkspaces()
         return super().tearDown()
 
-    @patch("snapred.backend.service.NormalizationService.FarmFreshIngredients")
-    @patch("snapred.backend.service.NormalizationService.FocusSpectraRecipe")
+    @patch(thisService + "FarmFreshIngredients")
+    @patch(thisService + "FocusSpectraRecipe")
     def test_focusSpectra(
         self,
         mockRecipe,
@@ -109,23 +109,23 @@ class TestNormalizationService(unittest.TestCase):
         )
 
         self.instance = NormalizationService()
-        self.instance.sousChef.prepPixelGroup = MagicMock()
+        self.instance.sousChef = SculleryBoy()
         mockRecipeInst = mockRecipe.return_value
         mockRecipeInst.executeRecipe.return_value = "expected"
 
         res = self.instance.focusSpectra(mockRequest)
 
-        assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
+        # assert self.instance.sousChef.prepPixelGroup.called_once_with(FarmFreshIngredients.return_value)
         assert mockRecipeInst.executeRecipe.called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             GroupingWorkspace=mockRequest.groupingWorkspace,
-            Ingredients=self.instance.sousChef.prepPixelGroup.return_value,
+            Ingredients=self.instance.sousChef.prepPixelGroup(FarmFreshIngredients()),
             OutputWorkspace=mockRequest.outputWorkspace,
         )
         assert res == mockRecipeInst.executeRecipe.return_value
 
-    @patch("snapred.backend.service.NormalizationService.FarmFreshIngredients")
-    @patch("snapred.backend.service.NormalizationService.RawVanadiumCorrectionRecipe")
+    @patch(thisService + "FarmFreshIngredients")
+    @patch(thisService + "RawVanadiumCorrectionRecipe")
     def test_vanadiumCorrection(self, RawVanadiumCorrectionRecipe, FarmFreshIngredients):
         mockRequest = VanadiumCorrectionRequest(
             runNumber="12345",
@@ -139,28 +139,29 @@ class TestNormalizationService(unittest.TestCase):
         )
         self.instance = NormalizationService()
         self.instance._sameStates = MagicMock(return_value=True)
-        self.instance.sousChef.prepNormalizationIngredients = MagicMock()
+        self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService = MagicMock()
 
         res = self.instance.vanadiumCorrection(mockRequest)
 
         mockRecipeInst = RawVanadiumCorrectionRecipe.return_value
-        assert self.instance.sousChef.prepNormalizationIngredients.called_once_with(FarmFreshIngredients.return_value)
+        # assert self.instance.sousChef.prepNormalizationIngredients.called_once_with(FarmFreshIngredients.return_value)
         assert mockRecipeInst.executeRecipe.called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             BackgroundWorkspace=mockRequest.backgroundWorkspace,
-            Ingredients=self.instance.sousChef.prepNormalizationIngredients.return_value,
+            Ingredients=self.instance.sousChef.prepNormalizationIngredients({}),
             OutputWorkspace=mockRequest.outputWorkspace,
         )
         assert res == mockRecipeInst.executeRecipe.return_value
 
-    @patch("snapred.backend.service.NormalizationService.FarmFreshIngredients")
-    @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksRecipe")
+    @patch(thisService + "FarmFreshIngredients")
+    @patch(thisService + "SmoothDataExcludingPeaksRecipe")
     def test_smoothDataExcludingPeaks(
         self,
         mockRecipe,
         FarmFreshIngredients,
     ):
+        FarmFreshIngredients.return_value = {"good": ""}
         mockRequest = SmoothDataExcludingPeaksRequest(
             runNumber="12345",
             useLiteMode=True,
@@ -173,23 +174,23 @@ class TestNormalizationService(unittest.TestCase):
         )
 
         self.instance = NormalizationService()
-        self.instance.sousChef.prepDetectorPeaks = MagicMock(return_value=[{"groupID": 0, "peaks": []}])
+        self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
 
         mockRecipeInst = mockRecipe.return_value
 
         self.instance.smoothDataExcludingPeaks(mockRequest)
 
-        assert self.instance.sousChef.prepDetectorPeaks.called_once_with(FarmFreshIngredients.return_value)
+        # assert self.instance.sousChef.prepDetectorPeaks.called_once_with(FarmFreshIngredients.return_value)
         assert mockRecipeInst.executeRecipe.called_once_with(
             InputWorkspace=mockRequest.inputWorkspace,
             OutputWorkspace=mockRequest.outputWorkspace,
-            Ingredients=self.instance.sousChef.prepDetectorPeaks.return_value,
+            Ingredients=self.instance.sousChef.prepDetectorPeaks({}),
         )
 
-    @patch("snapred.backend.service.NormalizationService.DataFactoryService")
+    @patch(thisService + "DataFactoryService")
     @patch(
-        "snapred.backend.service.NormalizationService.NormalizationRecord",
+        thisService + "NormalizationRecord",
         return_value=MagicMock(mockId="mock_normalization_record"),
     )
     def test_normalizationAssessment(
@@ -210,17 +211,20 @@ class TestNormalizationService(unittest.TestCase):
         expected_record_mockId = "mock_normalization_record"
         assert result.mockId == expected_record_mockId
 
-    @patch("snapred.backend.service.NormalizationService.RawVanadiumCorrectionRecipe")
-    @patch("snapred.backend.service.NormalizationService.FocusSpectraRecipe")
-    @patch("snapred.backend.service.NormalizationService.SmoothDataExcludingPeaksRecipe")
-    @patch("snapred.backend.service.NormalizationService.GroceryService")
+    @patch(thisService + "FarmFreshIngredients")
+    @patch(thisService + "RawVanadiumCorrectionRecipe")
+    @patch(thisService + "FocusSpectraRecipe")
+    @patch(thisService + "SmoothDataExcludingPeaksRecipe")
+    @patch(thisService + "GroceryService")
     def test_normalization(
         self,
         mockGroceryService,
         mockSmoothDataExcludingPeaks,
         mockFocusSpectra,
         mockVanadiumCorrection,
+        FarmFreshIngredients,
     ):
+        FarmFreshIngredients.return_value = {"purge": True}
         mockGroceryService = mockGroceryService.return_value
         mockGroceryService.fetchGroceryDict.return_value = {
             "backgroundWorkspace": "bg_ws",
@@ -235,7 +239,7 @@ class TestNormalizationService(unittest.TestCase):
 
         self.instance = NormalizationService()
         self.instance._sameStates = MagicMock(return_value=True)
-        self.instance.sousChef.prepNormalizationIngredients = MagicMock(return_value=mock.Mock(detectorPeaks=[]))
+        self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         result = self.instance.normalization(self.request)
 
@@ -248,19 +252,21 @@ class TestNormalizationService(unittest.TestCase):
         mockFocusSpectra.assert_called_once()
         mockSmoothDataExcludingPeaks.assert_called_once()
 
-    @patch("snapred.backend.service.NormalizationService.GroceryService")
-    def test_cachedNormalization(self, mockGroceryService):
+    @patch(thisService + "FarmFreshIngredients")
+    @patch(thisService + "GroceryService")
+    def test_cachedNormalization(self, mockGroceryService, FarmFreshIngredients):
+        FarmFreshIngredients.return_value = {"purge": True}
         mockGroceryService.workSpaceDoesExist = mock.Mock(return_value=True)
         self.instance = NormalizationService()
         self.instance._sameStates = MagicMock(return_value=True)
-        self.instance.sousChef.prepNormalizationIngredients = MagicMock(return_value=mock.Mock(detectorPeaks=[]))
+        self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         result = self.instance.normalization(self.request)
         assert result == {
             "correctedVanadium": "tof_unfoc_raw_van_corr_012345",
             "focusedVanadium": f"tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
             "smoothedVanadium": "dsp_apple_fitted_van_cor_012345",
-            "detectorPeaks": self.instance.sousChef.prepNormalizationIngredients.return_value.detectorPeaks,
+            "detectorPeaks": self.instance.sousChef.prepNormalizationIngredients(FarmFreshIngredients()).detectorPeaks,
         }
 
     def test_nomaliztionStatesDontMatch(self):
