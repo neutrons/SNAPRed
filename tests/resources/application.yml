@@ -92,7 +92,7 @@ mantid:
           diffCal:
             input: "_{unit},{runNumber},raw"
             table: "_diffract_consts,{runNumber},{version}"
-            output: "_{unit},diffoc,{runNumber},{version}"
+            output: "_{unit},{group},{runNumber},{version}"
             mask: "_diffract_consts,mask,{runNumber},{version}"
             metric: "_calib_metrics,{metricName},{runNumber},{version}"
             timedMetric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
