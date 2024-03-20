@@ -148,7 +148,7 @@ Glossary
         data suitable for further analysis or interpretation.
         
     Orchestration Layer
-        The architectural layer that handles the stitching together of the various :term:`Service Components <Service Component>`, `Data Components <Data Component>`, and `Recipe Components <Recipe Component>` to achieve and abstract goal.
+        The architectural layer that handles the stitching together of the various :term:`Service Components <Service Component>`, :term:`Data Components <Data Component>`, and :term:`Recipe Components <Recipe Component>` to achieve and abstract goal.
         This may include handling :term:`User Requests <User Request>`, or performing :term:`Data State Management`.
 
     Pixel

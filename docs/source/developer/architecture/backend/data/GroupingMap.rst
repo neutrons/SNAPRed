@@ -50,7 +50,7 @@ At any point after a state has been initialized, the state's grouping-schema map
    groupingScheme = "column"
    useLiteMode = True
 
-   # A relative path here will refer to <instrument grouping home>
+   # A relative path here will refer to <instrument.calibration.powder.grouping.home>
    columnFilename = groupingMap.getMap(useLiteMode)[groupingScheme].definition
 
 
