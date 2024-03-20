@@ -79,6 +79,9 @@ class LocalDataService:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
         self.instrumentConfig = self.readInstrumentConfig()
 
+    def fileExists(self, path):
+        return os.path.isfile(path)
+
     def _determineInstrConfigPaths(self) -> None:
         """This method locates the instrument configuration path and
         sets the instance variable ``instrumentConfigPath``."""
@@ -460,6 +463,8 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runNumber)
         previousVersion = self._getLatestNormalizationCalibrationVersionNumber(stateId)
         if not version:
+            version = record.version
+        if not version:
             version = previousVersion + 1
         recordPath: str = self.getNormalizationRecordPath(runNumber, version)
         record.version = version
@@ -512,6 +517,8 @@ class LocalDataService:
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
         previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
+        if not version:
+            version = record.version
         if not version:
             version = previousVersion + 1
         recordPath: str = self.getCalibrationRecordPath(runNumber, str(version))

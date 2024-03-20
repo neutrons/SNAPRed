@@ -66,6 +66,20 @@ with Resource.open("inputs/calibration/ReductionIngredients.json", "r") as file:
     reductionIngredients = parse_raw_as(ReductionIngredients, file.read())
 
 
+def test_fileExists_yes():
+    # create a temp file that exists, and verify it exists
+    with tempfile.NamedTemporaryFile(suffix=".biscuit") as existent:
+        assert LocalDataService().fileExists(existent.name)
+
+
+def test_fileExists_no():
+    # assert that a file that does not exist, does not exist
+    with tempfile.TemporaryDirectory() as tmpdir:
+        nonexistent = tmpdir + "/0x0f.biscuit"
+        assert not os.path.isfile(nonexistent)
+        assert not LocalDataService().fileExists(nonexistent)
+
+
 def _readInstrumentParameters():
     instrumentParmaeters = None
     with Resource.open("inputs/SNAPInstPrm.json", "r") as file:
@@ -859,6 +873,7 @@ def test_readWriteNormalizationRecord_version_numbers():
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
+    testNormalizationRecord.version = None
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
@@ -877,6 +892,7 @@ def test_readWriteNormalizationRecord_version_numbers():
         assert actualRecord.version == 1
         assert actualRecord.calibration.version == 1
         # write: version == 2
+        testNormalizationRecord.version = 2
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord("57514")
         assert actualRecord.version == 2
@@ -889,6 +905,7 @@ def test_readWriteNormalizationRecord_specified_version():
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
+    testNormalizationRecord.version = None
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
@@ -907,6 +924,7 @@ def test_readWriteNormalizationRecord_specified_version():
         assert actualRecord.version == 1
         assert actualRecord.calibration.version == 1
         # write: version == 2
+        testNormalizationRecord.version = None
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord("57514", "1")
         assert actualRecord.version == 1
