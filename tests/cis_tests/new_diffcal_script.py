@@ -107,7 +107,8 @@ clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useL
 
 groceries = GroceryService().fetchGroceryDict(
     groceryDict=clerk.buildDict(),
-    OutputWorkspace="_output_from_diffcal_recipe",
+    outputTOFWorkspace="_output_from_diffcal_recipe",
+    outputDSPWorkspace="_output_diffcal_but_in_dspacing",
 )
 
 rx = Recipe()

@@ -41,8 +41,8 @@ class DiffractionCalibrationRecipe:
         self.groupingWS = groceries["groupingWorkspace"]
         self.outputTOFWS = groceries["outputTOFWorkspace"]
         self.outputDSPWS = groceries["outputDSPWorkspace"]
-        self.calTable = groceries["calibrationTable"]
-        self.maskWS = groceries["maskWorkspace"]
+        self.calTable = groceries.get("calibrationTable", "")
+        self.maskWS = groceries.get("maskWorkspace", "")
 
     def executeRecipe(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         self.chopIngredients(ingredients)
