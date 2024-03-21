@@ -45,7 +45,7 @@ Glossary
         A configuration mapping used to control many configurable aspects of the SNAPRed application.
         This is implemented as a mapping between multiple-key sequences, represented as "<key-1>.<key-2>. ... <key-n>", and string and number values, such as paths or default-parameter values.
         At the start of the application, this configuration is initialized from the YAML-format file ``application.yml`` (, which may be overridden using the ``dev.yml`` file).
-          
+
     Component
         Architectural term for a single unit of abstraction that fulfills a mid level Developer Requirement.
         This includes concepts like :term:`Data State Management`, Persistence, and Data Calculation
@@ -77,7 +77,7 @@ Glossary
         A unique integer associated with each :term:`pixel <Pixel>` in the instrument.
         Apart from uniqueness, detector-id integer values are arbitrary.  For example, they are not required to be consecutive,
         and negative values may be used to indicate pixels with a special function, such as monitor pixels.
-        
+
     Diffraction Focussing
         TODO
 
@@ -86,9 +86,9 @@ Glossary
         This may include predetermined data such as dimensions and tolerances, or derived values such as :term:`Pixel Grouping Parameters <Pixel Grouping Parameters>`.
 
     :doc:`Grouping-schema Map <developer/architecture/backend/data/GroupingMap>`
-        A mapping between :term:`grouping-schema <Grouping Schema>` common names, and their file locations on disk. 
+        A mapping between :term:`grouping-schema <Grouping Schema>` common names, and their file locations on disk.
         File locations may be specified either as *relative* paths, with respect to <instrument.calibration.powder.grouping.home>, or as *absolute* paths.
-        
+
     HDF5
         The most recent variant of Hierarchical Data Format (HDF).  A binary file format designed to scalably store and access large scientific data sets.
 
@@ -114,7 +114,7 @@ Glossary
     Interface Layer
         The architectural layer that provides the single point of interaction between the backend and frontend.
         Agnostic of frontend implementation, it recieves requests from the frontend and forwards them to the Orchestration Layer.
-    
+
     JSON
         Javascript Object Notation (JSON).
         An text-based data representation, used by many applications where a human-editable representation is required.
@@ -148,7 +148,7 @@ Glossary
         achieved by dividing the raw data by a normalization standard, such as a vanadium run, which represents the instrument response.
         The process involves a series of algorithms, often encapsulated within a Recipe, to apply these corrections and produce normalized
         data suitable for further analysis or interpretation.
-        
+
     Orchestration Layer
         The architectural layer that handles the stitching together of the various :term:`Service Components <Service Component>`, :term:`Data Components <Data Component>`, and :term:`Recipe Components <Recipe Component>` to achieve and abstract goal.
         This may include handling :term:`User Requests <User Request>`, or performing :term:`Data State Management`.
@@ -161,11 +161,11 @@ Glossary
     Pixel Group
     Grouping Schema
         A relationship, usually a mapping, between each :term:`detector-id <Detector ID>` in the instrument and an integer group number.
-        
+
     Pixel Grouping Parameters
         The expectation value of selected pixel physical-location and d-spacing parameters, taken over a specified grouping schema.
         For each specific parameter, there is one entry for each integer pixel group.
-    
+
     Pydantic
         A data object serialization and validation framework, implemented in Python.
 
@@ -223,7 +223,7 @@ Glossary
     State ID
        A secure-hash algorithm (SHA) generated ID associated with a specific :term:`instrument state <Instrument State>`.
        This ID is usually represented by its 16-character hexadecimal digest.
-       
+
     Vanadium
         A reference material commonly used in neutron diffraction experiments for calibration and normalization
         purposes due to its well-understood scattering properties. Vanadium calibration is essential for

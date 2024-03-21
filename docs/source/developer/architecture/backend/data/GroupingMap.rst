@@ -34,7 +34,7 @@ At any point after a state has been initialized, the state's grouping-schema map
 
    from from snapred.backend.dao.state import GroupingMap
    from snapred.backend.data.DataFactoryService import DataFactoryService
-   
+
 2. Access the state's grouping map:
 
 .. code-block:: python
@@ -56,20 +56,20 @@ At any point after a state has been initialized, the state's grouping-schema map
 
 Initialization specifics:
 =========================
-  
+
 The template file ``defaultGroupingMap.json`` must be filled-in and placed "by hand" at <instrument.calibration.powder.grouping.home> by the CIS.
 
 The creation of the ``groupingMap.json`` file located at the state-root directory is triggered at two distinct code locations, whenever a state-root directory doesn't exist.  These trigger locations are at: 1) ``LocalDataService.readStateConfig``, and (2) ``LocalDataService.initializeState``.  Once the ``groupingMap.json`` file has been created, as it may contain user-specified information, it will never be overwritten.
 
-The ``GroupingMap`` data object is an attribute of the ``StateConfig`` data object, however it is represented on disk as a separate JSON file.  In many cases, the ``GroupingMap`` is required when the complete ``StateConfig`` is not.  For this reason, it is generally accessed using ``LocalDataService.readGroupingMap`` (see the "defects" section below), rather than ``LocalDataService.readStateConfig``.  This is why two separate initialization paths have been implemented.  Generally, the ``initializeState`` path is used by the application code and unit-test code, whereas the ``readStateConfig`` path at present only seems to be used by the unit-test code. 
+The ``GroupingMap`` data object is an attribute of the ``StateConfig`` data object, however it is represented on disk as a separate JSON file.  In many cases, the ``GroupingMap`` is required when the complete ``StateConfig`` is not.  For this reason, it is generally accessed using ``LocalDataService.readGroupingMap`` (see the "defects" section below), rather than ``LocalDataService.readStateConfig``.  This is why two separate initialization paths have been implemented.  Generally, the ``initializeState`` path is used by the application code and unit-test code, whereas the ``readStateConfig`` path at present only seems to be used by the unit-test code.
 
 Validation specifics:
 =====================
-  
+
 :term:`Pydantic` validators are used to validate the ``GroupingMap`` instance at point of loading.  Any grouping-schema files which do not exist (or have an incorrect format) are not loaded to the resident ``GroupingMap`` -- in these cases, warnings will be logged but the loading will be allowed to continue.  When the ``GroupingMap`` is loaded using the ``readStateConfig`` path, the validity of the ``GroupingMap.stateId`` is checked to ensure that it corresponds to that of the state itself.
 
 Potential defects:
 ==================
-  
-  * Although this is a fine point, the fact that we now have a public method ``LocalDataService.readGroupingMap`` which falls back automatically to load the ``defaultGroupingMap.json`` when the state has not been initialized is a potential defect.  During the initial design phase it was intended that the ``GroupingMap`` would always be accessed only via its parent ``StateConfig`` object.  Since accessing the ``GroupingMap`` by itself is definitely an acceptable goal, perhaps a better implementation would provide the current ``_readGroupingMap`` as the public method, and would produce an error if called on an uninitialized state.  On this topic, it will also be noted that this access requirement possibly indicates that ``GroupingMap`` should *not* really be part of ``Stateconfig`` at all, or that some aspect of ``StateConfig`` needs to be redesigned so that its loading is no longer an issue in these cases (e.g. ``Optional[Calibration]`` is a possibility here).  
+
+  * Although this is a fine point, the fact that we now have a public method ``LocalDataService.readGroupingMap`` which falls back automatically to load the ``defaultGroupingMap.json`` when the state has not been initialized is a potential defect.  During the initial design phase it was intended that the ``GroupingMap`` would always be accessed only via its parent ``StateConfig`` object.  Since accessing the ``GroupingMap`` by itself is definitely an acceptable goal, perhaps a better implementation would provide the current ``_readGroupingMap`` as the public method, and would produce an error if called on an uninitialized state.  On this topic, it will also be noted that this access requirement possibly indicates that ``GroupingMap`` should *not* really be part of ``Stateconfig`` at all, or that some aspect of ``StateConfig`` needs to be redesigned so that its loading is no longer an issue in these cases (e.g. ``Optional[Calibration]`` is a possibility here).
   * If the path provided to a grouping schema (e.g. in ``defaultGroupingMap.json``) is a relative path, it is relative to <instrument.calibration.powder.grouping.home>.  This relative-path aspect provides additional information to the user (e.g. that this is a "standard" grouping schema, in some sense).  For this reason, it is a defect (to be fixed shortly) that when the ``groupingMap.json`` is written to disk, the paths have all been converted to an absolute form.
