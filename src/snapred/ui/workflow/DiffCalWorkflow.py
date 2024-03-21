@@ -167,25 +167,11 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.prevDMax = payload.crystalDMax
         self.prevThreshold = payload.peakIntensityThreshold
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
+        self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}"
 
         # focus the workspace to view the peaks
-        payload = FocusSpectraRequest(
-            runNumber=self.runNumber,
-            useLiteMode=self.useLiteMode,
-            focusGroup=self.focusGroups[self.focusGroupPath],
-            inputWorkspace=self.groceries["inputWorkspace"],
-            groupingWorkspace=self.groceries["groupingWorkspace"],
-        )
-        response = self.request(path="calibration/focus", payload=payload.json())
-        self.focusedWorkspace = response.data[0]
-
-        self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}"
-        payload = FitMultiplePeaksRequest(
-            inputWorkspace=self.focusedWorkspace,
-            outputWorkspaceGroup=self.fitPeaksDiagnostic,
-            detectorPeaks=self.ingredients.groupedPeakLists,
-        )
-        response = self.request(path="calibration/fitpeaks", payload=payload.json())
+        self._renewFocus(self.prevGroupingIndex)
+        response = self._renewFitPeaks()
 
         self._tweakPeakView.updateGraphs(
             self.focusedWorkspace,
@@ -195,8 +181,6 @@ class DiffCalWorkflow(WorkflowImplementer):
         return response
 
     def onValueChange(self, groupingIndex, dMin, dMax, peakThreshold):
-        if groupingIndex < 0:
-            raise RuntimeError("YOU IDIOT")
         self._tweakPeakView.disableRecalculateButton()
 
         self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]

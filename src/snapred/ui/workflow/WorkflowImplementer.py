@@ -69,8 +69,7 @@ class WorkflowImplementer:
         return response
 
     def verifyForm(self, form):
-        form.verify()
-        return True
+        return form.verify()
 
     def _handleComplications(self, result):
         self.responseHandler.rethrow(result)

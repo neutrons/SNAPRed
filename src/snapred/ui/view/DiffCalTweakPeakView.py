@@ -18,6 +18,7 @@ from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigur
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.backend.dao import GroupPeakList
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
@@ -223,16 +224,16 @@ class DiffCalTweakPeakView(BackendRequestView):
     def verify(self):
         empties = [gpl for gpl, count in zip(self.peaks, self.goodPeaksCount) if count < self.MIN_PEAKS]
         if len(empties) > 0:
-            msg = f"Proper calibration requires at least {self.MIN_PEAKS} peaks per group.\n"
+            msg = f"Proper calibration requires at least {self.MIN_PEAKS} well-fit peaks per group.\n"
             for empty in empties:
                 msg = msg + f"\tgroup {empty.groupID} has \t {len(empty.peaks)} peaks\n"
             msg = msg + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
             raise ValueError(msg)
         tooFews = [gpl for gpl, count in zip(self.peaks, self.goodPeaksCount) if count < self.PREF_PEAKS]
         if len(tooFews) > 0:
-            msg = f"It is highly recommended to have at least {self.PREF_PEAKS} peaks per group.\n"
+            msg = f"It is recommended to have at least {self.PREF_PEAKS} well-fit peaks per group.\n"
             for tooFew in tooFews:
                 msg = msg + f"\tgroup {tooFew.groupID} has \t {len(tooFew.peaks)} peaks\n"
-            msg = msg + "Recommend to adjust parameters to include more peaks."
-            raise ValueError(msg)
+            msg = msg + "Would you like to continue anyway?"
+            raise ContinueWarning(msg)
         return True
