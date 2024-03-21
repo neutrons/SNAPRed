@@ -13,7 +13,6 @@ with mock.patch.dict(
 ):
     from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, LoadNexusProcessed, mtd
     from snapred.backend.dao.GroupPeakList import GroupPeakList
-    from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
     from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import (
         FitMultiplePeaksAlgorithm,  # noqa: E402
     )

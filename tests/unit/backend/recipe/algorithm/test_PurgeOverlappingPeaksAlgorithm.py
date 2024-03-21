@@ -9,8 +9,6 @@ with mock.patch.dict(
 ):
     import json
 
-    from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-    from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
     from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import (
         PurgeOverlappingPeaksAlgorithm,  # noqa: E402
     )

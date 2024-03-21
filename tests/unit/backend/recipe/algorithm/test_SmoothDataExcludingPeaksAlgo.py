@@ -11,11 +11,6 @@ from mantid.simpleapi import (
     LoadNexusProcessed,
     mtd,
 )
-from pydantic import parse_raw_as
-from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients import PeakIngredients as Ingredients
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo as Algo
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import list_to_raw
