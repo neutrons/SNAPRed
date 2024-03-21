@@ -53,7 +53,7 @@ Glossary
     Data Objects
         The architectural layer that represents concepts and contracts as easily validated and serializable objects.
         It consists entirely of Pydantic models with minimal to no buisness logic.
-        These objects represent things like :term`Requests <User Request>`, :term:`Focus Groups <Focus Group>`, :term:`Instrument State`, etc.
+        These objects represent things like :term:`Requests <User Request>`, :term:`Focus Groups <Focus Group>`, :term:`Instrument State`, etc.
 
     Data Component
         The architectural Component that provides an abstraction for data aquisition and storage.
@@ -127,8 +127,8 @@ Glossary
         Examples include: API, Orchestration, Data Processing, etc.
 
     Lite Mode
-        The SNAP instrument uses :term`detectors<Detector>` comprised of many more :term:`pixels<Pixel>` than are actually required to achieve the target d-spacing resolution.
-        In *Lite* mode, all of the event data will be used, but it will be treated as if sourced from an *effective* pixel representing each 8x8 block of *native* pixels. (See :term:`Native Mode`)
+        The SNAP instrument uses :term:`detectors<Detector>` comprised of many more :term:`pixels<Pixel>` than are actually required to achieve the target d-spacing resolution.
+        In *Lite* mode, all of the event data will be used, but it will be grouped into *effective* pixels, one for each 8x8 block of *native* pixels. (See :term:`Native Mode`)
 
     Mantid
         Neutron scattering data reduction code maintained by the `Mantid Project <https://www.mantidproject.org/>`_.
@@ -138,12 +138,12 @@ Glossary
         Examples may include: Progress reporting, Quality of Life improvements, multi-threading, etc.
 
     Native Mode
-        The SNAP instrument uses :term`detectors<Detector>` comprised of many more :term:`pixels<Pixel>` than are actually required to achieve the target d-spacing resolution.
+        The SNAP instrument uses :term:`detectors<Detector>` comprised of many more :term:`pixels<Pixel>` than are actually required to achieve the target d-spacing resolution.
         In *Native* mode, both event data, and physical specifics, from all of these pixels will be used during processing. (See :term:`Lite Mode`)
 
     Normalization
         The process of adjusting diffraction data to correct for variations in instrumental performance and experimental conditions.
-        Normalization ensures that data from different runs or different :term: `instrument states <Instrument State>` can be directly
+        Normalization ensures that data from different runs or different :term:`instrument states <Instrument State>` can be directly
         compared or combined without bias due to instrument efficiency, sample positioning, or other systemic factors. This is typically
         achieved by dividing the raw data by a normalization standard, such as a vanadium run, which represents the instrument response.
         The process involves a series of algorithms, often encapsulated within a Recipe, to apply these corrections and produce normalized
