@@ -59,6 +59,8 @@ calibration:
       extension: .nxs
       format: "{}_calibration_reduction_result"
   diffraction:
+    output:
+      extension: .tar
     maximumIterations: 5
     convergenceThreshold: 0.5
     peakIntensityThreshold: 0.05
@@ -120,6 +122,9 @@ samples:
   home: ${instrument.calibration.home}/CalibrantSamples
 
 cis_mode: false
+
+temp:
+  directory: /SNAPRed
 
 constants:
   millisecondsPerSecond: 1000

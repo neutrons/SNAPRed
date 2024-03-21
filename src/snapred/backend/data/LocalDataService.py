@@ -38,6 +38,8 @@ from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.data.ReheatLeftovers import ReheatLeftovers
+from snapred.backend.recipe.algorithm.data.WrapLeftovers import WrapLeftovers
 from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGroupingDefinition
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
@@ -93,7 +95,7 @@ class LocalDataService:
         # look for the config file and verify it exists
         self.instrumentConfigPath = Config["instrument.config"]
         if self.verifyPaths and not Path(self.instrumentConfigPath).exists():
-            raise _createFileNotFoundError(Config["instrument.config"], self.instrumentConfigFilePath)
+            raise _createFileNotFoundError("Missing Instrument Config", Config["instrument.config"])
 
     def readInstrumentConfig(self) -> InstrumentConfig:
         self._determineInstrConfigPaths()
@@ -491,8 +493,8 @@ class LocalDataService:
         """
         normalizationDataPath = Path(self._constructNormalizationCalibrationDataPath(record.runNumber, record.version))
         for workspace in record.workspaceNames:
-            filename = Path(workspace + "_" + wnvf.formatVersion(record.version) + ".nxs")
-            self.writeWorkspace(normalizationDataPath, filename, workspace)
+            filename = Path(workspace + "_" + wnvf.formatVersion(record.version) + ".tar")
+            self.writeRaggedWorkspace(normalizationDataPath, filename, workspace)
         return record
 
     def readCalibrationRecord(self, runId: str, version: str = None):
@@ -604,6 +606,8 @@ class LocalDataService:
         for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []):
             # Rebuild the filename to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
+            ext = "tar"
+            nameBuilder = wng.diffCalOutput().runNumber(record.runNumber).version(record.version)
             if wng.Units.TOF.lower() in wsName:
                 filename = Path(
                     wng.diffCalOutput()
@@ -612,7 +616,7 @@ class LocalDataService:
                     .version(record.version)
                     .group(record.focusGroupCalibrationMetrics.focusGroupName)
                     .build()
-                    + ".nxs"
+                    + ext
                 )
             elif wng.Units.DSP.lower() in wsName:
                 filename = Path(
@@ -622,13 +626,13 @@ class LocalDataService:
                     .version(record.version)
                     .group(record.focusGroupCalibrationMetrics.focusGroupName)
                     .build()
-                    + ".nxs"
+                    + ext
                 )
             else:
                 raise RuntimeError(
                     f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
                 )
-            self.writeWorkspace(calibrationDataPath, filename, wsName)
+            self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
         for tableWSName, maskWSName in zip(
             workspaces.pop(wngt.DIFFCAL_TABLE, []),
             workspaces.pop(wngt.DIFFCAL_MASK, []),
@@ -960,6 +964,24 @@ class LocalDataService:
         saveAlgo.setProperty("InputWorkspace", workspaceName)
         saveAlgo.setProperty("Filename", str(path / filename))
         saveAlgo.execute()
+
+    def writeRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
+        """
+        Write a ragged workspace to disk in a .tar format.
+        """
+        saveAlgo = AlgorithmManager.create(WrapLeftovers.__name__)
+        saveAlgo.setProperty("InputWorkspace", workspaceName)
+        saveAlgo.setProperty("Filename", str(path / filename))
+        saveAlgo.execute()
+
+    def readRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
+        """
+        Read a ragged workspace from disk in a .tar format.
+        """
+        loadAlgo = AlgorithmManager.create(ReheatLeftovers.__name__)
+        loadAlgo.setProperty("Filename", str(path / filename))
+        loadAlgo.setProperty("OutputWorkspace", workspaceName)
+        loadAlgo.execute()
 
     def writeGroupingWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """

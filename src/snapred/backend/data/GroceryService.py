@@ -186,9 +186,10 @@ class GroceryService:
         return str(path)
 
     def _createDiffcalOutputWorkspaceFilename(self, runNumber: str, version: str, unit: str, group: str) -> str:
+        ext = Config["calibration.diffraction.output.extension"]
         return str(
             Path(self._getCalibrationDataPath(runNumber, version))
-            / (self._createDiffcalOutputWorkspaceName(runNumber, version, unit, group) + ".nxs")
+            / (self._createDiffcalOutputWorkspaceName(runNumber, version, unit, group) + ext)
         )
 
     def _createDiffcalTableFilename(self, runNumber: str, version: str) -> str:
@@ -725,6 +726,7 @@ class GroceryService:
                                 item.runNumber, item.version, item.unit, item.groupingScheme
                             ),
                             diffcalOutputWorkspaceName,
+                            loader="ReheatLeftovers",
                         )
                 case "diffcal_table":
                     tableWorkspaceName = self._createDiffcalTableWorkspaceName(item.runNumber, item.version)
