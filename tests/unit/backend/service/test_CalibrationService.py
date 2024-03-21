@@ -161,9 +161,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Note: this form allows testing of partial-write behavior:
         #   e.g. no _mask_ or _table_ workspace in the 'workspaces' dict.
         for key, wsNames in workspaces.items():
-            print(key)
             for wsName in wsNames:
-                print(wsName)
                 match key:
                     case wngt.DIFFCAL_TABLE:
                         tableWSName = wsName
