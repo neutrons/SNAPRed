@@ -939,8 +939,9 @@ class LocalDataService:
 
         # Only write once and do not allow overwrite.
         if groupingMap.isDirty and not groupingMapPath.exists():
-            write_model_pretty(groupingMap, groupingMapPath)
+            # For consistency: write out `_isDirty` as False
             groupingMap.setDirty(False)
+            write_model_pretty(groupingMap, groupingMapPath)
 
     def _defaultGroupingMapPath(self) -> Path:
         return GroupingMap.calibrationGroupingHome() / "defaultGroupingMap.json"
