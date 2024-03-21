@@ -89,11 +89,8 @@ def throwsStateException():
 
 
 def test_stateExceptionHandler():
-    try:
+    with pytest.raises(StateValidationException):
         throwsStateException()
-        pytest.fail("should have thrown an exception")
-    except StateValidationException:
-        assert True
 
 
 @ExceptionHandler(RecoverableException, "state")
@@ -102,11 +99,8 @@ def throwsRecoverableException():
 
 
 def test_recoverableExceptionHandler():
-    try:
+    with pytest.raises(RecoverableException):
         throwsRecoverableException()
-        pytest.fail("should have thrown an exception")
-    except RecoverableException:
-        assert True
 
 
 def test_recoverableExceptionKwargs():
@@ -118,15 +112,12 @@ def test_recoverableExceptionKwargs():
 
 @ExceptionHandler(ContinueWarning)
 def throwsContinueWarning():
-    raise RuntimeError("'NoneType' object has no attribute 'instrumentState'")
+    raise RuntimeError("This is a warning.  Heed it.")
 
 
 def test_continueWarningHandler():
-    try:
+    with pytest.raises(ContinueWarning):
         throwsContinueWarning()
-        pytest.fail("should have thrown an exception")
-    except ContinueWarning:
-        assert True
 
 
 def test_builder():

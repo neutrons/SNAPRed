@@ -122,7 +122,7 @@ class SousChef(Service):
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
         )
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purge_peaks=True) -> List[GroupPeakList]:
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=True) -> List[GroupPeakList]:
         # NOTE purging overlapping peaks is necessary for proper functioning inside the DiffCal process
         # this should not be user-settable, and therefore should not be included inside the FarmFreshIngredients list
         key = (
@@ -132,14 +132,14 @@ class SousChef(Service):
             ingredients.crystalDBounds.minimum,
             ingredients.crystalDBounds.maximum,
             ingredients.peakIntensityThreshold,
-            purge_peaks,
+            purgePeaks,
         )
         if key not in self._peaksCache:
             ingredients = self.prepPeakIngredients(ingredients)
             res = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=ingredients,
             )
-            if purge_peaks:
+            if purgePeaks:
                 res = PurgeOverlappingPeaksRecipe().executeRecipe(
                     DetectorPeaks=res,
                 )
