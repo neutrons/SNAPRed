@@ -30,6 +30,7 @@ from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import (
     RawVanadiumCorrectionAlgorithm as Algo,  # noqa: E402
 )
 from snapred.meta.Config import Resource
+from util.SculleryBoy import SculleryBoy
 
 TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
 
@@ -37,52 +38,11 @@ TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.Algor
 class TestRawVanadiumCorrection(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
-        self.fakeRunNumber = "555"
-        fakeRunConfig = RunConfig(runNumber=str(self.fakeRunNumber))
+        # self.fakeRunNumber = "555"
+        # fakeIngredients = ReductionIngredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
 
-        fakeIngredients = ReductionIngredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
-        fakeIngredients.runConfig = fakeRunConfig
-        tof = fakeIngredients.pixelGroup.timeOfFlight
-
-        # create some nonsense material and crystallography
-        fakeMaterial = Material(
-            packingFraction=0.3,
-            massDensity=1.0,
-            chemicalFormula="V-B",
-        )
-        vanadiumAtom = Atom(
-            symbol="V",
-            coordinates=[0, 0, 0],
-            siteOccupationFactor=0.5,
-        )
-        boronAtom = Atom(
-            symbol="B",
-            coordinates=[0, 1, 0],
-            siteOccupationFactor=1.0,
-        )
-        fakeXtal = Crystallography(
-            cifFile=Resource.getPath("inputs/crystalInfo/example.cif"),
-            spaceGroup="I m -3 m",
-            latticeParameters=[1, 2, 3, 4, 5, 6],
-            atoms=[vanadiumAtom, boronAtom],
-        )
-        cylinder = Geometry(
-            shape="Cylinder",
-            radius=1.5,
-            height=5.0,
-        )
-        self.calibrantSample = CalibrantSamples(
-            name="fake cylinder sample",
-            unique_id="435elmst",
-            geometry=cylinder,
-            material=fakeMaterial,
-            crystallography=fakeXtal,
-        )
-
-        self.ingredients = Ingredients(
-            pixelGroup=fakeIngredients.pixelGroup,
-            calibrantSample=self.calibrantSample,
-        )
+        self.ingredients = SculleryBoy().prepNormalizationIngredients({})
+        tof = self.ingredients.pixelGroup.timeOfFlight
 
         self.sample_proton_charge = 10.0
 
@@ -171,9 +131,9 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo.initialize()
         algo.chopIngredients(self.ingredients)
         assert algo.TOFPars == self.ingredients.pixelGroup.timeOfFlight.params
-        assert algo.geometry == self.calibrantSample.geometry
-        assert algo.material == self.calibrantSample.material
-        assert algo.sampleShape == self.calibrantSample.geometry.shape
+        assert algo.geometry == self.ingredients.calibrantSample.geometry
+        assert algo.material == self.ingredients.calibrantSample.material
+        assert algo.sampleShape == self.ingredients.calibrantSample.geometry.shape
 
     def test_init_properties(self):
         """Test that the properties of the algorithm can be initialized"""
@@ -248,6 +208,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
 
 # # old test from VanadiumFocussedReductionAlgorithm
+# # retained here for possible future refactor + inclusion to tests
 #     def test_execute(self):
 #         vanAlgo = VanadiumFocussedReductionAlgorithm()
 #         vanAlgo.initialize()

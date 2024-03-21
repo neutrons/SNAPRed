@@ -13,5 +13,4 @@ class NormalizationIngredients(BaseModel):
 
     pixelGroup: PixelGroup
     calibrantSample: CalibrantSamples
-    detectorPeaks: Optional[List[GroupPeakList]]
-    detectorPeakIngredients: Optional[PeakIngredients]
+    detectorPeaks: List[GroupPeakList]
