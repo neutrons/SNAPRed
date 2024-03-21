@@ -573,6 +573,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert FocusSpectraRecipe().executeRecipe.call_count == 0
         assert res == (focusedWorkspace, groupingWorkspace)
 
+    @patch(thisService + "FitMultiplePeaksRecipe")
+    def test_fitPeaks(self, FitMultiplePeaksRecipe):
+        request = mock.Mock()
+        res = self.instance.fitPeaks(request)
+        assert res == FitMultiplePeaksRecipe.return_value.executeRecipe.return_value
+
     # TODO remove this --- it only exists to make codecov happy
     def test_reduction(self):
         with pytest.raises(NotImplementedError):

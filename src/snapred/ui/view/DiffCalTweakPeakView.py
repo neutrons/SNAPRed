@@ -34,7 +34,7 @@ class DiffCalTweakPeakView(BackendRequestView):
     THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
     MIN_PEAKS = Config["calibration.diffraction.minimumPeaksPerGroup"]
     PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
-    MAX_CHI_SQ = 100
+    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     signalRunNumberUpdate = Signal(str)
     signalValueChanged = Signal(int, float, float, float)
@@ -157,36 +157,26 @@ class DiffCalTweakPeakView(BackendRequestView):
             param_table = mtd[diagnostic].getItem(incr * wkspIndex + FitOutputEnum.Parameters.value).toDict()
             chisq = param_table["chi2"]
             self.goodPeaksCount[wkspIndex] = len([peak for chi2, peak in zip(chisq, peaks) if chi2 < self.MAX_CHI_SQ])
-            # param_peakc = param_table.toDict()["PeakCentre"]
-            # good_peak_centers = [x for x, y in zip(param_peakc, param_chisq) if y<self.MAX_CHI_SQ]
-            # param_peakh = param_table.toDict()["Height"]  # noqa F841
-            # plot the data
+            # prepare the plot area
             ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
-            ax.plot(mtd[workspace], wkspIndex=wkspIndex, label="data", normalize_by_bin_width=True)
-            ax.plot(fitted_peaks, wkspIndex=0, label="fit", color="black", normalize_by_bin_width=True)
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {wkspIndex + 1}")
+            # plot the data
+            ax.plot(mtd[workspace], wkspIndex=wkspIndex, label="data", normalize_by_bin_width=True)
+            # plot the fitted peaks
+            ax.plot(fitted_peaks, wkspIndex=0, label="fit", color="black", normalize_by_bin_width=True)
             ax.legend(loc=1)
             # fill in the discovered peaks for easier viewing
             x, y, _, _ = get_spectrum(mtd[workspace], wkspIndex, normalize_by_bin_width=True)
             # for each detected peak in this group, shade in the peak region
             for chi2, peak in zip(chisq, peaks):
+                # areas inside peak bounds (to be shaded)
                 under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]
+                # the color: blue = GOOD, red = BAD
                 color = "blue" if chi2 < self.MAX_CHI_SQ else "red"
                 alpha = 0.3 if chi2 < self.MAX_CHI_SQ else 0.8
+                # now shade
                 ax.fill_between(x, y, where=under_peaks, color=color, alpha=alpha)
-            # # the peak centers with labeled ticks
-            # for peak in param_peakc:
-            #     ax.axvline(peak, ymin=0.1, ymax=0.6, color="black")
-            # topax = ax.secondary_xaxis("bottom")
-            # topax.tick_params(direction="in", color="black", labelcolor="black", pad=-12)
-            # topax.set_xticks(param_peakc)
-            # x, y, _, _ = get_spectrum(fitted_peaks, 0, normalize_by_bin_width=True)
-            # # for each detected peak in this group, overlay the fit peak
-            # for j, peak in enumerate(self.peaks[wkspIndex].peaks):
-            #     if param_chisq[j] < self.MAX_CHI_SQ:
-            #         x2 = np.ma.masked_outside(x, peak.minimum, peak.maximum)
-            #         ax.plot(x2, y, color="black", label="fit")
             # plot the min and max value for peaks
             ax.axvline(x=max(min(x), float(self.fielddMin.field.text())), label="dMin", color="red")
             ax.axvline(x=min(max(x), float(self.fielddMax.field.text())), label="dMax", color="red")

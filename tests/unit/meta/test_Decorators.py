@@ -7,6 +7,7 @@ import pytest
 from pydantic import BaseModel
 from qtpy.QtWidgets import QWidget
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.meta.decorators._Resettable import Resettable
@@ -113,6 +114,19 @@ def test_recoverableExceptionKwargs():
     exceptionString = f"Error accessing {exceptionPath}"
     with pytest.raises(RecoverableException, match=exceptionString):
         raise RecoverableException(RuntimeError(exceptionString), exceptionString, extraInfo="some extra info")
+
+
+@ExceptionHandler(ContinueWarning)
+def throwsContinueWarning():
+    raise RuntimeError("'NoneType' object has no attribute 'instrumentState'")
+
+
+def test_continueWarningHandler():
+    try:
+        throwsContinueWarning()
+        pytest.fail("should have thrown an exception")
+    except ContinueWarning:
+        assert True
 
 
 def test_builder():
