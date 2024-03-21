@@ -26,48 +26,28 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             doc="Input list of peaks",
         )
         self.declareProperty(
-            "DetectorPeakIngredients",
-            defaultValue="",
-            direction=Direction.Input,
-            doc="Ingredients for DetectorPeakPredictor to find the lsit of peaks",
-        )
-        self.declareProperty(
             "OutputPeakMap",
             defaultValue="",
             direction=Direction.Output,
             doc="The resulting, non-overlapping list of peaks",
         )
-
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
+    def chopIngredients(self, ingredients):  # noqa ARG002
+        # NOTE this entire algorithm is a "chopIngredients" method
+        pass
+
+    def unbagGroceries(self):
+        # NOTE there are no input workspaces
+        pass
+
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
-        waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
-        definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
-        if len(definedWaysToGetPeaks) == 0:
-            msg = "Purse peaks requires either a list of peaks, or ingredients to detect peaks"
-            errors["DetectorPeaks"] = msg
-            errors["DetectorPeakIngredients"] = msg
-        elif len(definedWaysToGetPeaks) == 2:
-            logger.warn(
-                """Both a list of detector peaks and ingredients were given;
-                the list will be used and ingredients ignored"""
-            )
         return errors
 
     def PyExec(self):
-        # predict detector peaks for all focus groups
-        if self.getProperty("DetectorPeaks").isDefault:
-            result = self.mantidSnapper.DetectorPeakPredictor(
-                "Predicting peaks...",
-                Ingredients=self.getProperty("DetectorPeakIngredients").value,
-                PurgeDuplicates=False,
-            )
-            self.mantidSnapper.executeQueue()
-        else:
-            result = self.getPropertyValue("DetectorPeaks")
-        predictedPeaks = parse_raw_as(List[GroupPeakList], result.get())
+        predictedPeaks = parse_raw_as(List[GroupPeakList], self.getPropertyValue("DetectorPeaks"))
 
         # build lists of non-overlapping peaks for each focus group. Combine them into the total list.
         outputPeaks = []

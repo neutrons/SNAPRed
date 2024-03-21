@@ -87,6 +87,14 @@ with mock.patch.dict(
         peaks_ref = parse_raw_as(List[GroupPeakList], Resource.read(peaksRefFile))
         assert peaks_cal == peaks_ref
 
+        # test the threshold -- set to over-1 value and verify no peaks are found
+        ingredients.peakIntensityThreshold = 1.2
+        peakPredictorAlgo.setProperty("Ingredients", ingredients.json())
+        peakPredictorAlgo.execute()
+        no_pos_json = json.loads(peakPredictorAlgo.getProperty("DetectorPeaks").value)
+        for x in no_pos_json:
+            assert len(x["peaks"]) == 0
+
     def test_execute_purge_duplicates():
         ingredientsFile = "/inputs/predict_peaks/input_good_ingredients.json"
         peaksRefFile = "/outputs/predict_peaks/peaks_purged.json"
