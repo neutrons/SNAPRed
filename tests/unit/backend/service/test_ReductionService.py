@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.service.ReductionService import ReductionService
+from util.SculleryBoy import SculleryBoy
 
 
 class TestReductionService(unittest.TestCase):
@@ -17,14 +18,13 @@ class TestReductionService(unittest.TestCase):
             useLiteMode=True,
         )
         self.instance = ReductionService()
-        self.instance.sousChef.prepReductionIngredients = Mock()
+        self.instance.sousChef = SculleryBoy()
         mock_executeRecipe.return_value = {"not": "empty"}
 
         res = self.instance.reduce([run])
 
-        assert self.instance.sousChef.prepReductionIngredients.called
         assert mock_executeRecipe.called_with(
-            Ingredients=self.instance.sousChef.prepReductionIngredients.return_value,
+            Ingredients=self.instance.sousChef.prepReductionIngredients({}),
         )
         assert res == mock_executeRecipe.return_value
 
@@ -38,13 +38,13 @@ class TestReductionService(unittest.TestCase):
         mock_executeRecipe.side_effect = RuntimeError("oops!")
 
         self.instance = ReductionService()
-        self.instance.sousChef.prepReductionIngredients = Mock()
+        self.instance.sousChef = SculleryBoy()
 
         with pytest.raises(RuntimeError) as e:
             self.instance.reduce([run])
         assert "oops!" in str(e.value)
 
-    # TODO remove this --- ot only exists to make codecov happy
+    # TODO remove this --- it only exists to make codecov happy
     def test_reduction(self):
         with pytest.raises(NotImplementedError):
             ReductionService().fakeMethod()

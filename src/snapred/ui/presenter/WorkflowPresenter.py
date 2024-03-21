@@ -7,6 +7,7 @@ from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import ClearWorkspaceRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.log.logger import snapredLogger
+from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.view.WorkflowView import WorkflowView
@@ -26,6 +27,7 @@ class WorkflowPresenter(object):
         self._iterateLambda = iterateLambda
         self.resetLambda = self.resetAndClear
         self._hookupSignals()
+        self.responseHandler = SNAPResponseHandler(self.view)
 
     @property
     def widget(self):
@@ -142,57 +144,5 @@ class WorkflowPresenter(object):
         for button in buttons:
             button.setEnabled(enable)
 
-    def _isErrorCode(self, code):
-        return code >= ResponseCode.ERROR
-
-    def _isRecoverableError(self, code):
-        return ResponseCode.RECOVERABLE <= code < ResponseCode.ERROR
-
     def _handleComplications(self, result):
-        if self._isErrorCode(result.code):
-            QMessageBox.critical(
-                self.view,
-                "Error",
-                f"Error {result.code}: {result.message}",
-                QMessageBox.Ok,
-                QMessageBox.Ok,
-            )
-        elif self._isRecoverableError(result.code):
-            if "state" in result.message:
-                self.handleStateMessage(self.view)
-            else:
-                logger.error(f"Unhandled scenario triggered by state message: {result.message}")
-                messageBox = QMessageBox(
-                    QMessageBox.Warning,
-                    "Warning",
-                    "Proccess completed successfully with warnings!",
-                    QMessageBox.Ok,
-                    self.view,
-                )
-                messageBox.setDetailedText(f"{result.message}")
-                messageBox.exec()
-        elif result.message:
-            messageBox = QMessageBox(
-                QMessageBox.Warning,
-                "Warning",
-                "Proccess completed successfully with warnings!",
-                QMessageBox.Ok,
-                self.view,
-            )
-            messageBox.setDetailedText(f"{result.message}")
-            messageBox.exec()
-
-    def handleStateMessage(self, view):
-        """
-        Handles a specific 'state' message.
-        """
-        from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
-        from snapred.ui.view.InitializeStateCheckView import InitializationMenu
-
-        try:
-            logger.info("Handling 'state' message.")
-            initializationMenu = InitializationMenu(runNumber=InitializeStateHandler.runId, parent=view)
-            initializationMenu.finished.connect(lambda: initializationMenu.deleteLater())
-            initializationMenu.show()
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"The 'state' handling method encountered an error:{str(e)}")
+        self.responseHandler.handle(result)

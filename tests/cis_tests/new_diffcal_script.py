@@ -28,7 +28,7 @@ from snapred.meta.Config import Config
 
 #User input ###########################
 runNumber = "58882"
-groupingScheme = "Column"
+groupingScheme = "Column (Lite)"
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
 calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrationSamples/Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
@@ -86,6 +86,7 @@ groupAlgo.setPropertyValue("Ingredients", ingredients.json())
 groupAlgo.setPropertyValue("InputWorkspace", groceries[0])
 groupAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
 groupAlgo.setPropertyValue("PreviousCalibrationTable", DIFCprev)
+groupAlgo.setPropertyValue("OutputWorkspaceDSpacing", "out_ws")
 groupAlgo.execute()
 
 ### PAUSE
@@ -106,7 +107,8 @@ clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useL
 
 groceries = GroceryService().fetchGroceryDict(
     groceryDict=clerk.buildDict(),
-    OutputWorkspace="_output_from_diffcal_recipe",
+    outputTOFWorkspace="_output_from_diffcal_recipe",
+    outputDSPWorkspace="_output_diffcal_but_in_dspacing",
 )
 
 rx = Recipe()
@@ -125,7 +127,7 @@ diffcalRequest = DiffractionCalibrationRequest(
     runNumber = runNumber,
     calibrantSamplePath = calibrantSamplePath,
     useLiteMode = isLite,
-    focusGroupPath = ingredients.focusGroup.definition,
+    focusGroup = {"name": groupingScheme, "definition": ""},
     convergenceThreshold = offsetConvergenceLimit,
     peakIntensityThreshold = peakThreshold,
 )

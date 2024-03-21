@@ -28,7 +28,7 @@ snapredLogger._level = 20
 
 runNumber = '58882'#58409'
 cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif'
-groupingScheme = "Column"
+groupingScheme = "Column (Lite)"
 peakFractionalThreshold = 0.01
 isLite = True
 
@@ -45,17 +45,13 @@ farmFresh = FarmFreshIngredients(
     cifPath=cifPath,
     peakIntensityThreshold=peakFractionalThreshold,
 )
-peakIngredients = SousChef().prepPeakIngredients(farmFresh)
-instrumentState = peakIngredients.instrumentState
-crystalInfo = peakIngredients.crystalInfo
+ingredients = SousChef().prepPeakIngredients(farmFresh)
 
 
 ### RUN ALGORITHM
 detectorAlgo = DetectorPeakPredictor()
 detectorAlgo.initialize()
-detectorAlgo.setProperty("InstrumentState", instrumentState.json())
-detectorAlgo.setProperty("CrystalInfo", crystalInfo.json())
-detectorAlgo.setProperty("PeakIntensityFractionThreshold", peakFractionalThreshold)
+detectorAlgo.setProperty("Ingredients", ingredients.json())
 detectorAlgo.execute()
 
 peakList = json.loads(detectorAlgo.getProperty("DetectorPeaks").value)
@@ -110,13 +106,9 @@ for i,group in enumerate(peakList):
 #########################################################
 assert False
 # using previously found ingredients, change the peakTailCoefficient within instrumentstate
-instrumentState.peakTailCoefficient = 10
+ingredients.instrumentState.peakTailCoefficient = 10
 
-detectorAlgo = DetectorPeakPredictor()
-detectorAlgo.initialize()
-detectorAlgo.setProperty("InstrumentState", instrumentState.json())
-detectorAlgo.setProperty("CrystalInfo", crystalInfoDict['crystalInfo'].json())
-detectorAlgo.setProperty("PeakIntensityFractionThreshold", 0.01)
+detectorAlgo.setProperty("Ingredients", ingredients.json())
 detectorAlgo.execute()
 
 peakList = json.loads(detectorAlgo.getProperty("DetectorPeaks").value)

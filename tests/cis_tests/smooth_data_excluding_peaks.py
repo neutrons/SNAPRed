@@ -23,11 +23,14 @@ from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.dao.ingredients import PeakIngredients
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
 
+from snapred.meta.redantic import list_to_raw
+
 #User inputs ###########################
 runNumber = "58882" #58409
 isLite = True
-groupingScheme = "Column"
+groupingScheme = "Column (Lite)"
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
+smoothingParameter = 0.05
 #######################################
 
 
@@ -38,8 +41,7 @@ farmFresh = FarmFreshIngredients(
   focusGroup={"name": groupingScheme, "definition": ""},
   cifPath=cifPath,
 )
-ingredients = SousChef().prepPeakIngredients(farmFresh)
-ingredients.smoothingParameter=0.05
+peaks = SousChef().prepDetectorPeaks(farmFresh)
 
 ## FETCH GROCERIES
 simpleList = GroceryListItem.builder().neutron(runNumber).useLiteMode(isLite).buildList()
@@ -56,7 +58,8 @@ Rebin(
 ## RUN ALGORITHM
 algo = SmoothDataExcludingPeaksAlgo()
 algo.initialize()
-algo.setProperty("Ingredients", ingredients.json())
 algo.setProperty("InputWorkspace", grocery)
+algo.setProperty("DetectorPeaks", list_to_raw(peaks))
+algo.setProperty("SmoothingParameter", smoothingParameter)
 algo.setProperty("OutputWorkspace", "out_ws")
 algo.execute()

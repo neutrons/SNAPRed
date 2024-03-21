@@ -23,6 +23,7 @@ from snapred.backend.dao.request import (
     CalibrationLoadAssessmentRequest,
     DiffractionCalibrationRequest,
     FarmFreshIngredients,
+    FitMultiplePeaksRequest,
     FocusSpectraRequest,
     InitializeStateRequest,
 )
@@ -73,6 +74,7 @@ class CalibrationService(Service):
         self.registerPath("ingredients", self.prepDiffractionCalibrationIngredients)
         self.registerPath("groceries", self.fetchDiffractionCalibrationGroceries)
         self.registerPath("focus", self.focusSpectra)
+        self.registerPath("fitpeaks", self.fitPeaks)
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
         self.registerPath("initializeState", self.initializeState)
@@ -179,6 +181,14 @@ class CalibrationService(Service):
                 OutputWorkspace=focusedWorkspace,
             )
         return focusedWorkspace, groupingWorkspace
+
+    @FromString
+    def fitPeaks(self, request: FitMultiplePeaksRequest):
+        return FitMultiplePeaksRecipe().executeRecipe(
+            InputWorkspace=request.inputWorkspace,
+            DetectorPeaks=request.detectorPeaks,
+            OutputWorkspaceGroup=request.outputWorkspaceGroup,
+        )
 
     @FromString
     def save(self, request: CalibrationExportRequest):
@@ -317,19 +327,21 @@ class CalibrationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
         )
-        ingredients = self.sousChef.prepPeakIngredients(farmFresh)
+        pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
+        detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh)
 
         # TODO: We Need to Fit the Data
         fitResults = FitMultiplePeaksRecipe().executeRecipe(
-            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0], DetectorPeakIngredients=ingredients
+            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0],
+            DetectorPeaks=detectorPeaks,
         )
-        metrics = self._collectMetrics(fitResults, request.focusGroup, ingredients.pixelGroup)
+        metrics = self._collectMetrics(fitResults, request.focusGroup, pixelGroup)
 
         record = CalibrationRecord(
             runNumber=request.run.runNumber,
-            crystalInfo=ingredients.crystalInfo,
+            crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
             calibrationFittingIngredients=self.sousChef.prepCalibration(request.run.runNumber),
-            pixelGroups=[ingredients.pixelGroup],
+            pixelGroups=[pixelGroup],
             focusGroupCalibrationMetrics=metrics,
             workspaces=request.workspaces,
         )

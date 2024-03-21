@@ -14,4 +14,3 @@ class PeakIngredients(BaseModel):
     crystalInfo: CrystallographicInfo
     pixelGroup: PixelGroup
     peakIntensityThreshold: float
-    smoothingParameter: Optional[float]
