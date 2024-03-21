@@ -4,7 +4,9 @@ Glossary
 .. glossary::
 
     ADS
-        Analysis Data Service, the internal list held by :term:`Mantid` of all workspaces.
+    MTD
+        Analysis Data Service (ADS, aka Mantid Data (MTD)), the internal database held by :term:`Mantid` of all *named* workspaces.
+        Any workspace referenced "by name", usually by a Mantid algorithm, needs to be registered in this database.
 
     Algorithm
         A set of instructions that can be executed to produce a result.
