@@ -545,9 +545,23 @@ class LocalDataService:
             # Rebuild the workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
             if wng.Units.TOF.lower() in wsName:
-                ws = wng.diffCalOutput().unit(wng.Units.TOF).runNumber(record.runNumber).version(record.version).build()
+                ws = (
+                    wng.diffCalOutput()
+                    .unit(wng.Units.TOF)
+                    .runNumber(record.runNumber)
+                    .version(record.version)
+                    .group(record.focusGroupCalibrationMetrics.focusGroupName)
+                    .build()
+                )
             elif wng.Units.DSP.lower() in wsName:
-                ws = wng.diffCalOutput().unit(wng.Units.DSP).runNumber(record.runNumber).version(record.version).build()
+                ws = (
+                    wng.diffCalOutput()
+                    .unit(wng.Units.DSP)
+                    .runNumber(record.runNumber)
+                    .version(record.version)
+                    .group(record.focusGroupCalibrationMetrics.focusGroupName)
+                    .build()
+                )
             else:
                 raise RuntimeError(
                     f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
@@ -592,12 +606,22 @@ class LocalDataService:
             #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
             if wng.Units.TOF.lower() in wsName:
                 filename = Path(
-                    wng.diffCalOutput().unit(wng.Units.TOF).runNumber(record.runNumber).version(record.version).build()
+                    wng.diffCalOutput()
+                    .unit(wng.Units.TOF)
+                    .runNumber(record.runNumber)
+                    .version(record.version)
+                    .group(record.focusGroupCalibrationMetrics.focusGroupName)
+                    .build()
                     + ".nxs"
                 )
             elif wng.Units.DSP.lower() in wsName:
                 filename = Path(
-                    wng.diffCalOutput().unit(wng.Units.DSP).runNumber(record.runNumber).version(record.version).build()
+                    wng.diffCalOutput()
+                    .unit(wng.Units.DSP)
+                    .runNumber(record.runNumber)
+                    .version(record.version)
+                    .group(record.focusGroupCalibrationMetrics.focusGroupName)
+                    .build()
                     + ".nxs"
                 )
             else:
