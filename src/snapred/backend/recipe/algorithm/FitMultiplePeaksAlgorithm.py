@@ -12,8 +12,8 @@ from mantid.api import (
     WorkspaceGroup,
     mtd,
 )
-from mantid.simpleapi import DeleteWorkspaces
 from mantid.kernel import Direction, StringListValidator
+from mantid.simpleapi import DeleteWorkspaces
 from pydantic import parse_raw_as
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
