@@ -120,5 +120,8 @@ class GroupingMap(BaseModel):
     class Config:
         # All other forms of _exclusion_ do not seem to work in Pydantic 1.10,
         # (for this `GroupingMap` class, specifically).
-        fields = {"liteFocusGroups": {"include": True}, "nativeFocusGroups": {"include": True}, "stateId": {"include": True}}
- 
+        fields = {
+            "liteFocusGroups": {"include": True},
+            "nativeFocusGroups": {"include": True},
+            "stateId": {"include": True},
+        }

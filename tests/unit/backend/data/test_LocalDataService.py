@@ -414,7 +414,8 @@ def test_writeGroupingMap_relative_paths():
             assert relativePathCount > 0
     finally:
         Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = savePath
-             
+
+
 @mock.patch(ThisService + "GetIPTS")
 def test_calibrationFileExists(GetIPTS):  # noqa ARG002
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
@@ -1518,6 +1519,7 @@ def test_readGroupingMap_initialized_state():
         shutil.copy(Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json")), stateRoot)
         groupingMap = service._readGroupingMap(stateId)
         assert groupingMap.stateId == stateId
+
 
 @mock.patch("os.path.exists", return_value=True)
 def test_writeCalibrantSample_failure(mock1):  # noqa: ARG001

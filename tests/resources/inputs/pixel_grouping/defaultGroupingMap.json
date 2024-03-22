@@ -12,7 +12,7 @@
     {
         "name": "bank",
         "definition": "SNAPFocGroup_Bank.lite.hdf"
-    }    
+    }
   ],
   "nativeFocusGroups": [
     {
