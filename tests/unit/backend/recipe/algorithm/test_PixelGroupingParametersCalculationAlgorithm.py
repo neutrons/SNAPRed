@@ -38,7 +38,7 @@ from util.helpers import (
 )
 
 GENERATE_GOLDEN_DATA = False
-GOLDEN_DATA_DATE = "2024-02-26"  # date.today().isoformat()
+GOLDEN_DATA_DATE = "2024-03-20"  # date.today().isoformat()
 
 # Override to run "as if" on analysis machine (but don't require access to SNS filesystem):
 REMOTE_OVERRIDE = False
