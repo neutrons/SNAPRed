@@ -8,8 +8,13 @@ from snapred.meta.Config import Config
 
 class CalibrationLoadAssessmentRequest(BaseModel):
     """
-    Request object to generate and load an assessment for a given calibration version
-    of the instrument state associated with a given run
+
+    The CalibrationLoadAssessmentRequest class is crafted to initiate the generation
+    and loading of an assessment for a specified calibration version linked to a run's
+    instrument state. It specifies a runId and version to identify the calibration of
+    interest, along with a checkExistent flag that, when true, avoids regenerating the
+    assessment if it already exists.
+
     """
 
     runId: str

@@ -8,6 +8,17 @@ from snapred.ui.widget.LabeledField import LabeledField
 # TODO rebase on BackendRequestView
 @Resettable
 class DiffCalSaveView(QWidget):
+    """
+
+    The DiffCalSaveView is a Qt widget designed for the final step in the calibration process within
+    the SNAPRed application, where users decide whether to save the completed calibration. It features
+    an intuitive layout with fields for entering run number, version, applicability, comments, and author
+    information, alongside a hidden iteration dropdown for selecting calibration iterations. This view
+    emphasizes clear communication with the user, asking if they wish to save the calibration and providing
+    tooltips for guidance on each field.
+
+    """
+
     signalRunNumberUpdate = Signal(str)
 
     def __init__(self, parent=None):

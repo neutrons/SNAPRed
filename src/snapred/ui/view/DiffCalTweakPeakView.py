@@ -26,6 +26,15 @@ from snapred.ui.widget.Toggle import Toggle
 
 @Resettable
 class DiffCalTweakPeakView(BackendRequestView):
+    """
+
+    The DiffCalTweakPeakView is a view within SNAPRed, aimed at adjusting and visualizing diffraction calibration peaks.
+    This view integrates a mix of user input fields, graphical display elements, and interactive controls for precise
+    calibration tweaking. It provides a structured layout for inputting calibration parameters, alongside a dynamic
+    matplotlib graph for real-time visualization of calibration peaks against specified thresholds and ranges.
+
+    """
+
     DMIN = Config["constants.CrystallographicInfo.dMin"]
     DMAX = Config["constants.CrystallographicInfo.dMax"]
     THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]

@@ -24,6 +24,16 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class DiffCalWorkflow(WorkflowImplementer):
+    """
+
+    The DiffCalWorkflow class orchestrates a comprehensive process for diffraction calibration in SNAPRed,
+    starting from calibration request setup to the final decision on saving the calibration results. It
+    leverages a series of interconnected views (DiffCalRequestView, DiffCalTweakPeakView,
+    DiffCalAssessmentView, DiffCalSaveView) to guide users through each step of calibration, including
+    parameter input, peak adjustment, calibration assessment, and optional data saving.
+
+    """
+
     DEFAULT_DMIN = Config["constants.CrystallographicInfo.dMin"]
     DEFAULT_DMAX = Config["constants.CrystallographicInfo.dMin"]
     DEFAULT_NBINS = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

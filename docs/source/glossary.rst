@@ -25,19 +25,26 @@ Glossary
         :term:`Normalization` to correct the primary data set.
 
     Calibrant Samples
-        TODO
+        A json configuration representing various phyiscal properties of known samples that are used to calibrate the instrument.
+        Most notably, the cif file that contains the known crystallographic properties of the sample.
 
     Calibration
         The process by which the instrument state configuration is calibrated to account for the effects of the instrument on the diffraction data.
         This is done by comparing the diffraction data to a known standard or previous Calibration, and adjusting the instrument to match.
         This is done by a series of algorithms that are triggered by a Recipe.
 
-    Calibrant Samples
-        A json configuration representing various phyiscal properties of known samples that are used to calibrate the instrument.
-        Most notably, the cif file that contains the known crystallographic properties of the sample.
-
     Calibration Index
         The data/file that contains a ledger of which Calibration applies to which Run in a given Instrument State.
+
+    Calibration Mask
+        The outcome of various systematic effects can lead to failures in pixel event detection. This may cause the calibration process to fail for individual or
+        groups of pixels. These are handled by creating a mask indicating which faulty pixels will not be used in any reduction employing the related
+        calibration.
+
+    Calibration Record
+        This is a file written to the :term: `state <State>` calibration folder that contains a record  of information related to the calibration.
+        This includes all of the parameters that govern the calibration, the location of all the files generated during the calibration (e.g. calibration
+        mask) and also some statistical information capturing the "quality" of the calibration.
 
     Component
         Architectural term for a single unit of abstraction that fulfills a mid level Developer Requirement.
@@ -70,15 +77,14 @@ Glossary
         A predetermined set of parameters used to split diffraction data into useful formations, i.e. like slices vs squares of pizza
         This may include predetermined data such as dimmensions and tolerances, or derrived values such as Pixel Grouping Parameters
 
-    grocery
+    Grocery
         Within SNAPRed code, this refers to workspace data (as opposed to ingredient data) which are needed for an operation.
         They are requested by handing the Grocery Service a grocery list of workspaces to fetch.
 
     Histogram
-        TODO
-
-    IPTS
-        TODO
+        A graphical representation of the distribution of numerical data. It is an estimate of the probability distribution of a
+        continuous variable and is used to visualize the distribution of data points. A histogram is constructed by dividing the
+        range of the data into bins (also called intervals or buckets) and counting the number of data points that fall into each bin.
 
     Ingredients
         The data required to perform a unit of calculations and produce a well cooked result.
@@ -128,7 +134,7 @@ Glossary
         This may include handling :term:`User Requests <User Request>`, or performing :term:`Data State Management`.
 
     Pixel Grouping
-        TODO
+        This is the a pixel grouping scheme that is used within the reduction process.
 
     Pixel Grouping Parameters
         TODO
@@ -186,7 +192,7 @@ Glossary
         The static positions of the detectors and any other distict configurable characteristics of the :term:`Instrument` recorded as part of a :term:`Run`.
 
     State Folder
-        The folder that contains all configurable data unique to a specific :term:`State`. It is named after the hash of the :term:`State` it represents. 
+        The folder that contains all configurable data unique to a specific :term:`State`. It is named after the hash of the :term:`State` it represents.
 
     Vanadium
         TODO

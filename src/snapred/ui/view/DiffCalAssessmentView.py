@@ -14,6 +14,17 @@ from snapred.ui.widget.LabeledField import LabeledField
 # TODO rebase on BackendRequestView
 @Resettable
 class DiffCalAssessmentView(QWidget):
+    """
+
+    The DiffCalAssessmentView serves as a user interface within the SNAPRed application,
+    designed to streamline the review and selection of calibration assessments. It employs
+    a combination of informative text, a dropdown menu for calibration record selection,
+    and interactive buttons, all managed through a grid layout for clear user navigation.
+    Integrated with the CalibrationAssessmentPresenter, it facilitates direct communication
+    with the backend to load and display calibration data based on user input.
+
+    """
+
     signalRunNumberUpdate = Signal(str)
     signalError = Signal(str)
 

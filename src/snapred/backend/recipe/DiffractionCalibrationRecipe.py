@@ -15,6 +15,18 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class DiffractionCalibrationRecipe:
+    """
+
+    The DiffractionCalibrationRecipe class orchestrates a comprehensive diffraction calibration process
+    tailored for scientific data. Beginning with ingredient preparation through chopIngredients, it processes
+    DiffractionCalibrationIngredients to extract crucial calibration settings.
+    It then manages workspace setup via unbagGroceries, organizing necessary workspaces for calibration tasks.
+    The core of the class lies in executeRecipe, where it combines these preparations to perform calibration using
+    pixel and group-based algorithms, adjusting offsets and refining calibration through iterative steps until
+    convergence criteria are met or maximum iterations are reached.
+
+    """
+
     def __init__(self):
         pass
 
