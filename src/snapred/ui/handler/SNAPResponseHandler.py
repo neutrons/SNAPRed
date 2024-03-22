@@ -11,6 +11,7 @@ logger = snapredLogger.getLogger(__name__)
 class SNAPResponseHandler(QWidget):
     signal = Signal(object)
     signalWarning = Signal(str, object)
+    continueAnyway = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -21,7 +22,13 @@ class SNAPResponseHandler(QWidget):
         self.signal.emit(result)
 
     def _handle(self, result):
-        SNAPResponseHandler._handleComplications(result.code, result.message, self)
+        # if no complications, do nothing here (program will continue)
+        # if errors, do nothing here (program will halt)
+        # if a continue warning was raised, receive what user selected
+        # if the user selected to continue anyway, then emit the signal to continue anyway
+        userSelectedContinueAnyway = SNAPResponseHandler._handleComplications(result.code, result.message, self)
+        if userSelectedContinueAnyway:
+            self.continueAnyway.emit()
 
     def _isErrorCode(code):
         return code >= ResponseCode.ERROR
@@ -61,8 +68,11 @@ class SNAPResponseHandler(QWidget):
                 )
                 messageBox.setDetailedText(f"{message}")
                 messageBox.exec()
+        elif code == ResponseCode.CONTINUE_WARNING:
+            return SNAPResponseHandler._handleContinueWarning(message, view)
         elif message:
             SNAPResponseHandler._handleWarning(message, view)
+        return False
 
     @staticmethod
     def _handleWarning(message, view):
@@ -75,6 +85,17 @@ class SNAPResponseHandler(QWidget):
         )
         messageBox.setDetailedText(f"{message}")
         messageBox.exec()
+
+    @staticmethod
+    def _handleContinueWarning(message, view):
+        continueAnyway = QMessageBox.warning(
+            view,
+            "Warning",
+            message,
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        return continueAnyway == QMessageBox.Yes
 
     @staticmethod
     def handleStateMessage(view):

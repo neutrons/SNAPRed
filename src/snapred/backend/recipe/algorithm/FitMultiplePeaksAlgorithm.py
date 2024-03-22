@@ -13,6 +13,7 @@ from mantid.api import (
     mtd,
 )
 from mantid.kernel import Direction, StringListValidator
+from mantid.simpleapi import DeleteWorkspaces
 from pydantic import parse_raw_as
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
@@ -33,7 +34,7 @@ class FitOutputEnum(Enum):
 
 
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
-    PEAK_INTENSITY_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+    NOISE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
 
     def category(self):
         return "SNAPRed Data Processing"
@@ -79,6 +80,8 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.inputWorkspaceName = self.getPropertyValue("Inputworkspace")
         self.outputWorkspaceName = self.getPropertyValue("OutputWorkspaceGroup")
         self.outputWorkspace = WorkspaceGroup()
+        if mtd.doesExist(self.outputWorkspaceName):
+            DeleteWorkspaces(list(mtd[self.outputWorkspaceName].getNames()))
         mtd.addOrReplace(self.outputWorkspaceName, self.outputWorkspace)
 
     def PyExec(self):
@@ -119,6 +122,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 FittedPeaksWorkspace=outputNames[FitOutputEnum.Workspace.value],
                 ConstrainPeakPositions=True,
                 OutputParameterFitErrorsWorkspace=outputNames[FitOutputEnum.ParameterError.value],
+                MinimumSignalToNoiseRatio=self.NOISE_2_MIN,
             )
             self.mantidSnapper.executeQueue()
             for output in outputNames:

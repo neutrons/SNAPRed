@@ -23,6 +23,7 @@ from snapred.backend.dao.request import (
     CalibrationLoadAssessmentRequest,
     DiffractionCalibrationRequest,
     FarmFreshIngredients,
+    FitMultiplePeaksRequest,
     FocusSpectraRequest,
     InitializeStateRequest,
 )
@@ -73,6 +74,7 @@ class CalibrationService(Service):
         self.registerPath("ingredients", self.prepDiffractionCalibrationIngredients)
         self.registerPath("groceries", self.fetchDiffractionCalibrationGroceries)
         self.registerPath("focus", self.focusSpectra)
+        self.registerPath("fitpeaks", self.fitPeaks)
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
         self.registerPath("initializeState", self.initializeState)
@@ -179,6 +181,14 @@ class CalibrationService(Service):
                 OutputWorkspace=focusedWorkspace,
             )
         return focusedWorkspace, groupingWorkspace
+
+    @FromString
+    def fitPeaks(self, request: FitMultiplePeaksRequest):
+        return FitMultiplePeaksRecipe().executeRecipe(
+            InputWorkspace=request.inputWorkspace,
+            DetectorPeaks=request.detectorPeaks,
+            OutputWorkspaceGroup=request.outputWorkspaceGroup,
+        )
 
     @FromString
     def save(self, request: CalibrationExportRequest):

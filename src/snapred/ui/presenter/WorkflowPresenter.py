@@ -28,6 +28,7 @@ class WorkflowPresenter(object):
         self.resetLambda = self.resetAndClear
         self._hookupSignals()
         self.responseHandler = SNAPResponseHandler(self.view)
+        self.responseHandler.continueAnyway.connect(self.continueAnyway)
 
     @property
     def widget(self):
@@ -146,3 +147,7 @@ class WorkflowPresenter(object):
 
     def _handleComplications(self, result):
         self.responseHandler.handle(result)
+
+    def continueAnyway(self):
+        self.model.nextModel.continueAction(self)
+        self.advanceWorkflow()

@@ -3,6 +3,7 @@ import unittest.mock as mock
 from typing import List
 
 import matplotlib.pyplot as plt
+import numpy as np
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
 from pydantic import parse_obj_as
@@ -17,6 +18,8 @@ from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigur
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.backend.dao import GroupPeakList
+from snapred.backend.error.ContinueWarning import ContinueWarning
+from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
@@ -29,6 +32,9 @@ class DiffCalTweakPeakView(BackendRequestView):
     DMIN = Config["constants.CrystallographicInfo.dMin"]
     DMAX = Config["constants.CrystallographicInfo.dMax"]
     THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+    MIN_PEAKS = Config["calibration.diffraction.minimumPeaksPerGroup"]
+    PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
+    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     signalRunNumberUpdate = Signal(str)
     signalValueChanged = Signal(int, float, float, float)
@@ -134,27 +140,44 @@ class DiffCalTweakPeakView(BackendRequestView):
             return
         self.signalValueChanged.emit(groupingIndex, dMin, dMax, peakThreshold)
 
-    def updateGraphs(self, workspace, peaks):
+    def updateGraphs(self, workspace, peaks, diagnostic):
         # get the updated workspaces and optimal graph grid
         self.peaks = parse_obj_as(List[GroupPeakList], peaks)
         numGraphs = len(peaks)
+        self.goodPeaksCount = [0] * numGraphs
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
 
         # now re-draw the figure
         self.figure.clear()
-        for i in range(numGraphs):
-            ax = self.figure.add_subplot(nrows, ncols, i + 1, projection="mantid")
-            ax.plot(mtd[workspace], wkspIndex=i, label="data", normalize_by_bin_width=True)
-            ax.legend()
+        incr = len(FitOutputEnum)
+        for wkspIndex in range(numGraphs):
+            peaks = self.peaks[wkspIndex].peaks
+            # collect the fit chi-sq parameters for this spectrum, and the fits
+            fitted_peaks = mtd[diagnostic].getItem(incr * wkspIndex + FitOutputEnum.Workspace.value)
+            param_table = mtd[diagnostic].getItem(incr * wkspIndex + FitOutputEnum.Parameters.value).toDict()
+            chisq = param_table["chi2"]
+            self.goodPeaksCount[wkspIndex] = len([peak for chi2, peak in zip(chisq, peaks) if chi2 < self.MAX_CHI_SQ])
+            # prepare the plot area
+            ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
             ax.tick_params(direction="in")
-            ax.set_title(f"Group ID: {i + 1}")
+            ax.set_title(f"Group ID: {wkspIndex + 1}")
+            # plot the data
+            ax.plot(mtd[workspace], wkspIndex=wkspIndex, label="data", normalize_by_bin_width=True)
+            # plot the fitted peaks
+            ax.plot(fitted_peaks, wkspIndex=0, label="fit", color="black", normalize_by_bin_width=True)
+            ax.legend(loc=1)
             # fill in the discovered peaks for easier viewing
-            x, y, _, _ = get_spectrum(mtd[workspace], i, normalize_by_bin_width=True)
+            x, y, _, _ = get_spectrum(mtd[workspace], wkspIndex, normalize_by_bin_width=True)
             # for each detected peak in this group, shade in the peak region
-            for peak in self.peaks[i].peaks:
+            for chi2, peak in zip(chisq, peaks):
+                # areas inside peak bounds (to be shaded)
                 under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]
-                ax.fill_between(x, y, where=under_peaks, color="blue", alpha=0.5)
-            # plot the min value for peaks
+                # the color: blue = GOOD, red = BAD
+                color = "blue" if chi2 < self.MAX_CHI_SQ else "red"
+                alpha = 0.3 if chi2 < self.MAX_CHI_SQ else 0.8
+                # now shade
+                ax.fill_between(x, y, where=under_peaks, color=color, alpha=alpha)
+            # plot the min and max value for peaks
             ax.axvline(x=max(min(x), float(self.fielddMin.field.text())), label="dMin", color="red")
             ax.axvline(x=min(max(x), float(self.fielddMax.field.text())), label="dMax", color="red")
         # resize window and redraw
@@ -189,11 +212,18 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.groupingFileDropdown.setEnabled(True)
 
     def verify(self):
-        empties = [gpl for gpl in self.peaks if len(gpl.peaks) < 4]
+        empties = [gpl for gpl, count in zip(self.peaks, self.goodPeaksCount) if count < self.MIN_PEAKS]
         if len(empties) > 0:
-            msg = "Proper calibration requires at least 4 peaks per group.\n"
+            msg = f"Proper calibration requires at least {self.MIN_PEAKS} well-fit peaks per group.\n"
             for empty in empties:
                 msg = msg + f"\tgroup {empty.groupID} has \t {len(empty.peaks)} peaks\n"
             msg = msg + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
             raise ValueError(msg)
+        tooFews = [gpl for gpl, count in zip(self.peaks, self.goodPeaksCount) if count < self.PREF_PEAKS]
+        if len(tooFews) > 0:
+            msg = f"It is recommended to have at least {self.PREF_PEAKS} well-fit peaks per group.\n"
+            for tooFew in tooFews:
+                msg = msg + f"\tgroup {tooFew.groupID} has \t {len(tooFew.peaks)} peaks\n"
+            msg = msg + "Would you like to continue anyway?"
+            raise ContinueWarning(msg)
         return True

@@ -24,6 +24,7 @@ from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.recipe.GenericRecipe import (
     DetectorPeakPredictorRecipe,
+    PurgeOverlappingPeaksRecipe,
 )
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
@@ -121,7 +122,9 @@ class SousChef(Service):
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
         )
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[GroupPeakList]:
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=True) -> List[GroupPeakList]:
+        # NOTE purging overlapping peaks is necessary for proper functioning inside the DiffCal process
+        # this should not be user-settable, and therefore should not be included inside the FarmFreshIngredients list
         key = (
             ingredients.runNumber,
             ingredients.useLiteMode,
@@ -129,12 +132,17 @@ class SousChef(Service):
             ingredients.crystalDBounds.minimum,
             ingredients.crystalDBounds.maximum,
             ingredients.peakIntensityThreshold,
+            purgePeaks,
         )
         if key not in self._peaksCache:
             ingredients = self.prepPeakIngredients(ingredients)
             res = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=ingredients,
             )
+            if purgePeaks:
+                res = PurgeOverlappingPeaksRecipe().executeRecipe(
+                    DetectorPeaks=res,
+                )
             self._peaksCache[key] = parse_raw_as(List[GroupPeakList], res)
         return self._peaksCache[key]
 

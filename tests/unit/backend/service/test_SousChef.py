@@ -88,6 +88,7 @@ class TestSousChef(unittest.TestCase):
         res = self.instance.prepCalibrantSample(self.ingredients)
         assert res == self.instance.dataFactoryService.lookupService.readCalibrantSample.return_value
 
+    @mock.patch(thisService + "os.path.isfile", mock.Mock(return_value=True))
     @mock.patch(thisService + "PixelGroup")
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     @mock.patch(thisService + "PixelGroupingIngredients")
@@ -216,7 +217,7 @@ class TestSousChef(unittest.TestCase):
     @mock.patch(thisService + "DetectorPeakPredictorRecipe")
     @mock.patch(thisService + "parse_raw_as")
     @mock.patch(thisService + "GroupPeakList")
-    def test_prepDetectorPeaks_nocache(self, GroupPeakList, parse_raw_as, DetectorPeakPredictorRecipe):  # noqa: ARG002
+    def test_prepDetectorPeaks_nocache_nopurge(self, GroupPeakList, parse_raw_as, DetectorPeakPredictorRecipe):  # noqa: ARG002
         key = (
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
@@ -224,6 +225,40 @@ class TestSousChef(unittest.TestCase):
             Config["constants.CrystallographicInfo.dMin"],
             Config["constants.CrystallographicInfo.dMax"],
             self.ingredients.peakIntensityThreshold,
+            False,
+        )
+        # ensure the cache is clear
+        assert self.instance._peaksCache == {}
+
+        self.instance.prepPeakIngredients = mock.Mock()
+        parse_raw_as.side_effect = lambda x, y: [y]  # noqa: ARG005
+
+        res = self.instance.prepDetectorPeaks(self.ingredients, False)
+
+        assert self.instance.prepPeakIngredients.called_once_with(self.ingredients)
+        assert DetectorPeakPredictorRecipe.return_value.executeRecipe.called_once_with(Ingredients=self.ingredients)
+        assert res == [DetectorPeakPredictorRecipe.return_value.executeRecipe.return_value]
+        assert self.instance._peaksCache == {key: [DetectorPeakPredictorRecipe.return_value.executeRecipe.return_value]}
+
+    @mock.patch(thisService + "PurgeOverlappingPeaksRecipe")
+    @mock.patch(thisService + "DetectorPeakPredictorRecipe")
+    @mock.patch(thisService + "parse_raw_as")
+    @mock.patch(thisService + "GroupPeakList")
+    def test_prepDetectorPeaks_nocache_purge(
+        self,
+        GroupPeakList,  # noqa: ARG002
+        parse_raw_as,
+        DetectorPeakPredictorRecipe,
+        PurgeOverlappingPeaksRecipe,
+    ):  # noqa: ARG002
+        key = (
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
+            self.ingredients.focusGroup.name,
+            Config["constants.CrystallographicInfo.dMin"],
+            Config["constants.CrystallographicInfo.dMax"],
+            self.ingredients.peakIntensityThreshold,
+            True,
         )
         # ensure the cache is clear
         assert self.instance._peaksCache == {}
@@ -235,8 +270,8 @@ class TestSousChef(unittest.TestCase):
 
         assert self.instance.prepPeakIngredients.called_once_with(self.ingredients)
         assert DetectorPeakPredictorRecipe.return_value.executeRecipe.called_once_with(Ingredients=self.ingredients)
-        assert res == [DetectorPeakPredictorRecipe.return_value.executeRecipe.return_value]
-        assert self.instance._peaksCache == {key: [DetectorPeakPredictorRecipe.return_value.executeRecipe.return_value]}
+        assert res == [PurgeOverlappingPeaksRecipe.return_value.executeRecipe.return_value]
+        assert self.instance._peaksCache == {key: [PurgeOverlappingPeaksRecipe.return_value.executeRecipe.return_value]}
 
     @mock.patch(thisService + "DetectorPeakPredictorRecipe")
     def test_prepDetectorPeaks_cache(self, DetectorPeakPredictorRecipe):
@@ -247,6 +282,7 @@ class TestSousChef(unittest.TestCase):
             Config["constants.CrystallographicInfo.dMin"],
             Config["constants.CrystallographicInfo.dMax"],
             self.ingredients.peakIntensityThreshold,
+            True,
         )
         # ensure the cache is prepared
         self.instance._peaksCache[key] = [mock.Mock()]

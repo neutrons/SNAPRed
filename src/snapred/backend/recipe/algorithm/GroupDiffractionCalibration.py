@@ -28,6 +28,8 @@ class GroupDiffractionCalibration(PythonAlgorithm):
     One part of diffraction calibration.
     """
 
+    NOISE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
+
     def category(self):
         return "SNAPRed Diffraction Calibration"
 
@@ -267,6 +269,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 OutputCalibrationTable=DIFCpd,
                 MaskWorkspace=self.maskWS,
                 DiagnosticWorkspaces=diagnosticWSgroup,
+                MinimumSignalToNoiseRatio=self.NOISE_2_MIN,
                 # limit to specific spectrum
                 StartWorkspaceIndex=index,
                 StopWorkspaceIndex=index,
