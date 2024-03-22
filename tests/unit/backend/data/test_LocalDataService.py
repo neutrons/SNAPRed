@@ -372,6 +372,50 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
         assert groupingMap.stateId == otherStateId
 
 
+def test_writeGroupingMap_relative_paths():
+    # Test that '_writeGroupingMap' preserves relative-path information.
+    localDataService = LocalDataService()
+    savePath = Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"]
+    try:
+        Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = Resource.getPath(
+            "inputs/pixel_grouping/"
+        )
+
+        with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
+            stateId = "ab8704b0bc2a2342"
+            stateRootPath = Path(tmpDir) / stateId
+            os.makedirs(stateRootPath)
+
+            defaultGroupingMapFilePath = Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
+            groupingMapFilePath = stateRootPath / "groupingMap.json"
+            localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
+
+            # Write a 'groupingMap.json' file to the <state root>, with the _correct_ stateId;
+            #   note that the _value_ of the stateId field is _not_ validated at this stage, except for its format.
+            with open(defaultGroupingMapFilePath, "r") as file:
+                groupingMap = parse_raw_as(GroupingMap, file.read())
+            groupingMap.coerceStateId(stateId)
+            localDataService._writeGroupingMap(stateId, groupingMap)
+
+            # read it back
+            groupingMap = GroupingMap.parse_file(groupingMapFilePath)
+            defaultGroupingMap = GroupingMap.parse_file(defaultGroupingMapFilePath)
+
+            # test that relative paths are preserved
+            relativePathCount = 0
+            for n, focusGroup in enumerate(groupingMap.liteFocusGroups):
+                assert focusGroup == defaultGroupingMap.liteFocusGroups[n]
+                if not Path(focusGroup.definition).is_absolute():
+                    relativePathCount += 1
+            for n, focusGroup in enumerate(groupingMap.nativeFocusGroups):
+                assert focusGroup == defaultGroupingMap.nativeFocusGroups[n]
+                if not Path(focusGroup.definition).is_absolute():
+                    relativePathCount += 1
+            assert relativePathCount > 0
+    finally:
+        Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = savePath
+
+
 @mock.patch(ThisService + "GetIPTS")
 def test_calibrationFileExists(GetIPTS):  # noqa ARG002
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
