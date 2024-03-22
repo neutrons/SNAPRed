@@ -169,8 +169,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                     case wngt.DIFFCAL_MASK:
                         maskWSName = wsName
                     case _:
-                        filename = Path(wsName + ".nxs")
-                        self.instance.dataExportService.exportWorkspace(path, filename, self.sampleWS)
+                        filename = Path(wsName + ".tar")
+                        self.instance.dataExportService.exportRaggedWorkspace(path, filename, self.sampleWS)
         # For the moment, only one set of 'table' + 'mask' workspace is assumed
         if tableWSName or maskWSName:
             filename = Path(tableWSName + ".h5")

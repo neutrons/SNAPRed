@@ -53,5 +53,11 @@ class DataExportService:
         """
         return self.dataService.writeWorkspace(path, filename, workspaceName)
 
+    def exportRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
+        """
+        Write a MatrixWorkspace (derived) workspace to disk in nexus format.
+        """
+        return self.dataService.writeRaggedWorkspace(path, filename, workspaceName)
+
     def initializeState(self, runId: str, name: str):
         return self.dataService.initializeState(runId, name)
