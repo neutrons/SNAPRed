@@ -4,9 +4,7 @@ Glossary
 .. glossary::
 
     ADS
-    MTD
-        Analysis Data Service (ADS, aka Mantid Data (MTD)), the internal database held by :term:`Mantid` of all *named* workspaces.
-        Any workspace referenced "by name", usually by a Mantid algorithm, needs to be registered in this database.
+        TODO
 
     Algorithm
         A set of instructions that can be executed to produce a result.
@@ -103,15 +101,18 @@ Glossary
         A mapping between :term:`grouping-schema <Grouping Schema>` common names, and their file locations on disk.
         File locations may be specified either as *relative* paths, with respect to <instrument.calibration.powder.grouping.home>, or as *absolute* paths.
 
-    HDF5
-        The most recent variant of Hierarchical Data Format (HDF).  A binary file format designed to scalably store and access large scientific data sets.
-
     Grocery
         Within SNAPRed code, this refers to workspace data (as opposed to ingredient data) which are needed for an operation.
         They are requested by handing the Grocery Service a grocery list of workspaces to fetch.
 
     Group Calibration
         TODO
+
+    Grouping Schema
+        A relationship, usually a mapping, between each :term:`detector-id <Detector ID>` in the instrument and an integer group number.
+
+    HDF5
+        The most recent variant of Hierarchical Data Format (HDF).  A binary file format designed to scalably store and access large scientific data sets.
 
     Histogram
         A graphical representation of the distribution of numerical data. It is an estimate of the probability distribution of a
@@ -136,12 +137,12 @@ Glossary
         The architectural layer that provides the single point of interaction between the backend and frontend.
         Agnostic of frontend implementation, it recieves requests from the frontend and forwards them to the Orchestration Layer.
 
+    IPTS
+        TODO
+
     JSON
         Javascript Object Notation (JSON).
         An text-based data representation, used by many applications where a human-editable representation is required.
-
-    IPTS
-        TODO
 
     Layer
         A collection of :term:`Components <Component>` that work together to provide a single unit of high level Developer Requirements
@@ -157,6 +158,10 @@ Glossary
     Mantid Snapper
         A thin wrapper around the Mantid Algorithm API that allows for meta processes to be performed around a queue of algorithms.
         Examples may include: Progress reporting, Quality of Life improvements, multi-threading, etc.
+
+    MTD
+        Analysis Data Service (ADS, aka Mantid Data (MTD)), the internal database held by :term:`Mantid` of all *named* workspaces.
+        Any workspace referenced "by name", usually by a Mantid algorithm, needs to be registered in this database.
 
     Native Mode
         The SNAP instrument uses :term:`detectors<Detector>` comprised of many more :term:`pixels<Pixel>` than are actually required to achieve the target d-spacing resolution.
@@ -178,11 +183,10 @@ Glossary
         The smallest physical sensing element for particle-flux measurement.
         Detector panels are comprised of pixels.
 
-    Pixel Group
-    Grouping Schema
-        A relationship, usually a mapping, between each :term:`detector-id <Detector ID>` in the instrument and an integer group number.
+    Pixel Calibration
+        TODO
 
-    Pixel Grouping
+    Pixel Group
         This is the a pixel grouping scheme that is used within the reduction process.
 
     Pixel Grouping Parameters
@@ -203,10 +207,13 @@ Glossary
         A collection of algorithms or calculations that are triggered by a request to perform a specific task.
         Examples include: Reduction, Calculate Pixel Grouping Parameters, Purge Overlapping Peaks etc.
 
-    :doc:`Recipe Component <developer/architecture/backend/recipe>`
+        :doc:`Recipe Component <developer/architecture/backend/recipe>`
         The architectural Component that provides an abstraction for the execution of data Calculation and Transformation.
         It is responsible for executing Buisness Logic provided by the Product Owner, and returning the results to the caller.
         Examples include: Reduction, Calculate Pixel Grouping Parameters, Purge Overlapping Peaks etc.
+
+    Recipe Component
+        TODO
 
     Resource
         Small, static configuration data stored within the codebase that may easily be looked up via relative path or key.
@@ -216,7 +223,6 @@ Glossary
         It is identified by a unique ID, and is associated with a specific Instrument State and Calibration.
 
     Run Number
-    Run ID
         The unique integer identifier of a Run.  Note that certain facilities (e.g. ISIS SANS) may allow the addition of non-integer suffixes to the run number string.
 
     Service Component
@@ -243,15 +249,8 @@ Glossary
     State
         The static positions of the detectors and any other distict configurable characteristics of the :term:`Instrument` recorded as part of a :term:`Run`.
 
-    State
-        The static positions of the detectors and any other distict configurable characteristics of the :term:`Instrument` recorded as part of a :term:`Run`.
-
     State Folder
         The folder that contains all configurable data unique to a specific :term:`State`. It is named after the hash of the :term:`State` it represents.
-
-    State ID
-       A secure-hash algorithm (SHA) generated ID associated with a specific :term:`instrument state <Instrument State>`.
-       This ID is usually represented by its 16-character hexadecimal digest.
 
     State ID
        A secure-hash algorithm (SHA) generated ID associated with a specific :term:`instrument state <Instrument State>`.
@@ -275,3 +274,7 @@ Glossary
 
     Workspace List
         TODO
+
+    XML
+        Extensible Markup Language (XML).
+        A fully generalizable text-based markup language, allowing the representation of any type of data.
