@@ -9,12 +9,12 @@ class WorkflowNodeView(QWidget):
         self.layout = QGridLayout()
         self.setLayout(self.layout)
         # add a back and forward button to the top left
-        self.backButton = QPushButton("Back \U00002B05", self)
+        self.backButton = QPushButton("Back \U00002b05", self)
         self.layout.addWidget(self.backButton, 0, 0)
         if position == 0:
             self.backButton.setVisible(False)
 
-        self.forwardButton = QPushButton("Forward \U000027A1", self)
+        self.forwardButton = QPushButton("Forward \U000027a1", self)
         self.layout.addWidget(self.forwardButton, 0, 1)
         self.forwardButton.setVisible(False)
 
@@ -24,13 +24,13 @@ class WorkflowNodeView(QWidget):
         self.continueButton = QPushButton("Continue \U00002705", self)
         self.layout.addWidget(self.continueButton, 2, 0)
 
-        self.skipButton = QPushButton("Skip \U000023ED", self)
+        self.skipButton = QPushButton("Skip \U000023ed", self)
         self.skipButton.setVisible(False)
 
-        self.iterateButton = QPushButton("Iterate \U0001F504", self)
+        self.iterateButton = QPushButton("Iterate \U0001f504", self)
         self.iterateButton.setVisible(False)
 
-        self.cancelButton = QPushButton("Cancel \U0000274C", self)
+        self.cancelButton = QPushButton("Cancel \U0000274c", self)
         self.layout.addWidget(self.cancelButton, 2, 1)
 
     def reset(self):
