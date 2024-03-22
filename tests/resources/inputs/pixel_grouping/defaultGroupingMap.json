@@ -2,14 +2,30 @@
   "stateId": "aabbbcccdddeeeff",
   "liteFocusGroups": [
     {
-        "name": "name",
-        "definition": "relative/path/to/file"
-    }
+        "name": "all",
+        "definition": "SNAPFocGroup_All.lite.hdf"
+    },
+    {
+        "name": "column",
+        "definition": "SNAPFocGroup_Column.lite.hdf"
+    },
+    {
+        "name": "bank",
+        "definition": "SNAPFocGroup_Bank.lite.hdf"
+    }    
   ],
   "nativeFocusGroups": [
     {
-        "name": "name",
-        "definition": "relative/path/to/file"
+        "name": "all",
+        "definition": "SNAPFocGroup_All.hdf"
+    },
+    {
+        "name": "column",
+        "definition": "SNAPFocGroup_Column.hdf"
+    },
+    {
+        "name": "bank",
+        "definition": "SNAPFocGroup_Bank.hdf"
     }
   ]
 }

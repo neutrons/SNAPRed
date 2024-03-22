@@ -31,9 +31,9 @@ class GroupingMap(BaseModel):
     # * verify that this GroupingMap's file is at its expected location (e.g. it hasn't been moved or copied);
     stateId: ObjectSHA
 
-    # Although the public interface of `GroupingMap` is a mapping:
-    # *  for ease of editing, its JSON file is written using a list format:
-    # *  relative vs. absolute path format must also be retained in the JSON representation.
+    # Although the public interface to `GroupingMap` is a mapping, for ease of editing:
+    # *  the JSON representation is written using a list format:
+    # *  relative vs. absolute path information is retained in the representation.
     nativeFocusGroups: List[FocusGroup] = Field(default=None)
     liteFocusGroups: List[FocusGroup] = Field(default=None)
 
@@ -116,3 +116,8 @@ class GroupingMap(BaseModel):
         v["_liteMap"] = groups["lite"]
         v["_isDirty"] = False
         return v
+
+    class Config:
+        # All other forms of _exclusion_ do not seem to work in Pydantic 1.10 (for this `GroupingMap` class, specifically).
+        fields = {"liteFocusGroups": {"include": True}, "nativeFocusGroups": {"include": True}, "stateId": {"include": True}}
+ 
