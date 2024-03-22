@@ -14,4 +14,9 @@ TODO
    normalization/normalization_workflow
    normalization/smoothing_slider
    success_dialog
-   calibration/
+   calibration/calibration_assessment_presenter
+   calibration/diffcal_assessment_view
+   calibration/diffcal_request_view
+   calibration/diffcal_save_view
+   calibration/diffcal_tweak_peak_view
+   calibration/diffcal_workflow

@@ -33,6 +33,9 @@ Glossary
         This is done by comparing the diffraction data to a known standard or previous Calibration, and adjusting the instrument to match.
         This is done by a series of algorithms that are triggered by a Recipe.
 
+    Calibration Folder
+        TODO
+
     Calibration Index
         The data/file that contains a ledger of which Calibration applies to which Run in a given Instrument State.
 
@@ -80,6 +83,9 @@ Glossary
     Grocery
         Within SNAPRed code, this refers to workspace data (as opposed to ingredient data) which are needed for an operation.
         They are requested by handing the Grocery Service a grocery list of workspaces to fetch.
+
+    Group Calibration
+        TODO
 
     Histogram
         A graphical representation of the distribution of numerical data. It is an estimate of the probability distribution of a
@@ -132,6 +138,9 @@ Glossary
     Orchestration Layer
         The architectural layer that handles the stitching together of the various :term:`Service Components <Service Component>`, `Data Components <Data Component>`, and `Recipe Components <Recipe Component>` to achieve and abstract goal.
         This may include handling :term:`User Requests <User Request>`, or performing :term:`Data State Management`.
+
+    Pixel Calibration
+        TODO
 
     Pixel Grouping
         This is the a pixel grouping scheme that is used within the reduction process.
@@ -195,17 +204,20 @@ Glossary
         The folder that contains all configurable data unique to a specific :term:`State`. It is named after the hash of the :term:`State` it represents.
 
     Vanadium
-        TODO
-
-    Vanadium
         A reference material commonly used in neutron diffraction experiments for calibration and normalization
         purposes due to its well-understood scattering properties. Vanadium calibration is essential for
         instrument performance verification and for correcting systematic errors in diffraction data. It plays a
         crucial role in the :term:`Calibration` and :term:`Normalization` processes within SNAP, ensuring accurate
         and reliable data analysis.
 
+    User
+        TODO
+
     User Request
         A request made by the backend consumer to perform a specific task given sufficent input data.
 
     workspace
         A data object used by mantid to store most data, including neutron scattering data and grouping maps.
+
+    Workspace List
+        TODO

@@ -21,7 +21,7 @@ Attributes:
   calibration versions and tracking the evolution of calibration parameters over time.
 
 - name (str): A descriptive name assigned to the calibration. This name aids in the identification and differentiation of calibration
- sets within datasets or systems, enhancing data management and retrieval.
+  sets within datasets or systems, enhancing data management and retrieval.
 
 - version (int, default=0): Specifies the version number of the calibration, starting from 0. Versioning allows for the systematic
   tracking of changes and updates to calibration parameters, supporting iterative improvements and the maintenance of calibration

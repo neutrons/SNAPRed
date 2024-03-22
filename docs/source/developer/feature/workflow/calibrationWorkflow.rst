@@ -6,7 +6,7 @@ Requirements
 - :term:`Run Number`
 - :term:`State Folder` has been Initialized (see `../state/README.md`)
 - :term:`Calibrant Samples` exist in the Config['instrument.calibration.sample.home'] directory. (see `../calibrant/README.md`)
-- :term:`Pixel Grouping`s exist in the State Folder associated with the Run Number (see `../pixel_grouping/README.md`)\
+- :term:`Pixel Grouping's <Pixel Grouping>` exist in the State Folder associated with the Run Number (see `../pixel_grouping/README.md`)\
 
 Steps
 -----
