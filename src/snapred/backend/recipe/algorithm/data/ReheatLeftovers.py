@@ -58,33 +58,29 @@ class ReheatLeftovers(PythonAlgorithm):
         self.unbagGroceries()
         self.validate()
 
-        # unzip the tar file
-        timestamp = str(time.time())
-        tempFolderName = Config["temp.directory"]
-        extractPath = tempfile.mkdtemp(prefix=f"{tempFolderName}/reheat_{timestamp}_")
+        with tempfile.TemporaryDirectory(prefix="/tmp/") as extractPath:
+            with tarfile.open(self.filename, "r") as tar:
+                tar.extractall(path=extractPath, filter="data")
 
-        with tarfile.open(self.filename, "r") as tar:
-            tar.extractall(path=extractPath, filter="data")
-
-        # collected all files in extractPath
-        files = glob.glob(f"{extractPath}/*")
-        files = [f for f in files if f.endswith(".nxs")]
-        files.sort()
-        ws = None
-        for file in files:
-            index = int(file.split("/")[-1].split(".")[0])
-            if ws is None:
-                self.mantidSnapper.LoadNexus(
-                    f"Loading Spectra {index}", Filename=file, OutputWorkspace=self.outputWSName
-                )
-                ws = self.outputWSName
-            else:
-                tmp = f"{self.outputWSName}_{index}"
-                self.mantidSnapper.LoadNexus(f"Loading Spectra {index}", Filename=file, OutputWorkspace=tmp)
-                self.mantidSnapper.ConjoinWorkspaces(
-                    f"Conjoining Spectra {index}", InputWorkspace1=ws, InputWorkspace2=tmp, CheckOverlapping=False
-                )
-            self.mantidSnapper.executeQueue()
+            # collected all files in extractPath
+            files = glob.glob(f"{extractPath}/*")
+            files = [f for f in files if f.endswith(".nxs")]
+            files.sort()
+            ws = None
+            for file in files:
+                index = int(file.split("/")[-1].split(".")[0])
+                if ws is None:
+                    self.mantidSnapper.LoadNexus(
+                        f"Loading Spectra {index}", Filename=file, OutputWorkspace=self.outputWSName
+                    )
+                    ws = self.outputWSName
+                else:
+                    tmp = f"{self.outputWSName}_{index}"
+                    self.mantidSnapper.LoadNexus(f"Loading Spectra {index}", Filename=file, OutputWorkspace=tmp)
+                    self.mantidSnapper.ConjoinWorkspaces(
+                        f"Conjoining Spectra {index}", InputWorkspace1=ws, InputWorkspace2=tmp, CheckOverlapping=False
+                    )
+                self.mantidSnapper.executeQueue()
 
         ws = mtd[self.outputWSName]
         for index in range(0, ws.getNumberHistograms()):

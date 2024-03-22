@@ -61,6 +61,8 @@ calibration:
       extension: .nxs
       format: "{}_calibration_reduction_result"
   diffraction:
+    output:
+      extension: .tar
     convergenceThreshold: 0.5
     peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10
@@ -124,6 +126,8 @@ logging:
 samples:
   home: ${instrument.calibration.home}/CalibrantSamples
 
+temp:
+  directory: ~/SNAPRed
 
 test:
   config:

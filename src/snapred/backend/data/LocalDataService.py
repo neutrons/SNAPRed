@@ -606,8 +606,7 @@ class LocalDataService:
         for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []):
             # Rebuild the filename to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
-            ext = "tar"
-            nameBuilder = wng.diffCalOutput().runNumber(record.runNumber).version(record.version)
+            ext = ".tar"
             if wng.Units.TOF.lower() in wsName:
                 filename = Path(
                     wng.diffCalOutput()

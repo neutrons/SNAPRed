@@ -47,8 +47,9 @@ class WrapLeftovers(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def validate(self):
-        if self.inputWS.getNumberHistograms() > 30:
-            raise ValueError("Too many histograms to save, this isnt the write tool for the job!")
+        numHisto = self.inputWS.getNumberHistograms()
+        if numHisto > 30:
+            raise ValueError(f"Too many histograms to save, this isnt the write tool for the job!: {numHisto}")
 
     def unbagGroceries(self):
         self.inputWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]

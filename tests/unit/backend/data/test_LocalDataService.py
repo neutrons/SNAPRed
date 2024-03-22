@@ -805,7 +805,16 @@ def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
         # Create sample workspaces.
         CreateSampleWorkspace(
             OutputWorkspace=outputTOFWSName,
+            Function="One Peak",
+            NumBanks=1,
+            NumMonitors=1,
+            BankPixelWidth=5,
+            NumEvents=500,
+            Random=True,
             XUnit="TOF",
+            XMin=0,
+            XMax=8000,
+            BinWidth=100,
         )
         LoadInstrument(
             Workspace=outputTOFWSName,
@@ -814,7 +823,16 @@ def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
         )
         CreateSampleWorkspace(
             OutputWorkspace=outputDSPWSName,
+            Function="One Peak",
+            NumBanks=1,
+            NumMonitors=1,
+            BankPixelWidth=5,
+            NumEvents=500,
+            Random=True,
             XUnit="DSP",
+            XMin=0,
+            XMax=8000,
+            BinWidth=100,
         )
         LoadInstrument(
             Workspace=outputDSPWSName,
@@ -837,7 +855,7 @@ def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
             for wsName in wsNames:
                 ws = mtd[wsName]
                 filename = (
-                    Path(wsName + ".nxs")
+                    Path(wsName + Config["calibration.diffraction.output.extension"])
                     if not (isinstance(ws, ITableWorkspace) or isinstance(ws, MaskWorkspace))
                     else diffCalFilename
                 )
@@ -981,7 +999,9 @@ def test_writeNormalizationWorkspaces(mockConstructNormalizationCalibrationDataP
         localDataService.writeNormalizationWorkspaces(testNormalizationRecord)
 
         for wsName in testNormalizationRecord.workspaceNames:
-            filename = Path(wsName + "_" + wnvf.formatVersion(version) + ".nxs")
+            filename = Path(
+                wsName + "_" + wnvf.formatVersion(version) + Config["calibration.diffraction.output.extension"]
+            )
             assert (basePath / filename).exists()
         mtd.clear()
 
