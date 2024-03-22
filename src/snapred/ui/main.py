@@ -80,8 +80,9 @@ class SNAPRedGUI(QMainWindow):
             from qtpy.QtWidgets import QMessageBox
 
             msg = "Sorry!  Error encountered while opening Calibration Panel.\n"
-            msg = msg + "This is usually caused by an issue with your file tree structure.\n"
-            msg = msg + "Contact an IS or CIS for help in resolving the file system issue."
+            msg = msg + "This is usually caused by an issue with the file tree.\n"
+            msg = msg + "An expert user can correct this by editing the application.yml file.\n"
+            msg = msg + "Contact your IS or CIS for help in resolving this issue."
             errorPopup = QMessageBox()
             errorPopup.setIcon(QMessageBox.Critical)
             errorPopup.setText(msg)
