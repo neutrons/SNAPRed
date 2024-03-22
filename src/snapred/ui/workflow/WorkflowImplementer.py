@@ -7,6 +7,7 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
+from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.view.IterateView import IterateView
 from snapred.ui.widget.ActionPrompt import ActionPrompt
 from snapred.ui.widget.Workflow import Workflow
@@ -24,6 +25,7 @@ class WorkflowImplementer:
         self.renameTemplate = "{workspaceName}_{iteration:02d}"
         self.parent = parent
         self.workflow: Workflow = None
+        self.responseHandler = SNAPResponseHandler(self.parent)
 
     def _iterate(self, workflowPresenter):
         # rename output workspaces
@@ -67,14 +69,10 @@ class WorkflowImplementer:
         return response
 
     def verifyForm(self, form):
-        form.verify()
-        return True
+        return form.verify()
 
     def _handleComplications(self, result):
-        if result.code >= ResponseCode.ERROR:
-            raise RuntimeError(result.message)
-        if result.code >= ResponseCode.RECOVERABLE:
-            raise RecoverableException(result.message, "state")
+        self.responseHandler.rethrow(result)
 
     @property
     def widget(self):

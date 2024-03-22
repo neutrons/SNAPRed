@@ -66,7 +66,8 @@ calibration:
     maximumOffset: 10
     maxDSpaceShiftFactor: 2.5
     peakFunction: GAUSSIAN
-    minimumPeaksPerGroup: 4
+    minimumPeaksPerGroup: 2
+    preferredPeaksPerGroup: 4
   parameters:
     default:
       # degrees
@@ -80,6 +81,8 @@ calibration:
         - 2.0
       peakTailCoefficient: 2.0
       smoothing: 0.5
+  fitting:
+    minSignal2Noise: 10.0
 
 mantid:
   workspace:
@@ -90,7 +93,7 @@ mantid:
         diffCal:
           input: "{unit},{runNumber},raw"
           table: "diffract_consts,{runNumber},{version}"
-          output: "{unit},diffoc,{runNumber},{version}"
+          output: "{unit},{group},{runNumber},{version}"
           mask: "diffract_consts,mask,{runNumber},{version}"
           metric: "calib_metrics,{metricName},{runNumber},{version}"
           timedMetric: "calib_metrics,{metricName},{runNumber},{timestamp}"
@@ -137,3 +140,6 @@ constants:
 
   DetectorPeakPredictor:
     fwhm: 1.17741002252 # used to convert gaussian to fwhm (2 * log_e(2))
+
+  GroupDiffractionCalibration:
+    MaxChiSq: 100

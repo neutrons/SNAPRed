@@ -66,9 +66,10 @@ class MaskDetectorFlags(PythonAlgorithm):
 
         # Warning: <detector info>.indexOf(id_) != <mask workspace index of detectors excluding monitors>
         for id_ in ids:
-            if detectors.isMonitor(detectors.indexOf(int(id_))):
+            ix = detectors.indexOf(int(id_))
+            if detectors.isMonitor(ix):
                 continue
-            detectors.setMasked(int(id_), self.maskWS.isMasked(int(id_)))
+            detectors.setMasked(ix, self.maskWS.isMasked(int(id_)))
         self.setPropertyValue("OutputWorkspace", self.outputWSName)
 
 

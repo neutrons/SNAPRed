@@ -7,6 +7,7 @@ import pytest
 from pydantic import BaseModel
 from qtpy.QtWidgets import QWidget
 from snapred.backend.dao.SNAPRequest import SNAPRequest
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.meta.decorators._Resettable import Resettable
@@ -88,11 +89,8 @@ def throwsStateException():
 
 
 def test_stateExceptionHandler():
-    try:
+    with pytest.raises(StateValidationException):
         throwsStateException()
-        pytest.fail("should have thrown an exception")
-    except StateValidationException:
-        assert True
 
 
 @ExceptionHandler(RecoverableException, "state")
@@ -101,11 +99,8 @@ def throwsRecoverableException():
 
 
 def test_recoverableExceptionHandler():
-    try:
+    with pytest.raises(RecoverableException):
         throwsRecoverableException()
-        pytest.fail("should have thrown an exception")
-    except RecoverableException:
-        assert True
 
 
 def test_recoverableExceptionKwargs():
@@ -113,6 +108,16 @@ def test_recoverableExceptionKwargs():
     exceptionString = f"Error accessing {exceptionPath}"
     with pytest.raises(RecoverableException, match=exceptionString):
         raise RecoverableException(RuntimeError(exceptionString), exceptionString, extraInfo="some extra info")
+
+
+@ExceptionHandler(ContinueWarning)
+def throwsContinueWarning():
+    raise RuntimeError("This is a warning.  Heed it.")
+
+
+def test_continueWarningHandler():
+    with pytest.raises(ContinueWarning):
+        throwsContinueWarning()
 
 
 def test_builder():

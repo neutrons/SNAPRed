@@ -1,5 +1,4 @@
 Backend
-=======
 
 
 .. _summary:
@@ -69,6 +68,7 @@ For a simplified breakdown of where you may want to implement parts of your code
    api/normalization/normalization_service
    api/normalization/normalization
    api/object_sha
+   data/index
    recipe
    grocery_service
    api/normalization/smooth_data_excluding_peaks_request

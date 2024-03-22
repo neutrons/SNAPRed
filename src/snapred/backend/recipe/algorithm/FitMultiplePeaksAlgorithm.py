@@ -13,6 +13,7 @@ from mantid.api import (
     mtd,
 )
 from mantid.kernel import Direction, StringListValidator
+from mantid.simpleapi import DeleteWorkspaces
 from pydantic import parse_raw_as
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
@@ -33,7 +34,7 @@ class FitOutputEnum(Enum):
 
 
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
-    PEAK_INTENSITY_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
+    NOISE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
 
     def category(self):
         return "SNAPRed Data Processing"
@@ -51,12 +52,6 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             doc="Input list of peaks to be fit",
         )
         self.declareProperty(
-            "DetectorPeakIngredients",
-            defaultValue="",
-            direction=Direction.Input,
-            doc="Ingredients for DetectorPeakPredictor to find the lsit of peaks",
-        )
-        self.declareProperty(
             "PeakType", "Gaussian", StringListValidator(allowed_peak_type_list), direction=Direction.Input
         )
         self.declareProperty("OutputWorkspaceGroup", defaultValue="fitPeaksWSGroup", direction=Direction.Output)
@@ -67,62 +62,50 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         ws = WorkspaceFactory.create("Workspace2D", NVectors=1, XLength=len(aList), YLength=len(aList))
         ws.setX(0, np.asarray(aList))
         # register ws in mtd
-        mtd.add(name, ws)
+        mtd.addOrReplace(name, ws)
         return ws
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
-        waysToGetPeaks = ["DetectorPeaks", "DetectorPeakIngredients"]
-        definedWaysToGetPeaks = [x for x in waysToGetPeaks if not self.getProperty(x).isDefault]
-        if len(definedWaysToGetPeaks) == 0:
-            msg = "Purse peaks requires either a list of peaks, or ingredients to detect peaks"
-            errors["DetectorPeaks"] = msg
-            errors["DetectorPeakIngredients"] = msg
-        elif len(definedWaysToGetPeaks) == 2:
-            logger.warn(
-                """Both a list of detector peaks and ingredients were given;
-                the list will be used and ingredients ignored"""
-            )
         return errors
 
+    def chopIngredients(self, ingredients: List[GroupPeakList]):
+        self.groupIDs = []
+        self.reducedList = {}
+        for groupPeakList in ingredients:
+            self.groupIDs.append(groupPeakList.groupID)
+            self.reducedList[groupPeakList.groupID] = groupPeakList.peaks
+
+    def unbagGroceries(self):
+        self.inputWorkspaceName = self.getPropertyValue("Inputworkspace")
+        self.outputWorkspaceName = self.getPropertyValue("OutputWorkspaceGroup")
+        self.outputWorkspace = WorkspaceGroup()
+        if mtd.doesExist(self.outputWorkspaceName):
+            DeleteWorkspaces(list(mtd[self.outputWorkspaceName].getNames()))
+        mtd.addOrReplace(self.outputWorkspaceName, self.outputWorkspace)
+
     def PyExec(self):
-        inputWorkspaceName = self.getPropertyValue("Inputworkspace")
-        outputWorkspaceName = self.getPropertyValue("OutputWorkspaceGroup")
         peakType = self.getPropertyValue("PeakType")
+        reducedPeakList = parse_raw_as(List[GroupPeakList], self.getPropertyValue("DetectorPeaks"))
+        self.chopIngredients(reducedPeakList)
+        self.unbagGroceries()
 
-        peakString = self.mantidSnapper.PurgeOverlappingPeaksAlgorithm(
-            "Purging overlapping peaks...",
-            DetectorPeaks=self.getPropertyValue("DetectorPeaks"),
-            DetectorPeakIngredients=self.getPropertyValue("DetectorPeakIngredients"),
-        )
-        self.mantidSnapper.executeQueue()
-        reducedPeakList = parse_raw_as(List[GroupPeakList], peakString.get())
-
-        outputWorkspace = WorkspaceGroup()
-        mtd.add(outputWorkspaceName, outputWorkspace)
-
-        groupIDs = []
-        reducedList = {}
-        for groupPeakList in reducedPeakList:
-            groupIDs.append(groupPeakList.groupID)
-            reducedList[groupPeakList.groupID] = groupPeakList.peaks
-
-        for index, groupID in enumerate(groupIDs):
+        for index, groupID in enumerate(self.groupIDs):
             outputNames = [None] * len(FitOutputEnum)
-            outputNames[FitOutputEnum.PeakPosition.value] = f"{inputWorkspaceName}_fitted_peakpositions_{index}"
-            outputNames[FitOutputEnum.Parameters.value] = f"{inputWorkspaceName}_fitted_params_{index}"
-            outputNames[FitOutputEnum.Workspace.value] = f"{inputWorkspaceName}_fitted_{index}"
-            outputNames[FitOutputEnum.ParameterError.value] = f"{inputWorkspaceName}_fitted_params_err_{index}"
+            outputNames[FitOutputEnum.PeakPosition.value] = f"{self.outputWorkspaceName}_fitted_peakpositions_{index}"
+            outputNames[FitOutputEnum.Parameters.value] = f"{self.outputWorkspaceName}_fitted_params_{index}"
+            outputNames[FitOutputEnum.Workspace.value] = f"{self.outputWorkspaceName}_fitted_{index}"
+            outputNames[FitOutputEnum.ParameterError.value] = f"{self.outputWorkspaceName}_fitted_params_err_{index}"
 
             peakCenters = []
             peakLimits = []
-            for peak in reducedList[groupID]:
+            for peak in self.reducedList[groupID]:
                 peakCenters.append(peak.position.value)
                 peakLimits.extend([peak.position.minimum, peak.position.maximum])
 
             self.mantidSnapper.ExtractSingleSpectrum(
                 "Extract Single Spectrum...",
-                InputWorkspace=inputWorkspaceName,
+                InputWorkspace=self.inputWorkspaceName,
                 OutputWorkspace="ws2fit",
                 WorkspaceIndex=index,
             )
@@ -139,18 +122,18 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 FittedPeaksWorkspace=outputNames[FitOutputEnum.Workspace.value],
                 ConstrainPeakPositions=True,
                 OutputParameterFitErrorsWorkspace=outputNames[FitOutputEnum.ParameterError.value],
+                MinimumSignalToNoiseRatio=self.NOISE_2_MIN,
             )
             self.mantidSnapper.executeQueue()
             for output in outputNames:
-                outputWorkspace.add(output)
+                self.outputWorkspace.add(output)
 
         self.mantidSnapper.WashDishes(
             "Deleting fitting workspace...",
             Workspace="ws2fit",
         )
         self.mantidSnapper.executeQueue()
-        self.setProperty("OutputWorkspaceGroup", outputWorkspace.name())
-        return outputWorkspace
+        self.setProperty("OutputWorkspaceGroup", self.outputWorkspace.name())
 
 
 AlgorithmFactory.subscribe(FitMultiplePeaksAlgorithm)

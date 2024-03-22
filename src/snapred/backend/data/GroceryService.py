@@ -185,10 +185,10 @@ class GroceryService:
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
-    def _createDiffcalOutputWorkspaceFilename(self, runNumber: str, version: str, unit: str) -> str:
+    def _createDiffcalOutputWorkspaceFilename(self, runNumber: str, version: str, unit: str, group: str) -> str:
         return str(
             Path(self._getCalibrationDataPath(runNumber, version))
-            / (self._createDiffcalOutputWorkspaceName(runNumber, version, unit) + ".nxs")
+            / (self._createDiffcalOutputWorkspaceName(runNumber, version, unit, group) + ".nxs")
         )
 
     def _createDiffcalTableFilename(self, runNumber: str, version: str) -> str:
@@ -224,8 +224,8 @@ class GroceryService:
     def _createDiffcalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runNumber).build()
 
-    def _createDiffcalOutputWorkspaceName(self, runNumber: str, version: str, unit: str) -> WorkspaceName:
-        return wng.diffCalOutput().unit(unit).runNumber(runNumber).version(version).build()
+    def _createDiffcalOutputWorkspaceName(self, runNumber: str, version: str, unit: str, group: str) -> WorkspaceName:
+        return wng.diffCalOutput().unit(unit).runNumber(runNumber).version(version).group(group).build()
 
     def _createDiffcalTableWorkspaceName(self, runNumber: str, version: str = "") -> WorkspaceName:
         return wng.diffCalTable().runNumber(runNumber).version(version).build()
@@ -695,6 +695,7 @@ class GroceryService:
         """
         groceries = []
         for item in groceryList:
+            print(item)
             match item.workspaceType:
                 # for neutron data stored in a nexus file
                 case "neutron":
@@ -714,13 +715,15 @@ class GroceryService:
                 # for diffraction-calibration workspaces
                 case "diffcal_output":
                     diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(
-                        item.runNumber, item.version, item.unit
+                        item.runNumber, item.version, item.unit, item.groupingScheme
                     )
                     if item.isOutput:
                         res = {"result": True, "workspace": diffcalOutputWorkspaceName}
                     else:
                         res = self.fetchWorkspace(
-                            self._createDiffcalOutputWorkspaceFilename(item.runNumber, item.version, item.unit),
+                            self._createDiffcalOutputWorkspaceFilename(
+                                item.runNumber, item.version, item.unit, item.groupingScheme
+                            ),
                             diffcalOutputWorkspaceName,
                         )
                 case "diffcal_table":

@@ -7,6 +7,7 @@ from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
     DiffractionCalibrationRequest,
+    FitMultiplePeaksRequest,
     FocusSpectraRequest,
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
@@ -176,23 +177,20 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.prevDMax = payload.crystalDMax
         self.prevThreshold = payload.peakIntensityThreshold
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
+        self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}"
 
         # focus the workspace to view the peaks
-        payload = FocusSpectraRequest(
-            runNumber=self.runNumber,
-            useLiteMode=self.useLiteMode,
-            focusGroup=self.focusGroups[self.focusGroupPath],
-            inputWorkspace=self.groceries["inputWorkspace"],
-            groupingWorkspace=self.groceries["groupingWorkspace"],
+        self._renewFocus(self.prevGroupingIndex)
+        response = self._renewFitPeaks()
+
+        self._tweakPeakView.updateGraphs(
+            self.focusedWorkspace,
+            self.ingredients.groupedPeakLists,
+            self.fitPeaksDiagnostic,
         )
-        response = self.request(path="calibration/focus", payload=payload.json())
-        self.focusedWorkspace = response.data[0]
-        self._tweakPeakView.updateGraphs(self.focusedWorkspace, self.ingredients.groupedPeakLists)
         return response
 
     def onValueChange(self, groupingIndex, dMin, dMax, peakThreshold):
-        if groupingIndex < 0:
-            raise RuntimeError("YOU IDIOT")
         self._tweakPeakView.disableRecalculateButton()
 
         self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
@@ -203,13 +201,19 @@ class DiffCalWorkflow(WorkflowImplementer):
         thresholdChanged = peakThreshold != self.prevThreshold
         if dMinValueChanged or dMaxValueChanged or thresholdChanged:
             self._renewIngredients(dMin, dMax, peakThreshold)
+            self._renewFitPeaks()
 
         # if the grouping file changes, load new grouping and refocus
         if groupingIndex != self.prevGroupingIndex:
-            self._renewFocus(groupingIndex)
             self._renewIngredients(dMin, dMax, peakThreshold)
+            self._renewFocus(groupingIndex)
+            self._renewFitPeaks()
 
-        self._tweakPeakView.updateGraphs(self.focusedWorkspace, self.ingredients.groupedPeakLists)
+        self._tweakPeakView.updateGraphs(
+            self.focusedWorkspace,
+            self.ingredients.groupedPeakLists,
+            self.fitPeaksDiagnostic,
+        )
 
         # renable button when graph is updated
         self._tweakPeakView.enableRecalculateButton()
@@ -250,6 +254,14 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.focusedWorkspace = response.data[0]
         self.groceries["groupingWorkspace"] = response.data[1]
         return response
+
+    def _renewFitPeaks(self):
+        payload = FitMultiplePeaksRequest(
+            inputWorkspace=self.focusedWorkspace,
+            outputWorkspaceGroup=self.fitPeaksDiagnostic,
+            detectorPeaks=self.ingredients.groupedPeakLists,
+        )
+        return self.request(path="calibration/fitpeaks", payload=payload.json())
 
     def _triggerDiffractionCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView

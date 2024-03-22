@@ -121,9 +121,9 @@ class SaveGroupingDefinition(PythonAlgorithm):
                 return errors
             groupingFileExt = pathlib.Path(groupingFilename).suffix[1:].upper()
             if groupingFileExt not in self.all_extensions:
-                errors[
-                    "GroupingFilename"
-                ] = f"GroupingFilename has an unsupported file name extension {groupingFileExt}"
+                errors["GroupingFilename"] = (
+                    f"GroupingFilename has an unsupported file name extension {groupingFileExt}"
+                )
 
         # check that the output file name has a supported extension
         outputFilename = self.getPropertyValue("OutputFilename")

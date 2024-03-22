@@ -23,6 +23,7 @@ from snapred.backend.dao.request import (
     CalibrationLoadAssessmentRequest,
     DiffractionCalibrationRequest,
     FarmFreshIngredients,
+    FitMultiplePeaksRequest,
     FocusSpectraRequest,
     InitializeStateRequest,
 )
@@ -56,7 +57,6 @@ logger = snapredLogger.getLogger(__name__)
 # import pdb
 @Singleton
 class CalibrationService(Service):
-
     """
 
     The CalibrationService orchestrates a suite of calibration processes, integrating various components
@@ -87,6 +87,7 @@ class CalibrationService(Service):
         self.registerPath("ingredients", self.prepDiffractionCalibrationIngredients)
         self.registerPath("groceries", self.fetchDiffractionCalibrationGroceries)
         self.registerPath("focus", self.focusSpectra)
+        self.registerPath("fitpeaks", self.fitPeaks)
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
         self.registerPath("initializeState", self.initializeState)
@@ -141,10 +142,10 @@ class CalibrationService(Service):
         ).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.specialOrder().name("outputTOFWorkspace").diffcal_output(request.runNumber).unit(
             wng.Units.TOF
-        ).useLiteMode(request.useLiteMode).add()
+        ).group(request.focusGroup.name).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.specialOrder().name("outputDSPWorkspace").diffcal_output(request.runNumber).unit(
             wng.Units.DSP
-        ).useLiteMode(request.useLiteMode).add()
+        ).group(request.focusGroup.name).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.specialOrder().name("calibrationTable").diffcal_table(request.runNumber).useLiteMode(
             request.useLiteMode
         ).add()
@@ -193,6 +194,14 @@ class CalibrationService(Service):
                 OutputWorkspace=focusedWorkspace,
             )
         return focusedWorkspace, groupingWorkspace
+
+    @FromString
+    def fitPeaks(self, request: FitMultiplePeaksRequest):
+        return FitMultiplePeaksRecipe().executeRecipe(
+            InputWorkspace=request.inputWorkspace,
+            DetectorPeaks=request.detectorPeaks,
+            OutputWorkspaceGroup=request.outputWorkspaceGroup,
+        )
 
     @FromString
     def save(self, request: CalibrationExportRequest):
@@ -295,9 +304,13 @@ class CalibrationService(Service):
             # The specific property name used here will not be used later, but there must be no collisions.
             self.groceryClerk.name(wngt.DIFFCAL_OUTPUT + "_" + str(n).zfill(4))
             if wng.Units.TOF.lower() in wsName:
-                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.TOF).add()
+                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.TOF).group(
+                    calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
+                ).add()
             elif wng.Units.DSP.lower() in wsName:
-                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.DSP).add()
+                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.DSP).group(
+                    calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
+                ).add()
             else:
                 raise RuntimeError(
                     f"cannot load a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
@@ -331,19 +344,21 @@ class CalibrationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
         )
-        ingredients = self.sousChef.prepPeakIngredients(farmFresh)
+        pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
+        detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh)
 
         # TODO: We Need to Fit the Data
         fitResults = FitMultiplePeaksRecipe().executeRecipe(
-            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0], DetectorPeakIngredients=ingredients
+            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0],
+            DetectorPeaks=detectorPeaks,
         )
-        metrics = self._collectMetrics(fitResults, request.focusGroup, ingredients.pixelGroup)
+        metrics = self._collectMetrics(fitResults, request.focusGroup, pixelGroup)
 
         record = CalibrationRecord(
             runNumber=request.run.runNumber,
-            crystalInfo=ingredients.crystalInfo,
+            crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
             calibrationFittingIngredients=self.sousChef.prepCalibration(request.run.runNumber),
-            pixelGroups=[ingredients.pixelGroup],
+            pixelGroups=[pixelGroup],
             focusGroupCalibrationMetrics=metrics,
             workspaces=request.workspaces,
         )
