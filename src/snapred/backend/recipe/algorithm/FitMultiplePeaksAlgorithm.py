@@ -12,6 +12,7 @@ from mantid.api import (
     WorkspaceGroup,
     mtd,
 )
+from mantid.simpleapi import DeleteWorkspaces
 from mantid.kernel import Direction, StringListValidator
 from pydantic import parse_raw_as
 
@@ -79,6 +80,8 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.inputWorkspaceName = self.getPropertyValue("Inputworkspace")
         self.outputWorkspaceName = self.getPropertyValue("OutputWorkspaceGroup")
         self.outputWorkspace = WorkspaceGroup()
+        if mtd.doesExist(self.outputWorkspaceName):
+            DeleteWorkspaces(list(mtd[self.outputWorkspaceName].getNames()))
         mtd.addOrReplace(self.outputWorkspaceName, self.outputWorkspace)
 
     def PyExec(self):
