@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<detector-grouping idf-date="2018-05-01T00:00:01" instrument="CRACKLE">
+	<group ID="1">
+		<detids>0-2</detids>
+	</group>
+	<group ID="2">
+		<detids>3-5</detids>
+	</group>
+	<group ID="3">
+		<detids>6-8</detids>
+	</group>
+	<group ID="4">
+		<detids>9-11</detids>
+	</group>
+	<group ID="5">
+		<detids>12-14</detids>
+	</group>
+	<group ID="6">
+		<detids>15-17</detids>
+	</group>
+</detector-grouping>
