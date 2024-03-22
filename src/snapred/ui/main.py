@@ -79,11 +79,12 @@ class SNAPRedGUI(QMainWindow):
             traceback.print_exception(e)
             from qtpy.QtWidgets import QMessageBox
 
+            msg = "Sorry!  Error encountered while opening Calibration Panel.\n"
+            msg = msg + "This is usually caused by an issue with your file tree structure.\n"
+            msg = msg + "Contact an IS or CIS for help in resolving the file system issue."
             errorPopup = QMessageBox()
             errorPopup.setIcon(QMessageBox.Critical)
-            errorPopup.setText(
-                "Sorry!\nError Opening Calibration Panel!\nPlease try again avoiding whatever you just did."
-            )
+            errorPopup.setText(msg)
             errorPopup.setDetailedText(str(e))
             errorPopup.setFixedSize(500, 200)
             errorPopup.exec()
