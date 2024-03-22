@@ -12,7 +12,6 @@ from snapred.ui.threading.worker_pool import WorkerPool
 
 
 class CalibrationAssessmentPresenter(QObject):
-
     """
 
     The CalibrationAssessmentPresenter is a component designed to bridge user interactions with
