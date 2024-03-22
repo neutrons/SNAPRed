@@ -21,10 +21,19 @@ class GroupingMap(BaseModel):
     def calibrationGroupingHome(cls) -> Path:
         return Path(Config["instrument.calibration.powder.grouping.home"])
 
+    @classmethod
+    def _asAbsolutePath(cls, filePath: Path) -> Path:
+        if filePath.is_absolute():
+            return filePath
+        return cls.calibrationGroupingHome().joinpath(filePath)
+
     # Use the StateId hash to enforce filesystem-as-database integrity requirements:
     # * verify that this GroupingMap's file is at its expected location (e.g. it hasn't been moved or copied);
     stateId: ObjectSHA
 
+    # Although the public interface to `GroupingMap` is a mapping, for ease of editing:
+    # *  the JSON representation is written using a list format:
+    # *  relative vs. absolute path information is retained in the representation.
     nativeFocusGroups: List[FocusGroup] = Field(default=None)
     liteFocusGroups: List[FocusGroup] = Field(default=None)
 
@@ -69,9 +78,10 @@ class GroupingMap(BaseModel):
         return v
 
     @root_validator(pre=False, allow_reuse=True)
-    def validate_GroupingMapFile(cls, v):
+    def validate_GroupingMap(cls, v):
         _native = {}
         _lite = {}
+        # Build `GroupingMap` from input lists:
         if v.get("nativeFocusGroups"):
             _native = {nfg.name: nfg for nfg in v["nativeFocusGroups"]}
         if v.get("liteFocusGroups"):
@@ -82,15 +92,17 @@ class GroupingMap(BaseModel):
             for group in groups[mode].copy():
                 fp = Path(groups[mode][group].definition)
                 # Check if path is relative
-                if not os.path.isabs(fp):
-                    fp = Path.joinpath(cls.calibrationGroupingHome(), fp)
-                    groups[mode][group].definition = fp
+                if not fp.is_absolute():
+                    # Do _not_ change the path in the original `FocusGroup`,
+                    #   otherwise the path will also change in the on-disk version.
+                    fp = cls._asAbsolutePath(fp)
+                    groups[mode][group] = FocusGroup(name=group, definition=str(fp))
                 if not fp.exists():
-                    logger.warning("File:" + str(fp) + " not found")
+                    logger.warning("File: " + str(fp) + " not found")
                     del groups[mode][group]
                     continue
                 if not fp.is_file():
-                    logger.warning("File:" + str(fp) + " is not valid")
+                    logger.warning("File: " + str(fp) + " is not valid")
                     del groups[mode][group]
                     continue
                 if not str(fp).endswith(supportedExtensions):
@@ -104,3 +116,12 @@ class GroupingMap(BaseModel):
         v["_liteMap"] = groups["lite"]
         v["_isDirty"] = False
         return v
+
+    class Config:
+        # All other forms of _exclusion_ do not seem to work in Pydantic 1.10,
+        # (for this `GroupingMap` class, specifically).
+        fields = {
+            "liteFocusGroups": {"include": True},
+            "nativeFocusGroups": {"include": True},
+            "stateId": {"include": True},
+        }
