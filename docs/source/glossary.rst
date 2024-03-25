@@ -222,6 +222,9 @@ Glossary
         A single collection of diffraction data that was collected at a specific point in time.
         It is identified by a unique ID, and is associated with a specific Instrument State and Calibration.
 
+    Run ID
+        TODO
+
     Run Number
         The unique integer identifier of a Run.  Note that certain facilities (e.g. ISIS SANS) may allow the addition of non-integer suffixes to the run number string.
 
