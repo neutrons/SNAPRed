@@ -20,6 +20,8 @@ def compareRaggedWorkspaces(ws1, ws2):
         spec1 = ws1.getSpectrum(i)
         spec2 = ws2.getSpectrum(i)
         assert spec1.getSpectrumNo() == spec2.getSpectrumNo()
+        for detId1, detId2 in zip(spec1.getDetectorIDs(), spec2.getDetectorIDs()):
+            assert detId1 == detId2
 
 
 def test_saveLoad():
