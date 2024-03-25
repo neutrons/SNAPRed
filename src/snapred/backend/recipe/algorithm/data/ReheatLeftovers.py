@@ -81,11 +81,9 @@ class ReheatLeftovers(PythonAlgorithm):
                         f"Conjoining Spectra {index}", InputWorkspace1=ws, InputWorkspace2=tmp, CheckOverlapping=False
                     )
                 self.mantidSnapper.executeQueue()
-
-        ws = mtd[self.outputWSName]
-        for index in range(0, ws.getNumberHistograms()):
-            spec = ws.getSpectrum(index)
-            spec.setSpectrumNo(index + 1)
+                wsInst = self.mantidSnapper.mtd[self.outputWSName]
+                spec = wsInst.getSpectrum(index)
+                spec.setSpectrumNo(index + 1)
 
         self.setProperty("OutputWorkspace", self.outputWSName)
 

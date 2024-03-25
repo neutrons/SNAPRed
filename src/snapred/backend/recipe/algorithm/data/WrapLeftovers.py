@@ -71,8 +71,12 @@ class WrapLeftovers(PythonAlgorithm):
                 StartWorkspaceIndex=index,
                 EndWorkspaceIndex=index,
             )
+            self.mantidSnapper.executeQueue()
+            wsInst = self.mantidSnapper.mtd[tmp]
+            spec = wsInst.getSpectrum(0)
+            specNum = spec.getSpectrumNo()
             self.mantidSnapper.SaveNexus(
-                f"Saving Spectra {index}", InputWorkspace=tmp, Filename=self.filename.format(index=index)
+                f"Saving Spectra {specNum}", InputWorkspace=tmp, Filename=self.filename.format(index=index)
             )
             self.mantidSnapper.DeleteWorkspace(f"Deleting Spectra {index}", Workspace=tmp)
             self.mantidSnapper.executeQueue()
@@ -80,7 +84,7 @@ class WrapLeftovers(PythonAlgorithm):
         # finally zip all outputs into a tarball
         with tarfile.open(self.tarFilename, "w") as tar:
             for index in range(0, self.inputWS.getNumberHistograms()):
-                tar.add(self.filename.format(index=index), arcname=f"{index}.nxs")
+                tar.add(self.filename.format(index=index), arcname=f"{str(index).zfill(2)}.nxs")
 
         # clean up
         for index in range(0, self.inputWS.getNumberHistograms()):
