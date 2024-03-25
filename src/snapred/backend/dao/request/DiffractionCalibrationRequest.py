@@ -12,8 +12,15 @@ from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 class DiffractionCalibrationRequest(BaseModel):
     """
-    Request object to initiate a calibration assessment of a given run.
-    This is compared against the known crystal data provided via cif file
+
+    The DiffractionCalibrationRequest class is designed to kick-start the calibration process
+    for a specific run by comparing it against known crystallographic data from a cif file.
+    It includes the runNumber, calibrantSamplePath, and the focusGroup involved, alongside
+    settings like useLiteMode for simplified processing and a series of calibration parameters
+    such as crystalDMin, crystalDMax, peakFunction, and thresholds for convergence and peak
+    intensity. These parameters are pre-configured with default values from the system's
+    configuration, ensuring a consistent and precise approach to diffraction calibration.
+
     """
 
     runNumber: str

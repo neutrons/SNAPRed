@@ -10,7 +10,16 @@ from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
 class DiffractionCalibrationIngredients(BaseModel):
-    """Class to hold the ingredients to diffraction calibration"""
+    """
+
+    The DiffractionCalibrationIngredients class encapsulates all the necessary components for
+    conducting diffraction calibration. It contains a runConfig for the calibration run settings,
+    a pixelGroup specifying the group of pixels under consideration, and a list of groupedPeakLists
+    detailing the peaks identified in each group. Additionally, it defines a convergenceThreshold
+    for calibration accuracy, a peakFunction selected based on system configuration for modeling
+    the peaks, and a maxOffset limit for calibration adjustments.
+
+    """
 
     runConfig: RunConfig
     pixelGroup: PixelGroup

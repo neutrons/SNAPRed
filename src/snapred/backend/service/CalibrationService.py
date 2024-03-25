@@ -57,6 +57,19 @@ logger = snapredLogger.getLogger(__name__)
 # import pdb
 @Singleton
 class CalibrationService(Service):
+    """
+
+    The CalibrationService orchestrates a suite of calibration processes, integrating various components
+    such as RunConfig, CalibrationRecord, and FocusGroupMetric to facilitate comprehensive calibration
+    tasks. This service leverages recipes like DiffractionCalibrationRecipe and
+    GenerateCalibrationMetricsWorkspaceRecipe to perform diffraction calibration and generate workspace
+    metrics, respectively. It manages the entire calibration workflow, from initializing state and preparing
+    ingredients to assessing quality and exporting results. Key functionalities include preparing diffraction
+    calibration ingredients, fetching groceries (workspace names), and executing recipes for focusing spectra,
+    saving calibration data, and loading assessments.
+
+    """
+
     dataFactoryService: "DataFactoryService"
     dataExportService: "DataExportService"
     MILLISECONDS_PER_SECOND = Config["constants.millisecondsPerSecond"]

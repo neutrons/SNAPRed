@@ -12,6 +12,19 @@ from snapred.ui.threading.worker_pool import WorkerPool
 
 
 class CalibrationAssessmentPresenter(QObject):
+    """
+
+    The CalibrationAssessmentPresenter is a component designed to bridge user interactions with
+    the underlying calibration assessment and indexing processes. Leveraging a WorkerPool for
+    asynchronous task execution and an InterfaceController for API communication, it manages
+    user requests from the UI to load specific calibration assessments and the calibration index
+    for a given run number. Upon user action, it initiates requests, such as loading selected
+    calibration assessments based on run ID and version, and updating the UI with the results
+    or error messages as appropriate. This setup allows for non-blocking UI operations,
+    enhancing the application's responsiveness.
+
+    """
+
     worker_pool = WorkerPool()
     interfaceController = InterfaceController()
 

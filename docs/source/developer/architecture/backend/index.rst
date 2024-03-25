@@ -1,7 +1,6 @@
 Backend
 =======
 
-
 .. _summary:
 
 Summary
@@ -61,15 +60,31 @@ For a simplified breakdown of where you may want to implement parts of your code
    :maxdepth: 1
    :caption: Index
 
-   api/normalization_calibration_request
-   api/normalization_export_request
-   api/normalization_index_entry
-   api/normalization_record
-   api/normalization_response
-   api/normalization_service
-   api/normalization
+   api/normalization/normalization_calibration_request
+   api/normalization/normalization_export_request
+   api/normalization/normalization_index_entry
+   api/normalization/normalization_record
+   api/normalization/normalization_response
+   api/normalization/normalization_service
+   api/normalization/normalization
    api/object_sha
    data/index
    recipe
    grocery_service
-   api/smooth_data_excluding_peaks_request
+   api/normalization/smooth_data_excluding_peaks_request
+   api/calibration/calibration_assessment_request
+   api/calibration/calibration_assessment_response
+   api/calibration/calibration_export_request
+   api/calibration/calibration_index_entry
+   api/calibration/calibration_index_request
+   api/calibration/calibration_load_assessment_request
+   api/calibration/calibration_metric
+   api/calibration/calibration_metrics_workspace_ingredient
+   api/calibration/calibration_record
+   api/calibration/calibration_service
+   api/calibration/calibration
+   api/calibration/diffraction_calibration_ingredients
+   api/calibration/diffraction_calibration_recipe
+   api/calibration/diffraction_calibration_request
+   api/calibration/focus_group_metric
+   api/calibration/generate_calibration_metrics_workspace_recipe
