@@ -123,9 +123,6 @@ samples:
 
 cis_mode: false
 
-temp:
-  directory: /SNAPRed
-
 constants:
   millisecondsPerSecond: 1000
   PeakIntensityFractionThreshold: 0.05

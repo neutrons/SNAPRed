@@ -126,8 +126,6 @@ logging:
 samples:
   home: ${instrument.calibration.home}/CalibrantSamples
 
-temp:
-  directory: ~/SNAPRed
 
 test:
   config:
