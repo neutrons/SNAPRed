@@ -26,7 +26,7 @@ def test_saveLoad():
         Function="One Peak",
         NumBanks=1,
         NumMonitors=1,
-        BankPixelWidth=5,
+        BankPixelWidth=3,
         NumEvents=500,
         Random=True,
         XUnit="TOF",
