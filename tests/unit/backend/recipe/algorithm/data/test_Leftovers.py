@@ -17,6 +17,9 @@ def compareRaggedWorkspaces(ws1, ws2):
         np.testing.assert_allclose(ws1.readX(i), ws2.readX(i))
         np.testing.assert_allclose(ws1.readY(i), ws2.readY(i))
         np.testing.assert_allclose(ws1.readE(i), ws2.readE(i))
+        spec1 = ws1.getSpectrum(i)
+        spec2 = ws2.getSpectrum(i)
+        assert spec1.getSpectrumNo() == spec2.getSpectrumNo()
 
 
 def test_saveLoad():
