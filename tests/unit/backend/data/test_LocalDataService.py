@@ -1603,6 +1603,8 @@ def test_writeRaggedWorkspace():
         assert mtd.doesExist(workspaceName)
         localDataService.writeRaggedWorkspace(basePath, filename, workspaceName)
         assert (basePath / filename).exists()
+        localDataService.readRaggedWorkspace(basePath, filename, "test_out")
+        assert mtd.doesExist("test_out")
     mtd.clear()
 
 
