@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -53,7 +54,11 @@ class TestGroceryService(unittest.TestCase):
         cls.version = "1"
         cls.runNumber1 = "556"
         cls.useLiteMode = False
+        cls.diffCalOutputName = (
+            wng.diffCalOutput().runNumber(cls.runNumber1).unit(wng.Units.TOF).group(wng.Groups.UNFOC).build()
+        )
         cls.sampleWSFilePath = Resource.getPath(f"inputs/test_{cls.runNumber}_groceryservice.nxs")
+        cls.sampleTarWsFilePath = Resource.getPath(f"inputs/{cls.diffCalOutputName}.tar")
 
         cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
         Config["instrument"]["native"]["definition"]["file"] = cls.instrumentFilePath
@@ -74,6 +79,10 @@ class TestGroceryService(unittest.TestCase):
             InputWorkspace=cls.sampleWS,
             Filename=cls.sampleWSFilePath,
         )
+
+        with tarfile.open(cls.sampleTarWsFilePath, "w") as tar:
+            tar.add(cls.sampleWSFilePath, arcname="0.nxs")
+
         assert os.path.exists(cls.sampleWSFilePath)
 
         cls.detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
@@ -133,6 +142,7 @@ class TestGroceryService(unittest.TestCase):
             DeleteWorkspace(ws)
         os.remove(cls.sampleWSFilePath)
         os.remove(cls.sampleDiffCalFilePath)
+        os.remove(cls.sampleTarWsFilePath)
         return super().tearDownClass()
 
     @classmethod
@@ -1025,17 +1035,15 @@ class TestGroceryService(unittest.TestCase):
                 .group(wng.Groups.UNFOC)
                 .buildList()
             )
-            diffCalOutputName = (
-                wng.diffCalOutput().runNumber(self.runNumber1).unit(wng.Units.TOF).group(wng.Groups.UNFOC).build()
-            )
-            diffCalOutputFilename = diffCalOutputName + ".nxs"
-            shutil.copy2(self.sampleWSFilePath, Path(tmpPath) / diffCalOutputFilename)
+
+            diffCalOutputFilename = self.diffCalOutputName + Config["calibration.diffraction.output.extension"]
+            shutil.copy2(self.sampleTarWsFilePath, Path(tmpPath) / diffCalOutputFilename)
             assert (Path(tmpPath) / diffCalOutputFilename).exists()
 
-            assert not mtd.doesExist(diffCalOutputName)
+            assert not mtd.doesExist(self.diffCalOutputName)
             items = self.instance.fetchGroceryList(groceryList)
-            assert items[0] == diffCalOutputName
-            assert mtd.doesExist(diffCalOutputName)
+            assert items[0] == self.diffCalOutputName
+            assert mtd.doesExist(self.diffCalOutputName)
 
     @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
     def test_fetch_grocery_list_diffcal_output_cached(self, mockCalibrationDataPath):

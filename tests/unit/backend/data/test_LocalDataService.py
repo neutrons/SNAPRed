@@ -849,7 +849,16 @@ def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
         # Create sample workspaces.
         CreateSampleWorkspace(
             OutputWorkspace=outputTOFWSName,
+            Function="One Peak",
+            NumBanks=1,
+            NumMonitors=1,
+            BankPixelWidth=5,
+            NumEvents=500,
+            Random=True,
             XUnit="TOF",
+            XMin=0,
+            XMax=8000,
+            BinWidth=100,
         )
         LoadInstrument(
             Workspace=outputTOFWSName,
@@ -858,7 +867,16 @@ def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
         )
         CreateSampleWorkspace(
             OutputWorkspace=outputDSPWSName,
+            Function="One Peak",
+            NumBanks=1,
+            NumMonitors=1,
+            BankPixelWidth=5,
+            NumEvents=500,
+            Random=True,
             XUnit="DSP",
+            XMin=0,
+            XMax=8000,
+            BinWidth=100,
         )
         LoadInstrument(
             Workspace=outputDSPWSName,
@@ -881,7 +899,7 @@ def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
             for wsName in wsNames:
                 ws = mtd[wsName]
                 filename = (
-                    Path(wsName + ".nxs")
+                    Path(wsName + Config["calibration.diffraction.output.extension"])
                     if not (isinstance(ws, ITableWorkspace) or isinstance(ws, MaskWorkspace))
                     else diffCalFilename
                 )
@@ -1025,7 +1043,9 @@ def test_writeNormalizationWorkspaces(mockConstructNormalizationCalibrationDataP
         localDataService.writeNormalizationWorkspaces(testNormalizationRecord)
 
         for wsName in testNormalizationRecord.workspaceNames:
-            filename = Path(wsName + "_" + wnvf.formatVersion(version) + ".nxs")
+            filename = Path(
+                wsName + "_" + wnvf.formatVersion(version) + Config["calibration.diffraction.output.extension"]
+            )
             assert (basePath / filename).exists()
         mtd.clear()
 
@@ -1431,6 +1451,19 @@ def test_badPaths():
     service.verifyPaths = False  # put the setting back
 
 
+def test_noInstrumentConfig():
+    """This verifies that a broken configuration (from production) can't find all of the files"""
+    # get a handle on the service
+    service = LocalDataService()
+    service.verifyPaths = True  # override test setting
+    prevInstrumentConfig = Config._config["instrument"]["config"]
+    Config._config["instrument"]["config"] = "/this/path/does/not/exist"
+    with pytest.raises(FileNotFoundError):
+        service.readInstrumentConfig()
+    Config._config["instrument"]["config"] = prevInstrumentConfig
+    service.verifyPaths = False  # put the setting back
+
+
 def test_readSamplePaths():
     localDataService = LocalDataService()
     localDataService._findMatchingFileList = mock.Mock()
@@ -1587,6 +1620,35 @@ def test_writeWorkspace():
         assert mtd.doesExist(workspaceName)
         localDataService.writeWorkspace(basePath, filename, workspaceName)
         assert (basePath / filename).exists()
+    mtd.clear()
+
+
+def test_writeRaggedWorkspace():
+    localDataService = LocalDataService()
+    path = Resource.getPath("outputs")
+    with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
+        workspaceName = "test_ragged"
+        basePath = Path(tmpPath)
+        filename = Path(workspaceName + ".tar")
+        # Create a test ragged workspace to write.
+        CreateSampleWorkspace(
+            OutputWorkspace=workspaceName,
+            Function="One Peak",
+            NumBanks=1,
+            NumMonitors=1,
+            BankPixelWidth=5,
+            NumEvents=500,
+            Random=True,
+            XUnit="DSP",
+            XMin=0,
+            XMax=8000,
+            BinWidth=100,
+        )
+        assert mtd.doesExist(workspaceName)
+        localDataService.writeRaggedWorkspace(basePath, filename, workspaceName)
+        assert (basePath / filename).exists()
+        localDataService.readRaggedWorkspace(basePath, filename, "test_out")
+        assert mtd.doesExist("test_out")
     mtd.clear()
 
 
