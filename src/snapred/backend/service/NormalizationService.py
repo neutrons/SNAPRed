@@ -155,7 +155,14 @@ class NormalizationService(Service):
 
     @FromString
     def normalizationAssessment(self, request: NormalizationCalibrationRequest):
-        calibration = self.dataFactoryService.getCalibrationState(request.runNumber)
+        farmFresh = FarmFreshIngredients(
+            runNumber=request.runNumber,
+            focusGroup=request.focusGroup,
+            useLiteMode=request.useLiteMode,
+            calibrantSamplePath=request.calibrantSamplePath,
+            fwhmMultiplierLimit=request.fwhmMultiplierLimit,
+        )
+        calibration = self.sousChef.prepCalibration(farmFresh)
         record = NormalizationRecord(
             runNumber=request.runNumber,
             backgroundRunNumber=request.backgroundRunNumber,

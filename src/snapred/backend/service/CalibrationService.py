@@ -130,6 +130,7 @@ class CalibrationService(Service):
             peakIntensityThreshold=request.peakIntensityThreshold,
             convergenceThreshold=request.convergenceThreshold,
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
+            fwhmMultiplierLimit=request.fwhmMultiplierLimit,
         )
         return self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
 

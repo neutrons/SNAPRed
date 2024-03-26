@@ -37,10 +37,15 @@ class SculleryBoy:
     def __init__(self):
         pass
 
-    def prepCalibration(self, runNumber: str):  # noqa ARG002
-        return {mock.Mock()}
+    def prepCalibration(self, ingredients: FarmFreshIngredients):  # noqa ARG002
+        return {
+            "instumentState": mock.Mock(),
+            "seedRun": mock.Mock(),
+            "creationDate": mock.Mock(),
+            "name": "mocked calibration",
+        }
 
-    def prepInstrumentState(self, runNumber: str):  # noqa ARG002
+    def prepInstrumentState(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         return mock.Mock()
 
     def prepRunConfig(self, runNumber: str) -> RunConfig:

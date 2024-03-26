@@ -37,3 +37,7 @@ class FarmFreshIngredients(BaseModel):
         minimum=Config["constants.CrystallographicInfo.dMin"],
         maximum=Config["constants.CrystallographicInfo.dMax"],
     )
+    fwhmMultiplierLimit: Limit[float] = Limit(
+        minimum=Config["calibration.parameters.default.FWHMMultiplier"][0],
+        maximum=Config["calibration.parameters.default.FWHMMultiplier"][1],
+    )
