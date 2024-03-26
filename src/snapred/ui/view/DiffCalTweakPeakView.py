@@ -40,15 +40,14 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     DMIN = Config["constants.CrystallographicInfo.dMin"]
     DMAX = Config["constants.CrystallographicInfo.dMax"]
-    THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
     MIN_PEAKS = Config["calibration.diffraction.minimumPeaksPerGroup"]
     PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     signalRunNumberUpdate = Signal(str)
-    signalPeakThresholdUpdate = Signal(str)
-    signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum)
+    signalValueChanged = Signal(int, float, float, float)
     signalUpdateRecalculationButton = Signal(bool)
+    signalUpdatePeakIntensityThreshold = Signal(str)
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = "calibration/diffractionCalibration"
@@ -58,7 +57,6 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.runNumberField = self._labeledField("Run Number")
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
-        self.signalPeakThresholdUpdate.connect(self._updatePeakThreshold)
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -71,13 +69,14 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
         # disable run number, lite mode, sample, peak fucnction -- cannot be changed now
-        for x in [self.runNumberField, self.litemodeToggle, self.sampleDropdown]:
+        for x in [self.runNumberField, self.litemodeToggle, self.sampleDropdown, self.peakFunctionDropdown]:
             x.setEnabled(False)
 
         # create the peak adustment controls
         self.fielddMin = self._labeledField("dMin", QLineEdit(str(self.DMIN)))
         self.fielddMax = self._labeledField("dMax", QLineEdit(str(self.DMAX)))
-        self.fieldThreshold = self._labeledField("intensity threshold", QLineEdit(str(self.THRESHOLD)))
+        self.fieldThreshold = self._labeledField("Intensity Threshold")
+        self.signalUpdatePeakIntensityThreshold.connect(self._updatePeakIntensityThreshold)
         peakControlLayout = QHBoxLayout()
         peakControlLayout.addWidget(self.fielddMin)
         peakControlLayout.addWidget(self.fielddMax)
@@ -111,11 +110,11 @@ class DiffCalTweakPeakView(BackendRequestView):
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
 
-    def _updatePeakThreshold(self, peakThreshold):
-        self.fieldThreshold.setText(peakThreshold)
+    def _updatePeakIntensityThreshold(self, peakIntensityThreshold):
+        self.fieldThreshold.setText(peakIntensityThreshold)
 
-    def updatePeakThreshold(self, peakThreshold):
-        self.signalPeakThresholdUpdate.emit(peakThreshold)
+    def updatePeakIntensityThreshold(self, peakIntensityThreshold):
+        self.signalUpdatePeakIntensityThreshold.emit(peakIntensityThreshold)
 
     def updateFields(self, sampleIndex, groupingIndex, peakIndex):
         self.sampleDropdown.setCurrentIndex(sampleIndex)
@@ -129,7 +128,6 @@ class DiffCalTweakPeakView(BackendRequestView):
             dMin = float(self.fielddMin.field.text())
             dMax = float(self.fielddMax.field.text())
             peakThreshold = float(self.fieldThreshold.text())
-            peakFunction = SymmetricPeakEnum(self.peakFunctionDropdown.currentText())
         except ValueError as e:
             QMessageBox.warning(
                 self,
@@ -156,7 +154,7 @@ class DiffCalTweakPeakView(BackendRequestView):
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(groupingIndex, dMin, dMax, peakThreshold, peakFunction)
+        self.signalValueChanged.emit(groupingIndex, dMin, dMax, peakThreshold)
 
     def updateGraphs(self, workspace, peaks, diagnostic):
         # get the updated workspaces and optimal graph grid
