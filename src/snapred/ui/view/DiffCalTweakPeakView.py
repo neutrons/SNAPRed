@@ -46,6 +46,7 @@ class DiffCalTweakPeakView(BackendRequestView):
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     signalRunNumberUpdate = Signal(str)
+    signalPeakThresholdUpdate = Signal(str)
     signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum)
     signalUpdateRecalculationButton = Signal(bool)
 
@@ -57,6 +58,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.runNumberField = self._labeledField("Run Number")
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
+        self.signalPeakThresholdUpdate.connect(self._updatePeakThreshold)
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -108,6 +110,12 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
+
+    def _updatePeakThreshold(self, peakThreshold):
+        self.fieldThreshold.setText(peakThreshold)
+
+    def updatePeakThreshold(self, peakThreshold):
+        self.signalPeakThresholdUpdate.emit(peakThreshold)
 
     def updateFields(self, sampleIndex, groupingIndex, peakIndex):
         self.sampleDropdown.setCurrentIndex(sampleIndex)

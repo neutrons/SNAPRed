@@ -155,6 +155,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             view.groupingFileDropdown.currentIndex(),
             view.peakFunctionDropdown.currentIndex(),
         )
+        self._tweakPeakView.updatePeakThreshold(self.peakThreshold)
 
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
