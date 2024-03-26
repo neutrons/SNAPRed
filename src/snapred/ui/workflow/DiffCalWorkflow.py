@@ -181,7 +181,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # focus the workspace to view the peaks
         self._renewFocus(self.prevGroupingIndex)
-        response = self._renewFitPeaks()
+        response = self._renewFitPeaks(self.peakFunction)
 
         self._tweakPeakView.updateGraphs(
             self.focusedWorkspace,
@@ -190,7 +190,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         )
         return response
 
-    def onValueChange(self, groupingIndex, dMin, dMax, peakThreshold):
+    def onValueChange(self, groupingIndex, dMin, dMax, peakThreshold, peakFunction):
         self._tweakPeakView.disableRecalculateButton()
 
         self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
@@ -199,15 +199,16 @@ class DiffCalWorkflow(WorkflowImplementer):
         dMinValueChanged = dMin != self.prevDMin
         dMaxValueChanged = dMax != self.prevDMax
         thresholdChanged = peakThreshold != self.prevThreshold
-        if dMinValueChanged or dMaxValueChanged or thresholdChanged:
-            self._renewIngredients(dMin, dMax, peakThreshold)
-            self._renewFitPeaks()
+        peakFunctionChanged = peakFunction != self.peakFunction
+        if dMinValueChanged or dMaxValueChanged or thresholdChanged or peakFunctionChanged:
+            self._renewIngredients(dMin, dMax, peakThreshold, peakFunction)
+            self._renewFitPeaks(peakFunction)
 
         # if the grouping file changes, load new grouping and refocus
         if groupingIndex != self.prevGroupingIndex:
-            self._renewIngredients(dMin, dMax, peakThreshold)
+            self._renewIngredients(dMin, dMax, peakThreshold, peakFunction)
             self._renewFocus(groupingIndex)
-            self._renewFitPeaks()
+            self._renewFitPeaks(peakFunction)
 
         self._tweakPeakView.updateGraphs(
             self.focusedWorkspace,
@@ -222,16 +223,17 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.prevDMin = dMin
         self.prevDMax = dMax
         self.prevThreshold = peakThreshold
+        self.peakFunction = peakFunction
         self.prevGroupingIndex = groupingIndex
 
-    def _renewIngredients(self, dMin, dMax, peakThreshold):
+    def _renewIngredients(self, dMin, dMax, peakThreshold, peakFunction):
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
             focusGroup=self.focusGroups[self.focusGroupPath],
             calibrantSamplePath=self.calibrantSamplePath,
             # fiddly bits
-            peakFunction=self.peakFunction,
+            peakFunction=peakFunction,
             crystalDMin=dMin,
             crystalDMax=dMax,
             peakIntensityThreshold=peakThreshold,
@@ -255,11 +257,12 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.groceries["groupingWorkspace"] = response.data[1]
         return response
 
-    def _renewFitPeaks(self):
+    def _renewFitPeaks(self, peakFunction):
         payload = FitMultiplePeaksRequest(
             inputWorkspace=self.focusedWorkspace,
             outputWorkspaceGroup=self.fitPeaksDiagnostic,
             detectorPeaks=self.ingredients.groupedPeakLists,
+            peakFunction=peakFunction,
         )
         return self.request(path="calibration/fitpeaks", payload=payload.json())
 
