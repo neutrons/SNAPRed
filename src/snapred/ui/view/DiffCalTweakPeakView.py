@@ -46,7 +46,8 @@ class DiffCalTweakPeakView(BackendRequestView):
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     signalRunNumberUpdate = Signal(str)
-    signalValueChanged = Signal(int, float, float, float)
+    signalPeakThresholdUpdate = Signal(str)
+    signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum)
     signalUpdateRecalculationButton = Signal(bool)
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
@@ -57,6 +58,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.runNumberField = self._labeledField("Run Number")
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
+        self.signalPeakThresholdUpdate.connect(self._updatePeakThreshold)
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -69,7 +71,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
         # disable run number, lite mode, sample, peak fucnction -- cannot be changed now
-        for x in [self.runNumberField, self.litemodeToggle, self.sampleDropdown, self.peakFunctionDropdown]:
+        for x in [self.runNumberField, self.litemodeToggle, self.sampleDropdown]:
             x.setEnabled(False)
 
         # create the peak adustment controls
@@ -109,6 +111,12 @@ class DiffCalTweakPeakView(BackendRequestView):
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
 
+    def _updatePeakThreshold(self, peakThreshold):
+        self.fieldThreshold.setText(peakThreshold)
+
+    def updatePeakThreshold(self, peakThreshold):
+        self.signalPeakThresholdUpdate.emit(peakThreshold)
+
     def updateFields(self, sampleIndex, groupingIndex, peakIndex):
         self.sampleDropdown.setCurrentIndex(sampleIndex)
         self.groupingFileDropdown.setCurrentIndex(groupingIndex)
@@ -121,6 +129,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             dMin = float(self.fielddMin.field.text())
             dMax = float(self.fielddMax.field.text())
             peakThreshold = float(self.fieldThreshold.text())
+            peakFunction = SymmetricPeakEnum(self.peakFunctionDropdown.currentText())
         except ValueError as e:
             QMessageBox.warning(
                 self,
@@ -147,7 +156,7 @@ class DiffCalTweakPeakView(BackendRequestView):
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(groupingIndex, dMin, dMax, peakThreshold)
+        self.signalValueChanged.emit(groupingIndex, dMin, dMax, peakThreshold, peakFunction)
 
     def updateGraphs(self, workspace, peaks, diagnostic):
         # get the updated workspaces and optimal graph grid
