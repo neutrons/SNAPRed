@@ -173,6 +173,7 @@ class NormalizationService(Service):
         normalizationRecord.version = version
         normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
         normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
+        entry.version = normalizationRecord.version
         self.saveNormalizationToIndex(entry)
 
     def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
