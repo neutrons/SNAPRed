@@ -306,6 +306,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             useLiteMode=self.useLiteMode,
             calibrantSamplePath=self.calibrantSamplePath,
+            fwhmMultiplierLimit=self.prevFWHM,
         )
 
         response = self.request(path="calibration/assessment", payload=payload.json())

@@ -2,6 +2,7 @@ from typing import Dict, List
 
 from pydantic import BaseModel
 
+from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
@@ -30,3 +31,7 @@ class CalibrationAssessmentRequest(BaseModel):
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
     peakType: ALLOWED_PEAK_TYPES = "Gaussian"
+    fwhmMultiplierLimit: Limit[float] = Limit(
+        minimum=Config["calibration.parameters.default.FWHMMultiplier"][0],
+        maximum=Config["calibration.parameters.default.FWHMMultiplier"][1],
+    )

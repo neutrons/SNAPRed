@@ -345,6 +345,7 @@ class CalibrationService(Service):
             focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
+            fwhmMultiplierLimit=request.fwhmMultiplierLimit,
         )
         pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
         detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh)
@@ -359,7 +360,7 @@ class CalibrationService(Service):
         record = CalibrationRecord(
             runNumber=request.run.runNumber,
             crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
-            calibrationFittingIngredients=self.sousChef.prepCalibration(request.run.runNumber),
+            calibrationFittingIngredients=self.sousChef.prepCalibration(farmFresh),
             pixelGroups=[pixelGroup],
             focusGroupCalibrationMetrics=metrics,
             workspaces=request.workspaces,
