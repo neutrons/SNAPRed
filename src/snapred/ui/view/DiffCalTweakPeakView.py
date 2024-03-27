@@ -251,7 +251,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         if len(badPeaks) > 0:
             msg = "Peaks in the following groups have chi-squared values exceeding the maximum allowed value.\n"
             for badPeak in badPeaks:
-                msg = msg + f"\tgroup {badPeak.groupID} has bad peaks at \t {[peak.value for peak in badPeak.peaks]}\n"
+                msg = msg + f"\tgroup {badPeak.groupID} has bad peaks at {[peak.value for peak in badPeak.peaks]}\n"
             msg = msg + "Adjust FWHM, dMin, dMax, peak intensity threshold, ect. to better fit more peaks."
             raise ValueError(msg)
 
