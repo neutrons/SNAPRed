@@ -61,9 +61,8 @@ def _capture_logging(monkeypatch):
 
 
 fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
-reductionIngredients = None
-with Resource.open("inputs/calibration/ReductionIngredients.json", "r") as file:
-    reductionIngredients = parse_raw_as(ReductionIngredients, file.read())
+reductionIngredientsPath = Resource.getPath("inputs/calibration/ReductionIngredients.json")
+reductionIngredients = ReductionIngredients.parse_file(reductionIngredientsPath)
 
 
 def test_fileExists_yes():

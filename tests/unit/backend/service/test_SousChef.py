@@ -67,27 +67,22 @@ class TestSousChef(unittest.TestCase):
 
         assert self.instance.dataFactoryService.getCalibrationState.called_once_with(self.ingredients)
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
-        assert (
-            res.instrumentState.fwhmMultiplierLimit.minimum
-            == Config["calibration.parameters.default.FWHMMultiplier"][0]
-        )
-        assert (
-            res.instrumentState.fwhmMultiplierLimit.maximum
-            == Config["calibration.parameters.default.FWHMMultiplier"][1]
-        )
+        assert res.instrumentState.fwhmMultipliers.dict() == Config["calibration.parameters.default.FWHMMultiplier"]
 
     def test_prepCalibration_userFWHM(self):
         mockCalibration = mock.Mock()
         self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
-        self.ingredients.fwhmMultiplierLimit = mock.Mock(minimum=100, maximum=100)
+        fakeLeft = 116
+        fakeRight = 17
+        self.ingredients.fwhmMultipliers = mock.Mock(left=fakeLeft, right=fakeRight)
 
         res = self.instance.prepCalibration(self.ingredients)
 
         assert self.instance.dataFactoryService.getCalibrationState.called_once_with(self.ingredients)
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
-        assert res.instrumentState.fwhmMultiplierLimit == self.ingredients.fwhmMultiplierLimit
-        assert res.instrumentState.fwhmMultiplierLimit.minimum == 100
-        assert res.instrumentState.fwhmMultiplierLimit.maximum == 100
+        assert res.instrumentState.fwhmMultipliers == self.ingredients.fwhmMultipliers
+        assert res.instrumentState.fwhmMultipliers.left == fakeLeft
+        assert res.instrumentState.fwhmMultipliers.right == fakeRight
 
     def test_prepInstrumentState(self):
         runNumber = "123"
@@ -243,8 +238,8 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.focusGroup.name,
             self.ingredients.crystalDBounds.minimum,
             self.ingredients.crystalDBounds.maximum,
-            self.ingredients.fwhmMultiplierLimit.minimum,
-            self.ingredients.fwhmMultiplierLimit.maximum,
+            self.ingredients.fwhmMultipliers.left,
+            self.ingredients.fwhmMultipliers.right,
             self.ingredients.peakIntensityThreshold,
             False,
         )
@@ -278,8 +273,8 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.focusGroup.name,
             self.ingredients.crystalDBounds.minimum,
             self.ingredients.crystalDBounds.maximum,
-            self.ingredients.fwhmMultiplierLimit.minimum,
-            self.ingredients.fwhmMultiplierLimit.maximum,
+            self.ingredients.fwhmMultipliers.left,
+            self.ingredients.fwhmMultipliers.right,
             self.ingredients.peakIntensityThreshold,
             True,
         )
@@ -304,8 +299,8 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.focusGroup.name,
             self.ingredients.crystalDBounds.minimum,
             self.ingredients.crystalDBounds.maximum,
-            self.ingredients.fwhmMultiplierLimit.minimum,
-            self.ingredients.fwhmMultiplierLimit.maximum,
+            self.ingredients.fwhmMultipliers.left,
+            self.ingredients.fwhmMultipliers.right,
             self.ingredients.peakIntensityThreshold,
             True,
         )

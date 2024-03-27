@@ -56,8 +56,8 @@ with mock.patch.dict(
         # check various properties copied over
         assert algo.beta_0 == ingredients.instrumentState.gsasParameters.beta[0]
         assert algo.beta_1 == ingredients.instrumentState.gsasParameters.beta[1]
-        assert algo.FWHMMultiplierLeft == ingredients.instrumentState.fwhmMultiplierLimit.minimum
-        assert algo.FWHMMultiplierRight == ingredients.instrumentState.fwhmMultiplierLimit.maximum
+        assert algo.FWHMMultiplierLeft == ingredients.instrumentState.fwhmMultipliers.left
+        assert algo.FWHMMultiplierRight == ingredients.instrumentState.fwhmMultipliers.right
         assert algo.peakTailCoefficient == ingredients.instrumentState.peakTailCoefficient
         assert (
             algo.L == ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2

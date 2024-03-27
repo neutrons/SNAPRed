@@ -86,6 +86,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
         self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
 
+        self.prevFWHM = DiffCalTweakPeakView.FWHM
+
         # 1. input run number and other basic parameters
         # 2. display peak graphs, allow adjustments to view
         # 3. perform diffraction calibration after user approves peaks then move on
@@ -167,6 +169,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakIntensityThreshold=self.peakThreshold,
             convergenceThreshold=self.convergenceThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            fwhmMultipliers=self.prevFWHM,
         )
 
         self.ingredients = self.request(path="calibration/ingredients", payload=payload.json()).data
@@ -177,7 +180,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.prevDMin = payload.crystalDMin
         self.prevDMax = payload.crystalDMax
         self.prevThreshold = payload.peakIntensityThreshold
-        self.prevFWHM = payload.fwhmMultiplierLimit
+        self.prevFWHM = payload.fwhmMultipliers  # NOTE set in __init__ to defaults
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
         self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}"
 
@@ -241,7 +244,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             crystalDMin=dMin,
             crystalDMax=dMax,
             peakIntensityThreshold=peakThreshold,
-            fwhmMultiplierLimit=fwhm,
+            fwhmMultipliers=fwhm,
         )
         response = self.request(path="calibration/ingredients", payload=payload.json())
         self.ingredients = response.data
@@ -290,7 +293,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakIntensityThreshold=self.prevThreshold,
             convergenceThreshold=self.convergenceThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
-            fwhmMultiplierLimit=self.prevFWHM,
+            fwhmMultipliers=self.prevFWHM,
         )
 
         response = self.request(path="calibration/diffraction", payload=payload.json())
@@ -306,7 +309,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             useLiteMode=self.useLiteMode,
             calibrantSamplePath=self.calibrantSamplePath,
-            fwhmMultiplierLimit=self.prevFWHM,
+            fwhmMultipliers=self.prevFWHM,
         )
 
         response = self.request(path="calibration/assessment", payload=payload.json())

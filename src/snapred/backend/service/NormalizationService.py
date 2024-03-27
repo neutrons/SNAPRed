@@ -160,7 +160,7 @@ class NormalizationService(Service):
             focusGroup=request.focusGroup,
             useLiteMode=request.useLiteMode,
             calibrantSamplePath=request.calibrantSamplePath,
-            fwhmMultiplierLimit=request.fwhmMultiplierLimit,
+            fwhmMultipliers=request.fwhmMultipliers,
         )
         calibration = self.sousChef.prepCalibration(farmFresh)
         record = NormalizationRecord(

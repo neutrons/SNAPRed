@@ -17,7 +17,8 @@ from qtpy.QtWidgets import (
 from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
-from snapred.backend.dao import GroupPeakList, Limit
+from snapred.backend.dao import GroupPeakList
+from snapred.backend.dao.Limit import Pair
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.meta.Config import Config
@@ -44,12 +45,11 @@ class DiffCalTweakPeakView(BackendRequestView):
     MIN_PEAKS = Config["calibration.diffraction.minimumPeaksPerGroup"]
     PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
-    FWHM_LEFT = Config["calibration.parameters.default.FWHMMultiplier"][0]
-    FWHM_RIGHT = Config["calibration.parameters.default.FWHMMultiplier"][1]
+    FWHM = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
 
     signalRunNumberUpdate = Signal(str)
     signalPeakThresholdUpdate = Signal(float)
-    signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum, Limit)
+    signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum, Pair)
     signalUpdateRecalculationButton = Signal(bool)
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
@@ -79,8 +79,8 @@ class DiffCalTweakPeakView(BackendRequestView):
         # create the peak adustment controls
         self.fielddMin = self._labeledField("dMin", QLineEdit(str(self.DMIN)))
         self.fielddMax = self._labeledField("dMax", QLineEdit(str(self.DMAX)))
-        self.fieldFWHMleft = self._labeledField("FWHM left", QLineEdit(str(self.FWHM_LEFT)))
-        self.fieldFWHMright = self._labeledField("FWHM right", QLineEdit(str(self.FWHM_RIGHT)))
+        self.fieldFWHMleft = self._labeledField("FWHM left", QLineEdit(str(self.FWHM.left)))
+        self.fieldFWHMright = self._labeledField("FWHM right", QLineEdit(str(self.FWHM.right)))
         self.fieldThreshold = self._labeledField("intensity threshold", QLineEdit(str(self.THRESHOLD)))
         peakControlLayout = QHBoxLayout()
         peakControlLayout.addWidget(self.fielddMin)
@@ -136,9 +136,9 @@ class DiffCalTweakPeakView(BackendRequestView):
             dMax = float(self.fielddMax.field.text())
             peakThreshold = float(self.fieldThreshold.text())
             peakFunction = SymmetricPeakEnum(self.peakFunctionDropdown.currentText())
-            fwhm = Limit(
-                minimum=float(self.fieldFWHMleft.text()),
-                maximum=float(self.fieldFWHMright.text()),
+            fwhm = Pair(
+                left=float(self.fieldFWHMleft.text()),
+                right=float(self.fieldFWHMright.text()),
             )
         except ValueError as e:
             QMessageBox.warning(

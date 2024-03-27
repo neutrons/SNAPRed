@@ -55,8 +55,8 @@
       }
     },
     "defaultGroupingSliceValue": 5,
-    "fwhmMultiplierLimit": {
-      "minimum": -2,
+    "fwhmMultipliers": {
+      "minimum": 2,
       "maximum": 2
     },
     "peakTailCoefficient": 2.0

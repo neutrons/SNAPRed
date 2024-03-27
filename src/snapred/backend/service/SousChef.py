@@ -58,7 +58,7 @@ class SousChef(Service):
 
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
         calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber)
-        calibration.instrumentState.fwhmMultiplierLimit = ingredients.fwhmMultiplierLimit
+        calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers
         return calibration
 
     def prepInstrumentState(self, ingredients: FarmFreshIngredients) -> InstrumentState:
@@ -133,8 +133,8 @@ class SousChef(Service):
             ingredients.focusGroup.name,
             ingredients.crystalDBounds.minimum,
             ingredients.crystalDBounds.maximum,
-            ingredients.fwhmMultiplierLimit.minimum,
-            ingredients.fwhmMultiplierLimit.maximum,
+            ingredients.fwhmMultipliers.left,
+            ingredients.fwhmMultipliers.right,
             ingredients.peakIntensityThreshold,
             purgePeaks,
         )

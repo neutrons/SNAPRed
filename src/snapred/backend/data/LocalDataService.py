@@ -17,7 +17,6 @@ from pydantic import parse_file_as
 from snapred.backend.dao import (
     GSASParameters,
     InstrumentConfig,
-    Limit,
     ObjectSHA,
     ParticleBounds,
     RunConfig,
@@ -25,6 +24,7 @@ from snapred.backend.dao import (
     StateId,
 )
 from snapred.backend.dao.calibration import Calibration, CalibrationIndexEntry, CalibrationRecord
+from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.normalization import Normalization, NormalizationIndexEntry, NormalizationRecord
 from snapred.backend.dao.state import (
     DetectorState,
@@ -810,10 +810,7 @@ class LocalDataService:
         instrumentConfig = self.readInstrumentConfig()
         # then pull static values specified by Malcolm from resources
         defaultGroupSliceValue = Config["calibration.parameters.default.groupSliceValue"]
-        fwhmMultiplier = Limit(
-            minimum=Config["calibration.parameters.default.FWHMMultiplier"][0],
-            maximum=Config["calibration.parameters.default.FWHMMultiplier"][1],
-        )
+        fwhmMultipliers = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
         peakTailCoefficient = Config["calibration.parameters.default.peakTailCoefficient"]
         gsasParameters = GSASParameters(
             alpha=Config["calibration.parameters.default.alpha"], beta=Config["calibration.parameters.default.beta"]
@@ -837,7 +834,7 @@ class LocalDataService:
             gsasParameters=gsasParameters,
             particleBounds=particleBounds,
             defaultGroupingSliceValue=defaultGroupSliceValue,
-            fwhmMultiplierLimit=fwhmMultiplier,
+            fwhmMultipliers=fwhmMultipliers,
             peakTailCoefficient=peakTailCoefficient,
         )
 

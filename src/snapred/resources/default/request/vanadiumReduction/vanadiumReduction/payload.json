@@ -59,7 +59,7 @@
                 }
             },
             "defaultGroupingSliceValue": 5,
-            "fwhmMultiplierLimit": {
+            "fwhmMultipliers": {
                 "minimum": 1.5,
                 "maximum": 1.5
             },
