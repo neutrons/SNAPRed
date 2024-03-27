@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, validator
 
-from snapred.backend.dao.Limit import Limit
+from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.state import FocusGroup
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
@@ -37,3 +37,4 @@ class FarmFreshIngredients(BaseModel):
         minimum=Config["constants.CrystallographicInfo.dMin"],
         maximum=Config["constants.CrystallographicInfo.dMax"],
     )
+    fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])

@@ -188,28 +188,21 @@ class TestNormalizationService(unittest.TestCase):
             Ingredients=self.instance.sousChef.prepDetectorPeaks({}),
         )
 
-    @patch(thisService + "DataFactoryService")
     @patch(
         thisService + "NormalizationRecord",
         return_value=MagicMock(mockId="mock_normalization_record"),
     )
     def test_normalizationAssessment(
         self,
-        mockNormalizationRecord,
-        mockDataFactoryService,
+        NormalizationRecord,
     ):
-        mockNormalization = MagicMock()
-        mockDataFactoryService = mockDataFactoryService.return_value
-        mockDataFactoryService.getCalibrationState.return_value = mockNormalization
-
         self.instance = NormalizationService()
-        self.instance.dataFactoryService.getNormalizationRecord = MagicMock(return_value=mockNormalizationRecord)
+        self.instance.sousChef = SculleryBoy()
+        self.instance.dataFactoryService.getNormalizationRecord = MagicMock(return_value=MagicMock())
 
         result = self.instance.normalizationAssessment(self.request)
 
-        mockDataFactoryService.getCalibrationState.assert_called_once_with(self.request.runNumber)
-        expected_record_mockId = "mock_normalization_record"
-        assert result.mockId == expected_record_mockId
+        assert result.mockId == NormalizationRecord.return_value.mockId
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "RawVanadiumCorrectionRecipe")

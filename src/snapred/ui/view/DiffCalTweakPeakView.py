@@ -18,6 +18,7 @@ from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigur
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.backend.dao import GroupPeakList
+from snapred.backend.dao.Limit import Pair
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.meta.Config import Config
@@ -44,10 +45,11 @@ class DiffCalTweakPeakView(BackendRequestView):
     MIN_PEAKS = Config["calibration.diffraction.minimumPeaksPerGroup"]
     PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
+    FWHM = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
 
     signalRunNumberUpdate = Signal(str)
-    signalPeakThresholdUpdate = Signal(str)
-    signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum)
+    signalPeakThresholdUpdate = Signal(float)
+    signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum, Pair)
     signalUpdateRecalculationButton = Signal(bool)
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
@@ -77,10 +79,14 @@ class DiffCalTweakPeakView(BackendRequestView):
         # create the peak adustment controls
         self.fielddMin = self._labeledField("dMin", QLineEdit(str(self.DMIN)))
         self.fielddMax = self._labeledField("dMax", QLineEdit(str(self.DMAX)))
+        self.fieldFWHMleft = self._labeledField("FWHM left", QLineEdit(str(self.FWHM.left)))
+        self.fieldFWHMright = self._labeledField("FWHM right", QLineEdit(str(self.FWHM.right)))
         self.fieldThreshold = self._labeledField("intensity threshold", QLineEdit(str(self.THRESHOLD)))
         peakControlLayout = QHBoxLayout()
         peakControlLayout.addWidget(self.fielddMin)
         peakControlLayout.addWidget(self.fielddMax)
+        peakControlLayout.addWidget(self.fieldFWHMleft)
+        peakControlLayout.addWidget(self.fieldFWHMright)
         peakControlLayout.addWidget(self.fieldThreshold)
 
         # a big ol recalculate button
@@ -112,10 +118,10 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.signalRunNumberUpdate.emit(runNumber)
 
     def _updatePeakThreshold(self, peakThreshold):
-        self.fieldThreshold.setText(peakThreshold)
+        self.fieldThreshold.setText(str(peakThreshold))
 
     def updatePeakThreshold(self, peakThreshold):
-        self.signalPeakThresholdUpdate.emit(peakThreshold)
+        self.signalPeakThresholdUpdate.emit(float(peakThreshold))
 
     def updateFields(self, sampleIndex, groupingIndex, peakIndex):
         self.sampleDropdown.setCurrentIndex(sampleIndex)
@@ -130,6 +136,10 @@ class DiffCalTweakPeakView(BackendRequestView):
             dMax = float(self.fielddMax.field.text())
             peakThreshold = float(self.fieldThreshold.text())
             peakFunction = SymmetricPeakEnum(self.peakFunctionDropdown.currentText())
+            fwhm = Pair(
+                left=float(self.fieldFWHMleft.text()),
+                right=float(self.fieldFWHMright.text()),
+            )
         except ValueError as e:
             QMessageBox.warning(
                 self,
@@ -156,7 +166,7 @@ class DiffCalTweakPeakView(BackendRequestView):
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(groupingIndex, dMin, dMax, peakThreshold, peakFunction)
+        self.signalValueChanged.emit(groupingIndex, dMin, dMax, peakThreshold, peakFunction, fwhm)
 
     def updateGraphs(self, workspace, peaks, diagnostic):
         # get the updated workspaces and optimal graph grid

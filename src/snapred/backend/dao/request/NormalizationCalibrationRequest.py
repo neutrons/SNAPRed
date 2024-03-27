@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
 
@@ -24,3 +25,4 @@ class NormalizationCalibrationRequest(BaseModel):
     crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
     peakIntensityThreshold: float = Config["constants.PeakIntensityFractionThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
+    fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])

@@ -4,7 +4,7 @@ from pydantic import BaseModel, validator
 
 from snapred.backend.dao.GSASParameters import GSASParameters
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.Limit import Limit
+from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.ParticleBounds import ParticleBounds
 from snapred.backend.dao.state.DetectorState import DetectorState, GuideState
@@ -21,7 +21,7 @@ class InstrumentState(BaseModel):
     gsasParameters: GSASParameters
     particleBounds: ParticleBounds
     defaultGroupingSliceValue: float
-    fwhmMultiplierLimit: Limit[float]
+    fwhmMultipliers: Pair[float]
     peakTailCoefficient: float
 
     @property

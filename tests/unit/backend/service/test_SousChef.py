@@ -59,16 +59,30 @@ class TestSousChef(unittest.TestCase):
 
         assert res == mockGroupingDictionary[self.ingredients.focusGroup.name]
 
-    def test_prepCalibration_nocache(self):
-        runNumber = self.ingredients.runNumber
-
+    def test_prepCalibration(self):
         mockCalibration = mock.Mock()
         self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
 
-        res = self.instance.prepCalibration(runNumber)
+        res = self.instance.prepCalibration(self.ingredients)
 
-        assert self.instance.dataFactoryService.getCalibrationState.called_once_with(runNumber)
+        assert self.instance.dataFactoryService.getCalibrationState.called_once_with(self.ingredients)
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
+        assert res.instrumentState.fwhmMultipliers.dict() == Config["calibration.parameters.default.FWHMMultiplier"]
+
+    def test_prepCalibration_userFWHM(self):
+        mockCalibration = mock.Mock()
+        self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
+        fakeLeft = 116
+        fakeRight = 17
+        self.ingredients.fwhmMultipliers = mock.Mock(left=fakeLeft, right=fakeRight)
+
+        res = self.instance.prepCalibration(self.ingredients)
+
+        assert self.instance.dataFactoryService.getCalibrationState.called_once_with(self.ingredients)
+        assert res == self.instance.dataFactoryService.getCalibrationState.return_value
+        assert res.instrumentState.fwhmMultipliers == self.ingredients.fwhmMultipliers
+        assert res.instrumentState.fwhmMultipliers.left == fakeLeft
+        assert res.instrumentState.fwhmMultipliers.right == fakeRight
 
     def test_prepInstrumentState(self):
         runNumber = "123"
@@ -222,8 +236,10 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
-            Config["constants.CrystallographicInfo.dMin"],
-            Config["constants.CrystallographicInfo.dMax"],
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+            self.ingredients.fwhmMultipliers.left,
+            self.ingredients.fwhmMultipliers.right,
             self.ingredients.peakIntensityThreshold,
             False,
         )
@@ -255,8 +271,10 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
-            Config["constants.CrystallographicInfo.dMin"],
-            Config["constants.CrystallographicInfo.dMax"],
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+            self.ingredients.fwhmMultipliers.left,
+            self.ingredients.fwhmMultipliers.right,
             self.ingredients.peakIntensityThreshold,
             True,
         )
@@ -279,8 +297,10 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
-            Config["constants.CrystallographicInfo.dMin"],
-            Config["constants.CrystallographicInfo.dMax"],
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+            self.ingredients.fwhmMultipliers.left,
+            self.ingredients.fwhmMultipliers.right,
             self.ingredients.peakIntensityThreshold,
             True,
         )

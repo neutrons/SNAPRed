@@ -49,8 +49,8 @@ class DetectorPeakPredictor(PythonAlgorithm):
     def chopIngredients(self, ingredients: PeakIngredients) -> None:
         self.beta_0 = ingredients.instrumentState.gsasParameters.beta[0]
         self.beta_1 = ingredients.instrumentState.gsasParameters.beta[1]
-        self.FWHMMultiplierLeft = ingredients.instrumentState.fwhmMultiplierLimit.minimum
-        self.FWHMMultiplierRight = ingredients.instrumentState.fwhmMultiplierLimit.maximum
+        self.FWHMMultiplierLeft = ingredients.instrumentState.fwhmMultipliers.left
+        self.FWHMMultiplierRight = ingredients.instrumentState.fwhmMultipliers.right
         self.peakTailCoefficient = ingredients.instrumentState.peakTailCoefficient
         self.L = ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2
 

@@ -56,11 +56,13 @@ class SousChef(Service):
     def name():
         return "souschef"
 
-    def prepCalibration(self, runNumber: str) -> Calibration:
-        return self.dataFactoryService.getCalibrationState(runNumber)
+    def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
+        calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber)
+        calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers
+        return calibration
 
-    def prepInstrumentState(self, runNumber: str) -> InstrumentState:
-        return self.prepCalibration(runNumber).instrumentState
+    def prepInstrumentState(self, ingredients: FarmFreshIngredients) -> InstrumentState:
+        return self.prepCalibration(ingredients).instrumentState
 
     def prepRunConfig(self, runNumber: str) -> RunConfig:
         return self.dataFactoryService.getRunConfig(runNumber)
@@ -80,7 +82,7 @@ class SousChef(Service):
         key = (ingredients.runNumber, ingredients.useLiteMode, groupingSchema)
         if key not in self._pixelGroupCache:
             focusGroup = self.prepFocusGroup(ingredients)
-            instrumentState = self.prepInstrumentState(ingredients.runNumber)
+            instrumentState = self.prepInstrumentState(ingredients)
             pixelIngredients = PixelGroupingIngredients(
                 instrumentState=instrumentState,
                 nBinsAcrossPeakWidth=ingredients.nBinsAcrossPeakWidth,
@@ -117,7 +119,7 @@ class SousChef(Service):
     def prepPeakIngredients(self, ingredients: FarmFreshIngredients) -> PeakIngredients:
         return PeakIngredients(
             crystalInfo=self.prepCrystallographicInfo(ingredients),
-            instrumentState=self.prepInstrumentState(ingredients.runNumber),
+            instrumentState=self.prepInstrumentState(ingredients),
             pixelGroup=self.prepPixelGroup(ingredients),
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
         )
@@ -131,6 +133,8 @@ class SousChef(Service):
             ingredients.focusGroup.name,
             ingredients.crystalDBounds.minimum,
             ingredients.crystalDBounds.maximum,
+            ingredients.fwhmMultipliers.left,
+            ingredients.fwhmMultipliers.right,
             ingredients.peakIntensityThreshold,
             purgePeaks,
         )

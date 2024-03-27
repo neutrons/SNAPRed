@@ -24,6 +24,25 @@ class Limit(GenericModel, Generic[T]):
     #     return values
 
 
+class Pair(GenericModel, Generic[T]):
+    left: T
+    right: T
+
+    def __init__(self, minimum: T = None, maximum: T = None, **kwargs):
+        if minimum is not None and maximum is not None:
+            super().__init__(left=minimum, right=maximum)
+        else:
+            super().__init__(**kwargs)
+
+    @property
+    def minimum(self) -> T:
+        return self.left
+
+    @property
+    def maximum(self) -> T:
+        return self.right
+
+
 class LimitedValue(GenericModel, Generic[T]):
     value: T
     minimum: T

@@ -80,9 +80,7 @@ calibration:
       beta:
         - 1
         - 2
-      FWHMMultiplier:
-        - -2
-        - 2
+      FWHMMultiplier: {left: 2.0, right: 2.0}
       peakTailCoefficient: 2.0
       smoothing: 0.5
   fitting:

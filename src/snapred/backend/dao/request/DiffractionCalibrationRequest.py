@@ -4,6 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
@@ -34,3 +35,4 @@ class DiffractionCalibrationRequest(BaseModel):
     peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     maximumOffset: float = Config["calibration.diffraction.maximumOffset"]
+    fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
