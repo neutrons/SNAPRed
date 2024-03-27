@@ -212,6 +212,7 @@ class CalibrationService(Service):
         calibrationRecord.version = version
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         calibrationRecord = self.dataExportService.exportCalibrationWorkspaces(calibrationRecord)
+        entry.version = calibrationRecord.version
         self.saveCalibrationToIndex(entry)
 
     @FromString
