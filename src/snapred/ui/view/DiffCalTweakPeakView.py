@@ -239,7 +239,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.groupingFileDropdown.setItems(groups)
         self.groupingFileDropdown.setEnabled(True)
 
-    def verify(self):
+    def _testFailStates(self):
         empties = [gpl for gpl, count in zip(self.peaks, self.goodPeaksCount) if count < self.MIN_PEAKS]
         if len(empties) > 0:
             msg = f"Proper calibration requires at least {self.MIN_PEAKS} well-fit peaks per group.\n"
@@ -247,6 +247,15 @@ class DiffCalTweakPeakView(BackendRequestView):
                 msg = msg + f"\tgroup {empty.groupID} has \t {len(empty.peaks)} peaks\n"
             msg = msg + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
             raise ValueError(msg)
+        badPeaks = [gpl for gpl, count in zip(self.peaks, self.goodPeaksCount) if len(gpl.peaks) != count]
+        if len(badPeaks) > 0:
+            msg = "Peaks in the following groups have chi-squared values exceeding the maximum allowed value.\n"
+            for badPeak in badPeaks:
+                msg = msg + f"\tgroup {badPeak.groupID} has bad peaks at \t {[peak.value for peak in badPeak.peaks]}\n"
+            msg = msg + "Adjust FWHM, dMin, dMax, peak intensity threshold, ect. to better fit more peaks."
+            raise ValueError(msg)
+
+    def _testContinueAnywayStates(self):
         tooFews = [gpl for gpl, count in zip(self.peaks, self.goodPeaksCount) if count < self.PREF_PEAKS]
         if len(tooFews) > 0:
             msg = f"It is recommended to have at least {self.PREF_PEAKS} well-fit peaks per group.\n"
@@ -254,4 +263,9 @@ class DiffCalTweakPeakView(BackendRequestView):
                 msg = msg + f"\tgroup {tooFew.groupID} has \t {len(tooFew.peaks)} peaks\n"
             msg = msg + "Would you like to continue anyway?"
             raise ContinueWarning(msg)
+
+    def verify(self):
+        self._testFailStates()
+        self._testContinueAnywayStates()
+
         return True

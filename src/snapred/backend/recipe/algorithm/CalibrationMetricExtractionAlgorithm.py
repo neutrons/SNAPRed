@@ -34,7 +34,7 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
         errorReport = ""
         for groupIndex, metric in enumerate(metrics):
             if np.isnan(np.array(list(metric.values()))).any():
-                errorReport += f"\nNaN values detected in group {groupIndex + 1}."
+                errorReport += f"\nIll-fitted peaks detected in group {groupIndex + 1}."
 
         if errorReport != "":
             raise RuntimeError((errorReport + "\nPlease tweak your parameters and try again.\n\n"))
@@ -105,6 +105,7 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
                     twoThetaAverage=twoThetaAverage,
                 ).dict()
             )
+            self
 
         self.validateMetric(peakMetrics)
 
