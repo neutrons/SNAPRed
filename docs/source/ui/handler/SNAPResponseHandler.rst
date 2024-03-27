@@ -1,5 +1,5 @@
 SNAPResonseHandler Class Documentation
-===================================
+==========================================
 
 .. module:: SNAPResonseHandler
    :synopsis: A class for handling warning and error messages

@@ -24,3 +24,4 @@ Contents
    developer/index
    api/modules
    ui/workflow/WorkflowBuilder
+   ui/handler/SNAPResponseHandler
