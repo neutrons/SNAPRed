@@ -30,6 +30,15 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
         self.mantidSnapper = MantidSnapper(self, __name__)
         self.setRethrows(True)
 
+    def validateMetric(self, metrics):
+        errorReport = ""
+        for groupIndex, metric in enumerate(metrics):
+            if np.isnan(np.array(list(metric.values()))).any():
+                errorReport += f"\nIll-fitted peaks detected in group {groupIndex + 1}."
+
+        if errorReport != "":
+            raise RuntimeError((errorReport + "\nPlease tweak your parameters and try again.\n\n"))
+
     def PyExec(self):
         inputWorkspace = self.getProperty("InputWorkspace").value
         inputWorkspace = self.mantidSnapper.mtd[inputWorkspace]
@@ -96,6 +105,8 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
                     twoThetaAverage=twoThetaAverage,
                 ).dict()
             )
+
+        self.validateMetric(peakMetrics)
 
         self.setProperty("OutputMetrics", json.dumps(peakMetrics))
 

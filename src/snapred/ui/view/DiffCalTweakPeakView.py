@@ -173,6 +173,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.peaks = parse_obj_as(List[GroupPeakList], peaks)
         numGraphs = len(peaks)
         self.goodPeaksCount = [0] * numGraphs
+        self.badPeaks = [[]] * numGraphs
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
 
         # now re-draw the figure
@@ -185,6 +186,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             param_table = mtd[diagnostic].getItem(incr * wkspIndex + FitOutputEnum.Parameters.value).toDict()
             chisq = param_table["chi2"]
             self.goodPeaksCount[wkspIndex] = len([peak for chi2, peak in zip(chisq, peaks) if chi2 < self.MAX_CHI_SQ])
+            self.badPeaks[wkspIndex] = [peak for chi2, peak in zip(chisq, peaks) if chi2 >= self.MAX_CHI_SQ]
             # prepare the plot area
             ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
             ax.tick_params(direction="in")
@@ -239,7 +241,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.groupingFileDropdown.setItems(groups)
         self.groupingFileDropdown.setEnabled(True)
 
-    def verify(self):
+    def _testFailStates(self):
         empties = [gpl for gpl, count in zip(self.peaks, self.goodPeaksCount) if count < self.MIN_PEAKS]
         if len(empties) > 0:
             msg = f"Proper calibration requires at least {self.MIN_PEAKS} well-fit peaks per group.\n"
@@ -247,6 +249,15 @@ class DiffCalTweakPeakView(BackendRequestView):
                 msg = msg + f"\tgroup {empty.groupID} has \t {len(empty.peaks)} peaks\n"
             msg = msg + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
             raise ValueError(msg)
+        totalBadPeaks = sum([len(badPeaks) for badPeaks in self.badPeaks])
+        if totalBadPeaks > 0:
+            msg = "Peaks in the following groups have chi-squared values exceeding the maximum allowed value.\n"
+            for groupID, badPeak in enumerate(self.badPeaks):
+                msg = msg + f"\tgroup {groupID + 1} has bad peaks at {[peak.value for peak in badPeak]}\n"
+            msg = msg + "Adjust FWHM, dMin, dMax, peak intensity threshold, ect. to better fit more peaks."
+            raise ValueError(msg)
+
+    def _testContinueAnywayStates(self):
         tooFews = [gpl for gpl, count in zip(self.peaks, self.goodPeaksCount) if count < self.PREF_PEAKS]
         if len(tooFews) > 0:
             msg = f"It is recommended to have at least {self.PREF_PEAKS} well-fit peaks per group.\n"
@@ -254,4 +265,9 @@ class DiffCalTweakPeakView(BackendRequestView):
                 msg = msg + f"\tgroup {tooFew.groupID} has \t {len(tooFew.peaks)} peaks\n"
             msg = msg + "Would you like to continue anyway?"
             raise ContinueWarning(msg)
+
+    def verify(self):
+        self._testFailStates()
+        self._testContinueAnywayStates()
+
         return True
