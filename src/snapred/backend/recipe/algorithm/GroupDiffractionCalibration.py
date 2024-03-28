@@ -15,6 +15,7 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
+from snapred.backend.recipe.algorithm.ConjoinTableWorkspaces import ConjoinTableWorkspaces
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -29,11 +30,10 @@ class GroupDiffractionCalibration(PythonAlgorithm):
     """
 
     NOISE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
+    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def category(self):
         return "SNAPRed Diffraction Calibration"
-
-    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def PyInit(self):
         # declare properties
@@ -50,12 +50,12 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             doc="Table workspace with previous pixel-calibrated DIFC values; if none given, will be calculated.",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspaceTOF", "", Direction.Output, PropertyMode.Optional),
-            doc="A diffraction-focused workspace in TOF, after calibration constants have been adjusted.",
+            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="A diffraction-focused workspace in dSpacing, after calibration constants have been adjusted.",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspacedSpacing", "", Direction.Output, PropertyMode.Optional),
-            doc="A diffraction-focused workspace in dSpacing, after calibration constants have been adjusted.",
+            MatrixWorkspaceProperty("DiagnosticWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="A workspace group containing the fitted peaks, fit parameters, and the TOF-focused data for comparison to fits.",
         )
         self.declareProperty(
             MaskWorkspaceProperty("MaskWorkspace", "", Direction.Output, PropertyMode.Optional),
@@ -125,16 +125,16 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
         # create string names of workspaces that will be used by algorithm
         self.outputWStof: str = ""
-        if self.getProperty("OutputWorkspaceTOF").isDefault:
+        if self.getProperty("DiagnosticWorkspace").isDefault:
             self.outputWStof = wng.diffCalOutput().runNumber(self.runNumber).build()
             self.setPropertyValue("OutputWorkspaceTOF", self.outputWStof)
         else:
-            self.outputWStof = self.getPropertyValue("OutputWorkspaceTOF")
+            self.outputWStof = self.getPropertyValue("DiagnosticWorkspace")
 
         self.outputWSdSpacing: str = ""
-        if self.getProperty("OutputWorkspacedSpacing").isDefault:
+        if self.getProperty("OutputWorkspace").isDefault:
             self.outputWSdSpacing = wng.diffCalOutputdSpacing().runNumber(self.runNumber).build()
-            self.setPropertyValue("OutputWorkspacedSpacing", self.outputWSdSpacing)
+            self.setPropertyValue("OutputWorkspace", self.outputWSdSpacing)
         else:
             self.outputWSdSpacing = self.getPropertyValue("OutputWorkspacedSpacing")
 
@@ -250,11 +250,13 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         if nHist != len(self.groupIDs):
             raise RuntimeError("error, the number of spectra in focused workspace, and number of groups, do not match")
 
-        diagnosticWS: str = "_PDCal_diag"
+        diagnosticWS: str = "pdcal_diagnostic_" + self.outputWStof
+        diagnosticPeakFit: str = diagnosticWS + "_fitted"
+        diagnosticParamTable: str = diagnosticWS + "_param"
         for index in range(nHist):
             groupID: int = self.groupIDs[index]
             DIFCpd: str = f"_tmp_DIFCgroup_{groupID}"
-            diagnosticWSgroup: str = diagnosticWS + f"_{groupID}"
+            diagnosticWSgroup: str = f"_pdcal_diag_{groupID}"
             self.mantidSnapper.PDCalibration(
                 f"Perform PDCalibration on group {groupID}",
                 InputWorkspace=self.outputWStof,
@@ -282,15 +284,25 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             )
             if index == 0:
                 self.mantidSnapper.CloneWorkspace(
-                    "Save the first diagnostic workspace",
+                    "Save the first diagnostic peak-fit workspace",
                     InputWorkspace=diagnosticWSgroup + "_fitted",
-                    OutputWorkspace=diagnosticWS,
+                    OutputWorkspace=diagnosticPeakFit,
+                )
+                self.mantidSnapper.CloneWorkspace(
+                    "Save the first diagnostic parameter table",
+                    InputWorkspace=diagnosticWSgroup + "_param",
+                    OutputWorkspace=diagnosticParamTable,
                 )
             else:
                 self.mantidSnapper.ConjoinWorkspaces(
-                    "Combine diagnostic workspaces",
-                    InputWorkspace1=diagnosticWS,
-                    InputWorkspace2=diagnosticWSgroup + "_fitted",
+                    "Combine diagnostic peak-fit workspaces",
+                    InputWorkspace1=diagnosticPeakFit,
+                    InputWorkspace2=diagnosticWSgroup+"_fitted",
+                )
+                self.mantidSnapper.ConjoinTableWorkspaces(
+                    "Combine diagnostic parameter tables",
+                    InputWorkspace1=diagnosticParamTable,
+                    InputWorkspace2=diagnosticWSgroup+"_param",
                 )
             self.mantidSnapper.CombineDiffCal(
                 "Combine the new calibration values",
