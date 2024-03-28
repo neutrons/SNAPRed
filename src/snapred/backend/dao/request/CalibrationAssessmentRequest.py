@@ -24,11 +24,14 @@ class CalibrationAssessmentRequest(BaseModel):
     """
 
     run: RunConfig
-    workspaces: Dict[WorkspaceType, List[WorkspaceName]]
+    useLiteMode: bool
     focusGroup: FocusGroup
     calibrantSamplePath: str
-    useLiteMode: bool
-    nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
-    peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
-    peakType: ALLOWED_PEAK_TYPES = "Gaussian"
+    workspaces: Dict[WorkspaceType, List[WorkspaceName]]
+    # fiddly bits
+    peakFunction: ALLOWED_PEAK_TYPES
+    crystalDMin: float
+    crystalDMax: float
+    peakIntensityThreshold: float
+    nBinsAcrossPeakWidth: int
     fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])

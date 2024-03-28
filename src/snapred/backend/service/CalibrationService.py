@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from pydantic import parse_file_as, parse_raw_as
 
-from snapred.backend.dao import RunConfig
+from snapred.backend.dao import Limit, RunConfig
 from snapred.backend.dao.calibration import (
     CalibrationIndexEntry,
     CalibrationMetric,
@@ -346,6 +346,11 @@ class CalibrationService(Service):
             focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
+            # fiddly bits
+            peakFucntion=request.peakFunction,
+            crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
+            peakIntensityThreshold=request.peakIntensityThreshold,
+            nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
         )
         pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
