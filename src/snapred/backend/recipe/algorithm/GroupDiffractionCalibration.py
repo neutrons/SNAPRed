@@ -14,8 +14,8 @@ from mantid.kernel import Direction, StringMandatoryValidator
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.ConjoinTableWorkspaces import ConjoinTableWorkspaces
+from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -297,12 +297,12 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 self.mantidSnapper.ConjoinWorkspaces(
                     "Combine diagnostic peak-fit workspaces",
                     InputWorkspace1=diagnosticPeakFit,
-                    InputWorkspace2=diagnosticWSgroup+"_fitted",
+                    InputWorkspace2=diagnosticWSgroup + "_fitted",
                 )
                 self.mantidSnapper.ConjoinTableWorkspaces(
                     "Combine diagnostic parameter tables",
                     InputWorkspace1=diagnosticParamTable,
-                    InputWorkspace2=diagnosticWSgroup+"_param",
+                    InputWorkspace2=diagnosticWSgroup + "_param",
                 )
             self.mantidSnapper.CombineDiffCal(
                 "Combine the new calibration values",
