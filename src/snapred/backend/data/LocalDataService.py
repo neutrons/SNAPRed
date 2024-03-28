@@ -493,8 +493,14 @@ class LocalDataService:
         """
         normalizationDataPath = Path(self._constructNormalizationCalibrationDataPath(record.runNumber, record.version))
         for workspace in record.workspaceNames:
-            filename = Path(workspace + "_" + wnvf.formatVersion(record.version) + ".tar")
-            self.writeRaggedWorkspace(normalizationDataPath, filename, workspace)
+            filename = workspace + "_" + wnvf.formatVersion(record.version)
+            ws = mtd[workspace]
+            if ws.isRaggedWorkspace():
+                filename = Path(filename + ".tar")
+                self.writeRaggedWorkspace(normalizationDataPath, filename, workspace)
+            else:
+                filename = Path(filename + ".nxs")
+                self.writeWorkspace(normalizationDataPath, filename, workspace)
         return record
 
     def readCalibrationRecord(self, runId: str, version: str = None):
