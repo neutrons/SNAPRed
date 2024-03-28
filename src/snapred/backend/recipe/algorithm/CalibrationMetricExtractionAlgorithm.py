@@ -105,7 +105,6 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
                     twoThetaAverage=twoThetaAverage,
                 ).dict()
             )
-            self
 
         self.validateMetric(peakMetrics)
 
