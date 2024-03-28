@@ -52,9 +52,9 @@ class SyntheticData(object):
     # MOCK instruments and configuration files:
     fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
     fakeGroupingFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
-    fakeInstrumentStatePath = Resource.read("inputs/diffcal/fakeInstrumentState.json")
-    fakeFocusGroupPath = Resource.read("inputs/diffcal/fakeFocusGroup.json")
-    fakePixelGroupPath = Resource.read("inputs/diffcal/fakePixelGroup.json")
+    fakeInstrumentStatePath = Resource.getPath("inputs/diffcal/fakeInstrumentState.json")
+    fakeFocusGroupPath = Resource.getPath("inputs/diffcal/fakeFocusGroup.json")
+    fakePixelGroupPath = Resource.getPath("inputs/diffcal/fakePixelGroup.json")
 
     # REAL instruments and configuration files:
     SNAPInstrumentFilePath = str(Path(mantid.__file__).parent / "instrument" / "SNAP_Definition.xml")
@@ -67,12 +67,12 @@ class SyntheticData(object):
             IPTS="",
         )
 
-        self.fakeInstrumentState = InstrumentState.parse_raw(SyntheticData.fakeInstrumentStatePath)
+        self.fakeInstrumentState = InstrumentState.parse_file(SyntheticData.fakeInstrumentStatePath)
 
-        self.fakeFocusGroup = FocusGroup.parse_raw(SyntheticData.fakeFocusGroupPath)
+        self.fakeFocusGroup = FocusGroup.parse_file(SyntheticData.fakeFocusGroupPath)
         self.fakeFocusGroup.definition = SyntheticData.fakeGroupingFilePath
 
-        self.fakePixelGroup = PixelGroup.parse_raw(SyntheticData.fakePixelGroupPath)
+        self.fakePixelGroup = PixelGroup.parse_file(SyntheticData.fakePixelGroupPath)
 
         # Place all peaks within the _minimum_ d-space range of any pixel group.
         dMin = max(self.fakePixelGroup.dMin())

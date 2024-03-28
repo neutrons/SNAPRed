@@ -21,6 +21,7 @@ from snapred.backend.dao.state.CalibrantSample import (
     Geometry,
     Material,
 )
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictorRecipe
 from snapred.meta.Config import Resource
@@ -60,14 +61,17 @@ class SculleryBoy:
             crystallography=self._prepCrystallography(),
         )
 
-    def prepFocusGroup(self, ingredients: FarmFreshIngredients):  # noqa ARG002
-        return mock.Mock()
+    def prepFocusGroup(self, ingredients: FarmFreshIngredients) -> FocusGroup:  # noqa ARG002
+        return FocusGroup(
+            name="Natural",
+            definition=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
+        )
 
     def prepPixelGroup(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         return PixelGroup(
             pixelGroupingParameters=[],
             nBinsAcrossPeakWidth=7,
-            focusGroup={"name": "several", "definition": "/bread/coconut"},
+            focusGroup=self.prepFocusGroup(ingredients),
             timeOfFlight={"minimum": 0.001, "maximum": 100, "binWidth": 1, "binnindMode": -1},
             binningMode=-1,
         )

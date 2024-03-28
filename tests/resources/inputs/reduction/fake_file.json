@@ -121,6 +121,10 @@
         "binWidth": 0.0002771822370612031,
         "binningMode": -1
       },
+      "focusGroup": {
+        "name": "unlikely grouping",
+        "definition": "path/to/here"
+      },
       "pixelGroupingParameters": [
         {
           "groupID": 1,
