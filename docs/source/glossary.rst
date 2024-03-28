@@ -240,6 +240,12 @@ Glossary
         higher values leading to a smoother signal. It is often adjusted as part of the :term:`Normalization` or
         :term:`Reduction` processes and is applied via algorithms within a :term:`Recipe`.
 
+    SNAPRequest
+        An object containing a :term:`Recipe` to be executed
+
+    SNAPResponse
+        The resulting object after executing a :term:`SNAPRequest` that contains a response code, and may contain a message and other data.
+
     Software Metadata
         This refers data about how SNAPRed operates.
         A prime example of this is the current mappings the InterfaceController has to the various services.
