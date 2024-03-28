@@ -173,6 +173,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.peaks = parse_obj_as(List[GroupPeakList], peaks)
         numGraphs = len(peaks)
         self.goodPeaksCount = [0] * numGraphs
+        self.badPeaks = [[]] * numGraphs
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
 
         # now re-draw the figure
@@ -185,6 +186,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             param_table = mtd[diagnostic].getItem(incr * wkspIndex + FitOutputEnum.Parameters.value).toDict()
             chisq = param_table["chi2"]
             self.goodPeaksCount[wkspIndex] = len([peak for chi2, peak in zip(chisq, peaks) if chi2 < self.MAX_CHI_SQ])
+            self.badPeaks[wkspIndex] = [peak for chi2, peak in zip(chisq, peaks) if chi2 >= self.MAX_CHI_SQ]
             # prepare the plot area
             ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
             ax.tick_params(direction="in")
@@ -247,11 +249,11 @@ class DiffCalTweakPeakView(BackendRequestView):
                 msg = msg + f"\tgroup {empty.groupID} has \t {len(empty.peaks)} peaks\n"
             msg = msg + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
             raise ValueError(msg)
-        badPeaks = [gpl for gpl, count in zip(self.peaks, self.goodPeaksCount) if len(gpl.peaks) != count]
-        if len(badPeaks) > 0:
+        totalBadPeaks = sum([len(badPeaks) for badPeaks in self.badPeaks])
+        if totalBadPeaks > 0:
             msg = "Peaks in the following groups have chi-squared values exceeding the maximum allowed value.\n"
-            for badPeak in badPeaks:
-                msg = msg + f"\tgroup {badPeak.groupID} has bad peaks at {[peak.value for peak in badPeak.peaks]}\n"
+            for groupID, badPeak in enumerate(self.badPeaks):
+                msg = msg + f"\tgroup {groupID + 1} has bad peaks at {[peak.value for peak in badPeak]}\n"
             msg = msg + "Adjust FWHM, dMin, dMax, peak intensity threshold, ect. to better fit more peaks."
             raise ValueError(msg)
 
