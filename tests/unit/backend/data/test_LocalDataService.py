@@ -1042,9 +1042,7 @@ def test_writeNormalizationWorkspaces(mockConstructNormalizationCalibrationDataP
         localDataService.writeNormalizationWorkspaces(testNormalizationRecord)
 
         for wsName in testNormalizationRecord.workspaceNames:
-            filename = Path(
-                wsName + "_" + wnvf.formatVersion(version) + Config["calibration.diffraction.output.extension"]
-            )
+            filename = Path(wsName + "_" + wnvf.formatVersion(version) + ".nxs")
             assert (basePath / filename).exists()
         mtd.clear()
 
