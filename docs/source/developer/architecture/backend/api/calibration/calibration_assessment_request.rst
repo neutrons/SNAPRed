@@ -38,6 +38,6 @@ Attributes:
   for peak intensity, below which peaks will be disregarded in the analysis. This threshold is crucial for distinguishing
   significant peaks from noise, ensuring the focus is on relevant data points.
 
-- peakType (ALLOWED_PEAK_TYPES, default="Gaussian"): Defines the type of peak model to be used in the assessment, with a
+- peakFunction (ALLOWED_PEAK_TYPES, default="Gaussian"): Defines the type of peak model to be used in the assessment, with a
   default set to Gaussian. The choice of peak type influences the modeling and analysis of peak data, impacting the
   assessment outcomes.

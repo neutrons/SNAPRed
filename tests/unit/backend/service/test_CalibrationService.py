@@ -267,6 +267,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             useLiteMode=True,
             focusGroup={"name": fakeMetrics.focusGroupName, "definition": ""},
             calibrantSamplePath="egg/muffin/biscuit",
+            peakFunction="Gaussian",
+            crystalDMin=0,
+            crystalDMax=10,
+            peakIntensityThreshold=0,
+            nBinsAcrossPeakWidth=0,
         )
         response = self.instance.assessQuality(request)
 

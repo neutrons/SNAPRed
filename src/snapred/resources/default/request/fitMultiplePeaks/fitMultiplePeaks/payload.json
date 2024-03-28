@@ -445,7 +445,7 @@
       }
     ]
   },
-  "peakType": "Gaussian",
+  "peakFunction": "Gaussian",
   "inputWorkspace": "testWS",
   "showResult": false
 }
