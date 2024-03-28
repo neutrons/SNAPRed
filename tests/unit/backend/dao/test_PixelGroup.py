@@ -10,6 +10,7 @@ from mantid.simpleapi import (
 )
 from pydantic.error_wrappers import ValidationError
 from snapred.backend.dao.Limit import BinnedValue, Limit
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.meta.Config import Resource
@@ -50,11 +51,17 @@ class TestPixelGroup(unittest.TestCase):
             binWidth=0.03 / cls.nBinsAcrossPeakWidth,
         )
 
+        cls.focusGroup = FocusGroup(
+            name="Natural",
+            definition=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
+        )
+
         try:
             cls.reference = PixelGroup(
                 pixelGroupingParameters=cls.pixelGroupingParameters,
                 nBinsAcrossPeakWidth=cls.nBinsAcrossPeakWidth,
                 timeOfFlight=cls.tofParams,
+                focusGroup=cls.focusGroup,
             )
         except:
             pytest.fail("Failed to make a pixel group from a dictionary of PGPs")
@@ -67,6 +74,7 @@ class TestPixelGroup(unittest.TestCase):
                 pixelGroupingParameters=self.pixelGroupingParametersList,
                 nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
                 timeOfFlight=self.tofParams,
+                focusGroup=self.focusGroup,
             )
         except:
             pytest.fail("Failed to make a pixel group from a list of PGPs")
@@ -82,6 +90,7 @@ class TestPixelGroup(unittest.TestCase):
                 dRelativeResolution=self.dRelativeResolution,
                 nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
                 timeOfFlight=self.tofParams,
+                focusGroup=self.focusGroup,
             )
         except:
             pytest.fail("Failed to make a pixel group from base ingredients")
@@ -94,6 +103,7 @@ class TestPixelGroup(unittest.TestCase):
             pixelGroupingParameters=self.pixelGroupingParameters,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             timeOfFlight=self.tofParams,
+            focusGroup=self.focusGroup,
         )
         assert pg.groupIDs == self.groupIDs
 
@@ -102,6 +112,7 @@ class TestPixelGroup(unittest.TestCase):
             pixelGroupingParameters=self.pixelGroupingParameters,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             timeOfFlight=self.tofParams,
+            focusGroup=self.focusGroup,
         )
         assert pg.twoTheta == self.twoTheta
 
@@ -110,6 +121,7 @@ class TestPixelGroup(unittest.TestCase):
             pixelGroupingParameters=self.pixelGroupingParameters,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             timeOfFlight=self.tofParams,
+            focusGroup=self.focusGroup,
         )
         assert pg.dResolution == self.dResolution
 
@@ -118,6 +130,7 @@ class TestPixelGroup(unittest.TestCase):
             pixelGroupingParameters=self.pixelGroupingParameters,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             timeOfFlight=self.tofParams,
+            focusGroup=self.focusGroup,
         )
         assert pg.dRelativeResolution == self.dRelativeResolution
 
@@ -128,6 +141,7 @@ class TestPixelGroup(unittest.TestCase):
             pixelGroupingParameters=self.pixelGroupingParameters,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             timeOfFlight=self.tofParams,
+            focusGroup=self.focusGroup,
         )
         assert pg.dMax() == [dl.maximum for dl in self.dResolution]
 
@@ -136,6 +150,7 @@ class TestPixelGroup(unittest.TestCase):
             pixelGroupingParameters=self.pixelGroupingParameters,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             timeOfFlight=self.tofParams,
+            focusGroup=self.focusGroup,
         )
         assert pg.dMin() == [dl.minimum for dl in self.dResolution]
 
@@ -144,6 +159,7 @@ class TestPixelGroup(unittest.TestCase):
             pixelGroupingParameters=self.pixelGroupingParameters,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             timeOfFlight=self.tofParams,
+            focusGroup=self.focusGroup,
             binningMode=PixelGroup.BinningMode.LOG,
         )
         binWidths = pg.dBin()
@@ -156,6 +172,7 @@ class TestPixelGroup(unittest.TestCase):
             pixelGroupingParameters=self.pixelGroupingParameters,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             timeOfFlight=self.tofParams,
+            focusGroup=self.focusGroup,
             binningMode=PixelGroup.BinningMode.LINEAR,
         )
         binWidths = pg.dBin()

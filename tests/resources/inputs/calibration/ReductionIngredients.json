@@ -122,6 +122,7 @@
     "overrides": null
   },
   "pixelGroup": {
+    "focusGroup": {"name": "Column", "definition": "/path/to/file/"},
     "timeOfFlight": {
       "minimum": 2350.800030332904,
       "maximum": 14104.800181997423,

@@ -62,6 +62,10 @@
     "peakTailCoefficient": 2.0
   },
   "pixelGroup": {
+    "focusGroup": {
+      "name": "unlikely grouping",
+      "definition": "path/to/here"
+    },
     "timeOfFlight": {
       "minimum": 1959.0,
       "maximum": 14496.6,

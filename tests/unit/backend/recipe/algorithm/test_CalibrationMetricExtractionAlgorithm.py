@@ -61,6 +61,7 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         ]
         fakePixelGroup = PixelGroup(
             pixelGroupingParameters=fakePixelGroupingParameterss,
+            focusGroup={"name": "something", "definition": "path/to/wherever"},
             timeOfFlight={"minimum": 1.0, "maximum": 10.0, "binWidth": 1, "binningMode": 1},
         )
 

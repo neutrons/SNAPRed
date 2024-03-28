@@ -14,7 +14,7 @@ class PixelGroup(BaseModel):
     # allow initializtion from either dictionary or list
     pixelGroupingParameters: Union[List[PixelGroupingParameters], Dict[int, PixelGroupingParameters]] = {}
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
-    focusGroup: Optional[FocusGroup]  # TODO this needs to be mandatory
+    focusGroup: FocusGroup
     timeOfFlight: BinnedValue[float]
 
     class BinningMode(IntEnum):
