@@ -52,7 +52,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             doc="Input list of peaks to be fit",
         )
         self.declareProperty(
-            "PeakType", "Gaussian", StringListValidator(allowed_peak_type_list), direction=Direction.Input
+            "PeakFunction", "Gaussian", StringListValidator(allowed_peak_type_list), direction=Direction.Input
         )
         self.declareProperty("OutputWorkspaceGroup", defaultValue="fitPeaksWSGroup", direction=Direction.Output)
         self.setRethrows(True)
@@ -85,7 +85,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         mtd.addOrReplace(self.outputWorkspaceName, self.outputWorkspace)
 
     def PyExec(self):
-        peakType = self.getPropertyValue("PeakType")
+        peakFunction = self.getPropertyValue("PeakFunction")
         reducedPeakList = parse_raw_as(List[GroupPeakList], self.getPropertyValue("DetectorPeaks"))
         self.chopIngredients(reducedPeakList)
         self.unbagGroceries()
@@ -114,7 +114,7 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 "Fit Peaks...",
                 InputWorkspace="ws2fit",
                 PeakCenters=",".join(np.array(peakCenters).astype("str")),
-                PeakFunction=peakType,
+                PeakFunction=peakFunction,
                 FitWindowBoundaryList=",".join(np.array(peakLimits).astype("str")),
                 OutputWorkspace=outputNames[FitOutputEnum.PeakPosition.value],
                 OutputPeakParametersWorkspace=outputNames[FitOutputEnum.Parameters.value],

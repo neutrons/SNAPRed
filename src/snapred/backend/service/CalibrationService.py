@@ -201,7 +201,7 @@ class CalibrationService(Service):
         return FitMultiplePeaksRecipe().executeRecipe(
             InputWorkspace=request.inputWorkspace,
             DetectorPeaks=request.detectorPeaks,
-            PeakType=request.peakFunction,
+            PeakFunction=request.peakFunction,
             OutputWorkspaceGroup=request.outputWorkspaceGroup,
         )
 
