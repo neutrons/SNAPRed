@@ -300,15 +300,20 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),
+            useLiteMode=self.useLiteMode,
+            focusGroup=self.focusGroups[self.focusGroupPath],
+            calibrantSamplePath=self.calibrantSamplePath,
             workspaces={
                 wngt.DIFFCAL_OUTPUT: [response.data["outputDSPWorkspace"], response.data["outputTOFWorkspace"]],
                 wngt.DIFFCAL_TABLE: [response.data["calibrationTable"]],
                 wngt.DIFFCAL_MASK: [response.data["maskWorkspace"]],
             },
-            focusGroup=self.focusGroups[self.focusGroupPath],
+            # fiddly bits
+            peakFunction=self.peakFunction,
+            crystalDMin=self.prevDMin,
+            crystalDMax=self.prevDMax,
+            peakIntensityThreshold=self.prevThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
-            useLiteMode=self.useLiteMode,
-            calibrantSamplePath=self.calibrantSamplePath,
             fwhmMultipliers=self.prevFWHM,
         )
 

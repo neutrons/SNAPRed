@@ -15,9 +15,13 @@ def test_literal_bad():
             focusGroup={"name": "nope", "definition": "nope"},
             calibrantSamplePath="nope",
             useLiteMode=False,
-            peakType=bad,
+            peakFunction=bad,
+            crystalDMin=0.0,
+            crystaldMax=10.0,
+            peakIntensityThreshold=1.0,
+            nBinsAcrossPeakWidth=10,
         )
-    assert "peakType" in str(e.value)
+    assert "peakFunction" in str(e.value)
 
 
 def test_literal_good():
@@ -29,7 +33,11 @@ def test_literal_good():
                 focusGroup={"name": "nope", "definition": "nope"},
                 calibrantSamplePath="nope",
                 useLiteMode=False,
-                peakType=good,
+                peakFunction=good,
+                crystalDMin=0.0,
+                crystalDMax=10.0,
+                peakIntensityThreshold=1.0,
+                nBinsAcrossPeakWidth=10,
             )
         except ValidationError:
             pytest.fail("unexpected `ValidationError` during test")
