@@ -1,8 +1,8 @@
 import json
-from typing import List
+from typing import Dict, List
 
 import numpy as np
-from mantid.api import AlgorithmFactory, PythonAlgorithm
+from mantid.api import AlgorithmFactory, PythonAlgorithm, WorkspaceGroupProperty
 from mantid.kernel import Direction
 from pydantic import parse_raw_as
 
@@ -24,7 +24,7 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
 
     def PyInit(self):
         # declare properties
-        self.declareProperty("InputWorkspace", defaultValue="", direction=Direction.Input)
+        self.declareProperty(WorkspaceGroupProperty("InputWorkspace", defaultValue="", direction=Direction.Input))
         self.declareProperty("PixelGroup", defaultValue="", direction=Direction.Input)
         self.declareProperty("OutputMetrics", defaultValue="", direction=Direction.Output)
         self.mantidSnapper = MantidSnapper(self, __name__)
@@ -39,32 +39,32 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
         if errorReport != "":
             raise RuntimeError((errorReport + "\nPlease tweak your parameters and try again.\n\n"))
 
+    def validateInputs(self) -> Dict[str, str]:
+        errors = {}
+        inputWorkspace = self.getProperty("InputWorkspace").value
+        if inputWorkspace.getNumberOfEntries() != len(FitOutputEnum):
+            errors[
+                "InputWorkspace"
+            ] = f"Number of groups in InputWorkspace must be divisible by {len(FitOutputEnum)}.  \
+                    Did you use FitMultiplePeaksAlgorithm to get InputWorkspace?"
+        return errors
+
     def PyExec(self):
         inputWorkspace = self.getProperty("InputWorkspace").value
-        inputWorkspace = self.mantidSnapper.mtd[inputWorkspace]
-
-        if not inputWorkspace.isGroup():
-            raise RuntimeError("Input Workspace for CalibrationMetricExtractionAlgorithm must be a GroupWorkspace!")
-        if inputWorkspace.getNumberOfEntries() % len(FitOutputEnum) != 0:
-            raise RuntimeError(
-                f"Number of groups in InputWorkspace must be divisible by {len(FitOutputEnum)}.  \
-                    Did you use FitMultiplePeaksAlgorithm to get InputWorkspace?"
-            )
+        # inputWorkspace = self.mantidSnapper.mtd[inputWorkspace]
 
         pixelGroup = PixelGroup.parse_raw(self.getPropertyValue("PixelGroup"))
         pixelGroupingParameters = list(pixelGroup.pixelGroupingParameters.values())
         # collect all params and peak positions
-        fitDataList = []
-        for increment in range(0, inputWorkspace.getNumberOfEntries(), len(FitOutputEnum)):
-            peakPosition = inputWorkspace.getItem(increment + FitOutputEnum.PeakPosition.value)
-            parameters = inputWorkspace.getItem(increment + FitOutputEnum.Parameters.value)
-            workspace = inputWorkspace.getItem(increment + FitOutputEnum.Workspace.value)
-            parameterError = inputWorkspace.getItem(increment + FitOutputEnum.ParameterError.value)
-            fitDataTuple = (peakPosition, parameters, workspace, parameterError, int(increment / len(FitOutputEnum)))
-            fitDataList.append(fitDataTuple)
+        peakPos = inputWorkspace.getItem(FitOutputEnum.PeakPosition.value)
+        parameters = inputWorkspace.getItem(FitOutputEnum.Parameters.value)
+        workspace = inputWorkspace.getItem(FitOutputEnum.Workspace.value)  # noqa: F841
+        parameterError = inputWorkspace.getItem(FitOutputEnum.ParameterError.value)  # noqa: F841
 
         peakMetrics = []
-        for peakPos, params, workspace, _, index in fitDataList:
+        for index in range(peakPos.getNumberHistograms()):
+            params = [parameters.row(i) for i, wsindex in enumerate(parameters.column("wsindex")) if wsindex == index]
+
             sigmaAverage = 0
             sigmaStandardDeviation = 0
             strainAverage = 0
@@ -73,11 +73,10 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
 
             strains = []
             sigmas = []
-            for rowIndex in range(params.rowCount()):
-                row = params.row(rowIndex)
+            for rowIndex, row in enumerate(params):
                 sig = row["Sigma"]
-                pos = peakPos.readY(0)[rowIndex]
-                d_ref = peakPos.readX(0)[rowIndex]
+                pos = peakPos.readY(index)[rowIndex]
+                d_ref = peakPos.readX(index)[rowIndex]
                 if pos < 0:
                     continue
                 strains.append((d_ref - pos) / sig)

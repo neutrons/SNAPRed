@@ -52,29 +52,11 @@ with mock.patch.dict(
         assert wsGroupName == "fitPeaksWSGroup"
         wsGroup = list(mtd[wsGroupName].getNames())
         expected = [
-            "fitPeaksWSGroup_fitted_peakpositions_0",
-            "fitPeaksWSGroup_fitted_params_0",
-            "fitPeaksWSGroup_fitted_0",
-            "fitPeaksWSGroup_fitted_params_err_0",
-            "fitPeaksWSGroup_fitted_peakpositions_1",
-            "fitPeaksWSGroup_fitted_params_1",
-            "fitPeaksWSGroup_fitted_1",
-            "fitPeaksWSGroup_fitted_params_err_1",
-            "fitPeaksWSGroup_fitted_peakpositions_2",
-            "fitPeaksWSGroup_fitted_params_2",
-            "fitPeaksWSGroup_fitted_2",
-            "fitPeaksWSGroup_fitted_params_err_2",
-            "fitPeaksWSGroup_fitted_peakpositions_3",
-            "fitPeaksWSGroup_fitted_params_3",
-            "fitPeaksWSGroup_fitted_3",
-            "fitPeaksWSGroup_fitted_params_err_3",
-            "fitPeaksWSGroup_fitted_peakpositions_4",
-            "fitPeaksWSGroup_fitted_params_4",
-            "fitPeaksWSGroup_fitted_4",
-            "fitPeaksWSGroup_fitted_params_err_4",
-            "fitPeaksWSGroup_fitted_peakpositions_5",
-            "fitPeaksWSGroup_fitted_params_5",
-            "fitPeaksWSGroup_fitted_5",
-            "fitPeaksWSGroup_fitted_params_err_5",
+            "fitPeaksWSGroup_fitted_peakpositions",
+            "fitPeaksWSGroup_fitted_params",
+            "fitPeaksWSGroup_fitted",
+            "fitPeaksWSGroup_fitted_params_err",
         ]
         assert wsGroup == expected
+        assert not mtd.doesExist("fitPeaksWSGroup_fitted_1")
+        assert not mtd.doesExist("fitPeaksWSGroup_fitted_params_1")

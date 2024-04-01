@@ -182,7 +182,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.prevThreshold = payload.peakIntensityThreshold
         self.prevFWHM = payload.fwhmMultipliers  # NOTE set in __init__ to defaults
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
-        self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}"
+        self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}_pre"
 
         # focus the workspace to view the peaks
         self._renewFocus(self.prevGroupingIndex)

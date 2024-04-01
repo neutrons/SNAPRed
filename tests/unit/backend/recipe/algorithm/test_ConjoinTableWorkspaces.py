@@ -14,7 +14,7 @@ from snapred.backend.recipe.algorithm.ConjoinTableWorkspaces import (
 from snapred.meta.Config import Resource
 
 
-class TestCalculateDiffCalTable(unittest.TestCase):
+class TestConjoinWorkspaces(unittest.TestCase):
     def setUp(self):
         self.correct_ints = [1, 2]
         self.correct_doubles = [1.0, 2.0]
@@ -91,3 +91,28 @@ class TestCalculateDiffCalTable(unittest.TestCase):
         with pytest.raises(RuntimeError) as e:
             algo.execute()
         assert "column types" in str(e.value)
+
+    def test_with_wsindex(self):
+        wkspIndex = 4
+        self.wksp1 = CreateEmptyTableWorkspace(OutputWorkspace="wksp1")
+        self.wksp2 = CreateEmptyTableWorkspace(OutputWorkspace="wksp2")
+        for i, ws in enumerate([self.wksp1, self.wksp2]):
+            ws.addColumn(type="int", name="wsindex")
+            ws.addColumn(type="double", name="value")
+            ws.addRow(
+                {
+                    "wsindex": wkspIndex,
+                    "value": self.correct_doubles[i],
+                },
+            )
+
+        algo = Algo()
+        algo.initialize()
+        algo.setPropertyValue("InputWorkspace1", "wksp1")
+        algo.setPropertyValue("InputWorkspace2", "wksp2")
+        algo.setProperty("AutoDelete", True)
+        algo.execute()
+
+        assert self.wksp1.column("wsindex") == [wkspIndex, wkspIndex + 1]
+        assert self.wksp1.column("value") == self.correct_doubles
+        assert not mtd.doesExist("wksp2")

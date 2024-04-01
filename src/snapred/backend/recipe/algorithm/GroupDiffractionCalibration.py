@@ -10,11 +10,13 @@ from mantid.api import (
 )
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction, StringMandatoryValidator
+from mantid.simpleapi import mtd
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.ConjoinTableWorkspaces import ConjoinTableWorkspaces
+from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
 from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -55,7 +57,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         )
         self.declareProperty(
             MatrixWorkspaceProperty("DiagnosticWorkspace", "", Direction.Output, PropertyMode.Optional),
-            doc="A workspace group containing the fitted peaks, fit parameters, and the TOF-focused data for comparison to fits.",
+            doc="A workspace group containing the fitted peaks, fit parameters, and the TOF-focused data for comparison to fits.",  # noqa E501
         )
         self.declareProperty(
             MaskWorkspaceProperty("MaskWorkspace", "", Direction.Output, PropertyMode.Optional),
@@ -251,8 +253,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             raise RuntimeError("error, the number of spectra in focused workspace, and number of groups, do not match")
 
         diagnosticWS: str = "pdcal_diagnostic_" + self.outputWStof
-        diagnosticPeakFit: str = diagnosticWS + "_fitted"
-        diagnosticParamTable: str = diagnosticWS + "_param"
         for index in range(nHist):
             groupID: int = self.groupIDs[index]
             DIFCpd: str = f"_tmp_DIFCgroup_{groupID}"
@@ -276,34 +276,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 StartWorkspaceIndex=index,
                 StopWorkspaceIndex=index,
             )
-            self.mantidSnapper.ExtractSingleSpectrum(
-                "Extract the calibrated spectrum's diagnostic workspace",
-                InputWorkspace=diagnosticWSgroup + "_fitted",
-                OutputWorkspace=diagnosticWSgroup + "_fitted",
-                WorkspaceIndex=index,
-            )
-            if index == 0:
-                self.mantidSnapper.CloneWorkspace(
-                    "Save the first diagnostic peak-fit workspace",
-                    InputWorkspace=diagnosticWSgroup + "_fitted",
-                    OutputWorkspace=diagnosticPeakFit,
-                )
-                self.mantidSnapper.CloneWorkspace(
-                    "Save the first diagnostic parameter table",
-                    InputWorkspace=diagnosticWSgroup + "_param",
-                    OutputWorkspace=diagnosticParamTable,
-                )
-            else:
-                self.mantidSnapper.ConjoinWorkspaces(
-                    "Combine diagnostic peak-fit workspaces",
-                    InputWorkspace1=diagnosticPeakFit,
-                    InputWorkspace2=diagnosticWSgroup + "_fitted",
-                )
-                self.mantidSnapper.ConjoinTableWorkspaces(
-                    "Combine diagnostic parameter tables",
-                    InputWorkspace1=diagnosticParamTable,
-                    InputWorkspace2=diagnosticWSgroup + "_param",
-                )
+            self.conjoinDiagnosticWorkspaces(index, diagnosticWS, diagnosticWSgroup)
             self.mantidSnapper.CombineDiffCal(
                 "Combine the new calibration values",
                 PixelCalibration=self.DIFCprev,  # previous calibration values, DIFCprev
@@ -354,7 +327,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         )
 
         self.setPropertyValue("OutputWorkspaceTOF", self.outputWStof)
-        self.setPropertyValue("OutputWorkspacedSpacing", self.outputWSdSpacing)
+        self.setPropertyValue("OutputWorkspace", self.outputWSdSpacing)
 
     def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str, units: str):
         # Use workspace name generator
@@ -417,6 +390,42 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
         # Execute queued Mantid algorithms
         self.mantidSnapper.executeQueue()
+
+    def cloneWorkspaces(self, inputs: List[str], outputs: List[str]):
+        self.mantidSnapper.RenameWorkspaces(
+            "Copying tmp workspace data",
+            InputWorkspaces=inputs,
+            WorkspaceNames=outputs,
+        )
+
+    def conjoinWorkspaces(self, index, input1, input2):  # noqa: ARG002
+        # combine the matrix workspaces
+        group1 = mtd[input1]
+        group2 = mtd[input2]
+        for x in [FitOutputEnum.Workspace.value, FitOutputEnum.PeakPosition.value]:
+            self.mantidSnapper.ConjoinWorkspaces(
+                "Conjoin peak position workspaces",
+                InputWorkspace1=group1.getItem(x),
+                InputWorkspace2=group2.getItem(x),
+                CheckOverlapping=False,
+            )
+            self.mantidSnapper.WashDishes(
+                "Clear temporary workspace",
+                Workspace=group2.getItem(x),
+            )
+        # combine the table workspaces
+        self.mantidSnapper.ConjoinTableWorkspaces(
+            "Conjoin peak fit parameter workspaces",
+            InputWorkspace1=group1.getItem(FitOutputEnum.Parameters.value),
+            InputWorkspace2=input2.getItem(FitOutputEnum.Parameters.value),
+            AutoDelete=True,
+        )
+        self.mantidSnapper.ConjoinTableWorkspaces(
+            "Conjoin peak fit parameter workspaces",
+            InputWorkspace1=input1.getItem(FitOutputEnum.ParameterError.value),
+            InputWorkspace2=input2.getItem(FitOutputEnum.ParameterError.value),
+            AutoDelete=True,
+        )
 
 
 # Register algorithm with Mantid

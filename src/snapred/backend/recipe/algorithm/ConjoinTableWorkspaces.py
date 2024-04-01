@@ -8,6 +8,7 @@ from mantid.api import (
     mtd,
 )
 from mantid.kernel import Direction
+from mantid.simpleapi import DeleteWorkspace
 
 from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 
@@ -72,10 +73,21 @@ class ConjoinTableWorkspaces(PythonAlgorithm):
         self.chopIngredients()
         self.unbagGroceries()
 
+        # NOTE the main use of this in SNAPRed is to combine tables from fit peaks
+        # each spectra is extracted and fit separately, so FitPeaks labels them all
+        # as having workspace index 0.  The below will handle correctly attributing
+        # the workspace index for this special case
+        newIndex = None
+        if "wsindex" in self.wksp1.getColumnNames():
+            newIndex = max(self.wksp1.column("wsindex")) + 1
+
         for i in range(self.wksp2.rowCount()):
-            self.wksp1.addRow(self.wksp2.row(i))
+            newRow = self.wksp2.row(i)
+            if newIndex is not None:
+                newRow["wsindex"] = newIndex
+            self.wksp1.addRow(newRow)
         if self.getProperty("AutoDelete").value:
-            WashDishes(self.wksp2)
+            DeleteWorkspace(self.wksp2)
         self.setProperty("InputWorkspace1", self.wksp1)
 
 
