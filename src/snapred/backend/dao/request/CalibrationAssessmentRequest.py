@@ -18,17 +18,20 @@ class CalibrationAssessmentRequest(BaseModel):
     provided through a cif file. It incorporates a run configuration, mapping various workspaces
     by their type to workspace names for analytical context, and specifies a focusGroup for targeted
     assessment. The calibrantSamplePath points to the sample data, while useLiteMode, nBinsAcrossPeakWidth,
-    peakIntensityThreshold, and peakType define the assessment's operational parameters, with defaults set
+    peakIntensityThreshold, and peakFunction define the assessment's operational parameters, with defaults set
     according to system configurations.
 
     """
 
     run: RunConfig
-    workspaces: Dict[WorkspaceType, List[WorkspaceName]]
+    useLiteMode: bool
     focusGroup: FocusGroup
     calibrantSamplePath: str
-    useLiteMode: bool
-    nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
-    peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
-    peakType: ALLOWED_PEAK_TYPES = "Gaussian"
+    workspaces: Dict[WorkspaceType, List[WorkspaceName]]
+    # fiddly bits
+    peakFunction: ALLOWED_PEAK_TYPES
+    crystalDMin: float
+    crystalDMax: float
+    peakIntensityThreshold: float
+    nBinsAcrossPeakWidth: int
     fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
