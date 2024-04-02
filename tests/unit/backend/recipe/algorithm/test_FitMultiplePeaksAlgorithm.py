@@ -52,7 +52,7 @@ with mock.patch.dict(
         assert wsGroupName == "fitPeaksWSGroup"
         wsGroup = list(mtd[wsGroupName].getNames())
         expected = [
-            "fitPeaksWSGroup_dspacing",
+            "fitPeaksWSGroup_peakpos",
             "fitPeaksWSGroup_fitparam",
             "fitPeaksWSGroup_fitted",
             "fitPeaksWSGroup_fiterror",

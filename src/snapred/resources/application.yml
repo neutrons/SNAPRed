@@ -104,7 +104,7 @@ mantid:
       units:
         dSpacing: DSP
         timeOfFlight: TOF
-        diagnostic: diag
+        diagnostic: diagnostic
       groups:
         unfocussed: Unfoc
         all: All

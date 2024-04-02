@@ -409,13 +409,15 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             "Ungroup the temp daignostic workspaces",
             InputWorkspace=diagnosticWStmp,
         )
+        self.mantidSnapper.ExtractSingleSpectrum(
+            "Remove the indicated spectrum",
+            InputWorkspace=f"{diagnosticWStmp}{self.diagnosticSuffix[FitOutputEnum.Workspace.value]}",
+            Outputworkspace=f"{diagnosticWStmp}{self.diagnosticSuffix[FitOutputEnum.Workspace.value]}",
+            WorkspaceIndex=index,
+        )
         if index == 0:
             oldNames = [f"{diagnosticWStmp}{suffix}" for suffix in self.diagnosticSuffix]
             newNames = [f"{diagnosticWS}{suffix}" for suffix in self.diagnosticSuffix]
-            print(oldNames)
-            print(newNames)
-            print(diagnosticWS)
-
             self.mantidSnapper.RenameWorkspaces(
                 "Rename the diagnostic workspaces in the group",
                 InputWorkspaces=oldNames,
@@ -437,10 +439,10 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 )
                 self.mantidSnapper.WashDishes(
                     "Clear temporary workspace",
-                    Workspace=f"{diagnosticWStmp}{self.diagnosticSuffix[x]}",
+                    WorkspaceList=[f"{diagnosticWStmp}{self.diagnosticSuffix[x]}"],
                 )
             # combine the table workspaces
-            for x in [FitOutputEnum.PeakPosition.value, FitOutputEnum.Parameters.value]:
+            for x in [FitOutputEnum.Parameters.value]:
                 self.mantidSnapper.ConjoinTableWorkspaces(
                     "Conjoin peak fit parameter workspaces",
                     InputWorkspace1=f"{diagnosticWS}{self.diagnosticSuffix[x]}",
@@ -449,7 +451,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 )
         self.mantidSnapper.WashDishes(
             "Remove the temporary diagnostic group",
-            Workspace=diagnosticWStmp,
+            WorkspaceList=[f"{diagnosticWStmp}{x}" for x in ["", "_height", "_width", "_resolution", "_dspacing"]],
         )
 
 

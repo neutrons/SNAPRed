@@ -1,4 +1,4 @@
-from typing import ClassVar, Literal, Optional
+from typing import ClassVar, Literal, Optional, get_args
 
 from pydantic import BaseModel, root_validator
 
@@ -7,6 +7,9 @@ from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
+
+KnownUnits = Literal[wng.Units.TOF, wng.Units.DSP, wng.Units.DIAG]
+known_units = list(get_args(KnownUnits))
 
 
 class GroceryListItem(BaseModel):
@@ -33,7 +36,7 @@ class GroceryListItem(BaseModel):
     version: Optional[str]
     groupingScheme: Optional[str]
 
-    unit: Optional[Literal[wng.Units.TOF, wng.Units.DSP]]
+    unit: Optional[KnownUnits]
 
     # SpecialWorkspace2D-derived workspaces (e.g. grouping or mask workspaces)
     #   require an instrument definition, these next two properties indicate
@@ -72,7 +75,7 @@ class GroceryListItem(BaseModel):
                 raise ValueError("if 'instrumentSource' is specified then 'instrumentPropertySource' must be specified")
         if v.get("unit") is not None:
             unit_ = v.get("unit")
-            if unit_ not in (wng.Units.TOF, wng.Units.DSP):
+            if unit_ not in known_units:
                 raise ValueError(f"unknown unit '{unit_}' specified")
         match v["workspaceType"]:
             case "neutron":

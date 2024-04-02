@@ -77,9 +77,9 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
             self.reducedList[groupPeakList.groupID] = groupPeakList.peaks
         # suffixes to name diagnostic output
         self.outputSuffix = [None] * len(FitOutputEnum)
-        self.outputSuffix[FitOutputEnum.PeakPosition.value] = "_dspacing"
-        self.outputSuffix[FitOutputEnum.Workspace.value] = "_fitted"
+        self.outputSuffix[FitOutputEnum.PeakPosition.value] = "_peakpos"
         self.outputSuffix[FitOutputEnum.Parameters.value] = "_fitparam"
+        self.outputSuffix[FitOutputEnum.Workspace.value] = "_fitted"
         self.outputSuffix[FitOutputEnum.ParameterError.value] = "_fiterror"
 
     def unbagGroceries(self):

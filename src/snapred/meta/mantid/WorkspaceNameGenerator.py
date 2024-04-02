@@ -16,6 +16,7 @@ class WorkspaceType(str, Enum):
     RUN = "run"
     DIFFCAL_INPUT = "diffCalInput"
     DIFFCAL_OUTPUT = "diffCalOutput"
+    DIFFCAL_DIAG = "diffCalDiagnostic"
     DIFFCAL_TABLE = "diffCalTable"
     DIFFCAL_MASK = "diffCalMask"
     DIFFCAL_METRIC = "diffCalMetric"

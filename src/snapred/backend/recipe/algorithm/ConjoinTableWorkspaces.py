@@ -46,7 +46,7 @@ class ConjoinTableWorkspaces(PythonAlgorithm):
         wksp1 = self.getProperty("InputWorkspace1").value
         wksp2 = self.getProperty("InputWorkspace2").value
         if wksp1.columnCount() != wksp2.columnCount():
-            msg = "The tables have mismatched numbers of columns"
+            msg = f"The tables have mismatched numbers of columns: {wksp1.columnCount()} vs {wksp2.columnCount()}"
             errors["InputWorkspace1"] = msg
             errors["InputWorkspace2"] = msg
             return errors
