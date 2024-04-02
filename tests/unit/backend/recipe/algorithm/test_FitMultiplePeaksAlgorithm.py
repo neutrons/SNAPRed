@@ -52,11 +52,11 @@ with mock.patch.dict(
         assert wsGroupName == "fitPeaksWSGroup"
         wsGroup = list(mtd[wsGroupName].getNames())
         expected = [
-            "fitPeaksWSGroup_fitted_peakpositions",
-            "fitPeaksWSGroup_fitted_params",
+            "fitPeaksWSGroup_dspacing",
+            "fitPeaksWSGroup_fitparam",
             "fitPeaksWSGroup_fitted",
-            "fitPeaksWSGroup_fitted_params_err",
+            "fitPeaksWSGroup_fiterror",
         ]
         assert wsGroup == expected
         assert not mtd.doesExist("fitPeaksWSGroup_fitted_1")
-        assert not mtd.doesExist("fitPeaksWSGroup_fitted_params_1")
+        assert not mtd.doesExist("fitPeaksWSGroup_fitparam_1")

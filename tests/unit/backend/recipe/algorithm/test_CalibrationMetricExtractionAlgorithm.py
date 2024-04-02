@@ -41,16 +41,7 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         fitPeaksDiagnosis.add("PeakPosition")
         table = Table()
         table.initialize()
-        table.setProperty(
-            "ListOfDict",
-            json.dumps(
-                [
-                    {"wsindex": 0, "Sigma": 0.1},
-                    {"wsindex": 1, "Sigma": 0.2},
-                    {"wsindex": 2, "Sigma": 0.3},
-                ]
-            ),
-        )
+        table.setProperty("ListOfDict", json.dumps([{"wsindex": x, "Sigma": (x + 1.0) / 10.0} for x in [0, 1, 2]]))
         table.setProperty("OutputWorkspace", "Parameters")
         table.execute()
         fitPeaksDiagnosis.add("Parameters")

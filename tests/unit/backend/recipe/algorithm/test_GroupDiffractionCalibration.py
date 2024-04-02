@@ -95,10 +95,9 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         algo.setProperty("Ingredients", self.fakeIngredients.json())
         algo.setProperty("InputWorkspace", self.fakeRawData)
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
-        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
+        algo.setProperty("FinalCalibrationTable", "_final_DIFC_table")
         algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspaceTOF", f"_test_out_tof_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("OutputWorkspacedSpacing", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
+        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
         algo.setProperty("PreviousCalibrationTable", self.difcWS)
         assert algo.execute()
         assert maskWSName in mtd
@@ -125,8 +124,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
         algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
         algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspaceTOF", f"_test_out_tof_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("OutputWorkspacedSpacing", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
+        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
         algo.setProperty("PreviousCalibrationTable", self.difcWS)
 
         algo.execute()
@@ -151,8 +149,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
         algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
         algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspaceTOF", f"_test_out_tof_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("OutputWorkspacedSpacing", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
+        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
         algo.setProperty("PreviousCalibrationTable", self.difcWS)
         assert maskWSName in mtd
 
@@ -195,8 +192,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
         algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
         algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspaceTOF", f"_test_out_tof_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("OutputWorkspacedSpacing", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
+        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
         algo.setProperty("PreviousCalibrationTable", self.difcWS)
 
         assert maskWS.getNumberMasked() == 0
@@ -232,8 +228,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
         algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
         algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspaceTOF", f"_test_out_tof_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("OutputWorkspacedSpacing", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
+        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
         algo.setProperty("PreviousCalibrationTable", self.difcWS)
 
         assert maskWS.getNumberMasked() == 0
@@ -270,8 +265,7 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
         algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
         algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
         algo.setProperty("MaskWorkspace", maskWSName)
-        algo.setProperty("OutputWorkspaceTOF", f"_test_out_tof_{self.fakeIngredients.runConfig.runNumber}")
-        algo.setProperty("OutputWorkspacedSpacing", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
+        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
         algo.setProperty("PreviousCalibrationTable", self.difcWS)
 
         assert maskWS.getNumberMasked() == 0

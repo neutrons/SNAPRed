@@ -34,7 +34,7 @@ class FitOutputEnum(Enum):
 
 
 class FitMultiplePeaksAlgorithm(PythonAlgorithm):
-    NOISE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
+    NOYZE_2_MIN = Config["calibration.fitting.minSignal2Noise"]
 
     def category(self):
         return "SNAPRed Data Processing"
@@ -75,6 +75,12 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         for groupPeakList in ingredients:
             self.groupIDs.append(groupPeakList.groupID)
             self.reducedList[groupPeakList.groupID] = groupPeakList.peaks
+        # suffixes to name diagnostic output
+        self.outputSuffix = [None] * len(FitOutputEnum)
+        self.outputSuffix[FitOutputEnum.PeakPosition.value] = "_dspacing"
+        self.outputSuffix[FitOutputEnum.Workspace.value] = "_fitted"
+        self.outputSuffix[FitOutputEnum.Parameters.value] = "_fitparam"
+        self.outputSuffix[FitOutputEnum.ParameterError.value] = "_fiterror"
 
     def unbagGroceries(self):
         self.inputWorkspaceName = self.getPropertyValue("Inputworkspace")
@@ -91,19 +97,13 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         self.unbagGroceries()
 
         outputNames = [None] * len(FitOutputEnum)
-        outputNames[FitOutputEnum.PeakPosition.value] = f"{self.outputWorkspaceName}_fitted_peakpositions"
-        outputNames[FitOutputEnum.Parameters.value] = f"{self.outputWorkspaceName}_fitted_params"
-        outputNames[FitOutputEnum.Workspace.value] = f"{self.outputWorkspaceName}_fitted"
-        outputNames[FitOutputEnum.ParameterError.value] = f"{self.outputWorkspaceName}_fitted_params_err"
+        for x in FitOutputEnum:
+            outputNames[x.value] = f"{self.outputWorkspaceName}{self.outputSuffix[x.value]}"
 
         for index, groupID in enumerate(self.groupIDs):
             outputNamesTmp = [None] * len(FitOutputEnum)
-            outputNamesTmp[FitOutputEnum.PeakPosition.value] = (
-                f"{self.outputWorkspaceName}_fitted_peakpositions_{index}"
-            )
-            outputNamesTmp[FitOutputEnum.Parameters.value] = f"{self.outputWorkspaceName}_fitted_params_{index}"
-            outputNamesTmp[FitOutputEnum.Workspace.value] = f"{self.outputWorkspaceName}_fitted_{index}"
-            outputNamesTmp[FitOutputEnum.ParameterError.value] = f"{self.outputWorkspaceName}_fitted_params_err_{index}"
+            for x in FitOutputEnum:
+                outputNamesTmp[x.value] = f"{self.outputWorkspaceName}{self.outputSuffix[x.value]}_{index}"
 
             peakCenters = []
             peakLimits = []
@@ -120,17 +120,20 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
 
             self.mantidSnapper.FitPeaks(
                 "Fit Peaks...",
+                # in common with PDCalibration
                 InputWorkspace="ws2fit",
-                PeakCenters=",".join(np.array(peakCenters).astype("str")),
                 PeakFunction=peakType,
+                PeakCenters=",".join(np.array(peakCenters).astype("str")),
                 FitWindowBoundaryList=",".join(np.array(peakLimits).astype("str")),
+                BackgroundType="Linear",
+                MinimumSignalToNoiseRatio=self.NOYZE_2_MIN,
+                ConstrainPeakPositions=True,
+                HighBackground=True,  # vanadium must use high background
+                # outputs -- in PDCalibration combined in workspace group
+                FittedPeaksWorkspace=outputNamesTmp[FitOutputEnum.Workspace.value],
                 OutputWorkspace=outputNamesTmp[FitOutputEnum.PeakPosition.value],
                 OutputPeakParametersWorkspace=outputNamesTmp[FitOutputEnum.Parameters.value],
-                BackgroundType="Quadratic",
-                FittedPeaksWorkspace=outputNamesTmp[FitOutputEnum.Workspace.value],
-                ConstrainPeakPositions=True,
                 OutputParameterFitErrorsWorkspace=outputNamesTmp[FitOutputEnum.ParameterError.value],
-                MinimumSignalToNoiseRatio=self.NOISE_2_MIN,
             )
             if index == 0:
                 self.cloneWorkspaces(outputNamesTmp, outputNames)
@@ -169,18 +172,13 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
                 Workspace=input2[x],
             )
         # combine the table workspaces
-        self.mantidSnapper.ConjoinTableWorkspaces(
-            "Conjoin peak fit parameter workspaces",
-            InputWorkspace1=input1[FitOutputEnum.Parameters.value],
-            InputWorkspace2=input2[FitOutputEnum.Parameters.value],
-            AutoDelete=True,
-        )
-        self.mantidSnapper.ConjoinTableWorkspaces(
-            "Conjoin peak fit parameter workspaces",
-            InputWorkspace1=input1[FitOutputEnum.ParameterError.value],
-            InputWorkspace2=input2[FitOutputEnum.ParameterError.value],
-            AutoDelete=True,
-        )
+        for x in [FitOutputEnum.Parameters.value, FitOutputEnum.ParameterError.value]:
+            self.mantidSnapper.ConjoinTableWorkspaces(
+                "Conjoin peak fit parameter workspaces",
+                InputWorkspace1=input1[x],
+                InputWorkspace2=input2[x],
+                AutoDelete=True,
+            )
 
 
 AlgorithmFactory.subscribe(FitMultiplePeaksAlgorithm)

@@ -43,10 +43,9 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
         errors = {}
         inputWorkspace = self.getProperty("InputWorkspace").value
         if inputWorkspace.getNumberOfEntries() != len(FitOutputEnum):
-            errors[
-                "InputWorkspace"
-            ] = f"Number of groups in InputWorkspace must be divisible by {len(FitOutputEnum)}.  \
+            msg = f"Number of groups in InputWorkspace must be divisible by {len(FitOutputEnum)}.\n\
                     Did you use FitMultiplePeaksAlgorithm to get InputWorkspace?"
+            errors["InputWorkspace"] = msg
         return errors
 
     def PyExec(self):
