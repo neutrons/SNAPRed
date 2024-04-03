@@ -26,6 +26,7 @@ from mantid.simpleapi import (
     ScaleX,
     mtd,
 )
+from snapred.backend.dao import CrystallographicInfo
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
@@ -91,6 +92,8 @@ class SyntheticData(object):
             TOFMin, TOFMax, dMin, dMax, self.scale
         )
 
+        crystalPeaks = SyntheticData.crystalInfo().peaks
+
         peakList = [
             DetectorPeak.parse_obj(
                 {
@@ -98,10 +101,11 @@ class SyntheticData(object):
                         "value": p.centre,
                         "minimum": p.centre - SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
                         "maximum": p.centre + SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
-                    }
+                    },
+                    "peak": crystalPeaks[i].dict(),
                 }
             )
-            for p in self.peaks
+            for i, p in enumerate(self.peaks)
         ]
 
         # For testing purposes: every pixel group will use the same peak list;
@@ -308,3 +312,6 @@ class SyntheticData(object):
 
         # Create the mask workspace 'maskWS':
         createCompatibleMask(maskWS, rawWS, self.fakeInstrumentFilePath)
+
+    def crystalInfo():
+        return CrystallographicInfo.parse_raw(Resource.read("outputs/crystalinfo/output.json"))
