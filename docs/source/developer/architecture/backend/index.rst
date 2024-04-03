@@ -71,6 +71,7 @@ For a simplified breakdown of where you may want to implement parts of your code
    data/index
    recipe
    grocery_service
+   mantid_snapper
    api/normalization/smooth_data_excluding_peaks_request
    api/calibration/calibration_assessment_request
    api/calibration/calibration_assessment_response
