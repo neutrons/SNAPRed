@@ -127,6 +127,37 @@ class SyntheticData(object):
         )
 
     @staticmethod
+    def fakeDetectorPeaks(scale: float = 1000.0) -> List[DetectorPeak]:
+        fakePixelGroup = PixelGroup.parse_file(SyntheticData.fakePixelGroupPath)
+
+        # Place all peaks within the _minimum_ d-space range of any pixel group.
+        dMin = max(fakePixelGroup.dMin())
+        dMax = min(fakePixelGroup.dMax())
+
+        # The pixel group's TOF-domain will be used to convert the original `CreateSampleWorkspace` 'Powder Diffraction'
+        #   predefined function: this allows peak widths to be properly scaled to generate data for a d-spacing domain.
+        TOFMin = fakePixelGroup.timeOfFlight.minimum
+        TOFMax = fakePixelGroup.timeOfFlight.maximum
+        peaks, _ = SyntheticData._fakePowderDiffractionPeakList(TOFMin, TOFMax, dMin, dMax, scale)
+
+        crystalPeaks = SyntheticData.crystalInfo().peaks
+
+        peakList = [
+            DetectorPeak.parse_obj(
+                {
+                    "position": {
+                        "value": p.centre,
+                        "minimum": p.centre - SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
+                        "maximum": p.centre + SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
+                    },
+                    "peak": crystalPeaks[i].dict(),
+                }
+            )
+            for i, p in enumerate(peaks)
+        ]
+        return peakList
+
+    @staticmethod
     def random_seed(bits: int) -> int:
         # Generate a random seed of 'bits' length.
         return secrets.randbits(bits)
