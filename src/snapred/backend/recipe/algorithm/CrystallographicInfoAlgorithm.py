@@ -61,8 +61,8 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
         generator = ReflectionGenerator(xtal)
 
         # Create list of unique reflections between 0.1 and 100.0 Angstrom
-        dMin = self.getProperty("dMin").value
-        dMax = self.getProperty("dMax").value
+        dMin = self.D_MIN
+        dMax = self.D_MAX
         hkls = generator.getUniqueHKLsUsingFilter(dMin, dMax, ReflectionConditionFilter.StructureFactor)
 
         # Calculate d and F^2

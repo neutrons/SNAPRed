@@ -69,8 +69,8 @@ class DetectorPeakPredictor(PythonAlgorithm):
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
         A = np.append(A, 0)
-        thresholdA = np.max(A) * ingredients.peakIntensityThreshold
-        self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
+
+        self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= 0]
 
         self.purgeDuplicates = self.getProperty("PurgeDuplicates").value
 
@@ -83,12 +83,14 @@ class DetectorPeakPredictor(PythonAlgorithm):
         allFocusGroupsPeaks = []
         for groupID in self.allGroupIDs:
             # select only good peaks within the d-spacing range
-            dList = [
-                peak.dSpacing for peak in self.goodPeaks if self.dMin[groupID] <= peak.dSpacing <= self.dMax[groupID]
+            crystalPeakList = [
+                peak for peak in self.goodPeaks if self.dMin[groupID] <= peak.dSpacing <= self.dMax[groupID]
             ]
+            dList = [peak.dSpacing for peak in crystalPeakList]
 
             singleFocusGroupPeaks = []
-            for d in dList:
+            for crystalPeak in crystalPeakList:
+                d = crystalPeak.dSpacing
                 # beta terms
                 beta_T = self.beta_0 + self.beta_1 / d**4  # GSAS-I beta
                 beta_d = (
@@ -103,7 +105,9 @@ class DetectorPeakPredictor(PythonAlgorithm):
                     d = round(d, 5)
 
                 singleFocusGroupPeaks.append(
-                    DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight))
+                    DetectorPeak(
+                        position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight), peak=crystalPeak
+                    )
                 )
 
             if self.purgeDuplicates:

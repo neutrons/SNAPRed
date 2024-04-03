@@ -82,7 +82,7 @@ calibration:
       peakTailCoefficient: 2.0
       smoothing: 0.5
   fitting:
-    minSignal2Noise: 10.0
+    minSignal2Noise: 0.0
 
 mantid:
   workspace:
