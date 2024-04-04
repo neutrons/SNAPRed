@@ -149,7 +149,6 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
                 outputPeaks.append(outputGroupPeakList)
         outputPeaks = self.filterPeaksOnIntensity(outputPeaks)
         outputPeaks = self.filterPeaksOnDRange(outputPeaks)
-            
 
         if len(outputPeaks) == 0:
             raise RuntimeError("All Peaks were Purged!  Please adjust your parameters!\n\n\n")
