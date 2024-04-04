@@ -133,6 +133,11 @@ Glossary
         The configuration of an instrument at a given point in time. This includes the positions of the detectors, the sample, and the source.
         It is also dependant on a number of other configurations relating to the instrument.
 
+    Interface Controller
+        The central controller within the SNAPRed application responsible for managing the lifecycle of SNAPRequests and producing
+        corresponding SNAPResponses. It acts as the primary entry point for processing requests, utilizing a ServiceFactory to
+        delegate tasks to specific services and handling both standard and recoverable exceptions.
+
     Interface Layer
         The architectural layer that provides the single point of interaction between the backend and frontend.
         Agnostic of frontend implementation, it recieves requests from the frontend and forwards them to the Orchestration Layer.
@@ -178,6 +183,9 @@ Glossary
     Orchestration Layer
         The architectural layer that handles the stitching together of the various :term:`Service Components <Service Component>`, :term:`Data Components <Data Component>`, and :term:`Recipe Components <Recipe Component>` to achieve and abstract goal.
         This may include handling :term:`User Requests <User Request>`, or performing :term:`Data State Management`.
+
+    Particle Bounds
+        These parameters within SNAPRed define the acceptable ranges for particle parameters such as wavelength and time-of-flight (TOF).
 
     Pixel
         The smallest physical sensing element for particle-flux measurement.

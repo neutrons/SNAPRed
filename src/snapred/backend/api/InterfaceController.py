@@ -12,6 +12,15 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class InterfaceController:
+    """
+
+    InterfaceController serves as the central controller for handling SNAPRequests and generating SNAPResponses.
+    It utilizes the ServiceFactory to delegate the request to the appropriate service and handles both normal and
+    recoverable exceptions to ensure robustness in request processing. This controller is designed as a Singleton
+    to maintain a single instance throughout the application's lifecycle, ensuring consistent state and behavior.
+
+    """
+
     serviceFactory = ServiceFactory()
 
     def __init__(self):
