@@ -13,6 +13,7 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
+from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
@@ -103,6 +104,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         )
         self.workflow.presenter.setResetLambda(self.reset)
 
+    @ExceptionToErrLog
     def _populateGroupingDropdown(self):
         # when the run number is updated, freeze the drop down to populate it
         runNumber = self._requestView.runNumberField.text()
@@ -110,27 +112,37 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         self._requestView.groupingFileDropdown.setEnabled(False)
         self._requestView.litemodeToggle.setEnabled(False)
+        # TODO: Use threads, account for fail cases
+        try:
+            # check if the state exists -- if so load its grouping map
+            hasState = self.request(path="calibration/hasState", payload=runNumber).data
+            if hasState:
+                self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
+            else:
+                self.groupingMap = self.defaultGroupingMap
+            self.focusGroups = self.groupingMap.getMap(useLiteMode)
 
-        # check if the state exists -- if so load its grouping map
-        hasState = self.request(path="calibration/hasState", payload=runNumber).data
-        if hasState:
-            self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
-        else:
-            self.groupingMap = self.defaultGroupingMap
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            # populate and reenable the drop down
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
 
-        # populate and reenable the drop down
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
         self._requestView.groupingFileDropdown.setEnabled(True)
         self._requestView.litemodeToggle.setEnabled(True)
 
+    @ExceptionToErrLog
     def _switchLiteNativeGroups(self):
         # when the run number is updated, freeze the drop down to populate it
         useLiteMode = self._requestView.litemodeToggle.field.getState()
 
         self._requestView.groupingFileDropdown.setEnabled(False)
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        # TODO: Use threads, account for fail cases
+        try:
+            self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
+
         self._requestView.groupingFileDropdown.setEnabled(True)
 
     def _specifyRun(self, workflowPresenter):
@@ -195,43 +207,50 @@ class DiffCalWorkflow(WorkflowImplementer):
         )
         return response
 
+    @ExceptionToErrLog
     def onValueChange(self, groupingIndex, dMin, dMax, peakThreshold, peakFunction, fwhm):
         self._tweakPeakView.disableRecalculateButton()
+        # TODO: This is a temporary solution,
+        # this should have never been setup to all run on the same thread.
+        # It assumed an exception would never be tossed and thus
+        # would never enable the recalc button again if one did
+        try:
+            self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
 
-        self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
+            # if peaks will change, redo only the smoothing
+            dMinValueChanged = dMin != self.prevDMin
+            dMaxValueChanged = dMax != self.prevDMax
+            thresholdChanged = peakThreshold != self.prevThreshold
+            peakFunctionChanged = peakFunction != self.peakFunction
+            fwhmChanged = fwhm != self.prevFWHM
+            if dMinValueChanged or dMaxValueChanged or thresholdChanged or peakFunctionChanged or fwhmChanged:
+                self._renewIngredients(dMin, dMax, peakThreshold, peakFunction, fwhm)
+                self._renewFitPeaks(peakFunction)
 
-        # if peaks will change, redo only the smoothing
-        dMinValueChanged = dMin != self.prevDMin
-        dMaxValueChanged = dMax != self.prevDMax
-        thresholdChanged = peakThreshold != self.prevThreshold
-        peakFunctionChanged = peakFunction != self.peakFunction
-        fwhmChanged = fwhm != self.prevFWHM
-        if dMinValueChanged or dMaxValueChanged or thresholdChanged or peakFunctionChanged or fwhmChanged:
-            self._renewIngredients(dMin, dMax, peakThreshold, peakFunction, fwhm)
-            self._renewFitPeaks(peakFunction)
+            # if the grouping file changes, load new grouping and refocus
+            if groupingIndex != self.prevGroupingIndex:
+                self._renewIngredients(dMin, dMax, peakThreshold, peakFunction, fwhm)
+                self._renewFocus(groupingIndex)
+                self._renewFitPeaks(peakFunction)
 
-        # if the grouping file changes, load new grouping and refocus
-        if groupingIndex != self.prevGroupingIndex:
-            self._renewIngredients(dMin, dMax, peakThreshold, peakFunction, fwhm)
-            self._renewFocus(groupingIndex)
-            self._renewFitPeaks(peakFunction)
+            self._tweakPeakView.updateGraphs(
+                self.focusedWorkspace,
+                self.ingredients.groupedPeakLists,
+                self.fitPeaksDiagnostic,
+            )
 
-        self._tweakPeakView.updateGraphs(
-            self.focusedWorkspace,
-            self.ingredients.groupedPeakLists,
-            self.fitPeaksDiagnostic,
-        )
+            # update the values for next call to this method
+            self.prevDMin = dMin
+            self.prevDMax = dMax
+            self.prevFWHM = fwhm
+            self.prevThreshold = peakThreshold
+            self.peakFunction = peakFunction
+            self.prevGroupingIndex = groupingIndex
+        except Exception as e:  # noqa BLE001
+            print(e)
 
         # renable button when graph is updated
         self._tweakPeakView.enableRecalculateButton()
-
-        # update the values for next call to this method
-        self.prevDMin = dMin
-        self.prevDMax = dMax
-        self.prevFWHM = fwhm
-        self.prevThreshold = peakThreshold
-        self.peakFunction = peakFunction
-        self.prevGroupingIndex = groupingIndex
 
     def _renewIngredients(self, dMin, dMax, peakThreshold, peakFunction, fwhm):
         payload = DiffractionCalibrationRequest(
