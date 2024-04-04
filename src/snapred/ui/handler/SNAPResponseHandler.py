@@ -1,3 +1,5 @@
+import threading
+
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QMessageBox, QWidget
 
@@ -26,9 +28,12 @@ class SNAPResponseHandler(QWidget):
         # if errors, do nothing here (program will halt)
         # if a continue warning was raised, receive what user selected
         # if the user selected to continue anyway, then emit the signal to continue anyway
-        userSelectedContinueAnyway = SNAPResponseHandler._handleComplications(result.code, result.message, self)
-        if userSelectedContinueAnyway:
-            self.continueAnyway.emit()
+        if isinstance(threading.current_thread(), threading._MainThread):
+            userSelectedContinueAnyway = SNAPResponseHandler._handleComplications(result.code, result.message, self)
+            if userSelectedContinueAnyway:
+                self.continueAnyway.emit()
+        else:
+            self.rethrow()
 
     def _isErrorCode(code):
         return code >= ResponseCode.ERROR
