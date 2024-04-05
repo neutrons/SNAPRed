@@ -110,6 +110,9 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             )
         return peakLists
 
+    def filterNoPeakGroups(self, peakLists: List[GroupPeakList]) -> List[GroupPeakList]:
+        return [groupPeakList for groupPeakList in peakLists if len(groupPeakList.peaks) > 0]
+
     def PyExec(self):
         predictedPeaks = parse_raw_as(List[GroupPeakList], self.getPropertyValue("DetectorPeaks"))
         ingredients = PeakIngredients.parse_raw(self.getProperty("Ingredients").value)
@@ -149,6 +152,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
                 outputPeaks.append(outputGroupPeakList)
         outputPeaks = self.filterPeaksOnIntensity(outputPeaks)
         outputPeaks = self.filterPeaksOnDRange(outputPeaks)
+        outputPeaks = self.filterNoPeakGroups(outputPeaks)
 
         if len(outputPeaks) == 0:
             raise RuntimeError("All Peaks were Purged!  Please adjust your parameters!\n\n\n")
