@@ -15,6 +15,7 @@ from mantid.api import (
 )
 from mantid.kernel import Direction, StringArrayProperty
 from mantid.simpleapi import CloneWorkspace, mtd
+
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 
