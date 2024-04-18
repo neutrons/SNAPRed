@@ -1,7 +1,7 @@
 import unittest
 
 import pytest
-from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients
+from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients, Utensils
 from util.SculleryBoy import SculleryBoy
 
 
@@ -10,6 +10,12 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
 
     def test_init(self):
         ApplyNormalizationRecipe()
+
+    def test_init_reuseUtensils(self):
+        utensils = Utensils()
+        utensils.PyInit()
+        recipe = ApplyNormalizationRecipe(utensils=utensils)
+        assert recipe.mantidSnapper == utensils.mantidSnapper
 
     def test_chopIngredients(self):
         recipe = ApplyNormalizationRecipe()
@@ -81,11 +87,11 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         assert resampleTuple[2]["XMin"] == ingredients.pixelGroup.dMin
         assert resampleTuple[2]["XMax"] == ingredients.pixelGroup.dMax
 
-    @unittest.mock.patch(
-        "snapred.backend.recipe.ApplyNormalizationRecipe.MantidSnapper", return_value=unittest.mock.Mock()
-    )
-    def test_cook(self, mockSnapper):
-        recipe = ApplyNormalizationRecipe()
+    def test_cook(self):
+        untensils = Utensils()
+        mockSnapper = unittest.mock.Mock()
+        untensils.mantidSnapper = mockSnapper
+        recipe = ApplyNormalizationRecipe(utensils=untensils)
         ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
         groceries = {
             "inputWorkspace": "sample",
@@ -98,16 +104,16 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         assert recipe.normalizationWs == groceries["normalizationWorkspace"]
         assert recipe.backgroundWs == ""
         assert output == groceries["inputWorkspace"]
-        assert mockSnapper.called
-        assert mockSnapper.return_value.executeQueue.called
-        assert mockSnapper.return_value.Divide.called
-        assert mockSnapper.return_value.ResampleX.called
 
-    @unittest.mock.patch(
-        "snapred.backend.recipe.ApplyNormalizationRecipe.MantidSnapper", return_value=unittest.mock.Mock()
-    )
-    def test_cater(self, mockSnapper):
-        recipe = ApplyNormalizationRecipe()
+        assert mockSnapper.executeQueue.called
+        assert mockSnapper.Divide.called
+        assert mockSnapper.ResampleX.called
+
+    def test_cater(self):
+        untensils = Utensils()
+        mockSnapper = unittest.mock.Mock()
+        untensils.mantidSnapper = mockSnapper
+        recipe = ApplyNormalizationRecipe(utensils=untensils)
         ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
         groceries = {
             "inputWorkspace": "sample",
@@ -120,7 +126,7 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         assert recipe.normalizationWs == groceries["normalizationWorkspace"]
         assert recipe.backgroundWs == ""
         assert output[0] == groceries["inputWorkspace"]
-        assert mockSnapper.called
-        assert mockSnapper.return_value.executeQueue.called
-        assert mockSnapper.return_value.Divide.called
-        assert mockSnapper.return_value.ResampleX.called
+
+        assert mockSnapper.executeQueue.called
+        assert mockSnapper.Divide.called
+        assert mockSnapper.ResampleX.called

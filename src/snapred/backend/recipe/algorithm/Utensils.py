@@ -1,5 +1,7 @@
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+
 
 class Utensils(PythonAlgorithm):
     """
@@ -10,7 +12,7 @@ class Utensils(PythonAlgorithm):
         return "SNAPRed Internal"
 
     def PyInit(self):
-        pass
+        self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self) -> None:
         pass

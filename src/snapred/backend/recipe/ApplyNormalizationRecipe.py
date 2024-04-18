@@ -25,8 +25,9 @@ class ApplyNormalizationRecipe:
         """
         # NOTE: workaround, we just add an empty host algorithm.
         if utensils is None:
-            utensils = AlgorithmManager.create(Utensils.__name__)
-        self.mantidSnapper = MantidSnapper(utensils, Utensils.__name__)
+            utensils = Utensils()
+            utensils.PyInit()
+        self.mantidSnapper = utensils.mantidSnapper
 
     def chopIngredients(self, ingredients: Ingredients):
         """
