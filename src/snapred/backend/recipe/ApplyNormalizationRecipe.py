@@ -19,12 +19,13 @@ class ApplyNormalizationRecipe:
     NUM_BINS = Config["constants.ResampleX.NumberBins"]
     LOG_BINNING = True
 
-    def __init__(self):
+    def __init__(self, utensils: Utensils = None):
         """
         Sets up the recipe with the necessary utensils.
         """
         # NOTE: workaround, we just add an empty host algorithm.
-        utensils = AlgorithmManager.create(Utensils.__name__)
+        if utensils is None:
+            utensils = AlgorithmManager.create(Utensils.__name__)
         self.mantidSnapper = MantidSnapper(utensils, Utensils.__name__)
 
     def chopIngredients(self, ingredients: Ingredients):
