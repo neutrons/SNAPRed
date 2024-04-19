@@ -44,12 +44,9 @@ class GenerateFocussedVanadiumRecipe:
             smoothAlgo.setProperty("OutputWorkspace", self.outputWS)
             smoothAlgo.setProperty("DetectorPeaks", ingredients.detectorPeaks)
             smoothAlgo.setProperty("SmoothingParameter", ingredients.smoothingParameter)
-            try:
-                smoothAlgo.execute()
-                data["outputWorkspace"] = smoothAlgo.getPropertyValue("OutputWorkspace")
-            except RuntimeError as e:
-                errorString = str(e)
-                raise RuntimeError(errorString) from e
+
+            smoothAlgo.execute()
+            data["outputWorkspace"] = smoothAlgo.getPropertyValue("OutputWorkspace")
         else:
             raise NotImplementedError
 
