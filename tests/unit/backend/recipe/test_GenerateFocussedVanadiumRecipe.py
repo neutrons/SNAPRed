@@ -1,6 +1,7 @@
 import unittest
 from unittest import mock
 
+import pytest
 from mantid.simpleapi import (
     CreateWorkspace,
     LoadNexusProcessed,
@@ -39,6 +40,10 @@ class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
             "inputWorkspace": self.fakeInputWorkspace,
             "outputWorkspace": self.fakeOutputWorkspace,
         }
+        self.errorGroceryList = {
+            "inputWorkspace": None,
+            "outputWorkspace": self.fakeOutputWorkspace,
+        }
         self.recipe = Recipe()
 
     def tearDown(self) -> None:
@@ -58,3 +63,13 @@ class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
         output = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
 
         self.assertEqual(output, expected_output)  # noqa: PT009
+
+    @mock.patch(SmoothAlgo)
+    def test_execute_unsuccessful(self, mockSmoothAlgo):
+        mock_instance = mockSmoothAlgo.return_value
+        mock_instance.execute.return_value = None
+        mock_instance.getPropertyValue.return_value = None
+
+        with pytest.raises(NotImplementedError) as e:
+            self.recipe.executeRecipe(self.fakeIngredients, self.errorGroceryList)
+        assert str(e.value) == "Fake Vanadium not implemented yet."  # noqa: PT009

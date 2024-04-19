@@ -48,7 +48,7 @@ class GenerateFocussedVanadiumRecipe:
             smoothAlgo.execute()
             data["outputWorkspace"] = smoothAlgo.getPropertyValue("OutputWorkspace")
         else:
-            raise NotImplementedError
+            raise NotImplementedError("Fake Vanadium not implemented yet.")
 
         logger.info(f"Finished generating focussed vanadium for {self.rawInput}...")
         data["result"] = True
