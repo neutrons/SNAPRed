@@ -28,7 +28,7 @@ class GenerateFocussedVanadiumRecipe:
         self.detectorPeaks = ingredients.detectorPeaks
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
-        self.rawInput = groceries["intputWorkspace"]
+        self.rawInput = groceries["inputWorkspace"]
         self.outputWS = groceries["outputWorkspace"]
 
     def executeRecipe(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
@@ -42,8 +42,8 @@ class GenerateFocussedVanadiumRecipe:
             smoothAlgo.initialize()
             smoothAlgo.setProperty("InputWorkspace", self.rawInput)
             smoothAlgo.setProperty("OutputWorkspace", self.outputWS)
-            smoothAlgo.setProperty("DetectorPeaks", ingredients.detectorPeaks.json())
-            smoothAlgo.setProperty("SmoothingParameter", ingredients.smoothingParameter.json())
+            smoothAlgo.setProperty("DetectorPeaks", ingredients.detectorPeaks)
+            smoothAlgo.setProperty("SmoothingParameter", ingredients.smoothingParameter)
             try:
                 smoothAlgo.execute()
                 data["outputWorkspace"] = smoothAlgo.getPropertyValue("OutputWorkspace")

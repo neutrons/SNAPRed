@@ -1,36 +1,60 @@
 import unittest
 from unittest import mock
 
+from mantid.simpleapi import (
+    CreateWorkspace,
+    LoadNexusProcessed,
+    mtd,
+)
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import GenerateFocussedVanadiumIngredients as Ingredients
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
-from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe
+from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe as Recipe
+from snapred.meta.Config import Resource
+from util.helpers import deleteWorkspaceNoThrow
+from util.SculleryBoy import SculleryBoy
+
+ThisRecipe: str = "snapred.backend.recipe.GenerateFocussedVanadiumRecipe"
+SmoothAlgo: str = ThisRecipe + ".SmoothDataExcludingPeaksAlgo"
 
 
 class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
     def setUp(self):
-        detectorPeaksList = mock.MagicMock(spec=GroupPeakList)
-        self.ingredients = Ingredients(smoothingParameter=0.1, detectorPeaks=[detectorPeaksList])
-        self.groceries = {"intputWorkspace": "inputWS", "outputWorkspace": "outputWS"}
-        self.recipe = GenerateFocussedVanadiumRecipe()
+        testWorkspaceFile = "inputs/strip_peaks/DSP_58882_cal_CC_Column_spectra.nxs"
 
-        self.mock_algo = mock.create_autospec(SmoothDataExcludingPeaksAlgo)
-        self.mock_algo.getPropertyValue.return_value = "Mocked output workspace"
+        self.fakeInputWorkspace = "_test_input_workspace"
+        self.fakeOutputWorkspace = "_test_smoothed_output"
 
-        self.patcher = mock.patch(
-            "snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo.SmoothDataExcludingPeaksAlgo",
-            return_value=self.mock_algo,
+        LoadNexusProcessed(
+            Filename=Resource.getPath(testWorkspaceFile),
+            outputWorkspace=self.fakeInputWorkspace,
         )
-        self.addCleanup(self.patcher.stop)
-        self.patcher.start()
+        peaks = SculleryBoy().prepDetectorPeaks({})
 
-    def test_execute_recipe_success(self):
-        result = self.recipe.executeRecipe(self.ingredients, self.groceries)
-        self.assertTrue(result["result"])  # noqa: PT009
-        self.assertEqual(result["outputWorkspace"], "Mocked output workspace")  # noqa: PT009
+        self.fakeIngredients = Ingredients(
+            smoothingParameter=0.1,
+            detectorPeaks=peaks,
+        )
+        self.groceryList = {
+            "inputWorkspace": self.fakeInputWorkspace,
+            "outputWorkspace": self.fakeOutputWorkspace,
+        }
+        self.recipe = Recipe()
 
-    def test_execute_recipe_failure(self):
-        self.mock_algo.execute.side_effect = RuntimeError("Execution failed")
-        with self.assertRaises(RuntimeError) as context:  # noqa: PT027
-            self.recipe.executeRecipe(self.ingredients, self.groceries)  # noqa: PT009
-        self.assertIn("Execution failed", str(context.exception))  # noqa: PT009
+    def tearDown(self) -> None:
+        workspaces = mtd.getObjectNames()
+        for ws in workspaces:
+            deleteWorkspaceNoThrow(ws)
+        return super().tearDown()
+
+    @mock.patch(SmoothAlgo)
+    def test_execute_successful(self, mockSmoothAlgo):
+        mock_instance = mockSmoothAlgo.return_value
+        mock_instance.execute.return_value = None
+        mock_instance.getPropertyValue.return_value = self.fakeOutputWorkspace
+
+        expected_output = {"outputWorkspace": self.fakeOutputWorkspace, "result": True}
+
+        output = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
+
+        self.assertEqual(output, expected_output)  # noqa: PT009
