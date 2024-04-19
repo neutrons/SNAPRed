@@ -143,3 +143,6 @@ constants:
 
   GroupDiffractionCalibration:
     MaxChiSq: 100
+
+  ResampleX:
+    NumberBins: 1500
