@@ -1,31 +1,46 @@
-from qtpy.QtCore import Signal
-from qtpy.QtWidgets import QGridLayout, QLabel, QLineEdit, QWidget
-
-from snapred.ui.widget.JsonFormList import JsonFormList
-from snapred.ui.widget.LabeledField import LabeledField
+from snapred.meta.decorators.Resettable import Resettable
+from snapred.ui.view.BackendRequestView import BackendRequestView
+from snapred.ui.widget.Toggle import Toggle
 
 
-class ReductionView(QWidget):
-    signalRunNumberUpdate = Signal(str)
+@Resettable
+class ReductionView(BackendRequestView):
+    def __init__(self, jsonForm, pixelMasks=[], parent=None):
+        super(ReductionView, self).__init__(jsonForm, "", parent=parent)
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
+        # input fields
+        self.runNumberField = self._labeledField("Run Number:", jsonForm.getField("runNumber"), """multi=True""")
+        # multi argument allows acceptance of a list of run numbers like 12345, 67890, 12145, etc....
+        self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
+        self.checkbox = self._labeledCheckBox("Retain Unfocussed Data")
+        self.dropDown = self._sampleDropDown("Pixel Masks", pixelMasks)
 
-        self.layout = QGridLayout()
-        self.setLayout(self.layout)
+        # set field properties
+        self.litemodeToggle.setEnabled(False)
+        self.checkbox.setEnabled(False)
+        self.dropDown.setEnabled(False)
 
-        self.interactionText = QLabel("Which Run would you like to reduce today?")
+        # connect the boolean signal to a slot
+        # self.checkbox.checkedChanged.connect()
 
-        self.fieldRunNumber = LabeledField("Run Number :", QLineEdit(), self)
-        self.signalRunNumberUpdate.connect(self._updateRunNumber)
+        # add all widgets to layout
+        self.layout.addWidget(self.runNumberField, 0, 0)
+        self.layout.addWidget(self.litemodeToggle, 0, 1)
+        self.layout.addWidget(self.dropDown, 1, 0)
+        self.layout.addWidget(self.checkbox, 1, 1)
 
-        self.layout.addWidget(self.interactionText)
-        self.layout.addWidget(self.fieldRunNumber)
+    def verify(self):
+        if not self.runNumberField.text().isdigit():
+            raise ValueError("Please enter a valid run number")
+        if self.dropDown.currentIndex() < 0:
+            raise ValueError("Please select a pixel mask")
+        return True
 
-    # This signal boilerplate mumbo jumbo is necessary because worker threads cant update the gui directly
-    # So we have to send a signal to the main thread to update the gui, else we get an unhelpful segfault
-    def _updateRunNumber(self, runNumber):
-        self.fieldRunNumber.setText(runNumber)
+    # place holder for checkBox logic
+    """
+    def onCheckBoxChecked(self, checked):
+        if checked:
 
-    def updateRunNumber(self, runNumber):
-        self.signalRunNumberUpdate.emit(runNumber)
+        else:
+            pass
+    """
