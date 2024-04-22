@@ -13,7 +13,7 @@ logger = snapredLogger.getLogger(__name__)
 class GenerateFocussedVanadiumRecipe:
     """
 
-    The purpose of this recipe is to generate a focussed vandium. This recipe will take a pre-processed
+    The purpose of this recipe is to generate a focussed vandium. This recipe will take a
     raw vanadium workspace that has been preprocessed and then grouped via group processing recipe and
     then apply the SNAPRed Algo: SmoothDataExcludingPeaksAlgo using the smoothing parameter and
     crystallographic info applied during normalization calibration.
