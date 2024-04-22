@@ -365,6 +365,7 @@ class CalibrationService(Service):
 
         record = CalibrationRecord(
             runNumber=request.run.runNumber,
+            isLite=request.useLiteMode,
             crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
             calibrationFittingIngredients=self.sousChef.prepCalibration(farmFresh),
             pixelGroups=[pixelGroup],
