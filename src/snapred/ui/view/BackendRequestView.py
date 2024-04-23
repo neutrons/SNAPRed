@@ -29,8 +29,8 @@ class BackendRequestView(QWidget):
     def getField(self, key):
         return self.jsonForm.getField(key)
 
-    def _labeledField(self, label, field=None, multi=False):
-        return LabeledField(label, field, multi, self)
+    def _labeledField(self, label, field=None):
+        return LabeledField(label, field, self)
 
     def _labeledCheckBox(self, label):
         return LabeledCheckBox(label, self)
