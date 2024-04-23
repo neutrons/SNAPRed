@@ -30,7 +30,7 @@ class BackendRequestView(QWidget):
         return self.jsonForm.getField(key)
 
     def _labeledField(self, label, field=None, multi=False):
-        return LabeledField(label, field, self, multi)
+        return LabeledField(label, field, multi, self)
 
     def _labeledCheckBox(self, label):
         return LabeledCheckBox(label, self)

@@ -1,19 +1,26 @@
+from qtpy.QtWidgets import QGridLayout, QWidget
+
 from snapred.meta.decorators.Resettable import Resettable
-from snapred.ui.view.BackendRequestView import BackendRequestView
+from snapred.ui.widget.LabeledCheckBox import LabeledCheckBox
+from snapred.ui.widget.LabeledField import LabeledField
+from snapred.ui.widget.SampleDropDown import SampleDropDown
 from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
-class ReductionView(BackendRequestView):
-    def __init__(self, jsonForm, pixelMasks=[], parent=None):
-        super(ReductionView, self).__init__(jsonForm, "", parent=parent)
+class ReductionView(QWidget):
+    # This class will need to updated once backend implemenation is complete.
+    def __init__(self, pixelMasks=[], parent=None):
+        super().__init__(parent)
+
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
 
         # input fields
-        self.runNumberField = self._labeledField("Run Number:", jsonForm.getField("runNumber"), """multi=True""")
-        # multi argument allows acceptance of a list of run numbers like 12345, 67890, 12145, etc....
-        self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.checkbox = self._labeledCheckBox("Retain Unfocussed Data")
-        self.dropDown = self._sampleDropDown("Pixel Masks", pixelMasks)
+        self.runNumberField = LabeledField("Run Number:")
+        self.litemodeToggle = LabeledField("Lite Mode", Toggle(parent=self, state=True))
+        self.checkbox = LabeledCheckBox("Retain Unfocussed Data")
+        self.dropDown = SampleDropDown("Pixel Masks", pixelMasks)
 
         # set field properties
         self.litemodeToggle.setEnabled(False)
