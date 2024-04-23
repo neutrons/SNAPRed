@@ -185,7 +185,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         for x, y in zip(dataX, dataY):
             if x >= algo.TOFPars[0] and x <= algo.TOFPars[2]:
                 dataXnorm.append(x)
-                dataYnorm.append(y / self.sample_proton_charge)
+                dataYnorm.append(y)
 
         dataXrebin = [sum(dataXnorm) / len(dataXnorm)]
         dataYrebin = [sum(dataYnorm[:-1])]
