@@ -84,12 +84,6 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             BinningMode="Logarithmic",
         )
 
-        self.mantidSnapper.NormaliseByCurrent(
-            "Normalize by current",
-            InputWorkspace=outputWS,
-            OutputWorkspace=outputWS,
-        )
-
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data after chop",
             InputWorkspace=outputWS,
