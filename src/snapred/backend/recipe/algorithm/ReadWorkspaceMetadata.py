@@ -27,11 +27,12 @@ class ReadWorkspaceMetadata(PythonAlgorithm):
         self.unbagGroceries()
 
         properties = list(WorkspaceMetadata.schema()["properties"].keys())
-        metadata = WorkspaceMetadata()
+        metadata = {}
         run = self.mantidSnapper.mtd[self.workspace].getRun()  # NOTE this is a mantid object that holds logs
         for prop in properties:
             if run.hasProperty(f"SNAPRed_{prop}"):
-                setattr(metadata, prop, run.getLogData(f"SNAPRed_{prop}").value)
+                metadata[prop] = run.getLogData(f"SNAPRed_{prop}").value
+        metadata = WorkspaceMetadata.parse_obj(metadata)
         self.setPropertyValue("WorkspaceMetadata", metadata.json())
 
 
