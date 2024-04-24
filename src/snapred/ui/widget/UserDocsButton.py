@@ -30,6 +30,7 @@ class UserDocsButton(QWidget):
 
         # Point to the specific file on the filesystem
         url = QUrl.fromLocalFile(str(Config["docs.user.path"]))
+        breakpoint()
         self.webView.setUrl(url)
 
         # Show the web view

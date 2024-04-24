@@ -149,4 +149,4 @@ constants:
 
 docs:
   user:
-    path: ${instrument.home}/shared/Malcolm/SNAPUserDocs/_build/html/index.html"
+    path: /SNS/SNAP/shared/Malcolm/SNAPUserDocs/_build/html/index.html
