@@ -19,7 +19,7 @@ diffcal_metadata_state_list = list(get_args(DIFFCAL_METADATA_STATE))
 NORMCAL_METADATA_STATE = Literal[
     "unset",  # the default condition before any settings
     "exists",  # the state exists and the corresponding .h5 file located
-    "alternate",  # the user supplied an alternate .h5 that they believe in usable
+    "alternate",  # the user supplied an alternate .h5 that they believe is usable
     "none",  # proceed without applying any normalization
     "fake",  # proceed by creating a "fake vanadium"
 ]
