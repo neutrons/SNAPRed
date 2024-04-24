@@ -27,5 +27,6 @@ dependencies:
 - python-build
 - boa
 - pycifrw
+- pyqtwebengine
 - pip:
   - check-wheel-contents==0.4.0

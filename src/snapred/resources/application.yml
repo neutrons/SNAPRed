@@ -146,3 +146,7 @@ constants:
 
   ResampleX:
     NumberBins: 1500
+
+docs:
+  user:
+    path: ${instrument.home}/shared/Malcolm/SNAPUserDocs/_build/html/index.html"
