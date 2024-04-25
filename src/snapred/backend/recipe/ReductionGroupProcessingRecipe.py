@@ -26,6 +26,7 @@ class ReductionGroupProcessingRecipe:
         self.rawInput = groceries["inputWorkspace"]
         self.outputWS = groceries["outputWorkspace"]
         self.geometryOutputWS = groceries["geometryOutputWorkspace"]
+        self.diffFocOutputWS = groceries["diffFocOutputWorkspace"]
         self.groupingWS = groceries["groupingWorkspace"]
 
     def queueAlgos(self):
@@ -61,6 +62,12 @@ class ReductionGroupProcessingRecipe:
             "Applying Diffraction Focussing...",
             InputWorkspace=self.geometryOutputWS,
             GroupingWorkspace=self.groupingWS,
+            OutputWorkspace=self.diffFocOutputWS,
+        )
+
+        self.mantidSnapper.NormaliseByCurrent(
+            "Normalizing Current ...",
+            InputWorkspace=self.diffFocOutputWS,
             OutputWorkspace=self.outputWS,
         )
 
