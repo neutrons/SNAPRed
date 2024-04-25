@@ -5,7 +5,13 @@ from unittest import mock
 import pytest
 
 # mantid imports
-from mantid.simpleapi import AddSampleLog, CreateSingleValuedWorkspace, mtd
+from mantid.simpleapi import (
+    AddSampleLog,
+    CloneWorkspace,
+    CreateSingleValuedWorkspace,
+    Power,
+    mtd,
+)
 from pydantic import BaseModel
 
 # the algorithm to test
@@ -182,6 +188,117 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
             # also check directly on the workspace
             assert run.hasProperty(all_properties[i])
             assert run.getLogData(all_properties[i]).value == all_values[i]
+
+    def test_overwrite_prev_setting(self):
+        NUM = len(self.properties)
+        all_properties = [f"SNAPRed_{prop}" for prop in self.properties]
+        all_values = ["apple", "broccoli", "sourdough", "cheese"]
+        alt_values = ["pear", "cauliflower", "pumpernickel", "yogurt"]
+
+        metadata = WorkspaceMetadata.parse_obj(dict(zip(self.properties, all_values)))
+
+        for i in range(NUM):
+            # create a workspace with one log already there
+            wsname = f"_test_write_ws_metadata_overwrite_{i}"
+            CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+            AddSampleLog(
+                Workspace=wsname,
+                LogName=all_properties[i],
+                LogText=alt_values[i],
+            )
+            assert wsname in mtd
+            run = mtd[wsname].getRun()
+            assert run.hasProperty(all_properties[i])
+            assert run.getLogData(all_properties[i]).value == alt_values[i]
+
+            # now run the algorithm to write the logs
+            algo = WriteWorkspaceMetadata()
+            algo.initialize()
+            algo.setProperty("Workspace", wsname)
+            algo.setProperty("WorkspaceMetadata", metadata.json())
+            algo.execute()
+
+            # read the metadata back
+            read = ReadWorkspaceMetadata()
+            read.initialize()
+            read.setProperty("Workspace", wsname)
+            read.execute()
+
+            # verify the metadata object exists and has the previously set property is set
+            ans = WorkspaceMetadata.parse_raw(read.getPropertyValue("WorkspaceMetadata"))
+            assert metadata == ans
+            # also check directly on the workspace that he value changed
+            assert run.hasProperty(all_properties[i])
+            assert run.getLogData(all_properties[i]).value == all_values[i]
+            assert run.getLogData(all_properties[i]).value != alt_values[i]
+
+    def test_transform_retain_logs(self):
+        wsname = "_test_write_transform"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname, DataValue=2)
+        values = ["apple", "broccoli", "sourdough", "cheese"]
+
+        ref = WorkspaceMetadata.parse_obj(dict(zip(self.properties, values)))
+
+        # now run the algorithm to write the logs
+        algo = WriteWorkspaceMetadata()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+        algo.setProperty("WorkspaceMetadata", ref.json())
+        algo.execute()
+
+        # transform the first workspace
+        wsname2 = Power(wsname, 3)
+        assert wsname2.dataY(0) != mtd[wsname].dataY(0)
+
+        # read the metadata from trnasformed workspace
+        read = ReadWorkspaceMetadata()
+        read.initialize()
+        read.setProperty("Workspace", wsname2)
+        read.execute()
+
+        # verify the metadata object in transformed workspace matches original
+        ans = WorkspaceMetadata.parse_raw(read.getPropertyValue("WorkspaceMetadata"))
+        assert ref == ans
+
+    def test_clone_retain_logs(self):
+        wsname = "_test_write_clone"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        values = ["apple", "broccoli", "sourdough", "cheese"]
+
+        ref = WorkspaceMetadata.parse_obj(dict(zip(self.properties, values)))
+
+        # now run the algorithm to write the logs
+        algo = WriteWorkspaceMetadata()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+        algo.setProperty("WorkspaceMetadata", ref.json())
+        algo.execute()
+
+        # clone the first workspace
+        wsname2 = CloneWorkspace(wsname)
+
+        # read the metadata back
+        read = ReadWorkspaceMetadata()
+        read.initialize()
+        read.setProperty("Workspace", wsname2)
+        read.execute()
+
+        # verify the metadata object exists and matches original
+        ans = WorkspaceMetadata.parse_raw(read.getPropertyValue("WorkspaceMetadata"))
+        assert ref == ans
+
+        # clone the second workspace
+        wsname3 = CloneWorkspace(wsname2)
+
+        # read the metadata back
+        read = ReadWorkspaceMetadata()
+        read.initialize()
+        read.setProperty("Workspace", wsname3)
+        read.execute()
+
+        # verify the metadata object exists and matches original
+        ans = WorkspaceMetadata.parse_raw(read.getPropertyValue("WorkspaceMetadata"))
+        assert ref == ans
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
