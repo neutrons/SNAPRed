@@ -1,6 +1,7 @@
 import pytest
 from pydantic.error_wrappers import ValidationError
 from snapred.backend.dao.WorkspaceMetadata import (
+    UNSET,
     WorkspaceMetadata,
     diffcal_metadata_state_list,
     normcal_metadata_state_list,
@@ -29,7 +30,7 @@ def test_literal_good_diffcal():
     for good in diffcal_metadata_state_list:
         try:
             x = WorkspaceMetadata(diffcalState=good)
-            assert x.normalizationState == normcal_metadata_state_list[0]
+            assert x.normalizationState == UNSET
         except ValidationError:
             pytest.fail(f"Unexpected `ValidationError` setting diffcalState to {good}")
 
@@ -38,6 +39,6 @@ def test_literal_good_normcal():
     for good in normcal_metadata_state_list:
         try:
             x = WorkspaceMetadata(normalizationState=good)
-            assert x.diffcalState == diffcal_metadata_state_list[0]
+            assert x.diffcalState == UNSET
         except ValidationError:
             pytest.fail(f"Unexpected `ValidationError` setting normalizationState to {good}")
