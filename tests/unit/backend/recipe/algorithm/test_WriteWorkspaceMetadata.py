@@ -1,3 +1,4 @@
+import json
 import unittest
 from typing import Literal
 from unittest import mock
@@ -12,7 +13,7 @@ from mantid.simpleapi import (
     Power,
     mtd,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 # the algorithm to test
 from snapred.backend.dao.WorkspaceMetadata import UNSET
@@ -26,7 +27,7 @@ readAlgorithm = "snapred.backend.recipe.algorithm.ReadWorkspaceMetadata."
 
 # this mocks out the original workspace metadata class
 # to ensure the algorithm is as generic as possible in case of later extension
-class WorkspaceMetadata(BaseModel):
+class WorkspaceMetadata(BaseModel, extra=Extra.forbid):
     fruit: Literal[UNSET, "apple", "pear", "orange"] = UNSET
     veggie: Literal[UNSET, "broccoli", "cauliflower"] = UNSET
     bread: Literal[UNSET, "sourdough", "pumpernickel"] = UNSET
@@ -308,6 +309,103 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
         # verify the metadata object exists and matches original
         ans = WorkspaceMetadata.parse_raw(read.getPropertyValue("WorkspaceMetadata"))
         assert ref == ans
+
+    def test_invalid_dao_and_list(self):
+        wsname = "_test_write_invalid_double"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        values = ["apple", "broccoli", "sourdough", "cheese"]
+
+        ref = WorkspaceMetadata.parse_obj(dict(zip(self.properties, values)))
+
+        # now run the algorithm to write the logs
+        algo = WriteWorkspaceMetadata()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+        algo.setProperty("WorkspaceMetadata", ref.json())
+        algo.setProperty("MetadataLogNames", [self.properties[0]])
+        algo.setProperty("MetadataLogValues", [values[0]])
+        res = algo.validateInputs()
+        assert "WorkspaceMetadata" in res
+        assert "MetadataLogNames" in res
+
+    def test_invalid_dao(self):
+        wsname = "_test_write_invalid_dao"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+
+        bad_metadata = {"fruit": "turnip"}
+
+        # now run the algorithm to write the logs
+        algo = WriteWorkspaceMetadata()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+        algo.setProperty("WorkspaceMetadata", json.dumps(bad_metadata))
+        res = algo.validateInputs()
+        assert "WorkspaceMetadata" in res
+
+        bad_metadata = {"pastry": "turnover"}
+
+        # now run the algorithm to write the logs
+        algo.setProperty("WorkspaceMetadata", json.dumps(bad_metadata))
+        res = algo.validateInputs()
+        assert "WorkspaceMetadata" in res
+
+    def test_invalid_list(self):
+        wsname = "_test_write_invalid_list"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        properties = ["fruit", "veggie"]
+        values = ["apple", "turnip"]
+
+        # now run the algorithm to write the logs
+        algo = WriteWorkspaceMetadata()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+        algo.setProperty("MetadataLogNames", properties)
+        algo.setProperty("MetadataLogValues", values)
+        res = algo.validateInputs()
+        assert "MetadataLogNames" in res
+        assert "MetadataLogValues" in res
+        assert "size" not in res["MetadataLogNames"]
+
+        properties = ["not_a_tag"]
+        values = ["apple"]
+
+        # now run the algorithm to write the logs
+        algo.setProperty("MetadataLogNames", properties)
+        algo.setProperty("MetadataLogValues", values)
+        res = algo.validateInputs()
+        assert "MetadataLogNames" in res
+        assert "MetadataLogValues" in res
+        assert "size" not in res["MetadataLogNames"]
+
+        properties = ["fruit", "veggie"]
+        values = ["apple"]
+        algo.setProperty("MetadataLogNames", properties)
+        algo.setProperty("MetadataLogValues", values)
+        res = algo.validateInputs()
+        assert "MetadataLogNames" in res
+        assert "MetadataLogValues" in res
+        assert "size" in res["MetadataLogNames"]
+
+    def test_from_string(self):
+        wsname = "_test_write_from_string"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        properties = ["fruit", "veggie"]
+        values = ["apple", "broccoli"]
+
+        # now run the algorithm to write the logs
+        algo = WriteWorkspaceMetadata()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+        algo.setProperty("MetadataLogNames", properties)
+        algo.setProperty("MetadataLogValues", values)
+        assert algo.validateInputs() == {}
+        algo.execute()
+
+        run = mtd[wsname].getRun()
+        for prop in self.properties:
+            assert run.hasProperty(f"SNAPRed_{prop}")
+        for value, prop in zip(values, properties):
+            assert value == run.getLogData(f"SNAPRed_{prop}").value
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

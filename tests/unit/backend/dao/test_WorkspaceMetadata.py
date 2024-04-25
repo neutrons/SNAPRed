@@ -42,3 +42,9 @@ def test_literal_good_normcal():
             assert x.diffcalState == UNSET
         except ValidationError:
             pytest.fail(f"Unexpected `ValidationError` setting normalizationState to {good}")
+
+
+def test_exact_forbid():
+    with pytest.raises(ValidationError) as e:
+        WorkspaceMetadata(fancyPartyChips="uwu")
+    assert "extra" in str(e)

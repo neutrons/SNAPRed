@@ -11,7 +11,7 @@ import pytest
 
 # mantid imports
 from mantid.simpleapi import AddSampleLog, AddSampleLogMultiple, CreateSingleValuedWorkspace, mtd
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 # the algorithm to test
 from snapred.backend.dao.WorkspaceMetadata import UNSET
@@ -23,7 +23,7 @@ thisAlgorithm = "snapred.backend.recipe.algorithm.ReadWorkspaceMetadata."
 
 # this mocks out the original workspace metadata class
 # to ensure the algorithm is as generic as possible in case of later extension
-class WorkspaceMetadata(BaseModel):
+class WorkspaceMetadata(BaseModel, extra=Extra.forbid):
     fruit: Literal[UNSET, "apple", "pear", "orange"] = UNSET
     veggie: Literal[UNSET, "broccoli", "cauliflower"] = UNSET
     bread: Literal[UNSET, "sourdough", "pumpernickel"] = UNSET
@@ -181,8 +181,8 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
 
         # verify the logs exist on the workspace
         run = mtd[wsname].getRun()
-        for prop in properties:
-            assert run.getLogData(prop).value == "newt"
+        for value, prop in zip(values, properties):
+            assert value == run.getLogData(prop).value
 
         # now run the algorithm to read the logs
         algo = ReadWorkspaceMetadata()
