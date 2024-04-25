@@ -22,7 +22,7 @@ thisAlgorithm = "snapred.backend.recipe.algorithm.ReadWorkspaceMetadata."
 
 # this mocks out the original workspace metadata class
 # to ensure the algorithm is as generic as possible in case of later extension
-class MockWorkspaceMetadata(BaseModel):
+class WorkspaceMetadata(BaseModel):
     fruit: Literal[UNSET, "apple", "pear", "orange"] = UNSET
     veggie: Literal[UNSET, "broccoli", "cauliflower"] = UNSET
     bread: Literal[UNSET, "sourdough", "pumpernickel"] = UNSET
@@ -31,9 +31,9 @@ class MockWorkspaceMetadata(BaseModel):
 
 # NOTE do NOT remove this mock
 # if your test fails with this mock, then fix your test instead
-@mock.patch(thisAlgorithm + "WorkspaceMetadata", MockWorkspaceMetadata)
+@mock.patch(thisAlgorithm + "WorkspaceMetadata", WorkspaceMetadata)
 class TestReadWorkspaceMetadata(unittest.TestCase):
-    properties = list(MockWorkspaceMetadata.schema()["properties"].keys())
+    properties = list(WorkspaceMetadata.schema()["properties"].keys())
 
     def test_read_nothing(self):
         wsname = "_test_read_ws_metadata"
@@ -53,8 +53,8 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
         algo.execute()
 
         # verify the metadata object exists and is entirely unset
-        metadata = MockWorkspaceMetadata.parse_raw(algo.getPropertyValue("WorkspaceMetadata"))
-        ref = MockWorkspaceMetadata()
+        metadata = WorkspaceMetadata.parse_raw(algo.getPropertyValue("WorkspaceMetadata"))
+        ref = WorkspaceMetadata()
         assert ref == metadata
 
     def test_read_properties(self):
@@ -82,13 +82,13 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
         algo.execute()
 
         # verify each property is set to appropriate value
-        metadata = MockWorkspaceMetadata.parse_raw(algo.getPropertyValue("WorkspaceMetadata"))
+        metadata = WorkspaceMetadata.parse_raw(algo.getPropertyValue("WorkspaceMetadata"))
         for value, prop in zip(values, self.properties):
             assert value == getattr(metadata, prop)
 
         # verify it equals the correct object
         dictionary = dict(zip(self.properties, values))
-        ref = MockWorkspaceMetadata.parse_obj(dictionary)
+        ref = WorkspaceMetadata.parse_obj(dictionary)
         assert ref == metadata
 
     def test_read_all_unset(self):
@@ -116,10 +116,10 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Workspace", wsname)
         algo.execute()
-        metadata = MockWorkspaceMetadata.parse_raw(algo.getPropertyValue("WorkspaceMetadata"))
+        metadata = WorkspaceMetadata.parse_raw(algo.getPropertyValue("WorkspaceMetadata"))
 
         # ensure it is equal to an object with all fields unset
-        assert metadata == MockWorkspaceMetadata()
+        assert metadata == WorkspaceMetadata()
 
     def test_read_one_unset(self):
         wsname = "_test_read_ws_metadata_unset"
@@ -148,11 +148,11 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
         algo.initialize()
         algo.setProperty("Workspace", wsname)
         algo.execute()
-        metadata = MockWorkspaceMetadata.parse_raw(algo.getPropertyValue("WorkspaceMetadata"))
+        metadata = WorkspaceMetadata.parse_raw(algo.getPropertyValue("WorkspaceMetadata"))
 
         # ensure it is equal to the correct object
         dictionary = dict(zip(self.properties, values))
-        ref = MockWorkspaceMetadata.parse_obj(dictionary)
+        ref = WorkspaceMetadata.parse_obj(dictionary)
         assert metadata == ref
 
     def test_fail_invalid(self):
@@ -181,7 +181,7 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
         algo.setProperty("Workspace", wsname)
         with pytest.raises(RuntimeError) as e:
             algo.execute()
-        assert "validation errors for MockWorkspaceMetadata" in str(e.value)
+        assert "validation errors for WorkspaceMetadata" in str(e.value)
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
