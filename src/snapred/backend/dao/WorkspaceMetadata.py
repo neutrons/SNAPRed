@@ -1,6 +1,6 @@
 from typing import Literal, get_args
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 # possible states for diffraction calibration
 
@@ -29,7 +29,7 @@ NORMCAL_METADATA_STATE = Literal[
 normcal_metadata_state_list = list(get_args(NORMCAL_METADATA_STATE))
 
 
-class WorkspaceMetadata(BaseModel):
+class WorkspaceMetadata(BaseModel, extra=Extra.forbid):
     """Class to hold tags related to a workspace"""
 
     diffcalState: DIFFCAL_METADATA_STATE = UNSET
