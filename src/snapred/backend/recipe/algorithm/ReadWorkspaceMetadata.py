@@ -1,4 +1,11 @@
-from mantid.api import AlgorithmFactory, PythonAlgorithm
+from typing import Dict
+
+from mantid.api import (
+    AlgorithmFactory,
+    MatrixWorkspaceProperty,
+    PropertyMode,
+    PythonAlgorithm,
+)
 from mantid.kernel import Direction
 
 from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata
@@ -11,7 +18,10 @@ class ReadWorkspaceMetadata(PythonAlgorithm):
 
     def PyInit(self):
         # declare properties
-        self.declareProperty("Workspace", defaultValue="", direction=Direction.Input)
+        self.declareProperty(
+            MatrixWorkspaceProperty("Workspace", "", Direction.Input, PropertyMode.Mandatory),
+            doc="Workspace containing the logs",
+        )
         self.declareProperty("WorkspaceMetadata", defaultValue="", direction=Direction.Output)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
@@ -21,6 +31,9 @@ class ReadWorkspaceMetadata(PythonAlgorithm):
 
     def unbagGroceries(self):
         self.workspace = self.getPropertyValue("Workspace")
+
+    def validateInputs(self) -> Dict[str, str]:
+        return {}
 
     def PyExec(self):
         self.log().notice("Fetch the workspace metadata logs")

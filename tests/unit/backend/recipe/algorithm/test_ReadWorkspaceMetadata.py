@@ -29,10 +29,34 @@ class MockWorkspaceMetadata(BaseModel):
     dairy: Literal[UNSET, "milk", "cheese", "yogurt", "butter"] = UNSET
 
 
+# NOTE do NOT remove this mock
+# if your test fails with this mock, then fix your test instead
+@mock.patch(thisAlgorithm + "WorkspaceMetadata", MockWorkspaceMetadata)
 class TestReadWorkspaceMetadata(unittest.TestCase):
     properties = list(MockWorkspaceMetadata.schema()["properties"].keys())
 
-    @mock.patch(thisAlgorithm + "WorkspaceMetadata", MockWorkspaceMetadata)
+    def test_read_nothing(self):
+        wsname = "_test_read_ws_metadata"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        assert wsname in mtd
+        properties = [f"SNAPRed_{prop}" for prop in self.properties]
+
+        # verify the logs do not exist on the workspace
+        run = mtd[wsname].getRun()
+        for prop in properties:
+            assert not run.hasProperty(prop)
+
+        # now run the algorithm to read the logs
+        algo = ReadWorkspaceMetadata()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+        algo.execute()
+
+        # verify the metadata object exists and is entirely unset
+        metadata = MockWorkspaceMetadata.parse_raw(algo.getPropertyValue("WorkspaceMetadata"))
+        ref = MockWorkspaceMetadata()
+        assert ref == metadata
+
     def test_read_properties(self):
         wsname = "_test_read_ws_metadata"
         CreateSingleValuedWorkspace(OutputWorkspace=wsname)
@@ -67,8 +91,7 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
         ref = MockWorkspaceMetadata.parse_obj(dictionary)
         assert ref == metadata
 
-    @mock.patch(thisAlgorithm + "WorkspaceMetadata", MockWorkspaceMetadata)
-    def test_read_unset(self):
+    def test_read_all_unset(self):
         wsname = "_test_read_ws_metadata_unset"
         CreateSingleValuedWorkspace(OutputWorkspace=wsname)
         assert wsname in mtd
@@ -97,6 +120,68 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
 
         # ensure it is equal to an object with all fields unset
         assert metadata == MockWorkspaceMetadata()
+
+    def test_read_one_unset(self):
+        wsname = "_test_read_ws_metadata_unset"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        assert wsname in mtd
+        properties = [f"SNAPRed_{prop}" for prop in self.properties]
+        values = ["apple", "broccoli", "sourdough", "cheese"]
+        # "unset" one of the values
+        values[2] = UNSET
+
+        # create all the logs in an unset state
+        # add the logs to the workspace
+        AddSampleLogMultiple(
+            Workspace=wsname,
+            LogNames=properties,
+            LogValues=values,
+        )
+
+        # verify the logs exist on the workspace
+        run = mtd[wsname].getRun()
+        for value, prop in zip(values, properties):
+            assert run.getLogData(prop).value == value
+
+        # now run the algorithm to read the logs and verify the correct object created
+        algo = ReadWorkspaceMetadata()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+        algo.execute()
+        metadata = MockWorkspaceMetadata.parse_raw(algo.getPropertyValue("WorkspaceMetadata"))
+
+        # ensure it is equal to the correct object
+        dictionary = dict(zip(self.properties, values))
+        ref = MockWorkspaceMetadata.parse_obj(dictionary)
+        assert metadata == ref
+
+    def test_fail_invalid(self):
+        wsname = "_test_read_ws_metadata_unset"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        assert wsname in mtd
+        properties = [f"SNAPRed_{prop}" for prop in self.properties]
+        values = ["newt" for prop in properties]
+
+        # create all the logs in an unset state
+        # add the logs to the workspace
+        AddSampleLogMultiple(
+            Workspace=wsname,
+            LogNames=properties,
+            LogValues=values,
+        )
+
+        # verify the logs exist on the workspace
+        run = mtd[wsname].getRun()
+        for prop in properties:
+            assert run.getLogData(prop).value == "newt"
+
+        # now run the algorithm to read the logs
+        algo = ReadWorkspaceMetadata()
+        algo.initialize()
+        algo.setProperty("Workspace", wsname)
+        with pytest.raises(RuntimeError) as e:
+            algo.execute()
+        assert "validation errors for MockWorkspaceMetadata" in str(e.value)
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
