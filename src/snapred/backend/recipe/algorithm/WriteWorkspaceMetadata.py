@@ -25,8 +25,6 @@ class WriteWorkspaceMetadata(PythonAlgorithm):
             doc="Workspace to contain the logs",
         )
         self.declareProperty("WorkspaceMetadata", defaultValue="", direction=Direction.Input)
-        # self.declareProperty("MetadataLogName", defaultValue=[], direction=Direction.Input) # string array property
-        # self.declareProperty("MetadataLogValue", defaultValue=[], direction=Direction.Input) # string array property
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 

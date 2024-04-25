@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from snapred.backend.dao.WorkspaceMetadata import UNSET
 from snapred.backend.recipe.algorithm.ReadWorkspaceMetadata import ReadWorkspaceMetadata
 from snapred.backend.recipe.algorithm.WriteWorkspaceMetadata import WriteWorkspaceMetadata
+from util.helpers import deleteWorkspaceNoThrow
 
 thisAlgorithm = "snapred.backend.recipe.algorithm.WriteWorkspaceMetadata."
 readAlgorithm = "snapred.backend.recipe.algorithm.ReadWorkspaceMetadata."
@@ -32,12 +33,20 @@ class WorkspaceMetadata(BaseModel):
     dairy: Literal[UNSET, "milk", "cheese", "yogurt", "butter"] = UNSET
 
 
-# NOTE do NOT remove these mocks
-# if your test fails with this mock, then fix your test instead
+# NOTE do NOT remove these patches
+# if your test fails with these patches, then fix your test instead
 @mock.patch(thisAlgorithm + "WorkspaceMetadata", WorkspaceMetadata)
 @mock.patch(readAlgorithm + "WorkspaceMetadata", WorkspaceMetadata)
 class TestWriteWorkspaceMetadata(unittest.TestCase):
     properties = list(WorkspaceMetadata.schema()["properties"].keys())
+
+    def tearDown(cls) -> None:
+        """
+        Delete all workspaces created by previous tests.
+        """
+        for ws in mtd.getObjectNames():
+            deleteWorkspaceNoThrow(ws)
+        return super().tearDown()
 
     def test_write_metadata_direct(self):
         """
