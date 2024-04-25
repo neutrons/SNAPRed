@@ -165,6 +165,7 @@ class NormalizationService(Service):
         calibration = self.sousChef.prepCalibration(farmFresh)
         record = NormalizationRecord(
             runNumber=request.runNumber,
+            isLite=request.useLiteMode,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             calibration=calibration,
