@@ -4,10 +4,10 @@ from mantid.api import AlgorithmManager
 
 from snapred.backend.dao.ingredients import ApplyNormalizationIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -15,19 +15,9 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
 @Singleton
-class ApplyNormalizationRecipe:
+class ApplyNormalizationRecipe(Recipe):
     NUM_BINS = Config["constants.ResampleX.NumberBins"]
     LOG_BINNING = True
-
-    def __init__(self, utensils: Utensils = None):
-        """
-        Sets up the recipe with the necessary utensils.
-        """
-        # NOTE: workaround, we just add an empty host algorithm.
-        if utensils is None:
-            utensils = Utensils()
-            utensils.PyInit()
-        self.mantidSnapper = utensils.mantidSnapper
 
     def chopIngredients(self, ingredients: Ingredients):
         """
@@ -38,7 +28,7 @@ class ApplyNormalizationRecipe:
         self.dMin = self.pixelGroup.dMin
         self.dMax = self.pixelGroup.dMax
 
-    def unbagGroceries(self, groceries: Dict[str, Any]):
+    def unbagGroceries(self, groceries: Dict[str, WorkspaceName]):
         """
         Unpacks the workspace data from the groceries.
         The input sample data workpsace, inputworkspace, is required, in dspacing
@@ -49,11 +39,9 @@ class ApplyNormalizationRecipe:
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
         self.backgroundWs = groceries.get("backgroundWorkspace", "")
 
-    def validateInputs(self):
+    def stirInputs(self):
         """
-        Confirms that the ingredients and groceries make sense together.
         Mostly just checks that the background subtraction is not implemented.
-        Requires: unbagged groceries and chopped ingredients.
         """
         # NOTE: Should background subtraction even take place here?  ME thinks not!! *finger wag*
         if self.backgroundWs != "":
@@ -79,22 +67,6 @@ class ApplyNormalizationRecipe:
             OutputWorkspace=self.sampleWs,
         )
 
-    def prep(self, ingredients: Ingredients, groceries: Dict[str, str]):
-        """
-        Convinience method to prepare the recipe for execution.
-        """
-        self.chopIngredients(ingredients)
-        self.unbagGroceries(groceries)
-        self.validateInputs()
-        self.queueAlgos()
-
-    def execute(self):
-        """
-        Final step in a recipe, executes the queued algorithms.
-        Requires: queued algorithms.
-        """
-        self.mantidSnapper.executeQueue()
-
     # NOTE: Metaphorically, would ingredients better have been called Spices?
     # Considering they are mostly never the meat of a recipe.
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
@@ -106,7 +78,7 @@ class ApplyNormalizationRecipe:
         self.execute()
         return self.sampleWs
 
-    def cater(self, shipment: List[Pallet]) -> List[Dict[str, Any]]:
+    def cater(self, shipment: List[Pallet]) -> List[WorkspaceName]:
         """
         A secondary interface method for the recipe.
         It is a batched version of cook.

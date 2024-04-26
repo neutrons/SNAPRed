@@ -1,7 +1,11 @@
 import unittest
 
 import pytest
-from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients, Utensils
+
+from mantid.simpleapi import CreateSingleValuedWorkspace
+
+from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients
+from snapred.backend.recipe.algorithm.Utensils import Utensils
 from util.SculleryBoy import SculleryBoy
 
 
@@ -52,15 +56,15 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         assert recipe.normalizationWs == ""
         assert recipe.backgroundWs == ""
 
-    def test_validateInputs(self):
+    def test_stirInputs(self):
         recipe = ApplyNormalizationRecipe()
 
         recipe.backgroundWs = "bg"
         with pytest.raises(NotImplementedError):
-            recipe.validateInputs()
+            recipe.stirInputs()
 
         recipe.backgroundWs = ""
-        recipe.validateInputs()
+        recipe.stirInputs()
 
     def test_queueAlgos(self):
         recipe = ApplyNormalizationRecipe()
@@ -69,6 +73,8 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
             "inputWorkspace": "sample",
             "normalizationWorkspace": "norm",
         }
+        CreateSingleValuedWorkspace(OutputWorkspace="sample")
+        CreateSingleValuedWorkspace(OutputWorkspace="norm")
         recipe.prep(ingredients, groceries)
         recipe.queueAlgos()
 
