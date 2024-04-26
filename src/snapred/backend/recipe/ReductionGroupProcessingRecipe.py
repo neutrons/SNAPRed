@@ -73,7 +73,7 @@ class ReductionGroupProcessingRecipe:
 
     def prep(self, groceries: Dict[str, str]):
         """
-        Convinience method to prepare the recipe for execution.
+        Convenience method to prepare the recipe for execution.
         """
         self.unbagGroceries(groceries)
         self.queueAlgos()

@@ -6,7 +6,6 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
-    mtd,
 )
 from mantid.kernel import Direction, StringMandatoryValidator
 
@@ -119,8 +118,8 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         self.chopNeutronData(self.inputVanadiumWS, self.outputVanadiumWS)
         self.chopNeutronData(self.inputBackgroundWS, self.outputBackgroundWS)
 
-        pcV = mtd[self.outputVanadiumWS].run().getProtonCharge()
-        pcB = mtd[self.outputBackgroundWS].run().getProtonCharge()
+        pcV = self.mantidSnapper.mtd[self.outputVanadiumWS].run().getProtonCharge()
+        pcB = self.mantidSnapper.mtd[self.outputBackgroundWS].run().getProtonCharge()
         protonCharge = pcV / pcB
 
         self.mantidSnapper.Scale(
