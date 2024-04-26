@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple
 
 from mantid.api import AlgorithmManager
-
 from pydantic import BaseModel as Ingredients
 
 from snapred.backend.log.logger import snapredLogger
@@ -13,6 +12,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 logger = snapredLogger.getLogger(__name__)
 
 Pallet = Tuple[Ingredients, Dict[str, str]]
+
 
 class Recipe(ABC):
     def __init__(self, utensils: Utensils = None):
@@ -31,14 +31,14 @@ class Recipe(ABC):
         Chops off the needed elements of the ingredients.
         """
         raise NotImplementedError("Recipes must implement the chopIngredients method")
-        
+
     @abstractmethod
     def unbagGroceries(self, groceries: Dict[str, WorkspaceName]):
         """
         Unpacks the workspace data from the groceries.
         """
         raise NotImplementedError("Recipes must implement the unbagGroceries method")
-        
+
     def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
         """
         Validate the input properties before chopping or unbagging
@@ -63,7 +63,6 @@ class Recipe(ABC):
         """
         raise NotImplementedError("Recipes must implement the queueAlgos method")
 
-
     def prep(self, ingredients: Any, groceries: Dict[str, str]):
         """
         Convinience method to prepare the recipe for execution.
@@ -72,7 +71,7 @@ class Recipe(ABC):
         self.unbagGroceries(groceries)
         self.chopIngredients(ingredients)
         self.stirInputs()
-        
+
         self.queueAlgos()
 
     def execute(self):

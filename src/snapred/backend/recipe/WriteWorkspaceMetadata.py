@@ -3,10 +3,11 @@ from typing import Any, Dict, List, Tuple
 
 from mantid.api import AlgorithmManager
 
-from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata as Ingredients
+from snapred.backend.dao.WorkspaceMetadata import UNSET
+from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.Recipe import Recipe
 from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
+from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -54,4 +55,3 @@ class WriteWorkspaceMetadata(Recipe):
             LogNames=self.metadataNames,
             LogValues=self.metadataValues,
         )
-

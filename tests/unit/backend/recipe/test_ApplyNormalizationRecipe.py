@@ -1,11 +1,9 @@
 import unittest
 
 import pytest
-
 from mantid.simpleapi import CreateSingleValuedWorkspace
-
-from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients
 from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients
 from util.SculleryBoy import SculleryBoy
 
 
