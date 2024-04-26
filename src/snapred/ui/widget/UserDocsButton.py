@@ -6,6 +6,7 @@ from snapred.meta.Config import Config
 
 # ref: unit-test failures
 
+
 class UserDocsButton(QWidget):
     def __init__(self, parent=None):
         super(UserDocsButton, self).__init__(parent)
