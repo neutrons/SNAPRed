@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QHBoxLayout, QPushButton, QWidget
 
 from snapred.meta.Config import Config
 
+# ref: unit-test failures
 
 class UserDocsButton(QWidget):
     def __init__(self, parent=None):
