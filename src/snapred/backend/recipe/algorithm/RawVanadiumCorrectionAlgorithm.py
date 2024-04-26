@@ -84,12 +84,6 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             BinningMode="Logarithmic",
         )
 
-        self.mantidSnapper.NormaliseByCurrent(
-            "Normalize by current",
-            InputWorkspace=outputWS,
-            OutputWorkspace=outputWS,
-        )
-
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data after chop",
             InputWorkspace=outputWS,
@@ -123,6 +117,24 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         # Process the raw vanadium and background data
         self.chopNeutronData(self.inputVanadiumWS, self.outputVanadiumWS)
         self.chopNeutronData(self.inputBackgroundWS, self.outputBackgroundWS)
+
+        pcV = self.mantidSnapper.mtd[self.outputVanadiumWS].run().getProtonCharge()
+        pcB = self.mantidSnapper.mtd[self.outputBackgroundWS].run().getProtonCharge()
+        protonCharge = pcV / pcB
+
+        self.mantidSnapper.Scale(
+            "Scale entire workspace by factor value",
+            InputWorkspace=self.outputBackgroundWS,
+            Outputworkspace=self.outputBackgroundWS,
+            Factor=protonCharge,
+        )
+
+        self.mantidSnapper.Minus(
+            "Subtract off empty background",
+            LHSWorkspace=self.outputVanadiumWS,
+            RHSWorkspace=self.outputBackgroundWS,
+            OutputWorkspace=self.outputVanadiumWS,
+        )
 
         # take difference
         self.mantidSnapper.Minus(
