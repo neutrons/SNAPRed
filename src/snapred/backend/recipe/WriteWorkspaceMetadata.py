@@ -109,6 +109,6 @@ class WriteWorkspaceMetadata:
         output = []
         for ingredient, grocery in shipment:
             self.prep(ingredient, grocery)
-            output.append(self.sampleWs)
+            output.append(True)
         self.execute()
         return output

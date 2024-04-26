@@ -272,6 +272,10 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
             WriteWorkspaceMetadata().cook(bad_metadata, groceries)
         assert "WorkspaceMetadata" in str(e)
 
+    def test_cater(self):
+        groceries = self._make_groceries()
+        assert WriteWorkspaceMetadata().cater([(self.metadata, groceries)])
+
 
 # this at teardown removes the loggers, eliminating logger error printouts
 # see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
