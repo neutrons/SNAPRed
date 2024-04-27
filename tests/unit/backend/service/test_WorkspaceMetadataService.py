@@ -3,32 +3,17 @@ from typing import Dict, Literal
 from unittest import mock
 
 import pytest
-from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
-from pydantic import BaseModel, Extra
-from snapred.backend.dao.WorkspaceMetadata import UNSET
+from mantid.simpleapi import AddSampleLogMultiple, CreateSingleValuedWorkspace, mtd
+from pydantic import ValidationError
+from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
 from util.helpers import deleteWorkspaceNoThrow
 
 thisService = "snapred.backend.service.WorkspaceMetadataService."
-writeRecipe = "snapred.backend.recipe.WriteWorkspaceMetadata."
-readRecipe = "snapred.backend.recipe.ReadWorkspaceMetadata."
 TAG_PREFIX = Config["metadata.tagPrefix"]
 
 
-# this mocks out the original workspace metadata class
-# to ensure the algorithm is as generic as possible in case of later extension
-class WorkspaceMetadata(BaseModel, extra=Extra.forbid):
-    fruit: Literal[UNSET, "apple", "pear", "orange"] = UNSET
-    veggie: Literal[UNSET, "broccoli", "cauliflower"] = UNSET
-    bread: Literal[UNSET, "sourdough", "pumpernickel"] = UNSET
-    dairy: Literal[UNSET, "milk", "cheese", "yogurt", "butter"] = UNSET
-
-
-# NOTE do NOT remove these patches for any reason whatsoever
-@mock.patch(thisService + "WorkspaceMetadata", WorkspaceMetadata)
-@mock.patch(writeRecipe + "WorkspaceMetadata", WorkspaceMetadata)
-@mock.patch(readRecipe + "WorkspaceMetadata", WorkspaceMetadata)
 class TestMetadataService(unittest.TestCase):
     properties = list(WorkspaceMetadata.schema()["properties"].keys())
     propLogNames = [f"{TAG_PREFIX}{prop}" for prop in properties]
@@ -39,7 +24,7 @@ class TestMetadataService(unittest.TestCase):
         super().setUpClass()
 
     def setUp(self):
-        self.values = ["apple", "broccoli", "sourdough", "cheese"]
+        self.values = ["exists", "alternate"]
         self.metadata = WorkspaceMetadata.parse_obj(dict(zip(self.properties, self.values)))
         return super().setUp()
 
@@ -116,6 +101,26 @@ class TestMetadataService(unittest.TestCase):
 
         ans = self.instance.readMetadataTags(wsname, self.properties)
         assert ans == self.values
+
+    def test_fail_write_invalid(self):
+        wsname = self._make_workspace()
+        with pytest.raises(ValidationError):
+            self.instance.writeWorkspaceMetadata(wsname, {"chips": "exists"})
+        with pytest.raises(ValidationError):
+            self.instance.writeWorkspaceMetadata(wsname, {"diffcalState": "kiwi"})
+
+    def test_fail_read_invalid(self):
+        wsname = self._make_workspace()
+        # write invalid logs
+        invalidValues = ["newt" for prop in self.propLogNames]
+        AddSampleLogMultiple(
+            Workspace=wsname,
+            LogNames=self.propLogNames,
+            LogValues=invalidValues,
+        )
+        self._verify_logs(wsname, invalidValues)
+        with pytest.raises(ValidationError):
+            self.instance.readWorkspaceMetadata(wsname)
 
 
 # this at teardown removes the loggers, eliminating logger error printouts
