@@ -104,6 +104,9 @@ class TestMetadataService(unittest.TestCase):
 
     def test_fail_write_invalid(self):
         wsname = self._make_workspace()
+        # first ensure it can be written with a valid dictionary
+        assert self.instance.writeWorkspaceMetadata(wsname, {"diffcalState": "exists"})
+        # now ensure it fails with an invalid dictionary
         with pytest.raises(ValidationError):
             self.instance.writeWorkspaceMetadata(wsname, {"chips": "exists"})
         with pytest.raises(ValidationError):
