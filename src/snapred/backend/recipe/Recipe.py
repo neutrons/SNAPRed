@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Generic, List, Tuple, TypeVar, get_args
 
 from mantid.api import AlgorithmManager
-from pydantic import BaseModel as Ingredients
+from pydantic import BaseModel, ValidationError
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -11,19 +11,21 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
+Ingredients = TypeVar("Ingredients", bound=BaseModel)
+
 Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
-class Recipe(ABC):
+class Recipe(ABC, Generic[Ingredients]):
     def __init__(self, utensils: Utensils = None):
         """
         Sets up the recipe with the necessary utensils.
         """
         # NOTE: workaround, we just add an empty host algorithm.
-        if utensils is None:
-            utensils = Utensils()
-            utensils.PyInit()
-        self.mantidSnapper = utensils.mantidSnapper
+        # if utensils is None:
+        #     utensils = Utensils()
+        #     utensils.PyInit()
+        self.mantidSnapper = MantidSnapper(None, "Utensils")
 
     @abstractmethod
     def chopIngredients(self, ingredients: Ingredients):
@@ -43,7 +45,14 @@ class Recipe(ABC):
         """
         Validate the input properties before chopping or unbagging
         """
-        Ingredients.parse_obj(ingredients)
+        # cast the ingredients into the Ingredients type
+        try:
+            # Ingredients.parse_obj(ingredients)
+            get_args(self.__orig_bases__[0])[0].parse_obj(ingredients)
+        except ValidationError as e:
+            raise e
+        # ensure all of the given workspaces exist
+        # NOTE may need to be tweaked to ignore output workspaces...
         for ws in groceries.values():
             if not self.mantidSnapper.mtd.doesExist(ws):
                 raise RuntimeError(f"The indicated workspace {ws} not found in Mantid ADS.")
@@ -63,7 +72,7 @@ class Recipe(ABC):
         """
         raise NotImplementedError("Recipes must implement the queueAlgos method")
 
-    def prep(self, ingredients: Any, groceries: Dict[str, str]):
+    def prep(self, ingredients: Ingredients, groceries: Dict[str, str]):
         """
         Convinience method to prepare the recipe for execution.
         """

@@ -14,6 +14,7 @@ from snapred.backend.service.NormalizationService import NormalizationService
 from snapred.backend.service.ReductionService import ReductionService
 from snapred.backend.service.ServiceDirectory import ServiceDirectory
 from snapred.backend.service.StateIdLookupService import StateIdLookupService
+from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.backend.service.WorkspaceService import WorkspaceService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
@@ -37,6 +38,7 @@ class ServiceFactory:
         self.serviceDirectory.registerService(LiteDataService)
         self.serviceDirectory.registerService(NormalizationService)
         self.serviceDirectory.registerService(WorkspaceService)
+        self.serviceDirectory.registerService(WorkspaceMetadataService)
 
     def getServiceNames(self):
         return self.serviceDirectory.keys()

@@ -17,8 +17,9 @@ from pydantic import BaseModel, Extra, ValidationError
 
 # the algorithm to test
 from snapred.backend.dao.WorkspaceMetadata import UNSET
-from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
-from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
+
+# from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
+# from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
 from snapred.meta.Config import Config
 from util.helpers import deleteWorkspaceNoThrow
 
@@ -36,10 +37,15 @@ class WorkspaceMetadata(BaseModel, extra=Extra.forbid):
     dairy: Literal[UNSET, "milk", "cheese", "yogurt", "butter"] = UNSET
 
 
+# with mock.patch(, WorkspaceMetadata):
+from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
+from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
+
+
 # NOTE do NOT remove these patches
 # if your test fails with these patches, then fix your test instead
-@mock.patch(thisRecipe + "Ingredients", WorkspaceMetadata)
-@mock.patch(readRecipe + "Ingredients", WorkspaceMetadata)
+@mock.patch(thisRecipe + "WorkspaceMetadata", WorkspaceMetadata)
+@mock.patch(readRecipe + "WorkspaceMetadata", WorkspaceMetadata)
 class TestWriteWorkspaceMetadata(unittest.TestCase):
     properties = list(WorkspaceMetadata.schema()["properties"].keys())
     propLogNames = [TAG_PREFIX + prop for prop in properties]
@@ -203,7 +209,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
 
         # read the metadata back and verify matches original
         ref = ReadWorkspaceMetadata().cook(groceries)
-        ans = ReadWorkspaceMetadata().cook({"workspace": wstransform.getName()})
+        ans = ReadWorkspaceMetadata().cook({"workspace": wstransform.name()})
         assert ref == ans
 
     def test_clone_retain_logs(self):
@@ -220,14 +226,14 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
 
         # read the metadata back and verify matches original
         ref = ReadWorkspaceMetadata().cook(groceries)
-        ans = ReadWorkspaceMetadata().cook({"workspace": wsclone.getName()})
+        ans = ReadWorkspaceMetadata().cook({"workspace": wsclone.name()})
         assert ref == ans
 
         # clone the cloned workspace
         wsclone2 = CloneWorkspace(wsclone)
 
         # read the metadata back and verify matches original
-        ans2 = ReadWorkspaceMetadata().cook({"workspace": wsclone2.getName()})
+        ans2 = ReadWorkspaceMetadata().cook({"workspace": wsclone2.name()})
         assert ref == ans2
         assert ans == ans2
 
@@ -241,7 +247,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
 
         # now run with the invalid workspace
         with pytest.raises(RuntimeError) as e:
-            WriteWorkspaceMetadata().cook(self.metadata, groceries)
+            WriteWorkspaceMetadata().validateInputs(self.metadata, groceries)
         assert "ADS" in str(e)
 
     def test_invalid_dao(self):
@@ -259,7 +265,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
 
         # now run with the invalid DAO
         with pytest.raises(ValidationError) as e:
-            WriteWorkspaceMetadata().cook(bad_metadata, groceries)
+            WriteWorkspaceMetadata().validateInputs(bad_metadata, groceries)
         assert "WorkspaceMetadata" in str(e)
 
         # DAO with invalid property
@@ -269,7 +275,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
 
         # now run the invalid DAO
         with pytest.raises(ValidationError) as e:
-            WriteWorkspaceMetadata().cook(bad_metadata, groceries)
+            WriteWorkspaceMetadata().validateInputs(bad_metadata, groceries)
         assert "WorkspaceMetadata" in str(e)
 
     def test_cater(self):

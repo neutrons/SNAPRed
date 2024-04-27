@@ -146,3 +146,6 @@ constants:
 
   ResampleX:
     NumberBins: 1500
+
+metadata:
+  tagPrefix: SNAPRed_

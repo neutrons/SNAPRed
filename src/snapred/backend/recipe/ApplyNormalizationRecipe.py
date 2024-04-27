@@ -15,7 +15,7 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
 @Singleton
-class ApplyNormalizationRecipe(Recipe):
+class ApplyNormalizationRecipe(Recipe[Ingredients]):
     NUM_BINS = Config["constants.ResampleX.NumberBins"]
     LOG_BINNING = True
 

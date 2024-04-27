@@ -34,7 +34,7 @@ class WorkspaceMetadata(BaseModel, extra=Extra.forbid):
 
 # NOTE do NOT remove this patch
 # if your test fails with this patch, then fix your test instead
-@mock.patch(thisRecipe + "Ingredients", WorkspaceMetadata)
+@mock.patch(thisRecipe + "WorkspaceMetadata", WorkspaceMetadata)
 class TestReadWorkspaceMetadata(unittest.TestCase):
     properties = list(WorkspaceMetadata.schema()["properties"].keys())
     propLogNames = [TAG_PREFIX + prop for prop in properties]
@@ -133,10 +133,14 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
     def test_invalid_workspace(self):
         groceries = {"workspace": "invalid_workspace_name_what_a_dumb_name"}
         with pytest.raises(RuntimeError) as e:
-            ReadWorkspaceMetadata().cook(groceries)
+            ReadWorkspaceMetadata().validateInputs({}, groceries)
         assert "ADS" in str(e)
 
     def test_invalid_dao(self):
+        """
+        If logs were somehow written with invalid tags,
+        make sure this recipe will fail to validate them
+        """
         groceries = self._make_groceries()
         # add bad values to the logs
         badValues = ["newt" for prop in self.properties]
