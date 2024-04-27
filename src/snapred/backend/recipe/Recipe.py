@@ -22,10 +22,10 @@ class Recipe(ABC, Generic[Ingredients]):
         Sets up the recipe with the necessary utensils.
         """
         # NOTE: workaround, we just add an empty host algorithm.
-        # if utensils is None:
-        #     utensils = Utensils()
-        #     utensils.PyInit()
-        self.mantidSnapper = MantidSnapper(None, "Utensils")
+        if utensils is None:
+            utensils = Utensils()
+            utensils.PyInit()
+        self.mantidSnapper = utensils.mantidSnapper
 
     @abstractmethod
     def chopIngredients(self, ingredients: Ingredients):
@@ -47,7 +47,7 @@ class Recipe(ABC, Generic[Ingredients]):
         """
         # cast the ingredients into the Ingredients type
         try:
-            # Ingredients.parse_obj(ingredients)
+            # to run the same as Ingredients.parse_obj(ingredients)
             get_args(self.__orig_bases__[0])[0].parse_obj(ingredients)
         except ValidationError as e:
             raise e

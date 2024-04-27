@@ -54,7 +54,9 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         """
         if self.normalizationWs:
             self.mantidSnapper.Divide(
-                "Dividing out the normalization..", LHSWorkspace=self.sampleWs, RHSWorkspace=self.normalizationWs
+                "Dividing out the normalization..",
+                LHSWorkspace=self.sampleWs,
+                RHSWorkspace=self.normalizationWs,
             )
         # NOTE: ResampleX is considered a workaround until Mantid can handle ragged workspaces.
         self.mantidSnapper.ResampleX(
