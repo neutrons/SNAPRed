@@ -27,19 +27,31 @@ class Recipe(ABC, Generic[Ingredients]):
             utensils.PyInit()
         self.mantidSnapper = utensils.mantidSnapper
 
+    ## Abstract methods which MUST be implemented
+
     @abstractmethod
     def chopIngredients(self, ingredients: Ingredients):
         """
         Chops off the needed elements of the ingredients.
         """
-        raise NotImplementedError("Recipes must implement the chopIngredients method")
+        pass
 
     @abstractmethod
     def unbagGroceries(self, groceries: Dict[str, WorkspaceName]):
         """
         Unpacks the workspace data from the groceries.
         """
-        raise NotImplementedError("Recipes must implement the unbagGroceries method")
+        pass
+
+    @abstractmethod
+    def queueAlgos(self):
+        """
+        Queues up the procesing algorithms for the recipe.
+        Requires: unbagged groceries and chopped ingredients.
+        """
+        pass
+
+    # methods which MAY be kept as is
 
     def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
         """
@@ -63,14 +75,6 @@ class Recipe(ABC, Generic[Ingredients]):
         Requires: unbagged groceries and chopped ingredients.
         """
         pass
-
-    @abstractmethod
-    def queueAlgos(self):
-        """
-        Queues up the procesing algorithms for the recipe.
-        Requires: unbagged groceries and chopped ingredients.
-        """
-        raise NotImplementedError("Recipes must implement the queueAlgos method")
 
     def prep(self, ingredients: Ingredients, groceries: Dict[str, str]):
         """

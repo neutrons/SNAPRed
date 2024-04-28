@@ -17,9 +17,8 @@ from pydantic import BaseModel, Extra, ValidationError
 
 # the algorithm to test
 from snapred.backend.dao.WorkspaceMetadata import UNSET
-
-# from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
-# from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
+from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
+from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
 from snapred.meta.Config import Config
 from util.helpers import deleteWorkspaceNoThrow
 
@@ -35,11 +34,6 @@ class WorkspaceMetadata(BaseModel, extra=Extra.forbid):
     veggie: Literal[UNSET, "broccoli", "cauliflower"] = UNSET
     bread: Literal[UNSET, "sourdough", "pumpernickel"] = UNSET
     dairy: Literal[UNSET, "milk", "cheese", "yogurt", "butter"] = UNSET
-
-
-# with mock.patch(, WorkspaceMetadata):
-from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
-from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
 
 
 # NOTE do NOT remove these patches
@@ -65,7 +59,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
         return super().tearDown()
 
     def _make_groceries(self, wsname: str = "test_write_metadata") -> Dict[str, str]:
-        wsname = mtd.unique_name(5, prefix=wsname)
+        wsname = mtd.unique_name(prefix=wsname)
         assert not mtd.doesExist(wsname)
         CreateSingleValuedWorkspace(OutputWorkspace=wsname, DataValue=2.0)  # NOTE value needed in one test
         assert mtd.doesExist(wsname)
