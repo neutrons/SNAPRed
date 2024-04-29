@@ -5,7 +5,9 @@ from mantid.api import AlgorithmManager
 from snapred.backend.dao.ingredients import PreprocessReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
+from snapred.backend.recipe.algorithm.MaskDetectorFlags import MaskDetectorFlags
 from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
@@ -15,22 +17,15 @@ Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
 @Singleton
-class PreprocessReductionRecipe:
-    def __init__(self, utensils: Utensils = None):
-        """
-        Sets up the recipe with the necessary utensils.
-        """
-        # NOTE: workaround, we just add an empty host algorithm.
-        if utensils is None:
-            utensils = Utensils()
-            utensils.PyInit()
-        self.mantidSnapper = utensils.mantidSnapper
-
+class PreprocessReductionRecipe(Recipe[Ingredients]):
     def chopIngredients(self, ingredients: Ingredients):
         """
         Chops off the needed elements of the ingredients.
         """
         self.maskList = ingredients.maskList
+        if not self.maskList:
+            logger.info("No mask list provided. Will not apply any masking.")
+            self.maskList = []
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
         """
@@ -41,21 +36,14 @@ class PreprocessReductionRecipe:
         self.sampleWs = groceries["inputWorkspace"]
         self.diffcalWs = groceries.get("diffcalWorkspace", "")
 
-    def validateInputs(self):
-        """
-        Confirms that the ingredients and groceries make sense together.
-        Requires: unbagged groceries and chopped ingredients.
-        """
-        pass
-
     def queueAlgos(self):
         """
         Queues up the procesing algorithms for the recipe.
         Requires: unbagged groceries and chopped ingredients.
         """
-        if self.calibrationWs:
+        if self.diffcalWs:
             self.mantidSnapper.ApplyDiffCal(
-                "Applying diffcal..", InstrumentWorkspace=self.sampleWs, CalibrationWorkspace=self.calibrationWs
+                "Applying diffcal..", InstrumentWorkspace=self.sampleWs, CalibrationWorkspace=self.diffcalWs
             )
         for maskWs in self.maskList:
             self.mantidSnapper.MaskDetectorFlags(
@@ -64,24 +52,6 @@ class PreprocessReductionRecipe:
                 OutputWorkspace=self.sampleWs,
             )
 
-    def prep(self, ingredients: Ingredients, groceries: Dict[str, str]):
-        """
-        Convinience method to prepare the recipe for execution.
-        """
-        self.chopIngredients(ingredients)
-        self.unbagGroceries(groceries)
-        self.validateInputs()
-        self.queueAlgos()
-
-    def execute(self):
-        """
-        Final step in a recipe, executes the queued algorithms.
-        Requires: queued algorithms.
-        """
-        self.mantidSnapper.executeQueue()
-
-    # NOTE: Metaphorically, would ingredients better have been called Spices?
-    # Considering they are mostly never the meat of a recipe.
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         """
         Main interface method for the recipe.
