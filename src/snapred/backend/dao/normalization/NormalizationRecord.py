@@ -16,6 +16,7 @@ class NormalizationRecord(BaseModel):
     """
 
     runNumber: str
+    isLite: bool
     backgroundRunNumber: str
     smoothingParameter: float
     calibration: Calibration

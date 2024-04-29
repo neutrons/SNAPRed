@@ -150,3 +150,7 @@ constants:
 docs:
   user:
     path: /SNS/SNAP/shared/Malcolm/SNAPUserDocs/_build/html/index.html
+
+metadata:
+  tagPrefix: SNAPRed_
+
