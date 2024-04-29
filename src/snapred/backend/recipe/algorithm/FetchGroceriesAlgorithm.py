@@ -120,7 +120,6 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     "Loading with unspecified loader",
                     Filename=filename,
                     OutputWorkspace=outWS,
-                    LoaderName=loaderType,
                 )
             elif loaderType == "LoadGroupingDefinition":
                 for x in ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]:
