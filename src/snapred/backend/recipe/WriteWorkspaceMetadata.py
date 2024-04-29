@@ -25,7 +25,7 @@ class WriteWorkspaceMetadata(Recipe[WorkspaceMetadata]):
 
         # if the input WorkspaceMetadata has unset values, set them from the logs
         self.properties = list(WorkspaceMetadata.schema()["properties"].keys())
-        metadata = ingredients.dict()
+        metadata = WorkspaceMetadata.parse_obj(ingredients).dict()
         for prop in self.properties:
             if metadata[prop] == UNSET:
                 metadata[prop] = getattr(prevMetadata, prop)
