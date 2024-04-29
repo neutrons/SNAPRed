@@ -16,6 +16,7 @@ def test_excuteRequest_noop():
         "normalization",
         "reduceLiteData",
         "workspace",
+        "metadata",
     ]
     expected_keys.sort()
 
