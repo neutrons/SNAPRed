@@ -34,14 +34,12 @@ class Recipe(ABC, Generic[Ingredients]):
         """
         Chops off the needed elements of the ingredients.
         """
-        pass
 
     @abstractmethod
     def unbagGroceries(self, groceries: Dict[str, WorkspaceName]):
         """
         Unpacks the workspace data from the groceries.
         """
-        pass
 
     @abstractmethod
     def queueAlgos(self):
@@ -49,7 +47,6 @@ class Recipe(ABC, Generic[Ingredients]):
         Queues up the procesing algorithms for the recipe.
         Requires: unbagged groceries and chopped ingredients.
         """
-        pass
 
     # methods which MAY be kept as is
 
