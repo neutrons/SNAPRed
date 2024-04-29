@@ -1,12 +1,24 @@
 import unittest
 
 import pytest
-from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients, Utensils
+from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
+from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.backend.recipe.ApplyNormalizationRecipe import ApplyNormalizationRecipe, Ingredients
 from util.SculleryBoy import SculleryBoy
 
 
 class ApplyNormalizationRecipeTest(unittest.TestCase):
     sculleryBoy = SculleryBoy()
+
+    def _make_groceries(self):
+        sampleWS = mtd.unique_name(prefix="test_applynorm")
+        normWS = mtd.unique_name(prefix="test_applynorm")
+        CreateSingleValuedWorkspace(OutputWorkspace=sampleWS)
+        CreateSingleValuedWorkspace(OutputWorkspace=normWS)
+        return {
+            "inputWorkspace": sampleWS,
+            "normalizationWorkspace": normWS,
+        }
 
     def test_init(self):
         ApplyNormalizationRecipe()
@@ -29,7 +41,11 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
     def test_unbagGroceries(self):
         recipe = ApplyNormalizationRecipe()
 
-        groceries = {"inputWorkspace": "sample", "normalizationWorkspace": "norm", "backgroundWorkspace": "bg"}
+        groceries = {
+            "inputWorkspace": "sample",
+            "normalizationWorkspace": "norm",
+            "backgroundWorkspace": "bg",
+        }
         recipe.unbagGroceries(groceries)
         assert recipe.sampleWs == groceries["inputWorkspace"]
         assert recipe.normalizationWs == groceries["normalizationWorkspace"]
@@ -52,23 +68,20 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         assert recipe.normalizationWs == ""
         assert recipe.backgroundWs == ""
 
-    def test_validateInputs(self):
+    def test_stirInputs(self):
         recipe = ApplyNormalizationRecipe()
 
         recipe.backgroundWs = "bg"
         with pytest.raises(NotImplementedError):
-            recipe.validateInputs()
+            recipe.stirInputs()
 
         recipe.backgroundWs = ""
-        recipe.validateInputs()
+        recipe.stirInputs()
 
     def test_queueAlgos(self):
         recipe = ApplyNormalizationRecipe()
         ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
-        groceries = {
-            "inputWorkspace": "sample",
-            "normalizationWorkspace": "norm",
-        }
+        groceries = self._make_groceries()
         recipe.prep(ingredients, groceries)
         recipe.queueAlgos()
 
@@ -93,10 +106,7 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         untensils.mantidSnapper = mockSnapper
         recipe = ApplyNormalizationRecipe(utensils=untensils)
         ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
-        groceries = {
-            "inputWorkspace": "sample",
-            "normalizationWorkspace": "norm",
-        }
+        groceries = self._make_groceries()
 
         output = recipe.cook(ingredients, groceries)
 
@@ -115,10 +125,7 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         untensils.mantidSnapper = mockSnapper
         recipe = ApplyNormalizationRecipe(utensils=untensils)
         ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
-        groceries = {
-            "inputWorkspace": "sample",
-            "normalizationWorkspace": "norm",
-        }
+        groceries = self._make_groceries()
 
         output = recipe.cater([(ingredients, groceries)])
 

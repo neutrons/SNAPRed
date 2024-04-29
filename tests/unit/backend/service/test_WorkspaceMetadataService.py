@@ -37,7 +37,7 @@ class TestMetadataService(unittest.TestCase):
         return super().tearDown()
 
     def _make_workspace(self, wsname: str = "test_metadata_service") -> str:
-        wsname = mtd.unique_name(5, prefix=wsname)
+        wsname = mtd.unique_name(prefix=wsname)
         assert not mtd.doesExist(wsname)
         CreateSingleValuedWorkspace(OutputWorkspace=wsname, DataValue=2.0)  # NOTE value needed in one test
         assert mtd.doesExist(wsname)

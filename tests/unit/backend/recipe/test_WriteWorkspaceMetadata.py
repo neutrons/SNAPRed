@@ -59,7 +59,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
         return super().tearDown()
 
     def _make_groceries(self, wsname: str = "test_write_metadata") -> Dict[str, str]:
-        wsname = mtd.unique_name(5, prefix=wsname)
+        wsname = mtd.unique_name(prefix=wsname)
         assert not mtd.doesExist(wsname)
         CreateSingleValuedWorkspace(OutputWorkspace=wsname, DataValue=2.0)  # NOTE value needed in one test
         assert mtd.doesExist(wsname)
@@ -203,7 +203,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
 
         # read the metadata back and verify matches original
         ref = ReadWorkspaceMetadata().cook(groceries)
-        ans = ReadWorkspaceMetadata().cook({"workspace": wstransform.getName()})
+        ans = ReadWorkspaceMetadata().cook({"workspace": wstransform.name()})
         assert ref == ans
 
     def test_clone_retain_logs(self):
@@ -220,14 +220,14 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
 
         # read the metadata back and verify matches original
         ref = ReadWorkspaceMetadata().cook(groceries)
-        ans = ReadWorkspaceMetadata().cook({"workspace": wsclone.getName()})
+        ans = ReadWorkspaceMetadata().cook({"workspace": wsclone.name()})
         assert ref == ans
 
         # clone the cloned workspace
         wsclone2 = CloneWorkspace(wsclone)
 
         # read the metadata back and verify matches original
-        ans2 = ReadWorkspaceMetadata().cook({"workspace": wsclone2.getName()})
+        ans2 = ReadWorkspaceMetadata().cook({"workspace": wsclone2.name()})
         assert ref == ans2
         assert ans == ans2
 
@@ -241,7 +241,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
 
         # now run with the invalid workspace
         with pytest.raises(RuntimeError) as e:
-            WriteWorkspaceMetadata().cook(self.metadata, groceries)
+            WriteWorkspaceMetadata().validateInputs(self.metadata, groceries)
         assert "ADS" in str(e)
 
     def test_invalid_dao(self):
@@ -259,7 +259,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
 
         # now run with the invalid DAO
         with pytest.raises(ValidationError) as e:
-            WriteWorkspaceMetadata().cook(bad_metadata, groceries)
+            WriteWorkspaceMetadata().validateInputs(bad_metadata, groceries)
         assert "WorkspaceMetadata" in str(e)
 
         # DAO with invalid property
@@ -269,7 +269,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
 
         # now run the invalid DAO
         with pytest.raises(ValidationError) as e:
-            WriteWorkspaceMetadata().cook(bad_metadata, groceries)
+            WriteWorkspaceMetadata().validateInputs(bad_metadata, groceries)
         assert "WorkspaceMetadata" in str(e)
 
     def test_cater(self):

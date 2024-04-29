@@ -118,7 +118,7 @@ localdataservice:
 
 logging:
   # logging.NOTSET: 0, logging.DEBUG: 10, logging.INFO: 20, logging:WARNING: 30, logging.ERROR: 40, logging.CRITICAL: 50
-  level: 10 # 40
+  level:  40
   SNAP:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
   mantid:

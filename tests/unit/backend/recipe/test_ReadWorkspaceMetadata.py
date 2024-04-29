@@ -54,7 +54,7 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
         return super().tearDown()
 
     def _make_groceries(self, wsname: str = "test_read_metadata") -> Dict[str, str]:
-        wsname = mtd.unique_name(5, prefix=wsname)
+        wsname = mtd.unique_name(prefix=wsname)
         assert not mtd.doesExist(wsname)
         CreateSingleValuedWorkspace(OutputWorkspace=wsname, DataValue=2.0)  # NOTE value needed in one test
         assert mtd.doesExist(wsname)
@@ -133,10 +133,14 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
     def test_invalid_workspace(self):
         groceries = {"workspace": "invalid_workspace_name_what_a_dumb_name"}
         with pytest.raises(RuntimeError) as e:
-            ReadWorkspaceMetadata().cook(groceries)
+            ReadWorkspaceMetadata().validateInputs({}, groceries)
         assert "ADS" in str(e)
 
     def test_invalid_dao(self):
+        """
+        If logs were somehow written with invalid tags,
+        make sure this recipe will fail to validate them
+        """
         groceries = self._make_groceries()
         # add bad values to the logs
         badValues = ["newt" for prop in self.properties]
