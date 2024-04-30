@@ -16,7 +16,7 @@ class ReductionRecord(BaseModel):
 
     """
     runNumbers: List[str]
-    isList: bool
+    isLite: bool
     calibrationRecord: CalibrationRecord
     normalizationRecord: NormalizationRecord
     pixelGroupingParameters: List[PixelGroupingParameters]
