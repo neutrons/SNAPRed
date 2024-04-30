@@ -4,14 +4,6 @@ snapred.backend.recipe.algorithm package
 Submodules
 ----------
 
-snapred.backend.recipe.algorithm.AlignAndFocusReductionAlgorithm module
------------------------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.algorithm.AlignAndFocusReductionAlgorithm
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.recipe.algorithm.CalculateDiffCalTable module
 -------------------------------------------------------------
 
@@ -176,14 +168,6 @@ snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm module
 ----------------------------------------------------------------------
 
 .. automodule:: snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-snapred.backend.recipe.algorithm.ReductionAlgorithm module
-----------------------------------------------------------
-
-.. automodule:: snapred.backend.recipe.algorithm.ReductionAlgorithm
    :members:
    :undoc-members:
    :show-inheritance:
