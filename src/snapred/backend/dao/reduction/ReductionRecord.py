@@ -15,7 +15,8 @@ class ReductionRecord(BaseModel):
     calibration, normalization, and pixel grouping details.
 
     """
-
+    runNumbers: List[str]
+    isList: bool
     calibrationRecord: CalibrationRecord
     normalizationRecord: NormalizationRecord
     pixelGroupingParameters: List[PixelGroupingParameters]
@@ -23,6 +24,10 @@ class ReductionRecord(BaseModel):
     # placeholders for later phase 3 additions (bound to change)
 
     """
+
+    *Other details to include above(?)*:
+
+    workspaceNames:
 
     *Details of the reduction*:
 
