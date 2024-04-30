@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
@@ -21,6 +21,7 @@ class ReductionRecord(BaseModel):
     calibrationRecord: CalibrationRecord
     normalizationRecord: NormalizationRecord
     pixelGroupingParameters: List[PixelGroupingParameters]
+    version: Optional[int]
 
     # placeholders for later phase 3 additions (bound to change)
 
@@ -41,7 +42,7 @@ class ReductionRecord(BaseModel):
     materialProperties:
     attenuationType:
     attenuationData:
-    attenuationsParameters:
+    attenuationParameters:
 
 
     *Details of post reduction processing*:
