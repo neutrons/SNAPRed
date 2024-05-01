@@ -47,8 +47,6 @@ jobs:
         python tests/cis_tests/lazw_raw_vanadium.py
         python tests/cis_tests/leftovers_script.py
         python tests/cis_tests/save_grouping_definition_with_xml.py
-      with:
-        fail_ci_if_error: true
     - name: Gui tests
       run: |
         python -m pip install -e . # install the application in editable mode
