@@ -146,5 +146,3 @@ pixelGroupingParametersList = result["parameters"]
 """
 Stop here and make sure everything looks good.
 """
-assert False
-
