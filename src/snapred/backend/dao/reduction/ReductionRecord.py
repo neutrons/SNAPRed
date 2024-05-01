@@ -1,10 +1,9 @@
 from typing import Dict, List
 
 from pydantic import BaseModel, root_validator
-
-from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.data.DataFactoryService import DataFactoryService
 
@@ -31,13 +30,13 @@ class ReductionRecord(BaseModel):
         cal = values.get("calibration")
         norm = values.get("normalization")
         redStateID = values.get("stateID")
-        
+
         dataFactoryService = DataFactoryService()
 
         calStateId, _ = dataFactoryService.constructStateId(cal.runNumber)
         normStateId, _ = dataFactoryService.constructStateId(norm.runNumber)
 
-        if not(calStateId == normStateId == redStateID.hex):
+        if not (calStateId == normStateId == redStateID.hex):
             raise ValueError("Run numbers do not generate the same SHA.")
 
         return values
