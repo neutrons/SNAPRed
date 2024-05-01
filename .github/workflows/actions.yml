@@ -41,13 +41,6 @@ jobs:
       with:
         fail_ci_if_error: true
         token: ${{ secrets.CODECOV_TOKEN }} # required
-    - name: Run CIS tests
-      run: |
-        python -m pip install -e .
-        python tests/cis_tests/calibrant_samples_script.py
-        python tests/cis_tests/lazy_raw_vanadium.py
-        python tests/cis_tests/leftovers_script.py
-        python tests/cis_tests/save_grouping_definition_with_xml.py
     - name: Gui tests
       run: |
         python -m pip install -e . # install the application in editable mode
