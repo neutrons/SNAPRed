@@ -28,7 +28,7 @@ snapredLogger._level = 20
 
 runNumber = '58882'#58409'
 cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif'
-groupingScheme = "Column (Lite)"
+groupingScheme = "All"
 peakFractionalThreshold = 0.01
 isLite = True
 
@@ -46,7 +46,6 @@ farmFresh = FarmFreshIngredients(
     peakIntensityThreshold=peakFractionalThreshold,
 )
 ingredients = SousChef().prepPeakIngredients(farmFresh)
-
 
 ### RUN ALGORITHM
 detectorAlgo = DetectorPeakPredictor()

@@ -1,3 +1,8 @@
+"""
+This script tests the algorithms to Save/Load a grouping definition
+"""
+
+
 # import mantid algorithms, numpy and matplotlib
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt

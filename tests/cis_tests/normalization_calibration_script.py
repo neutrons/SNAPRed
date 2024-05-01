@@ -1,6 +1,9 @@
-### NOTE this is dead code
-### The algorithm it tests has been deleted.
-### This is being retained for possible future testing of other parts of normalization
+"""
+NOTE this is dead code
+The algorithm it tests has been deleted.
+This is being retained for possible future testing of other parts of normalization
+"""
+raise NotImplementedError("The algorithm tested by this script no longer exists.")
 
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
@@ -8,9 +11,6 @@ import numpy as np
 
 from pydantic import parse_file_as
 import json
-
-## The code to be tested
-from snapred.backend.recipe.algorithm.CalibrationNormalizationAlgo import CalibrationNormalizationAlgo
 
 ## For creating ingredients
 from snapred.backend.dao.request.FarmFreshIngredients import FarkFreshIngredients
@@ -65,12 +65,3 @@ clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
 clerk.name("backgroundWorkspace").neutron(backgroundRunNumber).useLiteMode(isLite).add()
 clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
 groceries = GroceryService().fetchGroceryList(clerk.buildList())
-
-CNA = CalibrationNormalizationAlgo()
-CNA.initialize()
-CNA.setProperty("InputWorkspace", groceries[0])
-CNA.setProperty("BackgroundWorkspace", groceries[1])
-CNA.setProperty("GroupingWorkspace", groceries[2])
-CNA.setProperty("OutputWorkspace", groceries[0])
-CNA.setProperty("Ingredients", ingredients.json())
-CNA.execute()

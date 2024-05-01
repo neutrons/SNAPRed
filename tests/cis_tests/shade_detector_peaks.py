@@ -1,3 +1,7 @@
+"""
+This script is simply used to prototype plot displays for the UI
+"""
+
 from mantid.simpleapi import *
 from mantid.plots.datafunctions import get_spectrum
 import matplotlib.pyplot as plt
