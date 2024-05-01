@@ -24,13 +24,12 @@ from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # needed to make mocked ingredients
+import sys
+from pathlib import Path
+import snapred
+SNAPRed_module_root = Path(snapred.__file__).parent.parent
+sys.path.insert(0, str(Path(SNAPRed_module_root).parent / 'tests'))
 from util.SculleryBoy import SculleryBoy
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.CalibrantSample.Atom import Atom
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
-from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
-from snapred.backend.dao.state.CalibrantSample.Material import Material
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm as Algo  # noqa: E402
@@ -43,6 +42,10 @@ class TestRawVanadiumCorrection(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         self.ingredients = SculleryBoy().prepNormalizationIngredients({})
+        TOFBinParams = (1, 0.01, 100)
+        self.ingredients.pixelGroup.timeOfFlight.minimum = TOFBinParams[0]
+        self.ingredients.pixelGroup.timeOfFlight.binWidth = TOFBinParams[1]
+        self.ingredients.pixelGroup.timeOfFlight.maximum = TOFBinParams[2]
         tof = self.ingredients.pixelGroup.timeOfFlight
 
         self.sample_proton_charge = 10.0
@@ -63,7 +66,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
             XUnit="TOF",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=True,
+            Random=False,
         )
         # add proton charge for current normalization
         AddSampleLog(
