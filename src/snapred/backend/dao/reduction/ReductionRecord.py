@@ -25,10 +25,15 @@ class ReductionRecord(BaseModel):
     workspaceNames: List[str]
 
     @root_validator
-    def check_state_id(cls, values):
+    def checkStateId(cls, values):
         cal = values.get("calibration")
         norm = values.get("normalization")
+        red = values.get("runNumbers")
         stateID = values.get("stateId")
+
+        # Temporary (first version will only accept one run number at a time.)
+
+        firstRunNumber = red[0]
 
         # Compute SHA for calibration and normalization
         calSHA = ObjectSHA.fromObject(cal)
@@ -40,7 +45,8 @@ class ReductionRecord(BaseModel):
         # Validate run numbers
         calRunSHA = ObjectSHA.fromObject({"runNumber": cal.runNumber})
         normRunSHA = ObjectSHA.fromObject({"runNumber": norm.runNumber})
-        if calRunSHA.hex != normRunSHA.hex:
+        redRunSHA = ObjectSHA.fromObject({"runNumber": firstRunNumber})
+        if calRunSHA.hex != normRunSHA.hex != redRunSHA.hex:
             raise ValueError("Run numbers do not generate the same SHA.")
 
         return values
