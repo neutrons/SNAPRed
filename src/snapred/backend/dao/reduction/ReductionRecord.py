@@ -34,7 +34,7 @@ class ReductionRecord(BaseModel):
         normStateId = norm.calibration.instrumentState.id
 
         if not (calStateId == normStateId == redStateID.hex):
-            raise ValueError("Run numbers do not generate the same SHA.")
+            raise ValueError("Calibration, normalization, and reduction records are not from the same state.")
 
         return values
 
