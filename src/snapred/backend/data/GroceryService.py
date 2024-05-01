@@ -7,8 +7,12 @@ from mantid.api import AlgorithmManager, mtd
 
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState, GroupingMap
+from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
+from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
+
+# from snapred.backend.recipe.algorithm.ReadWorkspaceMetadata import ReadWorkspaceMetadata
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
@@ -30,6 +34,7 @@ class GroceryService:
 
     def __init__(self, dataService: LocalDataService = None):
         self.dataService = self._defaultClass(dataService, LocalDataService)
+        self.workspaceMetadataService = WorkspaceMetadataService()
 
         # _loadedRuns caches a count of the number of copies made from the neutron-data workspace
         #   corresponding to a given (runNumber, isLiteMode) key:
@@ -311,6 +316,28 @@ class GroceryService:
         else:
             ws = None
         return ws
+
+    def getWorkspaceTag(self, workspaceName: str, logname: str):
+        """
+        Simple wrapper to get a workspace metadata tag, for the service layer.
+        Returns a tag for a given workspace
+
+        :param workspaceName: the name of the workspace to clone in the ADS
+        :type workspaceName: string
+        :param logname: the name of the resulting cloned workspace
+        :type logname: string
+        :return: string of the tag
+        """
+        if self.workspaceDoesExist(workspaceName):
+            return self.workspaceMetadataService.readMetadataTag(workspaceName, logname)
+        else:
+            raise RuntimeError(f"Workspace {workspaceName} does not exist")
+
+    def setWorkspaceTag(self, workspaceName: str, logname: str, logvalue: str):
+        if self.workspaceDoesExist(workspaceName):
+            self.workspaceMetadataService.writeMetadataTag(workspaceName, logname, logvalue)
+        else:
+            raise RuntimeError(f"Workspace {workspaceName} does not exist")
 
     ## FETCH METHODS
     """
