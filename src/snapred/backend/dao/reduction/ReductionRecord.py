@@ -5,7 +5,6 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
-from snapred.backend.data.DataFactoryService import DataFactoryService
 
 
 class ReductionRecord(BaseModel):
@@ -31,10 +30,8 @@ class ReductionRecord(BaseModel):
         norm = values.get("normalization")
         redStateID = values.get("stateID")
 
-        dataFactoryService = DataFactoryService()
-
-        calStateId, _ = dataFactoryService.constructStateId(cal.runNumber)
-        normStateId, _ = dataFactoryService.constructStateId(norm.runNumber)
+        calStateId = cal.calibrationFittingIngredients.instrumentState.id
+        normStateId = norm.calibration.instrumentState.id
 
         if not (calStateId == normStateId == redStateID.hex):
             raise ValueError("Run numbers do not generate the same SHA.")
