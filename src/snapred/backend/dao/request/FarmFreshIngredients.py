@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -19,10 +19,13 @@ class FarmFreshIngredients(BaseModel):
     runNumber: str
     version: Optional[str]
     useLiteMode: bool
-    focusGroup: FocusGroup
+    focusGroup: Union[FocusGroup, List[FocusGroup]]
 
     ## needs to be mandatory for diffcal
     cifPath: Optional[str]
+
+    # needs to be mandatory for normalizaiton/reduction
+    smoothingParameter: Optional[float]
 
     ## needs to be mandatory for normcal
     calibrantSamplePath: Optional[str]

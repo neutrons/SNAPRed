@@ -13,7 +13,7 @@ create new workspace with csaps data
 from datetime import datetime
 from typing import Dict
 
-from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
+from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline
 
@@ -35,7 +35,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         )
         self.declareProperty(
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
-            doc="Workspace with removed peaks",
+            doc="Hitogram Workspace with removed peaks",
         )
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
         self.declareProperty("SmoothingParameter", defaultValue=-1.0, direction=Direction.Input)
@@ -67,6 +67,16 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
                 InputWorkspace=self.inputWorkspaceName,
                 OutputWorkspace=self.outputWorkspaceName,
             )
+
+        # check if input is an event workspace
+        if isinstance(self.mantidSnapper.mtd[self.inputWorkspaceName], IEventWorkspace):
+            # convert it to a histogram
+            self.mantidSnapper.ConvertToMatrixWorkspace(
+                "Converting event workspace to histogram...",
+                InputWorkspace=self.outputWorkspaceName,
+                OutputWorkspace=self.outputWorkspaceName,
+            )
+
         # call the diffraction spectrum weight calculator
         self.mantidSnapper.DiffractionSpectrumWeightCalculator(
             "Calculating spectrum weights...",
@@ -74,6 +84,7 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
             DetectorPeaks=self.getPropertyValue("DetectorPeaks"),
             WeightWorkspace=self.weightWorkspaceName,
         )
+
         self.mantidSnapper.executeQueue()
 
         # get handles to the workspaces
@@ -95,6 +106,10 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
 
             weightXMidpoints = weightXMidpoints[weightY != 0]
             y = y[weightY != 0]
+
+            # throw an exception if y or weightXMidpoints are empty
+            if len(y) == 0 or len(weightXMidpoints) == 0:
+                raise ValueError("No data in the workspace, all data removed by peak removal.")
             # Generate spline with purged dataset
             tck = make_smoothing_spline(weightXMidpoints, y, lam=self.lam)
             # fill in the removed data using the spline function and original datapoints

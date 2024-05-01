@@ -255,6 +255,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="good/cif/path")
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
 
+        FarmFreshIngredients.return_value.get.return_value = True
+
         # Call the method to test
         request = CalibrationAssessmentRequest(
             workspaces={
@@ -314,6 +316,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpDir)
+            self.instance.groceryService.dataService.readCalibrationRecord = MagicMock()
+            self.instance.groceryService.fetchCalibrationWorkspaces = MagicMock()
+            self.instance.groceryService._createDiffcalTableWorkspaceName = MagicMock()
+            self.instance.groceryService.fetchGroceryDict = MagicMock()
             self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
@@ -326,7 +332,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Delete any existing _data_ workspaces:
             for wss in calibRecord.workspaces.values():
                 for ws in wss:
-                    DeleteWorkspace(Workspace=ws)
+                    if mtd.doesExist(ws):
+                        DeleteWorkspace(Workspace=ws)
 
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=True)
             with pytest.raises(RuntimeError) as excinfo:  # noqa: PT011
@@ -344,6 +351,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+            self.instance.groceryService.dataService.readCalibrationRecord = MagicMock(return_value=calibRecord)
             self.instance.groceryService._getCalibrationDataPath = MagicMock(return_value=tmpDir)
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
 
@@ -374,6 +382,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             mockRequest = MagicMock(
                 runId=calibRecord.runNumber, useLiteMode=True, version=calibRecord.version, checkExistent=False
             )
+            self.instance.groceryService.dataService.readCalibrationRecord = MagicMock(return_value=calibRecord)
             self.instance.groceryService._getCalibrationDataPath = MagicMock(return_value=tmpDir)
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
             self.instance.loadQualityAssessment(mockRequest)
