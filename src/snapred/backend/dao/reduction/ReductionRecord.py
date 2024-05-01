@@ -1,10 +1,12 @@
 from typing import Dict, List
 
 from pydantic import BaseModel, root_validator
+
+from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
-from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.backend.data.DataFactoryService import DataFactoryService
 
 
 class ReductionRecord(BaseModel):
@@ -28,25 +30,14 @@ class ReductionRecord(BaseModel):
     def checkStateId(cls, values):
         cal = values.get("calibration")
         norm = values.get("normalization")
-        red = values.get("runNumbers")
-        stateID = values.get("stateId")
+        redStateID = values.get("stateID")
+        
+        dataFactoryService = DataFactoryService()
 
-        # Temporary (first version will only accept one run number at a time.)
+        calStateId, _ = dataFactoryService.constructStateId(cal.runNumber)
+        normStateId, _ = dataFactoryService.constructStateId(norm.runNumber)
 
-        firstRunNumber = red[0]
-
-        # Compute SHA for calibration and normalization
-        calSHA = ObjectSHA.fromObject(cal)
-        normSHA = ObjectSHA.fromObject(norm)
-
-        if not (stateID == calSHA.hex and stateID == normSHA.hex):
-            raise ValueError("State ID does not match SHA values from calibration and normalization.")
-
-        # Validate run numbers
-        calRunSHA = ObjectSHA.fromObject({"runNumber": cal.runNumber})
-        normRunSHA = ObjectSHA.fromObject({"runNumber": norm.runNumber})
-        redRunSHA = ObjectSHA.fromObject({"runNumber": firstRunNumber})
-        if calRunSHA.hex != normRunSHA.hex != redRunSHA.hex:
+        if not(calStateId == normStateId == redStateID.hex):
             raise ValueError("Run numbers do not generate the same SHA.")
 
         return values
