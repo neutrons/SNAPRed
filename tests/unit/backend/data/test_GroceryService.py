@@ -32,7 +32,7 @@ from mantid.simpleapi import (
 from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.state import DetectorState
-from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
+from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata, diffcal_metadata_state_list
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
@@ -616,8 +616,8 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._loadedInstruments == {}
 
     def test_workspaceTagFunctions(self):
-        wsname = "testWorkspaceTags"
-        tagValue = "none"
+        wsname = mtd.unique_name(prefix="testWorkspaceTags_")
+        tagValues = diffcal_metadata_state_list
         properties = list(WorkspaceMetadata.schema()["properties"].keys())
         logName = properties[0]
 
@@ -627,24 +627,19 @@ class TestGroceryService(unittest.TestCase):
         assert f"Workspace {wsname} does not exist" in str(e1.value)
 
         with pytest.raises(RuntimeError) as e2:
-            self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tagValue)
+            self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tagValues[0])
         assert f"Workspace {wsname} does not exist" in str(e2.value)
 
         # Make sure default tag value is unset
         self.create_dumb_workspace(wsname)
         tagResult = self.instance.getWorkspaceTag(workspaceName=wsname, logname=logName)
-        assert tagResult == "unset"
+        assert tagResult == UNSET
 
-        # Verify the set tag value is correct
-        self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tagValue)
-        tagResult = self.instance.getWorkspaceTag(workspaceName=wsname, logname=logName)
-        assert tagResult == tagValue
-
-        # Make sure that you can update the tag value
-        tagValue = "exists"
-        self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tagValue)
-        tagResult = self.instance.getWorkspaceTag(workspaceName=wsname, logname=logName)
-        assert tagResult == tagValue
+        # Set and update the tag with all possible tag values
+        for tag in tagValues:
+            self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tag)
+            tagResult = self.instance.getWorkspaceTag(workspaceName=wsname, logname=logName)
+            assert tagResult == tag
 
     ## TEST CLEANUP METHODS
 
