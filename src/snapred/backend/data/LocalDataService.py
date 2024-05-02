@@ -772,19 +772,24 @@ class LocalDataService:
             os.makedirs(calibrationDataPath)
         # write the calibration state.
         write_model_pretty(calibration, calibrationParametersFilePath)
+
+        from snapred.backend.data.GroceryService import GroceryService
+
+        grocer = GroceryService()
+        outWS, filename = grocer.fetchDefaultDiffCalTable(useLiteMode)
         # TODO write default diffcal file here
         # REQUIRES
         #  - bin width?
         #  - a validly constructed instrument donor
-        #  - a validly constructed
-        # algo = AlgorithmManager.create("CalculateDiffCalTable")
-        # algo.setProperty("InputWorkspace", )
-        # algo.setProperty("CalibrationTable", )
-        # algo.setProperty("BinWidth", 0.001)
-        # algo.setRethrows(True)
-        # algo.execute()
-        # # TODO create the default diffcal file here
-        # self.writeCalibrationWorkspaces()
+        #  - a validly constructed diffcal filename
+        # self.mantidSnapper.CalculateDiffCalTable(
+        #     "Generate the default diffcal table",
+        #     InputWorkspace=instrumentWS,
+        #     CalibrationTable=outWS,
+        #     BinWidth=dbin,
+        # )
+        # self.mantidSnapper.executeQueue()
+        self.writeDiffCalWorkspaces(calibrationParametersFilePath, filename, outWS)
 
     def writeNormalizationState(self, runId: str, normalization: Normalization, version: str = None):  # noqa: F821
         """

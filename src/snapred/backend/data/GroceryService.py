@@ -694,6 +694,19 @@ class GroceryService:
             data["workspace"] = tableWorkspaceName
 
         return data
+    
+    def fetchDefaultDiffCalTable(self, useLiteMode: bool) -> WorkspaceName, str:
+        runNumber, version = "default", "0001"
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber, version)
+        filename = self._createDiffcalTableFilename(runNumber, version)
+        self.mantidSnapper.CalculateDiffCalTable(
+            "Generate the default diffcal table",
+            InputWorkspace=self._fetchInstrumentDonor(runNumber, useLiteMode),
+            CalibrationTable=tableWorkspaceName,
+            BinWidth=dbin,
+        )
+        self.mantidSnapper.executeQueue()
+        return tableWorkspaceName, filename
 
     def fetchGroceryList(self, groceryList: List[GroceryListItem]) -> List[WorkspaceName]:
         """
