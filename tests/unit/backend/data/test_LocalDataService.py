@@ -482,36 +482,6 @@ def test_getIPTS(mockGetIPTS):
     )
 
 
-# NOTE this test calls GetIPTS directly with no mocks
-# this is intentional, to ensure it is being called correctly
-def test_getIPTS_cache():
-    from mantid.kernel import amend_config
-
-    localDataService = LocalDataService()
-    localDataService.iptsCache = {}
-    # test data
-    instrument = "SNAP"
-    runNumber = "123"
-    key = (runNumber, instrument)
-    correctIPTS = Resource.getPath("inputs/testInstrument/IPTS-456/")
-
-    # direct GetIPTS to look in the exact folder where it should look
-    # it is very stupid, so if you don't tell it exactly then it won't look there
-    with amend_config(data_dir=correctIPTS):
-        res = localDataService.getIPTS(*key)
-        assert res == correctIPTS
-
-        # ensure it is in the cache
-        assert (runNumber, instrument) in localDataService.iptsCache
-        assert localDataService.iptsCache[key] == correctIPTS
-
-        # call again and make sure the cache is being returned
-        localDataService.GetIPTS = mock.Mock()
-        res = localDataService.getIPTS(*key)
-        assert localDataService.GetIPTS.not_called
-        assert res == correctIPTS
-
-
 def test_workspaceIsInstance():
     localDataService = LocalDataService()
     # Create a sample workspace.

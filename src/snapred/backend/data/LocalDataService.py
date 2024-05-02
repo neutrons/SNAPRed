@@ -69,7 +69,7 @@ def _createFileNotFoundError(msg, filename):
 @Singleton
 class LocalDataService:
     reductionParameterCache: Dict[str, Any] = {}
-    iptsCache: Dict[Tuple[str, str], Any] = {}
+    iptsCache: Dict[str, Any] = {}
     stateIdCache: Dict[str, ObjectSHA] = {}
     instrumentConfig: "InstrumentConfig"
     verifyPaths: bool = True
@@ -151,13 +151,6 @@ class LocalDataService:
             groupingMap=groupingMap,
             stateId=diffCalibration.instrumentState.id,
         )
-
-    def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
-        key = (runNumber, instrumentName)
-        print(key)
-        if key not in self.iptsCache:
-            self.iptsCache[key] = GetIPTS(RunNumber=int(runNumber), Instrument=instrumentName)
-        return str(self.iptsCache[key])
 
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
         # Is the workspace an instance of the specified type.
