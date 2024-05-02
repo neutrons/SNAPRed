@@ -69,7 +69,7 @@ def _createFileNotFoundError(msg, filename):
 @Singleton
 class LocalDataService:
     reductionParameterCache: Dict[str, Any] = {}
-    iptsCache: Dict[str, Any] = {}
+    iptsCache: Dict[Tuple[str, str], Any] = {}
     stateIdCache: Dict[str, ObjectSHA] = {}
     instrumentConfig: "InstrumentConfig"
     verifyPaths: bool = True
@@ -153,8 +153,11 @@ class LocalDataService:
         )
 
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
-        ipts = GetIPTS(runNumber, instrumentName)
-        return str(ipts)
+        key = (runNumber, instrumentName)
+        print(key)
+        if key not in self.iptsCache:
+            self.iptsCache[key] = GetIPTS(RunNumber=int(runNumber), Instrument=instrumentName)
+        return str(self.iptsCache[key])
 
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
         # Is the workspace an instance of the specified type.
@@ -770,6 +773,19 @@ class LocalDataService:
             os.makedirs(calibrationDataPath)
         # write the calibration state.
         write_model_pretty(calibration, calibrationParametersFilePath)
+        # TODO write default diffcal file here
+        # REQUIRES
+        #  - bin width?
+        #  - a validly constructed instrument donor
+        #  - a validly constructed
+        # algo = AlgorithmManager.create("CalculateDiffCalTable")
+        # algo.setProperty("InputWorkspace", )
+        # algo.setProperty("CalibrationTable", )
+        # algo.setProperty("BinWidth", 0.001)
+        # algo.setRethrows(True)
+        # algo.execute()
+        # # TODO create the default diffcal file here
+        # self.writeCalibrationWorkspaces()
 
     def writeNormalizationState(self, runId: str, normalization: Normalization, version: str = None):  # noqa: F821
         """
@@ -890,7 +906,7 @@ class LocalDataService:
 
         # first make sure the run number has a valid IPTS
         try:
-            GetIPTS(runId, Config["instrument.name"])
+            self.getIPTS(runId)
         # if no IPTS found, return false
         except RuntimeError:
             return False
