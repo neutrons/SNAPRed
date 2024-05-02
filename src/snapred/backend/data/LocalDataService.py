@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import h5py
-from mantid.api import AlgorithmManager, ITableWorkspace
+from mantid.api import ITableWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
@@ -40,6 +40,7 @@ from snapred.backend.error.StateValidationException import StateValidationExcept
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.data.ReheatLeftovers import ReheatLeftovers
 from snapred.backend.recipe.algorithm.data.WrapLeftovers import WrapLeftovers
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGroupingDefinition
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
@@ -80,6 +81,7 @@ class LocalDataService:
     def __init__(self) -> None:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
         self.instrumentConfig = self.readInstrumentConfig()
+        self.mantidSnapper = MantidSnapper(None, "Utensils")
 
     def fileExists(self, path):
         return os.path.isfile(path)
@@ -976,28 +978,34 @@ class LocalDataService:
         """
         if filename.suffix != ".nxs":
             raise RuntimeError(f"[writeWorkspace]: specify filename including '.nxs' extension, not {filename}")
-        saveAlgo = AlgorithmManager.create("SaveNexus")
-        saveAlgo.setProperty("InputWorkspace", workspaceName)
-        saveAlgo.setProperty("Filename", str(path / filename))
-        saveAlgo.execute()
+        self.mantidSnapper.SaveNexus(
+            "Save a workspace with Nexus",
+            InputWorkspace=workspaceName,
+            Filename=str(path / filename),
+        )
+        self.mantidSnapper.executeQueue()
 
     def writeRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
         Write a ragged workspace to disk in a .tar format.
         """
-        saveAlgo = AlgorithmManager.create(WrapLeftovers.__name__)
-        saveAlgo.setProperty("InputWorkspace", workspaceName)
-        saveAlgo.setProperty("Filename", str(path / filename))
-        saveAlgo.execute()
+        self.mantidSnapper.WrapLeftovers(
+            "Store the ragged workspace",
+            InputWorkspace=workspaceName,
+            Filename=str(path / filename),
+        )
+        self.mantidSnapper.executeQueue()
 
     def readRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
         Read a ragged workspace from disk in a .tar format.
         """
-        loadAlgo = AlgorithmManager.create(ReheatLeftovers.__name__)
-        loadAlgo.setProperty("Filename", str(path / filename))
-        loadAlgo.setProperty("OutputWorkspace", workspaceName)
-        loadAlgo.execute()
+        self.mantidSnapper.ReheatLeftovers(
+            "Load a ragged workspace",
+            Filename=str(path / filename),
+            OutputWorkspace=workspaceName,
+        )
+        self.mantidSnapper.executeQueue()
 
     def writeGroupingWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
@@ -1021,9 +1029,11 @@ class LocalDataService:
             raise RuntimeError(
                 f"[writeCalibrationWorkspaces]: specify filename including '.h5' extension, not {filename}"
             )
-        saveAlgo = AlgorithmManager.create("SaveDiffCal")
-        saveAlgo.setPropertyValue("CalibrationWorkspace", tableWorkspaceName)
-        saveAlgo.setPropertyValue("MaskWorkspace", maskWorkspaceName)
-        saveAlgo.setPropertyValue("GroupingWorkspace", groupingWorkspaceName)
-        saveAlgo.setPropertyValue("Filename", str(path / filename))
-        saveAlgo.execute()
+        self.mantidSnapper.SaveDiffCal(
+            "Save a diffcal table or grouping file",
+            CalibrationWorkspace=tableWorkspaceName,
+            MaskWorkspace=maskWorkspaceName,
+            GroupingWorkspace=groupingWorkspaceName,
+            Filename=str(path / filename),
+        )
+        self.mantidSnapper.executeQueue()
