@@ -1,7 +1,5 @@
 from typing import Any, Dict, List, Tuple
 
-from mantid.api import AlgorithmManager
-
 from snapred.backend.dao.ingredients import PreprocessReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper

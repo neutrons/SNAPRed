@@ -21,21 +21,23 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
 
     def PyInit(self):
         # declare properties
-        self.declareProperty("cifPath", defaultValue="", direction=Direction.Input)
-        self.declareProperty("crystalStructure", defaultValue="", direction=Direction.InOut)
-        self.declareProperty("crystalInfo", defaultValue="", direction=Direction.Output)
+        self.declareProperty("CifPath", defaultValue="", direction=Direction.Input)
+        self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Output)
+        self.declareProperty("Crystallography", defaultValue="", direction=Direction.InOut)
         self.declareProperty("dMin", defaultValue=self.D_MIN, direction=Direction.Input)
         self.declareProperty("dMax", defaultValue=self.D_MAX, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
-        cifPath = self.getProperty("cifPath").value
+        cifPath = self.getProperty("CifPath").value
         # run the algo
         self.log().notice("ingest crystallogtaphic info")
 
         # Load the CIF file into an empty workspace
-        if not self.getProperty("cifPath").isDefault:
+        # use this to set the crystallography output
+        # also creat a mantid CrystalStructure object
+        if not self.getProperty("CifPath").isDefault:
             ws = "xtal_data"
             self.mantidSnapper.CreateSingleValuedWorkspace(
                 "Creating sample workspace...",
@@ -46,9 +48,8 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
             ws = self.mantidSnapper.mtd[ws]
             xtal = ws.sample().getCrystalStructure()
             xtallography = Crystallography(cifPath, xtal)
-            self.setPropertyValue("crystalStructure", xtallography.json())
-        elif not self.getProperty("crystalStructure").isDefault:
-            xtallography = Crystallography.parse_raw(self.getPropertyValue("crystalStructure"))
+        elif not self.getProperty("Crystallography").isDefault:
+            xtallography = Crystallography.parse_raw(self.getPropertyValue("Crystallography"))
             xtal = CrystalStructure(
                 xtallography.unitCellString,
                 xtallography.spaceGroupString,
@@ -56,6 +57,7 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
             )
         else:
             raise ValueError("Either cifPath or crystalStructure must be set!")
+        self.setPropertyValue("Crystallography", xtallography.json())
 
         # Generate reflections
         generator = ReflectionGenerator(xtal)
@@ -77,8 +79,8 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
         dValues = [float(d) for d in dValues]
         fSquared = [float(fsq) for fsq in fSquared]
 
-        xtal = CrystallographicInfo(hkl=hkls, dSpacing=dValues, fSquared=fSquared, multiplicities=multiplicities)
-        self.setProperty("crystalInfo", xtal.json())
+        xtalInfo = CrystallographicInfo(hkl=hkls, dSpacing=dValues, fSquared=fSquared, multiplicities=multiplicities)
+        self.setPropertyValue("CrystalInfo", xtalInfo.json())
         # ws
         self.mantidSnapper.WashDishes(
             "Cleaning up xtal workspace.",
