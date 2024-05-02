@@ -152,6 +152,10 @@ class LocalDataService:
             stateId=diffCalibration.instrumentState.id,
         )
 
+    def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
+        ipts = GetIPTS(runNumber, instrumentName)
+        return str(ipts)
+
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
         # Is the workspace an instance of the specified type.
         if not mtd.doesExist(wsName):
