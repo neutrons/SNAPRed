@@ -154,7 +154,6 @@ class LocalDataService:
 
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
         key = (runNumber, instrumentName)
-        print(key)
         if key not in self.iptsCache:
             self.iptsCache[key] = GetIPTS(RunNumber=int(runNumber), Instrument=instrumentName)
         return str(self.iptsCache[key])

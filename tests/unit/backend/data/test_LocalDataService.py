@@ -447,6 +447,7 @@ def test_calibrationFileExists_bad_ipts(GetIPTS):
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         assert Path(tmpDir).exists()
         localDataService = LocalDataService()
+        localDataService.iptsCache = {}  # clear the ipts cache
         runNumber = "654321"
         assert not localDataService.checkCalibrationFileExists(runNumber)
 
