@@ -69,7 +69,7 @@ def _createFileNotFoundError(msg, filename):
 @Singleton
 class LocalDataService:
     reductionParameterCache: Dict[str, Any] = {}
-    iptsCache: Dict[str, Any] = {}
+    iptsCache: Dict[Tuple[str, str], Any] = {}
     stateIdCache: Dict[str, ObjectSHA] = {}
     instrumentConfig: "InstrumentConfig"
     verifyPaths: bool = True
@@ -153,8 +153,10 @@ class LocalDataService:
         )
 
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
-        ipts = GetIPTS(runNumber, instrumentName)
-        return str(ipts)
+        key = (runNumber, instrumentName)
+        if key not in self.iptsCache:
+            self.iptsCache[key] = GetIPTS(RunNumber=int(runNumber), Instrument=instrumentName)
+        return str(self.iptsCache[key])
 
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
         # Is the workspace an instance of the specified type.
@@ -890,7 +892,7 @@ class LocalDataService:
 
         # first make sure the run number has a valid IPTS
         try:
-            GetIPTS(runId, Config["instrument.name"])
+            self.getIPTS(runId)
         # if no IPTS found, return false
         except RuntimeError:
             return False
