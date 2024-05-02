@@ -320,13 +320,14 @@ class GroceryService:
     def getWorkspaceTag(self, workspaceName: str, logname: str):
         """
         Simple wrapper to get a workspace metadata tag, for the service layer.
-        Returns a tag for a given workspace
+        Returns a tag for a given workspace. Raise an error if the workspace
+        does not exist.
 
-        :param workspaceName: the name of the workspace to clone in the ADS
+        :param workspaceName: the name of the workspace containing the tag
         :type workspaceName: string
-        :param logname: the name of the resulting cloned workspace
+        :param logname: the name of the log, usually for diffcal or normalization
         :type logname: string
-        :return: string of the tag
+        :return: string of the tag, default value is "unset"
         """
         if self.workspaceDoesExist(workspaceName):
             return self.workspaceMetadataService.readMetadataTag(workspaceName, logname)
@@ -334,6 +335,18 @@ class GroceryService:
             raise RuntimeError(f"Workspace {workspaceName} does not exist")
 
     def setWorkspaceTag(self, workspaceName: str, logname: str, logvalue: str):
+        """
+        Simple wrapper to set a workspace metadata tag, for the service layer.
+        Sets a tag for a given workspace. Raise an error if the workspace
+        does not exist.
+
+        :param workspaceName: the name of the workspace containing the tag
+        :type workspaceName: string
+        :param logname: the name of the log, usually for diffcal or normalization
+        :type logname: string
+        :param logvalue: tag value to be set, must exist in the WorkspaceMetadata dao
+        :type logvalue: string
+        """
         if self.workspaceDoesExist(workspaceName):
             self.workspaceMetadataService.writeMetadataTag(workspaceName, logname, logvalue)
         else:
