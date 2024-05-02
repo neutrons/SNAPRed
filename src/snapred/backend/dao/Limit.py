@@ -8,6 +8,13 @@ T = TypeVar("T")
 
 
 class Limit(GenericModel, Generic[T]):
+    """
+    The Limit class defines minimum and maximum limits for a given
+    type `T`, ensuring through validation that the minimum is not
+    greater than the maximum. This class is generic, allowing for
+    the application of limits to various data types.
+    """
+
     minimum: T
     maximum: T
 
@@ -25,6 +32,12 @@ class Limit(GenericModel, Generic[T]):
 
 
 class Pair(GenericModel, Generic[T]):
+    """
+    The `Pair` class primarily facilitates the mapping of two related values,
+    adaptable to contexts where these values need to be interpreted or
+    manipulated as a unit. This is also a generic class.
+    """
+
     left: T
     right: T
 
@@ -44,6 +57,12 @@ class Pair(GenericModel, Generic[T]):
 
 
 class LimitedValue(GenericModel, Generic[T]):
+    """
+    `LimitedValue` ensures that a given value of type `T` falls within specified
+    minimum and maximum limits. It enforces the constraint that the value must
+    always be between these defined limits.
+    """
+
     value: T
     minimum: T
     maximum: T
@@ -63,6 +82,14 @@ class LimitedValue(GenericModel, Generic[T]):
 
 
 class BinnedValue(GenericModel, Generic[T]):
+    """
+    `BinnedValue` defines a range and bin width for values of type `T`,
+    alongside a binning mode (linear or logarithmic). It validates the
+    range and bin width, adjusting bin width to positive if negative,
+    ensuring logical binning behavior for data categorization or
+    histogram generation.
+    """
+
     minimum: T
     binWidth: T
     maximum: T

@@ -26,6 +26,7 @@ from mantid.simpleapi import (
     ScaleX,
     mtd,
 )
+from snapred.backend.dao import CrystallographicInfo
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
@@ -91,6 +92,8 @@ class SyntheticData(object):
             TOFMin, TOFMax, dMin, dMax, self.scale
         )
 
+        crystalPeaks = SyntheticData.crystalInfo().peaks
+
         peakList = [
             DetectorPeak.parse_obj(
                 {
@@ -98,10 +101,11 @@ class SyntheticData(object):
                         "value": p.centre,
                         "minimum": p.centre - SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
                         "maximum": p.centre + SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
-                    }
+                    },
+                    "peak": crystalPeaks[i].dict(),
                 }
             )
-            for p in self.peaks
+            for i, p in enumerate(self.peaks)
         ]
 
         # For testing purposes: every pixel group will use the same peak list;
@@ -121,6 +125,37 @@ class SyntheticData(object):
             maxOffset=100.0,  # bins: '100.0' seems to work
             pixelGroup=self.fakePixelGroup,
         )
+
+    @staticmethod
+    def fakeDetectorPeaks(scale: float = 1000.0) -> List[DetectorPeak]:
+        fakePixelGroup = PixelGroup.parse_file(SyntheticData.fakePixelGroupPath)
+
+        # Place all peaks within the _minimum_ d-space range of any pixel group.
+        dMin = max(fakePixelGroup.dMin())
+        dMax = min(fakePixelGroup.dMax())
+
+        # The pixel group's TOF-domain will be used to convert the original `CreateSampleWorkspace` 'Powder Diffraction'
+        #   predefined function: this allows peak widths to be properly scaled to generate data for a d-spacing domain.
+        TOFMin = fakePixelGroup.timeOfFlight.minimum
+        TOFMax = fakePixelGroup.timeOfFlight.maximum
+        peaks, _ = SyntheticData._fakePowderDiffractionPeakList(TOFMin, TOFMax, dMin, dMax, scale)
+
+        crystalPeaks = SyntheticData.crystalInfo().peaks
+
+        peakList = [
+            DetectorPeak.parse_obj(
+                {
+                    "position": {
+                        "value": p.centre,
+                        "minimum": p.centre - SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
+                        "maximum": p.centre + SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
+                    },
+                    "peak": crystalPeaks[i].dict(),
+                }
+            )
+            for i, p in enumerate(peaks)
+        ]
+        return peakList
 
     @staticmethod
     def random_seed(bits: int) -> int:
@@ -308,3 +343,6 @@ class SyntheticData(object):
 
         # Create the mask workspace 'maskWS':
         createCompatibleMask(maskWS, rawWS, self.fakeInstrumentFilePath)
+
+    def crystalInfo():
+        return CrystallographicInfo.parse_raw(Resource.read("outputs/crystalinfo/output.json"))

@@ -11,6 +11,7 @@ from snapred.backend.dao.request import (
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.EntryExitLogger import EntryExitLogger
+from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.ui.view.NormalizationRequestView import NormalizationRequestView
 from snapred.ui.view.NormalizationSaveView import NormalizationSaveView
 from snapred.ui.view.NormalizationTweakPeakView import NormalizationTweakPeakView
@@ -86,6 +87,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.workflow.presenter.setResetLambda(self.reset)
 
     @EntryExitLogger(logger=logger)
+    @ExceptionToErrLog
     def _populateGroupingDropdown(self):
         # when the run number is updated, grab the grouping map and populate grouping drop down
         runNumber = self._requestView.runNumberField.text()
@@ -93,28 +95,37 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         self._requestView.litemodeToggle.setEnabled(False)
         self._requestView.groupingFileDropdown.setEnabled(False)
+        # TODO: Use threads, account for fail cases
+        try:
+            # check if the state exists -- if so load its grouping map
+            hasState = self.request(path="calibration/hasState", payload=runNumber).data
+            if hasState:
+                self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
+            else:
+                self.groupingMap = self.defaultGroupingMap
+            self.focusGroups = self.groupingMap.getMap(useLiteMode)
 
-        # check if the state exists -- if so load its grouping map
-        hasState = self.request(path="calibration/hasState", payload=runNumber).data
-        if hasState:
-            self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
-        else:
-            self.groupingMap = self.defaultGroupingMap
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
-
-        # populate and reenable the drop down
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+            # populate and reenable the drop down
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
         self._requestView.litemodeToggle.setEnabled(True)
         self._requestView.groupingFileDropdown.setEnabled(True)
 
     @EntryExitLogger(logger=logger)
+    @ExceptionToErrLog
     def _switchLiteNativeGroups(self):
         # when the run number is updated, freeze the drop down to populate it
         useLiteMode = self._requestView.litemodeToggle.field.getState()
 
         self._requestView.groupingFileDropdown.setEnabled(False)
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        # TODO: Use threads, account for fail cases
+        try:
+            self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
+
         self._requestView.groupingFileDropdown.setEnabled(True)
 
     @EntryExitLogger(logger=logger)
@@ -246,41 +257,48 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
     @EntryExitLogger(logger=logger)
+    @ExceptionToErrLog
     def onNormalizationValueChange(self, index, smoothingValue, dMin, dMax, peakThreshold):  # noqa: ARG002
         if not self.initializationComplete:
             return
         # disable recalculate button
         self._tweakPeakView.disableRecalculateButton()
+        # TODO: This is a temporary solution,
+        # this should have never been setup to all run on the same thread.
+        # It assumed an exception would never be tossed and thus
+        # would never enable the recalc button again if one did
+        try:
+            # if the grouping file change, redo whole calculation
+            groupingFileChanged = index != self.prevGroupingIndex
+            # if peaks will change, redo only the smoothing
+            smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
+            dMinValueChanged = dMin != self.prevDMin
+            dMaxValueChanged = dMax != self.prevDMax
+            thresholdChanged = peakThreshold != self.prevThreshold
+            peakListWillChange = smoothingValueChanged or dMinValueChanged or dMaxValueChanged or thresholdChanged
 
-        # if the grouping file change, redo whole calculation
-        groupingFileChanged = index != self.prevGroupingIndex
-        # if peaks will change, redo only the smoothing
-        smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
-        dMinValueChanged = dMin != self.prevDMin
-        dMaxValueChanged = dMax != self.prevDMax
-        thresholdChanged = peakThreshold != self.prevThreshold
-        peakListWillChange = smoothingValueChanged or dMinValueChanged or dMaxValueChanged or thresholdChanged
+            # check the case, apply correct update
+            if groupingFileChanged:
+                self.callNormalizationCalibration(index, smoothingValue, dMin, dMax, peakThreshold)
+            elif peakListWillChange:
+                self.applySmoothingUpdate(index, smoothingValue, dMin, dMax, peakThreshold)
+            elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
+                # if nothing changed but this function was called anyway... just replot stuff with old values
+                focusWorkspace = self.responses[-1].data["focusedVanadium"]
+                smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+                peaks = self.responses[-1].data["detectorPeaks"]
+                self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
+            else:
+                raise Exception("Expected data not found in the last response")
 
-        # check the case, apply correct update
-        if groupingFileChanged:
-            self.callNormalizationCalibration(index, smoothingValue, dMin, dMax, peakThreshold)
-        elif peakListWillChange:
-            self.applySmoothingUpdate(index, smoothingValue, dMin, dMax, peakThreshold)
-        elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
-            # if nothing changed but this function was called anyway... just replot stuff with old values
-            focusWorkspace = self.responses[-1].data["focusedVanadium"]
-            smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
-            peaks = self.responses[-1].data["detectorPeaks"]
-            self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
-        else:
-            raise Exception("Expected data not found in the last response")
+            # update the values for next call to this method
+            self.prevGroupingIndex = index
+            self.prevSmoothingParameter = smoothingValue
+            self.prevDMin = dMin
+            self.prevDMax = dMax
+            self.prevThreshold = peakThreshold
+        except Exception as e:  # noqa BLE001
+            print(e)
 
         # renable button when graph is updated
         self._tweakPeakView.enableRecalculateButton()
-
-        # update the values for next call to this method
-        self.prevGroupingIndex = index
-        self.prevSmoothingParameter = smoothingValue
-        self.prevDMin = dMin
-        self.prevDMax = dMax
-        self.prevThreshold = peakThreshold

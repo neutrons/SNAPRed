@@ -10,13 +10,15 @@ Requirements
 
 Steps
 -----
+
 The high-level steps are:
 1. Trigger Calibration Creation
 2. Assess Calibration Quality
 3. Accept or Reject Calibration
 4. Iterate ...
 
-### Trigger Calibration Creation
+Trigger Calibration Creation
+----------------------------
 
 The user provides configuration details such as run number, the calibrant sample, and the pixel grouping which eventually gets passed to the CalibrationService.
 Using the provided inputs, the application queries the :term:`Data Component` for the correct experiment data and configurations.
@@ -29,13 +31,15 @@ The Calibration Recipe executes both a :term:`Pixel Calibration` and a :term:`Gr
 2. Group Calibration
 3. (Repeat till offset value is reached.)
 
-### Assess Calibration Quality
+Assess Calibration Quality
+--------------------------
 
 The user is presented with the results of the calibration and is given the option to load previous calibrations and compare them to the current
 calibration. Once the user has decided on the calibration they want to persist to disk, they can hit the continue button to continue to the
 saving step.
 
-### Accept or Reject Calibration
+Accept or Reject Calibration
+----------------------------
 
 The user is given the option to accept the calibration by selecting the "Continue" button.
 If the user selects "Continue", the calibration is saved using the provided inputs.

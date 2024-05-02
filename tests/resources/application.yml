@@ -119,7 +119,7 @@ localdataservice:
 
 logging:
   # logging.NOTSET: 0, logging.DEBUG: 10, logging.INFO: 20, logging:WARNING: 30, logging.ERROR: 40, logging.CRITICAL: 50
-  level: 20
+  level:  40
   SNAP:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
   mantid:
@@ -160,3 +160,9 @@ constants:
 
   GroupDiffractionCalibration:
     MaxChiSq: 100
+
+  ResampleX:
+    NumberBins: 1500
+
+metadata:
+  tagPrefix: testSNAPfuntime_

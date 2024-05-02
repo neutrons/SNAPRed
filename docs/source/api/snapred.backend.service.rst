@@ -60,14 +60,6 @@ snapred.backend.service.NormalizationService module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.service.ReductionService module
------------------------------------------------
-
-.. automodule:: snapred.backend.service.ReductionService
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.service.Service module
 --------------------------------------
 

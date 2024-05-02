@@ -185,7 +185,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         for x, y in zip(dataX, dataY):
             if x >= algo.TOFPars[0] and x <= algo.TOFPars[2]:
                 dataXnorm.append(x)
-                dataYnorm.append(y / self.sample_proton_charge)
+                dataYnorm.append(y)
 
         dataXrebin = [sum(dataXnorm) / len(dataXnorm)]
         dataYrebin = [sum(dataYnorm[:-1])]
@@ -203,7 +203,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         algo.setProperty("InputWorkspace", self.sampleWS)
         algo.setProperty("BackgroundWorkspace", self.backgroundWS)
         algo.setProperty("Ingredients", self.ingredients.json())
-        algo.setProperty("OutputWorkspace", "_test_workspace_rar_vanadium")
+        algo.setProperty("OutputWorkspace", "_test_workspace_raw_vanadium")
         assert algo.execute()
 
 

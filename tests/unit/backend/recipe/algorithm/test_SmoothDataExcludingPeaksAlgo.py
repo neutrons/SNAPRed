@@ -41,7 +41,11 @@ class TestSmoothDataAlgo(unittest.TestCase):
     def test_execute_with_peaks(self):
         # input data
         testWS = CreateWorkspace(DataX=[0, 1, 2, 3, 4, 5, 6], DataY=[2, 2, 2, 2, 2, 2])
-        jsonString = '[{"groupID": 1, "peaks": [{"position": {"value":1, "minimum":0, "maximum":2} }]}]'
+        jsonString = (
+            '[{"groupID": 1, "peaks": [{"position": {"value":1, "minimum":0, "maximum":2},'
+            ' "peak": {"hkl": [1, 1, 1], "dSpacing": 3.13592994862768,'
+            '"fSquared": 535.9619564273586, "multiplicity": 8}}]}]'
+        )
         algo = Algo()
         algo.initialize()
         algo.setProperty("InputWorkspace", testWS)

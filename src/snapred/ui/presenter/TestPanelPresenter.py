@@ -37,8 +37,7 @@ class TestPanelPresenter(object):
 
         self.view.tabWidget.addTab(self.diffractionCalibrationWidget, "Diffraction Calibration")
         self.view.tabWidget.addTab(self.calibrationNormalizationWidget, "Normalization")
-        # TODO reenable in Phase 3
-        # self.view.tabWidget.addTab(self.reductionWidget, "Reduction")
+        self.view.tabWidget.addTab(self.reductionWidget, "Reduction")
 
     def _findSchemaForPath(self, path):
         currentVal = self.apiDict

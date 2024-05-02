@@ -3,6 +3,9 @@ import socket
 import unittest.mock as mock
 
 import pytest
+from snapred.backend.dao import GroupPeakList
+from snapred.meta.redantic import list_to_raw
+from util.diffraction_calibration_synthetic_data import SyntheticData
 
 with mock.patch.dict(
     "sys.modules",
@@ -49,7 +52,6 @@ with mock.patch.dict(
     def test_with_predicted_peaks():
         """Test the weight calculator given predicted peaks"""
         inputWorkspaceFile = "/inputs/strip_peaks/DSP_58882_cal_CC_Column_spectra.nxs"
-        inputPeaksFile = "/outputs/predict_peaks/peaks.json"
         referenceWeightFile = "/outputs/weight_spectra/weights.nxs"
 
         # load test workspace
@@ -60,14 +62,14 @@ with mock.patch.dict(
         )
 
         # load predicted peaks
-        peaks_json = json.loads(Resource.read(inputPeaksFile))
+        peaks_json = list_to_raw([GroupPeakList(peaks=SyntheticData.fakeDetectorPeaks(), groupID=0)])
 
         # initialize and run the weight algo
         weight_ws_name = "weight_ws"
         weightCalculatorAlgo = DiffractionSpectrumWeightCalculator()
         weightCalculatorAlgo.initialize()
         weightCalculatorAlgo.setProperty("InputWorkspace", input_ws_name)
-        weightCalculatorAlgo.setProperty("DetectorPeaks", json.dumps(peaks_json))
+        weightCalculatorAlgo.setProperty("DetectorPeaks", peaks_json)
         weightCalculatorAlgo.setProperty("WeightWorkspace", weight_ws_name)
 
         assert weightCalculatorAlgo.execute()

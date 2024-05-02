@@ -11,9 +11,11 @@ from snapred.backend.service.ConfigLookupService import ConfigLookupService
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.LiteDataService import LiteDataService
 from snapred.backend.service.NormalizationService import NormalizationService
-from snapred.backend.service.ReductionService import ReductionService
+
+# TODO: add new reductionService
 from snapred.backend.service.ServiceDirectory import ServiceDirectory
 from snapred.backend.service.StateIdLookupService import StateIdLookupService
+from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.backend.service.WorkspaceService import WorkspaceService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
@@ -28,7 +30,7 @@ class ServiceFactory:
     def __init__(self):
         # register the services
         self.serviceDirectory.registerService(ConfigLookupService)
-        self.serviceDirectory.registerService(ReductionService)
+        # self.serviceDirectory.registerService(ReductionService)
         self.serviceDirectory.registerService(StateIdLookupService)
         self.serviceDirectory.registerService(CalibrationService)
         self.serviceDirectory.registerService(CrystallographicInfoService)
@@ -37,6 +39,7 @@ class ServiceFactory:
         self.serviceDirectory.registerService(LiteDataService)
         self.serviceDirectory.registerService(NormalizationService)
         self.serviceDirectory.registerService(WorkspaceService)
+        self.serviceDirectory.registerService(WorkspaceMetadataService)
 
     def getServiceNames(self):
         return self.serviceDirectory.keys()

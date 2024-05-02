@@ -5,6 +5,7 @@ from qtpy.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushB
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.ui.threading.worker_pool import WorkerPool
+from snapred.ui.widget.LabeledCheckBox import LabeledCheckBox
 from snapred.ui.widget.LabeledField import LabeledField
 from snapred.ui.widget.SampleDropDown import SampleDropDown
 
@@ -30,6 +31,9 @@ class BackendRequestView(QWidget):
 
     def _labeledField(self, label, field=None):
         return LabeledField(label, field, self)
+
+    def _labeledCheckBox(self, label):
+        return LabeledCheckBox(label, self)
 
     def _sampleDropDown(self, label, items=[]):
         return SampleDropDown(label, items, self)

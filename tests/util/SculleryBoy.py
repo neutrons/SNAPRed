@@ -67,7 +67,7 @@ class SculleryBoy:
             definition=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
         )
 
-    def prepPixelGroup(self, ingredients: FarmFreshIngredients):  # noqa ARG002
+    def prepPixelGroup(self, ingredients: FarmFreshIngredients = None):  # noqa ARG002
         return PixelGroup(
             pixelGroupingParameters=[],
             nBinsAcrossPeakWidth=7,

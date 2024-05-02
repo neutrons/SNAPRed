@@ -19,6 +19,7 @@ from snapred.meta.Config import Resource
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
+from snapred.ui.widget.UserDocsButton import UserDocsButton
 
 
 class SNAPRedGUI(QMainWindow):
@@ -66,6 +67,9 @@ class SNAPRedGUI(QMainWindow):
 
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
+
+        self.userDocButton = UserDocsButton(self)
+        splitter.addWidget(self.userDocButton)
 
     def openNewWindow(self):
         try:
