@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
-from mantid.api import AlgorithmManager
 from mantid.kernel import Direction
 from pydantic import parse_raw_as
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric

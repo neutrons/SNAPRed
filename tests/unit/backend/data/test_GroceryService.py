@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from typing import Dict, Tuple
 from unittest import mock
+from unittest.mock import ANY
 
 import pytest
 from mantid.kernel import V3D, Quat
@@ -31,6 +32,7 @@ from mantid.simpleapi import (
 from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.state import DetectorState
+from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata, diffcal_metadata_state_list
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
@@ -613,34 +615,54 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._loadedGroupings == {}
         assert self.instance._loadedInstruments == {}
 
+    def test_workspaceTagFunctions(self):
+        wsname = mtd.unique_name(prefix="testWorkspaceTags_")
+        tagValues = diffcal_metadata_state_list
+        properties = list(WorkspaceMetadata.schema()["properties"].keys())
+        logName = properties[0]
+
+        # Make sure correct error is thrown if workspace does not exist
+        with pytest.raises(RuntimeError) as e1:
+            tagResult = self.instance.getWorkspaceTag(workspaceName=wsname, logname=logName)
+        assert f"Workspace {wsname} does not exist" in str(e1.value)
+
+        with pytest.raises(RuntimeError) as e2:
+            self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tagValues[0])
+        assert f"Workspace {wsname} does not exist" in str(e2.value)
+
+        # Make sure default tag value is unset
+        self.create_dumb_workspace(wsname)
+        tagResult = self.instance.getWorkspaceTag(workspaceName=wsname, logname=logName)
+        assert tagResult == UNSET
+
+        # Set and update the tag with all possible tag values
+        for tag in tagValues:
+            self.instance.setWorkspaceTag(workspaceName=wsname, logname=logName, logvalue=tag)
+            tagResult = self.instance.getWorkspaceTag(workspaceName=wsname, logname=logName)
+            assert tagResult == tag
+
     ## TEST CLEANUP METHODS
 
-    @mock.patch(ThisService + "AlgorithmManager")
-    def test_deleteWorkspace(self, mockAlgoManager):
-        wsname = "_test_ws"
+    def test_deleteWorkspace(self):
+        wsname = mtd.unique_name(prefix="_test_ws_")
         mockAlgo = mock.Mock()
-        mockAlgoManager.create.return_value = mockAlgo
+        self.instance.mantidSnapper.WashDishes = mockAlgo
+        # wash the dish
         self.instance.deleteWorkspace(wsname)
-        assert mockAlgoManager.called_once_with("WashDishes")
-        assert mockAlgo.setProperty.called_with(wsname)
-        assert mockAlgo.execute.called_once
+        assert mockAlgo.called_once_with(ANY, Workspace=wsname)
 
-    @mock.patch(ThisService + "AlgorithmManager")
-    def test_deleteWorkspaceUnconditional(self, mockAlgoManager):
-        wsname = "_test_ws"
+    def test_deleteWorkspaceUnconditional(self):
+        wsname = mtd.unique_name(prefix="_test_ws_")
         mockAlgo = mock.Mock()
-        mockAlgoManager.create.return_value = mockAlgo
+        self.instance.mantidSnapper.DeleteWorkspace = mockAlgo
         # if the workspace does not exist, then don't do anything
         self.instance.deleteWorkspaceUnconditional(wsname)
-        assert mockAlgoManager.not_called
-        assert mockAlgo.execute.not_called
+        assert mockAlgo.not_called
         # make the workspace
         self.create_dumb_workspace(wsname)
         # if the workspace does exist, then delete it
         self.instance.deleteWorkspaceUnconditional(wsname)
-        assert mockAlgoManager.called_once_with("DeleteWorkspace")
-        assert mockAlgo.setProperty.called_with(wsname)
-        assert mockAlgo.execute.called_once
+        assert mockAlgo.called_once_with(ANY, Workspace=wsname)
 
     ## TEST FETCH METHODS
 
