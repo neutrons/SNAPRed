@@ -5,10 +5,11 @@ from unittest import mock
 import pytest
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PythonAlgorithm
 from mantid.kernel import Direction
-from mantid.simpleapi import CloneWorkspace, CompareWorkspaces, CreateSingleValuedWorkspace
+from mantid.simpleapi import CloneWorkspace, CreateSingleValuedWorkspace
 from pydantic import BaseModel, parse_raw_as
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.recipe.GenericRecipe import GenericRecipe
+from util.helpers import workspacesEqual
 
 
 class DummyAlgo:
@@ -159,7 +160,7 @@ class TestGenericRecipeInputsAndOutputs(unittest.TestCase):
         # run the recipe and make sure correct result is given
         CreateSingleValuedWorkspace(OutputWorkspace="okay")
         res = TestMatrixProp().executeRecipe(InputWorkspace="okay", OutputWorkspace="hurray")
-        assert CompareWorkspaces(Workspace1="okay", Workspace2=res)
+        assert workspacesEqual(Workspace1="okay", Workspace2=res).Result
 
     def test_primitives(self):
         # register the algorithm and define the recipe

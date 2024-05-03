@@ -6,7 +6,6 @@ from typing import Dict, Tuple
 
 import pytest
 from mantid.simpleapi import (
-    CompareWorkspaces,
     DeleteWorkspace,
     LoadDetectorsGroupingFile,
     LoadDiffCal,
@@ -17,6 +16,7 @@ from mantid.simpleapi import (
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition as LoadingAlgo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Resource
+from util.helpers import workspacesEqual
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
@@ -253,7 +253,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
-        assert CompareWorkspaces(outputWorkspace, self.localReferenceWorkspace)
+        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace)
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
@@ -271,7 +271,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
-        assert CompareWorkspaces(outputWorkspace, self.localReferenceWorkspace)
+        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace)
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
@@ -288,7 +288,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
-        assert CompareWorkspaces(outputWorkspace, self.localReferenceWorkspace)
+        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace)
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
@@ -346,7 +346,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
-        assert CompareWorkspaces(outputWorkspace, self.remoteReferenceWorkspace[useLite])
+        assert workspacesEqual(outputWorkspace, self.remoteReferenceWorkspace[useLite])
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
@@ -368,7 +368,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
-        assert CompareWorkspaces(outputWorkspace, self.remoteReferenceWorkspace[useLite])
+        assert workspacesEqual(outputWorkspace, self.remoteReferenceWorkspace[useLite])
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
@@ -385,7 +385,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
-        assert CompareWorkspaces(outputWorkspace, self.remoteReferenceWorkspace[useLite])
+        assert workspacesEqual(outputWorkspace, self.remoteReferenceWorkspace[useLite])
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals

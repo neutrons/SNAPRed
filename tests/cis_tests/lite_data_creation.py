@@ -34,4 +34,4 @@ LDCA.execute()
 assert CompareWorkspaces(
     Workspace1 = workspace + "_lite",
     Workspace2 = workspace + "_doubleLite",
-)
+).Result

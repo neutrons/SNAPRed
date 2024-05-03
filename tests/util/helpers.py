@@ -12,6 +12,7 @@ import pytest
 from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
+    CompareWorkspaces,
     CopyInstrumentParameters,
     CreateEmptyTableWorkspace,
     DeleteWorkspace,
@@ -178,6 +179,28 @@ def deleteWorkspaceNoThrow(wsName: str):
         DeleteWorkspace(wsName)
     except:  # noqa: E722
         pass
+
+
+def workspacesEqual(Workspace1: str, Workspace2: str, **other_options):
+    equal, message = CompareWorkspaces(
+        Workspace1=Workspace1,
+        Workspace2=Workspace2,
+        **other_options,
+    )
+    if not equal:
+        pytest.fail(str(message.column("Message")))
+    return equal
+
+
+def workspacesNotEqual(Workspace1: str, Workspace2: str, **other_options):
+    equal, _ = CompareWorkspaces(
+        Workspace1=Workspace1,
+        Workspace2=Workspace2,
+        **other_options,
+    )
+    if equal:
+        pytest.fail(f"Workspaces {Workspace1} and {Workspace2} incorrectly evaluated as equal")
+    return equal
 
 
 def nameOfRunningTestMethod(testCaseInstance: unittest.TestCase):

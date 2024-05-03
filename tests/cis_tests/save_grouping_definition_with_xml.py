@@ -63,7 +63,7 @@ loads["XML and FILE"] = (end - start)
 assert CompareWorkspaces(
     Workspace1 = grwsXML,
     Workspace2 = reload,
-)
+).Result
 
 # load the data directly from the XML with instrument donor
 reload = "from xml and donor"
@@ -80,7 +80,7 @@ loads["XML and DONOR"] = (end - start)
 assert CompareWorkspaces(
     Workspace1 = grwsXML,
     Workspace2 = reload,
-)
+).Result
 
 ###### TESTS OF SAVE #######################################
 
@@ -108,7 +108,7 @@ loads["HDF and NAME"] = (end - start)
 assert CompareWorkspaces(
     Workspace1 = grwsHDF,
     Workspace2 = grwsXML,
-)
+).Result
 
 ###### save/load with XML file and instrument file
 savingAlgo = SavingAlgo()
@@ -134,7 +134,7 @@ loads["HDF and FILE"] = (end - start)
 assert CompareWorkspaces(
     Workspace1 = grwsXML,
     Workspace2 = grwsHDF,
-)
+).Result
 
 ###### save/load with XML file and instrument donor
 result = "xml_and_instrument_donor"
@@ -162,7 +162,7 @@ loads["HDF and DONOR"] = (end - start)
 assert CompareWorkspaces(
     Workspace1 = grwsXML,
     Workspace2 = grwsHDF,
-)
+).Result
 
 ###### save with HDF file and instrument name
 groupingFileHDF2 = localDir + pathlib.Path(groupingFileXML).stem + "2.hdf"
