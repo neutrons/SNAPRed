@@ -1,6 +1,6 @@
 # Use this script to test LiteDataCreationAlgo.py
 from mantid.simpleapi import *
-
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
@@ -31,7 +31,7 @@ LDCA.setProperty("InputWorkspace", workspace + "_lite")
 LDCA.setProperty("OutputWorkspace", workspace + "_doubleLite")
 LDCA.execute()
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = workspace + "_lite",
     Workspace2 = workspace + "_doubleLite",
 )

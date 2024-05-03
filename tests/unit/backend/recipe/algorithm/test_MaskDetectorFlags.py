@@ -139,6 +139,7 @@ class TestMaskDetectorFlags:
         algo.setProperty("OutputWorkspace", self.testInstrumentWS)
 
         algo.execute()
+        # TODO should use mantid.testing.assert_almost_equal when it supports CheckInstrument=False
         (result, messages) = CompareWorkspaces(
             CheckInstrument=False,
             Workspace1=self.testInstrumentWS,
@@ -204,6 +205,7 @@ class TestMaskDetectorFlags:
         algo.setProperty("OutputWorkspace", self.testGroupingWS)
 
         algo.execute()
+        # TODO should use mantid.testing.assert_almost_equal when it supports CheckInstrument=False
         (result, messages) = CompareWorkspaces(
             CheckInstrument=False,
             Workspace1=self.testGroupingWS,
@@ -283,6 +285,7 @@ class TestMaskDetectorFlags:
         algo.setProperty("OutputWorkspace", testOtherMaskWS)
 
         algo.execute()
+        # TODO should use mantid.testing.assert_almost_equal when it supports CheckInstrument=False
         (result, messages) = CompareWorkspaces(
             CheckInstrument=False,
             Workspace1=testOtherMaskWS,
