@@ -4,8 +4,8 @@ import logging
 import socket
 import sys
 
-from mantid.utils.logging import log_to_python
 from mantid.api import Progress
+from mantid.utils.logging import log_to_python
 
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
@@ -72,7 +72,7 @@ class _SnapRedLogger:
 
     def getProgress(self):
         return self._progressReporter
-    
+
     def reportProgress(self, message):
         if self._progressReporter is not None:
             self._progressReporter.report(self._progressCounter, message)
