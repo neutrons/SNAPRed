@@ -32,8 +32,6 @@ from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import (
 from snapred.meta.Config import Resource
 from util.SculleryBoy import SculleryBoy
 
-TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
-
 
 class TestRawVanadiumCorrection(unittest.TestCase):
     def setUp(self):
