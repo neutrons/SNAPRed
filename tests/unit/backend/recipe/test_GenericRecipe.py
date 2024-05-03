@@ -160,7 +160,7 @@ class TestGenericRecipeInputsAndOutputs(unittest.TestCase):
         # run the recipe and make sure correct result is given
         CreateSingleValuedWorkspace(OutputWorkspace="okay")
         res = TestMatrixProp().executeRecipe(InputWorkspace="okay", OutputWorkspace="hurray")
-        assert workspacesEqual(Workspace1="okay", Workspace2=res).Result
+        assert workspacesEqual(Workspace1="okay", Workspace2=res)
 
     def test_primitives(self):
         # register the algorithm and define the recipe
