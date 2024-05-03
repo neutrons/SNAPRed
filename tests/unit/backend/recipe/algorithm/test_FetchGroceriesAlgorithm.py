@@ -24,8 +24,6 @@ from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import (
 )
 from snapred.meta.Config import Resource
 
-TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
-
 
 class TestFetchGroceriesAlgorithm(unittest.TestCase):
     @classmethod

@@ -10,6 +10,7 @@ from snapred.backend.dao.state import DetectorState, GroupingMap
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
+from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
@@ -31,6 +32,7 @@ class GroceryService:
 
     def __init__(self, dataService: LocalDataService = None):
         self.dataService = self._defaultClass(dataService, LocalDataService)
+        self.workspaceMetadataService = WorkspaceMetadataService()
 
         # _loadedRuns caches a count of the number of copies made from the neutron-data workspace
         #   corresponding to a given (runNumber, isLiteMode) key:
@@ -315,6 +317,41 @@ class GroceryService:
         else:
             ws = None
         return ws
+
+    def getWorkspaceTag(self, workspaceName: str, logname: str):
+        """
+        Simple wrapper to get a workspace metadata tag, for the service layer.
+        Returns a tag for a given workspace. Raise an error if the workspace
+        does not exist.
+
+        :param workspaceName: the name of the workspace containing the tag
+        :type workspaceName: string
+        :param logname: the name of the log, usually for diffcal or normalization
+        :type logname: string
+        :return: string of the tag, default value is "unset"
+        """
+        if self.workspaceDoesExist(workspaceName):
+            return self.workspaceMetadataService.readMetadataTag(workspaceName, logname)
+        else:
+            raise RuntimeError(f"Workspace {workspaceName} does not exist")
+
+    def setWorkspaceTag(self, workspaceName: str, logname: str, logvalue: str):
+        """
+        Simple wrapper to set a workspace metadata tag, for the service layer.
+        Sets a tag for a given workspace. Raise an error if the workspace
+        does not exist.
+
+        :param workspaceName: the name of the workspace containing the tag
+        :type workspaceName: string
+        :param logname: the name of the log, usually for diffcal or normalization
+        :type logname: string
+        :param logvalue: tag value to be set, must exist in the WorkspaceMetadata dao
+        :type logvalue: string
+        """
+        if self.workspaceDoesExist(workspaceName):
+            self.workspaceMetadataService.writeMetadataTag(workspaceName, logname, logvalue)
+        else:
+            raise RuntimeError(f"Workspace {workspaceName} does not exist")
 
     ## FETCH METHODS
     """

@@ -33,7 +33,6 @@ from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawV
 from snapred.meta.Config import Config, Resource
 Config._config['cis_mode'] = True
 Resource._resourcesPath = os.path.expanduser("~/SNAPRed/tests/resources/")
-TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
 
 class TestRawVanadiumCorrection(unittest.TestCase):
     def setUp(self):

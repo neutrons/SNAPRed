@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, List, Tuple, TypeVar, get_args
 
-from mantid.api import AlgorithmManager
 from pydantic import BaseModel, ValidationError
 
 from snapred.backend.log.logger import snapredLogger
