@@ -424,7 +424,7 @@ class LocalDataService:
         """
         calibrationStatePath = self._constructCalibrationStatePath(stateId)
         calibrationVersionPath = f"{calibrationStatePath}v_*/"
-        latestVersion = 0
+        latestVersion = -1
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
         for versionDir in versionDirs:
             version = int(versionDir.split("/")[-2].split("_")[-1])
@@ -774,24 +774,16 @@ class LocalDataService:
             os.makedirs(calibrationDataPath)
         # write the calibration state.
         write_model_pretty(calibration, calibrationParametersFilePath)
+        self._writeDefaultDiffCalTable(calibrationDataPath, runId, version)
 
+    # TODO remove the default value of useLiteMode and have that specifiable
+    def _writeDefaultDiffCalTable(self, filepath: str, runNumber: str, version: str, useLiteMode: bool = True):
         from snapred.backend.data.GroceryService import GroceryService
 
         grocer = GroceryService()
-        outWS, filename = grocer.fetchDefaultDiffCalTable(useLiteMode)
-        # TODO write default diffcal file here
-        # REQUIRES
-        #  - bin width?
-        #  - a validly constructed instrument donor
-        #  - a validly constructed diffcal filename
-        # self.mantidSnapper.CalculateDiffCalTable(
-        #     "Generate the default diffcal table",
-        #     InputWorkspace=instrumentWS,
-        #     CalibrationTable=outWS,
-        #     BinWidth=dbin,
-        # )
-        # self.mantidSnapper.executeQueue()
-        self.writeDiffCalWorkspaces(calibrationParametersFilePath, filename, outWS)
+        filename = Path(grocer._createDiffcalTableWorkspaceName(runNumber, version) + ".h5")
+        outWS = grocer.fetchDefaultDiffCalTable(runNumber, version, useLiteMode)
+        self.writeDiffCalWorkspaces(filepath, filename, outWS)
 
     def writeNormalizationState(self, runId: str, normalization: Normalization, version: str = None):  # noqa: F821
         """
@@ -1036,6 +1028,7 @@ class LocalDataService:
             raise RuntimeError(
                 f"[writeCalibrationWorkspaces]: specify filename including '.h5' extension, not {filename}"
             )
+        print(f"FILE WRITTEN AT {str(path / filename)}")
         self.mantidSnapper.SaveDiffCal(
             "Save a diffcal table or grouping file",
             CalibrationWorkspace=tableWorkspaceName,

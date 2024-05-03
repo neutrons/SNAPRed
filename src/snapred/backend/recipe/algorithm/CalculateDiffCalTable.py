@@ -93,4 +93,4 @@ AlgorithmFactory.subscribe(CalculateDiffCalTable)
 # Puts function in simpleapi globals
 algo = CalculateDiffCalTable()
 algo.initialize()
-_create_algorithm_function("CalculateDiffCalTable", 1, algo)
+_create_algorithm_function(CalculateDiffCalTable.__name__, 1, algo)

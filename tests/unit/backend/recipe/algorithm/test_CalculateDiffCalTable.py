@@ -1,15 +1,13 @@
 # ruff: noqa
-# ruff: noqa F811
-
 import unittest
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable  # noqa: F811
+from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.meta.Config import Resource
 
 # must import algorithm before simpleapi
 from mantid.simpleapi import (
-    CalculateDiffCalTable,  # noqa F811
+    CalculateDiffCalTable,
     DeleteWorkspace,
     mtd,
 )
