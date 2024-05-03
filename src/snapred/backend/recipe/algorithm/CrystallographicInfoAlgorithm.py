@@ -36,7 +36,7 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
 
         # Load the CIF file into an empty workspace
         # use this to set the crystallography output
-        # also creat a mantid CrystalStructure object
+        # also create a mantid CrystalStructure object
         if not self.getProperty("CifPath").isDefault:
             ws = "xtal_data"
             self.mantidSnapper.CreateSingleValuedWorkspace(
