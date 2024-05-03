@@ -5,6 +5,8 @@ runNumber = 123
 fRunNumber = str(runNumber).zfill(6)
 version = 1
 fVersion = "v" + str(version).zfill(4)
+stateId = "ab8704b0bc2a2342"
+fStateId = "bc2a2342"
 
 
 def testRunNames():
@@ -56,6 +58,32 @@ def testDiffCalMetricsNames():
         f"_calib_metrics_strain_{fRunNumber}_{fVersion}"
         == wng.diffCalMetric().metricName("strain").runNumber(runNumber).version(version).build()
     )
+
+
+def testReductionOutputName():
+    assert (  # "reduced_data,{unit},{group},{runNumber},{version}"
+        f"_reduced_dsp_lahdeedah_{fRunNumber}" == wng.reductionOutput().group("lahDeeDah").runNumber(runNumber).build()
+    )
+    assert (
+        f"_reduced_dsp_column_{fRunNumber}_{fVersion}"
+        == wng.reductionOutput().group(wng.Groups.COLUMN).runNumber(runNumber).version(version).build()
+    )
+    assert (
+        f"_reduced_tof_column_{fRunNumber}_{fVersion}"
+        == wng.reductionOutput()
+        .unit(wng.Units.TOF)
+        .group(wng.Groups.COLUMN)
+        .runNumber(runNumber)
+        .version(version)
+        .build()
+    )
+
+
+def testReductionOutputGroupName():
+    assert (  # "reduced_data,{stateId},{version}"
+        f"_reduced_{fStateId}" == wng.reductionOutputGroup().stateId(stateId).build()
+    )
+    assert f"_reduced_{fStateId}_{fVersion}" == wng.reductionOutputGroup().stateId(stateId).version(version).build()
 
 
 def testInvalidKey():

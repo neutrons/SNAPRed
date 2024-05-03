@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 from pydantic import validate_arguments
 
@@ -8,6 +9,7 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.decorators.Singleton import Singleton
@@ -66,6 +68,14 @@ class DataExportService:
 
     def exportNormalizationState(self, normalization: Normalization):
         return self.dataService.writeNormalizationState(normalization)
+
+    ##### REDUCTION METHODS #####
+
+    def exportReductionRecord(self, record: ReductionRecord, version: Optional[int] = None) -> ReductionRecord:
+        return self.dataService.writeReductionRecord(record, version)
+
+    def exportReductionData(self, record: ReductionRecord):
+        return self.dataService.writeReductionData(record)
 
     ##### WORKSPACE METHODS #####
 
