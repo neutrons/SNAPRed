@@ -2,7 +2,7 @@
 import unittest
 
 # the algorithm to test
-from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
+import snapred.backend.recipe.algorithm.CalculateDiffCalTable
 from snapred.meta.Config import Resource
 
 # must import algorithm before simpleapi
