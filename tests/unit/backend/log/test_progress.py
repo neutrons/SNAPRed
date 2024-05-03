@@ -11,7 +11,7 @@ class TestSnapRedLogger(unittest.TestCase):
         snapredLogger.resetProgress(0, 1.0, 10)
 
     def test_resetProgress(self):
-        self.assertEqual(snapredLogger._progressCounter, 0)     # noqa: PT009
+        self.assertEqual(snapredLogger._progressCounter, 0)  # noqa: PT009
 
         original_progress = snapredLogger._progressReporter
         snapredLogger._progressReporter = MagicMock(spec=Progress)
@@ -23,6 +23,6 @@ class TestSnapRedLogger(unittest.TestCase):
         snapredLogger._progressReporter.report.assert_has_calls(expected_calls, any_order=False)
 
         snapredLogger.resetProgress(0, 1.0, 20)
-        self.assertEqual(snapredLogger._progressCounter, 0)     # noqa: PT009
+        self.assertEqual(snapredLogger._progressCounter, 0)  # noqa: PT009
 
         snapredLogger._progressReporter = original_progress
