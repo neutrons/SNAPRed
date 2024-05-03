@@ -22,6 +22,7 @@ from mantid.simpleapi import (
     WorkspaceFactory,
     mtd,
 )
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from snapred.meta.Config import Resource
 
 
@@ -182,6 +183,8 @@ def deleteWorkspaceNoThrow(wsName: str):
 
 
 def workspacesEqual(Workspace1: str, Workspace2: str, **other_options):
+    if other_options == {}:
+        assert_wksp_almost_equal(Workspace1, Workspace2)
     equal, message = CompareWorkspaces(
         Workspace1=Workspace1,
         Workspace2=Workspace2,

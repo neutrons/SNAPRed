@@ -4,6 +4,7 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 
 # the algorithm to test
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import (

@@ -27,6 +27,7 @@ from mantid.simpleapi import (
     SaveParameterFile,
     mtd,
 )
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.state import DetectorState
@@ -36,7 +37,7 @@ from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from util.helpers import createCompatibleDiffCalTable, createCompatibleMask, workspacesEqual
+from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 from util.instrument_helpers import mapFromSampleLogs
 from util.kernel_helpers import tupleFromQuat, tupleFromV3D
 
@@ -395,7 +396,7 @@ class TestGroceryService(unittest.TestCase):
         ws = self.instance.getCloneOfWorkspace(wsname1, wsname2)
         assert ws.name() == wsname2  # checks that the workspace pointer can be used
         assert mtd.doesExist(wsname2)
-        assert workspacesEqual(
+        assert_wksp_almost_equal(
             Workspace1=wsname1,
             Workspace2=wsname2,
         )
@@ -673,7 +674,7 @@ class TestGroceryService(unittest.TestCase):
             "loader": "LoadNexusProcessed",
             "workspace": self.fetchedWSname,
         }
-        assert workspacesEqual(
+        assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
         )
@@ -688,7 +689,7 @@ class TestGroceryService(unittest.TestCase):
             "workspace": self.fetchedWSname,
         }
         assert self.instance.grocer.executeRecipe.not_called
-        assert workspacesEqual(
+        assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
         )
@@ -737,7 +738,7 @@ class TestGroceryService(unittest.TestCase):
         assert not mtd.doesExist(rawWorkspaceName)
         assert mtd.doesExist(workspaceName)
         # test the workspace is correct
-        assert workspacesEqual(
+        assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
         )
@@ -760,7 +761,7 @@ class TestGroceryService(unittest.TestCase):
         assert res["workspace"] == workspaceName
         assert res["loader"] == "cached"  # this indicates it used a cached value
         assert self.instance._loadedRuns == {testKey: 1}  # the number of copies did not increment
-        assert workspacesEqual(
+        assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
         )
@@ -812,7 +813,7 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(workspaceNameRaw)
         assert mtd.doesExist(workspaceNameCopy1)
         # test the workspace is correct
-        assert workspacesEqual(
+        assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=workspaceNameCopy1,
         )
@@ -827,7 +828,7 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(workspaceNameRaw)
         assert mtd.doesExist(workspaceNameCopy1)
         assert mtd.doesExist(workspaceNameCopy2)
-        assert workspacesEqual(
+        assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=workspaceNameCopy2,
         )
