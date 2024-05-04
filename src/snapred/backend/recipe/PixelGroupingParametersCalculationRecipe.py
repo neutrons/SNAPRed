@@ -40,7 +40,7 @@ class PixelGroupingParametersCalculationRecipe:
         self.mantidSnapper.executeQueue()
 
         data["result"] = True
-        pixelGroupingParams = parse_raw_as(List[PixelGroupingParameters], res)
+        pixelGroupingParams = parse_raw_as(List[PixelGroupingParameters], res.get())
         data["parameters"] = pixelGroupingParams
         data["tof"] = BinnedValue(
             minimum=ingredients.instrumentState.particleBounds.tof.minimum,

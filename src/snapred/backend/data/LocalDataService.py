@@ -409,7 +409,7 @@ class LocalDataService:
 
     def _getLatestFile(self, fileRegex: str):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
-        latestVersion = 0
+        latestVersion = -1
         latestFile = None
         for file in foundFiles:
             version = self._extractFileVersion(file)
@@ -781,7 +781,7 @@ class LocalDataService:
         from snapred.backend.data.GroceryService import GroceryService
 
         grocer = GroceryService()
-        filename = Path(grocer._createDiffcalTableWorkspaceName(runNumber, version) + ".h5")
+        filename = Path(grocer._createDiffcalTableWorkspaceName("default", version) + ".h5")
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, version, useLiteMode)
         self.writeDiffCalWorkspaces(filepath, filename, outWS)
 
@@ -1028,7 +1028,6 @@ class LocalDataService:
             raise RuntimeError(
                 f"[writeCalibrationWorkspaces]: specify filename including '.h5' extension, not {filename}"
             )
-        print(f"FILE WRITTEN AT {str(path / filename)}")
         self.mantidSnapper.SaveDiffCal(
             "Save a diffcal table or grouping file",
             CalibrationWorkspace=tableWorkspaceName,
