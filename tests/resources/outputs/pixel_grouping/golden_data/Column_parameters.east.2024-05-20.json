@@ -1,0 +1,74 @@
+[
+    {
+        "groupID": 1,
+        "isMasked": true,
+        "L2": 0.6451501742214756,
+        "twoTheta": 2.196962706221782,
+        "azimuth": -0.49069869088248863,
+        "dResolution": {
+            "minimum": 0.3930233401758512,
+            "maximum": 0.3930233401758512
+        },
+        "dRelativeResolution": 0.002
+    },
+    {
+        "groupID": 2,
+        "isMasked": true,
+        "L2": 0.6014503517947264,
+        "twoTheta": 1.9385060157782208,
+        "azimuth": -0.4543987854643876,
+        "dResolution": {
+            "minimum": 0.42451154981059314,
+            "maximum": 0.42451154981059314
+        },
+        "dRelativeResolution": 0.002
+    },
+    {
+        "groupID": 3,
+        "isMasked": true,
+        "L2": 0.6028357725434018,
+        "twoTheta": 1.6610464056292313,
+        "azimuth": -0.42279417153987786,
+        "dResolution": {
+            "minimum": 0.4740641550061767,
+            "maximum": 0.4740641550061767
+        },
+        "dRelativeResolution": 0.002
+    },
+    {
+        "groupID": 4,
+        "isMasked": false,
+        "L2": 0.5901317397407252,
+        "twoTheta": 1.443403016709642,
+        "azimuth": -1.0292963154824344e-14,
+        "dResolution": {
+            "minimum": 0.667943338468966,
+            "maximum": 4.558503567233406
+        },
+        "dRelativeResolution": 0.0043519481288773545
+    },
+    {
+        "groupID": 5,
+        "isMasked": false,
+        "L2": 0.5655298550960796,
+        "twoTheta": 1.1594761195210943,
+        "azimuth": -1.817894683124931e-15,
+        "dResolution": {
+            "minimum": 0.9021410285237913,
+            "maximum": 7.424748203252044
+        },
+        "dRelativeResolution": 0.005615937285761982
+    },
+    {
+        "groupID": 6,
+        "isMasked": false,
+        "L2": 0.5888897278407171,
+        "twoTheta": 0.8753683468875817,
+        "azimuth": 1.2643948302004107e-14,
+        "dResolution": {
+            "minimum": 1.3806504754969586,
+            "maximum": 14.018136697095636
+        },
+        "dRelativeResolution": 0.007622919979987762
+    }
+]

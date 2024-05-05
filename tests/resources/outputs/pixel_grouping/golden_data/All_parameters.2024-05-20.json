@@ -1,0 +1,14 @@
+[
+    {
+        "groupID": 1,
+        "isMasked": false,
+        "L2": 0.5803267288004438,
+        "twoTheta": 1.583083745204658,
+        "azimuth": -8.493289458113855e-16,
+        "dResolution": {
+            "minimum": 0.41065368008438874,
+            "maximum": 14.018136697095636
+        },
+        "dRelativeResolution": 0.004891790795584614
+    }
+]

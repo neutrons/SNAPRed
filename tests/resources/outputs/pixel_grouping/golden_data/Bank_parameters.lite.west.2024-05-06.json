@@ -1,0 +1,26 @@
+[
+    {
+        "groupID": 1,
+        "isMasked": false,
+        "L2": 0.5796161310203416,
+        "twoTheta": 1.8230747956560218,
+        "azimuth": 1.0073442851470875e-16,
+        "dResolution": {
+            "minimum": 0.38750692023110317,
+            "maximum": 2.7018112804766843
+        },
+        "dRelativeResolution": 0.003379514789208845
+    },
+    {
+        "groupID": 2,
+        "isMasked": true,
+        "L2": 0.6451920216493691,
+        "twoTheta": 0.7998542096811323,
+        "azimuth": -2.585758254409652,
+        "dResolution": {
+            "minimum": 0.898916336316168,
+            "maximum": 0.898916336316168
+        },
+        "dRelativeResolution": 0.002
+    }
+]

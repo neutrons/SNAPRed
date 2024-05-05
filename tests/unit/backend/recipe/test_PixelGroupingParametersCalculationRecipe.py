@@ -14,7 +14,9 @@ def test_execute_successful(mockBinnedValue):
     params = PixelGroupingParameters(
         groupID=1,
         isMasked=False,
+        L2=10.0,
         twoTheta=3.14,
+        azimuth=0.0,
         dResolution=Limit(minimum=0.1, maximum=1.0),
         dRelativeResolution=0.01,
     )

@@ -1,0 +1,74 @@
+[
+    {
+        "groupID": 1,
+        "isMasked": false,
+        "L2": 0.5879100962774872,
+        "twoTheta": 2.1125280875811616,
+        "azimuth": -4.0177955315741047e-16,
+        "dResolution": {
+            "minimum": 0.41065368008438874,
+            "maximum": 2.415455304248673
+        },
+        "dRelativeResolution": 0.0027736692758965364
+    },
+    {
+        "groupID": 2,
+        "isMasked": false,
+        "L2": 0.5634015119564925,
+        "twoTheta": 1.82566400377267,
+        "azimuth": 7.761998574825677e-16,
+        "dResolution": {
+            "minimum": 0.4765685915403747,
+            "maximum": 2.99606676400966
+        },
+        "dRelativeResolution": 0.003312184796122495
+    },
+    {
+        "groupID": 3,
+        "isMasked": false,
+        "L2": 0.5872116868023581,
+        "twoTheta": 1.5380921357673243,
+        "azimuth": -2.0013410708875144e-15,
+        "dResolution": {
+            "minimum": 0.6033850037642933,
+            "maximum": 3.987042507371092
+        },
+        "dRelativeResolution": 0.004040641114419025
+    },
+    {
+        "groupID": 4,
+        "isMasked": false,
+        "L2": 0.5901317397407252,
+        "twoTheta": 1.443403016709642,
+        "azimuth": -1.0292963154824344e-14,
+        "dResolution": {
+            "minimum": 0.667943338468966,
+            "maximum": 4.558503567233406
+        },
+        "dRelativeResolution": 0.0043519481288773545
+    },
+    {
+        "groupID": 5,
+        "isMasked": false,
+        "L2": 0.5655298550960796,
+        "twoTheta": 1.1594761195210943,
+        "azimuth": -1.817894683124931e-15,
+        "dResolution": {
+            "minimum": 0.9021410285237913,
+            "maximum": 7.424748203252044
+        },
+        "dRelativeResolution": 0.005615937285761982
+    },
+    {
+        "groupID": 6,
+        "isMasked": false,
+        "L2": 0.5888897278407171,
+        "twoTheta": 0.8753683468875817,
+        "azimuth": 1.2643948302004107e-14,
+        "dResolution": {
+            "minimum": 1.3806504754969586,
+            "maximum": 14.018136697095636
+        },
+        "dRelativeResolution": 0.007622919979987762
+    }
+]

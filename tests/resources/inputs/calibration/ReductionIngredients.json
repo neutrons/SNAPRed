@@ -6,7 +6,9 @@
         "1": {
           "groupID": 1,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.4888167719149363,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.35983386414596874,
             "maximum": 4.355830260153734
@@ -32,7 +34,9 @@
         "1": {
           "groupID": 1,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.8230747956560218,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.35983386414596874,
             "maximum": 2.3643065241537378
@@ -42,7 +46,9 @@
         "2": {
           "groupID": 2,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.1545587481738246,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.46173472918300634,
             "maximum": 4.355830260153734
@@ -68,7 +74,9 @@
         "1": {
           "groupID": 1,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 2.1108948177427838,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.35983386414596874,
             "maximum": 1.8446004591300944
@@ -78,7 +86,9 @@
         "2": {
           "groupID": 2,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.82310673131693,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.3897805853492433,
             "maximum": 2.0555564929623205
@@ -88,7 +98,9 @@
         "3": {
           "groupID": 3,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.5352228379083572,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.43925160115545075,
             "maximum": 2.3643065241537378
@@ -98,7 +110,9 @@
         "4": {
           "groupID": 4,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.440276389170165,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.46173472918300634,
             "maximum": 2.5221224737819017
@@ -108,7 +122,9 @@
         "5": {
           "groupID": 5,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.1543988461042238,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.5352414154696261,
             "maximum": 3.194134388808033
@@ -118,7 +134,9 @@
         "6": {
           "groupID": 6,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 0.8690010092470938,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.6591133268028296,
             "maximum": 4.355830260153734
@@ -144,7 +162,9 @@
         "1": {
           "groupID": 1,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.7273751940345703,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.35983386414596874,
             "maximum": 2.5221224737819017
@@ -154,7 +174,9 @@
         "2": {
           "groupID": 2,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.011699927675655,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.5352414154696261,
             "maximum": 4.355830260153734
