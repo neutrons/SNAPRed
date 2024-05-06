@@ -401,10 +401,10 @@ class LocalDataService:
         else:
             return int(file.split("/v_")[-1].split("/")[0])
 
-    def _extractDirVersion(self, dir: str) -> int:
-        if not isinstance(dir, str):
+    def _extractDirVersion(self, dire: str) -> int:
+        if not isinstance(dire, str):
             return None
-        return int(dir.split("/")[-2].split("_")[-1])
+        return int(dire.split("/")[-2].split("_")[-1])
 
     def _getLatestThing(
         self,
@@ -415,7 +415,7 @@ class LocalDataService:
         This doesn't need to be its own function,
         but it represents a common pattern in code
         """
-        if otherThings == None:
+        if otherThings is None:
             return max(things, default=self.VERSION_START)
         else:
             return max(zip(things, otherThings), default=(self.VERSION_START, None))
@@ -439,7 +439,7 @@ class LocalDataService:
         calibrationStatePath = self._constructCalibrationStatePath(stateId)
         calibrationVersionPath = f"{calibrationStatePath}v_*/"
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
-        versions = [self._extractDirVersion(dir) for dir in versionDirs]
+        versions = [self._extractDirVersion(dire) for dire in versionDirs]
         return self._getLatestThing(versions)
 
     def _getLatestNormalizationCalibrationVersionNumber(self, stateId: str) -> int:
@@ -449,7 +449,7 @@ class LocalDataService:
         normalizationStatePath = self._constructNormalizationCalibrationStatePath(stateId)
         normalizationVersionPath = f"{normalizationStatePath}v_*/"
         versionDirs = self._findMatchingDirList(normalizationVersionPath, throws=False)
-        versions = [self._extractDirVersion(dir) for dir in versionDirs]
+        versions = [self._extractDirVersion(dire) for dire in versionDirs]
         return self._getLatestThing(versions)
 
     def readNormalizationRecord(self, runId: str, version: str = None):
