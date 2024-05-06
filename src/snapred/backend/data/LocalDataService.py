@@ -5,7 +5,7 @@ import os
 from copy import deepcopy
 from errno import ENOENT as NOT_FOUND
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import h5py
 from mantid.api import ITableWorkspace
@@ -63,6 +63,10 @@ logger = snapredLogger.getLogger(__name__)
 """
 
 
+def version_pattern(x: int) -> str:
+    return wnvf.formatVersion(x, wnvf.vPrefix.FILE)
+
+
 def _createFileNotFoundError(msg, filename):
     return FileNotFoundError(NOT_FOUND, os.strerror(NOT_FOUND) + " " + msg, filename)
 
@@ -75,6 +79,8 @@ class LocalDataService:
     instrumentConfig: "InstrumentConfig"
     verifyPaths: bool = True
 
+    # starting version number -- the first run printed
+    VERSION_START = Config["instrument.startingVersionNumber"]
     # conversion factor from microsecond/Angstrom to meters
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
@@ -235,7 +241,6 @@ class LocalDataService:
                 fileList.append(fname)
         if len(fileList) == 0 and throws:
             raise ValueError(f"No files could be found with pattern: {pattern}")
-
         return fileList
 
     def _findMatchingDirList(self, pattern, throws=True) -> List[str]:
@@ -352,9 +357,7 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructCalibrationStatePath(stateId)
-        calibrationVersionPath: str = statePath + "v_{}/".format(
-            wnvf.formatVersion(version=version, use_v_prefix=False)
-        )
+        calibrationVersionPath: str = statePath + f"{version_pattern(version)}/"
         return calibrationVersionPath
 
     def _constructNormalizationCalibrationDataPath(self, runId: str, version: str):
@@ -363,9 +366,7 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructNormalizationCalibrationStatePath(stateId)
-        normalizationVersionPath: str = statePath + "v_{}/".format(
-            wnvf.formatVersion(version=version, use_v_prefix=False)
-        )
+        normalizationVersionPath: str = statePath + f"{version_pattern(version)}/"
         return normalizationVersionPath
 
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
@@ -395,27 +396,40 @@ class LocalDataService:
         return recordPath
 
     def _extractFileVersion(self, file: str) -> int:
-        return int(file.split("/v_")[-1].split("/")[0])
+        if not isinstance(file, str):
+            return None
+        else:
+            return int(file.split("/v_")[-1].split("/")[0])
+
+    def _extractDirVersion(self, dir: str) -> int:
+        if not isinstance(dir, str):
+            return None
+        return int(dir.split("/")[-2].split("_")[-1])
+
+    def _getLatestThing(
+        self,
+        things: List[Any],
+        otherThings: List[Any] = None,
+    ) -> Union[Any, Tuple[Any, Any]]:
+        """
+        This doesn't need to be its own function,
+        but it represents a common pattern in code
+        """
+        if otherThings == None:
+            return max(things, default=self.VERSION_START)
+        else:
+            return max(zip(things, otherThings), default=(self.VERSION_START, None))
 
     def _getFileOfVersion(self, fileRegex: str, version):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
-        returnFile = None
-        for file in foundFiles:
-            fileVersion = self._extractFileVersion(file)
-            if fileVersion == int(version):
-                returnFile = file
-                break
-        return returnFile
+        fileVersions = [self._extractFileVersion(file) for file in foundFiles]
+        where = fileVersions.index(version)
+        return foundFiles[where]
 
     def _getLatestFile(self, fileRegex: str):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
-        latestVersion = 0
-        latestFile = None
-        for file in foundFiles:
-            version = self._extractFileVersion(file)
-            if version > latestVersion:
-                latestVersion = version
-                latestFile = file
+        fileVersions = [self._extractFileVersion(file) for file in foundFiles]
+        _, latestFile = self._getLatestThing(fileVersions, otherThings=foundFiles)
         return latestFile
 
     def _getLatestCalibrationVersionNumber(self, stateId: str) -> int:
@@ -424,13 +438,9 @@ class LocalDataService:
         """
         calibrationStatePath = self._constructCalibrationStatePath(stateId)
         calibrationVersionPath = f"{calibrationStatePath}v_*/"
-        latestVersion = 0
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
-        for versionDir in versionDirs:
-            version = int(versionDir.split("/")[-2].split("_")[-1])
-            if version > latestVersion:
-                latestVersion = version
-        return latestVersion
+        versions = [self._extractDirVersion(dir) for dir in versionDirs]
+        return self._getLatestThing(versions)
 
     def _getLatestNormalizationCalibrationVersionNumber(self, stateId: str) -> int:
         """
@@ -438,17 +448,13 @@ class LocalDataService:
         """
         normalizationStatePath = self._constructNormalizationCalibrationStatePath(stateId)
         normalizationVersionPath = f"{normalizationStatePath}v_*/"
-        latestVersion = 0
         versionDirs = self._findMatchingDirList(normalizationVersionPath, throws=False)
-        for versionDir in versionDirs:
-            version = int(versionDir.split("/")[-2].split("_")[-1])
-            if version > latestVersion:
-                latestVersion = version
-        return latestVersion
+        versions = [self._extractDirVersion(dir) for dir in versionDirs]
+        return self._getLatestThing(versions)
 
     def readNormalizationRecord(self, runId: str, version: str = None):
         latestFile = ""
-        recordPath: str = self.getNormalizationRecordPath(runId, version if version else "*")
+        recordPath: str = self.getNormalizationRecordPath(runId, version if version is not None else "*")
         if version:
             latestFile = self._getFileOfVersion(recordPath, version)
         else:
@@ -466,12 +472,10 @@ class LocalDataService:
         -- side effect: updates version numbers of incoming `NormalizationRecord` and its nested `Normalization`.
         """
         runNumber = record.runNumber
-        stateId, _ = self._generateStateId(runNumber)
-        previousVersion = self._getLatestNormalizationCalibrationVersionNumber(stateId)
+        # stateId, _ = self._generateStateId(runNumber)
+        # previousVersion = self._getLatestNormalizationCalibrationVersionNumber(stateId)
         if not version:
             version = record.version
-        if not version:
-            version = previousVersion + 1
         recordPath: str = self.getNormalizationRecordPath(runNumber, version)
         record.version = version
 
@@ -527,12 +531,12 @@ class LocalDataService:
         -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
         """
         runNumber = record.runNumber
-        stateId, _ = self._generateStateId(runNumber)
-        previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
+        # stateId, _ = self._generateStateId(runNumber)
+        # previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
         if not version:
             version = record.version
-        if not version:
-            version = previousVersion + 1
+        # if not version:
+        #     version = previousVersion + 1
         recordPath: str = self.getCalibrationRecordPath(runNumber, str(version))
         record.version = version
 
@@ -717,7 +721,7 @@ class LocalDataService:
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, version: str = None):
         # get stateId and check to see if such a folder exists, if not create it and initialize it
-        stateId, _ = self._generateStateId(runId)
+        # stateId, _ = self._generateStateId(runId)
         calibrationStatePath = self._constructCalibrationParametersFilePath(runId, "*")
 
         latestFile = ""
@@ -737,7 +741,7 @@ class LocalDataService:
         return calibrationState
 
     def readNormalizationState(self, runId: str, version: str = None):
-        stateId, _ = self._generateStateId(runId)
+        # stateId, _ = self._generateStateId(runId)
         normalizationStatePathGlob = self._constructNormalizationParametersFilePath(runId, "*")
 
         latestFile = ""
@@ -758,10 +762,10 @@ class LocalDataService:
         Writes a `Calibration` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Calibration`.
         """
-        stateId, _ = self._generateStateId(runId)
-        previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
+        # stateId, _ = self._generateStateId(runId)
+        # previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
         if not version:
-            version = previousVersion + 1
+            version = int(calibration.version)  # previousVersion + 1
 
         # Check for the existence of a calibration parameters file
         calibrationParametersFilePath = self._constructCalibrationParametersFilePath(runId, str(version))
@@ -780,10 +784,8 @@ class LocalDataService:
         Writes a `Normalization` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Normalization`.
         """
-        stateId, _ = self._generateStateId(runId)
-        previousVersion: int = self._getLatestNormalizationCalibrationVersionNumber(stateId)
         if not version:
-            version = previousVersion + 1
+            version = normalization.version
         # check for the existence of a normalization parameters file
         normalizationParametersFilePath = self._constructNormalizationParametersFilePath(runId, str(version))
         if os.path.exists(normalizationParametersFilePath):
