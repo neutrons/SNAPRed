@@ -38,6 +38,9 @@ class PixelGroupingParametersCalculationRecipe:
             MaskWorkspace=groceries.get("MaskWorkspace", ""),
         )
         self.mantidSnapper.executeQueue()
+        # NOTE contradictory issues with Callbacks between GUI and unit tests
+        if hasattr(res, "get"):
+            res = res.get()
 
         data["result"] = True
         pixelGroupingParams = parse_raw_as(List[PixelGroupingParameters], res)

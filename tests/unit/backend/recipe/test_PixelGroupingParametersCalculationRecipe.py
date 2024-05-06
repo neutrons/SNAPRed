@@ -1,5 +1,6 @@
 import json
 import unittest.mock as mock
+from typing import List
 
 import pytest
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
@@ -56,6 +57,27 @@ def test_execute_unsuccessful():
         recipe.executeRecipe(ingredients, groceries)
     assert str(e.value) == "passed"  # noqa: PT017
     assert mockAlgo.call_count == 1
+
+
+@mock.patch("snapred.backend.recipe.PixelGroupingParametersCalculationRecipe.parse_raw_as")
+@mock.patch("snapred.backend.recipe.PixelGroupingParametersCalculationRecipe.BinnedValue")
+def test_resolve_callback(BinnedValue, parse_raw_as):
+    BinnedValue.return_value = "tof"
+    parse_raw_as.return_value = [mock.Mock(dRelativeResolution=1.0)]
+    mockAlgo = mock.Mock(return_value=mock.Mock(get=mock.Mock(return_value="done")))
+
+    recipe = PixelGroupingParametersCalculationRecipe()
+    recipe.mantidSnapper.PixelGroupingParametersCalculationAlgorithm = mockAlgo
+    ingredients = mock.Mock(nBinsAcrossPeakWidth=10)
+    groceries = {
+        "groupingWorkspace": "grouping workspace",
+        "maskWorkspace": "mask workspace",
+    }
+    data = recipe.executeRecipe(ingredients, groceries)
+    assert data["result"]
+    assert data["tof"] == BinnedValue.return_value
+    assert data["parameters"] == parse_raw_as.return_value
+    assert parse_raw_as.called_once_with(List[PixelGroupingParameters], "done")
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

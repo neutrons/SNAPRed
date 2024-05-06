@@ -1,13 +1,15 @@
+# ruff: noqa: F811
 import json
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from mantid.api import mtd
+from mantid.simpleapi import mtd
 
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState, GroupingMap
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
@@ -731,6 +733,19 @@ class GroceryService:
             data["workspace"] = tableWorkspaceName
 
         return data
+
+    def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: str) -> Tuple[WorkspaceName, str]:
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", version)
+        self.mantidSnapper.CalculateDiffCalTable(
+            "Generate the default diffcal table",
+            InputWorkspace=self._fetchInstrumentDonor(runNumber, useLiteMode),
+            CalibrationTable=tableWorkspaceName,
+        )
+        self.mantidSnapper.executeQueue()
+        if self.workspaceDoesExist(tableWorkspaceName):
+            return tableWorkspaceName
+        else:
+            raise RuntimeError(f"Could not create a default diffcal file for run {runNumber}")
 
     def fetchGroceryList(self, groceryList: List[GroceryListItem]) -> List[WorkspaceName]:
         """
