@@ -1102,7 +1102,7 @@ def test_getLatestThing():
     assert ans == VERSION_START
     ans1, ans2 = localDataService._getLatestThing([], otherThings=[])
     assert ans1 == VERSION_START
-    assert ans2 == None
+    assert ans2 is None
 
     # with integers
     result = randint(10, 20)
@@ -1130,7 +1130,7 @@ def test_getLatestThing():
 
 def test__getFileOfVersion():
     expected = randint(10, 20)
-    file_pattern = lambda x: f"/{x}/CalibrationRecord.json"
+    file_pattern = lambda x: f"/{x}/CalibrationRecord.json"  # noqa E731
     someFiles = [file_pattern(version_pattern(i)) for i in range(expected + 1)]
     shuffle(someFiles)
     localDataService = LocalDataService()
@@ -1141,7 +1141,7 @@ def test__getFileOfVersion():
 
 def test__getLatestFile():
     expected = randint(10, 20)
-    file_pattern = lambda x: f"Powder/1234/{x}/CalibrationRecord.json"
+    file_pattern = lambda x: f"Powder/1234/{x}/CalibrationRecord.json"  # noqa E731
     someFiles = [file_pattern(version_pattern(i)) for i in range(expected + 1)]
     shuffle(someFiles)
     localDataService = LocalDataService()
