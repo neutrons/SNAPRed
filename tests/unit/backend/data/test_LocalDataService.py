@@ -1414,6 +1414,7 @@ def test_initializeState():
     actual.creationDate = testCalibrationData.creationDate
 
     assert actual == testCalibrationData
+    assert localDataService._writeDefaultDiffCalTable.called_once_with("123", 1)
 
 
 @mock.patch.object(LocalDataService, "_prepareStateRoot")
