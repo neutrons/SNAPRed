@@ -75,8 +75,6 @@ class LocalDataService:
     instrumentConfig: "InstrumentConfig"
     verifyPaths: bool = True
 
-    # starting version number -- the first run printed
-    VERSION_START = Config["instrument.startingVersionNumber"]
     # conversion factor from microsecond/Angstrom to meters
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
@@ -399,12 +397,6 @@ class LocalDataService:
     def _extractFileVersion(self, file: str) -> int:
         return int(file.split("/v_")[-1].split("/")[0])
 
-    def _getLatest(self, things: List[Any], latestThing = 0) -> Any:
-        for thing in things:
-            if thing > latestThing:
-                latestThing = thing
-        
-
     def _getFileOfVersion(self, fileRegex: str, version):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
         returnFile = None
@@ -417,7 +409,7 @@ class LocalDataService:
 
     def _getLatestFile(self, fileRegex: str):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
-        latestVersion = self.VERSION_START
+        latestVersion = 0
         latestFile = None
         for file in foundFiles:
             version = self._extractFileVersion(file)
@@ -432,7 +424,7 @@ class LocalDataService:
         """
         calibrationStatePath = self._constructCalibrationStatePath(stateId)
         calibrationVersionPath = f"{calibrationStatePath}v_*/"
-        latestVersion = self.VERSION_START
+        latestVersion = 0
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
         for versionDir in versionDirs:
             version = int(versionDir.split("/")[-2].split("_")[-1])
@@ -446,7 +438,7 @@ class LocalDataService:
         """
         normalizationStatePath = self._constructNormalizationCalibrationStatePath(stateId)
         normalizationVersionPath = f"{normalizationStatePath}v_*/"
-        latestVersion = self.VERSION_START
+        latestVersion = 0
         versionDirs = self._findMatchingDirList(normalizationVersionPath, throws=False)
         for versionDir in versionDirs:
             version = int(versionDir.split("/")[-2].split("_")[-1])
@@ -818,13 +810,16 @@ class LocalDataService:
         return detectorState
 
     # TODO remove the default value of useLiteMode and have that specifiable
-    def _writeDefaultDiffCalTable(self, filepath: str, runNumber: str, version: str, useLiteMode: bool = True):
+    def _writeDefaultDiffCalTable(self, runNumber: str, version: str, useLiteMode: bool = True):
         from snapred.backend.data.GroceryService import GroceryService
 
         grocer = GroceryService()
         filename = Path(grocer._createDiffcalTableWorkspaceName("default", version) + ".h5")
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, version, useLiteMode)
-        self.writeDiffCalWorkspaces(filepath, filename, outWS)
+
+        calibrationDataPath = self._constructCalibrationDataPath(runNumber, str(version))
+
+        self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
 
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, name: str = None):
@@ -882,7 +877,7 @@ class LocalDataService:
             self._prepareStateRoot(stateId)
 
         self.writeCalibrationState(runId, calibration)
-        self._writeDefaultDiffCalTable(calibrationDataPath, runId, version)
+        self._writeDefaultDiffCalTable(runId, 1)
 
         return calibration
 

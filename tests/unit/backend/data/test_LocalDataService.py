@@ -23,7 +23,7 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
-from pydantic import parse_raw_as
+from pydantic import BaseModel, parse_raw_as
 from pydantic.error_wrappers import ValidationError
 from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
@@ -765,7 +765,6 @@ def test_readWriteCalibrationRecord_version_numbers():
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
         localDataService._constructCalibrationStateRoot = mock.Mock(return_value=f"{tempdir}/")
-        localDataService._writeDefaultDiffCalTable = mock.Mock()
         # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
         #   and <incoming record>.calibrationFittingIngredients.version.
 
@@ -1096,7 +1095,6 @@ def test__getLatestFile():
     localDataService = LocalDataService()
     localDataService._findMatchingFileList = mock.Mock()
     localDataService._findMatchingFileList.return_value = [
-        "Powder/1234/v_0000/CalibrationRecord.json",
         "Powder/1234/v_0001/CalibrationRecord.json",
         "Powder/1234/v_0002/CalibrationRecord.json",
     ]
@@ -1257,7 +1255,7 @@ def test_writeCalibrationState():
         localDataService._getCurrentCalibrationRecord = mock.Mock(return_value=Calibration.construct({"name": "test"}))
         calibration = Calibration.parse_raw(Resource.read("/inputs/calibration/CalibrationParameters.json"))
         localDataService.writeCalibrationState("123", calibration)
-        assert os.path.exists(tempdir + "/v_0000/CalibrationParameters.json")
+        assert os.path.exists(tempdir + "/v_0001/CalibrationParameters.json")
 
 
 def test_writeCalibrationState_overwrite_warning(caplog):
@@ -1289,6 +1287,7 @@ def test_writeCalibrationState_overwrite_warning(caplog):
 @mock.patch("snapred.backend.data.GroceryService.GroceryService._fetchInstrumentDonor")
 def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorkspaceName):
     runNumber = "default"
+    version = 3
     # mock the grocery service to return the fake instrument to use for geometry
     idfWS = mtd.unique_name(prefix="_idf_")
     LoadEmptyInstrument(
@@ -1297,7 +1296,7 @@ def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorksp
     )
     fetchInstrumentDonor.return_value = idfWS
     # mock the file names to check them later
-    filename = f"diffcal_{runNumber}_0000"
+    filename = f"diffcal_{runNumber}_{wnvf.formatVersion(version, use_v_prefix=False)}"
     createDiffCalTableWorkspaceName.return_value = filename
     # now write the diffcal file
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
@@ -1305,10 +1304,11 @@ def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorksp
         # mock the calibration state path to write to the tempdir
         localDataService._generateStateId = mock.Mock(return_value=("", ""))
         localDataService._constructCalibrationStatePath = mock.Mock(return_value=f"{tempdir}/")
-        calibration = Calibration.construct()
         # run the method and ensure the file has been created in correct location
-        localDataService.writeCalibrationState(runNumber, calibration)
-        assert os.path.exists(tempdir + "/v_0000/" + filename + ".h5")
+        # localDataService.writeCalibrationState(runNumber, calibration)
+        localDataService._writeDefaultDiffCalTable(runNumber, version)
+        assert os.path.exists(tempdir + f"/v_{wnvf.formatVersion(version, use_v_prefix=False)}/" + filename + ".h5")
+        # TODO we could in theory load the file and verify its contents here
 
 
 def test_writeNormalizationState():
