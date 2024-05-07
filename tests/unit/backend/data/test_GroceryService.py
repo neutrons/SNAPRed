@@ -1,5 +1,5 @@
-# ruff: noqa: E722, PT011, PT012
-
+# ruff: noqa: E722, PT011, PT012, F811
+import json
 import os
 import shutil
 import tarfile
@@ -8,8 +8,10 @@ import unittest
 from pathlib import Path
 from typing import Dict, Tuple
 from unittest import mock
+from unittest.mock import ANY
 
 import pytest
+import snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
     CloneWorkspace,
@@ -17,10 +19,10 @@ from mantid.simpleapi import (
     CreateEmptyTableWorkspace,
     CreateGroupingWorkspace,
     CreateLogPropertyTable,
-    CreateSingleValuedWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
     ExtractMask,
+    GenerateTableWorkspaceFromListOfDict,
     LoadEmptyInstrument,
     LoadInstrument,
     LoadParameterFile,
@@ -643,32 +645,26 @@ class TestGroceryService(unittest.TestCase):
 
     ## TEST CLEANUP METHODS
 
-    @mock.patch(ThisService + "AlgorithmManager")
-    def test_deleteWorkspace(self, mockAlgoManager):
-        wsname = "_test_ws"
+    def test_deleteWorkspace(self):
+        wsname = mtd.unique_name(prefix="_test_ws_")
         mockAlgo = mock.Mock()
-        mockAlgoManager.create.return_value = mockAlgo
+        self.instance.mantidSnapper.WashDishes = mockAlgo
+        # wash the dish
         self.instance.deleteWorkspace(wsname)
-        assert mockAlgoManager.called_once_with("WashDishes")
-        assert mockAlgo.setProperty.called_with(wsname)
-        assert mockAlgo.execute.called_once
+        assert mockAlgo.called_once_with(ANY, Workspace=wsname)
 
-    @mock.patch(ThisService + "AlgorithmManager")
-    def test_deleteWorkspaceUnconditional(self, mockAlgoManager):
-        wsname = "_test_ws"
+    def test_deleteWorkspaceUnconditional(self):
+        wsname = mtd.unique_name(prefix="_test_ws_")
         mockAlgo = mock.Mock()
-        mockAlgoManager.create.return_value = mockAlgo
+        self.instance.mantidSnapper.DeleteWorkspace = mockAlgo
         # if the workspace does not exist, then don't do anything
         self.instance.deleteWorkspaceUnconditional(wsname)
-        assert mockAlgoManager.not_called
-        assert mockAlgo.execute.not_called
+        assert mockAlgo.not_called
         # make the workspace
         self.create_dumb_workspace(wsname)
         # if the workspace does exist, then delete it
         self.instance.deleteWorkspaceUnconditional(wsname)
-        assert mockAlgoManager.called_once_with("DeleteWorkspace")
-        assert mockAlgo.setProperty.called_with(wsname)
-        assert mockAlgo.execute.called_once
+        assert mockAlgo.called_once_with(ANY, Workspace=wsname)
 
     ## TEST FETCH METHODS
 
@@ -1481,6 +1477,69 @@ class TestGroceryService(unittest.TestCase):
             "OtherWorkspace": otherWorkspace,
         }
         assert mockFetchList.called_once_with(groceryDict["InputWorkspace"], groceryDict["GroupingWorkspace"])
+
+    def test_fetch_default_diffcal_table(self):
+        """
+        Use the test instrument to create a default DIFC table from the method.
+        Compare to known values, found independently in mantid workbench.
+        """
+        runNumber = "123"
+        useLiteMode = True
+        testVersion = "test"
+
+        ## Create the reference table
+        refTable = mtd.unique_name(prefix="_table_")
+        # these values found from mantid workbench, CalculateDIFC with test instrument
+        known_difc = [
+            2434.197617645125,
+            1561.1814075314217,
+            2741.860927442078,
+            2058.4132086720383,
+            2741.860927442078,
+            2434.197617645125,
+            2058.4132086720383,
+            1561.1814075314217,
+            1561.1814075314217,
+            2058.4132086720383,
+            2434.197617645125,
+            2741.860927442078,
+            2058.4132086720383,
+            1561.1814075314217,
+            2741.860927442078,
+            2434.197617645125,
+        ]
+        known_list_of_dict = [
+            {"detid": int(i), "difc": known_difc[i], "difa": 0.0, "tzero": 0.0} for i in range(len(known_difc))
+        ]
+        GenerateTableWorkspaceFromListOfDict(
+            OutputWorkspace=refTable,
+            ListOfDict=json.dumps(known_list_of_dict),
+        )
+
+        ## Create the default diffcal table
+        idfWS = mtd.unique_name(prefix="_idf_")
+        LoadEmptyInstrument(
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+            OutputWorkspace=idfWS,
+        )
+        self.instance._fetchInstrumentDonor = mock.Mock(return_value=idfWS)
+        ws = self.instance.fetchDefaultDiffCalTable(runNumber, useLiteMode, testVersion)
+
+        # make sure the correct workspace name is generated
+        assert ws == self.instance._createDiffcalTableWorkspaceName("default", testVersion)
+        ## Compare the two diffcal tables to ensure equality
+        table1 = mtd[ws]
+        table2 = mtd[refTable]
+        assert table1.rowCount() == table2.rowCount()
+        for i in range(table1.rowCount()):
+            print(list(table1.row(i).values()), list(table2.row(i).values()))
+            assert list(table1.row(i).values()) == list(table2.row(i).values())
+
+        ## Ensure graceful failure if the workspace is not created
+        self.instance.workspaceDoesExist = mock.Mock(return_value=False)
+        with pytest.raises(RuntimeError) as e:
+            self.instance.fetchDefaultDiffCalTable(runNumber, useLiteMode, testVersion)
+        assert runNumber in str(e)
 
     @mock.patch("snapred.backend.service.LiteDataService.LiteDataService")
     def test_make_lite(self, mockLDS):

@@ -1,18 +1,18 @@
+# ruff: noqa: F811
 import json
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from mantid.api import AlgorithmManager, mtd
+from mantid.simpleapi import mtd
 
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState, GroupingMap
-from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
-
-# from snapred.backend.recipe.algorithm.ReadWorkspaceMetadata import ReadWorkspaceMetadata
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
@@ -49,6 +49,7 @@ class GroceryService:
         self._loadedInstruments: Dict[Tuple[str, bool], str] = {}
 
         self.grocer = FetchGroceriesRecipe()
+        self.mantidSnapper = MantidSnapper(None, "Utensils")
 
     def _defaultClass(self, val, clazz):
         if val is None:
@@ -273,10 +274,12 @@ class GroceryService:
         :param newName: the name to replace the workspace name in the ADS
         :type newName: WorkspaceName
         """
-        renameAlgo = AlgorithmManager.create("RenameWorkspace")
-        renameAlgo.setProperty("InputWorkspace", oldName)
-        renameAlgo.setProperty("OutputWorkspace", newName)
-        renameAlgo.execute()
+        self.mantidSnapper.RenameWorkspace(
+            f"Renaming {oldName} to {newName}",
+            InputWorkspace=oldName,
+            OutputWorkspace=newName,
+        )
+        self.mantidSnapper.executeQueue()
 
     def getWorkspaceForName(self, name: WorkspaceName):
         """
@@ -395,10 +398,12 @@ class GroceryService:
                     if useLiteMode
                     else Config["instrument.native.definition.file"]
                 )
-                loadEmptyInstrument = AlgorithmManager.create("LoadEmptyInstrument")
-                loadEmptyInstrument.setProperty("Filename", instrumentFilename)
-                loadEmptyInstrument.setProperty("OutputWorkspace", wsName)
-                loadEmptyInstrument.execute()
+                self.mantidSnapper.LoadEmptyInstrument(
+                    f"Loading instrument at {instrumentFilename} to {wsName}",
+                    Filename=instrumentFilename,
+                    OutputWorkspace=wsName,
+                )
+                self.mantidSnapper.executeQueue()
 
                 # Initialize the instrument parameters
                 # (Reserved run-numbers will use the unmodified instrument.)
@@ -435,14 +440,16 @@ class GroceryService:
         logsAdded = 0
         for paramName in ("arc", "lin"):
             for index in range(2):
-                addSampleLog = AlgorithmManager.create("AddSampleLog")
-                addSampleLog.setProperty("Workspace", wsName)
-                addSampleLog.setProperty("LogName", "det_" + paramName + str(index + 1))
-                addSampleLog.setProperty("LogText", str(getattr(detectorState, paramName)[index]))
-                addSampleLog.setProperty("LogType", "Number Series")
-                addSampleLog.setProperty("UpdateInstrumentParameters", (logsAdded >= 3))
-                addSampleLog.execute()
+                self.mantidSnapper.AddSampleLog(
+                    f"Updating parameter {paramName}{str(index + 1)}",
+                    Workspace=wsName,
+                    LogName=f"det_{paramName}{str(index + 1)}",
+                    LogText=str(getattr(detectorState, paramName)[index]),
+                    LogType="Number Series",
+                    UpdateInstrumentParameters=(logsAdded >= 3),
+                )
                 logsAdded += 1
+        self.mantidSnapper.executeQueue()
 
     def _getDetectorState(self, runNumber: str) -> DetectorState:
         """
@@ -727,6 +734,19 @@ class GroceryService:
 
         return data
 
+    def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: str) -> Tuple[WorkspaceName, str]:
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", version)
+        self.mantidSnapper.CalculateDiffCalTable(
+            "Generate the default diffcal table",
+            InputWorkspace=self._fetchInstrumentDonor(runNumber, useLiteMode),
+            CalibrationTable=tableWorkspaceName,
+        )
+        self.mantidSnapper.executeQueue()
+        if self.workspaceDoesExist(tableWorkspaceName):
+            return tableWorkspaceName
+        else:
+            raise RuntimeError(f"Could not create a default diffcal file for run {runNumber}")
+
     def fetchGroceryList(self, groceryList: List[GroceryListItem]) -> List[WorkspaceName]:
         """
         :param groceryList: a list of GroceryListItems indicating the workspaces to create
@@ -833,9 +853,11 @@ class GroceryService:
         :param name: the name of the workspace in the ADS to be deleted.
         :type name: WorkspaceName
         """
-        deleteAlgo = AlgorithmManager.create("WashDishes")
-        deleteAlgo.setProperty("Workspace", name)
-        deleteAlgo.execute()
+        self.mantidSnapper.WashDishes(
+            f"Washing dish {name}",
+            Workspace=name,
+        )
+        self.mantidSnapper.executeQueue()
 
     # TODO: move `deleteWorkspace` methods to `DataExportService` via `LocalDataService`
     def deleteWorkspaceUnconditional(self, name: WorkspaceName):
@@ -847,9 +869,11 @@ class GroceryService:
         :type name: WorkspaceName
         """
         if self.workspaceDoesExist(name):
-            deleteAlgo = AlgorithmManager.create("DeleteWorkspace")
-            deleteAlgo.setProperty("Workspace", name)
-            deleteAlgo.execute()
+            self.mantidSnapper.DeleteWorkspace(
+                f"Deleting workspace {name}",
+                Workspace=name,
+            )
+            self.mantidSnapper.executeQueue()
         else:
             pass
 

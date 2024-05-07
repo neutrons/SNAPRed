@@ -23,7 +23,7 @@ from mantid.simpleapi import (
     LoadInstrument,
     mtd,
 )
-from pydantic import parse_raw_as
+from pydantic import BaseModel, parse_raw_as
 from pydantic.error_wrappers import ValidationError
 from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
@@ -765,12 +765,8 @@ def test_readWriteCalibrationRecord_version_numbers():
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
-        localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStateRoot = mock.Mock()
-        localDataService._constructCalibrationStateRoot.return_value = f"{tempdir}/"
-        localDataService.groceryService = mock.Mock()
+        localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
+        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=f"{tempdir}/")
         # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
         #   and <incoming record>.calibrationFittingIngredients.version.
 
@@ -798,12 +794,8 @@ def test_readWriteCalibrationRecord_specified_version():
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
-        localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStateRoot = mock.Mock()
-        localDataService._constructCalibrationStateRoot.return_value = f"{tempdir}/"
-        localDataService.groceryService = mock.Mock()
+        localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
+        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=f"{tempdir}/")
         # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
         #   and <incoming record>.calibrationFittingIngredients.version.
 
@@ -824,12 +816,8 @@ def test_readWriteCalibrationRecord_with_version():
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
-        localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("123", "456")
-        localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStateRoot = mock.Mock()
-        localDataService._constructCalibrationStateRoot.return_value = f"{tempdir}/"
-        localDataService.groceryService = mock.Mock()
+        localDataService._generateStateId = mock.Mock(return_value=("123", "456"))
+        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=f"{tempdir}/")
         localDataService.writeCalibrationRecord(
             CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
         )
@@ -845,12 +833,8 @@ def test_readWriteCalibrationRecord():
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
-        localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructCalibrationStateRoot = mock.Mock()
-        localDataService._constructCalibrationStateRoot.return_value = f"{tempdir}/"
-        localDataService.groceryService = mock.Mock()
+        localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
+        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=f"{tempdir}/")
         localDataService.writeCalibrationRecord(testCalibrationRecord)
         actualRecord = localDataService.readCalibrationRecord("57514")
     assert actualRecord.runNumber == "57514"
@@ -973,10 +957,8 @@ def test_readWriteNormalizationRecord_version_numbers():
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._readReductionParameters = mock.Mock()
         localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
         localDataService._constructNormalizationCalibrationStatePath.return_value = f"{tempdir}/"
-        localDataService.groceryService = mock.Mock()
         # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
         # and <incoming record>.normalization.version.
 
@@ -1005,10 +987,8 @@ def test_readWriteNormalizationRecord_specified_version():
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._readReductionParameters = mock.Mock()
         localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
         localDataService._constructNormalizationCalibrationStatePath.return_value = f"{tempdir}/"
-        localDataService.groceryService = mock.Mock()
         # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
         # and <incoming record>.normalization.version.
 
@@ -1033,12 +1013,8 @@ def test_readWriteNormalizationRecord():
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
-        localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._readReductionParameters = mock.Mock()
-        localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
-        localDataService._constructNormalizationCalibrationStatePath.return_value = f"{tempdir}/"
-        localDataService.groceryService = mock.Mock()
+        localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
+        localDataService._constructNormalizationCalibrationStatePath = mock.Mock(return_value=f"{tempdir}/")
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord("57514")
     assert actualRecord.runNumber == "57514"
@@ -1276,12 +1252,9 @@ def test_readNormalizationState():
 def test_writeCalibrationState():
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
-        localDataService._generateStateId = mock.Mock()
-        localDataService._generateStateId.return_value = ("123", "456")
-        localDataService._constructCalibrationStatePath = mock.Mock()
-        localDataService._constructCalibrationStatePath.return_value = f"{tempdir}/"
-        localDataService._getCurrentCalibrationRecord = mock.Mock()
-        localDataService._getCurrentCalibrationRecord.return_value = Calibration.construct({"name": "test"})
+        localDataService._generateStateId = mock.Mock(return_value=("123", "456"))
+        localDataService._constructCalibrationStatePath = mock.Mock(return_value=f"{tempdir}/")
+        localDataService._getCurrentCalibrationRecord = mock.Mock(return_value=Calibration.construct({"name": "test"}))
         calibration = Calibration.parse_raw(Resource.read("/inputs/calibration/CalibrationParameters.json"))
         localDataService.writeCalibrationState("123", calibration)
         assert os.path.exists(tempdir + "/v_0001/CalibrationParameters.json")
@@ -1298,12 +1271,9 @@ def test_writeCalibrationState_overwrite_warning(caplog):
             write_model_pretty(calibration, calibrationParametersFilePath)
 
             localDataService = LocalDataService()
-            localDataService._generateStateId = mock.Mock()
-            localDataService._generateStateId.return_value = ("123", "456")
-            localDataService._constructCalibrationStatePath = mock.Mock()
-            localDataService._constructCalibrationStatePath.return_value = f"{tmpDir}/"
-            localDataService._getCurrentCalibrationRecord = mock.Mock()
-            localDataService._getCurrentCalibrationRecord.return_value = Calibration.construct({"name": "test"})
+            localDataService._generateStateId = mock.Mock(return_value=("123", "456"))
+            localDataService._constructCalibrationStatePath = mock.Mock(return_value=f"{tmpDir}/")
+            localDataService._getCurrentCalibrationRecord = mock.Mock(Calibration.construct({"name": "test"}))
 
             # Force the output path: otherwise it will be written to "v_2".
             localDataService._constructCalibrationParametersFilePath = mock.Mock()
@@ -1313,6 +1283,34 @@ def test_writeCalibrationState_overwrite_warning(caplog):
             localDataService.writeCalibrationState("123", calibration)
             assert os.path.exists(calibrationParametersFilePath)
         assert f"overwriting calibration parameters at {calibrationParametersFilePath}" in caplog.text
+
+
+@mock.patch("snapred.backend.data.GroceryService.GroceryService._createDiffcalTableWorkspaceName")
+@mock.patch("snapred.backend.data.GroceryService.GroceryService._fetchInstrumentDonor")
+def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorkspaceName):
+    runNumber = "default"
+    version = 3
+    # mock the grocery service to return the fake instrument to use for geometry
+    idfWS = mtd.unique_name(prefix="_idf_")
+    LoadEmptyInstrument(
+        Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+        OutputWorkspace=idfWS,
+    )
+    fetchInstrumentDonor.return_value = idfWS
+    # mock the file names to check them later
+    filename = f"diffcal_{runNumber}_{wnvf.formatVersion(version, use_v_prefix=False)}"
+    createDiffCalTableWorkspaceName.return_value = filename
+    # now write the diffcal file
+    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
+        localDataService = LocalDataService()
+        # mock the calibration state path to write to the tempdir
+        localDataService._generateStateId = mock.Mock(return_value=("", ""))
+        localDataService._constructCalibrationStatePath = mock.Mock(return_value=f"{tempdir}/")
+        # run the method and ensure the file has been created in correct location
+        # localDataService.writeCalibrationState(runNumber, calibration)
+        localDataService._writeDefaultDiffCalTable(runNumber, version)
+        assert os.path.exists(tempdir + f"/v_{wnvf.formatVersion(version, use_v_prefix=False)}/" + filename + ".h5")
+        # TODO we could in theory load the file and verify its contents here
 
 
 def test_writeNormalizationState():
@@ -1406,6 +1404,7 @@ def test_initializeState():
         [2.0],
     ]
     localDataService._readPVFile.return_value = pvFileMock
+    localDataService._writeDefaultDiffCalTable = mock.Mock()
 
     testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
 
@@ -1417,6 +1416,7 @@ def test_initializeState():
     actual.creationDate = testCalibrationData.creationDate
 
     assert actual == testCalibrationData
+    assert localDataService._writeDefaultDiffCalTable.called_once_with("123", 1)
 
 
 @mock.patch.object(LocalDataService, "_prepareStateRoot")
@@ -1447,6 +1447,7 @@ def test_initializeState_calls_prepareStateRoot(mockPrepareStateRoot):
         [2.0],
     ]
     localDataService._readPVFile.return_value = pvFileMock
+    localDataService._writeDefaultDiffCalTable = mock.Mock()
 
     testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
 
