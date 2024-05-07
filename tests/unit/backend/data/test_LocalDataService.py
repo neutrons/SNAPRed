@@ -755,6 +755,7 @@ def readReductionIngredientsFromFile():
         return ReductionIngredients.parse_raw(f.read())
 
 
+##
 def test_readWriteCalibrationRecord_version_numbers():
     testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
@@ -784,6 +785,7 @@ def test_readWriteCalibrationRecord_version_numbers():
     assert actualRecord == testCalibrationRecord_v0002
 
 
+##
 def test_readWriteCalibrationRecord_specified_version():
     testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
@@ -962,27 +964,30 @@ def test_readWriteNormalizationRecord_version_numbers():
         # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
         # and <incoming record>.normalization.version.
 
-        # write: version == VERSION_START
-        localDataService.writeNormalizationRecord(testNormalizationRecord)
-        actualRecord = localDataService.readNormalizationRecord("57514")
-        assert actualRecord.version == VERSION_START
-        assert actualRecord.calibration.version == VERSION_START
         # write: version == VERSION_START + 1
-        testNormalizationRecord.version = VERSION_START + 1
+        testVersion = VERSION_START + 1
+        testNormalizationRecord.version = testVersion
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord("57514")
-        assert actualRecord.version == VERSION_START + 1
-        assert actualRecord.calibration.version == VERSION_START + 1
+        assert actualRecord.version == testVersion
+        assert actualRecord.calibration.version == testVersion
+        # write: version == VERSION_START + 2
+        testVersion = VERSION_START + 2
+        localDataService.writeNormalizationRecord(testNormalizationRecord)
+        actualRecord = localDataService.readNormalizationRecord("57514")
+        assert actualRecord.version == testVersion
+        assert actualRecord.calibration.version == testVersion
     assert actualRecord.runNumber == "57514"
     assert actualRecord == testNormalizationRecord
 
 
 def test_readWriteNormalizationRecord_specified_version():
     runNumber = "57514"
-    testVersion = VERSION_START + 3
+
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
+    testNormalizationRecord.version = VERSION_START
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
@@ -994,24 +999,25 @@ def test_readWriteNormalizationRecord_specified_version():
         # and <incoming record>.normalization.version.
 
         # write: version == VERSION_START
-        testNormalizationRecord.version = VERSION_START
+        firstVersion = VERSION_START + 1
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord(runNumber)
-        assert actualRecord.version == VERSION_START
-        assert actualRecord.calibration.version == VERSION_START
-        assert os.path.exists(f"{tempdir}/{version_pattern(VERSION_START)}/NormalizationRecord.json")
+        assert actualRecord.version == firstVersion
+        assert actualRecord.calibration.version == firstVersion
+        assert os.path.exists(f"{tempdir}/{version_pattern(firstVersion)}/NormalizationRecord.json")
         # write: version == testVersion
+        testVersion = VERSION_START + 3
         testNormalizationRecord.version = testVersion
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord(runNumber)
         assert actualRecord.version == testVersion
         actualRecord = localDataService.readNormalizationRecord(runNumber, testVersion)
         assert actualRecord.version == testVersion
-        assert os.path.exists(f"{tempdir}/{version_pattern(VERSION_START)}/NormalizationRecord.json")
+        assert os.path.exists(f"{tempdir}/{version_pattern(firstVersion)}/NormalizationRecord.json")
         assert os.path.exists(f"{tempdir}/{version_pattern(testVersion)}/NormalizationRecord.json")
         # test can still read earlier version
-        actualRecord = localDataService.readNormalizationRecord(runNumber, VERSION_START)
-        assert actualRecord.version == VERSION_START
+        actualRecord = localDataService.readNormalizationRecord(runNumber, firstVersion)
+        assert actualRecord.version == firstVersion
 
 
 def test_readWriteNormalizationRecord():
@@ -1352,7 +1358,7 @@ def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorksp
         # run the method and ensure the file has been created in correct location
         # localDataService.writeCalibrationState(runNumber, calibration)
         localDataService._writeDefaultDiffCalTable(runNumber, version)
-        assert os.path.exists(tempdir + f"/v_{wnvf.formatVersion(version, use_v_prefix=False)}/" + filename + ".h5")
+        assert os.path.exists(tempdir + f"/{version_pattern(version)}/" + filename + ".h5")
         # TODO we could in theory load the file and verify its contents here
 
 
@@ -1368,7 +1374,7 @@ def test_writeNormalizationState():
         with Resource.open("/inputs/normalization/NormalizationParameters.json", "r") as f:
             normalization = Normalization.parse_raw(f.read())
         localDataService.writeNormalizationState("123", normalization)
-        assert os.path.exists(tempdir + f"/{version_pattern(VERSION_START)}/NormalizationParameters.json")
+        assert os.path.exists(tempdir + f"/{version_pattern(VERSION_START + 1)}/NormalizationParameters.json")
 
 
 def test_readDetectorState():
@@ -1459,7 +1465,7 @@ def test_initializeState():
     actual.creationDate = testCalibrationData.creationDate
 
     assert actual == testCalibrationData
-    assert localDataService._writeDefaultDiffCalTable.called_once_with("123", 1)
+    assert localDataService._writeDefaultDiffCalTable.called_once_with("123", VERSION_START)
 
 
 @mock.patch.object(LocalDataService, "_prepareStateRoot")

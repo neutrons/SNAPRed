@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from snapred.backend.dao.state import InstrumentState
+from snapred.meta.Config import Config
 
 
 class Normalization(BaseModel):
@@ -19,4 +20,4 @@ class Normalization(BaseModel):
     seedRun: int
     creationDate: datetime
     name: str
-    version: int = 0
+    version: int = Config["instrument.startingVersionNumber"]

@@ -440,6 +440,7 @@ class LocalDataService:
         calibrationVersionPath = f"{calibrationStatePath}v_*/"
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
         versions = [self._extractDirVersion(dire) for dire in versionDirs]
+        print(f"GETTING LATEST VERSIONS {versions}")
         return self._getLatestThing(versions)
 
     def _getLatestNormalizationCalibrationVersionNumber(self, stateId: str) -> int:
@@ -472,10 +473,10 @@ class LocalDataService:
         -- side effect: updates version numbers of incoming `NormalizationRecord` and its nested `Normalization`.
         """
         runNumber = record.runNumber
-        # stateId, _ = self._generateStateId(runNumber)
-        # previousVersion = self._getLatestNormalizationCalibrationVersionNumber(stateId)
-        if not version:
-            version = record.version
+        stateId, _ = self._generateStateId(runNumber)
+        previousVersion = self._getLatestNormalizationCalibrationVersionNumber(stateId)
+        if version is None:
+            version = max(record.version, previousVersion+1)
         recordPath: str = self.getNormalizationRecordPath(runNumber, version)
         record.version = version
 
@@ -531,12 +532,11 @@ class LocalDataService:
         -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
         """
         runNumber = record.runNumber
-        # stateId, _ = self._generateStateId(runNumber)
-        # previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
-        if not version:
-            version = record.version
-        # if not version:
-        #     version = previousVersion + 1
+        stateId, _ = self._generateStateId(runNumber)
+        previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
+        print(f"VERSIONS TO CONSIDER: {version}, {previousVersion}, {record.version}")
+        if version is None:
+            version = max(record.version, previousVersion+1)
         recordPath: str = self.getCalibrationRecordPath(runNumber, str(version))
         record.version = version
 
@@ -762,10 +762,10 @@ class LocalDataService:
         Writes a `Calibration` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Calibration`.
         """
-        # stateId, _ = self._generateStateId(runId)
-        # previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
-        if not version:
-            version = int(calibration.version)  # previousVersion + 1
+        stateId, _ = self._generateStateId(runId)
+        previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
+        if version is None:
+            version = max(calibration.version, previousVersion+1)
 
         # Check for the existence of a calibration parameters file
         calibrationParametersFilePath = self._constructCalibrationParametersFilePath(runId, str(version))
@@ -784,13 +784,15 @@ class LocalDataService:
         Writes a `Normalization` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Normalization`.
         """
-        if not version:
-            version = normalization.version
+        stateId, _ = self._generateStateId(runId)
+        previousVersion: int = self._getLatestNormalizationCalibrationVersionNumber(stateId)
+        if version is None:
+            version = max(normalization.version, previousVersion+1)
         # check for the existence of a normalization parameters file
         normalizationParametersFilePath = self._constructNormalizationParametersFilePath(runId, str(version))
         if os.path.exists(normalizationParametersFilePath):
             logger.warning(f"overwriting normalization parameters at {normalizationParametersFilePath}")
-        normalization.version = version
+        normalization.version = int(version)
         normalizationDataPath = self._constructNormalizationCalibrationDataPath(runId, str(version))
         if not os.path.exists(normalizationDataPath):
             os.makedirs(normalizationDataPath)
@@ -868,7 +870,7 @@ class LocalDataService:
             name=name,
             seedRun=runId,
             creationDate=datetime.datetime.now(),
-            version=0,
+            version=self.VERSION_START,
         )
 
         # Make sure that the state root directory has been initialized:
@@ -878,8 +880,8 @@ class LocalDataService:
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
             self._prepareStateRoot(stateId)
 
-        self.writeCalibrationState(runId, calibration)
-        self._writeDefaultDiffCalTable(runId, 1)
+        self.writeCalibrationState(runId, calibration, self.VERSION_START)
+        self._writeDefaultDiffCalTable(runId, self.VERSION_START)
 
         return calibration
 

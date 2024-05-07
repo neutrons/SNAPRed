@@ -3,6 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.meta.Config import Config
 
 
 class NormalizationRecord(BaseModel):
@@ -21,5 +22,5 @@ class NormalizationRecord(BaseModel):
     smoothingParameter: float
     calibration: Calibration
     workspaceNames: List[str] = []
-    version: Optional[int]
+    version: int = Config["instrument.startingVersionNumber"]
     dMin: float
