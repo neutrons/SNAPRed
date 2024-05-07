@@ -67,4 +67,3 @@ def test_saveLoad():
         compareRaggedWorkspaces(mtd["raw"], mtd["reheated"])
         DeleteWorkspace("raw")
         DeleteWorkspace("reheated")
-    # CompareWorkspaces(Workspace1="raw", Workspace2="reheated") Doesnt work with ragged!
