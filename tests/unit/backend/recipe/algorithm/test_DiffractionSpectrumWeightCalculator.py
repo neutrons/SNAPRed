@@ -6,6 +6,7 @@ import pytest
 from snapred.backend.dao import GroupPeakList
 from snapred.meta.redantic import list_to_raw
 from util.diffraction_calibration_synthetic_data import SyntheticData
+from util.helpers import workspacesEqual
 
 with mock.patch.dict(
     "sys.modules",
@@ -15,7 +16,6 @@ with mock.patch.dict(
     },
 ):
     from mantid.simpleapi import (
-        CompareWorkspaces,
         DeleteWorkspace,
         LoadNexusProcessed,
         mtd,
@@ -82,8 +82,9 @@ with mock.patch.dict(
             OutputWorkspace=ref_weight_ws_name,
         )
         # TODO FIX THIS TEST
-        assert CompareWorkspaces(
+        assert workspacesEqual(
             Workspace1=weight_ws_name,
             Workspace2=ref_weight_ws_name,
             CheckInstrument=False,
+            BAD=True,
         )

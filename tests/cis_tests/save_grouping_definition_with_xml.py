@@ -1,5 +1,6 @@
 # import mantid algorithms, numpy and matplotlib
 from mantid.simpleapi import *
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
@@ -60,10 +61,10 @@ assert loadingAlgo.execute()
 end = time.time()
 loads["XML and FILE"] = (end - start)
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = grwsXML,
     Workspace2 = reload,
-).Result
+)
 
 # load the data directly from the XML with instrument donor
 reload = "from xml and donor"
@@ -77,10 +78,10 @@ assert loadingAlgo.execute()
 end = time.time()
 loads["XML and DONOR"] = (end - start)
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = grwsXML,
     Workspace2 = reload,
-).Result
+)
 
 ###### TESTS OF SAVE #######################################
 
@@ -105,10 +106,10 @@ assert loadingAlgo.execute()
 end = time.time()
 loads["HDF and NAME"] = (end - start)
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = grwsHDF,
     Workspace2 = grwsXML,
-).Result
+)
 
 ###### save/load with XML file and instrument file
 savingAlgo = SavingAlgo()
@@ -131,10 +132,10 @@ assert loadingAlgo.execute()
 end = time.time()
 loads["HDF and FILE"] = (end - start)
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = grwsXML,
     Workspace2 = grwsHDF,
-).Result
+)
 
 ###### save/load with XML file and instrument donor
 result = "xml_and_instrument_donor"
@@ -159,10 +160,10 @@ assert loadingAlgo.execute()
 end = time.time()
 loads["HDF and DONOR"] = (end - start)
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = grwsXML,
     Workspace2 = grwsHDF,
-).Result
+)
 
 ###### save with HDF file and instrument name
 groupingFileHDF2 = localDir + pathlib.Path(groupingFileXML).stem + "2.hdf"

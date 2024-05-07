@@ -6,7 +6,6 @@ from typing import Dict, Tuple
 
 import pytest
 from mantid.simpleapi import (
-    CompareWorkspaces,
     DeleteWorkspace,
     LoadDetectorsGroupingFile,
     LoadDiffCal,
@@ -18,6 +17,7 @@ from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition as LoadingAlgo
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Resource
+from util.helpers import workspacesEqual
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
@@ -328,7 +328,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
         # TODO THIS IS BAD
-        assert CompareWorkspaces(outputWorkspace, self.localReferenceWorkspace)
+        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace, BAD=True)
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
@@ -352,7 +352,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
         # TODO THIS LINE IS BAD
-        assert CompareWorkspaces(outputWorkspace, self.localReferenceWorkspace)
+        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace, BAD=True)
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
