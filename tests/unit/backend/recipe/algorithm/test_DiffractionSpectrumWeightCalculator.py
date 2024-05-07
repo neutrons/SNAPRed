@@ -49,6 +49,7 @@ with mock.patch.dict(
         yield
         teardown()
 
+    @pytest.mark.xfail(strict=True)
     def test_with_predicted_peaks():
         """Test the weight calculator given predicted peaks"""
         inputWorkspaceFile = "/inputs/strip_peaks/DSP_58882_cal_CC_Column_spectra.nxs"
@@ -81,10 +82,9 @@ with mock.patch.dict(
             Filename=Resource.getPath(referenceWeightFile),
             OutputWorkspace=ref_weight_ws_name,
         )
-        # TODO FIX THIS TEST
+        # TODO FIX THIS TEST -- EWM 5043
         assert workspacesEqual(
             Workspace1=weight_ws_name,
             Workspace2=ref_weight_ws_name,
             CheckInstrument=False,
-            BAD=True,
         )

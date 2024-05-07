@@ -182,7 +182,7 @@ def deleteWorkspaceNoThrow(wsName: str):
         pass
 
 
-def workspacesEqual(Workspace1: str, Workspace2: str, BAD: bool = False, **other_options):
+def workspacesEqual(Workspace1: str, Workspace2: str, **other_options):
     """
     Meant to be called as
     ``` python
@@ -196,9 +196,7 @@ def workspacesEqual(Workspace1: str, Workspace2: str, BAD: bool = False, **other
     Otherwise, will raise an assertion error containing the result of CompareWorkspaces in description
     """
     equal = False
-    if BAD:
-        equal = True
-    elif other_options == {}:
+    if other_options == {}:
         assert_wksp_almost_equal(Workspace1, Workspace2)
         equal = True
     else:

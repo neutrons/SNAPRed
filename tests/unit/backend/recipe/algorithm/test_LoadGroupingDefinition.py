@@ -312,52 +312,15 @@ class TestLoadGroupingDefinition(unittest.TestCase):
     #     self.do_test_load_with_instrument_name("xml")
 
     # test hdf
+    # TODO THIS IS BAD -- EWM 5043
+    @pytest.mark.xfail(strict=True)
     def test_load_from_hdf_file_with_instrument_donor(self):
-        # self.do_test_load_with_instrument_donor("hdf")
-        # TODO replace the entirety of the below with the above line
-        # cannot do until the workspaces are fixed
-        # may need to pass arguments to ignore instruments
-        ext = "hdf"
-        outputWorkspace = f"test_{ext}"
-        loadingAlgo = LoadingAlgo()
-        loadingAlgo.initialize()
-        loadingAlgo.mantidSnapper.cleanup = mock.Mock()
-        loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile[ext])
-        loadingAlgo.setProperty("InstrumentDonor", self.localIDFWorkspace)
-        loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
-        assert loadingAlgo.execute()
-        assert mtd.doesExist(outputWorkspace)
-        # TODO THIS IS BAD
-        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace, BAD=True)
-        # check the function calls made
-        calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
-        # check used correct cals
-        correctCalls = self.callsForExtension[ext]
-        for call in correctCalls:
-            assert call in calls
+        self.do_test_load_with_instrument_donor("hdf")
 
+    # TODO THIS IS BAD -- EWM 5043
+    @pytest.mark.xfail(strict=True)
     def test_load_from_hdf_file_with_instrument_file(self):
-        # self.do_test_load_with_instrument_file("hdf")
-        # TODO replace the entirety of the below with the above line
-        # cannot do until the workspaces are fixed
-        # may need to pass arguments to ignore instruments
-        ext = "hdf"
-        outputWorkspace = f"text_{ext}"
-        loadingAlgo = LoadingAlgo()
-        loadingAlgo.initialize()
-        loadingAlgo.mantidSnapper.cleanup = mock.Mock()
-        loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile[ext])
-        loadingAlgo.setProperty("InstrumentFilename", self.localInstrumentFilename)
-        loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
-        assert loadingAlgo.execute()
-        assert mtd.doesExist(outputWorkspace)
-        # TODO THIS LINE IS BAD
-        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace, BAD=True)
-        # check the function calls made
-        calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
-        # check used correct cals
-        for call in self.callsForExtension[ext]:
-            assert call in calls
+        self.do_test_load_with_instrument_file("hdf")
 
     # NOTE commented out because slow
     # def test_load_from_hdf_file_with_instrument_name(self):
