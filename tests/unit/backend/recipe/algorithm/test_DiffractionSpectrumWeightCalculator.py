@@ -49,7 +49,7 @@ with mock.patch.dict(
         yield
         teardown()
 
-    @pytest.mark.xfail(reason="The workspace comparison of this test will fail", strict=True)
+    @pytest.mark.xfail(reason="To be fixed in EWM5043", strict=True)
     def test_with_predicted_peaks():
         """Test the weight calculator given predicted peaks"""
         inputWorkspaceFile = "/inputs/strip_peaks/DSP_58882_cal_CC_Column_spectra.nxs"
