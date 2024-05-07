@@ -230,7 +230,7 @@ def workspacesNotEqual(Workspace1: str, Workspace2: str, **other_options):
     )
     if equal:
         raise AssertionError(f"Workspaces {Workspace1} and {Workspace2} incorrectly evaluated as equal")
-    return equal
+    return not equal
 
 
 def nameOfRunningTestMethod(testCaseInstance: unittest.TestCase):
