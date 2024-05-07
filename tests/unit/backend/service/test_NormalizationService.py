@@ -61,7 +61,9 @@ with mock.patch.dict(
         normalizationService = NormalizationService()
         normalizationService.dataExportService.exportNormalizationIndexEntry = MagicMock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = "expected"
-        normalizationService.saveNormalizationToIndex(NormalizationIndexEntry(runNumber="1", backgroundRunNumber="2"))
+        normalizationService.saveNormalizationToIndex(
+            NormalizationIndexEntry(runNumber="1", backgroundRunNumber="2"), True
+        )
         assert normalizationService.dataExportService.exportNormalizationIndexEntry.called
         savedEntry = normalizationService.dataExportService.exportNormalizationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">1"

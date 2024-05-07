@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
 
-class InitializeStateHandler(BaseModel):
+class HasStateRequest(BaseModel):
     runId: str
     useLiteMode: bool

@@ -49,8 +49,10 @@ class InterfaceController:
             self.logger.error(f"Recoverable error occurred: {str(e)}")
             payloadDict = json.loads(request.payload)
             runNumber = payloadDict["runNumber"]
+            useLiteMode = payloadDict["useLiteMode"]
             if runNumber:
                 InitializeStateHandler.runId = runNumber
+                InitializeStateHandler.useLiteMode = useLiteMode
             response = SNAPResponse(code=ResponseCode.RECOVERABLE, message="state")
 
         except Exception as e:  # noqa BLE001

@@ -74,7 +74,7 @@ class SousChef(Service):
         if self.dataFactoryService.fileExists(ingredients.focusGroup.definition):
             return ingredients.focusGroup
         else:
-            groupingMap = self.dataFactoryService.getGroupingMap(ingredients.runNumber)
+            groupingMap = self.dataFactoryService.getGroupingMap(ingredients.runNumber, ingredients.useLiteMode)
             return groupingMap.getMap(ingredients.useLiteMode)[ingredients.focusGroup.name]
 
     def prepPixelGroup(self, ingredients: FarmFreshIngredients) -> PixelGroup:
@@ -157,7 +157,7 @@ class SousChef(Service):
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
         return ReductionIngredients(
-            reductionState=self.dataFactoryService.getReductionState(ingredients.runNumber),
+            reductionState=self.dataFactoryService.getReductionState(ingredients.runNumber, ingredients.useLiteMode),
             runConfig=self.prepRunConfig(ingredients.runNumber),
             pixelGroup=self.prepPixelGroup(ingredients),
         )

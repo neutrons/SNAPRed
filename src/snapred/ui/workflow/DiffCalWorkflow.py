@@ -9,6 +9,7 @@ from snapred.backend.dao.request import (
     DiffractionCalibrationRequest,
     FitMultiplePeaksRequest,
     FocusSpectraRequest,
+    HasStateRequest,
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
@@ -115,7 +116,11 @@ class DiffCalWorkflow(WorkflowImplementer):
         # TODO: Use threads, account for fail cases
         try:
             # check if the state exists -- if so load its grouping map
-            hasState = self.request(path="calibration/hasState", payload=runNumber).data
+            payload = HasStateRequest(
+                runId=runNumber,
+                useLiteMode=useLiteMode,
+            )
+            hasState = self.request(path="calibration/hasState", payload=payload.json()).data
             if hasState:
                 self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
             else:

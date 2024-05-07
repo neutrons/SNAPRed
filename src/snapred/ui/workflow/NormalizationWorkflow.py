@@ -5,6 +5,7 @@ from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.dao.normalization import NormalizationIndexEntry, NormalizationRecord
 from snapred.backend.dao.request import (
+    HasStateRequest,
     NormalizationCalibrationRequest,
     NormalizationExportRequest,
 )
@@ -98,7 +99,12 @@ class NormalizationWorkflow(WorkflowImplementer):
         # TODO: Use threads, account for fail cases
         try:
             # check if the state exists -- if so load its grouping map
-            hasState = self.request(path="calibration/hasState", payload=runNumber).data
+            payload = HasStateRequest(
+                runId=runNumber,
+                useLiteMode=useLiteMode,
+            )
+            hasState = self.request(path="calibration/hasState", payload=payload.json()).data
+            # hasState = self.request(path="calibration/hasState", payload=runNumber).data
             if hasState:
                 self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
             else:

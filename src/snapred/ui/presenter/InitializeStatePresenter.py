@@ -29,16 +29,17 @@ class InitializeStatePresenter(QObject):
     def handleButtonClicked(self):
         runNumber = self.view.getRunNumber()
         stateName = self.view.getStateName()
+        useLiteMode = self.view.getMode()
 
         if not runNumber.isdigit():
             QMessageBox.warning(self.view, "Invalid Input", "Please enter a valid run number.")
             return
 
         self.view.beginFlowButton.setEnabled(False)
-        self._initializeState(runNumber, stateName)
+        self._initializeState(runNumber, stateName, useLiteMode)
 
-    def _initializeState(self, runNumber, stateName):
-        payload = InitializeStateRequest(runId=str(runNumber), humanReadableName=stateName)
+    def _initializeState(self, runNumber, stateName, useLiteMode):
+        payload = InitializeStateRequest(runId=str(runNumber), humanReadableName=stateName, useLiteMode=useLiteMode)
         request = SNAPRequest(path="/calibration/initializeState", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
         self._handleResponse(response)

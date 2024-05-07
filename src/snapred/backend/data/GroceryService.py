@@ -186,7 +186,7 @@ class GroceryService:
         if groupingScheme == "Lite":
             path = str(Config["instrument.lite.map.file"])
         else:
-            groupingMap = self.dataService.readGroupingMap(runNumber)
+            groupingMap = self.dataService.readGroupingMap(runNumber, useLiteMode)
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
