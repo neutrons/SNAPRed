@@ -166,7 +166,7 @@ class SousChef(Service):
         return NormalizationIngredients(
             pixelGroup=self.prepPixelGroup(ingredients),
             calibrantSample=self.prepCalibrantSample(ingredients.calibrantSamplePath),
-            detectorPeaks=self.prepDetectorPeaks(ingredients),
+            detectorPeaks=self.prepDetectorPeaks(ingredients, purgePeaks=False),
         )
 
     def prepDiffractionCalibrationIngredients(
