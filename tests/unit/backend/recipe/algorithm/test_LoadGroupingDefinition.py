@@ -313,12 +313,12 @@ class TestLoadGroupingDefinition(unittest.TestCase):
 
     # test hdf
     # TODO THIS IS BAD -- EWM 5043
-    @pytest.mark.xfail(strict=True)
+    @pytest.mark.xfail(reason="The workspace comparison of this test will fail", strict=True)
     def test_load_from_hdf_file_with_instrument_donor(self):
         self.do_test_load_with_instrument_donor("hdf")
 
     # TODO THIS IS BAD -- EWM 5043
-    @pytest.mark.xfail(strict=True)
+    @pytest.mark.xfail(reason="The workspace comparison of this test will fail", strict=True)
     def test_load_from_hdf_file_with_instrument_file(self):
         self.do_test_load_with_instrument_file("hdf")
 
