@@ -809,6 +809,18 @@ class LocalDataService:
             raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")
         return detectorState
 
+    # TODO remove the default value of useLiteMode and have that specifiable
+    def _writeDefaultDiffCalTable(self, runNumber: str, version: str, useLiteMode: bool = True):
+        from snapred.backend.data.GroceryService import GroceryService
+
+        grocer = GroceryService()
+        filename = Path(grocer._createDiffcalTableWorkspaceName("default", version) + ".h5")
+        outWS = grocer.fetchDefaultDiffCalTable(runNumber, version, useLiteMode)
+
+        calibrationDataPath = self._constructCalibrationDataPath(runNumber, str(version))
+
+        self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
+
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, name: str = None):
         stateId, _ = self._generateStateId(runId)
@@ -865,6 +877,7 @@ class LocalDataService:
             self._prepareStateRoot(stateId)
 
         self.writeCalibrationState(runId, calibration)
+        self._writeDefaultDiffCalTable(runId, 1)
 
         return calibration
 

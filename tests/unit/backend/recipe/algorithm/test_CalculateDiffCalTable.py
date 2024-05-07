@@ -1,15 +1,16 @@
 import unittest
 
+# the algorithm to test
+import snapred.backend.recipe.algorithm.CalculateDiffCalTable
+
+# must import algorithm before simpleapi
 from mantid.simpleapi import (
+    CalculateDiffCalTable,
     DeleteWorkspace,
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 
-# the algorithm to test
-from snapred.backend.recipe.algorithm.CalculateDiffCalTable import (
-    CalculateDiffCalTable as Algo,  # noqa: E402
-)
 from snapred.meta.Config import Resource
 
 
@@ -17,7 +18,7 @@ class TestCalculateDiffCalTable(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC"""
         self.dBin = 0.001
-        self.fakeRawData = "_test_difc_table_raw"
+        self.fakeRawData = mtd.unique_name(prefix="_test_difc_table_raw")
         self.makeFakeNeutronData(self.fakeRawData)
 
     def tearDown(self) -> None:
@@ -54,15 +55,14 @@ class TestCalculateDiffCalTable(unittest.TestCase):
         )
 
     def test_init_difc_table(self):
-        difcTableWS = "_test_make_difc_table"
+        difcTableWS = mtd.unique_name(prefix="_test_make_difc_table")
 
-        algo = Algo()
-        algo.initialize()
-        algo.setProperty("InputWorkspace", self.fakeRawData)
-        algo.setProperty("CalibrationTable", difcTableWS)
-        algo.setProperty("OffsetMode", "Signed")
-        algo.setProperty("BinWidth", abs(self.dBin))
-        algo.execute()
+        CalculateDiffCalTable(
+            InputWorkspace=self.fakeRawData,
+            CalibrationTable=difcTableWS,
+            OffsetMode="Signed",
+            BinWidth=abs(self.dBin),
+        )
 
         difcTable = mtd[difcTableWS]
         for i, row in enumerate(difcTable.column("detid")):
