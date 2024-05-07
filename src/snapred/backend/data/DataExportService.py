@@ -59,5 +59,5 @@ class DataExportService:
         """
         return self.dataService.writeRaggedWorkspace(path, filename, workspaceName)
 
-    def initializeState(self, runId: str, name: str, useLiteMode: bool):
-        return self.dataService.initializeState(runId, name, useLiteMode)
+    def initializeState(self, runId: str, name: str):
+        return self.dataService.initializeState(runId, name)

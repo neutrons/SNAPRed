@@ -94,17 +94,17 @@ class DataFactoryService:
     def getCalibrationRecord(self, runId, version: str = None, useLiteMode: bool = False):
         return self.lookupService.readCalibrationRecord(runId, version, useLiteMode)
 
-    def getNormalizationRecord(self, runId):
-        return self.lookupService.readNormalizationRecord(runId)
+    def getNormalizationRecord(self, runId, useLiteMode: bool):
+        return self.lookupService.readNormalizationRecord(runId, useLiteMode)
 
     def getCalibrationIndex(self, runId: str, useLiteMode: bool):
         return self.lookupService.readCalibrationIndex(runId, useLiteMode)
 
-    def getGroupingMap(self, runId: str, useLiteMode: bool):
-        return self.lookupService.readGroupingMap(runId, useLiteMode)
+    def getGroupingMap(self, runId: str):
+        return self.lookupService.readGroupingMap(runId)
 
-    def checkCalibrationStateExists(self, runId: str, useLiteMode: bool):
-        return self.lookupService.checkCalibrationFileExists(runId, useLiteMode)
+    def checkCalibrationStateExists(self, runId: str):
+        return self.lookupService.checkCalibrationFileExists(runId)
 
     def getSamplePaths(self):
         return self.lookupService.readSamplePaths()

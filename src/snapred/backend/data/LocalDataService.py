@@ -129,7 +129,6 @@ class LocalDataService:
 
     def readStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         previousDiffCalRecord: CalibrationRecord = self.readCalibrationRecord(runId, useLiteMode=useLiteMode)
-        # useLiteMode = CalibrationRecord.isLite
         if previousDiffCalRecord is None:
             diffCalibration: Calibration = self.readCalibrationState(runId)
         else:
@@ -139,14 +138,14 @@ class LocalDataService:
 
         # Read the grouping-schema map associated with this `StateConfig`.
         groupingMap = None
-        if self._groupingMapPath(str(stateId), useLiteMode).exists():
+        if self._groupingMapPath(str(stateId)).exists():
             groupingMap = self._readGroupingMap(stateId)
         else:
             # If no `GroupingMap` JSON file is present at the <state root>,
             #   it is assumed that this is the first time that this state configuration has been initialized.
             # WARNING: `_prepareStateRoot` is also called at `initializeState`: this allows
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
-            self._prepareStateRoot(stateId, useLiteMode)
+            self._prepareStateRoot(stateId)
             groupingMap = self._readGroupingMap(stateId)
 
         return StateConfig(
@@ -253,21 +252,25 @@ class LocalDataService:
 
         return fileList
 
-    def _constructCalibrationStateRoot(self, stateId, useLiteMode):
+    def _constructCalibrationStateRoot(self, stateId):
+        # TODO: Propagate pathlib through codebase
+        return f"{Config['instrument.calibration.powder.home']}/{str(stateId)}/"
+
+    def _constructCalibrationStatePath(self, stateId, useLiteMode):
         # TODO: Propagate pathlib through codebase
         if useLiteMode:
             mode = "lite"
         else:
             mode = "native"
-        return f"{Config['instrument.calibration.powder.home']}/{str(stateId)}/{str(mode)}/"
-
-    def _constructCalibrationStatePath(self, stateId, useLiteMode):
-        # TODO: Propagate pathlib through codebase
-        return f"{self._constructCalibrationStateRoot(stateId, useLiteMode)}/diffraction/"
+        return f"{self._constructCalibrationStateRoot(stateId)}/{str(mode)}/diffraction/"
 
     def _constructNormalizationCalibrationStatePath(self, stateId, useLiteMode):
         # TODO: Propagate pathlib through codebase
-        return f"{self._constructCalibrationStateRoot(stateId, useLiteMode)}/normalization/"
+        if useLiteMode:
+            mode = "lite"
+        else:
+            mode = "native"
+        return f"{self._constructCalibrationStateRoot(stateId)}/{str(mode)}/normalization/"
 
     def readCalibrationIndex(self, runId: str, useLiteMode: bool):
         # Need to run this because of its side effect, TODO: Remove side effect
@@ -474,12 +477,12 @@ class LocalDataService:
         """
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
-        previousVersion = self._getLatestNormalizationCalibrationVersionNumber(stateId, record.isLite)
+        previousVersion = self._getLatestNormalizationCalibrationVersionNumber(stateId, record.useLiteMode)
         if not version:
             version = record.version
         if not version:
             version = previousVersion + 1
-        recordPath: str = self.getNormalizationRecordPath(runNumber, version, record.isLite)
+        recordPath: str = self.getNormalizationRecordPath(runNumber, version, record.useLiteMode)
         record.version = version
 
         # There seems no need to write the _nested_ Normalization,
@@ -488,7 +491,7 @@ class LocalDataService:
         # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
         record.calibration.version = version
 
-        normalizationPath = self._constructNormalizationCalibrationDataPath(runNumber, version, record.isLite)
+        normalizationPath = self._constructNormalizationCalibrationDataPath(runNumber, version, record.useLiteMode)
         # check if directory exists for runId
         if not os.path.exists(normalizationPath):
             os.makedirs(normalizationPath)
@@ -503,7 +506,7 @@ class LocalDataService:
         -- assumes that `writeNormalizationRecord` has already been called, and that the version folder exists
         """
         normalizationDataPath = Path(
-            self._constructNormalizationCalibrationDataPath(record.runNumber, record.version, record.isLite)
+            self._constructNormalizationCalibrationDataPath(record.runNumber, record.version, record.useLiteMode)
         )
         for workspace in record.workspaceNames:
             filename = workspace + "_" + wnvf.formatVersion(record.version)
@@ -525,6 +528,7 @@ class LocalDataService:
             recordPath: str = self.getCalibrationRecordPath(runId, "*", useLiteMode)
             recordFile = self._getLatestFile(recordPath)
         record: CalibrationRecord = None
+        print(recordPath)
         if recordFile:
             logger.info(f"reading CalibrationRecord from {recordFile}")
             record = parse_file_as(CalibrationRecord, recordFile)
@@ -537,12 +541,12 @@ class LocalDataService:
         """
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
-        previousVersion: int = self._getLatestCalibrationVersionNumber(stateId, record.isLite)
+        previousVersion: int = self._getLatestCalibrationVersionNumber(stateId, record.useLiteMode)
         if not version:
             version = record.version
         if not version:
             version = previousVersion + 1
-        recordPath: str = self.getCalibrationRecordPath(runNumber, str(version), record.isLite)
+        recordPath: str = self.getCalibrationRecordPath(runNumber, str(version), record.useLiteMode)
         record.version = version
 
         # As above at 'writeNormalizationRecord':
@@ -552,7 +556,7 @@ class LocalDataService:
         # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
         record.calibrationFittingIngredients.version = version
 
-        calibrationPath = self._constructCalibrationDataPath(runNumber, str(version), record.isLite)
+        calibrationPath = self._constructCalibrationDataPath(runNumber, str(version), record.useLiteMode)
         # check if directory exists for runId
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
@@ -608,7 +612,7 @@ class LocalDataService:
         # write record to file
         write_model_pretty(savedRecord, recordPath)
 
-        self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, str(version), record.isLite)
+        self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, str(version), record.useLiteMode)
 
         logger.info(f"Wrote CalibrationRecord: version: {version}")
         return record
@@ -619,7 +623,7 @@ class LocalDataService:
         -- assumes that `writeCalibrationRecord` has already been called, and that the version folder exists
         """
         calibrationDataPath = Path(
-            self._constructCalibrationDataPath(record.runNumber, str(record.version), record.isLite)
+            self._constructCalibrationDataPath(record.runNumber, str(record.version), record.useLiteMode)
         )
 
         # Assumes all workspaces are of WNG-type:
@@ -837,7 +841,7 @@ class LocalDataService:
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
 
     @ExceptionHandler(StateValidationException)
-    def initializeState(self, runId: str, name: str = None, useLiteMode: bool = False):
+    def initializeState(self, runId: str, name: str = None):
         stateId, _ = self._generateStateId(runId)
 
         # Read the detector state from the pv data file
@@ -885,22 +889,22 @@ class LocalDataService:
         )
 
         # Make sure that the state root directory has been initialized:
-        stateRootPath = self._constructCalibrationStateRoot(stateId, useLiteMode)
+        stateRootPath = self._constructCalibrationStateRoot(stateId)
         if not os.path.exists(stateRootPath):
             # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
-            self._prepareStateRoot(stateId, useLiteMode)
+            self._prepareStateRoot(stateId)
 
         self.writeCalibrationState(runId, calibration)
         self._writeDefaultDiffCalTable(runId, 1)
 
         return calibration
 
-    def _prepareStateRoot(self, stateId: str, useLiteMode: bool):
+    def _prepareStateRoot(self, stateId: str):
         """
         Create the state root directory, and populate it with any necessary metadata files.
         """
-        stateRootPath = self._constructCalibrationStateRoot(stateId, useLiteMode)
+        stateRootPath = self._constructCalibrationStateRoot(stateId)
         if not os.path.exists(stateRootPath):
             os.makedirs(stateRootPath)
 
@@ -911,9 +915,9 @@ class LocalDataService:
         groupingMap.coerceStateId(stateId)
         # This is the _ONLY_ place that the grouping-schema map is written
         #   to its separate JSON file at <state root>.
-        self._writeGroupingMap(stateId, groupingMap, useLiteMode)
+        self._writeGroupingMap(stateId, groupingMap)
 
-    def checkCalibrationFileExists(self, runId: str, useLiteMode: bool):
+    def checkCalibrationFileExists(self, runId: str):
         # first perform some basic validation of the run ID
         # - it must be a string of only digits
         # - it must be greater than some minimal run number
@@ -929,7 +933,7 @@ class LocalDataService:
         # if found, try to construct the path and test if the path exists
         else:
             stateID, _ = self._generateStateId(runId)
-            calibrationStatePath: str = self._constructCalibrationStateRoot(stateID, useLiteMode)
+            calibrationStatePath: str = self._constructCalibrationStateRoot(stateID)
             if os.path.exists(calibrationStatePath):
                 return True
             else:
@@ -948,17 +952,17 @@ class LocalDataService:
         sampleFiles.sort()
         return sampleFiles
 
-    def _readGroupingMap(self, stateId: str, useLiteMode: bool) -> GroupingMap:
-        path = self._groupingMapPath(stateId, useLiteMode)
+    def _readGroupingMap(self, stateId: str) -> GroupingMap:
+        path = self._groupingMapPath(stateId)
         if not path.exists():
             raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
         return parse_file_as(GroupingMap, path)
 
-    def readGroupingMap(self, runNumber: str, useLiteMode: bool):
+    def readGroupingMap(self, runNumber: str):
         # if the state exists then lookup its grouping map
-        if self.checkCalibrationFileExists(runNumber, useLiteMode):
+        if self.checkCalibrationFileExists(runNumber):
             stateId, _ = self._generateStateId(runNumber)
-            return self._readGroupingMap(stateId, useLiteMode)
+            return self._readGroupingMap(stateId)
         # otherwise return the default map
         else:
             return self._readDefaultGroupingMap()
@@ -969,9 +973,9 @@ class LocalDataService:
             raise FileNotFoundError(f'required default grouping-schema map "{path}" does not exist')
         return parse_file_as(GroupingMap, path)
 
-    def _writeGroupingMap(self, stateId: str, groupingMap: GroupingMap, useLiteMode: bool):
+    def _writeGroupingMap(self, stateId: str, groupingMap: GroupingMap):
         # Write a GroupingMap to a file in JSON format, but only if it has been modified.
-        groupingMapPath = self._groupingMapPath(stateId, useLiteMode)
+        groupingMapPath = self._groupingMapPath(stateId)
         if not groupingMapPath.parent.exists():
             raise FileNotFoundError(f'state-root directory "{groupingMapPath.parent}" does not exist')
 
@@ -984,8 +988,8 @@ class LocalDataService:
     def _defaultGroupingMapPath(self) -> Path:
         return GroupingMap.calibrationGroupingHome() / "defaultGroupingMap.json"
 
-    def _groupingMapPath(self, stateId, useLiteMode) -> Path:
-        return Path(self._constructCalibrationStateRoot(stateId, useLiteMode)) / "groupingMap.json"
+    def _groupingMapPath(self, stateId) -> Path:
+        return Path(self._constructCalibrationStateRoot(stateId)) / "groupingMap.json"
 
     ## WRITING WORKSPACES TO DISK
 

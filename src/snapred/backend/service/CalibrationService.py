@@ -215,7 +215,7 @@ class CalibrationService(Service):
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         calibrationRecord = self.dataExportService.exportCalibrationWorkspaces(calibrationRecord)
         entry.version = calibrationRecord.version
-        self.saveCalibrationToIndex(entry, calibrationRecord.isLite)
+        self.saveCalibrationToIndex(entry, calibrationRecord.useLiteMode)
 
     @FromString
     def load(self, run: RunConfig):
@@ -233,7 +233,7 @@ class CalibrationService(Service):
 
     @FromString
     def initializeState(self, request: InitializeStateRequest):
-        return self.dataExportService.initializeState(request.runId, request.humanReadableName, request.useLiteMode)
+        return self.dataExportService.initializeState(request.runId, request.humanReadableName)
 
     @FromString
     def getState(self, runs: List[RunConfig]):
@@ -246,8 +246,7 @@ class CalibrationService(Service):
     @FromString
     def hasState(self, request: HasStateRequest):
         runId = request.runId
-        useLiteMode = request.useLiteMode
-        return self.dataFactoryService.checkCalibrationStateExists(runId, useLiteMode)
+        return self.dataFactoryService.checkCalibrationStateExists(runId)
 
     # TODO make the inputs here actually work
     def _collectMetrics(self, focussedData, focusGroup, pixelGroup):
@@ -369,7 +368,7 @@ class CalibrationService(Service):
 
         record = CalibrationRecord(
             runNumber=request.run.runNumber,
-            isLite=request.useLiteMode,
+            useLiteMode=request.useLiteMode,
             crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
             calibrationFittingIngredients=self.sousChef.prepCalibration(farmFresh),
             pixelGroups=[pixelGroup],

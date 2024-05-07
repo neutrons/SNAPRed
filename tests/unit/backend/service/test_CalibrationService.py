@@ -600,7 +600,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             useLiteMode=True,
         )
         self.instance.initializeState(request)
-        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName, request.useLiteMode)
+        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName)
 
     def test_getState(self):
         testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
@@ -625,7 +625,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             useLiteMode=True,
         )
         self.instance.hasState(request)
-        mockCheckCalibrationStateExists.assert_called_once_with(self.runNumber, True)
+        mockCheckCalibrationStateExists.assert_called_once_with(self.runNumber)
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

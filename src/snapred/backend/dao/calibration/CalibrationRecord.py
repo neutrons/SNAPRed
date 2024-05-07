@@ -25,7 +25,7 @@ class CalibrationRecord(BaseModel):
 
     runNumber: str
     crystalInfo: CrystallographicInfo
-    isLite: bool
+    useLiteMode: bool
     calibrationFittingIngredients: Calibration
     pixelGroups: Optional[List[PixelGroup]]  # TODO: really shouldn't be optional, will be when sns data fixed
     focusGroupCalibrationMetrics: FocusGroupMetric

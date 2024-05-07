@@ -27,8 +27,8 @@ class ConfigLookupService(Service):
     def name():
         return "config"
 
-    def getGroupingMap(self, runId: str, useLiteMode: bool = False):
-        return self.dataFactoryService.getGroupingMap(runId, useLiteMode)
+    def getGroupingMap(self, runId: str):
+        return self.dataFactoryService.getGroupingMap(runId)
 
     def getSamplePaths(self):
         return self.dataFactoryService.getSamplePaths()

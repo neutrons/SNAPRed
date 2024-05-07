@@ -1,6 +1,6 @@
 {
     "runNumber": 57514,
-    "isLite": true,
+    "useLiteMode": true,
     "backgroundRunNumber": 58813,
     "smoothingParameter": 0.5,
     "calibration":{

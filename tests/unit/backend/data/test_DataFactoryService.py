@@ -76,13 +76,13 @@ with mock.patch.dict(
     def test_getGroupingMap():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readGroupingMap = mock.Mock(return_value="expected")
-        actual = dataExportService.getGroupingMap(mock.Mock(), mock.Mock())
+        actual = dataExportService.getGroupingMap(mock.Mock())
         assert actual == "expected"
 
     def test_checkCalibrationStateExists():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.checkCalibrationFileExists = mock.Mock(return_value="expected")
-        actual = dataExportService.checkCalibrationStateExists(mock.Mock(), mock.Mock())
+        actual = dataExportService.checkCalibrationStateExists(mock.Mock())
         assert actual == "expected"
 
     def test_getSamplePaths():

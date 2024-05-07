@@ -165,7 +165,7 @@ class NormalizationService(Service):
         calibration = self.sousChef.prepCalibration(farmFresh)
         record = NormalizationRecord(
             runNumber=request.runNumber,
-            isLite=request.useLiteMode,
+            useLiteMode=request.useLiteMode,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             calibration=calibration,
@@ -182,7 +182,7 @@ class NormalizationService(Service):
         normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
         normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
         entry.version = normalizationRecord.version
-        self.saveNormalizationToIndex(entry, normalizationRecord.isLite)
+        self.saveNormalizationToIndex(entry, normalizationRecord.useLiteMode)
 
     def saveNormalizationToIndex(self, entry: NormalizationIndexEntry, useLiteMode: bool):
         if entry.appliesTo is None:
