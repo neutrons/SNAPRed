@@ -476,7 +476,7 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runNumber)
         previousVersion = self._getLatestNormalizationCalibrationVersionNumber(stateId)
         if version is None:
-            version = max(record.version, previousVersion+1)
+            version = max(record.version, previousVersion + 1)
         recordPath: str = self.getNormalizationRecordPath(runNumber, version)
         record.version = version
 
@@ -536,7 +536,7 @@ class LocalDataService:
         previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
         print(f"VERSIONS TO CONSIDER: {version}, {previousVersion}, {record.version}")
         if version is None:
-            version = max(record.version, previousVersion+1)
+            version = max(record.version, previousVersion + 1)
         recordPath: str = self.getCalibrationRecordPath(runNumber, str(version))
         record.version = version
 
@@ -765,7 +765,7 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runId)
         previousVersion: int = self._getLatestCalibrationVersionNumber(stateId)
         if version is None:
-            version = max(calibration.version, previousVersion+1)
+            version = max(calibration.version, previousVersion + 1)
 
         # Check for the existence of a calibration parameters file
         calibrationParametersFilePath = self._constructCalibrationParametersFilePath(runId, str(version))
@@ -787,7 +787,7 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runId)
         previousVersion: int = self._getLatestNormalizationCalibrationVersionNumber(stateId)
         if version is None:
-            version = max(normalization.version, previousVersion+1)
+            version = max(normalization.version, previousVersion + 1)
         # check for the existence of a normalization parameters file
         normalizationParametersFilePath = self._constructNormalizationParametersFilePath(runId, str(version))
         if os.path.exists(normalizationParametersFilePath):
