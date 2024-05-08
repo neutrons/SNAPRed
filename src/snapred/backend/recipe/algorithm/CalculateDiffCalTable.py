@@ -15,6 +15,7 @@ from mantid.simpleapi import (
     CreateEmptyTableWorkspace,
     DeleteWorkspace,
     mtd,
+    _create_algorithm_function,
 )
 
 
@@ -87,3 +88,7 @@ class CalculateDiffCalTable(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(CalculateDiffCalTable)
+# Puts function in simpleapi globals
+algo = CalculateDiffCalTable()
+algo.initialize()
+_create_algorithm_function(CalculateDiffCalTable.__name__, 1, algo)

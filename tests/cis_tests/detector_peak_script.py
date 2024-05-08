@@ -26,7 +26,7 @@ snapredLogger._level = 20
 
 #User inputs ###########################
 
-runNumber = '46680' # '58882'#58409'
+runNumber = '58882'#58409'
 cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif'
 groupingScheme = "All"
 peakFractionalThreshold = 0.01
@@ -48,11 +48,11 @@ farmFresh = FarmFreshIngredients(
 ingredients = SousChef().prepPeakIngredients(farmFresh)
 
 ### RUN ALGORITHM
-detectorAlgo = DetectorPeakPredictor(
+peakList = DetectorPeakPredictor(
     Ingredients = ingredients.json(),
 )
 
-peakList = json.loads(detectorAlgo.getProperty("DetectorPeaks").value)
+peakList = json.loads(peakList)
 print(peakList)
 
 peakCenter = []
@@ -105,11 +105,10 @@ for i,group in enumerate(peakList):
 assert False
 # using previously found ingredients, change the peakTailCoefficient within instrumentstate
 ingredients.instrumentState.peakTailCoefficient = 10
-
-detectorAlgo.setProperty("Ingredients", ingredients.json())
-detectorAlgo.execute()
-
-peakList = json.loads(detectorAlgo.getProperty("DetectorPeaks").value)
+peakList = DetectorPeakPredictor(
+    Ingredients = ingredients.json(),
+)
+peakList = json.loads(peakList)
 print(peakList)
 
 peakCenter = []

@@ -123,7 +123,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
     def test_execute(self):
         """Test that the algorithm executes"""
-        assert RawVanadiumCorrection(
+        assert RawVanadiumCorrectionAlgorithm(
             InputWorkspace = self.sampleWS,
             BackgroundWorkspace = self.backgroundWS,
             Ingredients = self.ingredients.json(),

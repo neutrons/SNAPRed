@@ -16,7 +16,6 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
- import RawVanadiumCorrectionAlgorithm as Algo  # noqa: E402
 from snapred.meta.Config import Config, Resource
 Config._config['cis_mode'] = False
 Resource._resourcesPath = os.path.expanduser("~/SNAPRed/tests/resources/")

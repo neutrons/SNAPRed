@@ -36,26 +36,23 @@ fakePixelGroup.timeOfFlight.maximum = TOFMax
 fakePixelGroup.timeOfFlight.binWidth = TOFBin
 fakePixelGroup.timeOfFlight.binningMode = -1 # LOG binning
 
-peakList3 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.370, "minimum":0.345, "maximum": 0.397}}),
-    DetectorPeak.parse_obj({"position": {"value": 0.248, "minimum":0.225, "maximum": 0.268}}),
-]
-group3 = GroupPeakList(groupID=3, peaks=peakList3)
-peakList7 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.579, "minimum": 0.538, "maximum": 0.619}}),
-    DetectorPeak.parse_obj({"position": {"value": 0.386, "minimum": 0.352, "maximum": 0.417}}),
-]
-group7 = GroupPeakList(groupID=7, peaks=peakList7)
-peakList2 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.328, "minimum": 0.306, "maximum":0.351}}),
-    DetectorPeak.parse_obj({"position": {"value": 0.219, "minimum": 0.199, "maximum":0.237}}),
-]
-group2 = GroupPeakList(groupID=2, peaks=peakList2)
-peakList11 = [
-    DetectorPeak.parse_obj({"position": {"value": 0.438, "minimum": 0.406, "maximum": 0.470}}),
-    DetectorPeak.parse_obj({"position": {"value": 0.294, "minimum": 0.269, "maximum": 0.316}}),
-]
-group11 = GroupPeakList(groupID=11, peaks=peakList11)
+def makePeakList(values, mins, maxs):
+    crystalPeak = {"hkl": (0,0,0), "dSpacing": 1.0, "fSquared": 1.0, "multiplicity": 1.0}
+    return [
+        DetectorPeak.parse_obj({
+            "position": {"value": value, "minimum": min, "maximum": max},
+            "peak": crystalPeak,
+        }) for value, min, max in zip(values, mins, maxs)
+    ]
+
+def makeGroup(groupID, values, mins, maxs):
+    peakList = makePeakList(values, mins, maxs)
+    return GroupPeakList(groupID=groupID, peaks=peakList)
+
+group3  = makeGroup( 3, [0.370, 0.248], [0.345, 0.225], [0.397, 0.268])
+group7  = makeGroup( 7, [0.579, 0.386], [0.538, 0.352], [0.619, 0.417])
+group2  = makeGroup( 2, [0.328, 0.219], [0.306, 0.199], [0.351, 0.237])
+group11 = makeGroup(11, [0.438, 0.294], [0.406, 0.269], [0.470, 0.316])
 
 print(fakePixelGroup.json(indent=2))
 
@@ -156,7 +153,8 @@ GroupDiffractionCalibration(
     InputWorkspace = inputWStof,
     GroupingWorkspace = groupingWS,
     FinalCalibrationTable = "_final_DIFc_table",
-    OutputWorkspace = f"_test_out_{fakeRunNumber}",
+    OutputWorkspaceTOF = f"_test_out_{fakeRunNumber}_tof",
+    OutputWorkspacedSpacing = f"_test_out_{fakeRunNumber}_dsp",
     PreviousCalibrationTable = DIFCpixel,
 )
 

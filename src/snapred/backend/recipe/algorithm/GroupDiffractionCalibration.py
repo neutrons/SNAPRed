@@ -10,6 +10,7 @@ from mantid.api import (
 )
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction, StringMandatoryValidator
+from mantid.simpleapi import _create_algorithm_function
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
@@ -409,3 +410,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(GroupDiffractionCalibration)
+# Puts function in simpleapi globals
+algo = GroupDiffractionCalibration()
+algo.initialize()
+_create_algorithm_function(GroupDiffractionCalibration.__name__, 1, algo)
