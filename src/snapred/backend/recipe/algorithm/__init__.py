@@ -1,11 +1,14 @@
+import importlib
+import os
+from glob import glob
+
 from mantid.simpleapi import _create_algorithm_function
 
-from snapred import pullModuleMembers
+moduleDir = os.path.dirname(os.path.abspath(__file__))
+modules = glob(f"{moduleDir}/*.py")
+all_module_names = [module[:-3].split("/")[-1] for module in modules if not module.endswith("__init__.py")]
 
-# Pull members from current package modules, respecting __all__.
-__all__, localz = pullModuleMembers(__file__, __name__)
-
-for x in __all__:
+for x in all_module_names:
     if x == "MantidSnapper":
         # MantidSnapper lives in this folder, but is not an algorithm
         continue
@@ -14,12 +17,17 @@ for x in __all__:
         # but it also is dead code and never used
         continue
 
+    module = importlib.import_module(f"{__name__}.{x}", x)
+
     # NOTE all algorithms must have same class name as filename
-    algoClass = getattr(locals()[x], x)
+    algoClass = getattr(module, x)
+    print(f"{x}: {type(algoClass)}")
     algo = algoClass()
     algo.initialize()
     _create_algorithm_function(x, 1, algo)
 
 # cleanup
 del _create_algorithm_function
-del pullModuleMembers
+del glob
+del os
+del importlib
