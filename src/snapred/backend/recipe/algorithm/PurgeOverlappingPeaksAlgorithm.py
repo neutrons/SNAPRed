@@ -2,7 +2,7 @@ import json
 from typing import Dict, List
 
 import numpy as np
-from mantid.api import PythonAlgorithm
+from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 from pydantic import parse_raw_as
 
@@ -159,3 +159,6 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         self.setProperty("OutputPeakMap", list_to_raw(outputPeaks))
 
         return outputPeaks
+
+
+AlgorithmFactory.subscribe(PurgeOverlappingPeaksAlgorithm)

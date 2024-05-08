@@ -3,6 +3,7 @@ from typing import Dict, List
 
 import numpy as np
 from mantid.api import (
+    AlgorithmFactory,
     ITableWorkspaceProperty,
     MatrixWorkspaceProperty,
     PropertyMode,
@@ -338,3 +339,6 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.reexecute()
         self._counts += 1
         self.setPropertyValue("CalibrationTable", self.DIFCpixel)
+
+
+AlgorithmFactory.subscribe(PixelDiffractionCalibration)

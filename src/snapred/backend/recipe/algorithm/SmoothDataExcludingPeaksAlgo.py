@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Dict
 
 import numpy as np
-from mantid.api import IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
+from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline
 
@@ -110,3 +110,6 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
         self.setProperty("OutputWorkspace", outputWorkspace)
+
+
+AlgorithmFactory.subscribe(SmoothDataExcludingPeaksAlgo)

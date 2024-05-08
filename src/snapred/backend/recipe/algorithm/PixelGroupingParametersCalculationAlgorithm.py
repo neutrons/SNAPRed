@@ -5,6 +5,7 @@ from statistics import mean
 
 import numpy as np
 from mantid.api import (
+    AlgorithmFactory,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
@@ -196,3 +197,6 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
             WorkspaceList=[self.resolutionWorkspaceName, tmpGroupingWSName],
         )
         self.mantidSnapper.executeQueue()
+
+
+AlgorithmFactory.subscribe(PixelGroupingParametersCalculationAlgorithm)

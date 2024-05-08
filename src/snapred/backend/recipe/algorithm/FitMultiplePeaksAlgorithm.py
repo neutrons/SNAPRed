@@ -4,6 +4,7 @@ from typing import Dict, List
 
 import numpy as np
 from mantid.api import (
+    AlgorithmFactory,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
@@ -132,3 +133,6 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
         self.setProperty("OutputWorkspaceGroup", self.outputWorkspace.name())
+
+
+AlgorithmFactory.subscribe(FitMultiplePeaksAlgorithm)

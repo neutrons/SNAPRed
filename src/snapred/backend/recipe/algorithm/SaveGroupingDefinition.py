@@ -3,6 +3,7 @@ import pathlib
 from typing import Dict
 
 from mantid.api import (
+    AlgorithmFactory,
     FileAction,
     FileProperty,
     MatrixWorkspaceProperty,
@@ -175,3 +176,6 @@ class SaveGroupingDefinition(PythonAlgorithm):
                 Workspace=grouping_ws_name,
             )
         self.mantidSnapper.executeQueue()
+
+
+AlgorithmFactory.subscribe(SaveGroupingDefinition)

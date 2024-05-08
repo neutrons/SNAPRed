@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from mantid.api import (
+    AlgorithmFactory,
     FileAction,
     FileProperty,
     MatrixWorkspaceProperty,
@@ -150,3 +151,6 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
         self.setPropertyValue("OutputWorkspace", outWS)
         self.setPropertyValue("LoaderType", str(loaderType))
+
+
+AlgorithmFactory.subscribe(FetchGroceriesAlgorithm)

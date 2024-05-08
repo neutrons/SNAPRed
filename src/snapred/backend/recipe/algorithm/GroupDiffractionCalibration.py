@@ -2,6 +2,7 @@ import json
 from typing import Dict, List, Tuple
 
 from mantid.api import (
+    AlgorithmFactory,
     ITableWorkspaceProperty,
     MatrixWorkspaceProperty,
     PropertyMode,
@@ -403,3 +404,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
         # Execute queued Mantid algorithms
         self.mantidSnapper.executeQueue()
+
+
+AlgorithmFactory.subscribe(GroupDiffractionCalibration)

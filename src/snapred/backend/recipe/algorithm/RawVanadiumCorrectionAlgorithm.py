@@ -2,6 +2,7 @@ from typing import Dict, Tuple
 
 import numpy as np
 from mantid.api import (
+    AlgorithmFactory,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
@@ -188,3 +189,6 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
 
         self.mantidSnapper.executeQueue()
         self.setPropertyValue("OutputWorkspace", self.outputVanadiumWS)
+
+
+AlgorithmFactory.subscribe(RawVanadiumCorrectionAlgorithm)

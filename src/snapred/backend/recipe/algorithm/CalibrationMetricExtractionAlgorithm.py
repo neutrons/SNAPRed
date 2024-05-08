@@ -2,7 +2,7 @@ import json
 from typing import List
 
 import numpy as np
-from mantid.api import PythonAlgorithm
+from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 from pydantic import parse_raw_as
 
@@ -109,3 +109,6 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
         self.validateMetric(peakMetrics)
 
         self.setProperty("OutputMetrics", json.dumps(peakMetrics))
+
+
+AlgorithmFactory.subscribe(CalibrationMetricExtractionAlgorithm)
