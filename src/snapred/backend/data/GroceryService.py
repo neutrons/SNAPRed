@@ -735,7 +735,7 @@ class GroceryService:
         return data
 
     def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: str) -> Tuple[WorkspaceName, str]:
-        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", version)
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", int(version))
         self.mantidSnapper.CalculateDiffCalTable(
             "Generate the default diffcal table",
             InputWorkspace=self._fetchInstrumentDonor(runNumber, useLiteMode),

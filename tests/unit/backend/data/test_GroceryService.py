@@ -1485,7 +1485,7 @@ class TestGroceryService(unittest.TestCase):
         """
         runNumber = "123"
         useLiteMode = True
-        testVersion = "test"
+        testVersion = 17
 
         ## Create the reference table
         refTable = mtd.unique_name(prefix="_table_")

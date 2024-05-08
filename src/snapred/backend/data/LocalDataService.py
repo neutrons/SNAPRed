@@ -810,9 +810,10 @@ class LocalDataService:
         return detectorState
 
     # TODO remove the default value of useLiteMode and have that specifiable
-    def _writeDefaultDiffCalTable(self, runNumber: str, version: str, useLiteMode: bool = True):
+    def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool = True):
         from snapred.backend.data.GroceryService import GroceryService
 
+        version = 1
         grocer = GroceryService()
         filename = Path(grocer._createDiffcalTableWorkspaceName("default", version) + ".h5")
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, version, useLiteMode)
@@ -820,6 +821,13 @@ class LocalDataService:
         calibrationDataPath = self._constructCalibrationDataPath(runNumber, str(version))
 
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
+        calibrationIndexEntry = CalibrationIndexEntry(
+            runNumber=runNumber,
+            version=version,
+            comments="Inferred from the instrument geometry",
+            author="Generated automatically by SNAPRed",
+        )
+        self.writeCalibrationIndexEntry(calibrationIndexEntry)
 
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, name: str = None):
@@ -877,7 +885,7 @@ class LocalDataService:
             self._prepareStateRoot(stateId)
 
         self.writeCalibrationState(runId, calibration)
-        self._writeDefaultDiffCalTable(runId, 1)
+        self._writeDefaultDiffCalTable(runId)
 
         return calibration
 
