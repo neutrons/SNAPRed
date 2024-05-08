@@ -3,6 +3,7 @@ import json
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction, PhysicalConstants
+from mantid.simpleapi import _create_algorithm_function
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
@@ -124,3 +125,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
 
 
 AlgorithmFactory.subscribe(DetectorPeakPredictor)
+# Puts function in simpleapi globals
+algo = DetectorPeakPredictor()
+algo.initialize()
+_create_algorithm_function(DetectorPeakPredictor.__name__, 1, algo)

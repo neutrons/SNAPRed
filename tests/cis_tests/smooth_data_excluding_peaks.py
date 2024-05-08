@@ -56,10 +56,9 @@ Rebin(
 )
 
 ## RUN ALGORITHM
-algo = SmoothDataExcludingPeaksAlgo()
-algo.initialize()
-algo.setProperty("InputWorkspace", grocery)
-algo.setProperty("DetectorPeaks", list_to_raw(peaks))
-algo.setProperty("SmoothingParameter", smoothingParameter)
-algo.setProperty("OutputWorkspace", "out_ws")
-algo.execute()
+assert SmoothDataExcludingPeaksAlgo(
+  InputWorkspace = grocery,
+  DetectorPeaks = list_to_raw(peaks),
+  SmoothingParameter = smoothingParameter,
+  OutputWorkspace = "out_ws",
+)

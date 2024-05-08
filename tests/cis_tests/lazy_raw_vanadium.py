@@ -4,6 +4,8 @@ this in a very lazy test, which copy/pastes over the unit test then runs it
 the purpose is to manually inspect the output workspaces and ensure the operation performed makes sense
 """
 
+# the algorithm to test
+import snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,8 +33,6 @@ SNAPRed_module_root = Path(snapred.__file__).parent.parent
 sys.path.insert(0, str(Path(SNAPRed_module_root).parent / 'tests'))
 from util.SculleryBoy import SculleryBoy
 
-# the algorithm to test
-from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm as Algo  # noqa: E402
 from snapred.meta.Config import Config, Resource
 Config._config['cis_mode'] = True
 Resource._resourcesPath = os.path.expanduser("~/SNAPRed/tests/resources/")
@@ -123,14 +123,12 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
     def test_execute(self):
         """Test that the algorithm executes"""
-        algo = Algo()
-        algo.initialize()
-        algo.setProperty("InputWorkspace", self.sampleWS)
-        algo.setProperty("BackgroundWorkspace", self.backgroundWS)
-        algo.setProperty("Ingredients", self.ingredients.json())
-        algo.setProperty("OutputWorkspace", self.outputWS)
-        assert algo.execute()
-
+        assert RawVanadiumCorrection(
+            InputWorkspace = self.sampleWS,
+            BackgroundWorkspace = self.backgroundWS,
+            Ingredients = self.ingredients.json(),
+            OutputWorkspace = self.outputWS,
+        )
 
 test = TestRawVanadiumCorrection()
 test.setUp()

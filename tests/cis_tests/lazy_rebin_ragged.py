@@ -4,6 +4,8 @@ import unittest
 import unittest.mock as mock
 
 import pytest
+import snapred.backend.recipe.algorithm.GroupDiffractionCalibration
+import snapred.backend.recipe.algorithm.CalculateDiffCalTable
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 from snapred.backend.dao.DetectorPeak import DetectorPeak
@@ -15,12 +17,7 @@ from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
-from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 
-# the algorithm to test
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import (
-    GroupDiffractionCalibration as Algo,  # noqa: E402
-)
 from snapred.meta.Config import Config, Resource
 Config._config['cis_mode'] = True
 Resource._resourcesPath = os.path.expanduser("~/SNAPRed/tests/resources/")
@@ -119,13 +116,12 @@ LoadDetectorsGroupingFile(
 
 
 # create a DIFC table
-cc = CalculateDiffCalTable()
-cc.initialize()
-cc.setProperty("InputWorkspace", inputWStof)
-cc.setProperty("CalibrationTable", DIFCpixel)
-cc.setProperty("OffsetMode", "Signed")
-cc.setProperty("BinWidth", TOFBin)
-cc.execute()
+CalculateDiffCalTable(
+    InputWorkspace = inputWStof,
+    CalibrationTable = DIFCpixel,
+    OffsetMode = "Signed",
+    BinWidth = TOFBin,
+)
 
 
 # create the diffoc TOF data
@@ -155,17 +151,14 @@ ConvertUnits(
 print(fakeIngredients.groupedPeakLists)
 
 # now run the algorithm
-algo = Algo()
-algo.initialize()
-algo.setProperty("Ingredients", fakeIngredients.json())
-algo.setProperty("InputWorkspace", inputWStof)
-algo.setProperty("GroupingWorkspace", groupingWS)
-algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
-algo.setProperty("OutputWorkspace", f"_test_out_{fakeRunNumber}")
-algo.setProperty("PreviousCalibrationTable", DIFCpixel)
-algo.chopIngredients(fakeIngredients)
-algo.focusWSname = groupingWS
-assert algo.execute()
+GroupDiffractionCalibration(
+    Ingredients = fakeIngredients.json(),
+    InputWorkspace = inputWStof,
+    GroupingWorkspace = groupingWS,
+    FinalCalibrationTable = "_final_DIFc_table",
+    OutputWorkspace = f"_test_out_{fakeRunNumber}",
+    PreviousCalibrationTable = DIFCpixel,
+)
 
 ## print graph, check all groups fit the peak
 fig, ax = plt.subplots(subplot_kw={'projection':'mantid'})

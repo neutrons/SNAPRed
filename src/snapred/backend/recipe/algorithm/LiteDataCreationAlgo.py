@@ -8,6 +8,7 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction
+from mantid.simpleapi import _create_algorithm_function
 
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
@@ -138,3 +139,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(LiteDataCreationAlgo)
+# Puts function in simpleapi globals
+algo = LiteDataCreationAlgo()
+algo.initialize()
+_create_algorithm_function(LiteDataCreationAlgo.__name__, 1, algo)

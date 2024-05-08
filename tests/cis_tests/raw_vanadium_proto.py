@@ -1,6 +1,9 @@
 # this is a test of the raw vanadium correction algorithm
 # this in a very lazy test, which copy/pastes over the unit test then runs it
 
+
+# the algorithm to test
+import snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm
 from mantid.simpleapi import *
 
 import json
@@ -13,8 +16,7 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
-# the algorithm to test
-from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm as Algo  # noqa: E402
+ import RawVanadiumCorrectionAlgorithm as Algo  # noqa: E402
 from snapred.meta.Config import Config, Resource
 Config._config['cis_mode'] = False
 Resource._resourcesPath = os.path.expanduser("~/SNAPRed/tests/resources/")
@@ -51,18 +53,18 @@ groceries = GroceryService().fetchGroceryList(clerk.buildList())
 
 ## RUN ALGORITHM ##########################################################
 outputWS = "_test_raw_vanadium_final_output"
-algo = Algo()
-algo.initialize()
-algo.setPropertyValue("InputWorkspace", groceries[0])
-algo.setPropertyValue("BackgroundWorkspace", groceries[1])
-algo.setPropertyValue("Ingredients", ingredients.json())
-algo.setPropertyValue("OutputWorkspace", outputWS)
-assert algo.execute()
+RawVanadiumCorrectionAlgorithm(
+    InputWorkspace = groceries[0],
+    BackgroundWorkspace = groceries[1],
+    Ingredients = ingredients.json(),
+    OutputWorkspace = outputWS,
+)
 
 ConvertUnits(
    InputWorkspace = outputWS,
    OutputWorkspace = outputWS,
-   Target = 'dSpacing')  
+   Target = 'dSpacing',
+)  
 
 DiffractionFocussing(
     InputWorkspace = outputWS,

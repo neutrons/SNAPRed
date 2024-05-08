@@ -1,7 +1,8 @@
-from snapred.backend.recipe.algorithm.data.WrapLeftovers import WrapLeftovers
-from snapred.backend.recipe.algorithm.data.ReheatLeftovers import ReheatLeftovers
-
+import snapred.backend.recipe.algorithm.data.WrapLeftovers
+import snapred.backend.recipe.algorithm.data.ReheatLeftovers
 from mantid.simpleapi import *
+
+from time import time
 
 
 # Load focussed data
@@ -34,17 +35,21 @@ RebinRagged(
 
 # store leftovers, reheat, verify workspaces are equivalent
 filename = "~/tmp/leftovers.tar"
-wrapLeftovers = WrapLeftovers()
-wrapLeftovers.initialize()
-wrapLeftovers.setPropertyValue("InputWorkspace",wsname)
-wrapLeftovers.setPropertyValue("Filename", filename)
-wrapLeftovers.execute()
 
-reheatLeftovers = ReheatLeftovers()
-reheatLeftovers.initialize()
-reheatLeftovers.setPropertyValue("OutputWorkspace","reheated")
-reheatLeftovers.setPropertyValue("Filename", filename)
-reheatLeftovers.execute()
+timeWrapStart = time()
+
+WrapLeftovers(
+    InputWorkspace = wsname,
+    Filename = filename,
+)
+
+timeWrapEnd = timeReheatStart = time()
+
+ReheatLeftovers(
+    OutputWorkspace ="reheated",
+    Filename = filename,
+)
+timeReheatEnd = time()
 
 original = mtd[wsname]
 reheated = mtd["reheated"]
@@ -53,6 +58,10 @@ assert original.getRun() == reheated.getRun()
 for i in range(original.getNumberHistograms()):
     assert list(original.readX(i)) == list(reheated.readX(i))
     assert list(original.readY(i)) == list(reheated.readY(i))
+
+print(f"TIME TO WRAP:\t{timeWrapEnd - timeWrapStart}")
+print(f"TIME TO REHEAT:\t{timeReheatEnd - timeReheatStart}")
+print(f"TOTAL TIME BOTH:\t{timeReheatEnd - timeWrapStart}")
 
 # CompareWorkspaces(Workspace1="raw", Workspace2="reheated") Doesnt work with ragged!
     

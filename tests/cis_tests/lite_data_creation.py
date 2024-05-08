@@ -1,11 +1,9 @@
 # Use this script to test LiteDataCreationAlgo.py
+import snapred.backend.recipe.algorithm.LiteDataCreationAlgo
 from mantid.simpleapi import *
 
-from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.data.DataFactoryService import DataFactoryService
 
 from snapred.meta.Config import Config
 Config._config["cis_mode"] = False
@@ -23,18 +21,20 @@ groceries = GroceryService().fetchGroceryList(groceryList)
 workspace = groceries[0]
 litemap = groceries[1]
 
-LDCA = LiteDataCreationAlgo()
-LDCA.initialize()
-LDCA.setProperty("InputWorkspace", workspace)
-LDCA.setProperty("LiteDataMapWorkspace", litemap)
-LDCA.setProperty("AutoDeleteNonLiteWS", True)
-LDCA.setProperty("OutputWorkspace", workspace + "_lite")
-LDCA.execute()
+LiteDataCreationAlgo(
+    InputWorkspace = workspace,
+    LiteDataMapWorkspace = litemap,
+    AutoDeleteNonLiteWS = True,
+    OutputWorkspace = workspace + "_lite",
+)
 
 # check it can't be double-reduced
-LDCA.setProperty("InputWorkspace", workspace + "_lite")
-LDCA.setProperty("OutputWorkspace", workspace + "_doubleLite")
-LDCA.execute()
+LiteDataCreationAlgo(
+    InputWorkspace = workspace + "_lite",
+    LiteDataMapWorkspace = litemap,
+    AutoDeleteNonLiteWS = True,
+    OutputWorkspace = workspace + "_doubleLite"
+)
 
 assert CompareWorkspaces(
     Workspace1 = workspace + "_lite",

@@ -5,12 +5,12 @@
 #  2. changing the peak tail coefficient property will change this width
 
 
+import snapred.backend.recipe.algorithm.DetectorPeakPredictor
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
 import json
 
-from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 
@@ -26,7 +26,7 @@ snapredLogger._level = 20
 
 #User inputs ###########################
 
-runNumber = '58882'#58409'
+runNumber = '46680' # '58882'#58409'
 cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif'
 groupingScheme = "All"
 peakFractionalThreshold = 0.01
@@ -48,10 +48,9 @@ farmFresh = FarmFreshIngredients(
 ingredients = SousChef().prepPeakIngredients(farmFresh)
 
 ### RUN ALGORITHM
-detectorAlgo = DetectorPeakPredictor()
-detectorAlgo.initialize()
-detectorAlgo.setProperty("Ingredients", ingredients.json())
-detectorAlgo.execute()
+detectorAlgo = DetectorPeakPredictor(
+    Ingredients = ingredients.json(),
+)
 
 peakList = json.loads(detectorAlgo.getProperty("DetectorPeaks").value)
 print(peakList)
