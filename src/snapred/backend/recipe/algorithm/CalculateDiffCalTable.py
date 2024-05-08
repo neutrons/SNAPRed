@@ -16,7 +16,6 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     _create_algorithm_function,
     mtd,
-    _create_algorithm_function,
 )
 
 

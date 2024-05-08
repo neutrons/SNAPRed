@@ -17,7 +17,7 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction, StringArrayProperty
-from mantid.simpleapi import CloneWorkspace, mtd, _create_algorithm_function
+from mantid.simpleapi import CloneWorkspace, _create_algorithm_function, mtd
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
