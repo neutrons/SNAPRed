@@ -2,6 +2,7 @@ from snapred.backend.recipe.algorithm.data.WrapLeftovers import WrapLeftovers
 from snapred.backend.recipe.algorithm.data.ReheatLeftovers import ReheatLeftovers
 
 from mantid.simpleapi import *
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 
 
 # Load focussed data
@@ -26,5 +27,5 @@ reheatLeftovers.setPropertyValue("OutputWorkspace","reheated")
 reheatLeftovers.setPropertyValue("Filename", filename)
 reheatLeftovers.execute()
 
-# CompareWorkspaces(Workspace1="raw", Workspace2="reheated") Doesnt work with ragged!
+# assert_wksp_almost_equal(Workspace1="raw", Workspace2="reheated") Doesnt work with ragged!
     
