@@ -15,12 +15,11 @@ from datetime import datetime
 from typing import Dict
 
 import numpy as np
-from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
+from mantid.api import IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 logger = snapredLogger.getLogger(__name__)
@@ -111,7 +110,3 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         )
         self.mantidSnapper.executeQueue()
         self.setProperty("OutputWorkspace", outputWorkspace)
-
-
-# Register algorithm with Mantid
-AlgorithmFactory.subscribe(SmoothDataExcludingPeaksAlgo)

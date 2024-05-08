@@ -2,6 +2,7 @@ import importlib
 import os
 from glob import glob
 
+from mantid.api import AlgorithmFactory
 from mantid.simpleapi import _create_algorithm_function
 
 moduleDir = os.path.dirname(os.path.abspath(__file__))
@@ -21,12 +22,14 @@ for x in all_module_names:
 
     # NOTE all algorithms must have same class name as filename
     algoClass = getattr(module, x)
+    AlgorithmFactory.subscribe(algoClass)
     algo = algoClass()
     algo.initialize()
     _create_algorithm_function(x, 1, algo)
 
 # cleanup
 del _create_algorithm_function
+del AlgorithmFactory
 del glob
 del os
 del importlib

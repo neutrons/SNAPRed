@@ -3,7 +3,6 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from mantid.api import (
-    AlgorithmFactory,
     FileAction,
     FileProperty,
     MatrixWorkspaceProperty,
@@ -16,8 +15,6 @@ from mantid.kernel import (
 )
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.LoadCalibrationWorkspaces import LoadCalibrationWorkspaces
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 logger = snapredLogger.getLogger(__name__)
@@ -153,7 +150,3 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
         self.setPropertyValue("OutputWorkspace", outWS)
         self.setPropertyValue("LoaderType", str(loaderType))
-
-
-# Register algorithm with Mantid
-AlgorithmFactory.subscribe(FetchGroceriesAlgorithm)

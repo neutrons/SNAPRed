@@ -2,7 +2,6 @@ from typing import Dict, Tuple
 
 import numpy as np
 from mantid.api import (
-    AlgorithmFactory,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
@@ -11,7 +10,6 @@ from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
@@ -190,7 +188,3 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
 
         self.mantidSnapper.executeQueue()
         self.setPropertyValue("OutputWorkspace", self.outputVanadiumWS)
-
-
-# Register algorithm with Mantid
-AlgorithmFactory.subscribe(RawVanadiumCorrectionAlgorithm)

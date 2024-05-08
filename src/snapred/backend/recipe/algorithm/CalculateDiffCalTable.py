@@ -3,7 +3,6 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from mantid.api import (
-    AlgorithmFactory,
     ITableWorkspaceProperty,
     MatrixWorkspaceProperty,
     PropertyMode,
@@ -84,7 +83,3 @@ class CalculateDiffCalTable(PythonAlgorithm):
             Workspace=tmpDifc,
         )
         self.setProperty("CalibrationTable", DIFCtable)
-
-
-# Register algorithm with Mantid
-AlgorithmFactory.subscribe(CalculateDiffCalTable)

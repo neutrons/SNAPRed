@@ -3,7 +3,6 @@ import pathlib
 from typing import Dict
 
 from mantid.api import (
-    AlgorithmFactory,
     FileAction,
     FileProperty,
     MatrixWorkspaceProperty,
@@ -13,7 +12,6 @@ from mantid.api import (
 from mantid.kernel import Direction
 
 from snapred.backend.error.AlgorithmException import AlgorithmException
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
@@ -177,7 +175,3 @@ class SaveGroupingDefinition(PythonAlgorithm):
                 Workspace=grouping_ws_name,
             )
         self.mantidSnapper.executeQueue()
-
-
-# Register algorithm with Mantid
-AlgorithmFactory.subscribe(SaveGroupingDefinition)

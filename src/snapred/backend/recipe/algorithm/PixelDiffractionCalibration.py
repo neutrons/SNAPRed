@@ -3,7 +3,6 @@ from typing import Dict, List
 
 import numpy as np
 from mantid.api import (
-    AlgorithmFactory,
     ITableWorkspaceProperty,
     MatrixWorkspaceProperty,
     PropertyMode,
@@ -13,8 +12,6 @@ from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
-from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
-from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -341,7 +338,3 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.reexecute()
         self._counts += 1
         self.setPropertyValue("CalibrationTable", self.DIFCpixel)
-
-
-# Register algorithm with Mantid
-AlgorithmFactory.subscribe(PixelDiffractionCalibration)
