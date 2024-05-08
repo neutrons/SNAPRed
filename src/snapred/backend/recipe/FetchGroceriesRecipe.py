@@ -6,7 +6,6 @@ from mantid.simpleapi import CloneWorkspace, mtd
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm as FetchAlgo
-from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo as LiteDataAlgo
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder

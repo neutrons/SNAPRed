@@ -7,7 +7,6 @@ from mantid.kernel import Direction
 import snapred.backend.recipe.algorithm
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.WashDishes import WashDishes  # this gets imported a lot
 
 # must import to register with AlgorithmManager
 from snapred.meta.Callback import callback
