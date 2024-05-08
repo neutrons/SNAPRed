@@ -153,4 +153,5 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
         self.setPropertyValue("LoaderType", str(loaderType))
 
 
+# Register algorithm with Mantid
 AlgorithmFactory.subscribe(FetchGroceriesAlgorithm)

@@ -199,4 +199,5 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
 
+# Register algorithm with Mantid
 AlgorithmFactory.subscribe(PixelGroupingParametersCalculationAlgorithm)

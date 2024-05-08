@@ -341,4 +341,5 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         self.setPropertyValue("CalibrationTable", self.DIFCpixel)
 
 
+# Register algorithm with Mantid
 AlgorithmFactory.subscribe(PixelDiffractionCalibration)

@@ -111,4 +111,5 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
         self.setProperty("OutputMetrics", json.dumps(peakMetrics))
 
 
+# Register algorithm with Mantid
 AlgorithmFactory.subscribe(CalibrationMetricExtractionAlgorithm)

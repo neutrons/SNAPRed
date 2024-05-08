@@ -191,4 +191,5 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
         self.setPropertyValue("OutputWorkspace", self.outputVanadiumWS)
 
 
+# Register algorithm with Mantid
 AlgorithmFactory.subscribe(RawVanadiumCorrectionAlgorithm)

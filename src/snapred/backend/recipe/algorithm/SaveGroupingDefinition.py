@@ -178,4 +178,5 @@ class SaveGroupingDefinition(PythonAlgorithm):
         self.mantidSnapper.executeQueue()
 
 
+# Register algorithm with Mantid
 AlgorithmFactory.subscribe(SaveGroupingDefinition)

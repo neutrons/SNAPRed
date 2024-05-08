@@ -112,4 +112,5 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
         self.setProperty("OutputWorkspace", outputWorkspace)
 
 
+# Register algorithm with Mantid
 AlgorithmFactory.subscribe(SmoothDataExcludingPeaksAlgo)
