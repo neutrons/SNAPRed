@@ -14,6 +14,7 @@ from mantid.simpleapi import (
     CalculateDIFC,
     CreateEmptyTableWorkspace,
     DeleteWorkspace,
+    _create_algorithm_function,
     mtd,
     _create_algorithm_function,
 )
@@ -51,7 +52,7 @@ class CalculateDiffCalTable(PythonAlgorithm):
         self.log().notice("Creating DIFC table")
 
         # prepare initial diffraction calibration workspace
-        tmpDifc = "_tmp_matrixworkspace"
+        tmpDifc = mtd.unique_name(prefix="_tmp_")
         CalculateDIFC(
             InputWorkspace=self.getPropertyValue("InputWorkspace"),
             OutputWorkspace=tmpDifc,
@@ -84,6 +85,7 @@ class CalculateDiffCalTable(PythonAlgorithm):
         DeleteWorkspace(
             Workspace=tmpDifc,
         )
+        self.setProperty("CalibrationTable", DIFCtable)
 
 
 # Register algorithm with Mantid

@@ -1,7 +1,8 @@
 import json
 
-from mantid.api import AlgorithmFactory, PythonAlgorithm
+from mantid.api import AlgorithmFactory, ITableWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
+from mantid.simpleapi import _create_algorithm_function
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -15,15 +16,19 @@ class GenerateTableWorkspaceFromListOfDict(PythonAlgorithm):
         # declare properties
         # shallow extraction
         self.declareProperty("ListOfDict", defaultValue="", direction=Direction.Input)
-        self.declareProperty("OutputWorkspace", defaultValue="outputTable", direction=Direction.Output)
+        self.declareProperty(
+            ITableWorkspaceProperty("OutputWorkspace", "outputTable", Direction.Output, PropertyMode.Mandatory),
+            doc="The table workspace created from the input",
+        )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, self.__class__.__name__)
 
     def PyExec(self):
         listOfDict = json.loads(self.getProperty("ListOfDict").value)
-        outputWorkspace = self.getProperty("OutputWorkspace").value
-        self.mantidSnapper.CreateEmptyTableWorkspace(
-            "Initializing empty table workspace...", OutputWorkspace=outputWorkspace
+        outputWorkspace = self.getPropertyValue("OutputWorkspace")
+        ws = self.mantidSnapper.CreateEmptyTableWorkspace(
+            "Initializing empty table workspace...",
+            OutputWorkspace=outputWorkspace,
         )
         self.mantidSnapper.executeQueue()
         ws = self.mantidSnapper.mtd[outputWorkspace]
@@ -33,8 +38,10 @@ class GenerateTableWorkspaceFromListOfDict(PythonAlgorithm):
         firstRow = listOfDict[0]
         for key in firstRow.keys():
             _type = type(firstRow[key])
-            if _type in [float, int]:
-                ws.addColumn(type="float", name=key)
+            if _type is float:
+                ws.addColumn(type="double", name=key)
+            else:
+                ws.addColumn(type=_type.__name__, name=key)
 
         for row in listOfDict:
             ws.addRow([row[key] for key in row.keys()])
@@ -45,3 +52,6 @@ class GenerateTableWorkspaceFromListOfDict(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(GenerateTableWorkspaceFromListOfDict)
+algo = GenerateTableWorkspaceFromListOfDict()
+algo.initialize()
+_create_algorithm_function(GenerateTableWorkspaceFromListOfDict.__name__, 1, algo)

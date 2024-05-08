@@ -1,6 +1,7 @@
 import snapred.backend.recipe.algorithm.data.WrapLeftovers
 import snapred.backend.recipe.algorithm.data.ReheatLeftovers
 from mantid.simpleapi import *
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 
 from time import time
 
@@ -63,5 +64,5 @@ print(f"TIME TO WRAP:\t{timeWrapEnd - timeWrapStart}")
 print(f"TIME TO REHEAT:\t{timeReheatEnd - timeReheatStart}")
 print(f"TOTAL TIME BOTH:\t{timeReheatEnd - timeWrapStart}")
 
-# CompareWorkspaces(Workspace1="raw", Workspace2="reheated") Doesnt work with ragged!
+# assert_wksp_almost_equal(Workspace1="raw", Workspace2="reheated") Doesnt work with ragged!
     

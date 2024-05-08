@@ -8,6 +8,7 @@ import snapred.backend.recipe.algorithm.SaveGroupingDefinition
 
 # import mantid algorithms, numpy and matplotlib
 from mantid.simpleapi import *
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
@@ -66,7 +67,7 @@ assert LoadGroupingDefinition(
 end = time.time()
 loads["XML and FILE"] = (end - start)
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = grwsXML,
     Workspace2 = reload,
 )
@@ -83,7 +84,7 @@ assert LoadGroupingDefinition(
 end = time.time()
 loads["XML and DONOR"] = (end - start)
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = grwsXML,
     Workspace2 = reload,
 )
@@ -109,7 +110,7 @@ LoadGroupingDefinition(
 end = time.time()
 loads["HDF and NAME"] = (end - start)
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = grwsHDF,
     Workspace2 = grwsXML,
 )
@@ -133,7 +134,7 @@ LoadGroupingDefinition(
 end = time.time()
 loads["HDF and FILE"] = (end - start)
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = grwsXML,
     Workspace2 = grwsHDF,
 )
@@ -158,7 +159,7 @@ LoadGroupingDefinition(
 end = time.time()
 loads["HDF and DONOR"] = (end - start)
 
-assert CompareWorkspaces(
+assert_wksp_almost_equal(
     Workspace1 = grwsXML,
     Workspace2 = grwsHDF,
 )

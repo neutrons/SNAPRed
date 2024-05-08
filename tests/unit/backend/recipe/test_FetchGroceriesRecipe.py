@@ -6,13 +6,13 @@ from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
-    CompareWorkspaces,
     CreateWorkspace,
     DeleteWorkspace,
     LoadInstrument,
     SaveNexusProcessed,
     mtd,
 )
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
 # needed to make mocked ingredients
@@ -21,8 +21,6 @@ from snapred.backend.recipe.FetchGroceriesRecipe import (
     FetchGroceriesRecipe as Recipe,  # noqa: E402
 )
 from snapred.meta.Config import Config, Resource
-
-TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
 
 
 class TestFetchGroceriesRecipe(unittest.TestCase):
@@ -102,7 +100,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
         assert res["workspace"] == self.fetchedWSname
-        assert CompareWorkspaces(
+        assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
         )
@@ -114,7 +112,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["result"]
         assert res["loader"] == ""  # this makes sure no loader called
         assert res["workspace"] == self.fetchedWSname
-        assert CompareWorkspaces(
+        assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
         )
