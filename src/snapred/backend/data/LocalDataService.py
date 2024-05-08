@@ -130,7 +130,7 @@ class LocalDataService:
     def readStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
         previousDiffCalRecord: CalibrationRecord = self.readCalibrationRecord(runId, useLiteMode=useLiteMode)
         if previousDiffCalRecord is None:
-            diffCalibration: Calibration = self.readCalibrationState(runId)
+            diffCalibration: Calibration = self.readCalibrationState(runId, useLiteMode)
         else:
             diffCalibration: Calibration = previousDiffCalRecord.calibrationFittingIngredients
 
@@ -528,7 +528,6 @@ class LocalDataService:
             recordPath: str = self.getCalibrationRecordPath(runId, "*", useLiteMode)
             recordFile = self._getLatestFile(recordPath)
         record: CalibrationRecord = None
-        print(recordPath)
         if recordFile:
             logger.info(f"reading CalibrationRecord from {recordFile}")
             record = parse_file_as(CalibrationRecord, recordFile)
@@ -841,7 +840,7 @@ class LocalDataService:
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
 
     @ExceptionHandler(StateValidationException)
-    def initializeState(self, runId: str, name: str = None):
+    def initializeState(self, runId: str, name: str = None, useLiteMode: bool = False):
         stateId, _ = self._generateStateId(runId)
 
         # Read the detector state from the pv data file
@@ -895,7 +894,7 @@ class LocalDataService:
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
             self._prepareStateRoot(stateId)
 
-        self.writeCalibrationState(runId, calibration)
+        self.writeCalibrationState(runId, calibration, useLiteMode=useLiteMode)
         self._writeDefaultDiffCalTable(runId, 1)
 
         return calibration

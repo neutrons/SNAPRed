@@ -233,7 +233,7 @@ class CalibrationService(Service):
 
     @FromString
     def initializeState(self, request: InitializeStateRequest):
-        return self.dataExportService.initializeState(request.runId, request.humanReadableName)
+        return self.dataExportService.initializeState(request.runId, request.humanReadableName, request.useLiteMode)
 
     @FromString
     def getState(self, runs: List[RunConfig]):

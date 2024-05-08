@@ -600,7 +600,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             useLiteMode=True,
         )
         self.instance.initializeState(request)
-        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName)
+        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName, request.useLiteMode)
 
     def test_getState(self):
         testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
