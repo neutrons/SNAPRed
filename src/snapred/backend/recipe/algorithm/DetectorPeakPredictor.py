@@ -1,7 +1,7 @@
 import json
 
 import numpy as np
-from mantid.api import AlgorithmFactory, PythonAlgorithm
+from mantid.api import PythonAlgorithm
 from mantid.kernel import Direction, PhysicalConstants
 
 from snapred.backend.dao.DetectorPeak import DetectorPeak
@@ -121,6 +121,3 @@ class DetectorPeakPredictor(PythonAlgorithm):
 
         self.setProperty("DetectorPeaks", list_to_raw(allFocusGroupsPeaks))
         return allFocusGroupsPeaks
-
-
-AlgorithmFactory.subscribe(DetectorPeakPredictor)

@@ -9,6 +9,10 @@ moduleDir = os.path.dirname(os.path.abspath(__file__))
 modules = glob(f"{moduleDir}/*.py")
 all_module_names = [module[:-3].split("/")[-1] for module in modules if not module.endswith("__init__.py")]
 
+# these are in the submodule data, not loaded by default
+all_module_names.append("data.WrapLeftovers")
+all_module_names.append("data.ReheatLeftovers")
+
 for x in all_module_names:
     if x == "MantidSnapper":
         # MantidSnapper lives in this folder, but is not an algorithm
@@ -19,6 +23,9 @@ for x in all_module_names:
         continue
 
     module = importlib.import_module(f"{__name__}.{x}", x)
+
+    # for the leftovers algos, this gets just the class name
+    x = x.split(".")[-1]
 
     # NOTE all algorithms must have same class name as filename
     algoClass = getattr(module, x)
