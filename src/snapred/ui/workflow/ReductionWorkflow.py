@@ -1,9 +1,9 @@
 import json
 
-from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.ui.view.ReductionView import ReductionView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
@@ -22,8 +22,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         self._reductionView = ReductionView(parent=parent)
 
-        self._reductionView.runNumberField.editingFinished.connect(self.
-        _populatePixelMaskDropdown)
+        self._reductionView.runNumberField.editingFinished.connect(self._populatePixelMaskDropdown)
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=self.resetWithPermission, parent=parent)
@@ -38,7 +37,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
     @ExceptionToErrLog
     def _populatePixelMaskDropdown(self):
-        runNumbers = self._reductionView.runNumberField.text().split(',')
+        runNumbers = self._reductionView.runNumberField.text().split(",")
         useLiteMode = self._reductionView.litemodeToggle.field.getState()
 
         self._reductionView.litemodeToggle.setEnabled(False)
@@ -49,11 +48,13 @@ class ReductionWorkflow(WorkflowImplementer):
                 self.request(path="reduction/hasState", payload=runNumber).data
             except Exception as e:
                 print(e)
-        
+
         self._reductionView.litemodeToggle.setEnabled(True)
         self._reductionView.pixelMaskDropdown.setEnabled(True)
 
-    def _triggerReduction(self, workflowPresenter): # NOTE: Ths only works for a single run number, will need to refactor to support multiple run numbers.
+    def _triggerReduction(
+        self, workflowPresenter
+    ):  # NOTE: Ths only works for a single run number, will need to refactor to support multiple run numbers.
         view = workflowPresenter.widget.tabView
         # pull fields from view for calibration reduction
 

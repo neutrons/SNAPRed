@@ -35,12 +35,14 @@ class ReductionView(QWidget):
         self.layout.addWidget(self.litemodeToggle, 0, 1)
         self.layout.addWidget(self.pixelMaskDropdown, 1, 0)
         self.layout.addWidget(self.checkbox, 1, 1)
-    
+
     def verify(self):
-        runNumbers = self.runNumberField.text().split(',')
+        runNumbers = self.runNumberField.text().split(",")
         for runNumber in runNumbers:
             if not runNumber.strip().isdigit():
-                raise ValueError("Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)")
+                raise ValueError(
+                    "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
+                )
         if self.pixelMaskDropdown.currentIndex() < 0:
             raise ValueError("Please select a pixel mask.")
         return True
