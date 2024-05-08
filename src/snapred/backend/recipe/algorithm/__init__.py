@@ -21,7 +21,6 @@ for x in all_module_names:
 
     # NOTE all algorithms must have same class name as filename
     algoClass = getattr(module, x)
-    print(f"{x}: {type(algoClass)}")
     algo = algoClass()
     algo.initialize()
     _create_algorithm_function(x, 1, algo)
