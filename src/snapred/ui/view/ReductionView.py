@@ -20,12 +20,12 @@ class ReductionView(QWidget):
         self.runNumberField = LabeledField("Run Number:")
         self.litemodeToggle = LabeledField("Lite Mode", Toggle(parent=self, state=True))
         self.checkbox = LabeledCheckBox("Retain Unfocussed Data")
-        self.dropDown = SampleDropDown("Pixel Masks", pixelMasks)
+        self.pixelMaskDropdown = SampleDropDown("Pixel Masks", pixelMasks)
 
         # set field properties
         self.litemodeToggle.setEnabled(False)
         self.checkbox.setEnabled(False)
-        self.dropDown.setEnabled(False)
+        self.pixelMaskDropDdown.setEnabled(False)
 
         # connect the boolean signal to a slot
         # self.checkbox.checkedChanged.connect()
@@ -33,14 +33,16 @@ class ReductionView(QWidget):
         # add all widgets to layout
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.litemodeToggle, 0, 1)
-        self.layout.addWidget(self.dropDown, 1, 0)
+        self.layout.addWidget(self.pixelMaskDropdown, 1, 0)
         self.layout.addWidget(self.checkbox, 1, 1)
-
+    
     def verify(self):
-        if not self.runNumberField.text().isdigit():
-            raise ValueError("Please enter a valid run number")
-        if self.dropDown.currentIndex() < 0:
-            raise ValueError("Please select a pixel mask")
+        runNumbers = self.runNumberField.text().split(',')
+        for runNumber in runNumbers:
+            if not runNumber.strip().isdigit():
+                raise ValueError("Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)")
+        if self.pixelMaskDropdown.currentIndex() < 0:
+            raise ValueError("Please select a pixel mask.")
         return True
 
     # place holder for checkBox logic
