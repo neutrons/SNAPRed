@@ -16,9 +16,6 @@ class ReductionWorkflow(WorkflowImplementer):
         self.requests = []
         self.responses = []
         self.interfaceController = InterfaceController()
-        cancelLambda = None
-        if parent is not None and hasattr(parent, "close"):
-            cancelLambda = parent.close
 
         self._reductionView = ReductionView(parent=parent)
 
@@ -38,7 +35,7 @@ class ReductionWorkflow(WorkflowImplementer):
     @ExceptionToErrLog
     def _populatePixelMaskDropdown(self):
         runNumbers = self._reductionView.runNumberField.text().split(",")
-        useLiteMode = self._reductionView.litemodeToggle.field.getState()
+        useLiteMode = self._reductionView.litemodeToggle.field.getState()  # noqa: F841
 
         self._reductionView.litemodeToggle.setEnabled(False)
         self._reductionView.pixelMaskDropdown.setEnabled(False)
@@ -46,17 +43,15 @@ class ReductionWorkflow(WorkflowImplementer):
         for runNumber in runNumbers:
             try:
                 self.request(path="reduction/hasState", payload=runNumber).data
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(e)
 
         self._reductionView.litemodeToggle.setEnabled(True)
         self._reductionView.pixelMaskDropdown.setEnabled(True)
 
-    def _triggerReduction(
-        self, workflowPresenter
-    ):  # NOTE: Ths only works for a single run number, will need to refactor to support multiple run numbers.
+    def _triggerReduction(self, workflowPresenter):
+        # NOTE: Ths only works for a single run number, will need to refactor to support multiple run numbers.
         view = workflowPresenter.widget.tabView
-        # pull fields from view for calibration reduction
 
         self.runNumber = view.fieldRunNumber.text()
 
