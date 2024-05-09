@@ -1290,7 +1290,8 @@ def test_writeCalibrationState_overwrite_warning(caplog):
 @mock.patch("snapred.backend.data.GroceryService.GroceryService._fetchInstrumentDonor")
 def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorkspaceName):
     runNumber = "default"
-    version = 3
+    version = 1
+    useLiteMode = True
     # mock the grocery service to return the fake instrument to use for geometry
     idfWS = mtd.unique_name(prefix="_idf_")
     LoadEmptyInstrument(
@@ -1309,7 +1310,7 @@ def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorksp
         localDataService._constructCalibrationStatePath = mock.Mock(return_value=f"{tempdir}/")
         # run the method and ensure the file has been created in correct location
         # localDataService.writeCalibrationState(runNumber, calibration)
-        localDataService._writeDefaultDiffCalTable(runNumber, version)
+        localDataService._writeDefaultDiffCalTable(runNumber, useLiteMode)
         assert os.path.exists(tempdir + f"/v_{wnvf.formatVersion(version, use_v_prefix=False)}/" + filename + ".h5")
         # TODO we could in theory load the file and verify its contents here
 
@@ -1417,7 +1418,7 @@ def test_initializeState():
     actual.creationDate = testCalibrationData.creationDate
 
     assert actual == testCalibrationData
-    assert localDataService._writeDefaultDiffCalTable.called_once_with("123", 1)
+    assert localDataService._writeDefaultDiffCalTable.called_once_with("123")
 
 
 @mock.patch.object(LocalDataService, "_prepareStateRoot")

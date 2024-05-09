@@ -6,7 +6,6 @@ from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
-    CompareWorkspaces,
     CreateSampleWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
@@ -14,6 +13,7 @@ from mantid.simpleapi import (
     SaveNexusProcessed,
     mtd,
 )
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 
 # needed to make mocked ingredients
 from snapred.backend.dao.RunConfig import RunConfig
@@ -157,7 +157,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("LoaderType", "")
         algo.setPropertyValue("OutputWorkspace", self.fetchedWS)
         assert algo.execute()
-        assert CompareWorkspaces(
+        assert_wksp_almost_equal(
             Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
         )
@@ -171,7 +171,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("LoaderType", "LoadNexus")
         algo.setPropertyValue("OutputWorkspace", self.fetchedWS)
         assert algo.execute()
-        assert CompareWorkspaces(
+        assert_wksp_almost_equal(
             Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
         )
@@ -194,7 +194,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("LoaderType", "LoadNexusProcessed")
         algo.setPropertyValue("OutputWorkspace", self.fetchedWS)
         assert algo.execute()
-        assert CompareWorkspaces(
+        assert_wksp_almost_equal(
             Workspace1=self.fetchedWS,
             Workspace2=self.sampleWS,
         )
@@ -217,7 +217,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("OutputWorkspace", f"_{self.runNumber}_grouping_name")
         algo.setPropertyValue("InstrumentName", "fakeSNAP")
         assert algo.execute()
-        assert CompareWorkspaces(
+        assert_wksp_almost_equal(
             Workspace1=f"_{self.runNumber}_grouping_file",
             Workspace2=f"_{self.runNumber}_grouping_name",
         )
@@ -226,7 +226,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("OutputWorkspace", f"_{self.runNumber}_grouping_donor")
         algo.setPropertyValue("InstrumentDonor", self.sampleWS)
         assert algo.execute()
-        assert CompareWorkspaces(
+        assert_wksp_almost_equal(
             Workspace1=f"_{self.runNumber}_grouping_file",
             Workspace2=f"_{self.runNumber}_grouping_donor",
         )
