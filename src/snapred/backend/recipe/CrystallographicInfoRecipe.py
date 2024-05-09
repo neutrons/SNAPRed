@@ -3,7 +3,6 @@ from typing import Any, Dict
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.CrystallographicInfoAlgorithm import CrystallographicInfoAlgorithm
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton

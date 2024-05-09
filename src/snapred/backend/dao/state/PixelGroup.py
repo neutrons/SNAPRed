@@ -1,8 +1,7 @@
 from enum import IntEnum
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
-import numpy as np
-from pydantic import BaseModel, parse_obj_as
+from pydantic import BaseModel
 
 from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.state.FocusGroup import FocusGroup

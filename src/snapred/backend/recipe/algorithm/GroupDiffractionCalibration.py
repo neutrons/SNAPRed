@@ -1,5 +1,4 @@
-import json
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from mantid.api import (
     AlgorithmFactory,
@@ -12,7 +11,6 @@ from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
-from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -72,7 +70,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
-        from datetime import date
 
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         self.runNumber: str = ingredients.runConfig.runNumber

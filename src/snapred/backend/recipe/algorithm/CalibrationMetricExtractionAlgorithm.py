@@ -1,10 +1,8 @@
 import json
-from typing import List
 
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
-from pydantic import parse_raw_as
 
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.state import PixelGroup

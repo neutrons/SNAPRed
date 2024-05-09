@@ -5,8 +5,6 @@ from pathlib import Path
 # Important: this is a *pure* pytest module: no `unittest` imports should be used.
 import pytest
 from snapred.backend.dao.state import GroupingMap as GroupingMapModule
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Resource
 from util.groupingMapUtil import GroupingMapTestFactory
 

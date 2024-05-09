@@ -3,7 +3,6 @@ from typing import ClassVar, Literal, Optional
 from pydantic import BaseModel, root_validator
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)

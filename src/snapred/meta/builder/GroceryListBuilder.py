@@ -1,7 +1,6 @@
 from typing import Dict, List
 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-from snapred.meta.Config import Config
 
 
 class GroceryListBuilder:

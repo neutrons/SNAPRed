@@ -1,5 +1,4 @@
-from qtpy.QtCore import QObject, Qt, Signal
-from qtpy.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
+from qtpy.QtCore import QObject
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest

@@ -2,10 +2,7 @@ from typing import Any, Dict, List, Tuple
 
 from snapred.backend.dao.ingredients import PreprocessReductionIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe
-from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)

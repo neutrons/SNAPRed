@@ -1,12 +1,10 @@
 # ruff: noqa: E402, ARG002
 import unittest
 import unittest.mock as mock
-from typing import Any, Dict
-from unittest.mock import ANY, MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
-    CreateWorkspace,
     mtd,
 )
 

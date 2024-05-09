@@ -6,7 +6,6 @@ from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
-    CreateSampleWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
     LoadInstrument,

@@ -1,11 +1,9 @@
 # TODO this can probably be relaced in the code with FarmFreshIngredients
 
-from typing import Optional
 
 from pydantic import BaseModel
 
 from snapred.backend.dao.Limit import Pair
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum

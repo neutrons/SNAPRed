@@ -1,5 +1,3 @@
-import json
-
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction, PhysicalConstants

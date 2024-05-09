@@ -1,10 +1,9 @@
 import unittest
 from typing import List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from mantid.kernel import Direction
 from pydantic import parse_raw_as
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.state import PixelGroup, PixelGroupingParameters

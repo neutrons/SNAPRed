@@ -1,4 +1,3 @@
-import json
 from typing import Dict
 
 from mantid.api import (
@@ -9,7 +8,6 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 

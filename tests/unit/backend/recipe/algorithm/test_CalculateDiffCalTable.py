@@ -1,6 +1,5 @@
 import unittest
 
-import snapred.backend.recipe.algorithm
 from mantid.simpleapi import (
     CalculateDiffCalTable,
     DeleteWorkspace,

@@ -5,9 +5,6 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QSizePolicy,
-    QSpacerItem,
-    QWidget,
 )
 
 from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresenter

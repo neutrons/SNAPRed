@@ -4,7 +4,6 @@ from collections import namedtuple
 from mantid.api import AlgorithmManager, Progress, mtd
 from mantid.kernel import Direction
 
-import snapred.backend.recipe.algorithm
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
 

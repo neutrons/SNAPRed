@@ -5,24 +5,19 @@
 import json
 import socket
 import unittest
-import unittest.mock as mock
-from datetime import date
 from pathlib import Path
 from typing import Dict, List, Union
 
 import pytest
 from mantid.simpleapi import (
-    CheckForSampleLogs,
-    CreateWorkspace,
     DeleteWorkspace,
-    DeleteWorkspaces,
     LoadDetectorsGroupingFile,
     LoadDiffCal,
     LoadEmptyInstrument,
     RenameWorkspace,
     mtd,
 )
-from pydantic import parse_file_as, parse_obj_as, parse_raw_as
+from pydantic import parse_file_as, parse_raw_as
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.state.InstrumentState import InstrumentState
