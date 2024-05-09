@@ -825,7 +825,7 @@ class LocalDataService:
         version = 1
         grocer = GroceryService()
         filename = Path(grocer._createDiffcalTableWorkspaceName("default", version) + ".h5")
-        outWS = grocer.fetchDefaultDiffCalTable(runNumber, version, useLiteMode)
+        outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
 
         calibrationDataPath = self._constructCalibrationDataPath(runNumber, str(version), useLiteMode)
 
