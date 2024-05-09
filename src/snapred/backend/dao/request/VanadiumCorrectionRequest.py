@@ -6,7 +6,7 @@ from snapred.meta.Config import Config
 
 class VanadiumCorrectionRequest(BaseModel):
     runNumber: str
-    useLiteMode: bool = True  # TODO turn this on inside the view and workflow
+    useLiteMode: bool
     focusGroup: FocusGroup
 
     calibrantSamplePath: str

@@ -38,9 +38,6 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         self.initializationComplete = False
 
-        # TODO enable set by toggle
-        self.useLiteMode = True
-
         self.assessmentSchema = self.request(path="api/parameters", payload="normalization/assessment").data
         self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
 
@@ -50,7 +47,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.samplePaths = self.request(path="config/samplePaths").data
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
         self.groupingMap = self.defaultGroupingMap
-        self.focusGroups = self.groupingMap.getMap(self.useLiteMode)
+        self.focusGroups = self.groupingMap.lite
 
         self._requestView = NormalizationRequestView(
             jsonForm,
@@ -89,7 +86,7 @@ class NormalizationWorkflow(WorkflowImplementer):
     def _populateGroupingDropdown(self):
         # when the run number is updated, grab the grouping map and populate grouping drop down
         runNumber = self._requestView.runNumberField.text()
-        useLiteMode = self._requestView.litemodeToggle.field.getState()
+        self.useLiteMode = self._requestView.litemodeToggle.field.getState()
 
         self._requestView.litemodeToggle.setEnabled(False)
         self._requestView.groupingFileDropdown.setEnabled(False)
@@ -98,7 +95,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             # check if the state exists -- if so load its grouping map
             payload = HasStateRequest(
                 runId=runNumber,
-                useLiteMode=useLiteMode,
+                useLiteMode=self.useLiteMode,
             )
             hasState = self.request(path="calibration/hasState", payload=payload.json()).data
             # hasState = self.request(path="calibration/hasState", payload=runNumber).data
@@ -106,7 +103,7 @@ class NormalizationWorkflow(WorkflowImplementer):
                 self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
             else:
                 self.groupingMap = self.defaultGroupingMap
-            self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            self.focusGroups = self.groupingMap.getMap(self.useLiteMode)
 
             # populate and reenable the drop down
             self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
@@ -137,6 +134,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         # pull fields from view for normalization
 
         self.runNumber = view.getFieldText("runNumber")
+        self.useLiteMode = view.litemodeToggle.field.getState()
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
         self.sampleIndex = view.sampleDropdown.currentIndex()
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
@@ -149,6 +147,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         # init the payload
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=self.focusGroups[self.focusGroupPath],
@@ -183,6 +182,7 @@ class NormalizationWorkflow(WorkflowImplementer):
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=list(self.focusGroups.items())[self.prevGroupingIndex][1],
@@ -223,6 +223,7 @@ class NormalizationWorkflow(WorkflowImplementer):
     def callNormalizationCalibration(self, index, smoothingParameter, dMin, dMax, peakThreshold):
         payload = NormalizationCalibrationRequest(
             runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
