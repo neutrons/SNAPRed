@@ -99,7 +99,6 @@ class TestSousChef(unittest.TestCase):
         res = self.instance.prepCalibrantSample(self.ingredients)
         assert res == self.instance.dataFactoryService.lookupService.readCalibrantSample.return_value
 
-    @mock.patch(thisService + "os.path.isfile", mock.Mock(return_value=True))
     @mock.patch(thisService + "PixelGroup")
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     @mock.patch(thisService + "PixelGroupingIngredients")
