@@ -9,7 +9,6 @@ from mantid.simpleapi import mtd
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState, GroupingMap
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService

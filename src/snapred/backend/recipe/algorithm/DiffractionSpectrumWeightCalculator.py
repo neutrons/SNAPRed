@@ -8,7 +8,6 @@ from pydantic import parse_raw_as
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 logger = snapredLogger.getLogger(__name__)

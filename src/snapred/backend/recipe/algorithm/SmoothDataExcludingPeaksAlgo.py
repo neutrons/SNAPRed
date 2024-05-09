@@ -20,7 +20,6 @@ from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 logger = snapredLogger.getLogger(__name__)

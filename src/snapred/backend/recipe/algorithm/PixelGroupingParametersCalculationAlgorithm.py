@@ -18,7 +18,6 @@ from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupi
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.backend.recipe.algorithm.MaskDetectorFlags import MaskDetectorFlags
 from snapred.meta.Config import Config
 from snapred.meta.redantic import list_to_raw
 

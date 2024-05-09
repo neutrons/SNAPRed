@@ -11,7 +11,6 @@ from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 

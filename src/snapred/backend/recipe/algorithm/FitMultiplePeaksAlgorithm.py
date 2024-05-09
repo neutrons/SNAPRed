@@ -19,7 +19,6 @@ from pydantic import parse_raw_as
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import allowed_peak_type_list
 
