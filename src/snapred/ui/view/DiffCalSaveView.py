@@ -20,7 +20,6 @@ class DiffCalSaveView(QWidget):
     """
 
     signalRunNumberUpdate = Signal(str)
-    signalUseLiteMode = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -33,9 +32,6 @@ class DiffCalSaveView(QWidget):
         self.fieldRunNumber = LabeledField("Run Number :", QLineEdit(parent=self), self)
         self.fieldRunNumber.setEnabled(False)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
-
-        self.useLiteMode: bool = True
-        self.signalUseLiteMode.connect(self._useLiteMode)
 
         self.fieldVersion = LabeledField("Version :", QLineEdit(parent=self), self)
         # add tooltip to leave blank for new version
@@ -71,12 +67,6 @@ class DiffCalSaveView(QWidget):
 
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
-
-    def _useLiteMode(self, useLiteMode):
-        self.useLiteMode = useLiteMode
-
-    def updateLiteMode(self, useLiteMode):
-        self.signalUseLiteMode.emit(useLiteMode)
 
     def enableIterationDropdown(self):
         self.iterationWidget.setVisible(True)

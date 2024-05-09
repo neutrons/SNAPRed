@@ -168,7 +168,6 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         self._saveView.updateRunNumber(self.runNumber)
         self._saveView.updateBackgroundRunNumber(self.backgroundRunNumber)
-        self._saveView.updateLiteMode(self.useLiteMode)
 
         response = self.request(path="normalization", payload=payload.json())
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
@@ -206,7 +205,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
-            useLiteMode=view.useLiteMode,
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
