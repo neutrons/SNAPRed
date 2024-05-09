@@ -2,10 +2,8 @@ import json
 
 from mantid.api import AlgorithmFactory, ITableWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
-from mantid.simpleapi import _create_algorithm_function
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.meta.Config import Config
 
 
 class GenerateTableWorkspaceFromListOfDict(PythonAlgorithm):
@@ -52,6 +50,3 @@ class GenerateTableWorkspaceFromListOfDict(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(GenerateTableWorkspaceFromListOfDict)
-algo = GenerateTableWorkspaceFromListOfDict()
-algo.initialize()
-_create_algorithm_function(GenerateTableWorkspaceFromListOfDict.__name__, 1, algo)

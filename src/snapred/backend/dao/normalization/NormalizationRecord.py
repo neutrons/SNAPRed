@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel
 
@@ -17,7 +17,7 @@ class NormalizationRecord(BaseModel):
     """
 
     runNumber: str
-    isLite: bool
+    useLiteMode: bool
     backgroundRunNumber: str
     smoothingParameter: float
     calibration: Calibration

@@ -15,7 +15,7 @@ class SmoothDataExcludingPeaksRequest(BaseModel):
     """
 
     runNumber: str
-    useLiteMode: bool = True  # TODO turn this on inside the view and workflow
+    useLiteMode: bool
     focusGroup: FocusGroup
     calibrantSamplePath: str
     inputWorkspace: str

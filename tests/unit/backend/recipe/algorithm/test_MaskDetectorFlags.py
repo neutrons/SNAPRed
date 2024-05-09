@@ -1,17 +1,10 @@
-from collections.abc import Sequence
-from typing import Any, Dict, List, Tuple
-
 import pytest
 from mantid.simpleapi import (
     CloneWorkspace,
-    CompareWorkspaces,
     LoadDetectorsGroupingFile,
     LoadEmptyInstrument,
     mtd,
 )
-from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.log.logger import snapredLogger
 
 # the algorithm to test
@@ -20,6 +13,7 @@ from snapred.meta.Config import Resource
 from util.helpers import (
     createCompatibleMask,
     deleteWorkspaceNoThrow,
+    workspacesEqual,
 )
 
 logger = snapredLogger.getLogger(__name__)
@@ -139,12 +133,11 @@ class TestMaskDetectorFlags:
         algo.setProperty("OutputWorkspace", self.testInstrumentWS)
 
         algo.execute()
-        (result, messages) = CompareWorkspaces(
-            CheckInstrument=False,
+        assert workspacesEqual(
             Workspace1=self.testInstrumentWS,
             Workspace2=self.instrumentWS,
+            CheckInstrument=False,
         )
-        assert result
 
     def test_exec_with_group(self):
         """Test that a grouping-workspace's detector flags are set"""
@@ -204,12 +197,11 @@ class TestMaskDetectorFlags:
         algo.setProperty("OutputWorkspace", self.testGroupingWS)
 
         algo.execute()
-        (result, messages) = CompareWorkspaces(
-            CheckInstrument=False,
+        assert workspacesEqual(
             Workspace1=self.testGroupingWS,
             Workspace2=self.groupingWS,
+            CheckInstrument=False,
         )
-        assert result
 
     def test_exec_with_other_mask(self):
         """Test that a mask workspace's detector flags are set"""
@@ -283,12 +275,11 @@ class TestMaskDetectorFlags:
         algo.setProperty("OutputWorkspace", testOtherMaskWS)
 
         algo.execute()
-        (result, messages) = CompareWorkspaces(
-            CheckInstrument=False,
+        assert workspacesEqual(
             Workspace1=testOtherMaskWS,
             Workspace2=self.maskWS,
+            CheckInstrument=False,
         )
-        assert result
 
 
 # this at teardown removes the loggers, eliminating logger error printouts

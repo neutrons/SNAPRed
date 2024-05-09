@@ -7,9 +7,8 @@ from typing import Any, Dict, List, Tuple
 from mantid.simpleapi import mtd
 
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.dao.state import DetectorState, GroupingMap
+from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
@@ -17,7 +16,6 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from snapred.meta.redantic import list_to_raw_pretty
 
 
 @Singleton
@@ -735,7 +733,7 @@ class GroceryService:
         return data
 
     def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: str) -> Tuple[WorkspaceName, str]:
-        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", version)
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", int(version))
         self.mantidSnapper.CalculateDiffCalTable(
             "Generate the default diffcal table",
             InputWorkspace=self._fetchInstrumentDonor(runNumber, useLiteMode),

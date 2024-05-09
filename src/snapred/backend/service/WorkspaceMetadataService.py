@@ -1,11 +1,9 @@
-import os
-from typing import Any, Dict, List
+from typing import List
 
 from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata
 from snapred.backend.recipe.ReadWorkspaceMetadata import ReadWorkspaceMetadata
 from snapred.backend.recipe.WriteWorkspaceMetadata import WriteWorkspaceMetadata
 from snapred.backend.service.Service import Service
-from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 

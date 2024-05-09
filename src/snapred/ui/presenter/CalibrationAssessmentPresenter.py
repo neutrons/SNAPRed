@@ -1,5 +1,4 @@
-from qtpy.QtCore import QObject, Qt, Signal
-from qtpy.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
+from qtpy.QtCore import QObject
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest
@@ -57,9 +56,9 @@ class CalibrationAssessmentPresenter(QObject):
         if response.code == ResponseCode.ERROR:
             self.view.onError(response.message)
 
-    def loadCalibrationIndex(self, runNumber: str):
+    def loadCalibrationIndex(self, runNumber: str, useLiteMode: bool):
         payload = CalibrationIndexRequest(
-            run=RunConfig(runNumber=runNumber),
+            run=RunConfig(runNumber=runNumber, useLiteMode=useLiteMode),
         )
         loadCalibrationIndexRequest = SNAPRequest(path="calibration/index", payload=payload.json())
 

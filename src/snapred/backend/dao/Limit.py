@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import Generic, Literal, Tuple, TypeVar
+from typing import Generic, Tuple, TypeVar
 
 from pydantic import root_validator
 from pydantic.generics import GenericModel

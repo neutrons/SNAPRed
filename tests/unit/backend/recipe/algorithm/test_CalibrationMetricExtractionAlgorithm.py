@@ -1,10 +1,9 @@
 import unittest
 from typing import List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from mantid.kernel import Direction
 from pydantic import parse_raw_as
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.state import PixelGroup, PixelGroupingParameters
@@ -17,12 +16,7 @@ def _removeWhitespace(string):
 
 
 class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
-    # patch the MantidSnapper object
-    @patch(
-        "snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm.MantidSnapper",
-        return_value=MagicMock(mtd=MagicMock(return_value={"mock_input_workspace": {}})),
-    )
-    def test_pyexec(self, mock_mantid_snapper):  # noqa: ARG002
+    def test_pyexec(self):  # noqa: ARG002
         # Mock input data
         fakeInputWorkspace = "mock_input_workspace"
         vals = np.array([[1.0], [2.0], [3.0]])
@@ -69,6 +63,8 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         algorithm.initialize()
         algorithm.setProperty("InputWorkspace", fakeInputWorkspace)
         algorithm.setProperty("PixelGroup", fakePixelGroup.json())
+        # mock out the mtd return
+        algorithm.mantidSnapper = MagicMock()
         algorithm.mantidSnapper.mtd = {
             fakeInputWorkspace: MagicMock(
                 getNumberOfEntries=MagicMock(return_value=4),

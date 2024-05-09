@@ -3,8 +3,6 @@ import unittest.mock as mock
 
 import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.meta.Config import Resource
 
@@ -123,7 +121,6 @@ def test_fail_with_no_output():
         DeleteWorkspace,
         LoadDetectorsGroupingFile,
         LoadInstrument,
-        mtd,
     )
 
     fullInstrumentWS = "_test_lite_algo_native"

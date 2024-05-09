@@ -2,28 +2,18 @@ import json
 import unittest
 from collections.abc import Sequence
 from itertools import permutations
-from typing import Any, Dict, List, Tuple
 
-import numpy as np
 import pytest
 from mantid.api import MatrixWorkspace
-from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import mtd
-from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 
 # needed to make mocked ingredients
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.PixelGroup import PixelGroup
-
 # the algorithm to test
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import (
     PixelDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
-from snapred.meta.Config import Resource
 from util.diffraction_calibration_synthetic_data import SyntheticData
-from util.helpers import deleteWorkspaceNoThrow, maskSpectra, setSpectraToZero
+from util.helpers import maskSpectra, setSpectraToZero
 
 
 class TestPixelDiffractionCalibration(unittest.TestCase):

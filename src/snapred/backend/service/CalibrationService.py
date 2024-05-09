@@ -1,8 +1,7 @@
-import json
 import time
 from typing import Dict, List
 
-from pydantic import parse_file_as, parse_raw_as
+from pydantic import parse_raw_as
 
 from snapred.backend.dao import Limit, RunConfig
 from snapred.backend.dao.calibration import (
@@ -25,6 +24,7 @@ from snapred.backend.dao.request import (
     FarmFreshIngredients,
     FitMultiplePeaksRequest,
     FocusSpectraRequest,
+    HasStateRequest,
     InitializeStateRequest,
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
@@ -38,18 +38,14 @@ from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
     FitMultiplePeaksRecipe,
     FocusSpectraRecipe,
-    GenerateTableWorkspaceFromListOfDictRecipe,
 )
-from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
-from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -215,7 +211,7 @@ class CalibrationService(Service):
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         calibrationRecord = self.dataExportService.exportCalibrationWorkspaces(calibrationRecord)
         entry.version = calibrationRecord.version
-        self.saveCalibrationToIndex(entry)
+        self.saveCalibrationToIndex(entry, calibrationRecord.useLiteMode)
 
     @FromString
     def load(self, run: RunConfig):
@@ -223,27 +219,29 @@ class CalibrationService(Service):
         return self.dataFactoryService.getCalibrationRecord(runId)
 
     @FromString
-    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
+    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry, useLiteMode: bool):
         if entry.appliesTo is None:
             entry.appliesTo = ">" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
-        self.dataExportService.exportCalibrationIndexEntry(entry)
+        self.dataExportService.exportCalibrationIndexEntry(entry, useLiteMode)
 
     @FromString
     def initializeState(self, request: InitializeStateRequest):
-        return self.dataExportService.initializeState(request.runId, request.humanReadableName)
+        return self.dataExportService.initializeState(request.runId, request.humanReadableName, request.useLiteMode)
 
     @FromString
     def getState(self, runs: List[RunConfig]):
         states = []
         for run in runs:
-            state = self.dataFactoryService.getStateConfig(run.runNumber)
+            state = self.dataFactoryService.getStateConfig(run.runNumber, run.useLiteMode)
             states.append(state)
         return states
 
-    def hasState(self, runId: str):
+    @FromString
+    def hasState(self, request: HasStateRequest):
+        runId = request.runId
         return self.dataFactoryService.checkCalibrationStateExists(runId)
 
     # TODO make the inputs here actually work
@@ -260,7 +258,7 @@ class CalibrationService(Service):
     @FromString
     def getCalibrationIndex(self, request: CalibrationIndexRequest):
         run = request.run
-        calibrationIndex = self.dataFactoryService.getCalibrationIndex(run.runNumber)
+        calibrationIndex = self.dataFactoryService.getCalibrationIndex(run.runNumber, run.useLiteMode)
         return calibrationIndex
 
     @FromString
@@ -366,7 +364,7 @@ class CalibrationService(Service):
 
         record = CalibrationRecord(
             runNumber=request.run.runNumber,
-            isLite=request.useLiteMode,
+            useLiteMode=request.useLiteMode,
             crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
             calibrationFittingIngredients=self.sousChef.prepCalibration(farmFresh),
             pixelGroups=[pixelGroup],

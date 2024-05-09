@@ -1,13 +1,10 @@
-import re
 import time
-from typing import Any, Dict
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
 from snapred.backend.dao.normalization import (
-    Normalization,
     NormalizationIndexEntry,
     NormalizationRecord,
 )
@@ -165,7 +162,7 @@ class NormalizationService(Service):
         calibration = self.sousChef.prepCalibration(farmFresh)
         record = NormalizationRecord(
             runNumber=request.runNumber,
-            isLite=request.useLiteMode,
+            useLiteMode=request.useLiteMode,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             calibration=calibration,
@@ -183,15 +180,15 @@ class NormalizationService(Service):
         normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
         normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
         entry.version = normalizationRecord.version
-        self.saveNormalizationToIndex(entry)
+        self.saveNormalizationToIndex(entry, normalizationRecord.useLiteMode)
 
-    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
+    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry, useLiteMode: bool):
         if entry.appliesTo is None:
             entry.appliesTo = ">" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * 1000))
         logger.info(f"Saving normalization index entry for Run Number {entry.runNumber}")
-        self.dataExportService.exportNormalizationIndexEntry(entry)
+        self.dataExportService.exportNormalizationIndexEntry(entry, useLiteMode)
 
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
         cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])

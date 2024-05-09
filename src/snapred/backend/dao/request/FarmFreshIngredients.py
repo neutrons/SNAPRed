@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.state import FocusGroup

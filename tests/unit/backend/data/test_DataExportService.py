@@ -21,7 +21,9 @@ with mock.patch.dict(
         dataExportService = DataExportService()
         dataExportService.dataService.writeCalibrationIndexEntry = mock.Mock()
         dataExportService.dataService.writeCalibrationIndexEntry.return_value = "expected"
-        dataExportService.exportCalibrationIndexEntry(CalibrationIndexEntry(runNumber="1", comments="", author=""))
+        dataExportService.exportCalibrationIndexEntry(
+            CalibrationIndexEntry(runNumber="1", comments="", author=""), useLiteMode=True
+        )
         assert dataExportService.dataService.writeCalibrationIndexEntry.called
 
     def test_exportCalibrationRecord():
@@ -49,7 +51,7 @@ with mock.patch.dict(
         dataExportService = DataExportService()
         dataExportService.dataService.initializeState = mock.Mock()
         dataExportService.dataService.initializeState.return_value = "expected"
-        dataExportService.initializeState(mock.Mock(), mock.Mock())
+        dataExportService.initializeState(mock.Mock(), mock.Mock(), mock.Mock())
         assert dataExportService.dataService.initializeState.called
 
     def test_exportNormalizationIndexEntry():
@@ -57,7 +59,7 @@ with mock.patch.dict(
         dataExportService.dataService.writeNormalizationIndexEntry = mock.Mock()
         dataExportService.dataService.writeNormalizationIndexEntry.return_value = "expected"
         dataExportService.exportNormalizationIndexEntry(
-            NormalizationIndexEntry(runNumber="1", backgroundRunNumber="2", comments="", author="")
+            NormalizationIndexEntry(runNumber="1", backgroundRunNumber="2", comments="", author=""), True
         )
         assert dataExportService.dataService.writeNormalizationIndexEntry.called
 

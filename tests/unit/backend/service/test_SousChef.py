@@ -3,11 +3,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
 
@@ -102,7 +99,6 @@ class TestSousChef(unittest.TestCase):
         res = self.instance.prepCalibrantSample(self.ingredients)
         assert res == self.instance.dataFactoryService.lookupService.readCalibrantSample.return_value
 
-    @mock.patch(thisService + "os.path.isfile", mock.Mock(return_value=True))
     @mock.patch(thisService + "PixelGroup")
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     @mock.patch(thisService + "PixelGroupingIngredients")

@@ -1,7 +1,6 @@
 import json
 import unittest.mock as mock
 
-import pytest
 from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.error.RecoverableException import RecoverableException
 
@@ -56,7 +55,7 @@ with mock.patch.dict(
         interfaceController = mockedSuccessfulInterfaceController(raiseRecoverable=True)
         stateCheckRequest = mock.Mock()
         stateCheckRequest.path = "Test Service"
-        stateCheckRequest.payload = json.dumps({"runNumber": "12345"})
+        stateCheckRequest.payload = json.dumps({"runNumber": "12345", "useLiteMode": "True"})
 
         response = interfaceController.executeRequest(stateCheckRequest)
 

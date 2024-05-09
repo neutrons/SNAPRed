@@ -1,6 +1,6 @@
 import re
 from enum import Enum
-from typing import Dict, List
+from typing import List
 
 from snapred.meta.Config import Config
 
