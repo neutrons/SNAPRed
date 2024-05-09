@@ -6,7 +6,7 @@ This script tests the algorithms to Save/Load a grouping definition
 import snapred.backend.recipe.algorithm
 
 # import mantid algorithms, numpy and matplotlib
-from mantid.simpleapi import LoadEmptyInstrument, LoadGroupingDefinition, SaveGroupingDefinition
+from mantid.simpleapi import LoadEmptyInstrument, LoadGroupingDefinition, mtd, SaveGroupingDefinition
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 import matplotlib.pyplot as plt
 import numpy as np

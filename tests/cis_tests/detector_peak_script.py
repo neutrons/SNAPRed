@@ -10,6 +10,7 @@ from mantid.simpleapi import (
     ConvertUnits,
     DetectorPeakPredictor,
     DiffractionFocussing,
+    mtd,
     Rebin,
 )
 import matplotlib.pyplot as plt
