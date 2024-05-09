@@ -56,9 +56,9 @@ class CalibrationAssessmentPresenter(QObject):
         if response.code == ResponseCode.ERROR:
             self.view.onError(response.message)
 
-    def loadCalibrationIndex(self, runNumber: str):
+    def loadCalibrationIndex(self, runNumber: str, useLiteMode: bool):
         payload = CalibrationIndexRequest(
-            run=RunConfig(runNumber=runNumber),
+            run=RunConfig(runNumber=runNumber, useLiteMode=useLiteMode),
         )
         loadCalibrationIndexRequest = SNAPRequest(path="calibration/index", payload=payload.json())
 

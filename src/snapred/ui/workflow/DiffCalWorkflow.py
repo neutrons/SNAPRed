@@ -346,7 +346,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.outputs.extend(assessmentResponse.metricWorkspaces)
         for calibrationWorkspaces in self.calibrationRecord.workspaces.values():
             self.outputs.extend(calibrationWorkspaces)
-        self._assessmentView.updateRunNumber(self.runNumber)
+        self._assessmentView.updateRunNumber(self.runNumber, self.useLiteMode)
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
