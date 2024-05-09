@@ -1,9 +1,5 @@
-import json
 import unittest
-import unittest.mock as mock
-from typing import List
 
-import pytest
 from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
     CreateWorkspace,

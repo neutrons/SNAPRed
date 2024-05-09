@@ -1,5 +1,4 @@
 import json
-from sys import version
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.calibration import CalibrationIndexEntry
@@ -11,7 +10,6 @@ from snapred.backend.dao.request import (
     FocusSpectraRequest,
     HasStateRequest,
 )
-from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog

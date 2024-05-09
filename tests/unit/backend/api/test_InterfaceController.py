@@ -1,7 +1,6 @@
 import json
 import unittest.mock as mock
 
-import pytest
 from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.error.RecoverableException import RecoverableException
 

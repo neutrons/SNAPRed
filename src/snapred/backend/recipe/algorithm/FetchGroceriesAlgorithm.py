@@ -1,7 +1,6 @@
 import json
-from typing import Dict, List, Tuple
+from typing import Dict
 
-import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     FileAction,
@@ -16,8 +15,6 @@ from mantid.kernel import (
 )
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.LoadCalibrationWorkspaces import LoadCalibrationWorkspaces
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 logger = snapredLogger.getLogger(__name__)

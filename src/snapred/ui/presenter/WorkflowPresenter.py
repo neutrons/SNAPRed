@@ -1,11 +1,8 @@
-from os import path
-
-from qtpy.QtWidgets import QMainWindow, QMessageBox
+from qtpy.QtWidgets import QMainWindow
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import ClearWorkspaceRequest
-from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel

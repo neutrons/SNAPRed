@@ -1,13 +1,10 @@
-import re
 import time
-from typing import Any, Dict
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
 from snapred.backend.dao.normalization import (
-    Normalization,
     NormalizationIndexEntry,
     NormalizationRecord,
 )

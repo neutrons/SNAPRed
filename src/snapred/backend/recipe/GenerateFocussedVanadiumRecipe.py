@@ -1,4 +1,3 @@
-import json
 from typing import Any, Dict
 
 from snapred.backend.dao.ingredients import GenerateFocussedVanadiumIngredients as Ingredients

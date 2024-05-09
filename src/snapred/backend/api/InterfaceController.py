@@ -1,4 +1,3 @@
-import inspect
 import json
 
 from snapred.backend.dao import SNAPRequest, SNAPResponse

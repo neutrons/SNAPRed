@@ -1,10 +1,7 @@
-import json
 import os
 import tarfile
 import time
-from typing import Dict, List, Tuple
 
-import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     FileAction,
@@ -13,11 +10,9 @@ from mantid.api import (
     PropertyMode,
     PythonAlgorithm,
 )
-from mantid.kernel import Direction, StringArrayProperty
-from mantid.simpleapi import CloneWorkspace, mtd
+from mantid.kernel import Direction
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.meta.Config import Config
 
 
 class WrapLeftovers(PythonAlgorithm):

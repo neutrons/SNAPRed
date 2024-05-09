@@ -16,15 +16,13 @@ from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.simpleapi import (
     CloneWorkspace,
-    ConvertUnits,
     CreateGroupingWorkspace,
     CreateSampleWorkspace,
     LoadEmptyInstrument,
     LoadInstrument,
     mtd,
 )
-from pydantic import BaseModel, parse_raw_as
-from pydantic.error_wrappers import ValidationError
+from pydantic import parse_raw_as
 from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry

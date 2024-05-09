@@ -1,6 +1,3 @@
-from collections.abc import Sequence
-from typing import Any, Dict, List, Tuple
-
 import pytest
 from mantid.simpleapi import (
     CloneWorkspace,
@@ -8,9 +5,6 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
     mtd,
 )
-from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.log.logger import snapredLogger
 
 # the algorithm to test

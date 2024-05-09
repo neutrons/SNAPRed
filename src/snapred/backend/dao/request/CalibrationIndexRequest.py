@@ -1,9 +1,6 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.meta.Config import Config
 
 
 class CalibrationIndexRequest(BaseModel):

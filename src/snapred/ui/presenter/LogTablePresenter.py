@@ -1,10 +1,6 @@
-from time import sleep
-
-from qtpy.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.threading.worker_pool import WorkerPool
 

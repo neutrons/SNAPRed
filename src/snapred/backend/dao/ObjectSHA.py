@@ -2,7 +2,7 @@ import hashlib
 import json
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 
 class ObjectSHA(BaseModel):

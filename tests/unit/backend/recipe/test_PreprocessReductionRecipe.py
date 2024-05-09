@@ -1,6 +1,5 @@
 import unittest
 
-import pytest
 from mantid.simpleapi import CreateEmptyTableWorkspace, CreateSingleValuedWorkspace, mtd
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.PreprocessReductionRecipe import Ingredients, PreprocessReductionRecipe

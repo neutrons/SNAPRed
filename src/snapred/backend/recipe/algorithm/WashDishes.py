@@ -1,7 +1,3 @@
-import json
-from typing import Dict, List, Tuple
-
-import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction, StringArrayProperty
 from mantid.simpleapi import DeleteWorkspace, DeleteWorkspaces, mtd

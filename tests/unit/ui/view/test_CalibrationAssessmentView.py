@@ -1,7 +1,5 @@
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock
 
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QComboBox, QMessageBox
 from snapred.backend.dao.calibration import CalibrationIndexEntry
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 

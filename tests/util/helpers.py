@@ -5,10 +5,9 @@
 
 import unittest
 from collections.abc import Sequence
-from typing import Any, Dict, List, Tuple
+from typing import Any, Tuple
 
 import numpy as np
-import pytest
 from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
@@ -18,12 +17,10 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     ExtractMask,
     LoadInstrument,
-    ScaleX,
     WorkspaceFactory,
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
-from snapred.meta.Config import Resource
 
 
 def createCompatibleDiffCalTable(tableWSName: str, templateWSName: str) -> ITableWorkspace:

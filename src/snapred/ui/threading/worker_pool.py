@@ -1,4 +1,3 @@
-import code
 from typing import Dict, List
 
 from qtpy.QtCore import QObject, QThread, Signal
