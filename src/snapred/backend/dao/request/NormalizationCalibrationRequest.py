@@ -17,7 +17,7 @@ class NormalizationCalibrationRequest(BaseModel):
 
     runNumber: str
     backgroundRunNumber: str
-    useLiteMode: bool = True  # TODO: Ensure this is activated in the view and workflow context.
+    useLiteMode: bool
     focusGroup: FocusGroup
     calibrantSamplePath: str
     smoothingParameter: float = Config["calibration.parameters.default.smoothing"]

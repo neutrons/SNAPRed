@@ -50,7 +50,7 @@ class SousChef(Service):
         return "souschef"
 
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
-        calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber)
+        calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber, ingredients.useLiteMode)
         calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers
         return calibration
 
@@ -150,7 +150,7 @@ class SousChef(Service):
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
         return ReductionIngredients(
-            reductionState=self.dataFactoryService.getReductionState(ingredients.runNumber),
+            reductionState=self.dataFactoryService.getReductionState(ingredients.runNumber, ingredients.useLiteMode),
             runConfig=self.prepRunConfig(ingredients.runNumber),
             pixelGroup=self.prepPixelGroup(ingredients),
         )

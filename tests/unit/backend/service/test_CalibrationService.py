@@ -43,6 +43,7 @@ with mock.patch.dict(
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
     from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
     from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+    from snapred.backend.dao.request.HasStateRequest import HasStateRequest
     from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.FocusGroup import FocusGroup
     from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
@@ -66,7 +67,7 @@ with mock.patch.dict(
         calibrationService = CalibrationService()
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
-        calibrationService.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""))
+        calibrationService.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""), True)
         assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">1"
@@ -592,9 +593,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         request = InitializeStateRequest(
             runId=testCalibration.seedRun,
             humanReadableName="friendly name",
+            useLiteMode=True,
         )
         self.instance.initializeState(request)
-        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName)
+        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName, request.useLiteMode)
 
     def test_getState(self):
         testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
@@ -614,7 +616,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_hasState(self):
         mockCheckCalibrationStateExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.checkCalibrationStateExists = mockCheckCalibrationStateExists
-        self.instance.hasState(self.runNumber)
+        request = HasStateRequest(
+            runId=self.runNumber,
+            useLiteMode=True,
+        )
+        self.instance.hasState(request)
         mockCheckCalibrationStateExists.assert_called_once_with(self.runNumber)
 
 

@@ -26,7 +26,7 @@ class DataFactoryService:
             val = clazz()
         return val
 
-    def getReductionState(self, runId: str) -> ReductionState:
+    def getReductionState(self, runId: str, useLiteMode: bool) -> ReductionState:
         reductionState: ReductionState
 
         if runId in self.cache:
@@ -36,7 +36,7 @@ class DataFactoryService:
             # lookup and package data
             reductionState = ReductionState(
                 instrumentConfig=self.getInstrumentConfig(runId),
-                stateConfig=self.getStateConfig(runId),
+                stateConfig=self.getStateConfig(runId, useLiteMode),
             )
             self.cache[runId] = reductionState
 
@@ -51,8 +51,8 @@ class DataFactoryService:
     def getInstrumentConfig(self, runId: str) -> InstrumentConfig:  # noqa: ARG002
         return self.lookupService.readInstrumentConfig()
 
-    def getStateConfig(self, runId: str) -> StateConfig:  # noqa: ARG002
-        return self.lookupService.readStateConfig(runId)
+    def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:  # noqa: ARG002
+        return self.lookupService.readStateConfig(runId, useLiteMode)
 
     def constructStateId(self, runId):
         return self.lookupService._generateStateId(runId)
@@ -63,8 +63,8 @@ class DataFactoryService:
     def getCifFilePath(self, sampleId):
         return self.lookupService.readCifFilePath(sampleId)
 
-    def getCalibrationState(self, runId):
-        return self.lookupService.readCalibrationState(runId)
+    def getCalibrationState(self, runId, useLiteMode):
+        return self.lookupService.readCalibrationState(runId, useLiteMode)
 
     def getNormalizationState(self, runId):
         return self.lookupService.readNormalizationState(runId)
@@ -88,14 +88,14 @@ class DataFactoryService:
     def getWorkspaceSingleUse(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataSingleUse(runId, useLiteMode)
 
-    def getCalibrationRecord(self, runId, version: str = None):
-        return self.lookupService.readCalibrationRecord(runId, version)
+    def getCalibrationRecord(self, runId, version: str = None, useLiteMode: bool = False):
+        return self.lookupService.readCalibrationRecord(runId, version, useLiteMode)
 
-    def getNormalizationRecord(self, runId):
-        return self.lookupService.readNormalizationRecord(runId)
+    def getNormalizationRecord(self, runId, useLiteMode: bool):
+        return self.lookupService.readNormalizationRecord(runId, useLiteMode)
 
-    def getCalibrationIndex(self, runId: str):
-        return self.lookupService.readCalibrationIndex(runId)
+    def getCalibrationIndex(self, runId: str, useLiteMode: bool):
+        return self.lookupService.readCalibrationIndex(runId, useLiteMode)
 
     def getGroupingMap(self, runId: str):
         return self.lookupService.readGroupingMap(runId)
