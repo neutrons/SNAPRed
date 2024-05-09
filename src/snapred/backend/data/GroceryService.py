@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Tuple
 from mantid.simpleapi import mtd
 
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.dao.state import DetectorState, GroupingMap
+from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
@@ -16,7 +16,6 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from snapred.meta.redantic import list_to_raw_pretty
 
 
 @Singleton

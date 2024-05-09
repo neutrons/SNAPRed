@@ -1,7 +1,6 @@
 import json
 
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QComboBox, QGridLayout, QWidget
+from qtpy.QtWidgets import QGridLayout, QWidget
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.SNAPRequest import SNAPRequest

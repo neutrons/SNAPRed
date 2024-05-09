@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Tuple
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.decorators.Singleton import Singleton
 

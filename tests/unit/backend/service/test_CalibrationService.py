@@ -1,12 +1,11 @@
 # ruff: noqa: E402, ARG002
-import os
 import tempfile
 import unittest
 import unittest.mock as mock
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List
-from unittest.mock import ANY, MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
@@ -20,7 +19,6 @@ from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRe
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.meta.Config import Config
-from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
@@ -38,14 +36,12 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from snapred.backend.dao import Limit
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
     from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
-    from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
     from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
     from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.FocusGroup import FocusGroup

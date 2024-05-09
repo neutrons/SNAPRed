@@ -14,17 +14,8 @@ from mantid.simpleapi import (
     Rebin,
     mtd,
 )
-from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
 
 # needed to make mocked ingredients
-from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.CalibrantSample.Atom import Atom
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
-from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
-from snapred.backend.dao.state.CalibrantSample.Material import Material
-
 # the algorithm to test
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import (
     RawVanadiumCorrectionAlgorithm as Algo,  # noqa: E402

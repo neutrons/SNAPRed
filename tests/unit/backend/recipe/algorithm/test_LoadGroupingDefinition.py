@@ -1,23 +1,18 @@
-import os.path
 import socket
 import unittest
 import unittest.mock as mock
-from typing import Dict, Tuple
+from typing import Dict
 
 import pytest
 from mantid.simpleapi import (
     DeleteWorkspace,
     LoadDetectorsGroupingFile,
-    LoadDiffCal,
     LoadEmptyInstrument,
-    LoadNexusProcessed,
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition as LoadingAlgo
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Resource
-from util.helpers import workspacesEqual
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 

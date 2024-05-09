@@ -1,11 +1,9 @@
 import unittest
-from typing import Dict, Literal
-from unittest import mock
 
 import pytest
 from mantid.simpleapi import AddSampleLogMultiple, CreateSingleValuedWorkspace, mtd
 from pydantic import ValidationError
-from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
+from snapred.backend.dao.WorkspaceMetadata import WorkspaceMetadata
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
 from util.helpers import deleteWorkspaceNoThrow

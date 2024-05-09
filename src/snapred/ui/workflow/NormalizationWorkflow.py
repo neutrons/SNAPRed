@@ -1,9 +1,6 @@
 import json
-from sys import version
 
-from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao import SNAPRequest, SNAPResponse
-from snapred.backend.dao.normalization import NormalizationIndexEntry, NormalizationRecord
+from snapred.backend.dao.normalization import NormalizationIndexEntry
 from snapred.backend.dao.request import (
     NormalizationCalibrationRequest,
     NormalizationExportRequest,

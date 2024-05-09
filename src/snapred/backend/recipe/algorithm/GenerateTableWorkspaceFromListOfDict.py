@@ -4,7 +4,6 @@ from mantid.api import AlgorithmFactory, ITableWorkspaceProperty, PropertyMode, 
 from mantid.kernel import Direction
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.meta.Config import Config
 
 
 class GenerateTableWorkspaceFromListOfDict(PythonAlgorithm):

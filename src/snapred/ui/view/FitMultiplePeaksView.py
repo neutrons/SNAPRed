@@ -1,5 +1,3 @@
-import os
-
 from qtpy.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from snapred.backend.dao.ingredients import PeakIngredients as Ingredients

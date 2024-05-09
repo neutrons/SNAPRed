@@ -1,6 +1,5 @@
 from typing import Optional
 
-from matplotlib import use
 from pydantic import BaseModel
 
 from snapred.backend.dao.state.FocusGroup import FocusGroup

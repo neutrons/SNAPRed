@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import Mock, patch
 
 import pytest
-from snapred.backend.dao.RunConfig import RunConfig
 
 
 class TestLiteDataService(unittest.TestCase):

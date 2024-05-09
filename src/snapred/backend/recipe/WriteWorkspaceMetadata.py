@@ -1,5 +1,4 @@
-import json
-from typing import Any, Dict, List, Tuple
+from typing import Dict, Tuple
 
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata
 from snapred.backend.log.logger import snapredLogger

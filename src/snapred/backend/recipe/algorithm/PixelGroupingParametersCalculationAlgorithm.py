@@ -1,7 +1,4 @@
-import json
 import math
-import pathlib
-from statistics import mean
 
 import numpy as np
 from mantid.api import (

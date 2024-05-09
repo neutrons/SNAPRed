@@ -1,14 +1,8 @@
 # ruff: noqa: E722, PT011, PT012
 
 import unittest
-from unittest import mock
 
 import pytest
-from mantid.simpleapi import (
-    DeleteWorkspace,
-    LoadEmptyInstrument,
-)
-from pydantic.error_wrappers import ValidationError
 from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
