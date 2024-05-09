@@ -1,5 +1,12 @@
+"""
+This script tests the algorithms to Save/Load a grouping definition
+"""
+
+# the algorithms to be tests
+import snapred.backend.recipe.algorithm
+
 # import mantid algorithms, numpy and matplotlib
-from mantid.simpleapi import *
+from mantid.simpleapi import LoadEmptyInstrument, LoadGroupingDefinition, mtd, SaveGroupingDefinition
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,8 +14,6 @@ import pathlib
 import os.path
 import time
 
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition as LoadingAlgo
-from snapred.backend.recipe.algorithm.SaveGroupingDefinition import SaveGroupingDefinition as SavingAlgo
 from snapred.meta.Config import Config, Resource
 
 from snapred.backend.log.logger import snapredLogger
@@ -39,25 +44,25 @@ saves = {}
 ###### TESTS OF LOAD #######################################
 
 # load the data directly from the XML with instrument name
-loadingAlgo = LoadingAlgo()
-loadingAlgo.initialize()
-loadingAlgo.setProperty("GroupingFilename", groupingFileXML)
-loadingAlgo.setProperty("InstrumentName", instrumentName)
-loadingAlgo.setProperty("OutputWorkspace", grwsXML)
 start = time.time()
-assert loadingAlgo.execute()
+assert LoadGroupingDefinition(
+    GroupingFilename = groupingFileXML,
+    InstrumentName = instrumentName,
+    OutputWorkspace = grwsXML,
+)
+
 end = time.time()
 loads["XML and NAME"] = (end - start)
 
 # load the data directly from the XML with instrument file
 reload = "from xml and file"
-loadingAlgo = LoadingAlgo()
-loadingAlgo.initialize()
-loadingAlgo.setProperty("GroupingFilename", groupingFileXML)
-loadingAlgo.setProperty("InstrumentFilename", instrumentFile)
-loadingAlgo.setProperty("OutputWorkspace", reload)
+
 start = time.time()
-assert loadingAlgo.execute()
+assert LoadGroupingDefinition(
+    GroupingFilename = groupingFileXML,
+    InstrumentFilename = instrumentFile,
+    OutputWorkspace = reload,
+)
 end = time.time()
 loads["XML and FILE"] = (end - start)
 
@@ -68,13 +73,13 @@ assert_wksp_almost_equal(
 
 # load the data directly from the XML with instrument donor
 reload = "from xml and donor"
-loadingAlgo = LoadingAlgo()
-loadingAlgo.initialize()
-loadingAlgo.setProperty("GroupingFilename", groupingFileXML)
-loadingAlgo.setProperty("InstrumentDonor", instrumentDonor)
-loadingAlgo.setProperty("OutputWorkspace", reload)
+
 start = time.time()
-assert loadingAlgo.execute()
+assert LoadGroupingDefinition(
+    GroupingFilename = groupingFileXML,
+    InstrumentDonor = instrumentDonor,
+    OutputWorkspace = reload,
+)
 end = time.time()
 loads["XML and DONOR"] = (end - start)
 
@@ -86,23 +91,21 @@ assert_wksp_almost_equal(
 ###### TESTS OF SAVE #######################################
 
 ###### save/load with XML file and instrument name
-savingAlgo = SavingAlgo()
-savingAlgo.initialize()
-savingAlgo.setProperty("GroupingFilename", groupingFileXML)
-savingAlgo.setProperty("OutputFilename", groupingFileHDF)
-savingAlgo.setProperty("InstrumentName", instrumentName)
 start = time.time()
-assert savingAlgo.execute()
+SaveGroupingDefinition(
+    GroupingFilename = groupingFileXML,
+    OutputFilename = groupingFileHDF,
+    InstrumentName = instrumentName,
+)
 end = time.time()
 saves["XML and NAME"] = (end - start)
 
-loadingAlgo = LoadingAlgo()
-loadingAlgo.initialize()
-loadingAlgo.setProperty("GroupingFilename", groupingFileHDF)
-loadingAlgo.setProperty("InstrumentName", instrumentName)
-loadingAlgo.setProperty("OutputWorkspace", grwsHDF)
 start = time.time()
-assert loadingAlgo.execute()
+LoadGroupingDefinition(
+    GroupingFilename = groupingFileHDF,
+    InstrumentName = instrumentName,
+    OutputWorkspace = grwsHDF,
+)
 end = time.time()
 loads["HDF and NAME"] = (end - start)
 
@@ -112,23 +115,21 @@ assert_wksp_almost_equal(
 )
 
 ###### save/load with XML file and instrument file
-savingAlgo = SavingAlgo()
-savingAlgo.initialize()
-savingAlgo.setProperty("GroupingFilename", groupingFileXML)
-savingAlgo.setProperty("OutputFilename", groupingFileHDF)
-savingAlgo.setProperty("InstrumentFilename", instrumentFile)
 start = time.time()
-assert savingAlgo.execute()
+SaveGroupingDefinition(
+    GroupingFilename = groupingFileXML,
+    OutputFilename = groupingFileHDF,
+    InstrumentFilename = instrumentFile,  
+)
 end = time.time()
 saves["XML and FILE"] = (end - start)
 
-loadingAlgo = LoadingAlgo()
-loadingAlgo.initialize()
-loadingAlgo.setProperty("GroupingFilename", groupingFileHDF)
-loadingAlgo.setProperty("InstrumentFilename", instrumentFile)
-loadingAlgo.setProperty("OutputWorkspace", grwsHDF)
 start = time.time()
-assert loadingAlgo.execute()
+LoadGroupingDefinition(
+    GroupingFilename = groupingFileHDF,
+    InstrumentFilename = instrumentFile,
+    OutputWorkspace = grwsHDF,
+)
 end = time.time()
 loads["HDF and FILE"] = (end - start)
 
@@ -139,24 +140,21 @@ assert_wksp_almost_equal(
 
 ###### save/load with XML file and instrument donor
 result = "xml_and_instrument_donor"
-savingAlgo = SavingAlgo()
-savingAlgo.initialize()
-savingAlgo.setProperty("GroupingFilename", groupingFileXML)
-savingAlgo.setProperty("OutputFilename", groupingFileHDF)
-savingAlgo.setProperty("InstrumentDonor", instrumentDonor)
 start = time.time()
-assert savingAlgo.execute()
+SaveGroupingDefinition(
+    GroupingFilename = groupingFileXML,
+    OutputFilename = groupingFileHDF,
+    InstrumentDonor = instrumentDonor,
+)
 end = time.time()
 saves["XML and DONOR"] = (end - start)
 
 start = time.time()
-loadingAlgo = LoadingAlgo()
-loadingAlgo.initialize()
-loadingAlgo.setProperty("GroupingFilename", groupingFileHDF)
-loadingAlgo.setProperty("InstrumentDonor", instrumentDonor)
-loadingAlgo.setProperty("OutputWorkspace", grwsHDF)
-start = time.time()
-assert loadingAlgo.execute()
+LoadGroupingDefinition(
+    GroupingFilename = groupingFileHDF,
+    InstrumentDonor = instrumentDonor,
+    OutputWorkspace = grwsHDF,
+)
 end = time.time()
 loads["HDF and DONOR"] = (end - start)
 
@@ -167,41 +165,34 @@ assert_wksp_almost_equal(
 
 ###### save with HDF file and instrument name
 groupingFileHDF2 = localDir + pathlib.Path(groupingFileXML).stem + "2.hdf"
-savingAlgo = SavingAlgo()
-savingAlgo.initialize()
-savingAlgo.setProperty("GroupingFilename", groupingFileHDF)
-savingAlgo.setProperty("OutputFilename", groupingFileHDF2)
-savingAlgo.setProperty("InstrumentName", instrumentName)
 start = time.time()
-assert savingAlgo.execute()
+SaveGroupingDefinition(
+    GroupingFilename = groupingFileHDF,
+    OutputFilename = groupingFileHDF2,
+    InstrumentName = instrumentName,
+)
 end = time.time()
 saves["HDF and NAME"] = (end - start)
-print(groupingFileHDF)
-print(savingAlgo.supported_calib_file_extensions)
 
 ###### save with HDF file and instrument file
-savingAlgo = SavingAlgo()
-savingAlgo.initialize()
-savingAlgo.setProperty("GroupingFilename", groupingFileHDF)
-savingAlgo.setProperty("OutputFilename", groupingFileHDF2)
-savingAlgo.setProperty("InstrumentFilename", instrumentFile)
 start = time.time()
-assert savingAlgo.execute()
+SaveGroupingDefinition(
+    GroupingFilename = groupingFileHDF,
+    OutputFilename = groupingFileHDF2,
+    InstrumentFilename = instrumentFile,
+)
 end = time.time()
 saves["HDF and FILE"] = (end - start)
 
 ###### save with HDF file and instrument donor
-savingAlgo = SavingAlgo()
-savingAlgo.initialize()
-savingAlgo.setProperty("GroupingFilename", groupingFileHDF)
-savingAlgo.setProperty("OutputFilename", groupingFileHDF2)
-savingAlgo.setProperty("InstrumentDonor", instrumentDonor)
 start = time.time()
-assert savingAlgo.execute()
+SaveGroupingDefinition(
+    GroupingFilename = groupingFileHDF,
+    OutputFilename = groupingFileHDF2,
+    InstrumentDonor = instrumentDonor,
+)
 end = time.time()
 saves["HDF and DONOR"] = (end - start)
-
-
 
 ##### PRINT TIME RESULTS
 for x,y in loads.items():

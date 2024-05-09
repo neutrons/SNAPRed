@@ -17,12 +17,15 @@ SNAPRed_module_root = Path(snapred.__file__).parent.parent
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
     PixelGroupingParametersCalculationRecipe as pgpRecipe,
 )
-from snapred.backend.dao.ingredients import PixelGroupingIngredients
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config
+
+## for prepping ingredients
+from snapred.backend.dao.ingredients import PixelGroupingIngredients
+from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+from snapred.backend.service.SousChef import SousChef
+## for fetching workspaces
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.data.GroceryService import GroceryService
 
 # Test helper utility routines:
 # -----------------------------
@@ -79,7 +82,7 @@ from util.helpers import (
 )
 SNAPLiteInstrumentFilePath = str(Path(SNAPRed_module_root).parent / 'tests' / 'resources' / 'inputs' / 'pixel_grouping' / 'SNAPLite_Definition.xml')
 
-#User input ###########################
+# USER INPUT ##########################
 runNumber = "58882"
 groupingScheme = 'Column'
 isLite = True
@@ -87,23 +90,20 @@ instrumentFilePath = SNAPLiteInstrumentFilePath
 Config._config["cis_mode"] = False
 #######################################
 
-
-### RUN RECIPE
-runConfig = RunConfig(
+## PREP INGREDIENTS ###################
+farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
-    IPTS=GetIPTS(RunNumber=runNumber,Instrument='SNAP'), 
     useLiteMode=isLite,
+    focusGroup={"name":groupingScheme, "definition":""},
 )
-dataFactoryService = DataFactoryService()
-calibration = dataFactoryService.getCalibrationState(runNumber)
-instrumentState = calibration.instrumentState
-
+instrumentState = SousChef().prepInstrumentState(farmFresh)
 ingredients = PixelGroupingIngredients(
-    instrumentState=calibration.instrumentState,
-    groupingScheme=groupingScheme,
-    nBinsAcrossPeakWidth=Config["calibration.diffraction.nBinsAcrossPeakWidth"],
+    instrumentState=instrumentState,
+    nBinsAcrossPeakWidth=farmFresh.nBinsAcrossPeakWidth,
 )
+#######################################
 
+## FETCH GROCERIES ###################
 clerk = GroceryListItem.builder()
 clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
 
@@ -115,7 +115,7 @@ groceries = GroceryService().fetchGroceryDict(
 
 #### CREATE AN INPUT MASK, AS REQUIRED FOR TESTING. ##########
 groupingWSName = groceries['groupingWorkspace']
-maskWSName = groceries['maskWSName']
+maskWSName = groceries["maskWorkspace"]
 
 # The grouping workspace is used as the instrument-donor to make the mask.
 createCompatibleMask(maskWSName, groupingWSName, instrumentFilePath)
@@ -137,6 +137,7 @@ groupingWS = mtd[groupingWSName]
 # maskComponentByName(maskWS, "West")
 # ---
 
+### RUN RECIPE
 pgp = pgpRecipe()
 result = pgp.executeRecipe(ingredients, groceries)
 pixelGroupingParametersList = result["parameters"]
@@ -145,5 +146,3 @@ pixelGroupingParametersList = result["parameters"]
 """
 Stop here and make sure everything looks good.
 """
-assert False
-
