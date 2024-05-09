@@ -246,6 +246,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focusWorkspace,
+            useLiteMode=self.useLiteMode,
             outputWorkspace=smoothWorkspace,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
