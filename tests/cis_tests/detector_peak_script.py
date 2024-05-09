@@ -5,8 +5,13 @@
 #  2. changing the peak tail coefficient property will change this width
 
 
-import snapred.backend.recipe.algorithm.DetectorPeakPredictor
-from mantid.simpleapi import *
+import snapred.backend.recipe.algorithm
+from mantid.simpleapi import (
+    ConvertUnits,
+    DetectorPeakPredictor,
+    DiffractionFocussing,
+    Rebin,
+)
 import matplotlib.pyplot as plt
 import numpy as np
 import json

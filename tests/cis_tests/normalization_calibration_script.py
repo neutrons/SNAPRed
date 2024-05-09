@@ -5,6 +5,7 @@ This is being retained for possible future testing of other parts of normalizati
 """
 raise NotImplementedError("The algorithm tested by this script no longer exists.")
 
+import snapred.backend.recipe.algorithm
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np

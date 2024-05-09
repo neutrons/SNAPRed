@@ -4,8 +4,7 @@ import unittest
 import unittest.mock as mock
 
 import pytest
-import snapred.backend.recipe.algorithm.GroupDiffractionCalibration
-import snapred.backend.recipe.algorithm.CalculateDiffCalTable
+import snapred.backend.recipe.algorithm
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 from snapred.backend.dao.DetectorPeak import DetectorPeak

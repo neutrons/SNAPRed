@@ -3,11 +3,10 @@ This script tests the algorithms to Save/Load a grouping definition
 """
 
 # the algorithms to be tests
-import snapred.backend.recipe.algorithm.LoadGroupingDefinition
-import snapred.backend.recipe.algorithm.SaveGroupingDefinition
+import snapred.backend.recipe.algorithm
 
 # import mantid algorithms, numpy and matplotlib
-from mantid.simpleapi import *
+from mantid.simpleapi import LoadEmptyInstrument, LoadGroupingDefinition, SaveGroupingDefinition
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 import matplotlib.pyplot as plt
 import numpy as np

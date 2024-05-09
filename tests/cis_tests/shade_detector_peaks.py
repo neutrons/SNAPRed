@@ -2,13 +2,18 @@
 This script is simply used to prototype plot displays for the UI
 """
 
-from mantid.simpleapi import *
+import snapred.backend.recipe.algorithm
+from mantid.simpleapi import (
+    ConvertUnits,
+    DiffractionFocussing,
+    Rebin,
+)
 from mantid.plots.datafunctions import get_spectrum
 import matplotlib.pyplot as plt
 import numpy as np
 import json
 
-from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
+
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 

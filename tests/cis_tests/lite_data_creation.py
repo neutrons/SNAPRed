@@ -1,6 +1,6 @@
 # Use this script to test LiteDataCreationAlgo.py
-import snapred.backend.recipe.algorithm.LiteDataCreationAlgo
-from mantid.simpleapi import *
+import snapred.backend.recipe.algorithm
+from mantid.simpleapi import LiteDataCreationAlgo
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 
 from snapred.backend.data.GroceryService import GroceryService

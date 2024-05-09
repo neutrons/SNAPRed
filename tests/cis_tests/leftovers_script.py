@@ -1,5 +1,4 @@
-import snapred.backend.recipe.algorithm.data.WrapLeftovers
-import snapred.backend.recipe.algorithm.data.ReheatLeftovers
+import snapred.backend.recipe.algorithm
 from mantid.simpleapi import *
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 

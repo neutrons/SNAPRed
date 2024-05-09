@@ -5,7 +5,7 @@ the purpose is to manually inspect the output workspaces and ensure the operatio
 """
 
 # the algorithm to test
-import snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm
+import snapred.backend.recipe.algorithm
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +26,7 @@ from snapred.backend.dao.ingredients import ReductionIngredients as Ingredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 # needed to make mocked ingredients
-import sys
+import os, sys
 from pathlib import Path
 import snapred
 SNAPRed_module_root = Path(snapred.__file__).parent.parent

@@ -2,14 +2,9 @@
 #   https://ornlrse.clm.ibmcloud.com/ccm/web/projects/Neutron%20Data%20Project%20%28Change%20Management%29#action=com.ibm.team.workitem.viewWorkItem&id=2357
 # Should verify that peaks are removed from the spetrum and there is a smooth fit over the removed parts
 
-# the algorithm to test (and its ingredients)
-from snapred.backend.dao.ingredients import PeakIngredients
-import snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo
 
-from mantid.simpleapi import *
-import matplotlib.pyplot as plt
-import numpy as np
-import json
+import snapred.backend.recipe.algorithm
+from mantid.simpleapi import Rebin, SmoothDataExcludingPeaksAlgo
 
 # try to make the logger shutup
 from snapred.backend.log.logger import snapredLogger

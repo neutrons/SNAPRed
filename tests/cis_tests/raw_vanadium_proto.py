@@ -3,8 +3,12 @@
 
 
 # the algorithm to test
-import snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm
-from mantid.simpleapi import *
+import snapred.backend.recipe.algorithm
+from mantid.simpleapi import (
+    ConvertUnits,
+    DiffractionFocussing,
+    RawVanadiumCorrectionAlgorithm,
+)
 
 import json
 
