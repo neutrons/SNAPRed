@@ -1213,7 +1213,7 @@ def test_readCalibrationState():
     localDataService._getLatestFile = mock.Mock()
     localDataService._getLatestFile.return_value = Resource.getPath("inputs/calibration/CalibrationParameters.json")
     testCalibrationState = Calibration.parse_raw(Resource.read("inputs/calibration/CalibrationParameters.json"))
-    actualState = localDataService.readCalibrationState("57514")
+    actualState = localDataService.readCalibrationState("57514", True)
 
     assert actualState == testCalibrationState
 

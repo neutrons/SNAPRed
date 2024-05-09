@@ -63,8 +63,8 @@ class DataFactoryService:
     def getCifFilePath(self, sampleId):
         return self.lookupService.readCifFilePath(sampleId)
 
-    def getCalibrationState(self, runId):
-        return self.lookupService.readCalibrationState(runId)
+    def getCalibrationState(self, runId, useLiteMode):
+        return self.lookupService.readCalibrationState(runId, useLiteMode)
 
     def getNormalizationState(self, runId):
         return self.lookupService.readNormalizationState(runId)

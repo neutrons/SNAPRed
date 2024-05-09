@@ -50,7 +50,7 @@ class SousChef(Service):
         return "souschef"
 
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
-        calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber)
+        calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber, ingredients.useLiteMode)
         calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers
         return calibration
 
@@ -67,7 +67,7 @@ class SousChef(Service):
         if self.dataFactoryService.fileExists(ingredients.focusGroup.definition):
             return ingredients.focusGroup
         else:
-            groupingMap = self.dataFactoryService.getGroupingMap(ingredients.runNumber, ingredients.useLiteMode)
+            groupingMap = self.dataFactoryService.getGroupingMap(ingredients.runNumber)
             return groupingMap.getMap(ingredients.useLiteMode)[ingredients.focusGroup.name]
 
     def prepPixelGroup(self, ingredients: FarmFreshIngredients) -> PixelGroup:

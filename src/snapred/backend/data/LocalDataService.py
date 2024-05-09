@@ -719,13 +719,13 @@ class LocalDataService:
         return statePath
 
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
-    def readCalibrationState(self, runId: str, version: str = None, useLiteMode: bool = False):
+    def readCalibrationState(self, runId: str, useLiteMode: bool, version: str = None):
         # get stateId and check to see if such a folder exists, if not create it and initialize it
         stateId, _ = self._generateStateId(runId)
         calibrationStatePath = self._constructCalibrationParametersFilePath(runId, "*", useLiteMode)
 
         latestFile = ""
-        if version:
+        if version is not None:
             latestFile = self._getFileOfVersion(calibrationStatePath, version)
         else:
             # TODO: This should refer to the calibration index
