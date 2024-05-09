@@ -15,7 +15,6 @@ from typing import Dict
 
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
-from mantid.simpleapi import _create_algorithm_function
 from scipy.interpolate import make_smoothing_spline
 
 from snapred.backend.log.logger import snapredLogger
@@ -112,7 +111,3 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(SmoothDataExcludingPeaksAlgo)
-# Puts function in simpleapi globals
-algo = SmoothDataExcludingPeaksAlgo()
-algo.initialize()
-_create_algorithm_function(SmoothDataExcludingPeaksAlgo.__name__, 1, algo)

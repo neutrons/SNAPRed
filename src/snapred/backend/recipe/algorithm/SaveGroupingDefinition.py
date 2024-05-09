@@ -11,7 +11,6 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction
-from mantid.simpleapi import _create_algorithm_function
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -180,7 +179,3 @@ class SaveGroupingDefinition(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(SaveGroupingDefinition)
-# Puts function in simpleapi globals
-algo = SaveGroupingDefinition()
-algo.initialize()
-_create_algorithm_function(SaveGroupingDefinition.__name__, 1, algo)

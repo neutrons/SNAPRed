@@ -11,7 +11,6 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction, logger
-from mantid.simpleapi import _create_algorithm_function
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -186,7 +185,3 @@ class LoadGroupingDefinition(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(LoadGroupingDefinition)
-# Puts function in simpleapi globals
-algo = LoadGroupingDefinition()
-algo.initialize()
-_create_algorithm_function(LoadGroupingDefinition.__name__, 1, algo)

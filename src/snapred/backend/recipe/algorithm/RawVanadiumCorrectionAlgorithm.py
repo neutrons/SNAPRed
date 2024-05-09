@@ -5,7 +5,6 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction, StringMandatoryValidator
-from mantid.simpleapi import _create_algorithm_function
 
 from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -190,7 +189,3 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(RawVanadiumCorrectionAlgorithm)
-# Puts function in simpleapi globals
-algo = RawVanadiumCorrectionAlgorithm()
-algo.initialize()
-_create_algorithm_function(RawVanadiumCorrectionAlgorithm.__name__, 1, algo)

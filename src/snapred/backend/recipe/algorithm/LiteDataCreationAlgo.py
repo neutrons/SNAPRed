@@ -7,7 +7,6 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction
-from mantid.simpleapi import _create_algorithm_function
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
@@ -136,7 +135,3 @@ class LiteDataCreationAlgo(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(LiteDataCreationAlgo)
-# Puts function in simpleapi globals
-algo = LiteDataCreationAlgo()
-algo.initialize()
-_create_algorithm_function(LiteDataCreationAlgo.__name__, 1, algo)
