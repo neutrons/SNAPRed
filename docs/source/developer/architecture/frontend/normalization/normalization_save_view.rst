@@ -1,7 +1,7 @@
 NormalizationSaveView Class Documentation
 =========================================
 
-NormalizationSaveView is a PyQt5 widget interface developed for the efficient handling of normalization data saving in SNAPRed after user assessment.
+NormalizationSaveView is a qt widget interface developed for the efficient handling of normalization data saving in SNAPRed after user assessment.
 Decked with the @Resettable decorator, it furnishes users with a systematic and intuitive platform for inputting and reviewing critical details such
 as run numbers and versioning information. Through the dynamic generation of forms and the organized presentation of UI elements, it ensures data
 coherence and simplifies user interaction. The principal aim is to refine the process of confirming and saving normalization data, thereby elevating

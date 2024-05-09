@@ -5,7 +5,7 @@ from qtpy.QtWidgets import QDialog, QLabel, QPushButton, QVBoxLayout
 class SuccessDialog(QDialog):
     """
 
-    This PyQt5 dialog is crafted to provide users with immediate, clear feedback on successful operations,
+    This qt dialog is crafted to provide users with immediate, clear feedback on successful operations,
     like confirming the successful setup of a state, aligning with GUI design principles for straightforward
     communication. It features a simple, minimalistic design with a fixed size and essential window options
     to focus user attention on the success message. The layout includes a vertically arranged message label

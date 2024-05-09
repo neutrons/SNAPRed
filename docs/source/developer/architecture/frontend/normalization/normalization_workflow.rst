@@ -2,7 +2,7 @@ NormalizationWorkflow Class Documentation
 =========================================
 
 NormalizationWorkflow orchestrates a comprehensive and interactive workflow for scientific data normalization tasks within applications. Leveraging
-PyQt5 widgets and custom views, it guides users through every step of the normalization process. Starting from initialization with default settings,
+qt widgets and custom views, it guides users through every step of the normalization process. Starting from initialization with default settings,
 the workflow progresses through calibration, parameter adjustments, and concludes with saving the normalization data. It ensures a responsive,
 user-friendly experience while maintaining flexibility in the workflow and data integrity through thorough validation and error handling.
 

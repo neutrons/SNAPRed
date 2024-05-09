@@ -1,5 +1,5 @@
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QWidget
+from qtpy.QtCore import Signal as pyqtSignal
+from qtpy.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QWidget
 
 
 class LabeledCheckBox(QWidget):
