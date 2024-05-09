@@ -17,6 +17,7 @@ class Calibration(BaseModel):
 
     instrumentState: InstrumentState
     seedRun: int
+    useLiteMode: bool
     creationDate: datetime
     name: str
     version: int = 0

@@ -11,7 +11,9 @@ def test_calibration_record_dropdown(qtbot):
     # test filling in the dropdown
     runNumber = "1234"
     version = "1"
-    calibrationIndexEntries = [CalibrationIndexEntry(runNumber=runNumber, version=version, comments="", author="")]
+    calibrationIndexEntries = [
+        CalibrationIndexEntry(runNumber=runNumber, useLiteMode=True, version=version, comments="", author="")
+    ]
     view.updateCalibrationRecordList(calibrationIndexEntries)
     assert view.getCalibrationRecordCount() == 1
     assert view.getSelectedCalibrationRecordIndex() == -1

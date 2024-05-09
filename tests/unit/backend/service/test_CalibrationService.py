@@ -67,7 +67,9 @@ with mock.patch.dict(
         calibrationService = CalibrationService()
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
-        calibrationService.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""), True)
+        calibrationService.saveCalibrationToIndex(
+            CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
+        )
         assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">1"
@@ -95,7 +97,7 @@ with mock.patch.dict(
     def test_getCalibrationIndex():
         calibrationService = CalibrationService()
         calibrationService.dataFactoryService.getCalibrationIndex = mock.Mock(
-            return_value=CalibrationIndexEntry(runNumber="1", comments="", author="")
+            return_value=CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
         )
         calibrationService.getCalibrationIndex(MagicMock(run=MagicMock(runNumber="123")))
         assert calibrationService.dataFactoryService.getCalibrationIndex.called

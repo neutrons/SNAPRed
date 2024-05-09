@@ -160,6 +160,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         self._tweakPeakView.updateRunNumber(self.runNumber)
         self._saveView.updateRunNumber(self.runNumber)
+        self._saveView.updateLiteMode(self.useLiteMode)
 
         # fields with defaults
         self.convergenceThreshold = view.fieldConvergenceThreshold.get(self.DEFAULT_CONV)
@@ -301,6 +302,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         self.runNumber = view.runNumberField.text()
         self._saveView.updateRunNumber(self.runNumber)
+        self._saveView.updateLiteMode(self.useLiteMode)
         self.focusGroupPath = view.groupingFileDropdown.currentText()
 
         payload = DiffractionCalibrationRequest(
@@ -372,6 +374,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         # pull fields from view for calibration save
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
+            useLiteMode=view.useLiteMode,
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
             appliesTo=view.fieldAppliesTo.get(),

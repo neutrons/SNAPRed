@@ -20,6 +20,7 @@ class NormalizationSaveView(QWidget):
 
     signalRunNumberUpdate = Signal(str)
     signalBackgroundRunNumberUpdate = Signal(str)
+    signalUseLiteMode = Signal(bool)
 
     def __init__(self, name, jsonSchemaMap, parent=None):
         super().__init__(parent)
@@ -35,6 +36,9 @@ class NormalizationSaveView(QWidget):
         )
         self.fieldRunNumber.setEnabled(False)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
+
+        self.useLiteMode: bool = True
+        self.signalUseLiteMode.connect(self._useLiteMode)
 
         self.fieldBackgroundRunNumber = LabeledField(
             "Background Run Number :", self._jsonFormList.getField("normalizationIndexEntry.backgroundRunNumber"), self
@@ -83,6 +87,12 @@ class NormalizationSaveView(QWidget):
 
     def updateBackgroundRunNumber(self, backgroundRunNumber):
         self.signalBackgroundRunNumberUpdate.emit(backgroundRunNumber)
+
+    def _useLiteMode(self, useLiteMode):
+        self.useLiteMode = useLiteMode
+
+    def updateLiteMode(self, useLiteMode):
+        self.signalUseLiteMode.emit(useLiteMode)
 
     def verify(self):
         if self.fieldAuthor.text() == "":
