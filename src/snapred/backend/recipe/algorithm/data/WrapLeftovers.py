@@ -1,10 +1,7 @@
-import json
 import os
 import tarfile
 import time
-from typing import Dict, List, Tuple
 
-import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     FileAction,
@@ -13,11 +10,9 @@ from mantid.api import (
     PropertyMode,
     PythonAlgorithm,
 )
-from mantid.kernel import Direction, StringArrayProperty
-from mantid.simpleapi import CloneWorkspace, _create_algorithm_function, mtd
+from mantid.kernel import Direction
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.meta.Config import Config
 
 
 class WrapLeftovers(PythonAlgorithm):
@@ -94,7 +89,3 @@ class WrapLeftovers(PythonAlgorithm):
 
 # Register algorithm with Mantid
 AlgorithmFactory.subscribe(WrapLeftovers)
-# Puts function in simpleapi globals
-algo = WrapLeftovers()
-algo.initialize()
-_create_algorithm_function(WrapLeftovers.__name__, 1, algo)

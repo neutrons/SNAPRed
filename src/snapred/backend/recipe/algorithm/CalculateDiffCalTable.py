@@ -1,7 +1,3 @@
-import json
-from typing import Dict, List, Tuple
-
-import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     ITableWorkspaceProperty,
@@ -14,7 +10,6 @@ from mantid.simpleapi import (
     CalculateDIFC,
     CreateEmptyTableWorkspace,
     DeleteWorkspace,
-    _create_algorithm_function,
     mtd,
 )
 
@@ -87,9 +82,4 @@ class CalculateDiffCalTable(PythonAlgorithm):
         self.setProperty("CalibrationTable", DIFCtable)
 
 
-# Register algorithm with Mantid
 AlgorithmFactory.subscribe(CalculateDiffCalTable)
-# Puts function in simpleapi globals
-algo = CalculateDiffCalTable()
-algo.initialize()
-_create_algorithm_function(CalculateDiffCalTable.__name__, 1, algo)

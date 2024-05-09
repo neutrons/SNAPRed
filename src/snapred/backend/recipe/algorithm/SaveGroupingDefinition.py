@@ -13,8 +13,6 @@ from mantid.api import (
 from mantid.kernel import Direction
 from mantid.simpleapi import _create_algorithm_function
 
-from snapred.backend.error.AlgorithmException import AlgorithmException
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 

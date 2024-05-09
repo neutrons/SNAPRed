@@ -8,14 +8,11 @@
 
 import secrets
 from collections import namedtuple
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import mantid
 import numpy as np
-from mantid.api import ITableWorkspace, MatrixWorkspace
-from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
     ConvertUnits,
     CreateSampleWorkspace,

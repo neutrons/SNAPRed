@@ -10,18 +10,15 @@ implement csaps
 create new workspace with csaps data
 """
 
-import json
 from datetime import datetime
 from typing import Dict
 
-import numpy as np
-from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
+from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 from mantid.simpleapi import _create_algorithm_function
 from scipy.interpolate import make_smoothing_spline
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.DiffractionSpectrumWeightCalculator import DiffractionSpectrumWeightCalculator
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 logger = snapredLogger.getLogger(__name__)

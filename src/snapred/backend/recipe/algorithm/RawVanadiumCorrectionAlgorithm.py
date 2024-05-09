@@ -1,6 +1,3 @@
-from typing import Dict, Tuple
-
-import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     MatrixWorkspaceProperty,
@@ -11,8 +8,6 @@ from mantid.kernel import Direction, StringMandatoryValidator
 from mantid.simpleapi import _create_algorithm_function
 
 from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 

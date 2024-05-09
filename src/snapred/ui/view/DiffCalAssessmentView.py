@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List
 
 # from qtpy import signals and widgets
 from qtpy.QtCore import Signal

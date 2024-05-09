@@ -1,7 +1,6 @@
 import os
 import unittest.mock as mock
 
-import pytest
 from snapred.meta.decorators import Resettable
 
 # import sys

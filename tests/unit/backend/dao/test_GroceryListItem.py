@@ -1,14 +1,12 @@
 # ruff: noqa: E722, PT011, PT012
 
 import unittest
-from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
     DeleteWorkspace,
     LoadEmptyInstrument,
 )
-from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource

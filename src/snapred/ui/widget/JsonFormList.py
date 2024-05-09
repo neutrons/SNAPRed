@@ -1,5 +1,3 @@
-from qtpy.QtWidgets import QGridLayout, QMainWindow, QPushButton, QTabWidget, QWidget
-
 from snapred.ui.view.JsonFormListView import JsonFormListView
 from snapred.ui.widget.JsonForm import JsonForm
 

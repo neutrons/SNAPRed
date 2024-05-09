@@ -17,7 +17,6 @@ with mock.patch.dict(
     )
     from snapred.meta.Config import Resource
     from snapred.meta.redantic import list_to_raw
-    from util.SculleryBoy import SculleryBoy
 
     def test_validate():
         """Test ability to initialize purge overlapping peaks algo"""

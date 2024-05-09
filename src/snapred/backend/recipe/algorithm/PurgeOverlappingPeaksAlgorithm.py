@@ -1,4 +1,3 @@
-import json
 from typing import Dict, List
 
 import numpy as np
@@ -6,11 +5,9 @@ from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
 from pydantic import parse_raw_as
 
-from snapred.backend.dao import CrystallographicInfo
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import PeakIngredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.redantic import list_to_raw
@@ -162,4 +159,4 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         return outputPeaks
 
 
-(AlgorithmFactory.subscribe(PurgeOverlappingPeaksAlgorithm),)
+AlgorithmFactory.subscribe(PurgeOverlappingPeaksAlgorithm)
