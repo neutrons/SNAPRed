@@ -7,6 +7,7 @@ from mantid.simpleapi import (
     ConvertUnits,
     DiffractionFocussing,
     Rebin,
+    mtd,
 )
 from mantid.plots.datafunctions import get_spectrum
 import matplotlib.pyplot as plt
