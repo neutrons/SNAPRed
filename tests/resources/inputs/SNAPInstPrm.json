@@ -24,5 +24,7 @@
     "delThWithGuide": 6.40e-3,
     "alpha": 0.1,
     "beta_0": 0.02,
-    "beta_1": 0.05
+    "beta_1": 0.05,
+    "width": 1600.0,
+    "frequency": 60.4
   }

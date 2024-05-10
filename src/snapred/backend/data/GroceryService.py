@@ -550,6 +550,18 @@ class GroceryService:
         if useLiteMode:
             self.convertToLiteMode(workspaceName)
 
+        config = self.dataService._readInstrumentParameters()
+        width = config["width"]
+        frequency = config["frequency"]
+        self.mantidSnapper.RemovePromptPulse(
+            "Removing prompt pulse",
+            InputWorkspace=workspaceName,
+            OutputWorkspace=workspaceName,
+            Width=width,
+            Frequency=frequency,
+        )
+        self.mantidSnapper.executeQueue()
+
         return data
 
     def fetchNeutronDataCached(self, runNumber: str, useLiteMode: bool, loader: str = "") -> Dict[str, Any]:
@@ -621,6 +633,19 @@ class GroceryService:
         data["result"] = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
         data["workspace"] = workspaceName
         self._loadedRuns[key] += 1
+
+        config = self.dataService._readInstrumentParameters()
+        width = config["width"]
+        frequency = config["frequency"]
+        self.mantidSnapper.RemovePromptPulse(
+            "Removing prompt pulse",
+            InputWorkspace=workspaceName,
+            OutputWorkspace=workspaceName,
+            Width=width,
+            Frequency=frequency,
+        )
+        self.mantidSnapper.executeQueue()
+
         return data
 
     def fetchLiteDataMap(self) -> WorkspaceName:
