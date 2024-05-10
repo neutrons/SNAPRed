@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 
+
 class ReductionRequest(BaseModel):
     runNumber: str
     useLitemode: bool
@@ -13,4 +14,3 @@ class ReductionRequest(BaseModel):
     smoothingParameter: float = Config["calibration.parameters.default.smoothing"]
     peakIntensityThrehold: float = Config["constaants.PeakIntensityFractionThreshold"]
     version: Union[int, Literal["*"]]
-

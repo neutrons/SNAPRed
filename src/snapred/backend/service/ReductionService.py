@@ -19,8 +19,6 @@ from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe import ReductionRecipe
 from snapred.backend.recipe.GenericRecipe import (
-    FocusSpectraRecipe,
-    RawVanadiumCorrectionRecipe,
     SmoothDataExcludingPeaksRecipe,
 )
 from snapred.backend.service.Service import Service
@@ -76,7 +74,7 @@ class ReductionService(Service):
         ingredients = self.sousChef.prepReductionIngredients(farmFresh)
 
         # fetch all groups into a grocery list
-        groupingMap = self.dataFactoryService.getGroupingMap(request.runNumber).getMap(request.useLiteMode)        
+        groupingMap = self.dataFactoryService.getGroupingMap(request.runNumber).getMap(request.useLiteMode)
         for key, value in groupingMap.items():
             self.groceryClerk.fromRun(request.runNumber).grouping(value.name).useLiteMode(request.useLiteMode).add()
         groupingWorkspaces = self.groceryService.fetchGroceryList(self.groceryClerk.buildList())
@@ -88,7 +86,7 @@ class ReductionService(Service):
         groceries = GroceryService().fetchGroceryDict(groceryDict=self.groceryClerk.buildDict())
         # attach the list of grouping workspaces to the grocery dictionary
         groceries["groupingWorkspaces"] = groupingWorkspaces
-        
+
         return ReductionRecipe.cook(ingredients, groceries)
 
     @FromString
