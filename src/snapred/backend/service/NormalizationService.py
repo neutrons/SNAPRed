@@ -11,8 +11,8 @@ from snapred.backend.dao.normalization import (
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
     FocusSpectraRequest,
-    NormalizationCalibrationRequest,
     NormalizationExportRequest,
+    NormalizationRequest,
     SmoothDataExcludingPeaksRequest,
     VanadiumCorrectionRequest,
 )
@@ -65,7 +65,7 @@ class NormalizationService(Service):
         return "normalization"
 
     @FromString
-    def normalization(self, request: NormalizationCalibrationRequest):
+    def normalization(self, request: NormalizationRequest):
         if not self._sameStates(request.runNumber, request.backgroundRunNumber):
             raise ValueError("Run number and background run number must be of the same Instrument State.")
 
@@ -151,7 +151,7 @@ class NormalizationService(Service):
         return stateId1 == stateId2
 
     @FromString
-    def normalizationAssessment(self, request: NormalizationCalibrationRequest):
+    def normalizationAssessment(self, request: NormalizationRequest):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             focusGroup=request.focusGroup,

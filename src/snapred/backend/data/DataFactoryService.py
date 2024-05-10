@@ -26,21 +26,7 @@ class DataFactoryService:
             val = clazz()
         return val
 
-    def getReductionState(self, runId: str, useLiteMode: bool) -> ReductionState:
-        reductionState: ReductionState
-
-        if runId in self.cache:
-            reductionState = self.cache[runId]
-
-        else:
-            # lookup and package data
-            reductionState = ReductionState(
-                instrumentConfig=self.getInstrumentConfig(runId),
-                stateConfig=self.getStateConfig(runId, useLiteMode),
-            )
-            self.cache[runId] = reductionState
-
-        return reductionState
+    # ***** MISCELLANEOUS ***** #
 
     def fileExists(self, filepath: str) -> bool:
         return self.lookupService.fileExists(filepath)
@@ -63,14 +49,16 @@ class DataFactoryService:
     def getCifFilePath(self, sampleId):
         return self.lookupService.readCifFilePath(sampleId)
 
-    def getCalibrationState(self, runId, useLiteMode):
-        return self.lookupService.readCalibrationState(runId, useLiteMode)
+    def getSamplePaths(self):
+        return self.lookupService.readSamplePaths()
 
-    def getNormalizationState(self, runId):
-        return self.lookupService.readNormalizationState(runId)
+    def getGroupingMap(self, runId: str):
+        return self.lookupService.readGroupingMap(runId)
 
-    def writeNormalizationState(self, runId):
-        return self.lookupService.writeNormalizationState(runId)
+    # ***** WORKSPACE METHODS ***** #
+
+    def workspaceDoesExist(self, name):
+        return self.groceryService.workspaceDoesExist(name)
 
     def getWorkspaceForName(self, name):
         return self.groceryService.getWorkspaceForName(name)
@@ -78,39 +66,11 @@ class DataFactoryService:
     def getCloneOfWorkspace(self, name, copy):
         return self.groceryService.getCloneOfWorkspace(name, copy)
 
-    def getCalibrationDataWorkspace(self, runId, version, name):
-        path = self.getCalibrationDataPath(runId, version)
-        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
-
     def getWorkspaceCached(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataCached(runId, useLiteMode)
 
     def getWorkspaceSingleUse(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataSingleUse(runId, useLiteMode)
-
-    def getCalibrationRecord(self, runId, version: str = None, useLiteMode: bool = False):
-        return self.lookupService.readCalibrationRecord(runId, version, useLiteMode)
-
-    def getNormalizationRecord(self, runId, useLiteMode: bool):
-        return self.lookupService.readNormalizationRecord(runId, useLiteMode)
-
-    def getCalibrationIndex(self, runId: str, useLiteMode: bool):
-        return self.lookupService.readCalibrationIndex(runId, useLiteMode)
-
-    def getGroupingMap(self, runId: str):
-        return self.lookupService.readGroupingMap(runId)
-
-    def checkCalibrationStateExists(self, runId: str):
-        return self.lookupService.checkCalibrationFileExists(runId)
-
-    def getSamplePaths(self):
-        return self.lookupService.readSamplePaths()
-
-    def getCalibrationDataPath(self, runId: str, version: str):
-        return self.lookupService._constructCalibrationDataPath(runId, version)
-
-    def workspaceDoesExist(self, name):
-        return self.groceryService.workspaceDoesExist(name)
 
     # TODO: these are _write_ methods: move to `DataExportService` via `LocalDataService`
     def deleteWorkspace(self, name):
@@ -118,3 +78,63 @@ class DataFactoryService:
 
     def deleteWorkspaceUnconditional(self, name):
         return self.groceryService.deleteWorkspaceUnconditional(name)
+
+    # ***** REDUCTION METHODS **** #
+
+    def getReductionState(self, runId: str, useLiteMode: bool) -> ReductionState:
+        reductionState: ReductionState
+
+        if runId in self.cache:
+            reductionState = self.cache[runId]
+
+        else:
+            # lookup and package data
+            reductionState = ReductionState(
+                instrumentConfig=self.getInstrumentConfig(runId),
+                stateConfig=self.getStateConfig(runId, useLiteMode),
+            )
+            self.cache[runId] = reductionState
+
+        return reductionState
+
+    # ***** CALIBRATION METHODS ***** #
+
+    def getCalibrationDataPath(self, runId: str, version: str):
+        return self.lookupService._constructCalibrationDataPath(runId, version)
+
+    def checkCalibrationStateExists(self, runId: str):
+        return self.lookupService.checkCalibrationFileExists(runId)
+
+    def getCalibrationState(self, runId, useLiteMode):
+        return self.lookupService.readCalibrationState(runId, useLiteMode)
+
+    def getCalibrationIndex(self, runId: str, useLiteMode: bool):
+        return self.lookupService.readCalibrationIndex(runId, useLiteMode)
+
+    def getCalibrationRecord(self, runId, version: str = None, useLiteMode: bool = False):
+        return self.lookupService.readCalibrationRecord(runId, version, useLiteMode)
+
+    def getCalibrationDataWorkspace(self, runId, version, name):
+        path = self.getCalibrationDataPath(runId, version)
+        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
+
+    # ***** NORMALIZATION METHODS ***** #
+
+    def getNormalizationDataPath(self, runId: str, version: str):
+        return self.lookupService._constructNormalizationDataPath(runId, version)
+
+    def checkNormalizationStateExists(self, runId: str):
+        return self.lookupService.checkNormalizationStateExists(runId)
+
+    def getNormalizationState(self, runId):
+        return self.lookupService.readNormalizationState(runId)
+
+    def getNormalizationIndex(self, runId: str, useLiteMode: bool):
+        return self.lookupService.readNormalizationIndex(runId, useLiteMode)
+
+    def getNormalizationRecord(self, runId, useLiteMode: bool):
+        return self.lookupService.readNormalizationRecord(runId, useLiteMode)
+
+    def getNormalizationDataWorkspaces(self, runId, version, name):
+        path = self.getNormalizationDataPath(runId, version)
+        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
