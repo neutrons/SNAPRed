@@ -7,14 +7,10 @@ from errno import ENOENT as NOT_FOUND
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-from pydantic import validate_arguments
-
-Version = Union[int, Literal["*"]]
-
 import h5py
 from mantid.kernel import PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
-from pydantic import parse_file_as
+from pydantic import parse_file_as, validate_arguments
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -50,6 +46,7 @@ from snapred.meta.redantic import (
     write_model_pretty,
 )
 
+Version = Union[int, Literal["*"]]
 logger = snapredLogger.getLogger(__name__)
 
 """
