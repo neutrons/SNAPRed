@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from pydantic import validate_arguments
 
 from snapred.backend.dao.calibration.Calibration import Calibration
@@ -48,7 +49,7 @@ class DataExportService:
 
     def exportNormalizationWorkspaces(self, record: NormalizationRecord):
         return self.dataService.writeNormalizationWorkspaces(record)
-    
+
     def exportNormalizationState(self, normalization: Normalization):
         return self.dataService.writeNormalizationState(normalization)
 

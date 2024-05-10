@@ -10,7 +10,6 @@ from unittest import mock
 from unittest.mock import ANY
 
 import pytest
-import snapred.backend.recipe.algorithm
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
     CloneWorkspace,

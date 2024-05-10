@@ -1,7 +1,6 @@
 import os.path
 import tempfile
 import unittest.mock as mock
-from unittest.mock import MagicMock
 
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState

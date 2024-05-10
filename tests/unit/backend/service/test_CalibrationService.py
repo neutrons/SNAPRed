@@ -371,7 +371,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
             # Call the method to test. Use a mocked run and a mocked version
-            mockRequest = MagicMock(runId=calibRecord.runNumber, useLiteMode=True, version=calibRecord.version, checkExistent=False)
+            mockRequest = MagicMock(
+                runId=calibRecord.runNumber, useLiteMode=True, version=calibRecord.version, checkExistent=False
+            )
             self.instance.groceryService._getCalibrationDataPath = MagicMock(return_value=tmpDir)
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
             self.instance.loadQualityAssessment(mockRequest)

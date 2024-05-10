@@ -5,8 +5,9 @@ import os
 from copy import deepcopy
 from errno import ENOENT as NOT_FOUND
 from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+
 from pydantic import validate_arguments
-from typing import Any, Dict, List, Tuple, Union, Literal, Optional
 
 Version = Union[int, Literal["*"]]
 
@@ -470,7 +471,9 @@ class LocalDataService:
 
         return record
 
-    def writeNormalizationRecord(self, record: NormalizationRecord, version: Optional[int] = None) -> NormalizationRecord:  # noqa: F821
+    def writeNormalizationRecord(
+        self, record: NormalizationRecord, version: Optional[int] = None
+    ) -> NormalizationRecord:  # noqa: F821
         """
         Persists a `NormalizationRecord` to either a new version folder, or overwrite a specific version.
         -- side effect: updates version numbers of incoming `NormalizationRecord` and its nested `Normalization`.
@@ -534,7 +537,7 @@ class LocalDataService:
             record = parse_file_as(CalibrationRecord, recordFile)
         return record
 
-    def writeCalibrationRecord(self, record: CalibrationRecord, version: Optional[int]= None):
+    def writeCalibrationRecord(self, record: CalibrationRecord, version: Optional[int] = None):
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
         -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
@@ -782,14 +785,18 @@ class LocalDataService:
 
         # Check for the existence of a calibration parameters file
         calibrationParametersFilePath = self._constructCalibrationParametersFilePath(
-            calibration.seedRun, calibration.useLiteMode, version,
+            calibration.seedRun,
+            calibration.useLiteMode,
+            version,
         )
         if os.path.exists(calibrationParametersFilePath):
             logger.warning(f"overwriting calibration parameters at {calibrationParametersFilePath}")
 
         calibration.version = int(version)
         calibrationDataPath = self._constructCalibrationDataPath(
-            calibration.seedRun, calibration.useLiteMode, version,
+            calibration.seedRun,
+            calibration.useLiteMode,
+            version,
         )
         if not os.path.exists(calibrationDataPath):
             os.makedirs(calibrationDataPath)
@@ -840,7 +847,6 @@ class LocalDataService:
 
     @validate_arguments
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
-
         from snapred.backend.data.GroceryService import GroceryService
 
         version = 1

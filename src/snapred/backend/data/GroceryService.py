@@ -189,7 +189,9 @@ class GroceryService:
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
-    def _createDiffcalOutputWorkspaceFilename(self, runNumber: str, useLiteMode: bool, version: int, unit: str, group: str) -> str:
+    def _createDiffcalOutputWorkspaceFilename(
+        self, runNumber: str, useLiteMode: bool, version: int, unit: str, group: str
+    ) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
@@ -787,7 +789,9 @@ class GroceryService:
                             loader="ReheatLeftovers",
                         )
                 case "diffcal_table":
-                    tableWorkspaceName = self._createDiffcalTableWorkspaceName(item.runNumber, item.useLiteMode, item.version)
+                    tableWorkspaceName = self._createDiffcalTableWorkspaceName(
+                        item.runNumber, item.useLiteMode, item.version
+                    )
                     if item.isOutput:
                         res = {"result": True, "workspace": tableWorkspaceName}
                     else:

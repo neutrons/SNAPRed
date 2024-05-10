@@ -41,7 +41,9 @@ class CalibrationAssessmentPresenter(QObject):
             return
 
         runId, useLiteMode, version = self.view.getSelectedCalibrationRecordData()
-        payload = CalibrationLoadAssessmentRequest(runId=runId, useLiteMode=useLiteMode, version=version, checkExistent=True)
+        payload = CalibrationLoadAssessmentRequest(
+            runId=runId, useLiteMode=useLiteMode, version=version, checkExistent=True
+        )
         loadAssessmentRequest = SNAPRequest(path="/calibration/loadQualityAssessment", payload=payload.json())
 
         self.view.loadButton.setEnabled(False)
