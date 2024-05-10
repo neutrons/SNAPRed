@@ -10,6 +10,7 @@ from unittest import mock
 from unittest.mock import ANY
 
 import pytest
+import snapred.backend.recipe.algorithm  # noqa: F401
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
     CloneWorkspace,
@@ -308,7 +309,7 @@ class TestGroceryService(unittest.TestCase):
     def test_diffcal_output_tof_workspacename(self):
         # Test name generation for diffraction-calibration focussed-data workspace
         res = self.instance._createDiffcalOutputWorkspaceName(
-            self.runNumber, self.version, wng.Units.TOF, wng.Groups.UNFOC
+            self.runNumber, self.useLiteMode, self.version, wng.Units.TOF, wng.Groups.UNFOC
         )
         assert "tof" in res
         assert self.runNumber in res
@@ -317,7 +318,7 @@ class TestGroceryService(unittest.TestCase):
     def test_diffcal_output_dsp_workspacename(self):
         # Test name generation for diffraction-calibration focussed-data workspace
         res = self.instance._createDiffcalOutputWorkspaceName(
-            self.runNumber, self.version, wng.Units.DSP, wng.Groups.UNFOC
+            self.runNumber, self.useLiteMode, self.version, wng.Units.DSP, wng.Groups.UNFOC
         )
         assert "dsp" in res
         assert self.runNumber in res
@@ -332,7 +333,7 @@ class TestGroceryService(unittest.TestCase):
 
     def test_diffcal_mask_workspacename(self):
         # Test name generation for diffraction-calibration output mask
-        res = self.instance._createDiffcalMaskWorkspaceName(self.runNumber, self.version)
+        res = self.instance._createDiffcalMaskWorkspaceName(self.runNumber, self.useLiteMode, self.version)
         assert self.difc_name in res
         assert self.runNumber in res
         assert self.version in res

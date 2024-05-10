@@ -195,7 +195,7 @@ class GroceryService:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
-            / (self._createDiffcalOutputWorkspaceName(runNumber, str(version), unit, group) + ext)
+            / (self._createDiffcalOutputWorkspaceName(runNumber, useLiteMode, str(version), unit, group) + ext)
         )
 
     def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: int) -> str:
@@ -231,13 +231,20 @@ class GroceryService:
     def _createDiffcalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runNumber).build()
 
-    def _createDiffcalOutputWorkspaceName(self, runNumber: str, version: str, unit: str, group: str) -> WorkspaceName:
+    def _createDiffcalOutputWorkspaceName(
+        self,
+        runNumber: str,
+        useLiteMode: bool,  # noqa ARG002
+        version: str,
+        unit: str,
+        group: str,
+    ) -> WorkspaceName:
         return wng.diffCalOutput().unit(unit).runNumber(runNumber).version(version).group(group).build()
 
-    def _createDiffcalTableWorkspaceName(self, runNumber: str, useLiteMode: bool, version: str = "") -> WorkspaceName:
+    def _createDiffcalTableWorkspaceName(self, runNumber: str, useLiteMode: bool, version: str = "") -> WorkspaceName:  # noqa: ARG002
         return wng.diffCalTable().runNumber(runNumber).version(version).build()
 
-    def _createDiffcalMaskWorkspaceName(self, runNumber: str, version: str = "") -> WorkspaceName:
+    def _createDiffcalMaskWorkspaceName(self, runNumber: str, useLiteMode: bool, version: str = "") -> WorkspaceName:  # noqa: ARG002
         return wng.diffCalMask().runNumber(runNumber).version(version).build()
 
     ## ACCESSING WORKSPACES
@@ -700,8 +707,8 @@ class GroceryService:
         """
 
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
-        tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber, version)
-        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, version)
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
 
         if self.workspaceDoesExist(tableWorkspaceName):
             data = {
@@ -776,7 +783,7 @@ class GroceryService:
                 # for diffraction-calibration workspaces
                 case "diffcal_output":
                     diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(
-                        item.runNumber, item.version, item.unit, item.groupingScheme
+                        item.runNumber, item.useLiteMode, item.version, item.unit, item.groupingScheme
                     )
                     if item.isOutput:
                         res = {"result": True, "workspace": diffcalOutputWorkspaceName}
@@ -798,7 +805,9 @@ class GroceryService:
                         res = self.fetchCalibrationWorkspaces(item)
                         res["workspace"] = tableWorkspaceName
                 case "diffcal_mask":
-                    maskWorkspaceName = self._createDiffcalMaskWorkspaceName(item.runNumber, item.version)
+                    maskWorkspaceName = self._createDiffcalMaskWorkspaceName(
+                        item.runNumber, item.useLiteMode, item.version
+                    )
                     if item.isOutput:
                         res = {"result": True, "workspace": maskWorkspaceName}
                     else:

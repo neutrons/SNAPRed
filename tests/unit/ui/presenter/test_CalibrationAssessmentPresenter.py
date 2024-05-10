@@ -29,6 +29,7 @@ def test_load_record(calibrationAssessmentPresenter):
 
         payload = CalibrationLoadAssessmentRequest(
             runId="12345",
+            useLiteMode=True,
             version="1",
             checkExistent=True,
         )
