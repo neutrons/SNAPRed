@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List, Union
 
 from pydantic import BaseModel
 
@@ -19,13 +19,16 @@ class FarmFreshIngredients(BaseModel):
     runNumber: str
     version: Optional[str]
     useLiteMode: bool
-    focusGroup: FocusGroup
+    focusGroup: Union[FocusGroup, List[FocusGroup]]
 
     ## needs to be mandatory for diffcal
     cifPath: Optional[str]
 
     ## needs to be mandatory for normcal
     calibrantSamplePath: Optional[str]
+
+    ## smoothing parameter
+    smoothingParameter: Optional[float]
 
     ## the below are not-so-fresh, being fiddly optional parameters with defaults
     convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]
