@@ -1,0 +1,10 @@
+# environment: integration_test
+# At present:
+#   * "integration_test" doesn't override anything except the "IPTS.root";
+#   * note that "module.root" will still be defined as for "test.yml".
+
+IPTS:
+  # Eventually, for SNAPRed's test framework:
+  #   this should be a shared location on "analysis.sns.gov".
+  # For the moment, each developer needs to set this individually to their local path.
+  root: /SNS/users/ux0/workspaces/SNAPRed/SNS_root
