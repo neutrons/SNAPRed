@@ -16,7 +16,7 @@ def test_load_record(calibrationAssessmentPresenter):
     view = calibrationAssessmentPresenter.view
     view.getCalibrationRecordCount = MagicMock(return_value=1)
     view.getSelectedCalibrationRecordIndex = MagicMock(return_value=0)
-    view.getSelectedCalibrationRecordData = MagicMock(return_value=("12345", "1"))
+    view.getSelectedCalibrationRecordData = MagicMock(return_value=("12345", True, "1"))
 
     with patch.object(calibrationAssessmentPresenter, "worker_pool") as worker_pool, patch.object(
         calibrationAssessmentPresenter, "interfaceController"

@@ -5,7 +5,10 @@ import os
 from copy import deepcopy
 from errno import ENOENT as NOT_FOUND
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from pydantic import validate_arguments
+from typing import Any, Dict, List, Tuple, Union, Literal, Optional
+
+Version = Union[int, Literal["*"]]
 
 import h5py
 from mantid.kernel import PhysicalConstants
@@ -305,7 +308,7 @@ class LocalDataService:
         symbol, runNumber = self._parseAppliesTo(calibrationIndexEntry.appliesTo)
         return self._compareRunNumbers(runId, runNumber, symbol)
 
-    def _getVersionFromCalibrationIndex(self, runId: str, useLiteMode: bool) -> str:
+    def _getVersionFromCalibrationIndex(self, runId: str, useLiteMode: bool) -> int:
         """
         Loads calibration index and inspects all entries to attain latest calibration version that applies to the run id
         """
@@ -325,7 +328,7 @@ class LocalDataService:
             version = latestCalibration.version
         return version
 
-    def _getVersionFromNormalizationIndex(self, runId: str, useLiteMode: bool) -> str:
+    def _getVersionFromNormalizationIndex(self, runId: str, useLiteMode: bool) -> int:
         """
         Loads normalization index and inspects all entries to attain
         latest normalization version that applies to the run id
@@ -346,7 +349,8 @@ class LocalDataService:
             version = latestNormalization.version
         return version
 
-    def _constructCalibrationDataPath(self, runId: str, version: str, useLiteMode: bool):
+    @validate_arguments
+    def _constructCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Version):
         """
         Generates the path for an instrument state's versioned calibration files.
         """
@@ -357,7 +361,8 @@ class LocalDataService:
         )
         return calibrationVersionPath
 
-    def _constructNormalizationCalibrationDataPath(self, runId: str, version: str, useLiteMode: bool):
+    @validate_arguments
+    def _constructNormalizationCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Version):
         """
         Generates the path for an instrument state's versioned normalization calibration files.
         """
@@ -386,20 +391,22 @@ class LocalDataService:
         normalizationIndex.append(entry)
         write_model_list_pretty(normalizationIndex, indexPath)
 
-    def getCalibrationRecordPath(self, runId: str, version: str, useLiteMode: bool):
-        recordPath: str = f"{self._constructCalibrationDataPath(runId, version, useLiteMode)}CalibrationRecord.json"
+    @validate_arguments
+    def getCalibrationRecordPath(self, runId: str, useLiteMode: bool, version: Version):
+        recordPath: str = f"{self._constructCalibrationDataPath(runId, useLiteMode, version)}CalibrationRecord.json"
         return recordPath
 
-    def getNormalizationRecordPath(self, runId: str, version: str, useLiteMode: bool):
+    @validate_arguments
+    def getNormalizationRecordPath(self, runId: str, useLiteMode: bool, version: Version):
         recordPath: str = (
-            f"{self._constructNormalizationCalibrationDataPath(runId, version, useLiteMode)}NormalizationRecord.json"
+            f"{self._constructNormalizationCalibrationDataPath(runId, useLiteMode, version)}NormalizationRecord.json"
         )
         return recordPath
 
     def _extractFileVersion(self, file: str) -> int:
         return int(file.split("/v_")[-1].split("/")[0])
 
-    def _getFileOfVersion(self, fileRegex: str, version):
+    def _getFileOfVersion(self, fileRegex: str, version: Version):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
         returnFile = None
         for file in foundFiles:
@@ -448,9 +455,10 @@ class LocalDataService:
                 latestVersion = version
         return latestVersion
 
-    def readNormalizationRecord(self, runId: str, version: str = None, useLiteMode: bool = False):
+    @validate_arguments
+    def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[Version] = None):
         latestFile = ""
-        recordPath: str = self.getNormalizationRecordPath(runId, version if version else "*", useLiteMode)
+        recordPath: str = self.getNormalizationRecordPath(runId, useLiteMode, version if version else "*")
         if version:
             latestFile = self._getFileOfVersion(recordPath, version)
         else:
@@ -462,7 +470,7 @@ class LocalDataService:
 
         return record
 
-    def writeNormalizationRecord(self, record: NormalizationRecord, version: int = None) -> NormalizationRecord:  # noqa: F821
+    def writeNormalizationRecord(self, record: NormalizationRecord, version: Optional[int] = None) -> NormalizationRecord:  # noqa: F821
         """
         Persists a `NormalizationRecord` to either a new version folder, or overwrite a specific version.
         -- side effect: updates version numbers of incoming `NormalizationRecord` and its nested `Normalization`.
@@ -474,7 +482,7 @@ class LocalDataService:
             version = record.version
         if not version:
             version = previousVersion + 1
-        recordPath: str = self.getNormalizationRecordPath(runNumber, version, record.useLiteMode)
+        recordPath: str = self.getNormalizationRecordPath(runNumber, record.useLiteMode, version)
         record.version = version
 
         # There seems no need to write the _nested_ Normalization,
@@ -483,7 +491,7 @@ class LocalDataService:
         # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
         record.calibration.version = version
 
-        normalizationPath = self._constructNormalizationCalibrationDataPath(runNumber, version, record.useLiteMode)
+        normalizationPath = self._constructNormalizationCalibrationDataPath(runNumber, record.useLiteMode, version)
         # check if directory exists for runId
         if not os.path.exists(normalizationPath):
             os.makedirs(normalizationPath)
@@ -498,7 +506,7 @@ class LocalDataService:
         -- assumes that `writeNormalizationRecord` has already been called, and that the version folder exists
         """
         normalizationDataPath = Path(
-            self._constructNormalizationCalibrationDataPath(record.runNumber, record.version, record.useLiteMode)
+            self._constructNormalizationCalibrationDataPath(record.runNumber, record.useLiteMode, record.version)
         )
         for workspace in record.workspaceNames:
             filename = workspace + "_" + wnvf.formatVersion(record.version)
@@ -511,13 +519,14 @@ class LocalDataService:
                 self.writeWorkspace(normalizationDataPath, filename, workspace)
         return record
 
-    def readCalibrationRecord(self, runId: str, version: str = None, useLiteMode: bool = False):
+    @validate_arguments
+    def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[Version] = None):
         recordFile: str = None
         if version:
-            recordPath: str = self.getCalibrationRecordPath(runId, version, useLiteMode)
+            recordPath: str = self.getCalibrationRecordPath(runId, useLiteMode, version)
             recordFile = self._getFileOfVersion(recordPath, int(version))
         else:
-            recordPath: str = self.getCalibrationRecordPath(runId, "*", useLiteMode)
+            recordPath: str = self.getCalibrationRecordPath(runId, useLiteMode, "*")
             recordFile = self._getLatestFile(recordPath)
         record: CalibrationRecord = None
         if recordFile:
@@ -525,7 +534,7 @@ class LocalDataService:
             record = parse_file_as(CalibrationRecord, recordFile)
         return record
 
-    def writeCalibrationRecord(self, record: CalibrationRecord, version: str = None):
+    def writeCalibrationRecord(self, record: CalibrationRecord, version: Optional[int]= None):
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
         -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
@@ -537,7 +546,7 @@ class LocalDataService:
             version = record.version
         if not version:
             version = previousVersion + 1
-        recordPath: str = self.getCalibrationRecordPath(runNumber, str(version), record.useLiteMode)
+        recordPath: str = self.getCalibrationRecordPath(runNumber, record.useLiteMode, version)
         record.version = version
 
         # As above at 'writeNormalizationRecord':
@@ -547,7 +556,7 @@ class LocalDataService:
         # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
         record.calibrationFittingIngredients.version = version
 
-        calibrationPath = self._constructCalibrationDataPath(runNumber, str(version), record.useLiteMode)
+        calibrationPath = self._constructCalibrationDataPath(runNumber, record.useLiteMode, version)
         # check if directory exists for runId
         if not os.path.exists(calibrationPath):
             os.makedirs(calibrationPath)
@@ -603,7 +612,7 @@ class LocalDataService:
         # write record to file
         write_model_pretty(savedRecord, recordPath)
 
-        self.writeCalibrationState(record.calibrationFittingIngredients, str(version))
+        self.writeCalibrationState(record.calibrationFittingIngredients, version)
 
         logger.info(f"Wrote CalibrationRecord: version: {version}")
         return record
@@ -614,7 +623,7 @@ class LocalDataService:
         -- assumes that `writeCalibrationRecord` has already been called, and that the version folder exists
         """
         calibrationDataPath = Path(
-            self._constructCalibrationDataPath(record.runNumber, str(record.version), record.useLiteMode)
+            self._constructCalibrationDataPath(record.runNumber, record.useLiteMode, record.version)
         )
 
         # Assumes all workspaces are of WNG-type:
@@ -704,25 +713,28 @@ class LocalDataService:
 
     def _getCurrentCalibrationRecord(self, runId: str, useLiteMode: bool):
         version = self._getVersionFromCalibrationIndex(runId, useLiteMode)
-        return self.readCalibrationRecord(runId, version, useLiteMode)
+        return self.readCalibrationRecord(runId, useLiteMode, version)
 
     def _getCurrentNormalizationRecord(self, runId: str, useLiteMode: bool):
         version = self._getVersionFromNormalizationIndex(runId, useLiteMode)
-        return self.readNormalizationRecord(runId, version, useLiteMode)
+        return self.readNormalizationRecord(runId, useLiteMode, version)
 
-    def _constructCalibrationParametersFilePath(self, runId: str, version: str, useLiteMode: bool):
-        statePath: str = f"{self._constructCalibrationDataPath(runId, version, useLiteMode)}CalibrationParameters.json"
+    @validate_arguments
+    def _constructCalibrationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version):
+        statePath: str = f"{self._constructCalibrationDataPath(runId, useLiteMode, version)}CalibrationParameters.json"
         return statePath
 
-    def _constructNormalizationParametersFilePath(self, runId: str, version: str, useLiteMode: bool):
-        statePath: str = f"{self._constructNormalizationCalibrationDataPath(runId, version, useLiteMode)}NormalizationParameters.json"  # noqa: E501
+    @validate_arguments
+    def _constructNormalizationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version):
+        statePath: str = f"{self._constructNormalizationCalibrationDataPath(runId, useLiteMode, version)}NormalizationParameters.json"  # noqa: E501
         return statePath
 
+    @validate_arguments
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
-    def readCalibrationState(self, runId: str, useLiteMode: bool, version: str = None):
+    def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[Version] = None):
         # get stateId and check to see if such a folder exists, if not create it and initialize it
         stateId, _ = self._generateStateId(runId)
-        calibrationStatePath = self._constructCalibrationParametersFilePath(runId, "*", useLiteMode)
+        calibrationStatePath = self._constructCalibrationParametersFilePath(runId, useLiteMode, "*")
 
         latestFile = ""
         if version is not None:
@@ -740,9 +752,10 @@ class LocalDataService:
 
         return calibrationState
 
-    def readNormalizationState(self, runId: str, version: str = None, useLiteMode: bool = False):
+    @validate_arguments
+    def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[Version] = None):
         stateId, _ = self._generateStateId(runId)
-        normalizationStatePathGlob = self._constructNormalizationParametersFilePath(runId, "*", useLiteMode)
+        normalizationStatePathGlob = self._constructNormalizationParametersFilePath(runId, useLiteMode, "*")
 
         latestFile = ""
         if version:
@@ -757,7 +770,7 @@ class LocalDataService:
 
         return normalizationState
 
-    def writeCalibrationState(self, calibration: Calibration, version: str = None):
+    def writeCalibrationState(self, calibration: Calibration, version: Optional[Version] = None):
         """
         Writes a `Calibration` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Calibration`.
@@ -769,21 +782,21 @@ class LocalDataService:
 
         # Check for the existence of a calibration parameters file
         calibrationParametersFilePath = self._constructCalibrationParametersFilePath(
-            calibration.seedRun, str(version), calibration.useLiteMode
+            calibration.seedRun, calibration.useLiteMode, version,
         )
         if os.path.exists(calibrationParametersFilePath):
             logger.warning(f"overwriting calibration parameters at {calibrationParametersFilePath}")
 
         calibration.version = int(version)
         calibrationDataPath = self._constructCalibrationDataPath(
-            calibration.seedRun, str(version), calibration.useLiteMode
+            calibration.seedRun, calibration.useLiteMode, version,
         )
         if not os.path.exists(calibrationDataPath):
             os.makedirs(calibrationDataPath)
         # write the calibration state.
         write_model_pretty(calibration, calibrationParametersFilePath)
 
-    def writeNormalizationState(self, normalization: Normalization, version: str = None):  # noqa: F821
+    def writeNormalizationState(self, normalization: Normalization, version: Optional[Version] = None):  # noqa: F821
         """
         Writes a `Normalization` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Normalization`.
@@ -795,16 +808,16 @@ class LocalDataService:
         # check for the existence of a normalization parameters file
         normalizationParametersFilePath = self._constructNormalizationParametersFilePath(
             normalization.seedRun,
-            str(version),
             normalization.useLiteMode,
+            version,
         )
         if os.path.exists(normalizationParametersFilePath):
             logger.warning(f"overwriting normalization parameters at {normalizationParametersFilePath}")
         normalization.version = int(version)
         normalizationDataPath = self._constructNormalizationCalibrationDataPath(
             normalization.seedRun,
-            str(version),
             normalization.useLiteMode,
+            version,
         )
         if not os.path.exists(normalizationDataPath):
             os.makedirs(normalizationDataPath)
@@ -825,15 +838,17 @@ class LocalDataService:
             raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")
         return detectorState
 
+    @validate_arguments
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
+
         from snapred.backend.data.GroceryService import GroceryService
 
         version = 1
         grocer = GroceryService()
-        filename = Path(grocer._createDiffcalTableWorkspaceName("default", version) + ".h5")
+        filename = Path(grocer._createDiffcalTableWorkspaceName("default", useLiteMode, str(version)) + ".h5")
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
 
-        calibrationDataPath = self._constructCalibrationDataPath(runNumber, str(version), useLiteMode)
+        calibrationDataPath = self._constructCalibrationDataPath(runNumber, useLiteMode, version)
 
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
         calibrationIndexEntry = CalibrationIndexEntry(
@@ -845,8 +860,9 @@ class LocalDataService:
         )
         self.writeCalibrationIndexEntry(calibrationIndexEntry)
 
+    @validate_arguments
     @ExceptionHandler(StateValidationException)
-    def initializeState(self, runId: str, name: str = None, useLiteMode: bool = False):
+    def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         stateId, _ = self._generateStateId(runId)
 
         # Read the detector state from the pv data file

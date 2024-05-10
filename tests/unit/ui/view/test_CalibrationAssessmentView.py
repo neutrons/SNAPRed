@@ -22,7 +22,7 @@ def test_calibration_record_dropdown(qtbot):
     qtbot.addWidget(view.calibrationRecordDropdown)
     qtbot.keyClicks(view.calibrationRecordDropdown, "Version: 1; Run: 1234")
     assert view.getSelectedCalibrationRecordIndex() == 0
-    assert view.getSelectedCalibrationRecordData() == (runNumber, version)
+    assert view.getSelectedCalibrationRecordData() == (runNumber, True, version)
 
 
 def test_error_on_load_calibration_record(qtbot):

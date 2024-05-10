@@ -326,7 +326,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Delete any existing _data_ workspaces:
             for wss in calibRecord.workspaces.values():
                 for ws in wss:
-                    DeleteWorkspace(Workspace=ws)
+                    self.instance.groceryService.deleteWorkspaceUnconditional(ws)
 
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=True)
             with pytest.raises(RuntimeError) as excinfo:  # noqa: PT011
@@ -371,7 +371,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
             # Call the method to test. Use a mocked run and a mocked version
-            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+            mockRequest = MagicMock(runId=calibRecord.runNumber, useLiteMode=True, version=calibRecord.version, checkExistent=False)
             self.instance.groceryService._getCalibrationDataPath = MagicMock(return_value=tmpDir)
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
             self.instance.loadQualityAssessment(mockRequest)
@@ -598,7 +598,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             useLiteMode=True,
         )
         self.instance.initializeState(request)
-        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName, request.useLiteMode)
+        mockInitializeState.assert_called_once_with(request.runId, request.useLiteMode, request.humanReadableName)
 
     def test_getState(self):
         testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))

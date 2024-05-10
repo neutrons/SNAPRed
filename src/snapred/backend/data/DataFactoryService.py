@@ -1,5 +1,7 @@
 import os
-from typing import Dict
+from typing import Dict, Optional
+
+from pydantic import validate_arguments
 
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
@@ -26,6 +28,7 @@ class DataFactoryService:
             val = clazz()
         return val
 
+    @validate_arguments
     def getReductionState(self, runId: str, useLiteMode: bool) -> ReductionState:
         reductionState: ReductionState
 
@@ -63,14 +66,13 @@ class DataFactoryService:
     def getCifFilePath(self, sampleId):
         return self.lookupService.readCifFilePath(sampleId)
 
-    def getCalibrationState(self, runId, useLiteMode):
+    @validate_arguments
+    def getCalibrationState(self, runId: str, useLiteMode: bool):
         return self.lookupService.readCalibrationState(runId, useLiteMode)
 
-    def getNormalizationState(self, runId):
-        return self.lookupService.readNormalizationState(runId)
-
-    def writeNormalizationState(self, runId):
-        return self.lookupService.writeNormalizationState(runId)
+    @validate_arguments
+    def getNormalizationState(self, runId: str, useLiteMode: bool):
+        return self.lookupService.readNormalizationState(runId, useLiteMode)
 
     def getWorkspaceForName(self, name):
         return self.groceryService.getWorkspaceForName(name)
@@ -88,12 +90,15 @@ class DataFactoryService:
     def getWorkspaceSingleUse(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataSingleUse(runId, useLiteMode)
 
-    def getCalibrationRecord(self, runId, version: str = None, useLiteMode: bool = False):
-        return self.lookupService.readCalibrationRecord(runId, version, useLiteMode)
+    @validate_arguments
+    def getCalibrationRecord(self, runId, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.readCalibrationRecord(runId, useLiteMode, version)
 
+    @validate_arguments
     def getNormalizationRecord(self, runId, useLiteMode: bool):
         return self.lookupService.readNormalizationRecord(runId, useLiteMode)
 
+    @validate_arguments
     def getCalibrationIndex(self, runId: str, useLiteMode: bool):
         return self.lookupService.readCalibrationIndex(runId, useLiteMode)
 
@@ -106,8 +111,9 @@ class DataFactoryService:
     def getSamplePaths(self):
         return self.lookupService.readSamplePaths()
 
-    def getCalibrationDataPath(self, runId: str, version: str):
-        return self.lookupService._constructCalibrationDataPath(runId, version)
+    @validate_arguments
+    def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: int):
+        return self.lookupService._constructCalibrationDataPath(runId, useLiteMode, version)
 
     def workspaceDoesExist(self, name):
         return self.groceryService.workspaceDoesExist(name)

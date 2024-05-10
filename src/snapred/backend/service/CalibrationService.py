@@ -215,7 +215,7 @@ class CalibrationService(Service):
     @FromString
     def load(self, run: RunConfig):
         runId = run.runNumber
-        return self.dataFactoryService.getCalibrationRecord(runId)
+        return self.dataFactoryService.getCalibrationRecord(runId, run.useLiteMode)
 
     @FromString
     def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
@@ -228,7 +228,7 @@ class CalibrationService(Service):
 
     @FromString
     def initializeState(self, request: InitializeStateRequest):
-        return self.dataExportService.initializeState(request.runId, request.humanReadableName, request.useLiteMode)
+        return self.dataExportService.initializeState(request.runId, request.useLiteMode, request.humanReadableName)
 
     @FromString
     def getState(self, runs: List[RunConfig]):
@@ -264,8 +264,9 @@ class CalibrationService(Service):
     def loadQualityAssessment(self, request: CalibrationLoadAssessmentRequest):
         runId = request.runId
         version = request.version
+        useLiteMode = request.useLiteMode
 
-        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, version)
         if calibrationRecord is None:
             errorTxt = f"No calibration record found for run {runId}, version {version}."
             logger.error(errorTxt)
