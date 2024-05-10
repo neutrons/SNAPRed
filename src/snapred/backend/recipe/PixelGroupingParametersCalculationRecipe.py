@@ -12,6 +12,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
+
 @Singleton
 class PixelGroupingParametersCalculationRecipe:
     def __init__(self):

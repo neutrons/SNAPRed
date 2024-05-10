@@ -1,6 +1,5 @@
 # Unit tests for `tests/util/Config_helpers.py`
 
-import pytest
 from snapred.meta.Config import Config
 from util.Config_helpers import Config_override
 

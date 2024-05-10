@@ -1,11 +1,8 @@
-from typing import List
-import json
-
 import unittest.mock as mock
-import pytest
+from typing import List
 
+import pytest
 from snapred.backend.dao.Limit import Limit
-from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
 from snapred.meta.redantic import list_to_raw
@@ -79,4 +76,3 @@ def test_resolve_callback(BinnedValue, parse_raw_as):
     assert data["tof"] == BinnedValue.return_value
     assert data["parameters"] == parse_raw_as.return_value
     assert parse_raw_as.called_once_with(List[PixelGroupingParameters], "done")
-

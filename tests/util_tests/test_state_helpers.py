@@ -9,6 +9,7 @@ from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
 from util.state_helpers import state_root_override
 
+
 @pytest.fixture(autouse=True)
 def _cleanup_directories():
     stateId = "ab8704b0bc2a2342"
@@ -17,7 +18,8 @@ def _cleanup_directories():
     # teardown
     if stateRootPath.exists():
         shutil.rmtree(stateRootPath)
-            
+
+
 def initPVFileMock() -> mock.Mock:
     mock_ = mock.Mock()
     # 4X: seven required `readDetectorState` log entries:
@@ -55,14 +57,11 @@ def initPVFileMock() -> mock.Mock:
     ]
     return mock_
 
+
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
-def test_state_root_override_enter(
-    mockReadPVFile,
-    mockReadInstrumentConfig,
-    mockDefaultGroupingMapPath
-    ):
+def test_state_root_override_enter(mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
@@ -70,7 +69,7 @@ def test_state_root_override_enter(
     mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
 
     mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
-    
+
     stateId = "ab8704b0bc2a2342"
     runNumber = "123456"
     stateName = "my happy state"
@@ -85,11 +84,7 @@ def test_state_root_override_enter(
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
-def test_state_root_override_exit(
-    mockReadPVFile,
-    mockReadInstrumentConfig,
-    mockDefaultGroupingMapPath
-    ):
+def test_state_root_override_exit(mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
@@ -113,11 +108,7 @@ def test_state_root_override_exit(
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
-def test_state_root_override_exit_no_delete(
-    mockReadPVFile,
-    mockReadInstrumentConfig,
-    mockDefaultGroupingMapPath
-    ):
+def test_state_root_override_exit_no_delete(mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 

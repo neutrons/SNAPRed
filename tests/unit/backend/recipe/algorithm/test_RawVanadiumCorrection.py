@@ -2,7 +2,6 @@
 
 import unittest
 
-import pytest
 from mantid.simpleapi import (
     AddSampleLog,
     CloneWorkspace,

@@ -1,13 +1,10 @@
-import os
-from contextlib import contextmanager, ExitStack 
-from glob import glob
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
+import pytest
 from mantid.kernel import amend_config
 from snapred.meta.Config import Config, datasearch_directories
 from util.Config_helpers import Config_override
-
-import pytest
 
 # In order to allow convenient usage within CIS-test scripts,
 # `IPTS_override` is deliberately _not_ implemented as a test fixture.
@@ -56,7 +53,8 @@ def IPTS_override(basePath: str = Config["IPTS.root"], instrumentName: str = Con
     # __exit__
     stack.close()
 
-@pytest.fixture
+
+@pytest.fixture()
 def IPTS_override_fixture():
     _stack = ExitStack()
 
@@ -64,6 +62,6 @@ def IPTS_override_fixture():
         return _stack.enter_context(IPTS_override(basePath, instrumentName))
 
     yield _IPTS_override_fixture
-    
+
     # teardown => __exit__
     _stack.close()

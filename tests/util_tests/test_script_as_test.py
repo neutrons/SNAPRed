@@ -2,7 +2,6 @@
 import os
 from unittest import mock
 
-import pytest
 from util.script_as_test import script_only, test_only, test_only_if
 
 

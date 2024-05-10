@@ -1,13 +1,13 @@
 import copy
 import json
 import logging
-from typing import Any, Dict
 from collections import namedtuple
-from collections.abc import Mapping, Sequence, Set
+from collections.abc import Mapping, Sequence
 from numbers import Number
 from pathlib import Path
-import numpy as np
+from typing import Any, Dict
 
+import numpy as np
 import pytest
 from util.script_as_test import test_only
 
@@ -68,10 +68,12 @@ class ApproxAnyNested:
                     break
                 continue
             elif not pytest.approx(e, rel=self.reltol, abs=self.abstol, nan_ok=self.nan_ok) == a:
-                logger.debug(f"failed comparison: rel: {2.0 * np.abs(e - a) / (np.abs(e) + np.abs(a))}; abs: {np.abs(e - a)}")
+                logger.debug(
+                    f"failed comparison: rel: {2.0 * np.abs(e - a) / (np.abs(e) + np.abs(a))}; abs: {np.abs(e - a)}"
+                )
                 status = False
                 if not logger.isEnabledFor(logging.DEBUG):
-                    break 
+                    break
         return status
 
 

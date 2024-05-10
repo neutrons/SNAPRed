@@ -1,7 +1,5 @@
 import unittest.mock as mock
 
-import pytest
-
 # Mock out of scope modules before importing DataExportService
 # mock.patch("snapred.backend.data"] = mock.Mock()
 with mock.patch.dict(

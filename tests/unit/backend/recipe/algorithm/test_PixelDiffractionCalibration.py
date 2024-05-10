@@ -3,7 +3,6 @@ import unittest
 from collections.abc import Sequence
 from itertools import permutations
 
-import pytest
 from mantid.api import MatrixWorkspace
 from mantid.simpleapi import mtd
 

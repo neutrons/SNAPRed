@@ -1,7 +1,6 @@
 import unittest
 from collections.abc import Sequence
 
-import pytest
 from mantid.api import MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace
 

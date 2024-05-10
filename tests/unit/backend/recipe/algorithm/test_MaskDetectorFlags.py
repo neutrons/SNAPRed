@@ -1,4 +1,3 @@
-import pytest
 from mantid.simpleapi import (
     CloneWorkspace,
     LoadDetectorsGroupingFile,
@@ -280,4 +279,3 @@ class TestMaskDetectorFlags:
             Workspace2=self.maskWS,
             CheckInstrument=False,
         )
-

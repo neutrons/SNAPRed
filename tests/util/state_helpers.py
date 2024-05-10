@@ -1,13 +1,9 @@
-import os
 import shutil
-import tempfile
-from contextlib import contextmanager, ExitStack
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
-from snapred.backend.data.LocalDataService import LocalDataService
-from util.Config_helpers import Config_override
-
 import pytest
+from snapred.backend.data.LocalDataService import LocalDataService
 
 # IMPLEMENTATION NOTES:
 # * Because so many other required directories are nested under
@@ -22,7 +18,7 @@ import pytest
 
 
 @contextmanager
-def state_root_override(runNumber: str, name: str, useLiteMode: bool=False, delete_at_exit=True):
+def state_root_override(runNumber: str, name: str, useLiteMode: bool = False, delete_at_exit=True):
     # Context manager to override the state root directory:
     # * creates the state root directory;
     # * initializes the state;
@@ -43,14 +39,15 @@ def state_root_override(runNumber: str, name: str, useLiteMode: bool=False, dele
     if delete_at_exit:
         shutil.rmtree(stateRoot)
 
-@pytest.fixture
+
+@pytest.fixture()
 def state_root_fixture():
     _stack = ExitStack()
-    
-    def _state_root_fixture(runNumber: str, name: str, useLiteMode: bool=False, delete_at_exit=True):
+
+    def _state_root_fixture(runNumber: str, name: str, useLiteMode: bool = False, delete_at_exit=True):
         return _stack.enter_context(state_root_override(runNumber, name, useLiteMode, delete_at_exit))
-    
+
     yield _state_root_fixture
-    
+
     # teardown => __exit__
     _stack.close()

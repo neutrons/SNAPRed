@@ -1,10 +1,8 @@
 import os
 import tempfile
-import unittest.mock as mock
 from pathlib import Path
 from typing import List
 
-import pytest
 from mantid.kernel import ConfigService
 from mantid.simpleapi import GetIPTS
 from snapred.meta.Config import Config, Resource

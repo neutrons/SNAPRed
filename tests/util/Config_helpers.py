@@ -1,11 +1,9 @@
 from collections import namedtuple
-from contextlib import contextmanager, ExitStack
+from contextlib import ExitStack, contextmanager
 from typing import Any, Dict, Tuple
 
-from snapred.meta.Config import Config
-
 import pytest
-
+from snapred.meta.Config import Config
 
 Node = namedtuple("Node", "dict key")
 
@@ -49,14 +47,15 @@ def Config_override(key: str, value: Any):
     if _savedValue is not None:
         _savedNode.dict[_savedNode.key] = _savedValue
 
-@pytest.fixture
+
+@pytest.fixture()
 def Config_override_fixture():
     _stack = ExitStack()
-    
+
     def _Config_override_fixture(key: str, value: Any):
         return _stack.enter_context(Config_override(key, value))
-    
+
     yield _Config_override_fixture
-    
+
     # teardown => __exit__
     _stack.close()

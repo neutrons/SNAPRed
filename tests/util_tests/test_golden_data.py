@@ -1,10 +1,8 @@
 # Unit tests for `tests/util/golden_data.py`
-import os
 import tempfile
 from contextlib import ExitStack
 from datetime import date
 from pathlib import Path
-from unittest import mock
 
 import pytest
 from snapred.meta.Config import Resource

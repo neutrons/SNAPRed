@@ -1,6 +1,5 @@
 import shutil
 from pathlib import Path
-from datetime import date
 
 import pytest
 from cis_tests.diffcal_integration_test_script import script as test_script
@@ -15,11 +14,12 @@ def _cleanup_directories():
     if stateRootPath.exists():
         raise RuntimeError(f"state root directory '{stateRootPath}' already exists -- please move it out of the way")
     yield
-    
+
     # teardown
     if stateRootPath.exists():
         shutil.rmtree(stateRootPath)
-    
+
+
 @pytest.mark.golden_data(
     path=Resource.getPath("outputs/integration/diffcal/golden_data"), short_name="diffcal", date="2024-04-24"
 )

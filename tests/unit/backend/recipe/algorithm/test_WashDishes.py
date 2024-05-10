@@ -1,7 +1,5 @@
 import unittest
 
-import pytest
-
 # mantid imports
 from mantid.simpleapi import CreateWorkspace, mtd
 
