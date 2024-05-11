@@ -202,6 +202,12 @@ class GroceryService:
             / (self._createDiffcalTableWorkspaceName(runNumber, version) + ".h5")
         )
 
+    def _createNormalizationWorkspaceFilename(self, runNumber, version) -> str:
+        return str(
+            Path(self._getCalibrationDataPath(runNumber, version))
+            / (self._createNormalizationWorkspaceName(runNumber, version) + ".nxs")
+        )
+
     ## WORKSPACE NAME METHODS
 
     def _createNeutronWorkspaceNameBuilder(self, runNumber: str, useLiteMode: bool) -> NameBuilder:
@@ -237,6 +243,9 @@ class GroceryService:
 
     def _createDiffcalMaskWorkspaceName(self, runNumber: str, version: str = "") -> WorkspaceName:
         return wng.diffCalMask().runNumber(runNumber).version(version).build()
+
+    def _createNormalizationWorkspaceName(self, runNumber: str, version: str = "") -> WorkspaceName:
+        return wng.rawVanadium().runNumber(runNumber).version(version).build()
 
     ## ACCESSING WORKSPACES
     """
@@ -745,6 +754,52 @@ class GroceryService:
         else:
             raise RuntimeError(f"Could not create a default diffcal file for run {runNumber}")
 
+    def fetchNormalizationWorkspaces(self, item: GroceryListItem) -> Dict[str, Any]:
+        """
+        Fetch normalization workspaces
+
+        :param item: a GroceryListItem corresponding to the normalization workspaces
+        :type item: GroceryListItem
+        :return: a dictionary with
+
+            - "result", true if everything ran correctly
+            - "loader", either "LoadNexusProcessed" or "cached"
+            - "workspace", the name of the new workspace in the ADS;
+                this defaults to the name of the normalization workspace,
+
+        :rtype: Dict[str, Any]
+        """
+
+        runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
+        workspaceName = self._createNormalizationWorkspaceName(runNumber, version)
+
+        if self.workspaceDoesExist(workspaceName):
+            data = {
+                "result": True,
+                "loader": "cached",
+                "workspace": workspaceName,
+            }
+        else:
+            # table + mask are in the same hdf5 file:
+            filename = self._createNormalizationWorkspaceFilename(runNumber, version)
+
+            # Unless overridden: use a cached workspace as the instrument donor.
+            instrumentPropertySource, instrumentSource = (
+                ("InstrumentDonor", self._fetchInstrumentDonor(runNumber, useLiteMode))
+                if not item.instrumentPropertySource
+                else (item.instrumentPropertySource, item.instrumentSource)
+            )
+            data = self.grocer.executeRecipe(
+                filename=filename,
+                workspace=workspaceName,
+                loader="LoadCalibrationWorkspaces",
+                instrumentPropertySource=instrumentPropertySource,
+                instrumentSource=instrumentSource,
+            )
+            data["workspace"] = workspaceName
+
+        return data
+
     def fetchGroceryList(self, groceryList: List[GroceryListItem]) -> List[WorkspaceName]:
         """
         :param groceryList: a list of GroceryListItems indicating the workspaces to create
@@ -800,6 +855,12 @@ class GroceryService:
                     else:
                         res = self.fetchCalibrationWorkspaces(item)
                         res["workspace"] = maskWorkspaceName
+                case "normalization":
+                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(item.runNumber, item.version)
+                    if item.isOutput:
+                        res = {"result": True, "workspace": normalizationWorkspaceName}
+                    else:
+                        res = self.fetchNormalizationWorkspaces(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
             # check that the fetch operation succeeded and if so append the workspace

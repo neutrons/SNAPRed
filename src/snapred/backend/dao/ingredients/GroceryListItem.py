@@ -1,4 +1,4 @@
-from typing import ClassVar, Literal, Optional
+from typing import ClassVar, Literal, Optional, get_args
 
 from pydantic import BaseModel, root_validator
 
@@ -6,6 +6,19 @@ from snapred.backend.log.logger import snapredLogger
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
+
+
+GroceryTypes = Literal[
+    "neutron",
+    "grouping",
+    "diffcal",
+    "diffcal_output",
+    "diffcal_table",
+    "diffcal_mask",
+    "normalization",
+]
+
+grocery_types = list(get_args(GroceryTypes))
 
 
 class GroceryListItem(BaseModel):
@@ -19,7 +32,7 @@ class GroceryListItem(BaseModel):
     RESERVED_LITE_RUNNUMBER: ClassVar[str] = "000001"  # unmodified _lite_ instrument  :
     #   from 'SNAPLite.xml'
 
-    workspaceType: Literal["neutron", "grouping", "diffcal", "diffcal_output", "diffcal_table", "diffcal_mask"]
+    workspaceType: GroceryTypes
     useLiteMode: bool  # indicates if data should be reduced to lite mode
 
     # optional loader:
@@ -119,6 +132,9 @@ class GroceryListItem(BaseModel):
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
                 if not v.get("useLiteMode"):
                     v["useLiteMode"] = True  # don't care
+            case "normalization":
+                if v.get("runNumber") is None:
+                    raise ValueError(f"normalization {v['workspaceType']} requires run number")
             case _:
                 raise ValueError(f"unrecognized 'workspaceType': '{v['workspaceType']}'")
         return v

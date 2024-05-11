@@ -149,11 +149,19 @@ class _WorkspaceNameGenerator:
 
     def diffCalInput(self):
         return NameBuilder(
-            self._diffCalInputTemplate, self._diffCalInputTemplateKeys, self._delimiter, unit=self.Units.TOF
+            self._diffCalInputTemplate,
+            self._diffCalInputTemplateKeys,
+            self._delimiter,
+            unit=self.Units.TOF,
         )
 
     def diffCalTable(self):
-        return NameBuilder(self._diffCalTableTemplate, self._diffCalTableTemplateKeys, self._delimiter, version="")
+        return NameBuilder(
+            self._diffCalTableTemplate,
+            self._diffCalTableTemplateKeys,
+            self._delimiter,
+            version="",
+        )
 
     def diffCalOutput(self):
         return NameBuilder(
@@ -166,13 +174,27 @@ class _WorkspaceNameGenerator:
         )
 
     def diffCalMask(self):
-        return NameBuilder(self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter, version="")
+        return NameBuilder(
+            self._diffCalMaskTemplate,
+            self._diffCalMaskTemplateKeys,
+            self._delimiter,
+            version="",
+        )
 
     def diffCalMetric(self):
-        return NameBuilder(self._diffCalMetricTemplate, self._diffCalMetricTemplateKeys, self._delimiter, version="")
+        return NameBuilder(
+            self._diffCalMetricTemplate,
+            self._diffCalMetricTemplateKeys,
+            self._delimiter,
+            version="",
+        )
 
     def diffCalTimedMetric(self):
-        return NameBuilder(self._diffCalTimedMetricTemplate, self._diffCalTimedMetricTemplateKeys, self._delimiter)
+        return NameBuilder(
+            self._diffCalTimedMetricTemplate,
+            self._diffCalTimedMetricTemplateKeys,
+            self._delimiter,
+        )
 
     def rawVanadium(self):
         return NameBuilder(
@@ -181,6 +203,7 @@ class _WorkspaceNameGenerator:
             self._delimiter,
             unit=self.Units.TOF,
             group=self.Groups.UNFOC,
+            version="",
         )
 
     def focusedRawVanadium(self):
@@ -189,6 +212,7 @@ class _WorkspaceNameGenerator:
             self._normCalFocusedRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
+            version="",
         )
 
     def smoothedFocusedRawVanadium(self):
@@ -197,6 +221,7 @@ class _WorkspaceNameGenerator:
             self._normCalSmoothedFocusedRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
+            version="",
         )
 
 
