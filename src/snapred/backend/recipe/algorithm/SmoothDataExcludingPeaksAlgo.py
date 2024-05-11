@@ -23,7 +23,6 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 logger = snapredLogger.getLogger(__name__)
 
 
-# TODO: Rename so it matches filename
 class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
     def category(self):
         return "SNAPRed Data Processing"

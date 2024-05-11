@@ -1,14 +1,18 @@
 # environment: dev
 
+IPTS:
+  default: /SNS
+  root: /SNS
+
 orchestration:
   path:
     delimiter: /
 
 instrument:
   name: SNAP
-  home: /SNS/SNAP/
+  home: ${IPTS.root}/SNAP
   calibration:
-    home: ${instrument.home}shared/Calibration
+    home: ${instrument.home}/shared/Calibration
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
       extensions:
@@ -25,7 +29,7 @@ instrument:
   native:
     pixelResolution: 1179648
     definition:
-      file: ${instrument.home}shared/Malcolm/dataFiles/SNAP_Definition.xml
+      file: ${instrument.home}/shared/Malcolm/dataFiles/SNAP_Definition.xml
   lite:
     pixelResolution: 18432
     definition:
@@ -121,7 +125,7 @@ logging:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
 
 samples:
-  home: ${instrument.calibration.home}/CalibrantSamples
+  home: ${instrument.calibration.sample.home}
 
 cis_mode: false
 

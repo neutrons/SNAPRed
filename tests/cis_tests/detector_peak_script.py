@@ -5,12 +5,18 @@
 #  2. changing the peak tail coefficient property will change this width
 
 
-from mantid.simpleapi import *
+import snapred.backend.recipe.algorithm
+from mantid.simpleapi import (
+    ConvertUnits,
+    DetectorPeakPredictor,
+    DiffractionFocussing,
+    mtd,
+    Rebin,
+)
 import matplotlib.pyplot as plt
 import numpy as np
 import json
 
-from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 
@@ -28,7 +34,7 @@ snapredLogger._level = 20
 
 runNumber = '58882'#58409'
 cifPath = '/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif'
-groupingScheme = "Column (Lite)"
+groupingScheme = "All"
 peakFractionalThreshold = 0.01
 isLite = True
 
@@ -47,14 +53,12 @@ farmFresh = FarmFreshIngredients(
 )
 ingredients = SousChef().prepPeakIngredients(farmFresh)
 
-
 ### RUN ALGORITHM
-detectorAlgo = DetectorPeakPredictor()
-detectorAlgo.initialize()
-detectorAlgo.setProperty("Ingredients", ingredients.json())
-detectorAlgo.execute()
+peakList = DetectorPeakPredictor(
+    Ingredients = ingredients.json(),
+)
 
-peakList = json.loads(detectorAlgo.getProperty("DetectorPeaks").value)
+peakList = json.loads(peakList)
 print(peakList)
 
 peakCenter = []
@@ -107,11 +111,10 @@ for i,group in enumerate(peakList):
 assert False
 # using previously found ingredients, change the peakTailCoefficient within instrumentstate
 ingredients.instrumentState.peakTailCoefficient = 10
-
-detectorAlgo.setProperty("Ingredients", ingredients.json())
-detectorAlgo.execute()
-
-peakList = json.loads(detectorAlgo.getProperty("DetectorPeaks").value)
+peakList = DetectorPeakPredictor(
+    Ingredients = ingredients.json(),
+)
+peakList = json.loads(peakList)
 print(peakList)
 
 peakCenter = []

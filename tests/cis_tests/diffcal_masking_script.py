@@ -7,6 +7,7 @@ from pydantic import parse_raw_as
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mantid.kernel import ConfigService
 from mantid.simpleapi import *
 
 import snapred
@@ -16,18 +17,15 @@ SNAPRed_module_root = Path(snapred.__file__).parent.parent
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration as PixelAlgo
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration as GroupAlgo
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
-from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
-from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
-from snapred.backend.dao import RunConfig, DetectorPeak, GroupPeakList
-from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.data.GroceryService import GroceryService
-from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.CalibrationService import CalibrationService
 from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
+## for creating ingredients
+from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+from snapred.backend.service.SousChef import SousChef
+## for loading data
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config
 
 
@@ -74,16 +72,26 @@ from util.helpers import (
     setSpectraToZero,
     maskSpectra,
     setGroupSpectraToZero,
-    maskGroups
+    maskGroups,
+    pause
 )
+from util.IPTS_override import datasearch_directories
+
+## If required: override the IPTS search directories: ##
+instrumentHome = "/mnt/R5_data1/data1/workspaces/ORNL-work/SNAPRed/SNS_root/SNAP"
+ConfigService.Instance().setDataSearchDirs(datasearch_directories(instrumentHome))
+Config._config["instrument"]["home"] = instrumentHome + os.sep
+########################################################
+
+
 SNAPInstrumentFilePath = str(Path(mantid.__file__).parent / 'instrument' / 'SNAP_Definition.xml')
 SNAPLiteInstrumentFilePath = str(Path(SNAPRed_module_root).parent / 'tests' / 'resources' / 'inputs' / 'pixel_grouping' / 'SNAPLite_Definition.xml')
 
 #User input ###########################
 runNumber = "58882"
 groupingScheme = 'Column'
-cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
-calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrationSamples/Silicon_NIST_640D_001.json"
+cifPath = f"{instrumentHome}/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
+calibrantSamplePath = f"{instrumentHome}/shared/Calibration/CalibrationSamples/Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
@@ -91,48 +99,22 @@ instrumentFilePath = SNAPLiteInstrumentFilePath if isLite else SNAPInstrumentFil
 Config._config["cis_mode"] = False
 #######################################
 
-### CREATE INGREDIENTS ################
-runConfig = RunConfig(
+### PREP INGREDIENTS ##################
+
+farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
-    IPTS=GetIPTS(RunNumber=runNumber,Instrument='SNAP'), 
     useLiteMode=isLite,
-)
-dataFactoryService = DataFactoryService()
-focusGroup=dataFactoryService.getFocusGroups(runNumber)[0] #column
-calibration = dataFactoryService.getCalibrationState(runNumber)
-
-calibrationService = CalibrationService()
-pixelGroupingParameters = calibrationService.retrievePixelGroupingParams(runNumber)
-print(pixelGroupingParameters)
-
-instrumentState = calibration.instrumentState
-calPath = instrumentState.instrumentConfig.calibrationDirectory
-instrumentState.pixelGroup = PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0])
-print(instrumentState.pixelGroup.json(indent=2))
-
-crystalInfoDict = CrystallographicInfoService().ingest(cifPath)
-
-detectorAlgo = PurgeOverlappingPeaksAlgorithm()
-detectorAlgo.initialize()
-detectorAlgo.setProperty("InstrumentState", instrumentState.json())
-detectorAlgo.setProperty("CrystalInfo", crystalInfoDict["crystalInfo"].json())
-detectorAlgo.setProperty("PeakIntensityFractionThreshold", peakThreshold)
-detectorAlgo.execute()
-peakList = detectorAlgo.getProperty("OutputPeakMap").value
-peakList = parse_raw_as(List[GroupPeakList], peakList)
-
-ingredients = DiffractionCalibrationIngredients(
-    runConfig=runConfig,
-    instrumentState=instrumentState,
-    focusGroup=focusGroup,
-    groupedPeakLists=peakList,
-    calPath=calPath,
+    focusGroup={"name": groupingScheme, "definition": ""},
+    cifPath=cifPath,
+    calibrantSamplePath=calibrantSamplePath,
+    peakIntensityThresold=peakThreshold,
     convergenceThreshold=offsetConvergenceLimit,
-    maxOffset = 100.0,
-    pixelGroup=PixelGroup(pixelGroupingParameters=pixelGroupingParameters[0]),
+    maxOffset=100.0,
 )
+ingredients = SousChef().prepDiffractionCalibrationIngredients(farmFresh)
 
-### FETCH GROCERIES ##################
+
+### FETCH GROCERIES ###################
 
 clerk = GroceryListItem.builder()
 clerk.neutron(runNumber).useLiteMode(isLite).add()
@@ -188,7 +170,7 @@ Stop here and examine the fits:
   * Make sure that any failing pixels are masked.
   * Make sure that any pixels masked at the original input are still masked.
 """
-assert False
+pause("End of PIXEL CALIBRATION section")
 
 median = json.loads(pixelAlgo.getPropertyValue("data"))["medianOffset"]
 print(median)
@@ -203,6 +185,7 @@ while median > offsetConvergenceLimit or count < 5:
 
 DIFCprev = pixelAlgo.getPropertyValue("CalibrationTable")
 
+outputWS = mtd.unique_name(prefix="out_ws_")
 groupAlgo = GroupAlgo()
 groupAlgo.initialize()
 groupAlgo.setPropertyValue("Ingredients", ingredients.json())
@@ -210,6 +193,7 @@ groupAlgo.setPropertyValue("InputWorkspace", groceries[0])
 groupAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
 groupAlgo.setPropertyValue("MaskWorkspace", maskWSName)
 groupAlgo.setPropertyValue("PreviousCalibrationTable", DIFCprev)
+groupAlgo.setPropertyValue("OutputWorkspaceDSpacing", outputWS)
 groupAlgo.execute()
 
 ### PAUSE
@@ -221,7 +205,7 @@ Stop here and examine the fits:
   * Make sure that any failing pixels are masked.
   * Make sure that any pixels masked at the original input are still masked.
 """
-assert False
+pause("End of GROUP CALIBRATION section")
 
 ### IMPORTANT: remember to _remove_ any existing mask workspace here!! ######################
 try:
@@ -282,7 +266,7 @@ rx.executeRecipe(ingredients, groceries)
 """
 Stop here and make sure everything still looks good.
 """
-assert False
+pause("End of CALIBRATION RECIPE section")
 
 ### TODO: There may need to be a *story* about how the MASK interacts with 'DiffractionCalibrationRequest'.
 # #   At present, it's functioning as an implicit parameter which will automatically be created,
@@ -302,4 +286,4 @@ diffcalRequest = DiffractionCalibrationRequest(
 calibrationService = CalibrationService()
 res = calibrationService.diffractionCalibration(diffcalRequest)
 print(json.dumps(res,indent=2))
-assert False
+pause("End of CALIBRATION SERVICE section")

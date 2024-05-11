@@ -80,10 +80,10 @@ def test_fileExists_no():
 
 
 def _readInstrumentParameters():
-    instrumentParmaeters = None
+    instrumentParameters = None
     with Resource.open("inputs/SNAPInstPrm.json", "r") as file:
-        instrumentParmaeters = json.loads(file.read())
-    return instrumentParmaeters
+        instrumentParameters = json.loads(file.read())
+    return instrumentParameters
 
 
 def test_readInstrumentConfig():
@@ -664,8 +664,8 @@ def test_writeCalibrationIndexEntry():
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._readReductionParameters = mock.Mock()
     localDataService._constructCalibrationStatePath = mock.Mock()
-    localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs")
-    expectedFilePath = Resource.getPath("outputs") + "CalibrationIndex.json"
+    localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
+    expectedFilePath = Resource.getPath("outputs/") + "CalibrationIndex.json"
     localDataService.writeCalibrationIndexEntry(
         CalibrationIndexEntry(runNumber="57514", comments="test comment", author="test author"), True
     )
@@ -688,8 +688,8 @@ def test_writeCalibrationIndexEntry():
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._readReductionParameters = mock.Mock()
     localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
-    localDataService._constructNormalizationCalibrationStatePath.return_value = Resource.getPath("outputs")
-    expectedFilePath = Resource.getPath("outputs") + "NormalizationIndex.json"
+    localDataService._constructNormalizationCalibrationStatePath.return_value = Resource.getPath("outputs/")
+    expectedFilePath = Resource.getPath("outputs/") + "NormalizationIndex.json"
     localDataService.writeNormalizationIndexEntry(
         NormalizationIndexEntry(
             runNumber="57514", backgroundRunNumber="58813", comments="test comment", author="test author"
@@ -716,8 +716,8 @@ def test_readCalibrationIndexExisting():
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._readReductionParameters = mock.Mock()
     localDataService._constructCalibrationStatePath = mock.Mock()
-    localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs")
-    expectedFilePath = Resource.getPath("outputs") + "CalibrationIndex.json"
+    localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
+    expectedFilePath = Resource.getPath("outputs/") + "CalibrationIndex.json"
     localDataService.writeCalibrationIndexEntry(
         CalibrationIndexEntry(runNumber="57514", comments="test comment", author="test author"), True
     )
@@ -735,8 +735,8 @@ def test_readNormalizationIndexExisting():
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._readReductionParameters = mock.Mock()
     localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
-    localDataService._constructNormalizationCalibrationStatePath.return_value = Resource.getPath("outputs")
-    expectedFilePath = Resource.getPath("outputs") + "NormalizationIndex.json"
+    localDataService._constructNormalizationCalibrationStatePath.return_value = Resource.getPath("outputs/")
+    expectedFilePath = Resource.getPath("outputs/") + "NormalizationIndex.json"
     localDataService.writeNormalizationIndexEntry(
         NormalizationIndexEntry(
             runNumber="57514", backgroundRunNumber="58813", comments="test comment", author="test author"
@@ -851,7 +851,7 @@ def test_writeCalibrationWorkspaces(mockConstructCalibrationDataPath):
     testCalibrationRecord = CalibrationRecord.parse_raw(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
     )
-    with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
+    with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
         basePath = Path(basePath)
         mockConstructCalibrationDataPath.return_value = str(basePath)
 
@@ -1056,7 +1056,7 @@ def test_writeNormalizationWorkspaces(mockConstructNormalizationCalibrationDataP
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
-    with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
+    with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
         basePath = Path(basePath)
         mockConstructNormalizationCalibrationDataPath.return_value = str(basePath)
 
@@ -1705,7 +1705,7 @@ def test_readCifFilePath(mock1):  # noqa: ARG001
 def test_writeWorkspace():
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
-    with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
+    with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as tmpPath:
         workspaceName = "test_workspace"
         basePath = Path(tmpPath)
         filename = Path(workspaceName + ".nxs")
@@ -1752,7 +1752,7 @@ def test_writeRaggedWorkspace():
 def test_writeGroupingWorkspace():
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
-    with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
+    with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as tmpPath:
         workspaceName = "test_grouping"
         basePath = Path(tmpPath)
         filename = Path(workspaceName + ".h5")
@@ -1770,7 +1770,7 @@ def test_writeGroupingWorkspace():
 def test_writeDiffCalWorkspaces():
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
-    with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
+    with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
         basePath = Path(basePath)
         tableWSName = "test_table"
         maskWSName = "test_mask"
@@ -1801,7 +1801,7 @@ def test_writeDiffCalWorkspaces_bad_path():
         RuntimeError,
         match="specify filename including '.h5' extension",
     ):
-        with tempfile.TemporaryDirectory(dir=path, suffix="/") as basePath:
+        with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
             basePath = Path(basePath)
             tableWSName = "test_table"
             maskWSName = "test_mask"
@@ -1824,18 +1824,3 @@ def test_writeDiffCalWorkspaces_bad_path():
             )
             assert (basePath / filename).exists()
     mtd.clear()
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)
