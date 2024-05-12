@@ -263,9 +263,10 @@ class CalibrationService(Service):
     @FromString
     def loadQualityAssessment(self, request: CalibrationLoadAssessmentRequest):
         runId = request.runId
+        useLiteMode = request.useLiteMode
         version = request.version
 
-        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version, useLiteMode)
         if calibrationRecord is None:
             errorTxt = f"No calibration record found for run {runId}, version {version}."
             logger.error(errorTxt)

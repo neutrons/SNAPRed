@@ -40,8 +40,13 @@ class CalibrationAssessmentPresenter(QObject):
             self.view.onError("No calibration record selected.")
             return
 
-        runId, version = self.view.getSelectedCalibrationRecordData()
-        payload = CalibrationLoadAssessmentRequest(runId=runId, version=version, checkExistent=True)
+        runId, useLiteMode, version = self.view.getSelectedCalibrationRecordData()
+        payload = CalibrationLoadAssessmentRequest(
+            runId=runId,
+            useLiteMode=useLiteMode,
+            version=version,
+            checkExistent=True,
+        )
         loadAssessmentRequest = SNAPRequest(path="/calibration/loadQualityAssessment", payload=payload.json())
 
         self.view.loadButton.setEnabled(False)

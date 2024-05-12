@@ -70,7 +70,7 @@ class DiffCalAssessmentView(QWidget):
             # populate the combo-box from the input calibration index entries
             for entry in calibrationIndex:
                 name = f"Version: {entry.version}; Run: {entry.runNumber}"
-                self.calibrationRecordDropdown.addItem(name, (entry.runNumber, entry.version))
+                self.calibrationRecordDropdown.addItem(name, (entry.runNumber, entry.useLiteMode, entry.version))
         self.calibrationRecordDropdown.setCurrentIndex(0)
 
     def getCalibrationRecordCount(self):
