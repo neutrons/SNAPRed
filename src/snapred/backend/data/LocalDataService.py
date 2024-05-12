@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Tuple
 import h5py
 from mantid.kernel import PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
-from pydantic import parse_file_as
+from pydantic import parse_file_as, validate_arguments
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -346,6 +346,7 @@ class LocalDataService:
             version = latestNormalization.version
         return version
 
+    @validate_arguments
     def _constructCalibrationDataPath(self, runId: str, version: str, useLiteMode: bool):
         """
         Generates the path for an instrument state's versioned calibration files.
@@ -357,6 +358,7 @@ class LocalDataService:
         )
         return calibrationVersionPath
 
+    @validate_arguments
     def _constructNormalizationCalibrationDataPath(self, runId: str, version: str, useLiteMode: bool):
         """
         Generates the path for an instrument state's versioned normalization calibration files.
@@ -386,10 +388,12 @@ class LocalDataService:
         normalizationIndex.append(entry)
         write_model_list_pretty(normalizationIndex, indexPath)
 
+    @validate_arguments
     def getCalibrationRecordPath(self, runId: str, version: str, useLiteMode: bool):
         recordPath: str = f"{self._constructCalibrationDataPath(runId, version, useLiteMode)}CalibrationRecord.json"
         return recordPath
 
+    @validate_arguments
     def getNormalizationRecordPath(self, runId: str, version: str, useLiteMode: bool):
         recordPath: str = (
             f"{self._constructNormalizationCalibrationDataPath(runId, version, useLiteMode)}NormalizationRecord.json"
@@ -448,6 +452,7 @@ class LocalDataService:
                 latestVersion = version
         return latestVersion
 
+    @validate_arguments
     def readNormalizationRecord(self, runId: str, version: str = None, useLiteMode: bool = False):
         latestFile = ""
         recordPath: str = self.getNormalizationRecordPath(runId, version if version else "*", useLiteMode)
@@ -511,6 +516,7 @@ class LocalDataService:
                 self.writeWorkspace(normalizationDataPath, filename, workspace)
         return record
 
+    @validate_arguments
     def readCalibrationRecord(self, runId: str, version: str = None, useLiteMode: bool = False):
         recordFile: str = None
         if version:
@@ -706,22 +712,27 @@ class LocalDataService:
             filePath = Path(Config["samples.home"]).joinpath(filePath)
         return str(filePath)
 
+    @validate_arguments
     def _getCurrentCalibrationRecord(self, runId: str, useLiteMode: bool):
         version = self._getVersionFromCalibrationIndex(runId, useLiteMode)
         return self.readCalibrationRecord(runId, version, useLiteMode)
 
+    @validate_arguments
     def _getCurrentNormalizationRecord(self, runId: str, useLiteMode: bool):
         version = self._getVersionFromNormalizationIndex(runId, useLiteMode)
         return self.readNormalizationRecord(runId, version, useLiteMode)
 
+    @validate_arguments
     def _constructCalibrationParametersFilePath(self, runId: str, version: str, useLiteMode: bool):
         statePath: str = f"{self._constructCalibrationDataPath(runId, version, useLiteMode)}CalibrationParameters.json"
         return statePath
 
+    @validate_arguments
     def _constructNormalizationParametersFilePath(self, runId: str, version: str, useLiteMode: bool):
         statePath: str = f"{self._constructNormalizationCalibrationDataPath(runId, version, useLiteMode)}NormalizationParameters.json"  # noqa: E501
         return statePath
 
+    @validate_arguments
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: str = None):
         # get stateId and check to see if such a folder exists, if not create it and initialize it
@@ -744,6 +755,7 @@ class LocalDataService:
 
         return calibrationState
 
+    @validate_arguments
     def readNormalizationState(self, runId: str, version: str = None, useLiteMode: bool = False):
         stateId, _ = self._generateStateId(runId)
         normalizationStatePathGlob = self._constructNormalizationParametersFilePath(runId, "*", useLiteMode)
@@ -761,6 +773,7 @@ class LocalDataService:
 
         return normalizationState
 
+    @validate_arguments
     def writeCalibrationState(
         self, runId: str, calibration: Calibration, version: str = None, useLiteMode: bool = False
     ):
@@ -785,6 +798,7 @@ class LocalDataService:
         # write the calibration state.
         write_model_pretty(calibration, calibrationParametersFilePath)
 
+    @validate_arguments
     def writeNormalizationState(
         self, runId: str, normalization: Normalization, version: str = None, useLiteMode: bool = False
     ):  # noqa: F821
@@ -823,6 +837,7 @@ class LocalDataService:
             raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")
         return detectorState
 
+    @validate_arguments
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
         from snapred.backend.data.GroceryService import GroceryService
 
@@ -842,6 +857,7 @@ class LocalDataService:
         )
         self.writeCalibrationIndexEntry(calibrationIndexEntry, useLiteMode)
 
+    @validate_arguments
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, name: str = None, useLiteMode: bool = False):
         stateId, _ = self._generateStateId(runId)

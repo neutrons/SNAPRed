@@ -1,7 +1,6 @@
 import os.path
 import tempfile
 import unittest.mock as mock
-from unittest.mock import MagicMock
 
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
@@ -112,21 +111,27 @@ with mock.patch.dict(
     def test_getCalibrationIndex():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrationIndex = mock.Mock(return_value="expected")
-        run = MagicMock()
-        actual = dataExportService.getCalibrationIndex(run, mock.Mock())
+        run = "123"
+        useLiteMode = False
+        actual = dataExportService.getCalibrationIndex(run, useLiteMode)
 
         assert actual == "expected"
 
     def test_getCalibrationDataPath():
         dataExportService = DataFactoryService()
         dataExportService.lookupService._constructCalibrationDataPath = mock.Mock(return_value="expected")
-        actual = dataExportService.getCalibrationDataPath(mock.Mock(), mock.Mock())
+        run = "123"
+        version = "xyz"
+        actual = dataExportService.getCalibrationDataPath(run, version)
 
         assert actual == "expected"
 
     def test_getCalibrationRecord():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrationRecord = mock.Mock(return_value="expected")
-        actual = dataExportService.getCalibrationRecord(mock.Mock(), mock.Mock())
+        runId = "345"
+        useLiteMode = False
+        version = "*"
+        actual = dataExportService.getCalibrationRecord(runId, version, useLiteMode)
 
         assert actual == "expected"
