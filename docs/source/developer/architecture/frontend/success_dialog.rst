@@ -1,7 +1,7 @@
 SuccessDialog Class Documentation
 =================================
 
-SuccessDialog is a PyQt5 dialog constructed to deliver succinct and clear feedback to users following successful operations, such as the completion
+SuccessDialog is a qt dialog constructed to deliver succinct and clear feedback to users following successful operations, such as the completion
 of a setup process or state initialization. It adheres to GUI design principles emphasizing straightforward communication, offering a minimalistic
 yet effective interface for conveying success messages. This approach serves to enhance the user experience within applications by affirmatively
 acknowledging positive action outcomes in a clear and uncomplicated manner.
