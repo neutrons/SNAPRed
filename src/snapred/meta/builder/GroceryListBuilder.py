@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
@@ -39,19 +39,19 @@ class GroceryListBuilder:
         self._tokens["runNumber"] = runId
         return self
 
-    def diffcal_output(self, runId: str, version: str = ""):
+    def diffcal_output(self, runId: str, version: Optional[int] = None):
         self._tokens["workspaceType"] = "diffcal_output"
         self._tokens["runNumber"] = runId
         self._tokens["version"] = version
         return self
 
-    def diffcal_table(self, runId: str, version: str = ""):
+    def diffcal_table(self, runId: str, version: Optional[int] = None):
         self._tokens["workspaceType"] = "diffcal_table"
         self._tokens["runNumber"] = runId
         self._tokens["version"] = version
         return self
 
-    def diffcal_mask(self, runId: str, version: str = ""):
+    def diffcal_mask(self, runId: str, version: Optional[int] = None):
         self._tokens["workspaceType"] = "diffcal_mask"
         self._tokens["runNumber"] = runId
         self._tokens["version"] = version
