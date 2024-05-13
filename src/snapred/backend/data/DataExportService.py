@@ -5,7 +5,6 @@ from pydantic import validate_arguments
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -49,9 +48,6 @@ class DataExportService:
 
     def exportNormalizationWorkspaces(self, record: NormalizationRecord):
         return self.dataService.writeNormalizationWorkspaces(record)
-
-    def exportNormalizationState(self, normalization: Normalization):
-        return self.dataService.writeNormalizationState(normalization)
 
     @validate_arguments
     def exportWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
