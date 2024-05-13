@@ -1,7 +1,7 @@
-NormalizationCalibrationRequest Class Documentation
+NormalizationRequest Class Documentation
 ===================================================
 
-NormalizationCalibrationRequest.py introduces the NormalizationCalibrationRequest class for initiating normalization calibration processes. It
+NormalizationRequest.py introduces the NormalizationRequest class for initiating normalization calibration processes. It
 incorporates default values for simplification and consistency, requiring the setting of attributes like runNumber, backgroundRunNumber, and specific
 calibration settings upon instantiation.
 

@@ -26,7 +26,7 @@ with mock.patch.dict(
     from snapred.backend.dao.normalization import NormalizationIndexEntry
     from snapred.backend.dao.request import (
         FocusSpectraRequest,
-        NormalizationCalibrationRequest,
+        NormalizationRequest,
         SmoothDataExcludingPeaksRequest,
         VanadiumCorrectionRequest,
     )
@@ -74,7 +74,7 @@ from snapred.backend.service.NormalizationService import NormalizationService  #
 class TestNormalizationService(unittest.TestCase):
     def setUp(self):
         self.instance = NormalizationService()
-        self.request = NormalizationCalibrationRequest(
+        self.request = NormalizationRequest(
             runNumber="12345",
             backgroundRunNumber="67890",
             useLiteMode=True,

@@ -5,7 +5,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
 
 
-class NormalizationCalibrationRequest(BaseModel):
+class NormalizationRequest(BaseModel):
     """
 
     This class encapsulates all the necessary parameters to request a normalization process,

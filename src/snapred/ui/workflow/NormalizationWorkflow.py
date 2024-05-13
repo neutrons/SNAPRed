@@ -3,8 +3,8 @@ import json
 from snapred.backend.dao.normalization import NormalizationIndexEntry
 from snapred.backend.dao.request import (
     HasStateRequest,
-    NormalizationCalibrationRequest,
     NormalizationExportRequest,
+    NormalizationRequest,
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.log.logger import snapredLogger
@@ -74,9 +74,9 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=None, parent=parent)
-            .addNode(self._triggerNormalizationCalibration, self._requestView, "Normalization Calibration")
+            .addNode(self._triggerNormalization, self._requestView, "Normalization Calibration")
             .addNode(self._specifyNormalization, self._tweakPeakView, "Tweak Parameters")
-            .addNode(self._saveNormalizationCalibration, self._saveView, "Saving")
+            .addNode(self._saveNormalization, self._saveView, "Saving")
             .build()
         )
         self.workflow.presenter.setResetLambda(self.reset)
@@ -129,7 +129,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._requestView.groupingFileDropdown.setEnabled(True)
 
     @EntryExitLogger(logger=logger)
-    def _triggerNormalizationCalibration(self, workflowPresenter):
+    def _triggerNormalization(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for normalization
 
@@ -145,7 +145,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.prevThreshold = float(self._tweakPeakView.fieldThreshold.field.text())
 
         # init the payload
-        payload = NormalizationCalibrationRequest(
+        payload = NormalizationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
@@ -180,7 +180,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
     @EntryExitLogger(logger=logger)
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
-        payload = NormalizationCalibrationRequest(
+        payload = NormalizationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
@@ -195,7 +195,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         return response
 
     @EntryExitLogger(logger=logger)
-    def _saveNormalizationCalibration(self, workflowPresenter):
+    def _saveNormalization(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
 
         normalizationRecord = self.responses[-1].data
@@ -221,8 +221,8 @@ class NormalizationWorkflow(WorkflowImplementer):
         return response
 
     @EntryExitLogger(logger=logger)
-    def callNormalizationCalibration(self, index, smoothingParameter, dMin, dMax, peakThreshold):
-        payload = NormalizationCalibrationRequest(
+    def callNormalization(self, index, smoothingParameter, dMin, dMax, peakThreshold):
+        payload = NormalizationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
@@ -285,7 +285,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
             # check the case, apply correct update
             if groupingFileChanged:
-                self.callNormalizationCalibration(index, smoothingValue, dMin, dMax, peakThreshold)
+                self.callNormalization(index, smoothingValue, dMin, dMax, peakThreshold)
             elif peakListWillChange:
                 self.applySmoothingUpdate(index, smoothingValue, dMin, dMax, peakThreshold)
             elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:

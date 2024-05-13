@@ -6,7 +6,7 @@ various Data Components, including Normalization, NormalizationIndexEntry, and N
 it integrates specialized Services like CalibrationService and DataExportService for calibration and data persistence, aiming to enhance the
 normalization workflow's efficiency and accuracy.
 
-Interaction with this service is facilitated through specific requests like NormalizationCalibrationRequest or SmoothDataExcludingPeaksRequest, each
+Interaction with this service is facilitated through specific requests like NormalizationRequest or SmoothDataExcludingPeaksRequest, each
 containing the necessary parameters for the targeted normalization task. This ensures a comprehensive approach to data processing. The
 GroceryListBuilder, used via groceryClerk within the service, aids in assembling necessary data items for normalization, streamlining data
 preparation and retrieval.
