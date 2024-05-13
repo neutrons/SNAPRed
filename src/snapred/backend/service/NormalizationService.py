@@ -11,8 +11,8 @@ from snapred.backend.dao.normalization import (
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
     FocusSpectraRequest,
-    NormalizationRequest,
     NormalizationExportRequest,
+    NormalizationRequest,
     SmoothDataExcludingPeaksRequest,
     VanadiumCorrectionRequest,
 )

@@ -396,9 +396,7 @@ class LocalDataService:
 
     @validate_arguments
     def getNormalizationRecordPath(self, runId: str, useLiteMode: bool, version: Version):
-        recordPath: str = (
-            f"{self._constructNormalizationDataPath(runId, useLiteMode, version)}NormalizationRecord.json"
-        )
+        recordPath: str = f"{self._constructNormalizationDataPath(runId, useLiteMode, version)}NormalizationRecord.json"
         return recordPath
 
     def _extractFileVersion(self, file: str) -> int:
@@ -732,7 +730,9 @@ class LocalDataService:
 
     @validate_arguments
     def _constructNormalizationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version):
-        statePath: str = f"{self._constructNormalizationDataPath(runId, useLiteMode, version)}NormalizationParameters.json"  # noqa: E501
+        statePath: str = (
+            f"{self._constructNormalizationDataPath(runId, useLiteMode, version)}NormalizationParameters.json"  # noqa: E501
+        )
         return statePath
 
     @validate_arguments

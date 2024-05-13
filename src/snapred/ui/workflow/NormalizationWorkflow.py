@@ -3,8 +3,8 @@ import json
 from snapred.backend.dao.normalization import NormalizationIndexEntry
 from snapred.backend.dao.request import (
     HasStateRequest,
-    NormalizationRequest,
     NormalizationExportRequest,
+    NormalizationRequest,
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.log.logger import snapredLogger
