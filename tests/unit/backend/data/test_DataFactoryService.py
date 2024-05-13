@@ -111,20 +111,27 @@ with mock.patch.dict(
     def test_getCalibrationIndex():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrationIndex = mock.Mock(return_value="expected")
-        actual = dataExportService.getCalibrationIndex("123", False)
+        run = "123"
+        useLiteMode = False
+        actual = dataExportService.getCalibrationIndex(run, useLiteMode)
 
         assert actual == "expected"
 
     def test_getCalibrationDataPath():
         dataExportService = DataFactoryService()
         dataExportService.lookupService._constructCalibrationDataPath = mock.Mock(return_value="expected")
-        actual = dataExportService.getCalibrationDataPath("123", True, 7)
+        run = "123"
+        version = "xyz"
+        actual = dataExportService.getCalibrationDataPath(run, version)
 
         assert actual == "expected"
 
     def test_getCalibrationRecord():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrationRecord = mock.Mock(return_value="expected")
-        actual = dataExportService.getCalibrationRecord(mock.Mock(), False)
+        runId = "345"
+        useLiteMode = False
+        version = "*"
+        actual = dataExportService.getCalibrationRecord(runId, useLiteMode, version)
 
         assert actual == "expected"

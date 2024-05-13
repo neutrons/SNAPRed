@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from mantid.simpleapi import mtd
+from pydantic import validate_arguments
 
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
@@ -181,6 +182,7 @@ class GroceryService:
         ext = instr + ".extension"
         return self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext]
 
+    @validate_arguments
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
         if groupingScheme == "Lite":
             path = str(Config["instrument.lite.map.file"])

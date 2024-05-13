@@ -10,6 +10,7 @@ from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 @Singleton
@@ -57,7 +58,7 @@ class DataFactoryService:
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:  # noqa: ARG002
         return self.lookupService.readStateConfig(runId, useLiteMode)
 
-    def constructStateId(self, runId):
+    def constructStateId(self, runId: str):
         return self.lookupService._generateStateId(runId)
 
     def getCalibrantSample(self, filePath):
@@ -74,13 +75,17 @@ class DataFactoryService:
     def getNormalizationState(self, runId: str, useLiteMode: bool):
         return self.lookupService.readNormalizationState(runId, useLiteMode)
 
-    def getWorkspaceForName(self, name):
+    def writeNormalizationState(self, runId: str):
+        return self.lookupService.writeNormalizationState(runId)
+
+    def getWorkspaceForName(self, name: WorkspaceName):
         return self.groceryService.getWorkspaceForName(name)
 
-    def getCloneOfWorkspace(self, name, copy):
+    def getCloneOfWorkspace(self, name: WorkspaceName, copy: WorkspaceName):
         return self.groceryService.getCloneOfWorkspace(name, copy)
 
-    def getCalibrationDataWorkspace(self, runId, version, name):
+    @validate_arguments
+    def getCalibrationDataWorkspace(self, runId: str, version: str, name: str):
         path = self.getCalibrationDataPath(runId, version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
@@ -91,12 +96,12 @@ class DataFactoryService:
         return self.groceryService.fetchNeutronDataSingleUse(runId, useLiteMode)
 
     @validate_arguments
-    def getCalibrationRecord(self, runId, useLiteMode: bool, version: Optional[int] = None):
+    def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         return self.lookupService.readCalibrationRecord(runId, useLiteMode, version)
 
     @validate_arguments
-    def getNormalizationRecord(self, runId, useLiteMode: bool):
-        return self.lookupService.readNormalizationRecord(runId, useLiteMode)
+    def getNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.readNormalizationRecord(runId, useLiteMode, version)
 
     @validate_arguments
     def getCalibrationIndex(self, runId: str, useLiteMode: bool):

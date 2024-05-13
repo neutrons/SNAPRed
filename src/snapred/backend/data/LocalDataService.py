@@ -715,10 +715,12 @@ class LocalDataService:
             filePath = Path(Config["samples.home"]).joinpath(filePath)
         return str(filePath)
 
+    @validate_arguments
     def _getCurrentCalibrationRecord(self, runId: str, useLiteMode: bool):
         version = self._getVersionFromCalibrationIndex(runId, useLiteMode)
         return self.readCalibrationRecord(runId, useLiteMode, version)
 
+    @validate_arguments
     def _getCurrentNormalizationRecord(self, runId: str, useLiteMode: bool):
         version = self._getVersionFromNormalizationIndex(runId, useLiteMode)
         return self.readNormalizationRecord(runId, useLiteMode, version)

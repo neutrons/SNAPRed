@@ -53,12 +53,14 @@ class DataExportService:
     def exportNormalizationState(self, normalization: Normalization):
         return self.dataService.writeNormalizationState(normalization)
 
+    @validate_arguments
     def exportWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
         Write a MatrixWorkspace (derived) workspace to disk in nexus format.
         """
         return self.dataService.writeWorkspace(path, filename, workspaceName)
 
+    @validate_arguments
     def exportRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
         Write a MatrixWorkspace (derived) workspace to disk in nexus format.
