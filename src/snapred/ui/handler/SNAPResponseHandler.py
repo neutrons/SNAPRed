@@ -112,7 +112,9 @@ class SNAPResponseHandler(QWidget):
 
         try:
             logger.info("Handling 'state' message.")
-            initializationMenu = InitializationMenu(runNumber=InitializeStateHandler.runId, parent=view)
+            initializationMenu = InitializationMenu(
+                runNumber=InitializeStateHandler.runId, parent=view, useLiteMode=InitializeStateHandler.useLiteMode
+            )
             initializationMenu.finished.connect(lambda: initializationMenu.deleteLater())
             initializationMenu.show()
         except Exception as e:  # noqa: BLE001

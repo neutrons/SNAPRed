@@ -1,10 +1,6 @@
-import json
-from typing import Dict, List, Tuple
-
-import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
-from mantid.kernel import Direction, StringArrayProperty
-from mantid.simpleapi import CloneWorkspace, mtd
+from mantid.kernel import Direction
+from mantid.simpleapi import CloneWorkspace
 
 from snapred.meta.Config import Config
 

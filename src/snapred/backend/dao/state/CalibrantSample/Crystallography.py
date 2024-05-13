@@ -1,10 +1,12 @@
 import os
+from pathlib import Path
 from typing import List, Tuple
 
 from mantid.geometry import CrystalStructure, SpaceGroupFactory
 from pydantic import BaseModel, validate_arguments, validator
 
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
+from snapred.meta.Config import Config
 
 
 class Crystallography(BaseModel):
@@ -13,6 +15,10 @@ class Crystallography(BaseModel):
     space group: string, ITOC symbol for the space group
     lattice parameters: Tuple of 6 floats: a, b, c, alpha, beta, gamma
     atoms: list of atomic parameters for each atom"""
+
+    @classmethod
+    def calibrationSampleHome(cls) -> Path:
+        return Path(Config["instrument.calibration.sample.home"])
 
     cifFile: str
     spaceGroup: str
@@ -48,10 +54,16 @@ class Crystallography(BaseModel):
 
     @validator("cifFile", allow_reuse=True)
     def validate_cifFile(cls, v):
-        if not os.path.exists(v):
-            raise ValueError("cif file must be full path to a valid cif file")
+        filePath = Path(v)
+        if not filePath.is_absolute():
+            filePath = cls.calibrationSampleHome().joinpath(filePath)
+        if not os.path.exists(filePath):
+            raise ValueError(
+                "'cifFile' must either be a relative path in 'calibration.sample.home'"
+                + " or the full path to a valid cif file"
+            )
         if not v.endswith(".cif"):
-            raise ValueError("cif_file must be a file with .cif extension")
+            raise ValueError("'cifFile' must be a file with .cif extension")
         return v
 
     @validator("spaceGroup", allow_reuse=True)

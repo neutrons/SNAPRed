@@ -1,4 +1,4 @@
-from qtpy.QtWidgets import QGridLayout, QMainWindow, QPushButton, QWidget
+from qtpy.QtWidgets import QGridLayout, QPushButton, QWidget
 
 
 class WorkflowNodeView(QWidget):

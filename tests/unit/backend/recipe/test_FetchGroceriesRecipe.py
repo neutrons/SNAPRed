@@ -2,7 +2,6 @@
 
 import os
 import unittest
-from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
@@ -16,11 +15,10 @@ from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
 # needed to make mocked ingredients
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.recipe.FetchGroceriesRecipe import (
     FetchGroceriesRecipe as Recipe,  # noqa: E402
 )
-from snapred.meta.Config import Config, Resource
+from snapred.meta.Config import Resource
 
 
 class TestFetchGroceriesRecipe(unittest.TestCase):
@@ -146,17 +144,3 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
                 self.fetchedWSname,
                 "LoadGroupingDefinition",
             )
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004]
-    """Remove handlers from all loggers"""
-    import logging
-
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

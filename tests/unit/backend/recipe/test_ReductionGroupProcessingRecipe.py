@@ -1,6 +1,5 @@
 import unittest
 
-import pytest
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe, Utensils
 
 

@@ -1,9 +1,11 @@
 import sys
+from pathlib import Path
+from typing import List
 
 from mantid.kernel import amend_config
 
 from snapred import __version__ as snapred_version
-from snapred.meta.Config import Resource
+from snapred.meta.Config import Config, Resource, datasearch_directories
 
 
 def _print_text_splash():
@@ -23,6 +25,16 @@ def _bool_to_mtd_str(arg: bool) -> str:
     the strings "0" and "1". This method converts things
     """
     return "1" if arg else "0"
+
+
+def _prepend_datasearch_directories() -> List[str]:
+    """data-search directories to prepend to
+    mantid.kernel.ConfigService 'datasearch.directories'
+    """
+    searchDirectories = None
+    if Config["IPTS.root"] != Config["IPTS.default"]:
+        searchDirectories = datasearch_directories(Path(Config["instrument.home"]))
+    return searchDirectories
 
 
 def main(args=None):
@@ -50,6 +62,7 @@ def main(args=None):
     options.checkfornewmantid = _bool_to_mtd_str(options.checkfornewmantid)
     options.updateinstruments = _bool_to_mtd_str(options.updateinstruments)
     options.reportusage = _bool_to_mtd_str(options.reportusage)
+    dataSearchDirectories = _prepend_datasearch_directories()
 
     # show the ascii splash screen
     _print_text_splash()
@@ -59,6 +72,8 @@ def main(args=None):
         "CheckMantidVersion.OnStartup": options.checkfornewmantid,
         "UpdateInstrumentDefinitions.OnStartup": options.updateinstruments,
         "usagereports.enabled": options.reportusage,
+        "data_dir": dataSearchDirectories,
+        "prepend_datadir": True,
     }
     with amend_config(**new_config):
         from snapred.ui.main import start

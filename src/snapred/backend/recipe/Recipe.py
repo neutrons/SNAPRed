@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, Tuple, TypeVar, get_args
+from typing import Dict, Generic, List, Tuple, TypeVar, get_args
 
 from pydantic import BaseModel, ValidationError
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 

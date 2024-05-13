@@ -3,13 +3,9 @@ import tempfile
 import unittest.mock as mock
 from unittest.mock import MagicMock
 
-import pytest
-from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.dao.StateConfig import StateConfig
 
 # Mock out of scope modules before importing DataFactoryService
@@ -41,7 +37,7 @@ with mock.patch.dict(
         dataExportService.getInstrumentConfig.return_value = InstrumentConfig.construct({})
         dataExportService.getStateConfig = mock.Mock()
         dataExportService.getStateConfig.return_value = StateConfig.construct({})
-        actual = dataExportService.getReductionState(mock.Mock())
+        actual = dataExportService.getReductionState(mock.Mock(), mock.Mock())
 
         assert type(actual) == ReductionState
 
@@ -55,7 +51,7 @@ with mock.patch.dict(
     def test_getStateConfig():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readStateConfig = mock.Mock(return_value=StateConfig.construct())
-        actual = dataExportService.getStateConfig(mock.Mock())
+        actual = dataExportService.getStateConfig(mock.Mock(), mock.Mock())
 
         assert type(actual) == StateConfig
 
@@ -69,7 +65,7 @@ with mock.patch.dict(
     def test_getCalibrationState():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrationState = mock.Mock(return_value="expected")
-        actual = dataExportService.getCalibrationState(mock.Mock())
+        actual = dataExportService.getCalibrationState(mock.Mock(), mock.Mock())
 
         assert actual == "expected"
 
@@ -117,7 +113,7 @@ with mock.patch.dict(
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrationIndex = mock.Mock(return_value="expected")
         run = MagicMock()
-        actual = dataExportService.getCalibrationIndex(run)
+        actual = dataExportService.getCalibrationIndex(run, mock.Mock())
 
         assert actual == "expected"
 

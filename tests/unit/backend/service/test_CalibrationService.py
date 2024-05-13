@@ -1,12 +1,11 @@
 # ruff: noqa: E402, ARG002
-import os
 import tempfile
 import unittest
 import unittest.mock as mock
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List
-from unittest.mock import ANY, MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
@@ -20,7 +19,6 @@ from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRe
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.meta.Config import Config
-from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
@@ -38,15 +36,14 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from snapred.backend.dao import Limit
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
     from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
-    from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
     from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+    from snapred.backend.dao.request.HasStateRequest import HasStateRequest
     from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.FocusGroup import FocusGroup
     from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
@@ -70,7 +67,7 @@ with mock.patch.dict(
         calibrationService = CalibrationService()
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
-        calibrationService.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""))
+        calibrationService.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""), True)
         assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">1"
@@ -596,9 +593,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         request = InitializeStateRequest(
             runId=testCalibration.seedRun,
             humanReadableName="friendly name",
+            useLiteMode=True,
         )
         self.instance.initializeState(request)
-        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName)
+        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName, request.useLiteMode)
 
     def test_getState(self):
         testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
@@ -618,20 +616,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_hasState(self):
         mockCheckCalibrationStateExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.checkCalibrationStateExists = mockCheckCalibrationStateExists
-        self.instance.hasState(self.runNumber)
+        request = HasStateRequest(
+            runId=self.runNumber,
+            useLiteMode=True,
+        )
+        self.instance.hasState(request)
         mockCheckCalibrationStateExists.assert_called_once_with(self.runNumber)
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

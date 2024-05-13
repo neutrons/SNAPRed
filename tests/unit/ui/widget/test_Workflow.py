@@ -2,10 +2,8 @@ from unittest.mock import MagicMock
 
 import pytest
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QApplication, QGridLayout, QPushButton, QWidget
+from qtpy.QtWidgets import QGridLayout, QPushButton, QWidget
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
-from snapred.ui.presenter.WorkflowPresenter import WorkflowPresenter
-from snapred.ui.view.WorkflowView import WorkflowView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 
 

@@ -1,8 +1,3 @@
-import json
-import os.path
-import time
-from datetime import date
-from functools import lru_cache
 from typing import Dict, List, Tuple
 
 from pydantic import parse_raw_as
@@ -30,9 +25,7 @@ from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import Pixe
 from snapred.backend.service.CrystallographicInfoService import CrystallographicInfoService
 from snapred.backend.service.Service import Service
 from snapred.meta.Config import Config
-from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.redantic import list_to_raw
 
 
 @Singleton
@@ -57,7 +50,7 @@ class SousChef(Service):
         return "souschef"
 
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
-        calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber)
+        calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber, ingredients.useLiteMode)
         calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers
         return calibration
 
@@ -157,7 +150,7 @@ class SousChef(Service):
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
         return ReductionIngredients(
-            reductionState=self.dataFactoryService.getReductionState(ingredients.runNumber),
+            reductionState=self.dataFactoryService.getReductionState(ingredients.runNumber, ingredients.useLiteMode),
             runConfig=self.prepRunConfig(ingredients.runNumber),
             pixelGroup=self.prepPixelGroup(ingredients),
         )

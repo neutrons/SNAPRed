@@ -1,9 +1,6 @@
-import math
-import unittest.mock as mock
 from typing import List
 
 import matplotlib.pyplot as plt
-import numpy as np
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
 from pydantic import parse_obj_as
@@ -14,7 +11,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QPushButton,
 )
-from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
+from workbench.plotting.figuremanager import MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.backend.dao import GroupPeakList

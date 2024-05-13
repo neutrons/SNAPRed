@@ -3,13 +3,10 @@ from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
-    CreateWorkspace,
     LoadNexusProcessed,
     mtd,
 )
-from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import GenerateFocussedVanadiumIngredients as Ingredients
-from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
 from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocussedVanadiumRecipe as Recipe
 from snapred.meta.Config import Resource
 from util.helpers import deleteWorkspaceNoThrow

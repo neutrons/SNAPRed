@@ -4,7 +4,6 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
-from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 # the algorithm to test

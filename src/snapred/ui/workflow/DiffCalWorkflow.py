@@ -1,5 +1,4 @@
 import json
-from sys import version
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.calibration import CalibrationIndexEntry
@@ -9,8 +8,8 @@ from snapred.backend.dao.request import (
     DiffractionCalibrationRequest,
     FitMultiplePeaksRequest,
     FocusSpectraRequest,
+    HasStateRequest,
 )
-from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
@@ -115,7 +114,11 @@ class DiffCalWorkflow(WorkflowImplementer):
         # TODO: Use threads, account for fail cases
         try:
             # check if the state exists -- if so load its grouping map
-            hasState = self.request(path="calibration/hasState", payload=runNumber).data
+            payload = HasStateRequest(
+                runId=runNumber,
+                useLiteMode=useLiteMode,
+            )
+            hasState = self.request(path="calibration/hasState", payload=payload.json()).data
             if hasState:
                 self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
             else:
@@ -343,7 +346,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.outputs.extend(assessmentResponse.metricWorkspaces)
         for calibrationWorkspaces in self.calibrationRecord.workspaces.values():
             self.outputs.extend(calibrationWorkspaces)
-        self._assessmentView.updateRunNumber(self.runNumber)
+        self._assessmentView.updateRunNumber(self.runNumber, self.useLiteMode)
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002

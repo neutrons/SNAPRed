@@ -6,32 +6,22 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Dict, Tuple
 from unittest import mock
 from unittest.mock import ANY
 
 import pytest
-import snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
     CloneWorkspace,
-    CreateEmptyTableWorkspace,
-    CreateGroupingWorkspace,
-    CreateLogPropertyTable,
     CreateWorkspace,
     DeleteWorkspace,
-    ExtractMask,
     GenerateTableWorkspaceFromListOfDict,
     LoadEmptyInstrument,
-    LoadInstrument,
-    LoadParameterFile,
     SaveDiffCal,
     SaveNexusProcessed,
-    SaveParameterFile,
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
-from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata, diffcal_metadata_state_list
@@ -1599,18 +1589,3 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(rawWsName) is True
         self.instance.rebuildCache.assert_called()
         self.instance.rebuildCache = rebuildCache
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

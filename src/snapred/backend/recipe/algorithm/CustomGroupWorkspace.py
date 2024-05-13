@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 from mantid.api import AlgorithmFactory, PropertyMode, PythonAlgorithm, WorkspaceGroupProperty
 from mantid.kernel import Direction, StringArrayProperty

@@ -1,9 +1,7 @@
-import json
 import unittest.mock as mock
 from typing import List
 
 import pytest
-from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
@@ -78,17 +76,3 @@ def test_resolve_callback(BinnedValue, parse_raw_as):
     assert data["tof"] == BinnedValue.return_value
     assert data["parameters"] == parse_raw_as.return_value
     assert parse_raw_as.called_once_with(List[PixelGroupingParameters], "done")
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

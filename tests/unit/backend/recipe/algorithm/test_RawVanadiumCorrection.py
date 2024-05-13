@@ -2,7 +2,6 @@
 
 import unittest
 
-import pytest
 from mantid.simpleapi import (
     AddSampleLog,
     CloneWorkspace,
@@ -14,17 +13,8 @@ from mantid.simpleapi import (
     Rebin,
     mtd,
 )
-from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
 
 # needed to make mocked ingredients
-from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.CalibrantSample.Atom import Atom
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
-from snapred.backend.dao.state.CalibrantSample.Geometry import Geometry
-from snapred.backend.dao.state.CalibrantSample.Material import Material
-
 # the algorithm to test
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import (
     RawVanadiumCorrectionAlgorithm as Algo,  # noqa: E402
@@ -233,17 +223,3 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 #         actual_calls = [call[0] for call in vanAlgo.mantidSnapper.mock_calls if call[0]]
 #         # Assertions
 #         assert actual_calls == [call[0] for call in expected_calls]
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

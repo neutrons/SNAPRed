@@ -1,8 +1,8 @@
 import sys
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from qtpy.QtWidgets import QApplication, QMessageBox, QWidget
+from qtpy.QtWidgets import QApplication, QWidget
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresenter
 
@@ -10,12 +10,16 @@ app = QApplication(sys.argv)
 
 
 class TestableQWidget(QWidget):
+    # not a 'pytest' test case:
+    __test__ = False
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setEnabled = MagicMock()
 
         self.getRunNumber = MagicMock(return_value="12345")
         self.getStateName = MagicMock(return_value="Test State")
+        self.getMode = MagicMock(return_value=True)
         self.beginFlowButton = MagicMock()
 
 
@@ -30,10 +34,11 @@ def test_handleButtonClicked_with_valid_input(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     view.getRunNumber.return_value = "12345"
     view.getStateName.return_value = "Test State"
+    view.getMode.return_value = True
 
     with patch.object(workflow, "_initializeState") as mock_initializeState:
         workflow.handleButtonClicked()
-        mock_initializeState.assert_called_once_with("12345", "Test State")
+        mock_initializeState.assert_called_once_with("12345", "Test State", True)
 
 
 def test_handleButtonClicked_with_invalid_input(setup_view_and_workflow):
@@ -49,12 +54,13 @@ def test__initializeState(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     view.getRunNumber.return_value = "12345"
     view.getStateName.return_value = "Test State"
+    view.getMode.return_value = "True"
     mock_response = SNAPResponse(code=ResponseCode.OK)
 
     with patch.object(workflow.interfaceController, "executeRequest", return_value=mock_response), patch(
         "snapred.ui.widget.SuccessDialog.SuccessDialog.exec_"
     ) as mock_dialog_exec_:
-        workflow._initializeState("12345", "Test State")
+        workflow._initializeState("12345", "Test State", True)
         mock_dialog_exec_.assert_called_once()
 
 

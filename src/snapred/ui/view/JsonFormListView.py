@@ -1,7 +1,4 @@
-from qtpy.QtWidgets import QGridLayout, QMainWindow, QPushButton, QTabWidget, QWidget
-
-from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
-from snapred.ui.view.WorkflowNodeView import WorkflowNodeView
+from qtpy.QtWidgets import QGridLayout, QWidget
 
 
 class JsonFormListView(QWidget):

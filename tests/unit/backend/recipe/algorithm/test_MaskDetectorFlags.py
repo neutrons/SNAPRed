@@ -1,16 +1,9 @@
-from collections.abc import Sequence
-from typing import Any, Dict, List, Tuple
-
-import pytest
 from mantid.simpleapi import (
     CloneWorkspace,
     LoadDetectorsGroupingFile,
     LoadEmptyInstrument,
     mtd,
 )
-from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
 from snapred.backend.log.logger import snapredLogger
 
 # the algorithm to test
@@ -286,18 +279,3 @@ class TestMaskDetectorFlags:
             Workspace2=self.maskWS,
             CheckInstrument=False,
         )
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

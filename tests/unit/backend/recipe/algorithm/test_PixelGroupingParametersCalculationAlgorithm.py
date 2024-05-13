@@ -5,24 +5,19 @@
 import json
 import socket
 import unittest
-import unittest.mock as mock
-from datetime import date
 from pathlib import Path
 from typing import Dict, List, Union
 
 import pytest
 from mantid.simpleapi import (
-    CheckForSampleLogs,
-    CreateWorkspace,
     DeleteWorkspace,
-    DeleteWorkspaces,
     LoadDetectorsGroupingFile,
     LoadDiffCal,
     LoadEmptyInstrument,
     RenameWorkspace,
     mtd,
 )
-from pydantic import parse_file_as, parse_obj_as, parse_raw_as
+from pydantic import parse_file_as, parse_raw_as
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.state.InstrumentState import InstrumentState
@@ -945,18 +940,3 @@ class PixelGroupCalculation(unittest.TestCase):
             maskWorkspace=self.SNAPLiteMaskWorkspace[self.eastMasked],
             referenceParametersFile=referenceParametersFile,
         )
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)
