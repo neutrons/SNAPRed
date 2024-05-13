@@ -368,21 +368,21 @@ class LocalDataService:
         )
         return normalizationVersionPath
 
-    def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry, useLiteMode: bool):
+    def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         stateId, _ = self._generateStateId(entry.runNumber)
-        calibrationPath: str = self._constructCalibrationStatePath(stateId, useLiteMode)
+        calibrationPath: str = self._constructCalibrationStatePath(stateId, entry.useLiteMode)
         indexPath: str = calibrationPath + "CalibrationIndex.json"
         # append to index and write to file
-        calibrationIndex = self.readCalibrationIndex(entry.runNumber, useLiteMode)
+        calibrationIndex = self.readCalibrationIndex(entry.runNumber, entry.useLiteMode)
         calibrationIndex.append(entry)
         write_model_list_pretty(calibrationIndex, indexPath)
 
-    def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry, useLiteMode: bool):
+    def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
         stateId, _ = self._generateStateId(entry.runNumber)
-        normalizationPath: str = self._constructNormalizationCalibrationStatePath(stateId, useLiteMode)
+        normalizationPath: str = self._constructNormalizationCalibrationStatePath(stateId, entry.useLiteMode)
         indexPath: str = normalizationPath + "NormalizationIndex.json"
         # append to index and write to file
-        normalizationIndex = self.readNormalizationIndex(entry.runNumber, useLiteMode)
+        normalizationIndex = self.readNormalizationIndex(entry.runNumber, entry.useLiteMode)
         normalizationIndex.append(entry)
         write_model_list_pretty(normalizationIndex, indexPath)
 
@@ -603,7 +603,7 @@ class LocalDataService:
         # write record to file
         write_model_pretty(savedRecord, recordPath)
 
-        self.writeCalibrationState(runNumber, record.calibrationFittingIngredients, str(version), record.useLiteMode)
+        self.writeCalibrationState(record.calibrationFittingIngredients, str(version))
 
         logger.info(f"Wrote CalibrationRecord: version: {version}")
         return record
@@ -761,49 +761,55 @@ class LocalDataService:
 
         return normalizationState
 
-    def writeCalibrationState(
-        self, runId: str, calibration: Calibration, version: str = None, useLiteMode: bool = False
-    ):
+    def writeCalibrationState(self, calibration: Calibration, version: str = None):
         """
         Writes a `Calibration` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Calibration`.
         """
-        stateId, _ = self._generateStateId(runId)
-        previousVersion: int = self._getLatestCalibrationVersionNumber(stateId, useLiteMode)
-        if not version:
-            version = previousVersion + 1
+        stateId, _ = self._generateStateId(calibration.seedRun)
+        previousVersion: int = self._getLatestCalibrationVersionNumber(stateId, calibration.useLiteMode)
+        if version is None:
+            version = max(calibration.version, previousVersion + 1)
 
         # Check for the existence of a calibration parameters file
-        calibrationParametersFilePath = self._constructCalibrationParametersFilePath(runId, str(version), useLiteMode)
+        calibrationParametersFilePath = self._constructCalibrationParametersFilePath(
+            calibration.seedRun, str(version), calibration.useLiteMode
+        )
         if os.path.exists(calibrationParametersFilePath):
             logger.warning(f"overwriting calibration parameters at {calibrationParametersFilePath}")
 
         calibration.version = int(version)
-        calibrationDataPath = self._constructCalibrationDataPath(runId, str(version), useLiteMode)
+        calibrationDataPath = self._constructCalibrationDataPath(
+            calibration.seedRun, str(version), calibration.useLiteMode
+        )
         if not os.path.exists(calibrationDataPath):
             os.makedirs(calibrationDataPath)
         # write the calibration state.
         write_model_pretty(calibration, calibrationParametersFilePath)
 
-    def writeNormalizationState(
-        self, runId: str, normalization: Normalization, version: str = None, useLiteMode: bool = False
-    ):  # noqa: F821
+    def writeNormalizationState(self, normalization: Normalization, version: str = None):  # noqa: F821
         """
         Writes a `Normalization` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Normalization`.
         """
-        stateId, _ = self._generateStateId(runId)
-        previousVersion: int = self._getLatestNormalizationCalibrationVersionNumber(stateId, useLiteMode)
-        if not version:
-            version = previousVersion + 1
+        stateId, _ = self._generateStateId(normalization.seedRun)
+        previousVersion: int = self._getLatestNormalizationCalibrationVersionNumber(stateId, normalization.useLiteMode)
+        if version is None:
+            version = max(normalization.version, previousVersion + 1)
         # check for the existence of a normalization parameters file
         normalizationParametersFilePath = self._constructNormalizationParametersFilePath(
-            runId, str(version), useLiteMode
+            normalization.seedRun,
+            str(version),
+            normalization.useLiteMode,
         )
         if os.path.exists(normalizationParametersFilePath):
             logger.warning(f"overwriting normalization parameters at {normalizationParametersFilePath}")
-        normalization.version = version
-        normalizationDataPath = self._constructNormalizationCalibrationDataPath(runId, str(version), useLiteMode)
+        normalization.version = int(version)
+        normalizationDataPath = self._constructNormalizationCalibrationDataPath(
+            normalization.seedRun,
+            str(version),
+            normalization.useLiteMode,
+        )
         if not os.path.exists(normalizationDataPath):
             os.makedirs(normalizationDataPath)
         write_model_pretty(normalization, normalizationParametersFilePath)
@@ -836,11 +842,12 @@ class LocalDataService:
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=runNumber,
+            useLiteMode=useLiteMode,
             version=version,
             comments="Inferred from the instrument geometry",
             author="Generated automatically by SNAPRed",
         )
-        self.writeCalibrationIndexEntry(calibrationIndexEntry, useLiteMode)
+        self.writeCalibrationIndexEntry(calibrationIndexEntry)
 
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, name: str = None, useLiteMode: bool = False):
@@ -886,6 +893,7 @@ class LocalDataService:
             instrumentState=instrumentState,
             name=name,
             seedRun=runId,
+            useLiteMode=useLiteMode,
             creationDate=datetime.datetime.now(),
             version=0,
         )
@@ -897,7 +905,7 @@ class LocalDataService:
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
             self._prepareStateRoot(stateId)
 
-        self.writeCalibrationState(runId, calibration, useLiteMode=useLiteMode)
+        self.writeCalibrationState(calibration)
         self._writeDefaultDiffCalTable(runId, useLiteMode)
 
         return calibration

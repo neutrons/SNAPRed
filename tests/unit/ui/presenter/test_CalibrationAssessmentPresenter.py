@@ -13,10 +13,13 @@ def calibrationAssessmentPresenter():
 
 
 def test_load_record(calibrationAssessmentPresenter):
+    runNumber = "12345"
+    useLiteMode = False
+    version = "1"
     view = calibrationAssessmentPresenter.view
     view.getCalibrationRecordCount = MagicMock(return_value=1)
     view.getSelectedCalibrationRecordIndex = MagicMock(return_value=0)
-    view.getSelectedCalibrationRecordData = MagicMock(return_value=("12345", "1"))
+    view.getSelectedCalibrationRecordData = MagicMock(return_value=(runNumber, useLiteMode, version))
 
     with patch.object(calibrationAssessmentPresenter, "worker_pool") as worker_pool, patch.object(
         calibrationAssessmentPresenter, "interfaceController"
@@ -28,8 +31,9 @@ def test_load_record(calibrationAssessmentPresenter):
         view.getSelectedCalibrationRecordData.assert_called_once()
 
         payload = CalibrationLoadAssessmentRequest(
-            runId="12345",
-            version="1",
+            runId=runNumber,
+            useLiteMode=useLiteMode,
+            version=version,
             checkExistent=True,
         )
         request = SNAPRequest(path="/calibration/loadQualityAssessment", payload=payload.json())
