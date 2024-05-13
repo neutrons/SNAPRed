@@ -87,7 +87,7 @@ snapred.backend.dao.request.InitializeStateRequest module
 snapred.backend.dao.request.NormalizationCalibratonRequest module
 -----------------------------------------------------------------
 
-.. automodule:: snapred.backend.dao.request.NormalizationCalibrationRequest
+.. automodule:: snapred.backend.dao.request.NormalizationRequest
    :members:
    :undoc-members:
    :show-inheritance:

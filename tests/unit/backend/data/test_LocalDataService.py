@@ -685,8 +685,8 @@ def test_writeCalibrationIndexEntry():
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._readReductionParameters = mock.Mock()
-    localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
-    localDataService._constructNormalizationCalibrationStatePath.return_value = Resource.getPath("outputs/")
+    localDataService._constructNormalizationStatePath = mock.Mock()
+    localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs/")
     expectedFilePath = Resource.getPath("outputs/") + "NormalizationIndex.json"
     localDataService.writeNormalizationIndexEntry(
         NormalizationIndexEntry(
@@ -735,8 +735,8 @@ def test_readNormalizationIndexExisting():
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._readReductionParameters = mock.Mock()
-    localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
-    localDataService._constructNormalizationCalibrationStatePath.return_value = Resource.getPath("outputs/")
+    localDataService._constructNormalizationStatePath = mock.Mock()
+    localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs/")
     expectedFilePath = Resource.getPath("outputs/") + "NormalizationIndex.json"
     localDataService.writeNormalizationIndexEntry(
         NormalizationIndexEntry(
@@ -964,8 +964,8 @@ def test_readWriteNormalizationRecord_version_numbers():
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
-        localDataService._constructNormalizationCalibrationStatePath.return_value = f"{tempdir}/"
+        localDataService._constructNormalizationStatePath = mock.Mock()
+        localDataService._constructNormalizationStatePath.return_value = f"{tempdir}/"
         # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
         # and <incoming record>.normalization.version.
 
@@ -998,8 +998,8 @@ def test_readWriteNormalizationRecord_specified_version():
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
-        localDataService._constructNormalizationCalibrationStatePath.return_value = f"{tempdir}/"
+        localDataService._constructNormalizationStatePath = mock.Mock()
+        localDataService._constructNormalizationStatePath.return_value = f"{tempdir}/"
         # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
         # and <incoming record>.normalization.version.
 
@@ -1028,7 +1028,7 @@ def test_readWriteNormalizationRecord():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
-        localDataService._constructNormalizationCalibrationStatePath = mock.Mock(return_value=f"{tempdir}/")
+        localDataService._constructNormalizationStatePath = mock.Mock(return_value=f"{tempdir}/")
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode)
     assert actualRecord.runNumber == "57514"
@@ -1036,8 +1036,8 @@ def test_readWriteNormalizationRecord():
     assert actualRecord == testNormalizationRecord
 
 
-@mock.patch.object(LocalDataService, "_constructNormalizationCalibrationDataPath")
-def test_writeNormalizationWorkspaces(mockConstructNormalizationCalibrationDataPath):
+@mock.patch.object(LocalDataService, "_constructNormalizationDataPath")
+def test_writeNormalizationWorkspaces(mockConstructNormalizationDataPath):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
     testNormalizationRecord = NormalizationRecord.parse_raw(
@@ -1045,7 +1045,7 @@ def test_writeNormalizationWorkspaces(mockConstructNormalizationCalibrationDataP
     )
     with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
         basePath = Path(basePath)
-        mockConstructNormalizationCalibrationDataPath.return_value = str(basePath)
+        mockConstructNormalizationDataPath.return_value = str(basePath)
 
         # Workspace names need to match the names that are used in the test record.
         runNumber = testNormalizationRecord.runNumber  # noqa: F841
@@ -1085,8 +1085,8 @@ def test_getNormalizationRecordPath():
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
-    localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
-    localDataService._constructNormalizationCalibrationStatePath.return_value = Resource.getPath("outputs/")
+    localDataService._constructNormalizationStatePath = mock.Mock()
+    localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs/")
     actualPath = localDataService.getNormalizationRecordPath("57514", True, 1)
     assert actualPath == Resource.getPath("outputs") + "/v_0001/NormalizationRecord.json"
 
@@ -1335,8 +1335,8 @@ def test_writeNormalizationState():
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
-        localDataService._constructNormalizationCalibrationStatePath = mock.Mock()
-        localDataService._constructNormalizationCalibrationStatePath.return_value = f"{tempdir}/"
+        localDataService._constructNormalizationStatePath = mock.Mock()
+        localDataService._constructNormalizationStatePath.return_value = f"{tempdir}/"
         localDataService._getCurrentNormalizationRecord = mock.Mock()
         localDataService._getCurrentNormalizationRecord.return_value = Normalization.construct(
             {"seedRun": "123", "useLiteMode": True, "name": "test"}
