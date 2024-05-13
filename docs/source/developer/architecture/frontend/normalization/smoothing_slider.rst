@@ -1,7 +1,7 @@
 SmoothingSlider Class Documentation
 ===================================
 
-SmoothingSlider is a custom PyQt5 QWidget crafted to provide an enhanced interface for adjusting a smoothing parameter, skillfully integrating a
+SmoothingSlider is a custom qt QWidget crafted to provide an enhanced interface for adjusting a smoothing parameter, skillfully integrating a
 graphical slider with a numerical input field. This combination caters to diverse user preferences, allowing for both rapid visual adjustments via
 the slider and precise value entry through the numerical input. It's particularly suited for applications requiring detailed parameter settings,
 offering users a versatile tool for fine-tuning smoothing levels.

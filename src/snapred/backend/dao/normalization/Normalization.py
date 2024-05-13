@@ -18,6 +18,7 @@ class Normalization(BaseModel):
 
     instrumentState: InstrumentState
     seedRun: int
+    useLiteMode: bool
     creationDate: datetime
     name: str
     version: int = Config["instrument.startingVersionNumber"]

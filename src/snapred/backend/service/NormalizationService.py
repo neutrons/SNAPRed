@@ -11,8 +11,8 @@ from snapred.backend.dao.normalization import (
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
     FocusSpectraRequest,
-    NormalizationCalibrationRequest,
     NormalizationExportRequest,
+    NormalizationRequest,
     SmoothDataExcludingPeaksRequest,
     VanadiumCorrectionRequest,
 )
@@ -65,7 +65,7 @@ class NormalizationService(Service):
         return "normalization"
 
     @FromString
-    def normalization(self, request: NormalizationCalibrationRequest):
+    def normalization(self, request: NormalizationRequest):
         if not self._sameStates(request.runNumber, request.backgroundRunNumber):
             raise ValueError("Run number and background run number must be of the same Instrument State.")
 
@@ -151,7 +151,7 @@ class NormalizationService(Service):
         return stateId1 == stateId2
 
     @FromString
-    def normalizationAssessment(self, request: NormalizationCalibrationRequest):
+    def normalizationAssessment(self, request: NormalizationRequest):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             focusGroup=request.focusGroup,
@@ -180,15 +180,15 @@ class NormalizationService(Service):
         normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
         normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
         entry.version = normalizationRecord.version
-        self.saveNormalizationToIndex(entry, normalizationRecord.useLiteMode)
+        self.saveNormalizationToIndex(entry)
 
-    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry, useLiteMode: bool):
+    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
         if entry.appliesTo is None:
             entry.appliesTo = ">" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * 1000))
         logger.info(f"Saving normalization index entry for Run Number {entry.runNumber}")
-        self.dataExportService.exportNormalizationIndexEntry(entry, useLiteMode)
+        self.dataExportService.exportNormalizationIndexEntry(entry)
 
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
         cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
