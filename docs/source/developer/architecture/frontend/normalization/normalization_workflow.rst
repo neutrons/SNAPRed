@@ -43,7 +43,7 @@ Dynamic Configuration and Adaptation:
 Signal-Slot Mechanism for Asynchronous Updates:
 -----------------------------------------------
 
-- Utilizes PyQt's signal-slot mechanism to manage asynchronous UI updates, enhancing the application's responsiveness. This mechanism ensures that
+- Utilizes Qt's signal-slot mechanism to manage asynchronous UI updates, enhancing the application's responsiveness. This mechanism ensures that
   users receive timely feedback on their interactions and the progress of normalization tasks.
 
 

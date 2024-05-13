@@ -34,7 +34,7 @@ UI Components:
 Interactivity and Signal Handling:
 ----------------------------------
 
-- PyQt Signals: Employs PyQt signals to manage UI actions, linking user interactions with corresponding methods for a seamless and responsive user
+- Qt ``Signals``: Employs Qt signals to manage UI actions, linking user interactions with corresponding methods for a seamless and responsive user
   experience. This mechanism facilitates the real-time update of UI components in response to user inputs or changes in external data.
 
 
