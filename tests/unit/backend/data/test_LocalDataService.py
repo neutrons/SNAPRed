@@ -1300,7 +1300,7 @@ def test_readCalibrationState_no_file():
     localDataService._getLatestFile = mock.Mock()
     localDataService._getLatestFile.return_value = None
     with pytest.raises(RecoverableException):
-        localDataService.readCalibrationState("57514", False, "fail")
+        localDataService.readCalibrationState("57514", False)
 
 
 def test_readNormalizationState():
@@ -1326,7 +1326,7 @@ def test_writeCalibrationState():
         localDataService._constructCalibrationStatePath = mock.Mock(return_value=f"{tempdir}/")
         localDataService._getCurrentCalibrationRecord = mock.Mock(return_value=Calibration.construct({"name": "test"}))
         calibration = Calibration.parse_raw(Resource.read("/inputs/calibration/CalibrationParameters.json"))
-        localDataService.writeCalibrationState("123", calibration, True)
+        localDataService.writeCalibrationState(calibration)
         assert os.path.exists(tempdir + f"/{version_pattern(calibration.version)}/CalibrationParameters.json")
 
 
@@ -1543,7 +1543,7 @@ def test_initializeState_calls_prepareStateRoot(mockPrepareStateRoot):
         localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(stateRootPath))
 
         assert not stateRootPath.exists()
-        localDataService.initializeState("123", True, "test")
+        localDataService.initializeState(runNumber, useLiteMode, "test")
         mockPrepareStateRoot.assert_called_once()
 
 

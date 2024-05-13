@@ -29,7 +29,7 @@ class GroceryListItem(BaseModel):
     # the correct combination of the below must be set -- neutron and grouping require a runNumber,
     #   grouping additionally requires a groupingScheme
     runNumber: Optional[str]
-    version: Optional[str]
+    version: Optional[int]
     groupingScheme: Optional[str]
 
     unit: Optional[Literal[wng.Units.TOF, wng.Units.DSP]]
