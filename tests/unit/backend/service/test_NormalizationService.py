@@ -280,18 +280,3 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.constructStateId = MagicMock()
         self.instance.dataFactoryService.constructStateId.side_effect = ["state", "different_state"]
         assert not self.instance._sameStates("12345", "different_state")
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

@@ -125,22 +125,25 @@ createCompatibleMask(maskWSName, groupingWSName, instrumentFilePath)
 maskWS = mtd[maskWSName]
 groupingWS = mtd[groupingWSName]
 
+print(f"available group numbers: {groupingWS.getGroupIDs()}")
+
 # # mask detectors corresponding to several groups:
-# groupsToMask = (3, 7, 11)
+# groupsToMask = (1, 3, 5)
 # maskGroups(maskWS, groupingWS, groupsToMask)
 
 # # mask detector-id #145 only:
-# maskWS.setMasked(145) 
+# maskWS.setValue(145, True) 
 # ---
 ### OR, all the pixels can be masked in a specific component of the instrument...
 
-# maskComponentByName(maskWS, "West")
+# maskComponentByName(maskWSName, "East")
 # ---
 
 ### RUN RECIPE
 pgp = pgpRecipe()
 result = pgp.executeRecipe(ingredients, groceries)
 pixelGroupingParametersList = result["parameters"]
+print(f"masked groups: {[pgp.isMasked for pgp in pixelGroupingParametersList]}")
 
 ### PAUSE
 """

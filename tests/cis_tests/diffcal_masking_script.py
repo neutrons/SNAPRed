@@ -7,6 +7,7 @@ from pydantic import parse_raw_as
 import matplotlib.pyplot as plt
 import numpy as np
 
+from mantid.kernel import ConfigService
 from mantid.simpleapi import *
 
 import snapred
@@ -71,16 +72,26 @@ from util.helpers import (
     setSpectraToZero,
     maskSpectra,
     setGroupSpectraToZero,
-    maskGroups
+    maskGroups,
+    pause
 )
+from util.IPTS_override import datasearch_directories
+
+## If required: override the IPTS search directories: ##
+instrumentHome = "/mnt/R5_data1/data1/workspaces/ORNL-work/SNAPRed/SNS_root/SNAP"
+ConfigService.Instance().setDataSearchDirs(datasearch_directories(instrumentHome))
+Config._config["instrument"]["home"] = instrumentHome + os.sep
+########################################################
+
+
 SNAPInstrumentFilePath = str(Path(mantid.__file__).parent / 'instrument' / 'SNAP_Definition.xml')
 SNAPLiteInstrumentFilePath = str(Path(SNAPRed_module_root).parent / 'tests' / 'resources' / 'inputs' / 'pixel_grouping' / 'SNAPLite_Definition.xml')
 
 #User input ###########################
 runNumber = "58882"
 groupingScheme = 'Column'
-cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
-calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrationSamples/Silicon_NIST_640D_001.json"
+cifPath = f"{instrumentHome}/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
+calibrantSamplePath = f"{instrumentHome}/shared/Calibration/CalibrationSamples/Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
 offsetConvergenceLimit = 0.1
 isLite = True
@@ -159,7 +170,7 @@ Stop here and examine the fits:
   * Make sure that any failing pixels are masked.
   * Make sure that any pixels masked at the original input are still masked.
 """
-assert False
+pause("End of PIXEL CALIBRATION section")
 
 median = json.loads(pixelAlgo.getPropertyValue("data"))["medianOffset"]
 print(median)
@@ -194,7 +205,7 @@ Stop here and examine the fits:
   * Make sure that any failing pixels are masked.
   * Make sure that any pixels masked at the original input are still masked.
 """
-assert False
+pause("End of GROUP CALIBRATION section")
 
 ### IMPORTANT: remember to _remove_ any existing mask workspace here!! ######################
 try:
@@ -255,7 +266,7 @@ rx.executeRecipe(ingredients, groceries)
 """
 Stop here and make sure everything still looks good.
 """
-assert False
+pause("End of CALIBRATION RECIPE section")
 
 ### TODO: There may need to be a *story* about how the MASK interacts with 'DiffractionCalibrationRequest'.
 # #   At present, it's functioning as an implicit parameter which will automatically be created,
@@ -275,4 +286,4 @@ diffcalRequest = DiffractionCalibrationRequest(
 calibrationService = CalibrationService()
 res = calibrationService.diffractionCalibration(diffcalRequest)
 print(json.dumps(res,indent=2))
-assert False
+pause("End of CALIBRATION SERVICE section")
