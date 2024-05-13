@@ -2,7 +2,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from mantid.simpleapi import mtd
 from pydantic import validate_arguments
@@ -191,19 +191,21 @@ class GroceryService:
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
+    @validate_arguments
     def _createDiffcalOutputWorkspaceFilename(
-        self, runNumber: str, useLiteMode: bool, version: int, unit: str, group: str
+        self, runNumber: str, useLiteMode: bool, version: Optional[int], unit: str, group: str
     ) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
-            / (self._createDiffcalOutputWorkspaceName(runNumber, useLiteMode, str(version), unit, group) + ext)
+            / (self._createDiffcalOutputWorkspaceName(runNumber, useLiteMode, version, unit, group) + ext)
         )
 
-    def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: int) -> str:
+    @validate_arguments
+    def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
-            / (self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, str(version)) + ".h5")
+            / (self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version) + ".h5")
         )
 
     ## WORKSPACE NAME METHODS
@@ -243,10 +245,22 @@ class GroceryService:
     ) -> WorkspaceName:
         return wng.diffCalOutput().unit(unit).runNumber(runNumber).version(version).group(group).build()
 
-    def _createDiffcalTableWorkspaceName(self, runNumber: str, useLiteMode: bool, version: str = "") -> WorkspaceName:  # noqa: ARG002
+    @validate_arguments
+    def _createDiffcalTableWorkspaceName(
+        self,
+        runNumber: str,
+        useLiteMode: bool,  # noqa: ARG002
+        version: Optional[int],
+    ) -> WorkspaceName:
         return wng.diffCalTable().runNumber(runNumber).version(version).build()
 
-    def _createDiffcalMaskWorkspaceName(self, runNumber: str, useLiteMode: bool, version: str = "") -> WorkspaceName:  # noqa: ARG002
+    @validate_arguments
+    def _createDiffcalMaskWorkspaceName(
+        self,
+        runNumber: str,
+        useLiteMode: bool,  # noqa: ARG002
+        version: Optional[int],
+    ) -> WorkspaceName:
         return wng.diffCalMask().runNumber(runNumber).version(version).build()
 
     ## ACCESSING WORKSPACES
@@ -743,6 +757,7 @@ class GroceryService:
 
         return data
 
+    @validate_arguments
     def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: int) -> WorkspaceName:
         tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", useLiteMode, str(version))
         self.mantidSnapper.CalculateDiffCalTable(

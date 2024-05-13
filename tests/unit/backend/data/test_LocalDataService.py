@@ -1246,7 +1246,7 @@ def test_readCalibrationState_no_file():
     localDataService._getLatestFile = mock.Mock()
     localDataService._getLatestFile.return_value = None
     with pytest.raises(RecoverableException):
-        localDataService.readCalibrationState("57514", False, "fail")
+        localDataService.readCalibrationState("57514", False)
 
 
 def test_readNormalizationState():

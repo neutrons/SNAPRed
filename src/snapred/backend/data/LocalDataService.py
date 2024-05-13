@@ -404,7 +404,7 @@ class LocalDataService:
     def _extractFileVersion(self, file: str) -> int:
         return int(file.split("/v_")[-1].split("/")[0])
 
-    def _getFileOfVersion(self, fileRegex: str, version: Version):
+    def _getFileOfVersion(self, fileRegex: str, version: int):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
         returnFile = None
         for file in foundFiles:
@@ -454,10 +454,10 @@ class LocalDataService:
         return latestVersion
 
     @validate_arguments
-    def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[Version] = None):
+    def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         latestFile = ""
-        recordPath: str = self.getNormalizationRecordPath(runId, useLiteMode, version if version else "*")
-        if version:
+        recordPath: str = self.getNormalizationRecordPath(runId, useLiteMode, version if version is not None else "*")
+        if version is not None:
             latestFile = self._getFileOfVersion(recordPath, version)
         else:
             latestFile = self._getLatestFile(recordPath)
@@ -520,11 +520,11 @@ class LocalDataService:
         return record
 
     @validate_arguments
-    def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[Version] = None):
+    def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         recordFile: str = None
-        if version:
+        if version is not None:
             recordPath: str = self.getCalibrationRecordPath(runId, useLiteMode, version)
-            recordFile = self._getFileOfVersion(recordPath, int(version))
+            recordFile = self._getFileOfVersion(recordPath, version)
         else:
             recordPath: str = self.getCalibrationRecordPath(runId, useLiteMode, "*")
             recordFile = self._getLatestFile(recordPath)
@@ -737,7 +737,7 @@ class LocalDataService:
 
     @validate_arguments
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
-    def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[Version] = None):
+    def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         # get stateId and check to see if such a folder exists, if not create it and initialize it
         stateId, _ = self._generateStateId(runId)
         calibrationStatePath = self._constructCalibrationParametersFilePath(runId, useLiteMode, "*")
@@ -759,12 +759,12 @@ class LocalDataService:
         return calibrationState
 
     @validate_arguments
-    def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[Version] = None):
+    def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         stateId, _ = self._generateStateId(runId)
         normalizationStatePathGlob = self._constructNormalizationParametersFilePath(runId, useLiteMode, "*")
 
         latestFile = ""
-        if version:
+        if version is not None:
             latestFile = self._getFileOfVersion(normalizationStatePathGlob, version)
         else:
             # TODO: This should refer to the calibration index
