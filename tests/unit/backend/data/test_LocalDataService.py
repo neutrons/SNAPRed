@@ -1453,9 +1453,6 @@ def test_readDetectorState_bad_logs():
 def test_initializeState():
     # Test 'initializeState'; test basic functionality.
     runNumber = "123"
-    useLiteMode = False
-
-    runNumber = "123"
     useLiteMode = True
 
     localDataService = LocalDataService()
