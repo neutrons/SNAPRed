@@ -720,7 +720,9 @@ class LocalDataService:
         return statePath
 
     def _constructNormalizationParametersFilePath(self, runId: str, useLiteMode: bool, version: str):
-        statePath: str = f"{self._constructNormalizationDataPath(runId, useLiteMode, version)}NormalizationParameters.json"  # noqa: E501
+        statePath: str = (
+            f"{self._constructNormalizationDataPath(runId, useLiteMode, version)}NormalizationParameters.json"  # noqa: E501
+        )
         return statePath
 
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
