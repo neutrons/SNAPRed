@@ -263,6 +263,7 @@ class CalibrationService(Service):
     @FromString
     def loadQualityAssessment(self, request: CalibrationLoadAssessmentRequest):
         runId = request.runId
+        useLiteMode = request.useLiteMode
         version = request.version
         useLiteMode = request.useLiteMode
 

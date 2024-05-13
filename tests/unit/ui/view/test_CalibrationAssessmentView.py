@@ -10,9 +10,10 @@ def test_calibration_record_dropdown(qtbot):
 
     # test filling in the dropdown
     runNumber = "1234"
+    useLiteMode = False
     version = "1"
     calibrationIndexEntries = [
-        CalibrationIndexEntry(runNumber=runNumber, useLiteMode=True, version=version, comments="", author="")
+        CalibrationIndexEntry(runNumber=runNumber, useLiteMode=useLiteMode, version=version, comments="", author="")
     ]
     view.updateCalibrationRecordList(calibrationIndexEntries)
     assert view.getCalibrationRecordCount() == 1
@@ -22,7 +23,7 @@ def test_calibration_record_dropdown(qtbot):
     qtbot.addWidget(view.calibrationRecordDropdown)
     qtbot.keyClicks(view.calibrationRecordDropdown, "Version: 1; Run: 1234")
     assert view.getSelectedCalibrationRecordIndex() == 0
-    assert view.getSelectedCalibrationRecordData() == (runNumber, True, version)
+    assert view.getSelectedCalibrationRecordData() == (runNumber, useLiteMode, version)
 
 
 def test_error_on_load_calibration_record(qtbot):
