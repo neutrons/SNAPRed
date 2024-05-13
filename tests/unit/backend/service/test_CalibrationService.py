@@ -326,7 +326,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Delete any existing _data_ workspaces:
             for wss in calibRecord.workspaces.values():
                 for ws in wss:
-                    self.instance.groceryService.deleteWorkspaceUnconditional(ws)
+                    DeleteWorkspace(ws)
 
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=True)
             with pytest.raises(RuntimeError) as excinfo:  # noqa: PT011

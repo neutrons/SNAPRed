@@ -488,7 +488,8 @@ class GroceryService:
         # This method is provided to facilitate workspace loading with a _complete_ instrument state
         return self.dataService.readDetectorState(runNumber)
 
-    def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: int) -> str:
+    @validate_arguments
+    def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         """
         Get a path to the directory with the calibration data
 
