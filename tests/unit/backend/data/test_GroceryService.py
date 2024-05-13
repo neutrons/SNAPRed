@@ -13,12 +13,10 @@ import pytest
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
     CloneWorkspace,
-    CreateSampleWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
     GenerateTableWorkspaceFromListOfDict,
     LoadEmptyInstrument,
-    LoadInstrument,
     SaveDiffCal,
     SaveNexusProcessed,
     mtd,
@@ -67,31 +65,10 @@ class TestGroceryService(unittest.TestCase):
         # create some sample data
         cls.sampleWS = "_grocery_to_fetch"
 
-        CreateSampleWorkspace(
-            OutputWorkspace=cls.sampleWS,
-        )
-        CreateSampleWorkspace(
-            OutputWorkspace=cls.sampleWS,
-            Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=1,
-            Xmax=100,
-            BinWidth=1,
-            XUnit="TOF",
-            NumBanks=4,  # must produce same number of pixels as fake instrument
-            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=False,
-        )
-        LoadInstrument(
-            Workspace=cls.sampleWS,
+        LoadEmptyInstrument(
             Filename=cls.instrumentFilePath,
-            RewriteSpectraMap=False,
+            OutputWorkspace=cls.sampleWS,
         )
-
-        # LoadEmptyInstrument(
-        #     Filename=cls.instrumentFilePath,
-        #     OutputWorkspace=cls.sampleWS,
-        # )
         SaveNexusProcessed(
             InputWorkspace=cls.sampleWS,
             Filename=cls.sampleWSFilePath,
