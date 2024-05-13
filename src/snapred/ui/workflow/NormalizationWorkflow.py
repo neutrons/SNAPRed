@@ -205,6 +205,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),

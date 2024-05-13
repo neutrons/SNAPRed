@@ -372,6 +372,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         # pull fields from view for calibration save
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
+            useLiteMode=self.useLiteMode,
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
             appliesTo=view.fieldAppliesTo.get(),

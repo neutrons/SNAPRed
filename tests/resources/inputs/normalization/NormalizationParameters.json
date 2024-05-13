@@ -62,6 +62,7 @@
       "peakTailCoefficient": 2.0
     },
     "seedRun": 123,
+    "useLiteMode": true,
     "creationDate": "2023-05-25T11:50:23.438776",
     "name": "test",
     "version": 0

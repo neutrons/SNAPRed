@@ -23,8 +23,8 @@ class DataExportService:
             val = clazz()
         return val
 
-    def exportCalibrationIndexEntry(self, entry: CalibrationIndexEntry, useLiteMode: bool):
-        self.dataService.writeCalibrationIndexEntry(entry, useLiteMode)
+    def exportCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
+        self.dataService.writeCalibrationIndexEntry(entry)
 
     def exportCalibrationRecord(self, record: CalibrationRecord):
         return self.dataService.writeCalibrationRecord(record)
@@ -35,11 +35,11 @@ class DataExportService:
     def exportCalibrantSampleFile(self, entry: CalibrantSamples):
         self.dataService.writeCalibrantSample(entry)
 
-    def exportCalibrationState(self, runId: str, calibration: Calibration):
-        return self.dataService.writeCalibrationState(runId, calibration)
+    def exportCalibrationState(self, calibration: Calibration):
+        return self.dataService.writeCalibrationState(calibration)
 
-    def exportNormalizationIndexEntry(self, entry: NormalizationIndexEntry, useLiteMode: bool):
-        self.dataService.writeNormalizationIndexEntry(entry, useLiteMode)
+    def exportNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
+        self.dataService.writeNormalizationIndexEntry(entry)
 
     def exportNormalizationRecord(self, record: NormalizationRecord):
         return self.dataService.writeNormalizationRecord(record)

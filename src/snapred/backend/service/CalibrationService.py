@@ -210,7 +210,7 @@ class CalibrationService(Service):
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         calibrationRecord = self.dataExportService.exportCalibrationWorkspaces(calibrationRecord)
         entry.version = calibrationRecord.version
-        self.saveCalibrationToIndex(entry, calibrationRecord.useLiteMode)
+        self.saveCalibrationToIndex(entry)
 
     @FromString
     def load(self, run: RunConfig):
@@ -218,13 +218,13 @@ class CalibrationService(Service):
         return self.dataFactoryService.getCalibrationRecord(runId)
 
     @FromString
-    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry, useLiteMode: bool):
+    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
         if entry.appliesTo is None:
             entry.appliesTo = ">" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
-        self.dataExportService.exportCalibrationIndexEntry(entry, useLiteMode)
+        self.dataExportService.exportCalibrationIndexEntry(entry)
 
     @FromString
     def initializeState(self, request: InitializeStateRequest):
@@ -263,9 +263,10 @@ class CalibrationService(Service):
     @FromString
     def loadQualityAssessment(self, request: CalibrationLoadAssessmentRequest):
         runId = request.runId
+        useLiteMode = request.useLiteMode
         version = request.version
 
-        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version, useLiteMode)
         if calibrationRecord is None:
             errorTxt = f"No calibration record found for run {runId}, version {version}."
             logger.error(errorTxt)

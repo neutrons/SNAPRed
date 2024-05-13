@@ -179,15 +179,15 @@ class NormalizationService(Service):
         normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
         normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
         entry.version = normalizationRecord.version
-        self.saveNormalizationToIndex(entry, normalizationRecord.useLiteMode)
+        self.saveNormalizationToIndex(entry)
 
-    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry, useLiteMode: bool):
+    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
         if entry.appliesTo is None:
             entry.appliesTo = ">" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * 1000))
         logger.info(f"Saving normalization index entry for Run Number {entry.runNumber}")
-        self.dataExportService.exportNormalizationIndexEntry(entry, useLiteMode)
+        self.dataExportService.exportNormalizationIndexEntry(entry)
 
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
         cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
