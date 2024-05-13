@@ -49,7 +49,7 @@ with mock.patch.dict(
         dataExportService = DataExportService()
         dataExportService.dataService.initializeState = mock.Mock()
         dataExportService.dataService.initializeState.return_value = "expected"
-        dataExportService.initializeState("123", True, "1")
+        dataExportService.initializeState(mock.Mock(), mock.Mock(), mock.Mock())
         assert dataExportService.dataService.initializeState.called
 
     def test_exportNormalizationIndexEntry():

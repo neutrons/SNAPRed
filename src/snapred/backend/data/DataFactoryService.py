@@ -1,7 +1,5 @@
 import os
-from typing import Dict, Optional
-
-from pydantic import validate_arguments
+from typing import Dict
 
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
@@ -10,7 +8,6 @@ from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 @Singleton
@@ -57,7 +54,7 @@ class DataFactoryService:
     def getStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:  # noqa: ARG002
         return self.lookupService.readStateConfig(runId, useLiteMode)
 
-    def constructStateId(self, runId: str):
+    def constructStateId(self, runId):
         return self.lookupService._generateStateId(runId)
 
     def getCalibrantSample(self, filePath):
@@ -66,23 +63,22 @@ class DataFactoryService:
     def getCifFilePath(self, sampleId):
         return self.lookupService.readCifFilePath(sampleId)
 
-    def getCalibrationState(self, runId: str, useLiteMode: bool):
+    def getCalibrationState(self, runId, useLiteMode):
         return self.lookupService.readCalibrationState(runId, useLiteMode)
 
-    def getNormalizationState(self, runId: str):
+    def getNormalizationState(self, runId):
         return self.lookupService.readNormalizationState(runId)
 
-    def writeNormalizationState(self, runId: str):
+    def writeNormalizationState(self, runId):
         return self.lookupService.writeNormalizationState(runId)
 
-    def getWorkspaceForName(self, name: WorkspaceName):
+    def getWorkspaceForName(self, name):
         return self.groceryService.getWorkspaceForName(name)
 
-    def getCloneOfWorkspace(self, name: WorkspaceName, copy: WorkspaceName):
+    def getCloneOfWorkspace(self, name, copy):
         return self.groceryService.getCloneOfWorkspace(name, copy)
 
-    @validate_arguments
-    def getCalibrationDataWorkspace(self, runId: str, version: str, name: str):
+    def getCalibrationDataWorkspace(self, runId, version, name):
         path = self.getCalibrationDataPath(runId, version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
@@ -92,15 +88,12 @@ class DataFactoryService:
     def getWorkspaceSingleUse(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataSingleUse(runId, useLiteMode)
 
-    @validate_arguments
-    def getCalibrationRecord(self, runId: str, version: Optional[str], useLiteMode: bool):
+    def getCalibrationRecord(self, runId, version: str = None, useLiteMode: bool = False):
         return self.lookupService.readCalibrationRecord(runId, version, useLiteMode)
 
-    @validate_arguments
-    def getNormalizationRecord(self, runId: str, useLiteMode: bool):
+    def getNormalizationRecord(self, runId, useLiteMode: bool):
         return self.lookupService.readNormalizationRecord(runId, useLiteMode)
 
-    @validate_arguments
     def getCalibrationIndex(self, runId: str, useLiteMode: bool):
         return self.lookupService.readCalibrationIndex(runId, useLiteMode)
 
@@ -113,7 +106,6 @@ class DataFactoryService:
     def getSamplePaths(self):
         return self.lookupService.readSamplePaths()
 
-    @validate_arguments
     def getCalibrationDataPath(self, runId: str, version: str):
         return self.lookupService._constructCalibrationDataPath(runId, version)
 

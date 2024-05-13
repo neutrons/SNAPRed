@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from mantid.simpleapi import mtd
-from pydantic import validate_arguments
 
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
@@ -182,7 +181,6 @@ class GroceryService:
         ext = instr + ".extension"
         return self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext]
 
-    @validate_arguments
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
         if groupingScheme == "Lite":
             path = str(Config["instrument.lite.map.file"])
@@ -191,7 +189,6 @@ class GroceryService:
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
-    @validate_arguments
     def _createDiffcalOutputWorkspaceFilename(self, runNumber: str, version: str, unit: str, group: str) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
@@ -199,7 +196,6 @@ class GroceryService:
             / (self._createDiffcalOutputWorkspaceName(runNumber, version, unit, group) + ext)
         )
 
-    @validate_arguments
     def _createDiffcalTableFilename(self, runNumber: str, version: str) -> str:
         return str(
             Path(self._getCalibrationDataPath(runNumber, version))
@@ -736,7 +732,6 @@ class GroceryService:
 
         return data
 
-    @validate_arguments
     def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: str) -> Tuple[WorkspaceName, str]:
         tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", int(version))
         self.mantidSnapper.CalculateDiffCalTable(
