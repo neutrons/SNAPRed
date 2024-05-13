@@ -27,7 +27,6 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata, diffcal_metadata_state_list
 from snapred.backend.data.GroceryService import GroceryService
-from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -161,18 +160,17 @@ class TestGroceryService(unittest.TestCase):
 
     ## TESTS OF FILENAME METHODS
 
-    @mock.patch.object(LocalDataService, "getIPTS")
-    def test_getIPTS(self, mockGetIPTS):
-        mockGetIPTS.return_value = "here/"
+    def test_getIPTS(self):
+        self.instance.dataService.getIPTS = mock.Mock(return_value="here/")
         res = self.instance.getIPTS(self.runNumber)
-        assert res == mockGetIPTS.return_value
-        assert mockGetIPTS.called_with(
+        assert res == self.instance.dataService.getIPTS.return_value
+        assert self.instance.dataService.getIPTS.called_with(
             runNumber=self.runNumber,
             instrumentName=Config["instrument.name"],
         )
         res = self.instance.getIPTS(self.runNumber, "CRACKLE")
-        assert res == mockGetIPTS.return_value
-        assert mockGetIPTS.called_with(
+        assert res == self.instance.dataService.getIPTS.return_value
+        assert self.instance.dataService.getIPTS.called_with(
             runNumber=self.runNumber,
             instrumentName="CRACKLE",
         )
@@ -217,10 +215,9 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._key(grouping1, runId1, lite) == self.instance._key(grouping1, runId1, lite)
         assert self.instance._key(grouping1, runId1, native) == self.instance._key(grouping1, runId1, native)
 
-    @mock.patch.object(LocalDataService, "getIPTS")
-    def test_nexus_filename(self, mockGetIPTS):
+    def test_nexus_filename(self):
         """Test the creation of the nexus filename"""
-        mockGetIPTS.return_value = "nowhere/"
+        self.instance.dataService.getIPTS = mock.Mock(return_value="nowhere/")
         res = self.instance._createNeutronFilename(self.runNumber, False)
         assert "nowhere" in res
         assert Config["nexus.native.prefix"] in res
@@ -258,6 +255,15 @@ class TestGroceryService(unittest.TestCase):
         assert res == str(Config["instrument.lite.map.file"])
         res2 = self.instance._createGroupingFilename(runNumber, "Lite", True)
         assert res2 == res
+
+    def test_diffcal_table_filename(self):
+        # Test name generation for diffraction-calibration table filename
+        self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value="nowhere/")
+        res = self.instance._createDiffcalTableFilename(self.runNumber, self.version)
+        assert self.difc_name in res
+        assert self.runNumber in res
+        assert self.version in res
+        assert ".h5" in res
 
     ## TESTS OF WORKSPACE NAME METHODS
 
@@ -338,16 +344,6 @@ class TestGroceryService(unittest.TestCase):
         assert self.runNumber in res
         assert self.version in res
         assert "mask" in res
-
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_diffcal_table_filename(self, mockConstructCalibrationDataPath):
-        # Test name generation for diffraction-calibration table filename
-        mockConstructCalibrationDataPath.return_value = "nowhere/"
-        res = self.instance._createDiffcalTableFilename(self.runNumber, self.useLiteMode, self.version)
-        assert self.difc_name in res
-        assert self.runNumber in res
-        assert self.version in res
-        assert ".h5" in res
 
     ## TESTS OF ACCESS METHODS
 
@@ -505,26 +501,24 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance._createGroupingWorkspaceName.called_once_with(groupingScheme, wsname)
         assert self.instance._loadedGroupings == {key: wsname}
 
-    @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
-    def test_updateInstrumentCacheFromADS_noop(self, mockNeutronWorkspaceName):
+    def test_updateInstrumentCacheFromADS_noop(self):
         """ws is not in cache and not in ADS"""
-        wsname = "_test_ws_"
-        mockNeutronWorkspaceName.return_value = wsname
         runId = "555"
         useLiteMode = True
+        wsname = "_test_ws_"
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
         assert self.instance._loadedInstruments == {}
         assert not mtd.doesExist(wsname)
         self.instance._updateInstrumentCacheFromADS(runId, useLiteMode)
         assert self.instance._loadedInstruments == {}
         assert not mtd.doesExist(wsname)
 
-    @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
-    def test_updateInstrumentCacheFromADS_both(self, mockNeutronWorkspaceName):
+    def test_updateInstrumentCacheFromADS_both(self):
         """ws is in cache and in ADS"""
-        wsname = "_test_ws_"
-        mockNeutronWorkspaceName.return_value = wsname
         runId = "555"
         useLiteMode = True
+        wsname = "_test_ws_"
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
         key = self.instance._key(runId, useLiteMode)
         self.instance._loadedInstruments[key] = wsname
         self.create_dumb_workspace(wsname)
@@ -532,26 +526,24 @@ class TestGroceryService(unittest.TestCase):
         self.instance._updateInstrumentCacheFromADS(runId, useLiteMode)
         assert self.instance._loadedInstruments == {key: wsname}
 
-    @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
-    def test_updateInstrumentCacheFromADS_cache_no_ADS(self, mockNeutronWorkspaceName):
+    def test_updateInstrumentCacheFromADS_cache_no_ADS(self):
         """ws is in cache but not ADS"""
-        wsname = "_test_ws_"
-        mockNeutronWorkspaceName.return_value = wsname
         runId = "555"
         useLiteMode = True
+        wsname = "_test_ws_"
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
         key = self.instance._key(runId, useLiteMode)
         self.instance._loadedInstruments[key] = wsname
         assert not mtd.doesExist(wsname)
         self.instance._updateInstrumentCacheFromADS(runId, useLiteMode)
         assert self.instance._loadedInstruments == {}
 
-    @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
-    def test_updateInstrumentCacheFromADS_ADS_no_cache(self, mockNeutronWorkspaceName):
+    def test_updateInstrumentCacheFromADS_ADS_no_cache(self):
         """ws is in ADS and not in cache"""
-        wsname = "_test_ws_"
-        mockNeutronWorkspaceName.return_value = wsname
         runId = "555"
         useLiteMode = True
+        wsname = "_test_ws_"
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
         key = self.instance._key(runId, useLiteMode)
         self.create_dumb_workspace(wsname)
         assert self.instance._loadedGroupings == {}
@@ -579,26 +571,24 @@ class TestGroceryService(unittest.TestCase):
         self.instance.rebuildGroupingCache()
         assert self.instance._loadedGroupings == {}
 
-    @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
-    def test_rebuildInstrumentCache(self, mockNeutronWorkspaceName):
+    def test_rebuildInstrumentCache(self):
         """Test the correct behavior of the rebuildInstrumentCache method"""
-        wsname = "_test_ws_"
-        mockNeutronWorkspaceName.return_value = wsname
         runId = "555"
         useLiteMode = True
+        wsname = "_test_ws_"
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
         key = self.instance._key(runId, useLiteMode)
         self.instance._loadedInstruments[key] = wsname
         self.instance.rebuildInstrumentCache()
         assert self.instance._loadedInstruments == {}
 
-    @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
-    def test_rebuildCache(self, mockNeutronWorkspaceName):
+    def test_rebuildCache(self):
         """Test the correct behavior of the rebuildCache method"""
-        wsname = "_test_ws_"
-        mockNeutronWorkspaceName.return_value = wsname
         groupingScheme = "column"
         runId = "555"
         useLiteMode = True
+        wsname = "_test_ws_"
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=wsname)
         key = (runId, useLiteMode)
         self.instance._loadedRuns[key] = 1
         self.instance._loadedGroupings[self.instance._key(groupingScheme, runId, useLiteMode)] = wsname
@@ -704,12 +694,11 @@ class TestGroceryService(unittest.TestCase):
         assert self.fetchedWSname in str(e.value)
         assert self.sampleWSFilePath in str(e.value)
 
-    @mock.patch.object(GroceryService, "convertToLiteMode")
-    @mock.patch.object(GroceryService, "_createNeutronFilename")
-    def test_fetch_dirty_nexus_native(self, mockFilename, mockMakeLite):
+    def test_fetch_dirty_nexus_native(self):
         """Test the correct behavior when fetching raw nexus data"""
-        # patch the filename function to point to the test file
-        mockFilename.return_value = self.sampleWSFilePath
+        # mock out the filename function to point to the test file
+        self.instance.convertToLiteMode = mock.Mock()
+        self.instance._createNeutronFilename = mock.Mock(return_value=self.sampleWSFilePath)
 
         # easier calls
         testItem = (self.runNumber, False)
@@ -766,12 +755,12 @@ class TestGroceryService(unittest.TestCase):
         res = self.instance.fetchNeutronDataSingleUse(*liteItem)
         assert self.instance._loadedRuns.get(testKeyLite) is None
         workspaceNameLite = self.instance._createNeutronWorkspaceName(*liteItem)
-        mockMakeLite.assert_called_once_with(workspaceNameLite)
+        self.instance.convertToLiteMode.assert_called_once_with(workspaceNameLite)
         assert mtd.doesExist(workspaceNameLite)
 
-    @mock.patch.object(GroceryService, "_createNeutronFilename")
-    def test_fetch_cached_native(self, mockFilename):
+    def test_fetch_cached_native(self):
         """Test the correct behavior when fetching nexus data"""
+        self.instance._createNeutronFilename = mock.Mock()
 
         testItem = (self.runNumber, False)
         testKey = self.instance._key(*testItem)
@@ -787,15 +776,15 @@ class TestGroceryService(unittest.TestCase):
         assert len(self.instance._loadedRuns) == 0
 
         # run with nothing in cache and bad filename -- it will fail
-        mockFilename.return_value = "not/a/real/file.txt"
-        assert not os.path.isfile(mockFilename.return_value)
+        self.instance._createNeutronFilename.return_value = "not/a/real/file.txt"
+        assert not os.path.isfile(self.instance._createNeutronFilename.return_value)
         with pytest.raises(RuntimeError) as e:
             self.instance.fetchNeutronDataCached(*testItem)
         assert self.runNumber in str(e.value)
-        assert mockFilename.return_value in str(e.value)
+        assert self.instance._createNeutronFilename.return_value in str(e.value)
 
         # mock filename to point at test file
-        mockFilename.return_value = self.sampleWSFilePath
+        self.instance._createNeutronFilename.return_value = self.sampleWSFilePath
 
         # run with nothing loaded -- it will find the file and load it
         res = self.instance.fetchNeutronDataCached(*testItem)
@@ -827,14 +816,14 @@ class TestGroceryService(unittest.TestCase):
             Workspace2=workspaceNameCopy2,
         )
 
-    @mock.patch.object(GroceryService, "convertToLiteMode")
-    @mock.patch.object(GroceryService, "_createNeutronFilename")
-    def test_fetch_cached_lite(self, mockFilename, mockMakeLite):  # noqa: ARG002
+    def test_fetch_cached_lite(self):
         """
         Test the correct behavior when fetching nexus data in Lite mode.
         The cases where the data is cached or the file exists are tested above.
         This tests cases of using native-resolution data and auto-reducing.
         """
+        self.instance.convertToLiteMode = mock.Mock()
+        self.instance._createNeutronFilename = mock.Mock()
 
         testItem = (self.runNumber, True)
         testKey = self.instance._key(*testItem)
@@ -854,15 +843,15 @@ class TestGroceryService(unittest.TestCase):
         # test that trying to load data from a fake file fails
         # will reach the final "else" statement
         fakeFilename = "not/a/real/file.txt"
-        mockFilename.return_value = fakeFilename
-        assert not os.path.isfile(mockFilename.return_value)
+        self.instance._createNeutronFilename.return_value = fakeFilename
+        assert not os.path.isfile(self.instance._createNeutronFilename.return_value)
         with pytest.raises(RuntimeError) as e:
             self.instance.fetchNeutronDataCached(*testItem)
         assert self.runNumber in str(e.value)
         assert fakeFilename in str(e.value)
 
         # mock filename -- create situation where Lite file does not exist, native does
-        mockFilename.side_effect = [
+        self.instance._createNeutronFilename.side_effect = [
             fakeFilename,  # called in the assert below
             fakeFilename,  # called at beginning of function looking for Lite file
             self.sampleWSFilePath,  # called inside elif when looking for Native file
@@ -883,7 +872,7 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance.convertToLiteMode.called_once
 
         # clear out the Lite workspaces from ADS and the cache
-        mockFilename.side_effect = [fakeFilename, self.sampleWSFilePath]
+        self.instance._createNeutronFilename.side_effect = [fakeFilename, self.sampleWSFilePath]
         for ws in [workspaceNameLiteRaw, workspaceNameLiteCopy1]:
             DeleteWorkspace(ws)
             assert not mtd.doesExist(ws)
@@ -904,9 +893,9 @@ class TestGroceryService(unittest.TestCase):
         # make sure it calls to convert to lite mode
         assert self.instance.convertToLiteMode.called_once
 
-    @mock.patch.object(GroceryService, "_createGroupingFilename")
-    def test_fetch_grouping(self, mockFilename):
-        mockFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
+    def test_fetch_grouping(self):
+        groupFilepath = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
+        self.instance._createGroupingFilename = mock.Mock(return_value=groupFilepath)
         testItem = (self.groupingItem.groupingScheme, self.runNumber, self.groupingItem.useLiteMode)
 
         # call once and load
@@ -925,27 +914,27 @@ class TestGroceryService(unittest.TestCase):
         assert res["workspace"] == groupingWorkspaceName
         assert self.instance._loadedGroupings == {groupKey: groupingWorkspaceName}
 
-    @mock.patch.object(GroceryService, "_createGroupingFilename")
-    def test_failed_fetch_grouping(self, mockFilename):
+    def test_failed_fetch_grouping(self):
         # this is some file that it can't load
-        mockFilename.return_value = Resource.getPath("inputs/crystalInfo/fake_file.cif")
+        fakeFilepath = Resource.getPath("inputs/crystalInfo/fake_file.cif")
+        self.instance._createGroupingFilename = mock.Mock(return_value=fakeFilepath)
         with pytest.raises(RuntimeError):
             self.instance.fetchGroupingDefinition(self.groupingItem)
 
-    @mock.patch("snapred.backend.data.GroceryService.GroceryListItem")
-    @mock.patch.object(GroceryService, "_fetchInstrumentDonor")
-    @mock.patch.object(GroceryService, "_createGroupingWorkspaceName")
-    @mock.patch.object(GroceryService, "_createGroupingFilename")
-    def test_fetch_lite_data_map(self, mockFilename, mockWSName, mockFetchInstrumentDonor, mockGroceryList):
+    @mock.patch(ThisService + "GroceryListItem")
+    def test_fetch_lite_data_map(self, mockGroceryList):
         """
         This is a special case of the fetch grouping method.
         """
-        mockFilename.return_value = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-        mockWSName.return_value = "lite_map"
-        mockFetchInstrumentDonor.return_value = self.sampleWS
+        groupMapFilepath = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+        self.instance._createGroupingWorkspaceName = mock.Mock(return_value="lite_map")
+        self.instance._createGroupingFilename = mock.Mock(return_value=groupMapFilepath)
         # have to subvert the validation methods in grocerylistitem
         mockLiteMapGroceryItem = GroceryListItem(
-            workspaceType="grouping", runNumber=self.runNumber, groupingScheme="Lite"
+            workspaceType="grouping",
+            runNumber=self.runNumber,
+            groupingScheme="Lite",
         )
         mockLiteMapGroceryItem.instrumentSource = self.instrumentFilePath
         mockGroceryList.builder.return_value.grouping.return_value.build.return_value = mockLiteMapGroceryItem
@@ -959,39 +948,38 @@ class TestGroceryService(unittest.TestCase):
         assert res == groupingWorkspaceName
         assert self.instance._loadedGroupings == {groupKey: groupingWorkspaceName}
 
-    @mock.patch.object(GroceryService, "fetchNeutronDataCached")
-    @mock.patch.object(GroceryService, "fetchNeutronDataSingleUse")
-    @mock.patch.object(GroceryService, "fetchGroupingDefinition")
-    def test_fetch_grocery_list(self, mockFetchGroup, mockFetchDirty, mockFetchClean):
+    def test_fetch_grocery_list(self):
+        # expected workspaces
+        cleanWorkspace = mock.Mock()
+        dirtyWorkspace = mock.Mock()
+        groupWorkspace = mock.Mock()
+
+        self.instance.fetchNeutronDataCached = mock.Mock(return_value={"result": True, "workspace": cleanWorkspace})
+        self.instance.fetchNeutronDataSingleUse = mock.Mock(return_value={"result": True, "workspace": dirtyWorkspace})
+        self.instance.fetchGroupingDefinition = mock.Mock(return_value={"result": True, "workspace": groupWorkspace})
+
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).add()
         clerk.native().neutron(self.runNumber).dirty().add()
         clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).source(InstrumentDonor=self.sampleWS).add()
         groceryList = clerk.buildList()
 
-        # expected workspaces
-        cleanWorkspace = mock.Mock()
-        dirtyWorkspace = mock.Mock()
-        groupWorkspace = mock.Mock()
-
-        mockFetchClean.return_value = {"result": True, "workspace": cleanWorkspace}
-        mockFetchDirty.return_value = {"result": True, "workspace": dirtyWorkspace}
-        mockFetchGroup.return_value = {"result": True, "workspace": groupWorkspace}
-
         res = self.instance.fetchGroceryList(groceryList)
+
         assert res == [cleanWorkspace, dirtyWorkspace, groupWorkspace]
-        for i, fetchMethod in enumerate([mockFetchClean, mockFetchDirty]):
+        for i, fetchMethod in enumerate(
+            [self.instance.fetchNeutronDataCached, self.instance.fetchNeutronDataSingleUse]
+        ):
             assert fetchMethod.called_once_with(
                 groceryList[i].runNumber,
                 groceryList[i].useLiteMode,
                 groceryList[i].loader,
             )
-        assert mockFetchGroup.called_once_with(groceryList[2])
+        assert self.instance.fetchGroupingDefinition.called_once_with(groceryList[2])
 
-    @mock.patch.object(GroceryService, "fetchNeutronDataSingleUse")
-    def test_fetch_grocery_list_fails(self, mockFetchDirty):
+    def test_fetch_grocery_list_fails(self):
+        self.instance.fetchNeutronDataSingleUse = mock.Mock(return_value={"result": False, "workspace": "unimportant"})
         groceryList = GroceryListItem.builder().native().neutron(self.runNumber).dirty().buildList()
-        mockFetchDirty.return_value = {"result": False, "workspace": "unimportant"}
         with pytest.raises(RuntimeError) as e:
             self.instance.fetchGroceryList(groceryList)
         print(str(e.value))
@@ -1004,10 +992,9 @@ class TestGroceryService(unittest.TestCase):
         ):
             self.instance.fetchGroceryList(groceryList)
 
-    @mock.patch.object(GroceryService, "_getDetectorState")
-    def test_fetch_grocery_list_specialOrder_diffcal_output(self, mockDetectorState):
+    def test_fetch_grocery_list_specialOrder_diffcal_output(self):
         # Test of workspace type "diffcal_output" as `Output` (i.e. "specialOrder") argument in the `GroceryList`
-        mockDetectorState.return_value = self.detectorState1
+        self.instance._getDetectorState = mock.Mock(return_value=self.detectorState1)
         groceryList = (
             GroceryListItem.builder()
             .specialOrder()
@@ -1020,28 +1007,26 @@ class TestGroceryService(unittest.TestCase):
         items = self.instance.fetchGroceryList(groceryList)
         assert items[0] == wng.diffCalOutput().unit(wng.Units.TOF).runNumber(self.runNumber).build()
 
-    @mock.patch.object(GroceryService, "_getDetectorState")
-    def test_fetch_grocery_list_specialOrder_diffcal_table(self, mockDetectorState):
+    def test_fetch_grocery_list_specialOrder_diffcal_table(self):
         # Test of workspace type "diffcal_table" as `Output` (i.e. "specialOrder") argument in the `GroceryList`
-        mockDetectorState.return_value = self.detectorState1
+        self.instance._getDetectorState = mock.Mock(return_value=self.detectorState1)
         groceryList = GroceryListItem.builder().specialOrder().native().diffcal_table(self.runNumber).buildList()
         items = self.instance.fetchGroceryList(groceryList)
         assert items[0] == wng.diffCalTable().runNumber(self.runNumber).build()
 
-    @mock.patch.object(GroceryService, "_getDetectorState")
-    def test_fetch_grocery_list_specialOrder_diffcal_mask(self, mockDetectorState):
+    def test_fetch_grocery_list_specialOrder_diffcal_mask(self):
         # Test of workspace type "diffcal_mask" as `Output` (i.e. "specialOrder") argument in the `GroceryList`
-        mockDetectorState.return_value = self.detectorState1
+        self.instance._getDetectorState = mock.Mock(return_value=self.detectorState1)
         groceryList = GroceryListItem.builder().specialOrder().native().diffcal_mask(self.runNumber).buildList()
         items = self.instance.fetchGroceryList(groceryList)
         assert items[0] == wng.diffCalMask().runNumber(self.runNumber).build()
 
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_fetch_grocery_list_diffcal_output(self, mockCalibrationDataPath):
+    def test_fetch_grocery_list_diffcal_output(self):
         # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`
+
         path = Resource.getPath("outputs")
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
-            mockCalibrationDataPath.return_value = tmpPath
+            self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value=tmpPath)
             groceryList = (
                 GroceryListItem.builder()
                 .native()
@@ -1060,11 +1045,10 @@ class TestGroceryService(unittest.TestCase):
             assert items[0] == self.diffCalOutputName
             assert mtd.doesExist(self.diffCalOutputName)
 
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_fetch_grocery_list_diffcal_output_cached(self, mockCalibrationDataPath):
+    def test_fetch_grocery_list_diffcal_output_cached(self):
         # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
-        mockCalibrationDataPath.return_value = "/does/not/exist"
+        self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value="/does/not/exist")
         groceryList = (
             GroceryListItem.builder()
             .native()
@@ -1088,14 +1072,12 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(diffCalOutputName)
         assert mtd[diffCalOutputName].getTitle() == testTitle
 
-    @mock.patch.object(GroceryService, "_fetchInstrumentDonor")
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_fetch_grocery_list_diffcal_table(self, mockCalibrationDataPath, mockFetchInstrumentDonor):
+    def test_fetch_grocery_list_diffcal_table(self):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`
         path = Resource.getPath("outputs")
-        mockFetchInstrumentDonor.return_value = self.sampleWS
+        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
-            mockCalibrationDataPath.return_value = tmpPath
+            self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value=tmpPath)
             groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1).buildList()
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
             diffCalTableFilename = diffCalTableName + ".h5"
@@ -1107,11 +1089,10 @@ class TestGroceryService(unittest.TestCase):
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
 
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_fetch_grocery_list_diffcal_table_cached(self, mockCalibrationDataPath):
+    def test_fetch_grocery_list_diffcal_table_cached(self):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
-        mockCalibrationDataPath.return_value = "/does/not/exist"
+        self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value="/does/not/exist")
         groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1).buildList()
         diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
         CloneWorkspace(
@@ -1126,15 +1107,13 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(diffCalTableName)
         assert mtd[diffCalTableName].getTitle() == testTitle
 
-    @mock.patch.object(GroceryService, "_fetchInstrumentDonor")
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_fetch_grocery_list_diffcal_table_loads_mask(self, mockCalibrationDataPath, mockFetchInstrumentDonor):
+    def test_fetch_grocery_list_diffcal_table_loads_mask(self):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
         #   * corresponding mask workspace is also loaded from the hdf5-format file.
         path = Resource.getPath("outputs")
-        mockFetchInstrumentDonor.return_value = self.sampleWS
+        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
-            mockCalibrationDataPath.return_value = tmpPath
+            self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value=tmpPath)
             groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1).buildList()
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
             diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
@@ -1149,14 +1128,12 @@ class TestGroceryService(unittest.TestCase):
             assert mtd.doesExist(diffCalTableName)
             assert mtd.doesExist(diffCalMaskName)
 
-    @mock.patch.object(GroceryService, "_fetchInstrumentDonor")
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_fetch_grocery_list_diffcal_mask(self, mockCalibrationDataPath, mockFetchInstrumentDonor):
+    def test_fetch_grocery_list_diffcal_mask(self):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`
         path = Resource.getPath("outputs")
-        mockFetchInstrumentDonor.return_value = self.sampleWS
+        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
-            mockCalibrationDataPath.return_value = tmpPath
+            self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value=tmpPath)
             groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
             diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
 
@@ -1171,11 +1148,10 @@ class TestGroceryService(unittest.TestCase):
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
 
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_fetch_grocery_list_diffcal_mask_cached(self, mockCalibrationDataPath):
+    def test_fetch_grocery_list_diffcal_mask_cached(self):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
-        mockCalibrationDataPath.return_value = "/does/not/exist"
+        self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value="/does/not/exist")
         groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
         diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
         CloneWorkspace(
@@ -1199,15 +1175,13 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(diffCalMaskName)
         assert mtd[diffCalMaskName].getTitle() == testTitle
 
-    @mock.patch.object(GroceryService, "_fetchInstrumentDonor")
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_fetch_grocery_list_diffcal_mask_loads_table(self, mockCalibrationDataPath, mockFetchInstrumentDonor):
+    def test_fetch_grocery_list_diffcal_mask_loads_table(self):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
         #   * corresponding table workspace is also loaded from the hdf5-format file.
         path = Resource.getPath("outputs")
-        mockFetchInstrumentDonor.return_value = self.sampleWS
+        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
-            mockCalibrationDataPath.return_value = tmpPath
+            self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value=tmpPath)
             groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
             diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
 
@@ -1233,15 +1207,13 @@ class TestGroceryService(unittest.TestCase):
         ):
             self.instance.fetchGroceryList(groceryList)
 
-    @mock.patch.object(GroceryService, "fetchNeutronDataCached")
-    @mock.patch.object(GroceryService, "fetchGroupingDefinition")
-    def test_fetch_grocery_list_with_source(self, mockFetchGroup, mockFetchClean):
+    def test_fetch_grocery_list_with_source(self):
         # expected workspaces
         cleanWorkspace = "unimportant"
         groupWorkspace = mock.Mock()
 
-        mockFetchClean.return_value = {"result": True, "workspace": cleanWorkspace}
-        mockFetchGroup.return_value = {"result": True, "workspace": groupWorkspace}
+        self.instance.fetchNeutronDataCached = mock.Mock(return_value={"result": True, "workspace": cleanWorkspace})
+        self.instance.fetchGroupingDefinition = mock.Mock(return_value={"result": True, "workspace": groupWorkspace})
 
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).add()
@@ -1260,8 +1232,8 @@ class TestGroceryService(unittest.TestCase):
 
         res = self.instance.fetchGroceryList(groceryList)
         assert res == [cleanWorkspace, groupWorkspace]
-        assert mockFetchGroup.called_with(groupItemWithSource)
-        assert mockFetchClean.called_with(self.runNumber, False, "")
+        assert self.instance.fetchGroupingDefinition.called_with(groupItemWithSource)
+        assert self.instance.fetchNeutronDataCached.called_with(self.runNumber, False, "")
 
     def test_update_instrument_parameters(self):
         tmpName = mtd.unique_hidden_name()
@@ -1315,111 +1287,75 @@ class TestGroceryService(unittest.TestCase):
             6.496040375624123,
         )
 
-    @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
-    @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
-    @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_neutron_data(
-        self,
-        mockUpdateInstrumentCacheFromADS,  # noqa: ARG002
-        mockUpdateNeutronCacheFromADS,  # noqa: ARG002
-        mockCreateRawNeutronWorkspaceName,
-    ):
-        with mock.patch.dict(self.instance._loadedRuns, {(self.runNumber, self.useLiteMode): 0}), mock.patch.dict(
-            self.instance._loadedInstruments, {}
-        ):
-            mockCreateRawNeutronWorkspaceName.return_value = self.sampleWS
-            testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
-            assert testWS == self.sampleWS
+    def test_fetch_instrument_donor_neutron_data(self):
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=self.sampleWS)
+        self.instance._updateNeutronCacheFromADS = mock.Mock()
+        self.instance._updateInstrumentCacheFromADS = mock.Mock()
+        self.instance._loadedRuns = {(self.runNumber, self.useLiteMode): 0}
+        self.instance._loadedInstruments = {}
+        testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
+        assert testWS == self.sampleWS
 
-    @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
-    @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
-    @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_neutron_data_is_cached(
-        self,
-        mockUpdateInstrumentCacheFromADS,  # noqa: ARG002
-        mockUpdateNeutronCacheFromADS,  # noqa: ARG002
-        mockCreateRawNeutronWorkspaceName,
-    ):
-        with mock.patch.dict(self.instance._loadedRuns, {(self.runNumber, self.useLiteMode): 0}), mock.patch.dict(
-            self.instance._loadedInstruments, {}
-        ) as mockLoadedInstruments:
-            mockCreateRawNeutronWorkspaceName.return_value = self.sampleWS
-            testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)  # noqa: F841
-            assert mockLoadedInstruments == {(self.runNumber, self.useLiteMode): self.sampleWS}
+    def test_fetch_instrument_donor_neutron_data_is_cached(self):
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=self.sampleWS)
+        self.instance._updateNeutronCacheFromADS = mock.Mock()
+        self.instance._updateInstrumentCacheFromADS = mock.Mock()
+        self.instance._loadedRuns = {(self.runNumber, self.useLiteMode): 0}
+        self.instance._loadedInstruments = {}
+        testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)  # noqa: F841
+        assert self.instance._loadedInstruments == {(self.runNumber, self.useLiteMode): self.sampleWS}
 
-    @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
-    @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_cached(
-        self,
-        mockUpdateInstrumentCacheFromADS,  # noqa: ARG002
-        mockUpdateNeutronCacheFromADS,  # noqa: ARG002
-    ):
-        with mock.patch.dict(self.instance._loadedRuns, {}), mock.patch.dict(
-            self.instance._loadedInstruments, {(self.runNumber, self.useLiteMode): self.sampleWS}
-        ):
-            testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
-            assert testWS == self.sampleWS
+    def test_fetch_instrument_donor_cached(self):
+        self.instance._updateNeutronCacheFromADS = mock.Mock()
+        self.instance._updateInstrumentCacheFromADS = mock.Mock()
+        self.instance._loadedRuns = {}
+        self.instance._loadedInstruments = {(self.runNumber, self.useLiteMode): self.sampleWS}
+        testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
+        assert testWS == self.sampleWS
 
-    @mock.patch.object(GroceryService, "_getDetectorState")
-    @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
-    @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_empty_instrument(
-        self,
-        mockUpdateInstrumentCacheFromADS,  # noqa: ARG002
-        mockUpdateNeutronCacheFromADS,  # noqa: ARG002
-        mockGetDetectorState,
-    ):
-        mockGetDetectorState.return_value = self.detectorState2
-        with mock.patch.dict(self.instance._loadedRuns, {}), mock.patch.dict(self.instance._loadedInstruments, {}):
-            testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
-            assert mtd.doesExist(testWS)
-            assert not testWS == self.sampleWS
+    def test_fetch_instrument_donor_empty_instrument(self):
+        self.instance._getDetectorState = mock.Mock(return_value=self.detectorState2)
+        self.instance._updateNeutronCacheFromADS = mock.Mock()
+        self.instance._updateInstrumentCacheFromADS = mock.Mock()
+        self.instance._loadedRuns = {}
+        self.instance._loadedInstruments = {}
+        testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
+        assert mtd.doesExist(testWS)
+        assert not testWS == self.sampleWS
 
-            # Verify that the instrument workspace has log-derived parameters from `self.detectorState2`.
-            sampleLogs = mapFromSampleLogs(testWS, ("det_lin1", "det_lin2", "det_arc1", "det_arc2"))
+        # Verify that the instrument workspace has log-derived parameters from `self.detectorState2`.
+        sampleLogs = mapFromSampleLogs(testWS, ("det_lin1", "det_lin2", "det_arc1", "det_arc2"))
 
-            # Exact float comparison is intended: these should match
-            assert sampleLogs["det_lin1"] == self.detectorState2.lin[0]
-            assert sampleLogs["det_lin2"] == self.detectorState2.lin[1]
-            assert sampleLogs["det_arc1"] == self.detectorState2.arc[0]
-            assert sampleLogs["det_arc2"] == self.detectorState2.arc[1]
+        # Exact float comparison is intended: these should match
+        assert sampleLogs["det_lin1"] == self.detectorState2.lin[0]
+        assert sampleLogs["det_lin2"] == self.detectorState2.lin[1]
+        assert sampleLogs["det_arc1"] == self.detectorState2.arc[0]
+        assert sampleLogs["det_arc2"] == self.detectorState2.arc[1]
 
-    @mock.patch.object(GroceryService, "_getDetectorState")
-    @mock.patch.object(GroceryService, "_updateNeutronCacheFromADS")
-    @mock.patch.object(GroceryService, "_updateInstrumentCacheFromADS")
-    def test_fetch_instrument_donor_empty_instrument_is_cached(
-        self,
-        mockUpdateInstrumentCacheFromADS,  # noqa: ARG002
-        mockUpdateNeutronCacheFromADS,  # noqa: ARG002
-        mockGetDetectorState,
-    ):
-        mockGetDetectorState.return_value = self.detectorState2
-        with mock.patch.dict(self.instance._loadedRuns, {}), mock.patch.dict(
-            self.instance._loadedInstruments, {}
-        ) as mockLoadedInstruments:
-            testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
-            assert mockLoadedInstruments == {(self.runNumber, self.useLiteMode): testWS}
+    def test_fetch_instrument_donor_empty_instrument_is_cached(self):
+        self.instance._getDetectorState = mock.Mock(return_value=self.detectorState2)
+        self.instance._updateNeutronCacheFromADS = mock.Mock()
+        self.instance._updateInstrumentCacheFromADS = mock.Mock()
+        self.instance._loadedRuns = {}
+        self.instance._loadedInstruments = {}
+        testWS = self.instance._fetchInstrumentDonor(self.runNumber, self.useLiteMode)
+        assert self.instance._loadedInstruments == {(self.runNumber, self.useLiteMode): testWS}
 
-    @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
-    def test_update_instrument_cache_from_ADS_to_cache(self, mockCreateRawNeutronWorkspaceName):
-        mockCreateRawNeutronWorkspaceName.return_value = self.sampleWS
-        with mock.patch.dict(self.instance._loadedInstruments, {}) as mockLoadedInstruments:
-            self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode)
-            assert mockLoadedInstruments == {(self.runNumber, self.useLiteMode): self.sampleWS}
+    def test_update_instrument_cache_from_ADS_to_cache(self):
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=self.sampleWS)
+        self.instance._loadedInstruments = {}
+        self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode)
+        assert self.instance._loadedInstruments == {(self.runNumber, self.useLiteMode): self.sampleWS}
 
-    @mock.patch.object(GroceryService, "_createRawNeutronWorkspaceName")
-    def test_update_instrument_cache_from_ADS_cache_del(self, mockCreateRawNeutronWorkspaceName):
+    def test_update_instrument_cache_from_ADS_cache_del(self):
         testWSName = "not_any_workspace"
-        mockCreateRawNeutronWorkspaceName.return_value = testWSName
-        with mock.patch.dict(
-            self.instance._loadedInstruments, {(self.runNumber, self.useLiteMode): testWSName}
-        ) as mockLoadedInstruments:
-            self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode)
-            assert mockLoadedInstruments == {}
+        self.instance._createRawNeutronWorkspaceName = mock.Mock(return_value=testWSName)
+        self.instance._loadedInstruments = {(self.runNumber, self.useLiteMode): testWSName}
+        self.instance._updateInstrumentCacheFromADS(self.runNumber, self.useLiteMode)
+        assert self.instance._loadedInstruments == {}
 
-    @mock.patch.object(LocalDataService, "readDetectorState")
-    def test_get_detector_state(self, mockReadDetectorState):
-        mockReadDetectorState.return_value = self.detectorState1
+    def test_get_detector_state(self):
+        self.instance.dataService.readDetectorState = mock.Mock(return_value=self.detectorState1)
         detectorState = self.instance._getDetectorState(self.runNumber)
         assert detectorState == self.detectorState1
 
@@ -1430,36 +1366,34 @@ class TestGroceryService(unittest.TestCase):
         wsName = self.instance.uniqueHiddenName()
         assert wsName == testWSName
 
-    @mock.patch.object(GroceryService, "fetchGroceryList")
-    def test_fetch_grocery_dict(self, mockFetchList):
-        clerk = GroceryListItem.builder()
-        clerk.native().neutron(self.runNumber).name("InputWorkspace").add()
-        clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).name("GroupingWorkspace").add()
-        groceryDict = clerk.buildDict()
-
+    def test_fetch_grocery_dict(self):
         # expected workspaces
         cleanWorkspace = "unimportant"
         groupWorkspace = "groupme"
+        self.instance.fetchGroceryList = mock.Mock(return_value=[cleanWorkspace, groupWorkspace])
 
-        mockFetchList.return_value = [cleanWorkspace, groupWorkspace]
-
-        res = self.instance.fetchGroceryDict(groceryDict)
-        assert res == {"InputWorkspace": cleanWorkspace, "GroupingWorkspace": groupWorkspace}
-        assert mockFetchList.called_once_with(groceryDict["InputWorkspace"], groceryDict["GroupingWorkspace"])
-
-    @mock.patch.object(GroceryService, "fetchGroceryList")
-    def test_fetch_grocery_dict_with_kwargs(self, mockFetchList):
         clerk = GroceryListItem.builder()
         clerk.native().neutron(self.runNumber).name("InputWorkspace").add()
         clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).name("GroupingWorkspace").add()
         groceryDict = clerk.buildDict()
 
+        res = self.instance.fetchGroceryDict(groceryDict)
+        assert res == {"InputWorkspace": cleanWorkspace, "GroupingWorkspace": groupWorkspace}
+        assert self.instance.fetchGroceryList.called_once_with(
+            groceryDict["InputWorkspace"], groceryDict["GroupingWorkspace"]
+        )
+
+    def test_fetch_grocery_dict_with_kwargs(self):
         # expected workspaces
         cleanWorkspace = "unimportant"
         groupWorkspace = "groupme"
         otherWorkspace = "somethingelse"
+        self.instance.fetchGroceryList = mock.Mock(return_value=[cleanWorkspace, groupWorkspace])
 
-        mockFetchList.return_value = [cleanWorkspace, groupWorkspace]
+        clerk = GroceryListItem.builder()
+        clerk.native().neutron(self.runNumber).name("InputWorkspace").add()
+        clerk.native().fromRun(self.runNumber).grouping(self.groupingScheme).name("GroupingWorkspace").add()
+        groceryDict = clerk.buildDict()
 
         res = self.instance.fetchGroceryDict(groceryDict, OtherWorkspace=otherWorkspace)
         assert res == {
@@ -1467,7 +1401,10 @@ class TestGroceryService(unittest.TestCase):
             "GroupingWorkspace": groupWorkspace,
             "OtherWorkspace": otherWorkspace,
         }
-        assert mockFetchList.called_once_with(groceryDict["InputWorkspace"], groceryDict["GroupingWorkspace"])
+        assert self.instance.fetchGroceryList.called_once_with(
+            groceryDict["InputWorkspace"],
+            groceryDict["GroupingWorkspace"],
+        )
 
     def test_fetch_default_diffcal_table(self):
         """
