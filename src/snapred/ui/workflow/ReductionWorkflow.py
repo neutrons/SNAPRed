@@ -1,5 +1,3 @@
-import json
-
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest
 from snapred.backend.log.logger import snapredLogger
