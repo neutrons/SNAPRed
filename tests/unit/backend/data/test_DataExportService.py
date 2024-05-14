@@ -30,7 +30,8 @@ class TestDataExportService(unittest.TestCase):
     ##### TEST MISCELLANEOUS METHODS #####
 
     def test_exportCalibrantSampleFile(self):
-        pass
+        self.instance.exportCalibrantSampleFile(mock.Mock())
+        assert self.instance.dataService.writeCalibrantSample.called
 
     ##### TEST REDUCTION METHODS #####
 

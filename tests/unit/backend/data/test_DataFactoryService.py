@@ -199,6 +199,16 @@ class TestDataFactoryService(unittest.TestCase):
         assert self.instance.workspaceDoesExist(wsname2)
         DeleteWorkspace(wsname2)
 
+    def test_getWorkspaceCached(self):
+        self.instance.groceryService.fetchNeutronDataCached = mock.Mock()
+        self.instance.getWorkspaceCached("123", True)
+        assert self.instance.groceryService.fetchNeutronDataCached.called
+
+    def test_getWorkspaceSingleUse(self):
+        self.instance.groceryService.fetchNeutronDataSingleUse = mock.Mock()
+        self.instance.getWorkspaceSingleUse("123", True)
+        assert self.instance.groceryService.fetchNeutronDataSingleUse.called
+
     def test_deleteWorkspace(self):
         from snapred.meta.Config import Config
 
