@@ -62,8 +62,8 @@ class FetchGroceriesRecipe:
             if data["loader"] == "LoadEventNexus":
                 self.dataService = LocalDataService()
                 config = self.dataService.readInstrumentConfig()
-                width = config["width"]
-                frequency = config["frequency"]
+                width = config.width
+                frequency = config.frequency
                 self.mantidSnapper.RemovePromptPulse(
                     "Removing prompt pulse",
                     InputWorkspace=workspace,

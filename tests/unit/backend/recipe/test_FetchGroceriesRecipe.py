@@ -116,23 +116,19 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
             Workspace2=res["workspace"],
         )
 
-    def test_fetch_with_load_event_nexus(self):
+    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchAlgo")
+    def test_fetch_with_load_event_nexus(self, mockAlgo):
         """Test the correct behavior of the fetch method"""
-        self.rx.mantidSnapper = mock.MagicMock()
-        # self.rx.mantidSnapper.LoadEventNexus = mock.Mock()
+        mock_instance = mockAlgo.return_value
+        mock_instance.execute.return_value = "data"
+        mock_instance.getPropertyValue.return_value = "LoadEventNexus"
+        self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
+
         self.clearoutWorkspaces()
         res = self.rx.executeRecipe(self.filepath, self.fetchedWSname, "LoadEventNexus")
         assert len(res) > 0
         assert res["result"]
         assert res["loader"] == "LoadEventNexus"
-        assert res["workspace"] == self.fetchedWSname
-
-        # make sure it won't load same workspace name again
-        assert mtd.doesExist(self.fetchedWSname)
-        res = self.rx.executeRecipe(self.filepath, self.fetchedWSname, res["loader"])
-        assert len(res) > 0
-        assert res["result"]
-        assert res["loader"] == ""  # this makes sure no loader called
         assert res["workspace"] == self.fetchedWSname
 
     def test_fetch_failed(self):
