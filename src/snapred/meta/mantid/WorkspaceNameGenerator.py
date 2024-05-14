@@ -1,6 +1,6 @@
 import re
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from snapred.meta.Config import Config
 
@@ -55,9 +55,9 @@ class ValueFormatter:
         return str(runNumber).zfill(6)
 
     @staticmethod
-    def formatVersion(version, use_v_prefix: bool = True):
-        if version == "":
-            return version
+    def formatVersion(version: Optional[int], use_v_prefix: bool = True):
+        if version is None:
+            return ""
         if not version == "*":
             version = str(version).zfill(4)
         return "v" + version if use_v_prefix else version

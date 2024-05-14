@@ -20,7 +20,7 @@ with mock.patch.dict(
         dataExportService.dataService.writeCalibrationIndexEntry = mock.Mock()
         dataExportService.dataService.writeCalibrationIndexEntry.return_value = "expected"
         dataExportService.exportCalibrationIndexEntry(
-            CalibrationIndexEntry(runNumber="1", comments="", author=""), useLiteMode=True
+            CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
         )
         assert dataExportService.dataService.writeCalibrationIndexEntry.called
 
@@ -42,14 +42,14 @@ with mock.patch.dict(
         dataExportService = DataExportService()
         dataExportService.dataService.writeCalibrationState = mock.Mock()
         dataExportService.dataService.writeCalibrationState.return_value = "expected"
-        dataExportService.exportCalibrationState(mock.Mock(), mock.Mock())
+        dataExportService.exportCalibrationState(mock.Mock())
         assert dataExportService.dataService.writeCalibrationState.called
 
     def test_initializeState():
         dataExportService = DataExportService()
         dataExportService.dataService.initializeState = mock.Mock()
         dataExportService.dataService.initializeState.return_value = "expected"
-        dataExportService.initializeState(mock.Mock(), mock.Mock(), mock.Mock())
+        dataExportService.initializeState("123", False, "nope")
         assert dataExportService.dataService.initializeState.called
 
     def test_exportNormalizationIndexEntry():
@@ -57,7 +57,7 @@ with mock.patch.dict(
         dataExportService.dataService.writeNormalizationIndexEntry = mock.Mock()
         dataExportService.dataService.writeNormalizationIndexEntry.return_value = "expected"
         dataExportService.exportNormalizationIndexEntry(
-            NormalizationIndexEntry(runNumber="1", backgroundRunNumber="2", comments="", author=""), True
+            NormalizationIndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2", comments="", author="")
         )
         assert dataExportService.dataService.writeNormalizationIndexEntry.called
 

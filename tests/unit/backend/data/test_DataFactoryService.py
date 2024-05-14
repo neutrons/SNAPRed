@@ -1,7 +1,6 @@
 import os.path
 import tempfile
 import unittest.mock as mock
-from unittest.mock import MagicMock
 
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
@@ -37,7 +36,7 @@ with mock.patch.dict(
         dataExportService.getInstrumentConfig.return_value = InstrumentConfig.construct({})
         dataExportService.getStateConfig = mock.Mock()
         dataExportService.getStateConfig.return_value = StateConfig.construct({})
-        actual = dataExportService.getReductionState(mock.Mock(), mock.Mock())
+        actual = dataExportService.getReductionState("123", False)
 
         assert type(actual) == ReductionState
 
@@ -65,7 +64,7 @@ with mock.patch.dict(
     def test_getCalibrationState():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrationState = mock.Mock(return_value="expected")
-        actual = dataExportService.getCalibrationState(mock.Mock(), mock.Mock())
+        actual = dataExportService.getCalibrationState("123", False)
 
         assert actual == "expected"
 
@@ -105,28 +104,35 @@ with mock.patch.dict(
     def test_getNormalizationState():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readNormalizationState = mock.Mock(return_value="expected")
-        actual = dataExportService.getNormalizationState(mock.Mock())
+        actual = dataExportService.getNormalizationState("123", False)
 
         assert actual == "expected"
 
     def test_getCalibrationIndex():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrationIndex = mock.Mock(return_value="expected")
-        run = MagicMock()
-        actual = dataExportService.getCalibrationIndex(run, mock.Mock())
+        run = "123"
+        useLiteMode = False
+        actual = dataExportService.getCalibrationIndex(run, useLiteMode)
 
         assert actual == "expected"
 
     def test_getCalibrationDataPath():
         dataExportService = DataFactoryService()
         dataExportService.lookupService._constructCalibrationDataPath = mock.Mock(return_value="expected")
-        actual = dataExportService.getCalibrationDataPath(mock.Mock(), mock.Mock())
+        run = "123"
+        version = 17
+        useLiteMode = False
+        actual = dataExportService.getCalibrationDataPath(run, useLiteMode, version)
 
         assert actual == "expected"
 
     def test_getCalibrationRecord():
         dataExportService = DataFactoryService()
         dataExportService.lookupService.readCalibrationRecord = mock.Mock(return_value="expected")
-        actual = dataExportService.getCalibrationRecord(mock.Mock(), mock.Mock())
+        runId = "345"
+        useLiteMode = False
+        version = 12
+        actual = dataExportService.getCalibrationRecord(runId, useLiteMode, version)
 
         assert actual == "expected"

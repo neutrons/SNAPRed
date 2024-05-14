@@ -10,7 +10,7 @@ from snapred.ui.widget.LabeledField import LabeledField
 @Resettable
 class NormalizationSaveView(QWidget):
     """
-    This class creates a PyQt5 widget interface for efficiently saving normalization data in SNAPRed
+    This class creates a qt widget interface for efficiently saving normalization data in SNAPRed
     after user assessment. It provides a structured and intuitive environment for users to input and
     review important details such as run numbers and versioning. By leveraging dynamic form generation
     and organized UI elements, it ensures data consistency and facilitates user interaction. The main

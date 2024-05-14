@@ -23,7 +23,7 @@ class NormalizationWorkflow(WorkflowImplementer):
     """
 
     This system orchestrates a full workflow for scientific data normalization, guiding users through each step with
-    interactive PyQt5 widgets and custom views. Starting with default settings for initialization, it progresses
+    interactive qt widgets and custom views. Starting with default settings for initialization, it progresses
     through calibration, parameter adjustments, and ends with saving normalization data, offering views like
     NormalizationRequestView, NormalizationTweakPeakView, and NormalizationSaveView for an interactive user workflow.
     The workflow dynamically adjusts to different datasets and requirements, ensuring adaptability. Key phases include
@@ -205,6 +205,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),

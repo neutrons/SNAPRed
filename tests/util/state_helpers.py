@@ -32,7 +32,7 @@ def state_root_override(runNumber: str, name: str, useLiteMode: bool = False, de
     if stateRoot.exists():
         raise RuntimeError(f"state-root directory '{stateRoot}' already exists -- please move it out of the way!")
 
-    dataService.initializeState(runNumber, name, useLiteMode)
+    dataService.initializeState(runNumber, useLiteMode, name)
     yield stateRoot
 
     # __exit__
