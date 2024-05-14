@@ -5,7 +5,10 @@ from typing import List
 from mantid.kernel import amend_config
 
 from snapred import __version__ as snapred_version
+from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config, Resource, datasearch_directories
+
+logger = snapredLogger.getLogger(__name__)
 
 
 def _print_text_splash():
@@ -111,6 +114,12 @@ def main(args=None):
     }
     with amend_config(**new_config):
         if options.workbench:
+            warningMessage = (
+                "WARNING: --workbench is a temporary means of starting workbench with the ability to launch SNAPRed"
+            )
+            warningSeperator = "/" * len(warningMessage)
+            warningSeperator = f"{warningSeperator}\n{warningSeperator}"
+            logger.warning(f"\n{warningSeperator}\n\n{warningMessage}\n\n{warningSeperator}\n")
             _preloadImports()
             import os
 
