@@ -37,7 +37,13 @@ def _prepend_datasearch_directories() -> List[str]:
     return searchDirectories
 
 
-def main(args=None):
+def _preloadImports():
+    import qtpy.QtWebEngineWidgets as QWebEngineWidgets
+
+    print(f"preloaded {QWebEngineWidgets.__name__}")
+
+
+def _createArgparser():
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -56,12 +62,40 @@ def main(args=None):
         action="store_true",
         help="start the gui then shut it down after 5 seconds. This is used for testing",
     )
+    parser.add_argument("-x", "--execute", action="store_true", help="execute the script file given as argument")
+    parser.add_argument(
+        "-q", "--quit", action="store_true", help="execute the script file with '-x' given as argument and then exit"
+    )
+    parser.add_argument(
+        "--workbench",
+        default=False,
+        action="store_true",
+        help="Start workbench with necessary preloaded snapred imports.",
+    )
+    parser.add_argument(
+        "--single-process",
+        default=True,
+        action="store_true",
+        help="Start workbench with necessary preloaded snapred imports.",
+    )
+    parser.add_argument(
+        "--no-error-reporter",
+        action="store_true",
+        help="Stop the error reporter from opening if you suffer an exception or crash.",
+    )
+    parser.add_argument("script")
+    return parser
+
+
+def main(args=None):
+    parser = _createArgparser()
     options, _ = parser.parse_known_args(args)
 
     # fix up some of the options for mantid
     options.checkfornewmantid = _bool_to_mtd_str(options.checkfornewmantid)
     options.updateinstruments = _bool_to_mtd_str(options.updateinstruments)
     options.reportusage = _bool_to_mtd_str(options.reportusage)
+    options.script = None
     dataSearchDirectories = _prepend_datasearch_directories()
 
     # show the ascii splash screen
@@ -76,9 +110,21 @@ def main(args=None):
         "prepend_datadir": True,
     }
     with amend_config(**new_config):
-        from snapred.ui.main import start
+        if options.workbench:
+            _preloadImports()
+            import os
 
-        return start(options)
+            from workbench.app.start import start as workbench_start
+
+            pid = os.fork()
+            if pid > 0:
+                return 0
+            else:
+                workbench_start(options)
+        else:
+            from snapred.ui.main import start
+
+            return start(options)
 
 
 if __name__ == "__main__":
