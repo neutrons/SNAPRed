@@ -29,7 +29,9 @@
       "delTOverT": 0.05,
       "delLOverL": 0.05,
       "delThNoGuide": 0.05,
-      "delThWithGuide": 0.05
+      "delThWithGuide": 0.05,
+      "width": 1600.0,
+      "frequency": 60.4
     },
     "stateConfig": {
       "calibration": {
@@ -56,7 +58,9 @@
             "delTOverT": 0.002,
             "delLOverL": 0.00006452,
             "delThNoGuide": 0.0006667,
-            "delThWithGuide": 0.0032
+            "delThWithGuide": 0.0032,
+            "width": 1600.0,
+            "frequency": 60.4
           },
           "detectorState": {
             "arc": [

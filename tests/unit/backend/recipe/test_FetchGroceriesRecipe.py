@@ -2,6 +2,7 @@
 
 import os
 import unittest
+from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
@@ -114,6 +115,25 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
         )
+
+    def test_fetch_with_load_event_nexus(self):
+        """Test the correct behavior of the fetch method"""
+        self.rx.mantidSnapper = mock.MagicMock()
+        # self.rx.mantidSnapper.LoadEventNexus = mock.Mock()
+        self.clearoutWorkspaces()
+        res = self.rx.executeRecipe(self.filepath, self.fetchedWSname, "LoadEventNexus")
+        assert len(res) > 0
+        assert res["result"]
+        assert res["loader"] == "LoadEventNexus"
+        assert res["workspace"] == self.fetchedWSname
+
+        # make sure it won't load same workspace name again
+        assert mtd.doesExist(self.fetchedWSname)
+        res = self.rx.executeRecipe(self.filepath, self.fetchedWSname, res["loader"])
+        assert len(res) > 0
+        assert res["result"]
+        assert res["loader"] == ""  # this makes sure no loader called
+        assert res["workspace"] == self.fetchedWSname
 
     def test_fetch_failed(self):
         # this is some file that it can't load

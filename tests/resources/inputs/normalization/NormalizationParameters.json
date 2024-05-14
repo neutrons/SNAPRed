@@ -22,7 +22,9 @@
         "delTOverT": 0.002,
         "delLOverL": 0.00006453,
         "delThNoGuide": 0.0032,
-        "delThWithGuide": 0.0032
+        "delThWithGuide": 0.0032,
+        "width": 1600.0,
+        "frequency": 60.4
       },
       "detectorState": {
         "arc": [
