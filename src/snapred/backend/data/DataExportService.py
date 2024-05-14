@@ -31,6 +31,10 @@ class DataExportService:
     def exportCalibrantSampleFile(self, entry: CalibrantSamples):
         self.dataService.writeCalibrantSample(entry)
 
+    ##### REDUCTION METHODS #####
+
+    # NOTE will be added shortly
+
     ##### CALIBRATION METHODS #####
 
     @validate_arguments
