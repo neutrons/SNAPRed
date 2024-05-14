@@ -259,7 +259,7 @@ class TestGroceryService(unittest.TestCase):
     def test_diffcal_table_filename(self):
         # Test name generation for diffraction-calibration table filename
         self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value="nowhere/")
-        res = self.instance._createDiffcalTableFilename(self.runNumber, self.version)
+        res = self.instance._createDiffcalTableFilename(self.runNumber, self.useLiteMode, self.version)
         assert self.difc_name in res
         assert self.runNumber in res
         assert self.version in res
