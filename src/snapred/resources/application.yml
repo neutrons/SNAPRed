@@ -37,6 +37,7 @@ instrument:
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
+  startingVersionNumber: 0
 
 nexus:
   lite:
