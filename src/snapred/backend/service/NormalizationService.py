@@ -175,7 +175,8 @@ class NormalizationService(Service):
         entry = request.normalizationIndexEntry
         version = entry.version
         normalizationRecord = request.normalizationRecord
-        normalizationRecord.version = version
+        if version is not None:
+            normalizationRecord.version = version
         normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
         normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
         entry.version = normalizationRecord.version
