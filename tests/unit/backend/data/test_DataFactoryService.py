@@ -4,6 +4,7 @@ import tempfile
 import unittest
 import unittest.mock as mock
 
+from mantid.simpleapi import CreateSingleValuedWorkspace, DeleteWorkspace, mtd
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
@@ -68,6 +69,12 @@ class TestDataFactoryService(unittest.TestCase):
     def test_getReductionState(self):
         actual = self.instance.getReductionState("123", False)
         assert type(actual) == ReductionState
+
+    def test_getReductionState_cache(self):
+        previous = ReductionState.construct()
+        self.instance.cache["456"] = previous
+        actual = self.instance.getReductionState("456", False)
+        assert actual == previous
 
     def test_getRunConfig(self):
         actual = self.instance.getRunConfig(mock.Mock())
@@ -154,3 +161,68 @@ class TestDataFactoryService(unittest.TestCase):
         self.instance.groceryService.fetchWorkspace = mock.Mock()
         actual = self.instance.getNormalizationDataWorkspace("456", True, 8, "bunko")
         assert actual == self.instance.groceryService.fetchWorkspace.return_value
+
+    ##### TEST WORKSPACE METHODS ####
+
+    def test_workspaceDoesExist(self):
+        wsname = mtd.unique_name()
+        assert not self.instance.workspaceDoesExist(wsname)
+        ws = CreateSingleValuedWorkspace()
+        mtd.add(wsname, ws)
+        assert self.instance.workspaceDoesExist(wsname)
+        DeleteWorkspace(wsname)
+
+    def test_getWorkspaceForName(self):
+        wsname = mtd.unique_name()
+        assert not self.instance.workspaceDoesExist(wsname)
+        ws1 = CreateSingleValuedWorkspace()
+        mtd.add(wsname, ws1)
+        assert self.instance.workspaceDoesExist(wsname)
+        ws2 = self.instance.getWorkspaceForName(wsname)
+        print(dir(ws1))
+        assert ws1.name() == ws2.name()
+        ws2.delete()
+        assert not self.instance.workspaceDoesExist(wsname)
+
+    def test_getCloneOfWprkspace(self):
+        wsname1 = mtd.unique_name()
+        wsname2 = mtd.unique_name()
+        assert not self.instance.workspaceDoesExist(wsname1)
+        assert not self.instance.workspaceDoesExist(wsname2)
+        ws1 = CreateSingleValuedWorkspace()
+        ws1.setComment(wsname1 + wsname2)
+        mtd.add(wsname1, ws1)
+        assert self.instance.workspaceDoesExist(wsname1)
+        ws2 = self.instance.getCloneOfWorkspace(wsname1, wsname2)
+        assert ws1.getComment() == ws2.getComment()
+        DeleteWorkspace(wsname1)
+        assert self.instance.workspaceDoesExist(wsname2)
+        DeleteWorkspace(wsname2)
+
+    def test_deleteWorkspace(self):
+        from snapred.meta.Config import Config
+
+        wsname = mtd.unique_name()
+        assert not self.instance.workspaceDoesExist(wsname)
+        ws = CreateSingleValuedWorkspace()
+        mtd.add(wsname, ws)
+        assert self.instance.workspaceDoesExist(wsname)
+
+        # won't delete in cis mode
+        Config._config["cis_mode"] = True
+        self.instance.deleteWorkspace(wsname)
+        assert self.instance.workspaceDoesExist(wsname)
+
+        # will delete otherwise
+        Config._config["cis_mode"] = False
+        self.instance.deleteWorkspace(wsname)
+        assert not self.instance.workspaceDoesExist(wsname)
+
+    def test_deleteWorkspaceUnconditional(self):
+        wsname = mtd.unique_name()
+        assert not self.instance.workspaceDoesExist(wsname)
+        ws = CreateSingleValuedWorkspace()
+        mtd.add(wsname, ws)
+        assert self.instance.workspaceDoesExist(wsname)
+        self.instance.deleteWorkspaceUnconditional(wsname)
+        assert not self.instance.workspaceDoesExist(wsname)
