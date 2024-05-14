@@ -86,7 +86,7 @@ def _createArgparser():
         action="store_true",
         help="Stop the error reporter from opening if you suffer an exception or crash.",
     )
-    parser.add_argument("script")
+    parser.add_argument("script", default=None)
     return parser
 
 
