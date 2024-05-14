@@ -5,6 +5,7 @@ from pydantic import validate_arguments
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -25,6 +26,17 @@ class DataExportService:
             val = clazz()
         return val
 
+    ##### MISCELLANEOUS #####
+
+    def exportCalibrantSampleFile(self, entry: CalibrantSamples):
+        self.dataService.writeCalibrantSample(entry)
+
+    ##### CALIBRATION METHODS #####
+
+    @validate_arguments
+    def initializeState(self, runId: str, useLiteMode: bool, name: str):
+        return self.dataService.initializeState(runId, useLiteMode, name)
+
     def exportCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         self.dataService.writeCalibrationIndexEntry(entry)
 
@@ -34,11 +46,10 @@ class DataExportService:
     def exportCalibrationWorkspaces(self, record: CalibrationRecord):
         return self.dataService.writeCalibrationWorkspaces(record)
 
-    def exportCalibrantSampleFile(self, entry: CalibrantSamples):
-        self.dataService.writeCalibrantSample(entry)
-
     def exportCalibrationState(self, calibration: Calibration):
         return self.dataService.writeCalibrationState(calibration)
+
+    ##### NORMALIZATION METHODS #####
 
     def exportNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
         self.dataService.writeNormalizationIndexEntry(entry)
@@ -48,6 +59,11 @@ class DataExportService:
 
     def exportNormalizationWorkspaces(self, record: NormalizationRecord):
         return self.dataService.writeNormalizationWorkspaces(record)
+
+    def exportNormalizationState(self, normalization: Normalization):
+        return self.dataService.writeNormalizationState(normalization)
+
+    ##### WORKSPACE METHODS #####
 
     @validate_arguments
     def exportWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
@@ -62,7 +78,3 @@ class DataExportService:
         Write a MatrixWorkspace (derived) workspace to disk in nexus format.
         """
         return self.dataService.writeRaggedWorkspace(path, filename, workspaceName)
-
-    @validate_arguments
-    def initializeState(self, runId: str, useLiteMode: bool, name: str):
-        return self.dataService.initializeState(runId, useLiteMode, name)
