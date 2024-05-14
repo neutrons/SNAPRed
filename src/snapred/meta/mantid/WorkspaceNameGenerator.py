@@ -1,6 +1,6 @@
 import re
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from snapred.meta.Config import Config
 
@@ -50,17 +50,22 @@ class NameBuilder:
 
 
 class ValueFormatter:
+    class vPrefix:
+        WORKSPACE = True
+        FILE = False
+
     @staticmethod
     def formatRunNumber(runNumber: str):
         return str(runNumber).zfill(6)
 
     @staticmethod
-    def formatVersion(version, use_v_prefix: bool = True):
-        if version == "":
-            return version
+    def formatVersion(version: Optional[int], use_v_prefix: vPrefix = vPrefix.WORKSPACE):
+        if version is None:
+            return ""
         if not version == "*":
             version = str(version).zfill(4)
-        return "v" + version if use_v_prefix else version
+        prefix = "v" if use_v_prefix == ValueFormatter.vPrefix.WORKSPACE else "v_"
+        return str(prefix + version)
 
     @staticmethod
     def formatTimestamp(timestamp: str):

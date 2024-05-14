@@ -384,262 +384,263 @@
             "multiplicity": 24
         }
     ]
-},
-    "calibrationFittingIngredients": {
-      "instrumentState": {
-        "id": "ab8704b0bc2a2342",
-        "peakTailCoefficient": 1.1,
-        "instrumentConfig": {
-          "version": "1.4",
-          "facility": "SNS",
-          "name": "SNAP",
-          "nexusFileExtension": ".nxs.h5",
-          "nexusFilePrefix": "SNAP_",
-          "calibrationFileExtension": "json",
-          "calibrationFilePrefix": "SNAPcalibLog",
-          "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
-          "pixelGroupingDirectory": "PixelGroupingDefinitions/",
-          "sharedDirectory": "shared/",
-          "nexusDirectory": "nexus/",
-          "reducedDataDirectory": "shared/manualReduced/",
-          "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
-          "bandwidth": 3,
-          "maxBandwidth": 3.2,
-          "L1": 15,
-          "L2": 0.5,
-          "delTOverT": 0.002,
-          "delLOverL": 0.00006452,
-          "delThNoGuide": 0.0006667,
-          "delThWithGuide": 0.0032,
-          "width": 1600.0,
-          "frequency": 60.4
+  },
+  "calibrationFittingIngredients": {
+    "instrumentState": {
+      "id": "ab8704b0bc2a2342",
+      "peakTailCoefficient": 1.1,
+      "instrumentConfig": {
+        "version": "1.4",
+        "facility": "SNS",
+        "name": "SNAP",
+        "nexusFileExtension": ".nxs.h5",
+        "nexusFilePrefix": "SNAP_",
+        "calibrationFileExtension": "json",
+        "calibrationFilePrefix": "SNAPcalibLog",
+        "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
+        "pixelGroupingDirectory": "PixelGroupingDefinitions/",
+        "sharedDirectory": "shared/",
+        "nexusDirectory": "nexus/",
+        "reducedDataDirectory": "shared/manualReduced/",
+        "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
+        "bandwidth": 3,
+        "maxBandwidth": 3.2,
+        "L1": 15,
+        "L2": 0.5,
+        "delTOverT": 0.002,
+        "delLOverL": 0.00006452,
+        "delThNoGuide": 0.0006667,
+        "delThWithGuide": 0.0032,
+        "width": 1600.0,
+        "frequency": 60.4
+      },
+      "detectorState": {
+        "arc": [
+          -65.3,
+          104.95
+        ],
+        "wav": 2.1,
+        "freq": 60,
+        "guideStat": 1,
+        "lin": [
+          0.045,
+          0.043
+        ]
+      },
+      "gsasParameters": {
+        "alpha": 0.1,
+        "beta": [
+          0.02,
+          0.05
+        ]
+      },
+      "particleBounds": {
+        "wavelength": {
+          "minimum": 0.7,
+          "maximum": 3.5
         },
-        "detectorState": {
-          "arc": [
-            -65.3,
-            104.95
-          ],
-          "wav": 2.1,
-          "freq": 60,
-          "guideStat": 1,
-          "lin": [
-            0.045,
-            0.043
-          ]
-        },
-        "gsasParameters": {
-          "alpha": 0.1,
-          "beta": [
-            0.02,
-            0.05
-          ]
-        },
-        "particleBounds": {
-          "wavelength": {
-            "minimum": 0.7,
-            "maximum": 3.5
-          },
-          "tof": {
-            "minimum": 2742.6,
-            "maximum": 13713
-          }
-        },
-        "defaultGroupingSliceValue": 5,
-        "fwhmMultipliers": {
-          "minimum": 1.3,
-          "maximum": 1.3
+        "tof": {
+          "minimum": 2742.6,
+          "maximum": 13713
         }
       },
-      "seedRun": 57514,
-      "creationDate": "2023-06-05T15:49:59.583421",
-      "name": "test",
-      "version": 0
-    },
-    "pixelGroups":[
-      {
-        "focusGroup": {
-          "name": "Column",
-          "definition": ""
-        },
-        "timeOfFlight": {
-          "minimum": 2742.6,
-          "maximum": 13713,
-          "binWidth": 1,
-          "binningMode": 1
-        },
-        "pixelGroupingParameters": [
-          {
-            "groupID": 0,
-            "isMasked": false,
-            "twoTheta": 2.1108948177427838,
-            "dResolution": {
-              "minimum": 0.40224298673776404,
-              "maximum": 2.0112149336888203
-            },
-            "dRelativeResolution": 0.002771822370612031
-          },
-          {
-            "groupID": 1,
-            "isMasked": false,
-            "twoTheta": 1.82310673131693,
-            "dResolution": {
-              "minimum": 0.44278229953817677,
-              "maximum": 2.213911497690884
-            },
-            "dRelativeResolution": 0.003234525153614593
-          },
-          {
-            "groupID": 2,
-            "isMasked": false,
-            "twoTheta": 1.5352228379083572,
-            "dResolution": {
-              "minimum": 0.5040188478793922,
-              "maximum": 2.5200942393969608
-            },
-            "dRelativeResolution": 0.004014748859873182
-          },
-          {
-            "groupID": 3,
-            "isMasked": false,
-            "twoTheta": 1.440276389170165,
-            "dResolution": {
-              "minimum": 0.530714277849788,
-              "maximum": 2.6535713892489396
-            },
-            "dRelativeResolution": 0.004309856397320412
-          },
-          {
-            "groupID": 4,
-            "isMasked": false,
-            "twoTheta": 1.1543988461042238,
-            "dResolution": {
-              "minimum": 0.6414024711539658,
-              "maximum": 3.207012355769829
-            },
-            "dRelativeResolution": 0.005408489642872038
-          },
-          {
-            "groupID": 5,
-            "isMasked": false,
-            "twoTheta": 0.8690010092470938,
-            "dResolution": {
-              "minimum": 0.831438096217031,
-              "maximum": 4.157190481085156
-            },
-            "dRelativeResolution": 0.007548513084996265
-          }
-        ]
-      },
-      {
-        "focusGroup": {
-          "name": "Bank",
-          "definition": ""
-        },
-        "timeOfFlight": {
-          "minimum": 2742.6,
-          "maximum": 13713,
-          "binWidth": 1,
-          "binningMode": 1
-        },
-        "pixelGroupingParameters": [
-          {
-            "groupID": 0,
-            "isMasked": false,
-            "twoTheta": 1.8230747956560218,
-            "dResolution": {
-              "minimum": 0.4427877783643468,
-              "maximum": 2.2139388918217344
-            },
-            "dRelativeResolution": 0.003379514789208845
-          },
-          {
-            "groupID": 1,
-            "isMasked": false,
-            "twoTheta": 1.1545587481738246,
-            "dResolution": {
-              "minimum": 0.641323731469231,
-              "maximum": 3.2066186573461555
-            },
-            "dRelativeResolution": 0.005910630879382727
-          }
-        ]
-      },
-      {
-        "focusGroup": {
-          "name": "All",
-          "definition": ""
-        },
-        "timeOfFlight": {
-          "minimum": 2742.6,
-          "maximum": 13713,
-          "binWidth": 1,
-          "binningMode": 1
-        },
-        "pixelGroupingParameters": [
-          {
-            "groupID": 0,
-            "isMasked": false,
-            "twoTheta": 1.4888167719149363,
-            "dResolution": {
-              "minimum": 0.5165770976155033,
-              "maximum": 2.5828854880775167
-            },
-            "dRelativeResolution": 0.004814388725622084
-          }
-        ]
+      "defaultGroupingSliceValue": 5,
+      "fwhmMultipliers": {
+        "minimum": 1.3,
+        "maximum": 1.3
       }
-    ],
-    "focusGroupCalibrationMetrics":{
-      "focusGroupName": "Column",
-      "calibrationMetric": [
+    },
+    "seedRun": 57514,
+    "useLiteMode": true,
+    "creationDate": "2023-06-05T15:49:59.583421",
+    "name": "test",
+    "version": 0
+  },
+  "pixelGroups":[
+    {
+      "focusGroup": {
+        "name": "Column",
+        "definition": ""
+      },
+      "timeOfFlight": {
+        "minimum": 2742.6,
+        "maximum": 13713,
+        "binWidth": 1,
+        "binningMode": 1
+      },
+      "pixelGroupingParameters": [
         {
-          "sigmaAverage": 0.002517952998136214,
-          "sigmaStandardDeviation": 0.00000878421857231147,
-          "strainAverage": 0.1515216185900471,
-          "strainStandardDeviation": 0.013151225165758604,
-          "twoThetaAverage": 2.110894794556694
+          "groupID": 0,
+          "isMasked": false,
+          "twoTheta": 2.1108948177427838,
+          "dResolution": {
+            "minimum": 0.40224298673776404,
+            "maximum": 2.0112149336888203
+          },
+          "dRelativeResolution": 0.002771822370612031
         },
         {
-          "sigmaAverage": 0.003176206362503416,
-          "sigmaStandardDeviation": 0.000014979115537326051,
-          "strainAverage": 0.11967297872183888,
-          "strainStandardDeviation": 0.010670589671407833,
-          "twoThetaAverage": 1.8231067294302894
+          "groupID": 1,
+          "isMasked": false,
+          "twoTheta": 1.82310673131693,
+          "dResolution": {
+            "minimum": 0.44278229953817677,
+            "maximum": 2.213911497690884
+          },
+          "dRelativeResolution": 0.003234525153614593
         },
         {
-          "sigmaAverage": 0.0020173258481625943,
-          "sigmaStandardDeviation": 0.0011833789198171258,
-          "strainAverage": 2.9472523966464146,
-          "strainStandardDeviation": 1.7234726438089345,
-          "twoThetaAverage": 1.5352228117682118
+          "groupID": 2,
+          "isMasked": false,
+          "twoTheta": 1.5352228379083572,
+          "dResolution": {
+            "minimum": 0.5040188478793922,
+            "maximum": 2.5200942393969608
+          },
+          "dRelativeResolution": 0.004014748859873182
         },
         {
-          "sigmaAverage": 0.0019681238298694874,
-          "sigmaStandardDeviation": 0.0012719855843628899,
-          "strainAverage": 2.97560355438957,
-          "strainStandardDeviation": 1.7073076840182733,
-          "twoThetaAverage": 1.440276416886144
+          "groupID": 3,
+          "isMasked": false,
+          "twoTheta": 1.440276389170165,
+          "dResolution": {
+            "minimum": 0.530714277849788,
+            "maximum": 2.6535713892489396
+          },
+          "dRelativeResolution": 0.004309856397320412
         },
         {
-          "sigmaAverage": 0.002792254157654066,
-          "sigmaStandardDeviation": 0.0018788822023715769,
-          "strainAverage": 2.6968257593469005,
-          "strainStandardDeviation": 1.5521868842356747,
-          "twoThetaAverage": 1.1543988480234637
+          "groupID": 4,
+          "isMasked": false,
+          "twoTheta": 1.1543988461042238,
+          "dResolution": {
+            "minimum": 0.6414024711539658,
+            "maximum": 3.207012355769829
+          },
+          "dRelativeResolution": 0.005408489642872038
         },
         {
-          "sigmaAverage": 0.0035439650966407016,
-          "sigmaStandardDeviation": 0.0026213074118901255,
-          "strainAverage": 2.9942330576453013,
-          "strainStandardDeviation": 1.7458314136551056,
-          "twoThetaAverage": 0.8690010316506124
+          "groupID": 5,
+          "isMasked": false,
+          "twoTheta": 0.8690010092470938,
+          "dResolution": {
+            "minimum": 0.831438096217031,
+            "maximum": 4.157190481085156
+          },
+          "dRelativeResolution": 0.007548513084996265
         }
       ]
     },
-    "workspaces": {
-      "diffCalOutput": ["_tof_column_057514_v0002"],
-      "diffCalTable": ["_diffract_consts_057514_v0002"],
-      "diffCalMask": ["_diffract_consts_mask_057514_v0002"]
+    {
+      "focusGroup": {
+        "name": "Bank",
+        "definition": ""
+      },
+      "timeOfFlight": {
+        "minimum": 2742.6,
+        "maximum": 13713,
+        "binWidth": 1,
+        "binningMode": 1
+      },
+      "pixelGroupingParameters": [
+        {
+          "groupID": 0,
+          "isMasked": false,
+          "twoTheta": 1.8230747956560218,
+          "dResolution": {
+            "minimum": 0.4427877783643468,
+            "maximum": 2.2139388918217344
+          },
+          "dRelativeResolution": 0.003379514789208845
+        },
+        {
+          "groupID": 1,
+          "isMasked": false,
+          "twoTheta": 1.1545587481738246,
+          "dResolution": {
+            "minimum": 0.641323731469231,
+            "maximum": 3.2066186573461555
+          },
+          "dRelativeResolution": 0.005910630879382727
+        }
+      ]
     },
-    "version": 2
-  }
+    {
+      "focusGroup": {
+        "name": "All",
+        "definition": ""
+      },
+      "timeOfFlight": {
+        "minimum": 2742.6,
+        "maximum": 13713,
+        "binWidth": 1,
+        "binningMode": 1
+      },
+      "pixelGroupingParameters": [
+        {
+          "groupID": 0,
+          "isMasked": false,
+          "twoTheta": 1.4888167719149363,
+          "dResolution": {
+            "minimum": 0.5165770976155033,
+            "maximum": 2.5828854880775167
+          },
+          "dRelativeResolution": 0.004814388725622084
+        }
+      ]
+    }
+  ],
+  "focusGroupCalibrationMetrics":{
+    "focusGroupName": "Column",
+    "calibrationMetric": [
+      {
+        "sigmaAverage": 0.002517952998136214,
+        "sigmaStandardDeviation": 0.00000878421857231147,
+        "strainAverage": 0.1515216185900471,
+        "strainStandardDeviation": 0.013151225165758604,
+        "twoThetaAverage": 2.110894794556694
+      },
+      {
+        "sigmaAverage": 0.003176206362503416,
+        "sigmaStandardDeviation": 0.000014979115537326051,
+        "strainAverage": 0.11967297872183888,
+        "strainStandardDeviation": 0.010670589671407833,
+        "twoThetaAverage": 1.8231067294302894
+      },
+      {
+        "sigmaAverage": 0.0020173258481625943,
+        "sigmaStandardDeviation": 0.0011833789198171258,
+        "strainAverage": 2.9472523966464146,
+        "strainStandardDeviation": 1.7234726438089345,
+        "twoThetaAverage": 1.5352228117682118
+      },
+      {
+        "sigmaAverage": 0.0019681238298694874,
+        "sigmaStandardDeviation": 0.0012719855843628899,
+        "strainAverage": 2.97560355438957,
+        "strainStandardDeviation": 1.7073076840182733,
+        "twoThetaAverage": 1.440276416886144
+      },
+      {
+        "sigmaAverage": 0.002792254157654066,
+        "sigmaStandardDeviation": 0.0018788822023715769,
+        "strainAverage": 2.6968257593469005,
+        "strainStandardDeviation": 1.5521868842356747,
+        "twoThetaAverage": 1.1543988480234637
+      },
+      {
+        "sigmaAverage": 0.0035439650966407016,
+        "sigmaStandardDeviation": 0.0026213074118901255,
+        "strainAverage": 2.9942330576453013,
+        "strainStandardDeviation": 1.7458314136551056,
+        "twoThetaAverage": 0.8690010316506124
+      }
+    ]
+  },
+  "workspaces": {
+    "diffCalOutput": ["_tof_column_057514_v0002"],
+    "diffCalTable": ["_diffract_consts_057514_v0002"],
+    "diffCalMask": ["_diffract_consts_mask_057514_v0002"]
+  },
+  "version": 2
+}

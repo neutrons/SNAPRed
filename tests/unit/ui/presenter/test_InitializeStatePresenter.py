@@ -10,6 +10,9 @@ app = QApplication(sys.argv)
 
 
 class TestableQWidget(QWidget):
+    # not a 'pytest' test case:
+    __test__ = False
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setEnabled = MagicMock()

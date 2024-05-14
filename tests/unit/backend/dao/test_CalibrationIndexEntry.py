@@ -3,6 +3,7 @@ from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationInd
 
 testData = {
     "runNumber": "1234",
+    "useLiteMode": False,
     "version": "1.0",
     "appliesTo": "1234",
     "comments": "test",

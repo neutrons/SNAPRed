@@ -1,4 +1,4 @@
-NormalizationCalibrationRequest Class Documentation
+NormalizationRequest Class Documentation
 ===================================================
 
 NormalizationExportRequest.py introduces the NormalizationExportRequest class, designed for the packaging and saving of detailed information

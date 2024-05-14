@@ -29,7 +29,7 @@ Attributes:
 - worker_pool (WorkerPool): Utilized to manage and execute background tasks, this attribute significantly enhances UI responsiveness by offloading
   intensive operations to a separate thread pool. It allows the main UI thread to remain responsive and fluid during backend operations.
 
-- stateInitialized (pyqtSignal): A PyQt signal emitted upon the successful completion of a state initialization process. This signal is connected to
+- stateInitialized ``Signal``): A Qt signal emitted upon the successful completion of a state initialization process. This signal is connected to
   UI components that need to react or update based on the initialization outcome, facilitating real-time feedback and interactions within the
   application.
 

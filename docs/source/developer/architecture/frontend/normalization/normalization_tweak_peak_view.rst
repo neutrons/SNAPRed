@@ -1,7 +1,7 @@
 NormalizationTweakPeakView Class Documentation
 ==============================================
 
-NormalizationTweakPeakView is a PyQt5-based GUI component crafted for the precise adjustment of peak normalization parameters within SNAPRed. By
+NormalizationTweakPeakView is a qt-based GUI component crafted for the precise adjustment of peak normalization parameters within SNAPRed. By
 inheriting from BackendRequestView and featuring an array of interactive components such as input fields, dropdowns, sliders, and a real-time
 matplotlib plot area, it offers a comprehensive environment for dynamic interaction and visualization. This GUI is designed to allow users to
 instantly observe the effects of their parameter adjustments on normalization settings, thereby enhancing the analytical capabilities and user
@@ -34,7 +34,7 @@ UI Components:
 Interactivity and Signal Handling:
 ----------------------------------
 
-- PyQt Signals: Employs PyQt signals to manage UI actions, linking user interactions with corresponding methods for a seamless and responsive user
+- Qt ``Signals``: Employs Qt signals to manage UI actions, linking user interactions with corresponding methods for a seamless and responsive user
   experience. This mechanism facilitates the real-time update of UI components in response to user inputs or changes in external data.
 
 

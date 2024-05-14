@@ -26,7 +26,7 @@ with mock.patch.dict(
     from snapred.backend.dao.normalization import NormalizationIndexEntry
     from snapred.backend.dao.request import (
         FocusSpectraRequest,
-        NormalizationCalibrationRequest,
+        NormalizationRequest,
         SmoothDataExcludingPeaksRequest,
         VanadiumCorrectionRequest,
     )
@@ -60,7 +60,7 @@ with mock.patch.dict(
         normalizationService.dataExportService.exportNormalizationIndexEntry = MagicMock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = "expected"
         normalizationService.saveNormalizationToIndex(
-            NormalizationIndexEntry(runNumber="1", backgroundRunNumber="2"), True
+            NormalizationIndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2")
         )
         assert normalizationService.dataExportService.exportNormalizationIndexEntry.called
         savedEntry = normalizationService.dataExportService.exportNormalizationIndexEntry.call_args.args[0]
@@ -74,7 +74,7 @@ from snapred.backend.service.NormalizationService import NormalizationService  #
 class TestNormalizationService(unittest.TestCase):
     def setUp(self):
         self.instance = NormalizationService()
-        self.request = NormalizationCalibrationRequest(
+        self.request = NormalizationRequest(
             runNumber="12345",
             backgroundRunNumber="67890",
             useLiteMode=True,
@@ -280,18 +280,3 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.constructStateId = MagicMock()
         self.instance.dataFactoryService.constructStateId.side_effect = ["state", "different_state"]
         assert not self.instance._sameStates("12345", "different_state")
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

@@ -1,7 +1,6 @@
 import unittest
 from collections.abc import Sequence
 
-import pytest
 from mantid.api import MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace
 
@@ -291,18 +290,3 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
                 assert maskWS.isMasked(int(det))
         deleteWorkspaceNoThrow(inputWSName)
         deleteWorkspaceNoThrow(maskWSName)
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)
