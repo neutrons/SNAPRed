@@ -1495,8 +1495,8 @@ def test_initializeState():
     assert localDataService._writeDefaultDiffCalTable.called_once_with(runNumber, useLiteMode)
 
 
-@mock.patch.object(LocalDataService, "_prepareStateRoot")
-def test_initializeState_calls_prepareStateRoot(mockPrepareStateRoot):
+# @mock.patch.object(LocalDataService, "_prepareStateRoot")
+def test_initializeState_calls_prepareStateRoot():
     # Test that 'initializeState' initializes the <state root> directory.
 
     runNumber = "123"
@@ -1533,15 +1533,17 @@ def test_initializeState_calls_prepareStateRoot(mockPrepareStateRoot):
     localDataService.readInstrumentConfig = mock.Mock()
     localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
     localDataService.writeCalibrationState = mock.Mock()
+    localDataService._readDefaultGroupingMap = mock.Mock(return_value=mock.Mock(isDirty=False))
 
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         stateId = "ab8704b0bc2a2342"
-        stateRootPath = Path(tmpDir) / stateId
+        stateRootPath = Path(f"{tmpDir}/") / stateId
+        localDataService._constructCalibrationStatePath = mock.Mock(return_value=str(stateRootPath))
         localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(stateRootPath))
 
         assert not stateRootPath.exists()
         localDataService.initializeState(runNumber, useLiteMode, "test")
-        mockPrepareStateRoot.assert_called_once()
+        assert stateRootPath.exists()
 
 
 # NOTE: This test fails on analysis because the instrument home actually does exist!

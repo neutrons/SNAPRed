@@ -861,19 +861,12 @@ class LocalDataService:
         calibrationDataPath = self._constructCalibrationDataPath(runNumber, useLiteMode, version)
 
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
-        calibrationIndexEntry = CalibrationIndexEntry(
-            runNumber=runNumber,
-            useLiteMode=useLiteMode,
-            version=version,
-            comments="Inferred from the instrument geometry",
-            author="Generated automatically by SNAPRed",
-        )
-        self.writeCalibrationIndexEntry(calibrationIndexEntry)
 
     @validate_arguments
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         stateId, _ = self._generateStateId(runId)
+        version = self.VERSION_START
 
         # Read the detector state from the pv data file
         detectorState = self.readDetectorState(runId)
@@ -927,9 +920,10 @@ class LocalDataService:
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
             self._prepareStateRoot(stateId)
 
-        self.writeCalibrationState(calibration, self.VERSION_START)
+        # write the calibration state
+        self.writeCalibrationState(calibration, version)
+        # write the default diffcal table
         self._writeDefaultDiffCalTable(runId, useLiteMode)
-
         return calibration
 
     def _prepareStateRoot(self, stateId: str):
