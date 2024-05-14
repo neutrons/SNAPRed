@@ -57,6 +57,12 @@ class GroceryListBuilder:
         self._tokens["version"] = version
         return self
 
+    def normalization(self, runId: str, version: Optional[int] = None):
+        self._tokens["workspaceType"] = "normalization"
+        self._tokens["runNumber"] = runId
+        self._tokens["version"] = version
+        return self
+
     def native(self):
         self._tokens["useLiteMode"] = False
         return self

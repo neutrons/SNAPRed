@@ -259,6 +259,39 @@ class TestGroceryService(unittest.TestCase):
         res2 = self.instance._createGroupingFilename(runNumber, "Lite", True)
         assert res2 == res
 
+    def test_diffcal_output_filename(self):
+        # Test name generation for diffraction-calibration table filename
+        self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value="nowhere/")
+        res = self.instance._createDiffcalOutputWorkspaceFilename(
+            self.runNumber,
+            self.useLiteMode,
+            self.version,
+            "TOF",
+            "some",
+        )
+        assert self.runNumber in res
+        assert self.version in res
+        assert "tof" in res
+        assert "some" in res
+        assert ".tar" in res
+
+    def test_diffcal_table_filename(self):
+        # Test name generation for diffraction-calibration table filename
+        self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value="nowhere/")
+        res = self.instance._createDiffcalTableFilename(self.runNumber, self.useLiteMode, self.version)
+        assert self.difc_name in res
+        assert self.runNumber in res
+        assert self.version in res
+        assert ".h5" in res
+
+    def test_normalization_workspace_filename(self):
+        # Test name generation for diffraction-calibration table filename
+        self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value="nowhere/")
+        res = self.instance._createNormalizationWorkspaceFilename(self.runNumber, self.useLiteMode, self.version)
+        assert self.runNumber in res
+        assert self.version in res
+        assert ".nxs" in res
+
     ## TESTS OF WORKSPACE NAME METHODS
 
     def test_neutron_workspacename_plain(self):
@@ -339,15 +372,11 @@ class TestGroceryService(unittest.TestCase):
         assert self.version in res
         assert "mask" in res
 
-    @mock.patch.object(LocalDataService, "_constructCalibrationDataPath")
-    def test_diffcal_table_filename(self, mockConstructCalibrationDataPath):
-        # Test name generation for diffraction-calibration table filename
-        mockConstructCalibrationDataPath.return_value = "nowhere/"
-        res = self.instance._createDiffcalTableFilename(self.runNumber, self.useLiteMode, self.version)
-        assert self.difc_name in res
+    def test_normalization_workspacename(self):
+        # Test name generation for normalization workspaces
+        res = self.instance._createNormalizationWorkspaceName(self.runNumber, self.useLiteMode, self.version)
         assert self.runNumber in res
         assert self.version in res
-        assert ".h5" in res
 
     ## TESTS OF ACCESS METHODS
 
@@ -1223,6 +1252,44 @@ class TestGroceryService(unittest.TestCase):
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
             assert mtd.doesExist(diffCalTableName)
+
+    def test_fetch_grocery_list_normalization(self):
+        # Test of workspace type "normalization" as `Input` argument in the `GroceryList`
+        path = Resource.getPath("outputs")
+        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+        with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
+            self.instance.dataService._constructCalibrationDataPath = mock.Mock(return_value=tmpPath)
+            groceryList = GroceryListItem.builder().native().normalization(self.runNumber1).buildList()
+
+            # normalization filename is constructed
+            normalizationWorkspaceName = wng.rawVanadium().runNumber(self.runNumber1).build()
+            normalizationFilename = normalizationWorkspaceName + ".nxs"
+            shutil.copy2(self.sampleWSFilePath, Path(tmpPath) / normalizationFilename)
+            assert (Path(tmpPath) / normalizationFilename).exists()
+
+            assert not mtd.doesExist(normalizationWorkspaceName)
+            items = self.instance.fetchGroceryList(groceryList)
+            assert items[0] == normalizationWorkspaceName
+            assert mtd.doesExist(normalizationWorkspaceName)
+
+    def test_fetch_grocery_list_normalization_cached(self):
+        # Test of workspace type "normalization" as `Input` argument in the `GroceryList`:
+        #   workspace already in ADS
+        self.instance.dataService = mock.Mock(return_value="/does/not/exist")
+        groceryList = GroceryListItem.builder().native().normalization(self.runNumber1).buildList()
+        normalizationWorkspaceName = wng.rawVanadium().runNumber(self.runNumber1).build()
+        CloneWorkspace(
+            InputWorkspace=self.sampleWS,
+            OutputWorkspace=normalizationWorkspaceName,
+        )
+        assert mtd.doesExist(normalizationWorkspaceName)
+        testTitle = "I'm a little teapot"
+        mtd[normalizationWorkspaceName].setTitle(testTitle)
+
+        items = self.instance.fetchGroceryList(groceryList)
+        assert items[0] == normalizationWorkspaceName
+        assert mtd.doesExist(normalizationWorkspaceName)
+        assert mtd[normalizationWorkspaceName].getTitle() == testTitle
 
     def test_fetch_grocery_list_unknown_type(self):
         groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber).buildList()

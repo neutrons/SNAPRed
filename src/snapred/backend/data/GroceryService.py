@@ -208,10 +208,11 @@ class GroceryService:
             / (self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version) + ".h5")
         )
 
-    def _createNormalizationWorkspaceFilename(self, runNumber, version) -> str:
+    @validate_arguments
+    def _createNormalizationWorkspaceFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
-            Path(self._getCalibrationDataPath(runNumber, version))
-            / (self._createNormalizationWorkspaceName(runNumber, version) + ".nxs")
+            Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
+            / (self._createNormalizationWorkspaceName(runNumber, useLiteMode, version) + ".nxs")
         )
 
     ## WORKSPACE NAME METHODS
@@ -269,7 +270,12 @@ class GroceryService:
     ) -> WorkspaceName:
         return wng.diffCalMask().runNumber(runNumber).version(version).build()
 
-    def _createNormalizationWorkspaceName(self, runNumber: str, version: str = "") -> WorkspaceName:
+    def _createNormalizationWorkspaceName(
+        self,
+        runNumber: str,
+        useLiteMode: bool,  # noqa: ARG002
+        version: str = Optional[int],
+    ) -> WorkspaceName:
         return wng.rawVanadium().runNumber(runNumber).version(version).build()
 
     ## ACCESSING WORKSPACES
@@ -797,8 +803,8 @@ class GroceryService:
         :rtype: Dict[str, Any]
         """
 
-        runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
-        workspaceName = self._createNormalizationWorkspaceName(runNumber, version)
+        runNumber, useLiteMode, version = item.runNumber, item.useLiteMode, item.version
+        workspaceName = self._createNormalizationWorkspaceName(runNumber, useLiteMode, version)
 
         if self.workspaceDoesExist(workspaceName):
             data = {
@@ -808,7 +814,7 @@ class GroceryService:
             }
         else:
             # table + mask are in the same hdf5 file:
-            filename = self._createNormalizationWorkspaceFilename(runNumber, version)
+            filename = self._createNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
 
             # Unless overridden: use a cached workspace as the instrument donor.
             instrumentPropertySource, instrumentSource = (
@@ -819,7 +825,7 @@ class GroceryService:
             data = self.grocer.executeRecipe(
                 filename=filename,
                 workspace=workspaceName,
-                loader="LoadCalibrationWorkspaces",
+                loader="LoadNexusProcessed",
                 instrumentPropertySource=instrumentPropertySource,
                 instrumentSource=instrumentSource,
             )

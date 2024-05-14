@@ -110,9 +110,9 @@ mantid:
             metric: "_calib_metrics,{metricName},{runNumber},{version}"
             timedMetric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
           normCal:
-            rawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
-            focusedRawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
-            smoothedFocusedRawVanadium: "{unit},{group},fitted_van_cor,{runNumber}"
+            rawVanadium: "{unit},{group},{version},raw_van_corr,{runNumber}"
+            focusedRawVanadium: "{unit},{group},{version},raw_van_corr,{runNumber}"
+            smoothedFocusedRawVanadium: "{unit},{group},{version},fitted_van_cor,{runNumber}"
         units:
           dSpacing: dsp
           timeOfFlight: tof
