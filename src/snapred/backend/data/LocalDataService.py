@@ -57,7 +57,7 @@ logger = snapredLogger.getLogger(__name__)
 
 
 def version_pattern(x: int) -> str:
-    return wnvf.formatVersion(x, wnvf.vPrefix.FILE)
+    return f"v_{wnvf.formatVersion(x, use_v_prefix=False)}"
 
 
 def _createFileNotFoundError(msg, filename):
