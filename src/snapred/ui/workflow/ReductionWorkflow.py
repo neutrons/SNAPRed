@@ -18,6 +18,7 @@ class ReductionWorkflow(WorkflowImplementer):
         self._reductionView = ReductionView(parent=parent)
 
         self._reductionView.runNumberField.editingFinished.connect(self._populatePixelMaskDropdown)
+        self._reductionView.multiRunDialogButton.clicked.connect(self._populatePixelMaskDropdown)
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=self.resetWithPermission, parent=parent)
@@ -32,7 +33,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
     @ExceptionToErrLog
     def _populatePixelMaskDropdown(self):
-        runNumbers = self._reductionView.runNumberField.text().split(",")
+        runNumbers = self._reductionView.getAllRunNumbers()
         useLiteMode = self._reductionView.litemodeToggle.field.getState()  # noqa: F841
 
         self._reductionView.litemodeToggle.setEnabled(False)
