@@ -43,6 +43,7 @@ instrument:
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
+  startingVersionNumber: 0
 
 nexus:
   lite:
@@ -110,9 +111,9 @@ mantid:
             metric: "_calib_metrics,{metricName},{runNumber},{version}"
             timedMetric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
           normCal:
-            rawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
-            focusedRawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
-            smoothedFocusedRawVanadium: "{unit},{group},fitted_van_cor,{runNumber}"
+            rawVanadium: "{unit},{group},raw_van_corr,{runNumber},{version}"
+            focusedRawVanadium: "{unit},{group},raw_van_corr,{runNumber},{version}"
+            smoothedFocusedRawVanadium: "{unit},{group},fitted_van_cor,{runNumber},{version}"
         units:
           dSpacing: dsp
           timeOfFlight: tof

@@ -9,6 +9,7 @@ import socket
 import tempfile
 import unittest.mock as mock
 from pathlib import Path
+from random import randint, shuffle
 from typing import List
 
 import pytest
@@ -45,6 +46,7 @@ from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 LocalDataServiceModule = importlib.import_module(LocalDataService.__module__)
 ThisService = "snapred.backend.data.LocalDataService."
 
+VERSION_START = Config["instrument.startingVersionNumber"]
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
 
@@ -685,8 +687,7 @@ def test_writeCalibrationIndexEntry():
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._readReductionParameters = mock.Mock()
-    localDataService._constructNormalizationStatePath = mock.Mock()
-    localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs/")
+    localDataService._constructNormalizationStatePath = mock.Mock(return_value=Resource.getPath("outputs/"))
     expectedFilePath = Resource.getPath("outputs/") + "NormalizationIndex.json"
     localDataService.writeNormalizationIndexEntry(
         NormalizationIndexEntry(
@@ -735,8 +736,7 @@ def test_readNormalizationIndexExisting():
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._readReductionParameters = mock.Mock()
-    localDataService._constructNormalizationStatePath = mock.Mock()
-    localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs/")
+    localDataService._constructNormalizationStatePath = mock.Mock(return_value=Resource.getPath("outputs/"))
     expectedFilePath = Resource.getPath("outputs/") + "NormalizationIndex.json"
     localDataService.writeNormalizationIndexEntry(
         NormalizationIndexEntry(
@@ -759,6 +759,7 @@ def readReductionIngredientsFromFile():
         return ReductionIngredients.parse_raw(f.read())
 
 
+##
 def test_readWriteCalibrationRecord_version_numbers():
     testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
@@ -789,6 +790,7 @@ def test_readWriteCalibrationRecord_version_numbers():
     assert actualRecord == testCalibrationRecord_v0002
 
 
+##
 def test_readWriteCalibrationRecord_specified_version():
     testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
@@ -956,74 +958,87 @@ def test_readWriteNormalizationRecord_version_numbers():
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
-    useLiteMode = False
-    testNormalizationRecord.version = None
+    useLiteMode = True
     testNormalizationRecord.useLiteMode = useLiteMode
+    testNormalizationRecord.version = VERSION_START
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._constructNormalizationStatePath = mock.Mock()
-        localDataService._constructNormalizationStatePath.return_value = f"{tempdir}/"
+        localDataService._constructNormalizationStatePath = mock.Mock(return_value=f"{tempdir}/")
         # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
         # and <incoming record>.normalization.version.
 
-        # write: version == 1
+        # write: version == VERSION_START + 1
+        testVersion = VERSION_START + 1
+        testNormalizationRecord.version = testVersion
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode)
-        assert actualRecord.version == 1
-        assert actualRecord.calibration.version == 1
+        assert actualRecord.version == testVersion
+        assert actualRecord.calibration.version == testVersion
         assert actualRecord.useLiteMode == useLiteMode
-        # write: version == 2
-        testNormalizationRecord.version = 2
+        # write: version == VERSION_START + 2
+        testVersion = VERSION_START + 2
         localDataService.writeNormalizationRecord(testNormalizationRecord)
         actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode)
-        assert actualRecord.version == 2
-        assert actualRecord.calibration.version == 2
+        assert actualRecord.version == testVersion
+        assert actualRecord.calibration.version == testVersion
         assert actualRecord.useLiteMode == useLiteMode
     assert actualRecord.runNumber == "57514"
     assert actualRecord == testNormalizationRecord
 
 
 def test_readWriteNormalizationRecord_specified_version():
+    runNumber = "57514"
+    useLiteMode = False
+
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
-    useLiteMode = False
-    testNormalizationRecord.version = None
+    testNormalizationRecord.version = VERSION_START
     testNormalizationRecord.useLiteMode = useLiteMode
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-        localDataService._constructNormalizationStatePath = mock.Mock()
-        localDataService._constructNormalizationStatePath.return_value = f"{tempdir}/"
+        localDataService._constructNormalizationStatePath = mock.Mock(return_value=f"{tempdir}/")
         # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
         # and <incoming record>.normalization.version.
 
-        # write: version == 1
+        # write: version == VERSION_START
+        firstVersion = VERSION_START + 1
         localDataService.writeNormalizationRecord(testNormalizationRecord)
-        actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode)
-        assert actualRecord.version == 1
-        assert actualRecord.calibration.version == 1
-        # write: version == 2
-        testNormalizationRecord.version = None
-        localDataService.writeNormalizationRecord(testNormalizationRecord)
-        actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode, "1")
-        assert actualRecord.version == 1
+        actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode)
+        assert actualRecord.version == firstVersion
+        assert actualRecord.calibration.version == firstVersion
         assert actualRecord.useLiteMode == useLiteMode
-        actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode, "2")
-        assert actualRecord.version == 2
+        assert os.path.exists(f"{tempdir}/{wnvf.fileVersion(firstVersion)}/NormalizationRecord.json")
+        # write: version == testVersion
+        testVersion = VERSION_START + 3
+        testNormalizationRecord.version = testVersion
+        localDataService.writeNormalizationRecord(testNormalizationRecord)
+        actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode)
+        assert actualRecord.version == testVersion
+        assert actualRecord.useLiteMode == useLiteMode
+        actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode, testVersion)
+        assert actualRecord.version == testVersion
+        assert actualRecord.useLiteMode == useLiteMode
+        assert os.path.exists(f"{tempdir}/{wnvf.fileVersion(firstVersion)}/NormalizationRecord.json")
+        assert os.path.exists(f"{tempdir}/{wnvf.fileVersion(testVersion)}/NormalizationRecord.json")
+        # test can still read earlier version
+        actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode, firstVersion)
+        assert actualRecord.version == firstVersion
         assert actualRecord.useLiteMode == useLiteMode
 
 
 def test_readWriteNormalizationRecord():
+    useLiteMode = True
     testNormalizationRecord = NormalizationRecord.parse_raw(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
-    useLiteMode = True
+    testNormalizationRecord.useLiteMode = useLiteMode
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
@@ -1036,8 +1051,7 @@ def test_readWriteNormalizationRecord():
     assert actualRecord == testNormalizationRecord
 
 
-@mock.patch.object(LocalDataService, "_constructNormalizationDataPath")
-def test_writeNormalizationWorkspaces(mockConstructNormalizationDataPath):
+def test_writeNormalizationWorkspaces():
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
     testNormalizationRecord = NormalizationRecord.parse_raw(
@@ -1045,7 +1059,7 @@ def test_writeNormalizationWorkspaces(mockConstructNormalizationDataPath):
     )
     with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
         basePath = Path(basePath)
-        mockConstructNormalizationDataPath.return_value = str(basePath)
+        localDataService._constructNormalizationDataPath = mock.Mock(return_value=str(basePath))
 
         # Workspace names need to match the names that are used in the test record.
         runNumber = testNormalizationRecord.runNumber  # noqa: F841
@@ -1072,51 +1086,89 @@ def test_writeNormalizationWorkspaces(mockConstructNormalizationDataPath):
 
 
 def test_getCalibrationRecordPath():
+    testVersion = randint(1, 20)
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._constructCalibrationStatePath = mock.Mock()
     localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
-    actualPath = localDataService.getCalibrationRecordPath("57514", True, 1)
-    assert actualPath == Resource.getPath("outputs") + "/v_0001/CalibrationRecord.json"
+    actualPath = localDataService.getCalibrationRecordPath("57514", True, testVersion)
+    assert actualPath == Resource.getPath("outputs") + f"/{wnvf.fileVersion(testVersion)}/CalibrationRecord.json"
 
 
 def test_getNormalizationRecordPath():
+    testVersion = randint(1, 20)
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._constructNormalizationStatePath = mock.Mock()
     localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs/")
-    actualPath = localDataService.getNormalizationRecordPath("57514", True, 1)
-    assert actualPath == Resource.getPath("outputs") + "/v_0001/NormalizationRecord.json"
+    actualPath = localDataService.getNormalizationRecordPath("57514", True, testVersion)
+    assert actualPath == Resource.getPath("outputs") + f"/{wnvf.fileVersion(testVersion)}/NormalizationRecord.json"
 
 
 def test_extractFileVersion():
+    testVersion = randint(1, 20)
+    testFile = f"Powder/1234/{wnvf.fileVersion(testVersion)}/CalibrationRecord.json"
     localDataService = LocalDataService()
-    actualVersion = localDataService._extractFileVersion("Powder/1234/v_0004/CalibrationRecord.json")
-    assert actualVersion == 4
+    actualVersion = localDataService._extractFileVersion(testFile)
+    assert actualVersion == testVersion
+
+
+def test_getLatestThing():
+    localDataService = LocalDataService()
+
+    # with nothing, results defaults
+    ans = localDataService._getLatestThing([])
+    assert ans == VERSION_START
+    ans1, ans2 = localDataService._getLatestThing([], otherThings=[])
+    assert ans1 == VERSION_START
+    assert ans2 is None
+
+    # with integers
+    result = randint(10, 20)
+    things = list(range(result + 1))
+    shuffle(things)
+    ans = localDataService._getLatestThing(things)
+    assert ans == result
+
+    # with floats
+    result = 3.4
+    things = [1.2, result, 1.7]
+    ans = localDataService._getLatestThing(things)
+    assert ans == result
+
+    # with other things
+    result = (randint(4, 10), "bundt")
+    things = [1, 2, 3]
+    cakes = ["devil", "angel", "lemon"]
+    place = 1
+    things.insert(place, result[0])
+    cakes.insert(place, result[1])
+    ans = localDataService._getLatestThing(things, otherThings=cakes)
+    assert ans == result
 
 
 def test__getFileOfVersion():
+    expected = randint(10, 20)
+    file_pattern = lambda x: f"/{x}/CalibrationRecord.json"  # noqa E731
+    someFiles = [file_pattern(wnvf.fileVersion(i)) for i in range(expected + 1)]
+    shuffle(someFiles)
     localDataService = LocalDataService()
-    localDataService._findMatchingFileList = mock.Mock()
-    localDataService._findMatchingFileList.return_value = [
-        "/v_0001/CalibrationRecord.json",
-        "/v_0003/CalibrationRecord.json",
-    ]
-    actualFile = localDataService._getFileOfVersion("/v_*/CalibrationRecord", 3)
-    assert actualFile == "/v_0003/CalibrationRecord.json"
+    localDataService._findMatchingFileList = mock.Mock(return_value=someFiles)
+    actualFile = localDataService._getFileOfVersion(file_pattern("*"), expected)
+    assert actualFile == file_pattern(wnvf.fileVersion(expected))
 
 
 def test__getLatestFile():
+    expected = randint(10, 20)
+    file_pattern = lambda x: f"Powder/1234/{x}/CalibrationRecord.json"  # noqa E731
+    someFiles = [file_pattern(wnvf.fileVersion(i)) for i in range(expected + 1)]
+    shuffle(someFiles)
     localDataService = LocalDataService()
-    localDataService._findMatchingFileList = mock.Mock()
-    localDataService._findMatchingFileList.return_value = [
-        "Powder/1234/v_0001/CalibrationRecord.json",
-        "Powder/1234/v_0002/CalibrationRecord.json",
-    ]
-    actualFile = localDataService._getLatestFile("Powder/1234/v_*/CalibrationRecord.json")
-    assert actualFile == "Powder/1234/v_0002/CalibrationRecord.json"
+    localDataService._findMatchingFileList = mock.Mock(return_value=someFiles)
+    actualFile = localDataService._getLatestFile(file_pattern("*"))
+    assert actualFile == file_pattern(wnvf.fileVersion(expected))
 
 
 def test__isApplicableEntry_equals():
@@ -1202,34 +1254,31 @@ def test__getCurrentNormalizationRecord():
     localDataService = LocalDataService()
     localDataService._getVersionFromNormalizationIndex = mock.Mock()
     localDataService._getVersionFromNormalizationIndex.return_value = "1"
-    localDataService.readNormalizationRecord = mock.Mock()
     mockRecord = mock.Mock()
-    localDataService.readNormalizationRecord.return_value = mockRecord
+    localDataService.readNormalizationRecord = mock.Mock(return_value=mockRecord)
     actualRecord = localDataService._getCurrentNormalizationRecord("123", True)
     assert actualRecord == mockRecord
 
 
 def test__constructCalibrationParametersFilePath():
+    testVersion = randint(10, 20)
     localDataService = LocalDataService()
-    localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-    localDataService._constructCalibrationStatePath = mock.Mock()
-    localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
-    actualPath = localDataService._constructCalibrationParametersFilePath("57514", 1, True)
-    assert actualPath == Resource.getPath("outputs") + "/v_0001/CalibrationParameters.json"
+    localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
+    localDataService._constructCalibrationStatePath = mock.Mock(return_value=Resource.getPath("outputs/"))
+    actualPath = localDataService._constructCalibrationParametersFilePath("57514", True, testVersion)
+    assert actualPath == Resource.getPath("outputs") + f"/{wnvf.fileVersion(testVersion)}/CalibrationParameters.json"
 
 
 def test_readCalibrationState():
     localDataService = LocalDataService()
-    localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+    localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
     localDataService._constructCalibrationParametersFilePath = mock.Mock()
     localDataService._constructCalibrationParametersFilePath.return_value = Resource.getPath(
         "ab8704b0bc2a2342/v_0001/CalibrationParameters.json"
     )
     localDataService._getLatestFile = mock.Mock()
     localDataService._getLatestFile.return_value = Resource.getPath("inputs/calibration/CalibrationParameters.json")
-    testCalibrationState = Calibration.parse_raw(Resource.read("inputs/calibration/CalibrationParameters.json"))
+    testCalibrationState = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
     actualState = localDataService.readCalibrationState("57514", True)
 
     assert actualState == testCalibrationState
@@ -1273,7 +1322,7 @@ def test_writeCalibrationState():
         localDataService._getCurrentCalibrationRecord = mock.Mock(return_value=Calibration.construct({"name": "test"}))
         calibration = Calibration.parse_raw(Resource.read("/inputs/calibration/CalibrationParameters.json"))
         localDataService.writeCalibrationState(calibration)
-        assert os.path.exists(tempdir + "/v_0001/CalibrationParameters.json")
+        assert os.path.exists(tempdir + f"/{wnvf.fileVersion(calibration.version)}/CalibrationParameters.json")
 
 
 def test_writeCalibrationState_overwrite_warning(caplog):
@@ -1305,7 +1354,7 @@ def test_writeCalibrationState_overwrite_warning(caplog):
 @mock.patch("snapred.backend.data.GroceryService.GroceryService._fetchInstrumentDonor")
 def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorkspaceName):
     runNumber = "default"
-    version = 1
+    version = VERSION_START
     useLiteMode = True
     # mock the grocery service to return the fake instrument to use for geometry
     idfWS = mtd.unique_name(prefix="_idf_")
@@ -1326,7 +1375,7 @@ def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorksp
         # run the method and ensure the file has been created in correct location
         # localDataService.writeCalibrationState(runNumber, calibration)
         localDataService._writeDefaultDiffCalTable(runNumber, useLiteMode)
-        assert os.path.exists(tempdir + f"/v_{wnvf.formatVersion(version, use_v_prefix=False)}/" + filename + ".h5")
+        assert os.path.exists(tempdir + f"/{wnvf.fileVersion(version)}/" + filename + ".h5")
         # TODO we could in theory load the file and verify its contents here
 
 
@@ -1335,8 +1384,7 @@ def test_writeNormalizationState():
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock()
         localDataService._generateStateId.return_value = ("123", "456")
-        localDataService._constructNormalizationStatePath = mock.Mock()
-        localDataService._constructNormalizationStatePath.return_value = f"{tempdir}/"
+        localDataService._constructNormalizationStatePath = mock.Mock(return_value=f"{tempdir}/")
         localDataService._getCurrentNormalizationRecord = mock.Mock()
         localDataService._getCurrentNormalizationRecord.return_value = Normalization.construct(
             {"seedRun": "123", "useLiteMode": True, "name": "test"}
@@ -1398,7 +1446,6 @@ def test_readDetectorState_bad_logs():
 
 def test_initializeState():
     # Test 'initializeState'; test basic functionality.
-
     runNumber = "123"
     useLiteMode = True
 
@@ -1442,8 +1489,8 @@ def test_initializeState():
     assert localDataService._writeDefaultDiffCalTable.called_once_with(runNumber, useLiteMode)
 
 
-@mock.patch.object(LocalDataService, "_prepareStateRoot")
-def test_initializeState_calls_prepareStateRoot(mockPrepareStateRoot):
+# @mock.patch.object(LocalDataService, "_prepareStateRoot")
+def test_initializeState_calls_prepareStateRoot():
     # Test that 'initializeState' initializes the <state root> directory.
 
     runNumber = "123"
@@ -1480,15 +1527,17 @@ def test_initializeState_calls_prepareStateRoot(mockPrepareStateRoot):
     localDataService.readInstrumentConfig = mock.Mock()
     localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
     localDataService.writeCalibrationState = mock.Mock()
+    localDataService._readDefaultGroupingMap = mock.Mock(return_value=mock.Mock(isDirty=False))
 
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
         stateId = "ab8704b0bc2a2342"
-        stateRootPath = Path(tmpDir) / stateId
+        stateRootPath = Path(f"{tmpDir}/") / stateId
+        localDataService._constructCalibrationStatePath = mock.Mock(return_value=str(stateRootPath))
         localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(stateRootPath))
 
         assert not stateRootPath.exists()
         localDataService.initializeState(runNumber, useLiteMode, "test")
-        mockPrepareStateRoot.assert_called_once()
+        assert stateRootPath.exists()
 
 
 # NOTE: This test fails on analysis because the instrument home actually does exist!

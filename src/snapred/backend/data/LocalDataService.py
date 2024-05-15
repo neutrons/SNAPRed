@@ -68,6 +68,8 @@ class LocalDataService:
     instrumentConfig: "InstrumentConfig"
     verifyPaths: bool = True
 
+    # starting version number -- the first run printed
+    VERSION_START = Config["instrument.startingVersionNumber"]
     # conversion factor from microsecond/Angstrom to meters
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
@@ -228,7 +230,6 @@ class LocalDataService:
                 fileList.append(fname)
         if len(fileList) == 0 and throws:
             raise ValueError(f"No files could be found with pattern: {pattern}")
-
         return fileList
 
     def _findMatchingDirList(self, pattern, throws=True) -> List[str]:
@@ -354,9 +355,7 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructCalibrationStatePath(stateId, useLiteMode)
-        calibrationVersionPath: str = statePath + "v_{}/".format(
-            wnvf.formatVersion(version=version, use_v_prefix=False)
-        )
+        calibrationVersionPath: str = statePath + f"{wnvf.fileVersion(version)}/"
         return calibrationVersionPath
 
     @validate_arguments
@@ -366,9 +365,7 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructNormalizationStatePath(stateId, useLiteMode)
-        normalizationVersionPath: str = statePath + "v_{}/".format(
-            wnvf.formatVersion(version=version, use_v_prefix=False)
-        )
+        normalizationVersionPath: str = statePath + f"{wnvf.fileVersion(version)}/"
         return normalizationVersionPath
 
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
@@ -400,27 +397,40 @@ class LocalDataService:
         return recordPath
 
     def _extractFileVersion(self, file: str) -> int:
-        return int(file.split("/v_")[-1].split("/")[0])
+        if not isinstance(file, str):
+            return None
+        else:
+            return int(file.split("/v_")[-1].split("/")[0])
+
+    def _extractDirVersion(self, dire: str) -> int:
+        if not isinstance(dire, str):
+            return None
+        return int(dire.split("/")[-2].split("_")[-1])
+
+    def _getLatestThing(
+        self,
+        things: List[Any],
+        otherThings: List[Any] = None,
+    ) -> Union[Any, Tuple[Any, Any]]:
+        """
+        This doesn't need to be its own function,
+        but it represents a common pattern in code
+        """
+        if otherThings is None:
+            return max(things, default=self.VERSION_START)
+        else:
+            return max(zip(things, otherThings), default=(self.VERSION_START, None))
 
     def _getFileOfVersion(self, fileRegex: str, version: int):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
-        returnFile = None
-        for file in foundFiles:
-            fileVersion = self._extractFileVersion(file)
-            if fileVersion == int(version):
-                returnFile = file
-                break
-        return returnFile
+        fileVersions = [self._extractFileVersion(file) for file in foundFiles]
+        where = fileVersions.index(version)
+        return foundFiles[where]
 
     def _getLatestFile(self, fileRegex: str):
         foundFiles = self._findMatchingFileList(fileRegex, throws=False)
-        latestVersion = 0
-        latestFile = None
-        for file in foundFiles:
-            version = self._extractFileVersion(file)
-            if version > latestVersion:
-                latestVersion = version
-                latestFile = file
+        fileVersions = [self._extractFileVersion(file) for file in foundFiles]
+        _, latestFile = self._getLatestThing(fileVersions, otherThings=foundFiles)
         return latestFile
 
     def _getLatestCalibrationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
@@ -429,13 +439,10 @@ class LocalDataService:
         """
         calibrationStatePath = self._constructCalibrationStatePath(stateId, useLiteMode)
         calibrationVersionPath = f"{calibrationStatePath}v_*/"
-        latestVersion = 0
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
-        for versionDir in versionDirs:
-            version = int(versionDir.split("/")[-2].split("_")[-1])
-            if version > latestVersion:
-                latestVersion = version
-        return latestVersion
+        versions = [self._extractDirVersion(dire) for dire in versionDirs]
+        print(f"GETTING LATEST VERSIONS {versions}")
+        return self._getLatestThing(versions)
 
     def _getLatestNormalizationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
         """
@@ -443,13 +450,9 @@ class LocalDataService:
         """
         normalizationStatePath = self._constructNormalizationStatePath(stateId, useLiteMode)
         normalizationVersionPath = f"{normalizationStatePath}v_*/"
-        latestVersion = 0
         versionDirs = self._findMatchingDirList(normalizationVersionPath, throws=False)
-        for versionDir in versionDirs:
-            version = int(versionDir.split("/")[-2].split("_")[-1])
-            if version > latestVersion:
-                latestVersion = version
-        return latestVersion
+        versions = [self._extractDirVersion(dire) for dire in versionDirs]
+        return self._getLatestThing(versions)
 
     @validate_arguments
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
@@ -476,10 +479,8 @@ class LocalDataService:
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
         previousVersion = self._getLatestNormalizationVersionNumber(stateId, record.useLiteMode)
-        if not version:
-            version = record.version
-        if not version:
-            version = previousVersion + 1
+        if version is None:
+            version = max(record.version, previousVersion + 1)
         recordPath: str = self.getNormalizationRecordPath(runNumber, record.useLiteMode, version)
         record.version = version
 
@@ -540,11 +541,9 @@ class LocalDataService:
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
         previousVersion: int = self._getLatestCalibrationVersionNumber(stateId, record.useLiteMode)
-        if not version:
-            version = record.version
-        if not version:
-            version = previousVersion + 1
-        recordPath: str = self.getCalibrationRecordPath(runNumber, record.useLiteMode, version)
+        if version is None:
+            version = max(record.version, previousVersion + 1)
+        recordPath: str = self.getCalibrationRecordPath(runNumber, record.useLiteMode, str(version))
         record.version = version
 
         # As above at 'writeNormalizationRecord':
@@ -738,8 +737,7 @@ class LocalDataService:
     @validate_arguments
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        # get stateId and check to see if such a folder exists, if not create it and initialize it
-        stateId, _ = self._generateStateId(runId)
+        # check to see if such a folder exists, if not create it and initialize it
         calibrationStatePath = self._constructCalibrationParametersFilePath(runId, useLiteMode, "*")
 
         latestFile = ""
@@ -760,7 +758,6 @@ class LocalDataService:
 
     @validate_arguments
     def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        stateId, _ = self._generateStateId(runId)
         normalizationStatePathGlob = self._constructNormalizationParametersFilePath(runId, useLiteMode, "*")
 
         latestFile = ""
@@ -772,7 +769,7 @@ class LocalDataService:
 
         normalizationState = None
         if latestFile:
-            normalizationState = parse_file_as(Normalization, latestFile)  # noqa: F821
+            normalizationState = parse_file_as(Normalization, latestFile)
 
         return normalizationState
 
@@ -852,7 +849,7 @@ class LocalDataService:
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
         from snapred.backend.data.GroceryService import GroceryService
 
-        version = 1
+        version = self.VERSION_START
         grocer = GroceryService()
         filename = Path(grocer._createDiffcalTableWorkspaceName("default", useLiteMode, str(version)) + ".h5")
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
@@ -860,19 +857,12 @@ class LocalDataService:
         calibrationDataPath = self._constructCalibrationDataPath(runNumber, useLiteMode, version)
 
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
-        calibrationIndexEntry = CalibrationIndexEntry(
-            runNumber=runNumber,
-            useLiteMode=useLiteMode,
-            version=version,
-            comments="Inferred from the instrument geometry",
-            author="Generated automatically by SNAPRed",
-        )
-        self.writeCalibrationIndexEntry(calibrationIndexEntry)
 
     @validate_arguments
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         stateId, _ = self._generateStateId(runId)
+        version = self.VERSION_START
 
         # Read the detector state from the pv data file
         detectorState = self.readDetectorState(runId)
@@ -916,7 +906,7 @@ class LocalDataService:
             seedRun=runId,
             useLiteMode=useLiteMode,
             creationDate=datetime.datetime.now(),
-            version=0,
+            version=self.VERSION_START,
         )
 
         # Make sure that the state root directory has been initialized:
@@ -926,9 +916,10 @@ class LocalDataService:
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
             self._prepareStateRoot(stateId)
 
-        self.writeCalibrationState(calibration)
+        # write the calibration state
+        self.writeCalibrationState(calibration, version)
+        # write the default diffcal table
         self._writeDefaultDiffCalTable(runId, useLiteMode)
-
         return calibration
 
     def _prepareStateRoot(self, stateId: str):

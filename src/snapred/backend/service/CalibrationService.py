@@ -206,7 +206,8 @@ class CalibrationService(Service):
         entry = request.calibrationIndexEntry
         version = entry.version
         calibrationRecord = request.calibrationRecord
-        calibrationRecord.version = version
+        if version is not None:
+            calibrationRecord.version = version
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         calibrationRecord = self.dataExportService.exportCalibrationWorkspaces(calibrationRecord)
         entry.version = calibrationRecord.version
