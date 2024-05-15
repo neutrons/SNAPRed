@@ -50,12 +50,16 @@ class NameBuilder:
 
 
 class ValueFormatter:
+    class vPrefix:
+        WORKSPACE = True
+        FILE = False
+
     @staticmethod
     def formatRunNumber(runNumber: str):
         return str(runNumber).zfill(6)
 
     @staticmethod
-    def formatVersion(version: Optional[int], use_v_prefix: bool = True):
+    def formatVersion(version: Optional[int], use_v_prefix: vPrefix = vPrefix.WORKSPACE):
         if version is None:
             return ""
         if not version == "*":
