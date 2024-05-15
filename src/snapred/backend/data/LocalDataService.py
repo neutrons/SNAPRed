@@ -56,10 +56,6 @@ logger = snapredLogger.getLogger(__name__)
 """
 
 
-def version_pattern(x: int) -> str:
-    return wnvf.formatVersion(x, wnvf.vPrefix.FILE)
-
-
 def _createFileNotFoundError(msg, filename):
     return FileNotFoundError(NOT_FOUND, os.strerror(NOT_FOUND) + " " + msg, filename)
 
@@ -359,7 +355,7 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructCalibrationStatePath(stateId, useLiteMode)
-        calibrationVersionPath: str = statePath + f"{version_pattern(version)}/"
+        calibrationVersionPath: str = statePath + f"{wnvf.fileVersion(version)}/"
         return calibrationVersionPath
 
     @validate_arguments
@@ -369,7 +365,7 @@ class LocalDataService:
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructNormalizationStatePath(stateId, useLiteMode)
-        normalizationVersionPath: str = statePath + f"{version_pattern(version)}/"
+        normalizationVersionPath: str = statePath + f"{wnvf.fileVersion(version)}/"
         return normalizationVersionPath
 
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):

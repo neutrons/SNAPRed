@@ -29,22 +29,7 @@ class DataFactoryService:
             val = clazz()
         return val
 
-    @validate_arguments
-    def getReductionState(self, runId: str, useLiteMode: bool) -> ReductionState:
-        reductionState: ReductionState
-
-        if runId in self.cache:
-            reductionState = self.cache[runId]
-
-        else:
-            # lookup and package data
-            reductionState = ReductionState(
-                instrumentConfig=self.getInstrumentConfig(runId),
-                stateConfig=self.getStateConfig(runId, useLiteMode),
-            )
-            self.cache[runId] = reductionState
-
-        return reductionState
+    ##### MISCELLANEOUS #####
 
     def fileExists(self, filepath: str) -> bool:
         return self.lookupService.fileExists(filepath)
@@ -67,16 +52,84 @@ class DataFactoryService:
     def getCifFilePath(self, sampleId):
         return self.lookupService.readCifFilePath(sampleId)
 
+    def getSamplePaths(self):
+        return self.lookupService.readSamplePaths()
+
+    def getGroupingMap(self, runId: str):
+        return self.lookupService.readGroupingMap(runId)
+
+    ##### REDUCTION METHODS #####
+
+    @validate_arguments
+    def getReductionState(self, runId: str, useLiteMode: bool) -> ReductionState:
+        reductionState: ReductionState
+
+        if runId in self.cache:
+            reductionState = self.cache[runId]
+
+        else:
+            # lookup and package data
+            reductionState = ReductionState(
+                instrumentConfig=self.getInstrumentConfig(runId),
+                stateConfig=self.getStateConfig(runId, useLiteMode),
+            )
+            self.cache[runId] = reductionState
+
+        return reductionState
+
+    ##### CALIBRATION METHODS #####
+
+    @validate_arguments
+    def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: int):
+        return self.lookupService._constructCalibrationDataPath(runId, useLiteMode, version)
+
+    def checkCalibrationStateExists(self, runId: str):
+        return self.lookupService.checkCalibrationFileExists(runId)
+
     @validate_arguments
     def getCalibrationState(self, runId: str, useLiteMode: bool):
         return self.lookupService.readCalibrationState(runId, useLiteMode)
 
     @validate_arguments
+    def getCalibrationIndex(self, runId: str, useLiteMode: bool):
+        return self.lookupService.readCalibrationIndex(runId, useLiteMode)
+
+    @validate_arguments
+    def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.readCalibrationRecord(runId, useLiteMode, version)
+
+    @validate_arguments
+    def getCalibrationDataWorkspace(self, runId: str, useLiteMode: bool, version: str, name: str):
+        path = self.getCalibrationDataPath(runId, useLiteMode, version)
+        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
+
+    ##### NORMALIZATION METHODS #####
+
+    @validate_arguments
+    def getNormalizationDataPath(self, runId: str, useLiteMode: bool, version: int):
+        return self.lookupService._constructNormalizationDataPath(runId, useLiteMode, version)
+
+    @validate_arguments
     def getNormalizationState(self, runId: str, useLiteMode: bool):
         return self.lookupService.readNormalizationState(runId, useLiteMode)
 
-    def writeNormalizationState(self, runId: str):
-        return self.lookupService.writeNormalizationState(runId)
+    @validate_arguments
+    def getNormalizationIndex(self, runId: str, useLiteMode: bool):
+        return self.lookupService.readNormalizationIndex(runId, useLiteMode)
+
+    @validate_arguments
+    def getNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.readNormalizationRecord(runId, useLiteMode, version)
+
+    @validate_arguments
+    def getNormalizationDataWorkspace(self, runId: str, useLiteMode: bool, version: str, name: str):
+        path = self.getNormalizationDataPath(runId, useLiteMode, version)
+        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
+
+    ##### WORKSPACE METHODS #####
+
+    def workspaceDoesExist(self, name):
+        return self.groceryService.workspaceDoesExist(name)
 
     def getWorkspaceForName(self, name: WorkspaceName):
         return self.groceryService.getWorkspaceForName(name)
@@ -84,44 +137,11 @@ class DataFactoryService:
     def getCloneOfWorkspace(self, name: WorkspaceName, copy: WorkspaceName):
         return self.groceryService.getCloneOfWorkspace(name, copy)
 
-    @validate_arguments
-    def getCalibrationDataWorkspace(self, runId: str, version: str, name: str):
-        path = self.getCalibrationDataPath(runId, version)
-        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
-
     def getWorkspaceCached(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataCached(runId, useLiteMode)
 
     def getWorkspaceSingleUse(self, runId: str, useLiteMode: bool):
         return self.groceryService.fetchNeutronDataSingleUse(runId, useLiteMode)
-
-    @validate_arguments
-    def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        return self.lookupService.readCalibrationRecord(runId, useLiteMode, version)
-
-    @validate_arguments
-    def getNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        return self.lookupService.readNormalizationRecord(runId, useLiteMode, version)
-
-    @validate_arguments
-    def getCalibrationIndex(self, runId: str, useLiteMode: bool):
-        return self.lookupService.readCalibrationIndex(runId, useLiteMode)
-
-    def getGroupingMap(self, runId: str):
-        return self.lookupService.readGroupingMap(runId)
-
-    def checkCalibrationStateExists(self, runId: str):
-        return self.lookupService.checkCalibrationFileExists(runId)
-
-    def getSamplePaths(self):
-        return self.lookupService.readSamplePaths()
-
-    @validate_arguments
-    def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: int):
-        return self.lookupService._constructCalibrationDataPath(runId, useLiteMode, version)
-
-    def workspaceDoesExist(self, name):
-        return self.groceryService.workspaceDoesExist(name)
 
     # TODO: these are _write_ methods: move to `DataExportService` via `LocalDataService`
     def deleteWorkspace(self, name):

@@ -1,8 +1,10 @@
 import re
 from enum import Enum
-from typing import List, Optional
+from typing import List, Literal, Optional, Union
 
 from snapred.meta.Config import Config
+
+Version = Union[int, Literal["*"]]
 
 
 class WorkspaceName(str):
@@ -59,13 +61,18 @@ class ValueFormatter:
         return str(runNumber).zfill(6)
 
     @staticmethod
-    def formatVersion(version: Optional[int], use_v_prefix: vPrefix = vPrefix.WORKSPACE):
+    def formatVersion(version: Optional[Version], use_v_prefix: vPrefix = vPrefix.WORKSPACE):
         if version is None:
             return ""
         if not version == "*":
             version = str(version).zfill(4)
-        prefix = "v" if use_v_prefix == ValueFormatter.vPrefix.WORKSPACE else "v_"
-        return str(prefix + version)
+        if use_v_prefix:
+            version = "v" + version
+        return version
+
+    @staticmethod
+    def fileVersion(version: Optional[Version]):
+        return "v_" + ValueFormatter.formatVersion(version, use_v_prefix=False)
 
     @staticmethod
     def formatTimestamp(timestamp: str):
@@ -154,11 +161,19 @@ class _WorkspaceNameGenerator:
 
     def diffCalInput(self):
         return NameBuilder(
-            self._diffCalInputTemplate, self._diffCalInputTemplateKeys, self._delimiter, unit=self.Units.TOF
+            self._diffCalInputTemplate,
+            self._diffCalInputTemplateKeys,
+            self._delimiter,
+            unit=self.Units.TOF,
         )
 
     def diffCalTable(self):
-        return NameBuilder(self._diffCalTableTemplate, self._diffCalTableTemplateKeys, self._delimiter, version="")
+        return NameBuilder(
+            self._diffCalTableTemplate,
+            self._diffCalTableTemplateKeys,
+            self._delimiter,
+            version="",
+        )
 
     def diffCalOutput(self):
         return NameBuilder(
@@ -171,13 +186,27 @@ class _WorkspaceNameGenerator:
         )
 
     def diffCalMask(self):
-        return NameBuilder(self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter, version="")
+        return NameBuilder(
+            self._diffCalMaskTemplate,
+            self._diffCalMaskTemplateKeys,
+            self._delimiter,
+            version="",
+        )
 
     def diffCalMetric(self):
-        return NameBuilder(self._diffCalMetricTemplate, self._diffCalMetricTemplateKeys, self._delimiter, version="")
+        return NameBuilder(
+            self._diffCalMetricTemplate,
+            self._diffCalMetricTemplateKeys,
+            self._delimiter,
+            version="",
+        )
 
     def diffCalTimedMetric(self):
-        return NameBuilder(self._diffCalTimedMetricTemplate, self._diffCalTimedMetricTemplateKeys, self._delimiter)
+        return NameBuilder(
+            self._diffCalTimedMetricTemplate,
+            self._diffCalTimedMetricTemplateKeys,
+            self._delimiter,
+        )
 
     def rawVanadium(self):
         return NameBuilder(
@@ -186,6 +215,7 @@ class _WorkspaceNameGenerator:
             self._delimiter,
             unit=self.Units.TOF,
             group=self.Groups.UNFOC,
+            version="",
         )
 
     def focusedRawVanadium(self):
@@ -194,6 +224,7 @@ class _WorkspaceNameGenerator:
             self._normCalFocusedRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
+            version="",
         )
 
     def smoothedFocusedRawVanadium(self):
@@ -202,6 +233,7 @@ class _WorkspaceNameGenerator:
             self._normCalSmoothedFocusedRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
+            version="",
         )
 
 
