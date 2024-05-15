@@ -647,6 +647,7 @@ class GroceryService:
         data["result"] = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
         data["workspace"] = workspaceName
         self._loadedRuns[key] += 1
+
         return data
 
     def fetchLiteDataMap(self) -> WorkspaceName:

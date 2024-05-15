@@ -30,7 +30,9 @@
         "delTOverT": 0,
         "delLOverL": 0,
         "delThNoGuide": 0,
-        "delThWithGuide": 0
+        "delThWithGuide": 0,
+        "width": 0,
+        "frequency": 0
       },
       "stateConfig": {
         "calibration": {
