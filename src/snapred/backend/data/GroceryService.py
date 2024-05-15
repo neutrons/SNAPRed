@@ -813,7 +813,6 @@ class GroceryService:
                 "workspace": workspaceName,
             }
         else:
-            # table + mask are in the same hdf5 file:
             filename = self._createNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
 
             # Unless overridden: use a cached workspace as the instrument donor.

@@ -5,8 +5,9 @@ from pathlib import Path
 
 import pytest
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.data.LocalDataService import LocalDataService, version_pattern
+from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from util.state_helpers import state_root_override
 
 VERSION_START = Config["instrument.startingVersionNumber"]
@@ -80,7 +81,7 @@ def test_state_root_override_enter(mockReadPVFile, mockReadInstrumentConfig, moc
         assert Path(stateRootPath) == Path(Config["instrument.calibration.powder.home"]) / stateId
         assert Path(stateRootPath).exists()
         assert Path(stateRootPath).joinpath("groupingMap.json").exists()
-        versionString = version_pattern(VERSION_START)
+        versionString = wnvf.fileVersion(VERSION_START)
         assert (Path(stateRootPath) / "lite" / "diffraction" / versionString / "CalibrationParameters.json").exists()
 
 
