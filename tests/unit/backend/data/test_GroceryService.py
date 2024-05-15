@@ -379,7 +379,7 @@ class TestGroceryService(unittest.TestCase):
         res = self.instance._createNormalizationWorkspaceName(self.runNumber, self.useLiteMode, self.version)
         assert self.runNumber in res
         assert self.version in res
-        
+
     @mock.patch.object(DataService, "_constructCalibrationDataPath")
     def test_diffcal_table_filename(self, mockConstructCalibrationDataPath):
         # Test name generation for diffraction-calibration table filename
