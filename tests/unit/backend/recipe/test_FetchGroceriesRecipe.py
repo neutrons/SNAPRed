@@ -130,6 +130,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["result"]
         assert res["loader"] == "LoadEventNexus"
         assert res["workspace"] == self.fetchedWSname
+        assert self.rx.mantidSnapper.RemovePromptPulse.called
 
     def test_fetch_failed(self):
         # this is some file that it can't load
