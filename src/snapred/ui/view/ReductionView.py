@@ -1,9 +1,8 @@
-from qtpy.QtWidgets import QGridLayout, QPushButton, QWidget
+from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.LabeledCheckBox import LabeledCheckBox
 from snapred.ui.widget.LabeledField import LabeledField
-from snapred.ui.widget.MultiRunDialog import MultiRunNumberDialog
 from snapred.ui.widget.SampleDropDown import SampleDropDown
 from snapred.ui.widget.Toggle import Toggle
 
@@ -12,53 +11,82 @@ from snapred.ui.widget.Toggle import Toggle
 class ReductionView(QWidget):
     def __init__(self, pixelMasks=[], parent=None):
         super().__init__(parent)
-        self.layout = QGridLayout()
+
+        self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
-        self.runNumberField = LabeledField("Run Number:")
-        self.litemodeToggle = LabeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.checkbox = LabeledCheckBox("Retain Unfocussed Data")
+        # Horizontal layout for run number input and button
+        self.runNumberLayout = QHBoxLayout()
+        self.runNumberInput = QLineEdit()
+        self.enterRunNumberButton = QPushButton("Enter Run Number")
+        self.clearButton = QPushButton("Clear")
+        self.runNumberButtonLayout = QVBoxLayout()
+        self.runNumberButtonLayout.addWidget(self.enterRunNumberButton)
+        self.runNumberButtonLayout.addWidget(self.clearButton)
+
+        self.runNumberLayout.addWidget(self.runNumberInput)
+        self.runNumberLayout.addLayout(self.runNumberButtonLayout)
+
+        # Run number display
+        self.runNumberDisplay = QTextEdit()
+        self.runNumberDisplay.setReadOnly(True)
+
+        # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
+        self.liteModeToggle = LabeledField("Lite Mode", Toggle(parent=self, state=True))
+        self.retainUnfocusedDataCheckbox = LabeledCheckBox("Retain Unfocussed Data")
         self.pixelMaskDropdown = SampleDropDown("Pixel Masks", pixelMasks)
-        self.multiRunDialogButton = QPushButton("Multi Run Numbers")
-        self.multiRunDialogButton.clicked.connect(self.openMultiRunDialog)
 
-        self.layout.addWidget(self.runNumberField, 0, 0)
-        self.layout.addWidget(self.litemodeToggle, 0, 1)
-        self.layout.addWidget(self.multiRunDialogButton, 1, 0)
-        self.layout.addWidget(self.pixelMaskDropdown, 2, 0)
-        self.layout.addWidget(self.checkbox, 2, 1)
+        # Set field properties
+        self.liteModeToggle.setEnabled(False)
+        self.retainUnfocusedDataCheckbox.setEnabled(False)
+        self.pixelMaskDropdown.setEnabled(False)
 
-        # connect the boolean signal to a slot
-        # self.checkbox.checkedChanged.connect()
+        # Add widgets to layout
+        self.layout.addLayout(self.runNumberLayout)
+        self.layout.addWidget(self.runNumberDisplay)
+        self.layout.addWidget(self.liteModeToggle)
+        self.layout.addWidget(self.pixelMaskDropdown)
+        self.layout.addWidget(self.retainUnfocusedDataCheckbox)
 
-    def openMultiRunDialog(self):
-        if not hasattr(self, "_multiRunDialogInstance"):
-            self._multiRunDialogInstance = MultiRunNumberDialog(self)
-        self._multiRunDialogInstance.clearRunNumberFields()
-        runNumbers = [num.strip() for num in self.runNumberField.text().split(",") if num.strip()]
-        for num in runNumbers:
-            self._multiRunDialogInstance.addRunNumberField(num)
-        self._multiRunDialogInstance.exec_()
+        # Connect buttons to methods
+        self.enterRunNumberButton.clicked.connect(self.addRunNumber)
+        self.clearButton.clicked.connect(self.clearRunNumbers)
 
-    def getAllRunNumbers(self):
-        allNumbers = []
-        mainFieldNumbers = self.runNumberField.text().split(",")
-        allNumbers.extend([num.strip() for num in mainFieldNumbers if num.strip()])
-        if hasattr(self, "_multiRunDialogInstance"):
-            allNumbers.extend(self._multiRunDialogInstance.getAllRunNumbers())
-        return allNumbers
+    def addRunNumber(self):
+        runNumber = self.runNumberInput.text().strip()
+        if runNumber:
+            try:
+                runNumberList = [int(num.strip()) for num in runNumber.split(",") if num.strip().isdigit()]
+                currentText = self.runNumberDisplay.toPlainText()
+                currentRunNumbers = set(int(num) for num in currentText.split("\n") if num.strip().isdigit())
+                newRunNumbers = currentRunNumbers.union(runNumberList)
+                self.runNumberDisplay.setText("\n".join(map(str, sorted(newRunNumbers))))
+                self.runNumberInput.clear()
+            except ValueError:
+                raise ValueError(
+                    "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
+                )
+
+    def clearRunNumbers(self):
+        self.runNumberDisplay.clear()
 
     def verify(self):
-        allNumbers = self.getAllRunNumbers()
-        if not all(allNumbers):
-            raise ValueError("Please ensure all run number fields are filled.")
-        for number in allNumbers:
-            if not number.isdigit():
-                raise ValueError("Invalid run number detected.")
+        currentText = self.runNumberDisplay.toPlainText()
+        runNumbers = [num.strip() for num in currentText.split("\n") if num.strip()]
+        for runNumber in runNumbers:
+            if not runNumber.isdigit():
+                raise ValueError(
+                    "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
+                )
         if self.pixelMaskDropdown.currentIndex() < 0:
             raise ValueError("Please select a pixel mask.")
+        return True
 
-    # place holder for checkBox logic
+    def getRunNumbers(self):
+        currentText = self.runNumberDisplay.toPlainText()
+        return [int(num.strip()) for num in currentText.split("\n") if num.strip().isdigit()]
+
+    # Placeholder for checkBox logic
     """
     def onCheckBoxChecked(self, checked):
         if checked:

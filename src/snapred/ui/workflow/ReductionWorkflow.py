@@ -17,8 +17,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         self._reductionView = ReductionView(parent=parent)
 
-        self._reductionView.runNumberField.editingFinished.connect(self._populatePixelMaskDropdown)
-        self._reductionView.multiRunDialogButton.clicked.connect(self._populatePixelMaskDropdown)
+        self._reductionView.enterRunNumberButton.clicked.connect(lambda: self._populatePixelMaskDropdown())
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=self.resetWithPermission, parent=parent)
@@ -33,10 +32,10 @@ class ReductionWorkflow(WorkflowImplementer):
 
     @ExceptionToErrLog
     def _populatePixelMaskDropdown(self):
-        runNumbers = self._reductionView.getAllRunNumbers()
-        useLiteMode = self._reductionView.litemodeToggle.field.getState()  # noqa: F841
+        runNumbers = self._reductionView.getRunNumbers()
+        useLiteMode = self._reductionView.liteModeToggle.field.getState()  # noqa: F841
 
-        self._reductionView.litemodeToggle.setEnabled(False)
+        self._reductionView.liteModeToggle.setEnabled(False)
         self._reductionView.pixelMaskDropdown.setEnabled(False)
 
         for runNumber in runNumbers:
@@ -45,20 +44,23 @@ class ReductionWorkflow(WorkflowImplementer):
             except Exception as e:  # noqa: BLE001
                 print(e)
 
-        self._reductionView.litemodeToggle.setEnabled(True)
+        self._reductionView.liteModeToggle.setEnabled(True)
         self._reductionView.pixelMaskDropdown.setEnabled(True)
 
     def _triggerReduction(self, workflowPresenter):
-        # NOTE: Ths only works for a single run number, will need to refactor to support multiple run numbers.
-        view = workflowPresenter.widget.tabView
+        view = workflowPresenter.widget.tabView  # noqa: F841
 
-        self.runNumber = view.fieldRunNumber.text()
+        runNumbers = self._reductionView.getRunNumbers()
 
-        payload = RunConfig(runNumber=self.runNumber)
-        request = SNAPRequest(path="reduction", payload=payload.json())
-        response = self.interfaceController.executeRequest(request)
-        self.responses.append(response)
-        return response
+        responses = []
+        for runNumber in runNumbers:
+            payload = RunConfig(runNumber=runNumber)
+            request = SNAPRequest(path="reduction", payload=payload.json())
+            response = self.interfaceController.executeRequest(request)
+            responses.append(response)
+            self.responses.append(response)
+
+        return responses
 
     @property
     def widget(self):
