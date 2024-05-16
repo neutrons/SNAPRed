@@ -4,12 +4,13 @@ from pydantic import BaseModel
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class ReductionIngredients(BaseModel):
-    """These are reduction ingredients.  Use them wisely."""
+    """Data class to hold the ingredients for each subrecipe of reduction and itself.  Use them wisely."""
 
-    maskList: List[str]
+    maskList: List[WorkspaceName]
     pixelGroups: List[PixelGroup]
     detectorPeaksMany: List[List[GroupPeakList]]
     smoothingParameter: float

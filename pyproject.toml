@@ -36,8 +36,12 @@ pythonpath = [
   "src"
 ]
 markers = [
-  "mount_snap: mark a test as using /SNS/SNAP/ data mount"
+  "integration: mark a test as an integration test",
+  "mount_snap: mark a test as using /SNS/SNAP/ data mount",
+  "golden_data(*, path=None, short_name=None, date=None): mark golden data to use with a test"
 ]
+addopts = "-m 'not integration'"
+
 
 [tool.ruff]
 line-length = 120
@@ -45,6 +49,7 @@ line-length = 120
 select = ["A", "ARG", "BLE", "E", "F", "I", "PT"]
 ignore = ["F403", "F405", # wild imports and  unknown names
 ]
+extend-exclude = ["conftest.py"]
 
 [[tool.mypy.overrides]]
 module = [

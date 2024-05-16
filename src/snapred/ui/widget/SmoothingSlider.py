@@ -7,7 +7,7 @@ from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QMessageBox, QSlider, QWidget
 class SmoothingSlider(QWidget):
     """
 
-    This PyQt5 custom QWidget is designed to facilitate the adjustment of a smoothing parameter, combining a graphical
+    This qt custom QWidget is designed to facilitate the adjustment of a smoothing parameter, combining a graphical
     slider for intuitive control with a numerical input for precision. It caters to user preferences for either a quick
     visual adjustment or specific numerical entry, enhancing the usability of applications requiring fine-tuned
     parameter settings. The widget features logarithmic mapping for the slider to cover a broad range of values and

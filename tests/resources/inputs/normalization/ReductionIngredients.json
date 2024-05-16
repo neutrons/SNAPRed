@@ -29,7 +29,9 @@
       "delTOverT": 0.05,
       "delLOverL": 0.05,
       "delThNoGuide": 0.05,
-      "delThWithGuide": 0.05
+      "delThWithGuide": 0.05,
+      "width": 1600.0,
+      "frequency": 60.4
     },
     "stateConfig": {
       "calibration": {
@@ -56,7 +58,9 @@
             "delTOverT": 0.002,
             "delLOverL": 0.00006452,
             "delThNoGuide": 0.0006667,
-            "delThWithGuide": 0.0032
+            "delThWithGuide": 0.0032,
+            "width": 1600.0,
+            "frequency": 60.4
           },
           "detectorState": {
             "arc": [
@@ -96,6 +100,7 @@
           "peakTailCoefficient": 2
         },
         "seedRun": 57514,
+        "useLiteMode": true,
         "creationDate": "2023-09-13T16:40:25.754664",
         "name": "this is a test state initialisation",
         "version": 49

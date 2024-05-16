@@ -206,29 +206,30 @@ class CalibrationService(Service):
         entry = request.calibrationIndexEntry
         version = entry.version
         calibrationRecord = request.calibrationRecord
-        calibrationRecord.version = version
+        if version is not None:
+            calibrationRecord.version = version
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         calibrationRecord = self.dataExportService.exportCalibrationWorkspaces(calibrationRecord)
         entry.version = calibrationRecord.version
-        self.saveCalibrationToIndex(entry, calibrationRecord.useLiteMode)
+        self.saveCalibrationToIndex(entry)
 
     @FromString
     def load(self, run: RunConfig):
         runId = run.runNumber
-        return self.dataFactoryService.getCalibrationRecord(runId)
+        return self.dataFactoryService.getCalibrationRecord(runId, run.useLiteMode)
 
     @FromString
-    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry, useLiteMode: bool):
+    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
         if entry.appliesTo is None:
             entry.appliesTo = ">" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
-        self.dataExportService.exportCalibrationIndexEntry(entry, useLiteMode)
+        self.dataExportService.exportCalibrationIndexEntry(entry)
 
     @FromString
     def initializeState(self, request: InitializeStateRequest):
-        return self.dataExportService.initializeState(request.runId, request.humanReadableName, request.useLiteMode)
+        return self.dataExportService.initializeState(request.runId, request.useLiteMode, request.humanReadableName)
 
     @FromString
     def getState(self, runs: List[RunConfig]):
@@ -263,9 +264,11 @@ class CalibrationService(Service):
     @FromString
     def loadQualityAssessment(self, request: CalibrationLoadAssessmentRequest):
         runId = request.runId
+        useLiteMode = request.useLiteMode
         version = request.version
+        useLiteMode = request.useLiteMode
 
-        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, version)
         if calibrationRecord is None:
             errorTxt = f"No calibration record found for run {runId}, version {version}."
             logger.error(errorTxt)

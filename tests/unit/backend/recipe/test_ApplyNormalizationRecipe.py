@@ -35,8 +35,8 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         ingredients = Ingredients(pixelGroup=self.sculleryBoy.prepPixelGroup())
         recipe.chopIngredients(ingredients)
         assert recipe.pixelGroup == ingredients.pixelGroup
-        assert recipe.dMin == ingredients.pixelGroup.dMin
-        assert recipe.dMax == ingredients.pixelGroup.dMax
+        assert recipe.dMin == ingredients.pixelGroup.dMin()
+        assert recipe.dMax == ingredients.pixelGroup.dMax()
 
     def test_unbagGroceries(self):
         recipe = ApplyNormalizationRecipe()
@@ -97,8 +97,8 @@ class ApplyNormalizationRecipeTest(unittest.TestCase):
         assert divideTuple[2]["LHSWorkspace"] == groceries["inputWorkspace"]
         assert divideTuple[2]["RHSWorkspace"] == groceries["normalizationWorkspace"]
         assert resampleTuple[2]["InputWorkspace"] == groceries["inputWorkspace"]
-        assert resampleTuple[2]["XMin"] == ingredients.pixelGroup.dMin
-        assert resampleTuple[2]["XMax"] == ingredients.pixelGroup.dMax
+        assert resampleTuple[2]["XMin"] == ingredients.pixelGroup.dMin()
+        assert resampleTuple[2]["XMax"] == ingredients.pixelGroup.dMax()
 
     def test_cook(self):
         untensils = Utensils()

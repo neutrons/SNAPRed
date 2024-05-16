@@ -1,7 +1,9 @@
 from typing import Any, Dict
 
+from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm as FetchAlgo
+from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
@@ -9,6 +11,12 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class FetchGroceriesRecipe:
+    def __init__(self):
+        # NOTE: workaround, we just add an empty host algorithm.
+        utensils = Utensils()
+        utensils.PyInit()
+        self.mantidSnapper = utensils.mantidSnapper
+
     def executeRecipe(
         self,
         filename: str,
@@ -50,6 +58,20 @@ class FetchGroceriesRecipe:
             data["result"] = algo.execute()
             data["loader"] = algo.getPropertyValue("LoaderType")
             data["workspace"] = workspace
+
+            if data["loader"] == "LoadEventNexus":
+                self.dataService = LocalDataService()
+                config = self.dataService.readInstrumentConfig()
+                width = config.width
+                frequency = config.frequency
+                self.mantidSnapper.RemovePromptPulse(
+                    "Removing prompt pulse",
+                    InputWorkspace=workspace,
+                    OutputWorkspace=workspace,
+                    Width=width,
+                    Frequency=frequency,
+                )
+                self.mantidSnapper.executeQueue()
         except RuntimeError as e:
             raise RuntimeError(str(e).split("\n")[0]) from e
         logger.info(f"Finished fetching {workspace} from {filename}")

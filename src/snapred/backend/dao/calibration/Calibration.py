@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from snapred.backend.dao.state import InstrumentState
+from snapred.meta.Config import Config
 
 
 class Calibration(BaseModel):
@@ -17,6 +18,7 @@ class Calibration(BaseModel):
 
     instrumentState: InstrumentState
     seedRun: int
+    useLiteMode: bool
     creationDate: datetime
     name: str
-    version: int = 0
+    version: int = Config["instrument.startingVersionNumber"]

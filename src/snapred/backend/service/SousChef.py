@@ -94,6 +94,15 @@ class SousChef(Service):
             )
         return self._pixelGroupCache[key]
 
+    def prepManyPixelGroups(self, ingredients: FarmFreshIngredients) -> List[PixelGroup]:
+        pixelGroups = []
+        focusGroups = ingredients.focusGroup
+        for focusGroup in focusGroups:
+            ingredients.focusGroup = focusGroup
+            pixelGroups.append(self.prepPixelGroup(ingredients))
+        ingredients.focusGroup = focusGroups
+        return pixelGroups
+
     def _getInstrumentDefinitionFilename(self, useLiteMode: bool) -> str:
         if useLiteMode is True:
             return Config["instrument.lite.definition.file"]
@@ -133,6 +142,7 @@ class SousChef(Service):
         )
         dMin = ingredients.crystalDBounds.minimum
         dMax = ingredients.crystalDBounds.maximum
+        res = None
         if key not in self._peaksCache:
             ingredients = self.prepPeakIngredients(ingredients)
             res = DetectorPeakPredictorRecipe().executeRecipe(
@@ -148,11 +158,21 @@ class SousChef(Service):
             self._peaksCache[key] = parse_raw_as(List[GroupPeakList], res)
         return self._peaksCache[key]
 
+    def prepManyDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[List[GroupPeakList]]:
+        detectorPeaks = []
+        focusGroups = ingredients.focusGroup
+        for focusGroup in focusGroups:
+            ingredients.focusGroup = focusGroup
+            detectorPeaks.append(self.prepDetectorPeaks(ingredients, purgePeaks=False))
+        ingredients.focusGroup = focusGroups
+        return detectorPeaks
+
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
         return ReductionIngredients(
-            reductionState=self.dataFactoryService.getReductionState(ingredients.runNumber, ingredients.useLiteMode),
-            runConfig=self.prepRunConfig(ingredients.runNumber),
-            pixelGroup=self.prepPixelGroup(ingredients),
+            maskList=[],
+            pixelGroups=self.prepManyPixelGroups(ingredients),
+            smoothingParameter=ingredients.smoothingParameter,
+            detectorPeaksMany=self.prepManyDetectorPeaks(ingredients),
         )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:

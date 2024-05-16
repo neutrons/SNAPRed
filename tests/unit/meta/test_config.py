@@ -28,7 +28,7 @@ def test_resource_read():
     assert Resource.read("application.yml") is not None
 
 
-def test_resouce_open():
+def test_resource_open():
     with Resource.open("application.yml", "r") as file:
         assert file is not None
 

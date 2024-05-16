@@ -3,8 +3,9 @@ import logging
 import os
 import re
 import sys
+from glob import glob
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import yaml
 from pydantic.utils import deep_update
@@ -14,7 +15,11 @@ from snapred.meta.decorators.Singleton import Singleton
 
 def _find_root_dir():
     ROOT_MODULE = None
-    if os.environ.get("env") == "test":
+
+    # Using `"test" in env` here allows different versions of "[category]_test.yml" to be used for different
+    #  test categories: e.g. unit tests use "test.yml" but integration tests use "integration_test.yml".
+    env = os.environ.get("env")
+    if env and "test" in env and "conftest" in sys.modules:
         ROOT_MODULE = sys.modules["conftest"].__file__
     else:
         ROOT_MODULE = sys.modules["snapred"].__file__
@@ -80,6 +85,11 @@ class _Config:
     def __init__(self):
         # use refresh to do initial load, clearing shouldn't matter
         self.refresh("application.yml", True)
+
+        # allow "resources" relative paths to be entered into the "yml"
+        #   using "${module.root}"
+        self._config["module"] = {}
+        self._config["module"]["root"] = _find_root_dir()
 
         # see if user used environment injection to modify what is needed
         # this will get from the os environment or from the currently loaded one
@@ -186,3 +196,14 @@ class _Config:
 
 
 Config = _Config()
+
+
+# Moved to `Config.py` from `IPTS_override.py` for use in `__main__.py`.
+def datasearch_directories(instrumentHome: Path) -> List[str]:
+    # Construct a list of datasearch directories from a base path
+    suffix = Config["nexus.native.prefix"]
+    suffix = suffix[0 : suffix.find(os.sep)]
+    dirs = [
+        str(Path(instrumentHome).joinpath(dir_)) for dir_ in glob("*IPTS*" + os.sep + suffix, root_dir=instrumentHome)
+    ]
+    return dirs

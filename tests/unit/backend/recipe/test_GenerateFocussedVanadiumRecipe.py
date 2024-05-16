@@ -13,7 +13,6 @@ from util.helpers import deleteWorkspaceNoThrow
 from util.SculleryBoy import SculleryBoy
 
 ThisRecipe: str = "snapred.backend.recipe.GenerateFocussedVanadiumRecipe"
-SmoothAlgo: str = ThisRecipe + ".SmoothDataExcludingPeaksAlgo"
 
 
 class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
@@ -31,6 +30,7 @@ class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
 
         self.fakeIngredients = Ingredients(
             smoothingParameter=0.1,
+            pixelGroup=SculleryBoy().prepPixelGroup(None),
             detectorPeaks=peaks,
         )
         self.groceryList = {
@@ -42,6 +42,8 @@ class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
             "outputWorkspace": self.fakeOutputWorkspace,
         }
         self.recipe = Recipe()
+        self.recipe.mantidSnapper = mock.Mock()
+        self.mockSnapper = self.recipe.mantidSnapper
 
     def tearDown(self) -> None:
         workspaces = mtd.getObjectNames()
@@ -49,24 +51,31 @@ class TestGenerateFocussedVanadiumRecipe(unittest.TestCase):
             deleteWorkspaceNoThrow(ws)
         return super().tearDown()
 
-    @mock.patch(SmoothAlgo)
-    def test_execute_successful(self, mockSmoothAlgo):
-        mock_instance = mockSmoothAlgo.return_value
+    def test_execute_successful(self):
+        mock_instance = self.mockSnapper.SmoothDataExcludingPeaksAlgo.return_value
         mock_instance.execute.return_value = None
         mock_instance.getPropertyValue.return_value = self.fakeOutputWorkspace
 
-        expected_output = {"outputWorkspace": self.fakeOutputWorkspace, "result": True}
+        expected_output = self.fakeOutputWorkspace
 
-        output = self.recipe.executeRecipe(self.fakeIngredients, self.groceryList)
+        output = self.recipe.cook(self.fakeIngredients, self.groceryList)
 
         self.assertEqual(output, expected_output)  # noqa: PT009
 
-    @mock.patch(SmoothAlgo)
-    def test_execute_unsuccessful(self, mockSmoothAlgo):
-        mock_instance = mockSmoothAlgo.return_value
+    def test_execute_unsuccessful(self):
+        mock_instance = self.mockSnapper.SmoothDataExcludingPeaksAlgo.return_value
         mock_instance.execute.return_value = None
         mock_instance.getPropertyValue.return_value = None
 
         with pytest.raises(NotImplementedError) as e:
-            self.recipe.executeRecipe(self.fakeIngredients, self.errorGroceryList)
+            self.recipe.cook(self.fakeIngredients, self.errorGroceryList)
         assert str(e.value) == "Fake Vanadium not implemented yet."  # noqa: PT009
+
+    def test_catering(self):
+        self.recipe.cook = mock.Mock()
+        pallet = (self.fakeIngredients, self.groceryList)
+        shipment = [pallet]
+        output = self.recipe.cater(shipment)
+
+        assert self.recipe.cook.called
+        assert output[0] == self.recipe.cook.return_value
