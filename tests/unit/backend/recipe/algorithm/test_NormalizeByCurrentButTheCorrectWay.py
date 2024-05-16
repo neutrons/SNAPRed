@@ -7,7 +7,6 @@ from mantid.simpleapi import CreateWorkspace, NormaliseByCurrent, NormalizeByCur
 
 
 class TestNormalizeByCurrent(unittest.TestCase):
-    # @mock.patch("snaped.backend.recipe.algorithm.NormalizeByCurrentButTheCorrectWay.NormaliseByCurrent")
     def test_normalize_unnormalized(self):
         value = 16
         protoncharge = 2
