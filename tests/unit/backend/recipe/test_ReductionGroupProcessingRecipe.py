@@ -50,9 +50,9 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
         normCurr = queuedAlgos[1]
 
         assert diffFoc[0] == "FocusSpectraAlgorithm"
-        assert normCurr[0] == "NormaliseByCurrent"
+        assert normCurr[0] == "NormalizeByCurrentButTheCorrectWay"
         assert diffFoc[1] == "Focusing Spectra..."
-        assert normCurr[1] == "Normalizing Current ..."
+        assert normCurr[1] == "Normalizing Current ... but the correct way!"
         assert diffFoc[2]["InputWorkspace"] == groceries["inputWorkspace"]
         assert diffFoc[2]["GroupingWorkspace"] == groceries["groupingWorkspace"]
         assert diffFoc[2]["OutputWorkspace"] == groceries["inputWorkspace"]
@@ -81,7 +81,7 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
 
         assert mockSnapper.executeQueue.called
         assert mockSnapper.FocusSpectraAlgorithm.called
-        assert mockSnapper.NormaliseByCurrent.called
+        assert mockSnapper.NormalizeByCurrentButTheCorrectWay.called
 
     def test_cater(self):
         untensils = Utensils()
@@ -105,4 +105,4 @@ class ReductionGroupProcessingRecipeTest(unittest.TestCase):
 
         assert mockSnapper.executeQueue.called
         assert mockSnapper.FocusSpectraAlgorithm.called
-        assert mockSnapper.NormaliseByCurrent.called
+        assert mockSnapper.NormalizeByCurrentButTheCorrectWay.called
