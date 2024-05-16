@@ -1,7 +1,9 @@
 import unittest
 
+import pytest
+
 # mantid imports
-from mantid.simpleapi import CreateWorkspace, NormalizeByCurrentButTheCorrectWay, mtd
+from mantid.simpleapi import CreateWorkspace, NormaliseByCurrent, NormalizeByCurrentButTheCorrectWay, mtd
 
 
 class TestNormalizeByCurrent(unittest.TestCase):
@@ -28,6 +30,11 @@ class TestNormalizeByCurrent(unittest.TestCase):
         ws = CreateWorkspace(OutputWorkspace=wsname, DataX=[1], DataY=[value])
         ws.mutableRun().addProperty("gd_prtn_chrg", protoncharge, True)
         ws.mutableRun().addProperty("NormalizationFactor", protoncharge, True)
+        with pytest.raises(RuntimeError):
+            NormaliseByCurrent(
+                InputWorkspace=wsname,
+                OutputWorkspace=wsname,
+            )
         NormalizeByCurrentButTheCorrectWay(
             InputWorkspace=wsname,
             OutputWorkspace=wsname,
