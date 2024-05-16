@@ -23,8 +23,8 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
         We are mostly concerned about the drange for a ResampleX operation.
         """
         self.pixelGroup = ingredients.pixelGroup
-        self.dMin = self.pixelGroup.dMin
-        self.dMax = self.pixelGroup.dMax
+        self.dMin = self.pixelGroup.dMin()
+        self.dMax = self.pixelGroup.dMax()
 
     def unbagGroceries(self, groceries: Dict[str, WorkspaceName]):
         """
@@ -55,6 +55,7 @@ class ApplyNormalizationRecipe(Recipe[Ingredients]):
                 "Dividing out the normalization..",
                 LHSWorkspace=self.sampleWs,
                 RHSWorkspace=self.normalizationWs,
+                OutputWorkspace=self.sampleWs,
             )
         # NOTE: ResampleX is considered a workaround until Mantid can handle ragged workspaces.
         self.mantidSnapper.ResampleX(

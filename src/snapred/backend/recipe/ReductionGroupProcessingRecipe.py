@@ -1,32 +1,27 @@
 from typing import Any, Dict, List, Tuple
 
+from snapred.backend.dao.state.PixelGroup import PixelGroup as Ingredients
+from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.Utensils import Utensils
+from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
-Pallet = Tuple[Dict[str, str]]
+Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
 @Singleton
-class ReductionGroupProcessingRecipe:
-    def __init__(self, utensils: Utensils = None):
-        """
-        Sets up the recipe with the necessary utensils.
-        """
-        # NOTE: workaround, we just add an empty host algorithm.
-        if utensils is None:
-            utensils = Utensils()
-            utensils.PyInit()
-        self.mantidSnapper = utensils.mantidSnapper
-
+class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
     def unbagGroceries(self, groceries: Dict[str, Any]):
         self.rawInput = groceries["inputWorkspace"]
-        self.outputWS = groceries["outputWorkspace"]
-        self.geometryOutputWS = groceries["geometryOutputWorkspace"]
-        self.diffFocOutputWS = groceries["diffFocOutputWorkspace"]
+        self.outputWS = groceries.get("outputWorkspace", groceries["inputWorkspace"])
+        # self.geometryOutputWS = groceries["geometryOutputWorkspace"]
+        # self.diffFocOutputWS = groceries["diffFocOutputWorkspace"]
         self.groupingWS = groceries["groupingWorkspace"]
+
+    def chopIngredients(self, ingredients):
+        self.pixelGroup = ingredients.pixelGroup
 
     def queueAlgos(self):
         """
@@ -56,40 +51,50 @@ class ReductionGroupProcessingRecipe:
         #         Polar=data["focusParams"].Polar,
         #         Azimuthal=data["focusParams"].Azimuthal,
         # )
+        # self.rawInput = self.geometryOutputWS
 
-        self.mantidSnapper.DiffractionFocussing(
-            "Applying Diffraction Focussing...",
-            InputWorkspace=self.geometryOutputWS,
+        self.mantidSnapper.FocusSpectraAlgorithm(
+            "Focusing Spectra...",
+            InputWorkspace=self.rawInput,
+            OutputWorkspace=self.rawInput,
             GroupingWorkspace=self.groupingWS,
-            OutputWorkspace=self.diffFocOutputWS,
+            Ingredients=self.pixelGroup.json(),
+            RebinOutput=False,
         )
 
         self.mantidSnapper.NormaliseByCurrent(
             "Normalizing Current ...",
-            InputWorkspace=self.diffFocOutputWS,
-            OutputWorkspace=self.outputWS,
+            InputWorkspace=self.rawInput,
+            OutputWorkspace=self.rawInput,
         )
+        self.outputWS = self.rawInput
 
-    def prep(self, groceries: Dict[str, str]):
-        """
-        Convenience method to prepare the recipe for execution.
-        """
-        self.unbagGroceries(groceries)
-        self.queueAlgos()
+    def validateInputs(self, ingredients: Ingredients, groceries: Dict[str, WorkspaceName]):
+        pass
 
     def execute(self):
         """
         Final step in a recipe, executes the queued algorithms.
         Requires: queued algorithms.
         """
-        self.mantidSnapper.executeQueue()
+        try:
+            self.mantidSnapper.executeQueue()
+        except AlgorithmException as e:
+            errorString = str(e)
+            if "NORMALIZATIONFACTOR" in errorString:
+                errorString = (
+                    "Input raw data has already been normalized by current.\n "
+                    "Please use one that has not had current normalization applied."
+                    "i.e. sample logs dont contain entries for gd_prtn_chrg or proton_charge"
+                )
+            raise RuntimeError(errorString) from e
 
-    def cook(self, groceries: Dict[str, str]) -> Dict[str, Any]:
+    def cook(self, ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         """
         Main interface method for the recipe.
         Given the ingredients and groceries, it prepares, executes and returns the final workspace.
         """
-        self.prep(groceries)
+        self.prep(ingredients, groceries)
         self.execute()
         return self.outputWS
 
@@ -100,8 +105,8 @@ class ReductionGroupProcessingRecipe:
         Given a shipment of ingredients and groceries, it prepares, executes and returns the final workspaces.
         """
         output = []
-        for grocery in shipment:
-            self.prep(grocery)
+        for ingredients, grocery in shipment:
+            self.prep(ingredients, grocery)
             output.append(self.outputWS)
         self.execute()
         return output

@@ -9,6 +9,7 @@ from mantid.simpleapi import CloneWorkspace, CreateSingleValuedWorkspace
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from pydantic import BaseModel, parse_raw_as
 from snapred.backend.dao.ingredients import ReductionIngredients
+from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.recipe.GenericRecipe import GenericRecipe
 
 
@@ -147,7 +148,7 @@ class TestGenericRecipeInputsAndOutputs(unittest.TestCase):
             pass
 
         # try to set the string with a float --- will fail, reproducing an old error
-        with pytest.raises(TypeError):
+        with pytest.raises(AlgorithmException):
             TestInAndOut().executeRecipe(InputValue=0.0, OutputValue="incorrect")
 
     def test_workspaces(self):

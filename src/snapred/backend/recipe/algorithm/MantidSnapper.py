@@ -1,4 +1,3 @@
-import os
 from collections import namedtuple
 
 from mantid.api import AlgorithmManager, Progress, mtd
@@ -156,7 +155,7 @@ class MantidSnapper:
                 if returnVal is None:
                     returnVal = getattr(algorithm.getProperty(prop), "valueAsStr", None)
                 val.update(returnVal)
-        except RuntimeError as e:
+        except (RuntimeError, TypeError) as e:
             logger.error(f"Algorithm {name} failed for the following arguments: \n {kwargs}")
             self.cleanup()
             raise AlgorithmException(name, str(e)) from e
@@ -185,12 +184,13 @@ class MantidSnapper:
         return self._mtd
 
     def _cleanOldExport(self):
-        exportPath = self._generateExportPath()
-        if os.path.exists(exportPath):
-            os.remove(exportPath)
+        # exportPath = self._generateExportPath()
+        # if os.path.exists(exportPath):
+        #     os.remove(exportPath)
+        pass
 
     def _generateExportPath(self):
-        return Resource.getPath("{}_export.py".format(self._name))
+        return Resource.getPath("snapper_export.py")
 
     def cleanup(self):
         if self._export:

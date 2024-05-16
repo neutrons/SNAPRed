@@ -60,9 +60,13 @@ class Recipe(ABC, Generic[Ingredients]):
             raise e
         # ensure all of the given workspaces exist
         # NOTE may need to be tweaked to ignore output workspaces...
+        logger.info(f"Validating the given workspaces: {groceries.values()}")
         for ws in groceries.values():
-            if not self.mantidSnapper.mtd.doesExist(ws):
-                raise RuntimeError(f"The indicated workspace {ws} not found in Mantid ADS.")
+            if not isinstance(ws, list):
+                ws = [ws]
+            for wsStr in ws:
+                if not self.mantidSnapper.mtd.doesExist(wsStr):
+                    raise RuntimeError(f"The indicated workspace {wsStr} not found in Mantid ADS.")
 
     def stirInputs(self):
         """

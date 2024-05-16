@@ -1,28 +1,20 @@
+from typing import List, Optional
+
 from pydantic import BaseModel
 
-from snapred.backend.dao.ReductionState import ReductionState
-from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class ReductionIngredients(BaseModel):
-    """Class to hold the instrument configuration."""
+    """Data class to hold the ingredients for each subrecipe of reduction and itself"""
 
-    # NOTE these depend on lite mode and focus group through PixelGroup
-    # it is therefore necessary for the reduction service to have
-    # access to the focus group to properly create these
+    maskList: List[WorkspaceName]
+    pixelGroups: List[PixelGroup]
+    detectorPeaksMany: List[List[GroupPeakList]]
+    smoothingParameter: float
 
-    runConfig: RunConfig
-    reductionState: ReductionState
-    pixelGroup: PixelGroup
-
-    # if we need specific getter and setter methods, we can use the @property decorator
-    # https://docs.python.org/3/library/functions.html#property
-    #
-    # @property
-    # def key(self) -> str:
-    #     return self._key
-
-    # @name.setter
-    # def key(self, v: str) -> None:
-    #     self._key = v
+    # These are just to interface with child recipes easier
+    pixelGroup: Optional[PixelGroup] = None
+    detectorPeaks: Optional[List[GroupPeakList]] = None
