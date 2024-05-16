@@ -8,7 +8,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class ReductionIngredients(BaseModel):
-    """Data class to hold the ingredients for each subrecipe of reduction and itself.  Use them wisely."""
+    """Data class to hold the ingredients for each subrecipe of reduction and itself"""
 
     maskList: List[WorkspaceName]
     pixelGroups: List[PixelGroup]

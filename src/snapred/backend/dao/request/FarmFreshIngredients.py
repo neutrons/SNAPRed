@@ -24,13 +24,10 @@ class FarmFreshIngredients(BaseModel):
     ## needs to be mandatory for diffcal
     cifPath: Optional[str]
 
-    # needs to be mandatory for normalizaiton/reduction
-    smoothingParameter: Optional[float]
-
     ## needs to be mandatory for normcal
     calibrantSamplePath: Optional[str]
 
-    ## smoothing parameter
+    # needs to be mandatory for normalizaiton/reduction
     smoothingParameter: Optional[float]
 
     ## the below are not-so-fresh, being fiddly optional parameters with defaults
