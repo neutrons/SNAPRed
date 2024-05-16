@@ -119,15 +119,6 @@ def getMockInstrumentConfig():
 def test_readStateConfig():
     localDataService = LocalDataService()
 
-    localDataService._readDiffractionCalibrant = mock.Mock()
-    localDataService._readDiffractionCalibrant.return_value = (
-        reductionIngredients.reductionState.stateConfig.diffractionCalibrant
-    )
-    localDataService._readNormalizationCalibrant = mock.Mock()
-    localDataService._readNormalizationCalibrant.return_value = (
-        reductionIngredients.reductionState.stateConfig.normalizationCalibrant
-    )
-
     localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
     localDataService._readPVFile = mock.Mock()
     fileMock = mock.Mock()
@@ -549,14 +540,6 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
     #   actually build up the `StateConfig` from its components.
     # This test verifies that `GroupingMap` is excluded from any future `StateConfig` JSON serialization.
     localDataService = LocalDataService()
-    localDataService._readDiffractionCalibrant = mock.Mock()
-    localDataService._readDiffractionCalibrant.return_value = (
-        reductionIngredients.reductionState.stateConfig.diffractionCalibrant
-    )
-    localDataService._readNormalizationCalibrant = mock.Mock()
-    localDataService._readNormalizationCalibrant.return_value = (
-        reductionIngredients.reductionState.stateConfig.normalizationCalibrant
-    )
     localDataService.getIPTS = mock.Mock(return_value="IPTS-123")
     localDataService._readPVFile = mock.Mock()
     fileMock = mock.Mock()
@@ -591,10 +574,10 @@ def test_readRunConfig():
     # test of public `readRunConfig` method
     localDataService = LocalDataService()
     localDataService._readRunConfig = mock.Mock()
-    localDataService._readRunConfig.return_value = reductionIngredients.runConfig
+    localDataService._readRunConfig.return_value = "57514"
     actual = localDataService.readRunConfig(mock.Mock())
     assert actual is not None
-    assert actual.runNumber == "57514"
+    assert actual == "57514"
 
 
 def test__readRunConfig():

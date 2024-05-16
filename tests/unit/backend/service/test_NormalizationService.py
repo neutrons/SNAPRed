@@ -142,6 +142,8 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService = MagicMock()
 
+        FarmFreshIngredients.return_value.get.return_value = True
+
         res = self.instance.vanadiumCorrection(mockRequest)
 
         mockRecipeInst = RawVanadiumCorrectionRecipe.return_value

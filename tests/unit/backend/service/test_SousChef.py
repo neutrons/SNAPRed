@@ -31,6 +31,20 @@ class TestSousChef(unittest.TestCase):
         for ws in mtd.getObjectNames():
             DeleteWorkspace(ws)
 
+    def test_prepManyDetectorPeaks(self):
+        self.instance.prepDetectorPeaks = mock.Mock()
+        self.ingredients.focusGroup = [self.ingredients.focusGroup]
+        res = self.instance.prepManyDetectorPeaks(self.ingredients)
+        assert res[0] == self.instance.prepDetectorPeaks.return_value
+        assert self.instance.prepDetectorPeaks.called_once_with(self.ingredients, purgePeaks=False)
+
+    def test_prepManyPixelGroups(self):
+        self.instance.prepPixelGroup = mock.Mock()
+        self.ingredients.focusGroup = [self.ingredients.focusGroup]
+        res = self.instance.prepManyPixelGroups(self.ingredients)
+        assert res[0] == self.instance.prepPixelGroup.return_value
+        assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
+
     def test_prepFocusGroup_exists(self):
         # create a temp file to be used a the path for the focus group
         # since it exists, prepFocusGroup should jsut return the focusGroup in the ingredients
@@ -311,18 +325,18 @@ class TestSousChef(unittest.TestCase):
     @mock.patch(thisService + "ReductionIngredients")
     def test_prepReductionIngredients(self, ReductionIngredients):
         self.instance.prepRunConfig = mock.Mock()
-        self.instance.prepPixelGroup = mock.Mock()
+        self.instance.prepManyPixelGroups = mock.Mock()
+        self.instance.prepManyDetectorPeaks = mock.Mock()
         self.instance.dataFactoryService.getReductionState = mock.Mock()
 
         res = self.instance.prepReductionIngredients(self.ingredients)
 
-        assert self.instance.prepRunConfig.called_once_with(self.ingredients.runNumber)
-        assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
-        assert self.instance.dataFactoryService.getReductionState.called_once_with(self.ingredients.runNumber)
+        assert self.instance.prepManyPixelGroups.called_once_with(self.ingredients)
         assert ReductionIngredients.called_once_with(
-            reductionState=self.instance.dataFactoryService.getReductionState.return_value,
-            runConfig=self.instance.prepRunConfig.return_value,
-            pixelGroup=self.instance.prepPixelGroup.return_value,
+            maskList=[],
+            pixelGroups=self.instance.prepManyPixelGroups.return_value,
+            smoothingParameter=self.ingredients.smoothingParameter,
+            detectorPeaksMany=self.instance.prepManyDetectorPeaks.return_value,
         )
         assert res == ReductionIngredients.return_value
 
