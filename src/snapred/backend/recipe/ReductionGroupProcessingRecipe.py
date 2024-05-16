@@ -62,8 +62,8 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
             RebinOutput=False,
         )
 
-        self.mantidSnapper.NormaliseByCurrent(
-            "Normalizing Current ...",
+        self.mantidSnapper.NormalizeByCurrentButTheCorrectWay(
+            "Normalizing Current ... but the correct way!",
             InputWorkspace=self.rawInput,
             OutputWorkspace=self.rawInput,
         )
