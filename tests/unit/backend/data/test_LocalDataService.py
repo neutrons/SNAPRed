@@ -761,7 +761,6 @@ def test_readWriteCalibrationRecord_version_numbers():
         # write: version == 1
         localDataService.writeCalibrationRecord(testCalibrationRecord_v0001)
         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
-        print(actualRecord)
         assert actualRecord.version == 1
         assert actualRecord.calibrationFittingIngredients.version == 1
         # write: version == 2

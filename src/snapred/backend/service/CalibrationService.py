@@ -79,7 +79,6 @@ class CalibrationService(Service):
         self.groceryService = GroceryService()
         self.groceryClerk = GroceryListItem.builder()
         self.sousChef = SousChef()
-        self.registerPath("reduction", self.fakeMethod)
         self.registerPath("ingredients", self.prepDiffractionCalibrationIngredients)
         self.registerPath("groceries", self.fetchDiffractionCalibrationGroceries)
         self.registerPath("focus", self.focusSpectra)
@@ -87,13 +86,10 @@ class CalibrationService(Service):
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
         self.registerPath("initializeState", self.initializeState)
-        self.registerPath("calculatePixelGroupingParameters", self.fakeMethod)
         self.registerPath("hasState", self.hasState)
-        self.registerPath("checkDataExists", self.fakeMethod)
         self.registerPath("assessment", self.assessQuality)
         self.registerPath("loadQualityAssessment", self.loadQualityAssessment)
         self.registerPath("index", self.getCalibrationIndex)
-        self.registerPath("retrievePixelGroupingParams", self.fakeMethod)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
 

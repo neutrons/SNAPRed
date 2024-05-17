@@ -17,7 +17,6 @@ class TestDataFactoryService(unittest.TestCase):
     def expected(cls, *args):
         hasher = hashlib.shake_256()
         decodedArgs = str(args).encode("utf-8")
-        print(decodedArgs)
         hasher.update(decodedArgs)
         return hasher.digest(8).hex()
 
@@ -179,7 +178,6 @@ class TestDataFactoryService(unittest.TestCase):
         mtd.add(wsname, ws1)
         assert self.instance.workspaceDoesExist(wsname)
         ws2 = self.instance.getWorkspaceForName(wsname)
-        print(dir(ws1))
         assert ws1.name() == ws2.name()
         ws2.delete()
         assert not self.instance.workspaceDoesExist(wsname)

@@ -243,7 +243,7 @@ class LocalDataService:
                 fileList.append(fname)
         if len(fileList) == 0 and throws:
             raise ValueError(f"No directories could be found with pattern: {pattern}")
-
+        print(f"MATCHING GILE LIST {fileList}")
         return fileList
 
     def _constructCalibrationStateRoot(self, stateId):
@@ -349,22 +349,26 @@ class LocalDataService:
         return version
 
     @validate_arguments
-    def _constructCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Version):
+    def _constructCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Optional[Version]):
         """
         Generates the path for an instrument state's versioned calibration files.
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructCalibrationStatePath(stateId, useLiteMode)
+        if version == "*" or version is None:
+            version = self._getLatestCalibrationVersionNumber(runId, useLiteMode)
         calibrationVersionPath: str = statePath + f"{wnvf.fileVersion(version)}/"
         return calibrationVersionPath
 
     @validate_arguments
-    def _constructNormalizationDataPath(self, runId: str, useLiteMode: bool, version: Version):
+    def _constructNormalizationDataPath(self, runId: str, useLiteMode: bool, version: Optional[Version]):
         """
         Generates the path for an instrument state's versioned normalization calibration files.
         """
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructNormalizationStatePath(stateId, useLiteMode)
+        if version == "*" or version is None:
+            version = self._getLatestNormalizationVersionNumber(runId, useLiteMode)
         normalizationVersionPath: str = statePath + f"{wnvf.fileVersion(version)}/"
         return normalizationVersionPath
 
@@ -441,7 +445,6 @@ class LocalDataService:
         calibrationVersionPath = f"{calibrationStatePath}v_*/"
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
         versions = [self._extractDirVersion(dire) for dire in versionDirs]
-        print(f"GETTING LATEST VERSIONS {versions}")
         return self._getLatestThing(versions)
 
     def _getLatestNormalizationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
