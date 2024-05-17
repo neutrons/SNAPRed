@@ -41,7 +41,6 @@ instrument:
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
-  startingVersionNumber: 0
 
 nexus:
   lite:
@@ -129,6 +128,18 @@ logging:
 
 samples:
   home: ${instrument.calibration.sample.home}
+
+version:
+  error: "uninitialized"
+  calibration:
+    start: 1
+    default: 0 # version for the default calibration state
+  normalization:
+    start: 1
+  reduction:
+    start: 1
+  "": # this is for the default indexor
+    start: 0
 
 cis_mode: false
 

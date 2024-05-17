@@ -1,16 +1,10 @@
-from typing import Dict, List, Optional
+from pydantic import BaseModel, Extra
 
-from pydantic import BaseModel
-
-from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
-from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-from snapred.backend.dao.state.PixelGroup import PixelGroup
+from snapred.backend.dao.IndexEntry import Version, UNINITIALIZED
 from snapred.meta.Config import Config
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationRecord(BaseModel):
+class Record(BaseModel, extra=Extra.allow):
     """
 
     The CalibrationRecord class, serves as a comprehensive log of the inputs and parameters employed
@@ -25,10 +19,12 @@ class CalibrationRecord(BaseModel):
     """
 
     runNumber: str
-    crystalInfo: CrystallographicInfo
     useLiteMode: bool
-    calibrationFittingIngredients: Calibration
-    pixelGroups: Optional[List[PixelGroup]]  # TODO: really shouldn't be optional, will be when sns data fixed
-    focusGroupCalibrationMetrics: FocusGroupMetric
-    workspaces: Dict[WorkspaceType, List[WorkspaceName]]
-    version: int = Config["version.calibration.start"]
+    version: Version = UNINITIALIZED
+
+
+Nonrecord = Record(
+    runNumber = "none",
+    useLiteMode = False,
+    version = UNINITIALIZED,
+)

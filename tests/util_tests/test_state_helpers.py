@@ -11,7 +11,7 @@ from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
 
-VERSION_START = Config["instrument.startingVersionNumber"]
+VERSION_DEFAULT = Config["version.calibration.default"]
 
 
 @pytest.fixture(autouse=True)
@@ -82,7 +82,7 @@ def test_state_root_override_enter(mockReadPVFile, mockReadInstrumentConfig, moc
         assert Path(stateRootPath) == Path(Config["instrument.calibration.powder.home"]) / stateId
         assert Path(stateRootPath).exists()
         assert Path(stateRootPath).joinpath("groupingMap.json").exists()
-        versionString = wnvf.fileVersion(VERSION_START)
+        versionString = wnvf.fileVersion(VERSION_DEFAULT)
         assert (Path(stateRootPath) / "lite" / "diffraction" / versionString / "CalibrationParameters.json").exists()
 
 

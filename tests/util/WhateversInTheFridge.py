@@ -56,6 +56,9 @@ class WhateversInTheFridge(LocalDataService):
         if not filePath.is_absolute():
             filePath = Path(Config["samples.home"]).joinpath(filePath)
         return str(filePath)
+    
+    def readDetectorState(self, runId: str):
+        return DetectorState.construct(wav=1.0)
 
     ### FILE METHODS ###
 
@@ -77,11 +80,11 @@ class WhateversInTheFridge(LocalDataService):
     def _generateStateId(self, runId: str) -> Tuple[str, str]:
         return "outpus/2kfxjiqm", "some gibberish"
 
-    def checkCalibrationFileExists(self, runId: str):
-        if runId.isdigit():
-            return True
-        else:
-            return False
+    # def checkCalibrationFileExists(self, runId: str):
+    #     if runId.isdigit():
+    #         return True
+    #     else:
+    #         return False
 
     ### CALIBRATION METHODS ###
 
@@ -136,7 +139,7 @@ class WhateversInTheFridge(LocalDataService):
     ### GROUPING MAP METHODS ###
 
     def _groupingMapPath(self, stateId) -> Path:
-        return Resource.getPath("inputs/testInstrument/groupingMap.json")
+        return Path(Resource.getPath("inputs/testInstrument/groupingMap.json"))
 
     def _readGroupingMap(self, stateId: str) -> GroupingMap:
         thismap = self._readDefaultGroupingMap()

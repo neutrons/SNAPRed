@@ -24,5 +24,5 @@ class NormalizationRecord(BaseModel):
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     calibration: Calibration
     workspaceNames: List[str] = []
-    version: int = Config["instrument.startingVersionNumber"]
+    version: int = Config["version.normalization.start"]
     dMin: float

@@ -15,6 +15,7 @@ from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -30,9 +31,6 @@ class ReductionService(Service):
     This is a separate call to GroceryService, before the call to load the other workspace data.
 
     """
-
-    dataFactoryService: "DataFactoryService"
-    dataExportService: "DataExportService"
 
     def __init__(self):
         super().__init__()

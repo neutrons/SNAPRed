@@ -21,4 +21,4 @@ class Normalization(BaseModel):
     useLiteMode: bool
     creationDate: datetime
     name: str
-    version: int = Config["instrument.startingVersionNumber"]
+    version: int = Config["version.normalization.start"]

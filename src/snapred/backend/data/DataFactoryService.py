@@ -94,7 +94,7 @@ class DataFactoryService:
 
     @validate_arguments
     def getCalibrationIndex(self, runId: str, useLiteMode: bool):
-        return self.lookupService.readCalibrationIndex(runId, useLiteMode)
+        return self.lookupService.calibrationIndex(runId, useLiteMode)
 
     @validate_arguments
     def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
@@ -117,7 +117,7 @@ class DataFactoryService:
 
     @validate_arguments
     def getNormalizationIndex(self, runId: str, useLiteMode: bool):
-        return self.lookupService.readNormalizationIndex(runId, useLiteMode)
+        return self.lookupService.normalizationIndex(runId, useLiteMode)
 
     @validate_arguments
     def getNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):

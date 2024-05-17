@@ -27,8 +27,4 @@ class Calibration(BaseModel):
     useLiteMode: bool
     creationDate: datetime
     name: str
-    version: int = Config["instrument.startingVersionNumber"]
-
-    # these are saved for later use in reduction
-    calibrantSamplePath: Optional[str]
-    peakIntensityThreshold: Optional[float]
+    version: int = Config["version.calibration.start"]

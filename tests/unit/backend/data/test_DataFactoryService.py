@@ -32,12 +32,12 @@ class TestDataFactoryService(unittest.TestCase):
             for func in dir(LocalDataService)
             if callable(getattr(LocalDataService, func)) and not func.startswith("__")
         ]
+        # these are treated specially for specific returns
+        exceptions = ["readInstrumentConfig", "readStateConfig", "readRunConfig"]
+        method_list = [method for method in method_list if method not in exceptions]
         for x in method_list:
             setattr(getattr(cls.mockLookupService, x), "side_effect", lambda *x: cls.expected(cls, *x))
         # these are treated specially as returning specific object types
-        cls.mockLookupService.readInstrumentConfig.side_effect = None
-        cls.mockLookupService.readRunConfig.side_effect = None
-        cls.mockLookupService.readStateConfig.side_effect = None
         cls.mockLookupService.readInstrumentConfig.return_value = InstrumentConfig.construct({})
         cls.mockLookupService.readStateConfig.return_value = StateConfig.construct({})
         cls.mockLookupService.readRunConfig.return_value = RunConfig.construct({})

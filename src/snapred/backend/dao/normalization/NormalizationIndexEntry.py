@@ -1,11 +1,7 @@
-from typing import Optional
-
-from pydantic import BaseModel, validator
-
-from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
+from snapred.backend.dao.IndexEntry import IndexEntry
 
 
-class NormalizationIndexEntry(BaseModel):
+class NormalizationIndexEntry(IndexEntry):
     """
 
     This class represents a Normalization Index Entry object with various attributes and a custom validator.
@@ -16,21 +12,4 @@ class NormalizationIndexEntry(BaseModel):
 
     """
 
-    runNumber: str
-    useLiteMode: bool
     backgroundRunNumber: str
-    version: Optional[int]
-    appliesTo: Optional[str]
-    comments: Optional[str]
-    author: Optional[str]
-    timestamp: Optional[int]
-
-    @validator("appliesTo", allow_reuse=True)
-    def appliesToFormatChecker(cls, v):
-        """
-
-        Validator ensures 'appliesTo' adheres to the specified format if present, enhancing the
-        integrity of data referencing.
-
-        """
-        return CalibrationIndexEntry.appliesToFormatChecker(v)
