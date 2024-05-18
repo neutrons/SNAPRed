@@ -2,7 +2,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Literal, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from mantid.simpleapi import mtd
 from pydantic import validate_arguments
@@ -18,8 +18,8 @@ from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
-
 Version = Union[int, Literal["*"]]
+
 
 @Singleton
 class GroceryService:
@@ -211,7 +211,7 @@ class GroceryService:
         )
 
     @validate_arguments
-    def _createNormalizationWorkspaceFilename(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
+    def _createNormalizationWorkspaceFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
             Path(self._getNormalizationDataPath(runNumber, useLiteMode, version))
             / (self._createNormalizationWorkspaceName(runNumber, useLiteMode, version) + ".nxs")
@@ -516,7 +516,7 @@ class GroceryService:
         :type version: str
         """
         return self.dataService._constructCalibrationDataPath(runNumber, useLiteMode, version)
-    
+
     @validate_arguments
     def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
         """
@@ -913,6 +913,10 @@ class GroceryService:
                         res["workspace"] = maskWorkspaceName
                 case "normalization":
                     normalizationWorkspaceName = self._createNormalizationWorkspaceName(item.runNumber, item.version)
+                    if item.version is None or item.version == "*":
+                        item.version = self.dataService._getVersionFromNormalizationIndex(
+                            item.runNumber, item.useLiteMode
+                        )
                     if item.isOutput:
                         res = {"result": True, "workspace": normalizationWorkspaceName}
                     else:

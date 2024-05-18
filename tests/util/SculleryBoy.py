@@ -100,7 +100,7 @@ class SculleryBoy:
             return [mock.Mock(spec_set=GroupPeakList)]
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients):  # noqa ARG002
-        path = Resource.getPath("/inputs/normalization/ReductionIngredients.json")
+        path = Resource.getPath("/inputs/calibration/ReductionIngredients.json")
         return ReductionIngredients.parse_file(path)
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:

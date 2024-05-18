@@ -489,7 +489,7 @@ def test_getIPTS_cache():
 
     # direct GetIPTS to look in the exact folder where it should look
     # it is very stupid, so if you don't tell it exactly then it won't look there
-    with amend_config(data_dir=correctIPTS):
+    with amend_config(data_dir=correctIPTS + "nexus/"):
         res = localDataService.getIPTS(*key)
         assert res == correctIPTS
 

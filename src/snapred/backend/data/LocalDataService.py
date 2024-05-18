@@ -243,7 +243,6 @@ class LocalDataService:
                 fileList.append(fname)
         if len(fileList) == 0 and throws:
             raise ValueError(f"No directories could be found with pattern: {pattern}")
-        print(f"MATCHING GILE LIST {fileList}")
         return fileList
 
     def _constructCalibrationStateRoot(self, stateId):
@@ -264,7 +263,7 @@ class LocalDataService:
             mode = "lite"
         else:
             mode = "native"
-        return f"{self._constructCalibrationStateRoot(stateId)}/{str(mode)}/normalization/"
+        return f"{self._constructCalibrationStateRoot(stateId)}{str(mode)}/normalization/"
 
     def readCalibrationIndex(self, runId: str, useLiteMode: bool):
         # Need to run this because of its side effect, TODO: Remove side effect
@@ -356,7 +355,7 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructCalibrationStatePath(stateId, useLiteMode)
         if version == "*" or version is None:
-            version = self._getLatestCalibrationVersionNumber(runId, useLiteMode)
+            version = self._getLatestCalibrationVersionNumber(stateId, useLiteMode)
         calibrationVersionPath: str = statePath + f"{wnvf.fileVersion(version)}/"
         return calibrationVersionPath
 
@@ -368,7 +367,7 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runId)
         statePath = self._constructNormalizationStatePath(stateId, useLiteMode)
         if version == "*" or version is None:
-            version = self._getLatestNormalizationVersionNumber(runId, useLiteMode)
+            version = self._getLatestNormalizationVersionNumber(stateId, useLiteMode)
         normalizationVersionPath: str = statePath + f"{wnvf.fileVersion(version)}/"
         return normalizationVersionPath
 

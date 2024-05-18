@@ -1,9 +1,7 @@
 import time
+from typing import Any, Dict
 
-from snapred.backend.dao.ingredients import (
-    GroceryListItem,
-    ReductionIngredients
-)
+from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
 from snapred.backend.dao.normalization import (
     NormalizationIndexEntry,
 )
@@ -23,7 +21,6 @@ from snapred.meta.decorators.Singleton import Singleton
 
 logger = snapredLogger.getLogger(__name__)
 
-from typing import Dict, Any
 
 @Singleton
 class ReductionService(Service):
@@ -60,7 +57,7 @@ class ReductionService(Service):
     @staticmethod
     def name():
         return "reduction"
-    
+
     @FromString
     def fakeMethod(self):  # pragma: no cover
         # NOTE this is not a real method
@@ -79,7 +76,7 @@ class ReductionService(Service):
         groupResults = self.fetchReductionGroupings(request)
         focusGroups = groupResults["focusGroups"]
         groupingWorkspaces = groupResults["groupingWorkspaces"]
-        request.focusGroups = focusGroups
+        request.focusGroup = focusGroups
 
         ingredients = self.prepReductionIngredients(request)
 
@@ -106,11 +103,11 @@ class ReductionService(Service):
         """
         # fetch all valid groups for this run state
         res = self.loadAllGroupings(request.runNumber, request.useLiteMode)
-        request.focusGroups = res["focusGroups"]
+        request.focusGroup = res["focusGroups"]
         return res
 
     @FromString
-    def loadAllGroupings(self, runNumber: str, useLiteMode:bool) -> Dict[str, Any]:
+    def loadAllGroupings(self, runNumber: str, useLiteMode: bool) -> Dict[str, Any]:
         """
         Load all groupings that are valid for a specific state, determined from the run number
         and corresponding to lite mode setting.
@@ -135,7 +132,7 @@ class ReductionService(Service):
             "focusGroups": list(groupingMap.values()),
             "groupingWorkspaces": groupingWorkspaces,
         }
-    
+
     @FromString
     def prepReductionIngredients(self, request: ReductionRequest) -> ReductionIngredients:
         """
@@ -159,7 +156,7 @@ class ReductionService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroups,
+            focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             smoothingParameter=request.smoothingParameter,
@@ -189,9 +186,13 @@ class ReductionService(Service):
         """
         # gather input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber).useLiteMode(request.useLiteMode).add()
-        return GroceryService().fetchGroceryDict(groceryDict=self.groceryClerk.buildDict())
+        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+        self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber).useLiteMode(
+            request.useLiteMode
+        ).add()
+        return self.groceryService.fetchGroceryDict(groceryDict=self.groceryClerk.buildDict())
 
     @FromString
     def saveReduction(self, request):  # noqa ARG005
