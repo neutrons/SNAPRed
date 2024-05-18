@@ -153,4 +153,4 @@ class WhateversInTheFridge(LocalDataService):
             _nativeMap={x.name: x for x in thismap.nativeFocusGroups},
             _liteMap={x.name: x for x in thismap.liteFocusGroups},
         )
-        return map
+        return thismap
