@@ -194,13 +194,11 @@ class GroceryService:
         return str(path)
 
     @validate_arguments
-    def _createDiffcalOutputWorkspaceFilename(
-        self, runNumber: str, useLiteMode: bool, version: Optional[Version], unit: str, group: str
-    ) -> str:
+    def _createDiffcalOutputWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
-            Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
-            / (self._createDiffcalOutputWorkspaceName(runNumber, useLiteMode, version, unit, group) + ext)
+            Path(self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version))
+            / (self._createDiffcalOutputWorkspaceName(item) + ext)
         )
 
     @validate_arguments
@@ -244,15 +242,15 @@ class GroceryService:
     def _createDiffcalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runNumber).build()
 
-    def _createDiffcalOutputWorkspaceName(
-        self,
-        runNumber: str,
-        useLiteMode: bool,  # noqa ARG002
-        version: Optional[int],
-        unit: str,
-        group: str,
-    ) -> WorkspaceName:
-        return wng.diffCalOutput().unit(unit).runNumber(runNumber).version(version).group(group).build()
+    def _createDiffcalOutputWorkspaceName(self, item: GroceryListItem) -> WorkspaceName:
+        return (
+            wng.diffCalOutput()
+            .unit(item.unit)
+            .runNumber(item.runNumber)
+            .version(item.version)
+            .group(item.groupingScheme)
+            .build()
+        )
 
     @validate_arguments
     def _createDiffcalTableWorkspaceName(
@@ -874,16 +872,12 @@ class GroceryService:
                     )
                 # for diffraction-calibration workspaces
                 case "diffcal_output":
-                    diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(
-                        item.runNumber, item.useLiteMode, item.version, item.unit, item.groupingScheme
-                    )
+                    diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(item)
                     if item.isOutput:
                         res = {"result": True, "workspace": diffcalOutputWorkspaceName}
                     else:
                         res = self.fetchWorkspace(
-                            self._createDiffcalOutputWorkspaceFilename(
-                                item.runNumber, item.useLiteMode, item.version, item.unit, item.groupingScheme
-                            ),
+                            self._createDiffcalOutputWorkspaceFilename(item),
                             diffcalOutputWorkspaceName,
                             loader="ReheatLeftovers",
                         )

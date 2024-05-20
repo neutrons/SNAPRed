@@ -1,7 +1,9 @@
 # ruff: noqa: ARG005 ARG002
 import json
 import os
+import shutil
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 from mantid.simpleapi import mtd
@@ -23,23 +25,32 @@ Version = Union[int, Literal["*"]]
 logger = snapredLogger.getLogger(__name__)
 
 
-class SettableReturnFunction:
-    """
-    This was intended to allow easily "mocking out" the functions by
-    setting their return-values or side effects in a way similar to
-    unittest.mock.  But I couldn't quite get it to work.
-    Just use mocks instead.
-    """
+class RedirectStateRoot:
+    def __init__(self, dataService: LocalDataService):
+        self.dataService = dataService
+        self.oldself = dataService._constructCalibrationStateRoot
 
-    def __init__(self, x):
-        self.return_value = x
-        self.side_effect = lambda *x, **y: None
+    def __enter__(self):
+        self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
+        self.tmppath = Path(self.tmpdir.name)
+        self.dataService._constructCalibrationStateRoot = lambda *x, **y: self.tmpdir.name
+        return self
 
-    def __call__(self, *x, **y):
-        if self.side_effect is not None:
-            return self.side_effect(*x, **y)
-        else:
-            return self.return_value
+    def __exit__(self, *arg, **kwargs):
+        self.dataService._constructCalibrationStateRoot = self.oldself
+        self.tmpdir.cleanup()
+        assert not self.tmppath.exists()
+        del self.tmpdir
+
+    def path(self):
+        return self.tmppath
+
+    def addFileAs(self, source: str, target: str):
+        assert self.tmppath in list(Path(target).parents)
+        Path(target).parent.mkdir(parents=True)
+        shutil.copy2(source, target)
+        assert Path(target).exists()
+        print(f"FILE SAVED AS {target}")
 
 
 @Singleton
@@ -87,7 +98,6 @@ class WhateversInTheFridge(LocalDataService):
 
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
         key = (runNumber, instrumentName)
-        print(f"KEY {key} : {self.iptsCache}")
         if key not in self.iptsCache:
             self.iptsCache[key] = mtd.unique_name(prefix=f"{runNumber}_")
         return str(self.iptsCache[key])
@@ -118,10 +128,14 @@ class WhateversInTheFridge(LocalDataService):
     def _getVersionFromCalibrationIndex(self, runId: str, useLiteMode: bool) -> int:
         return self.latestVersion
 
+    @validate_arguments
+    def _getLatestCalibrationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
+        return self.latestVersion
+
     ### NORMALIZATION METHODS ###
 
     @validate_arguments
-    def readNormalizationnRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+    def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         version = version if version is not None else self.latestVersion
         record = NormalizationRecord.construct(
             runNumber=runId,
@@ -132,6 +146,10 @@ class WhateversInTheFridge(LocalDataService):
 
     @validate_arguments
     def _getVersionFromNormalizationIndex(self, runId: str, useLiteMode: bool) -> int:
+        return self.latestVersion
+
+    @validate_arguments
+    def _getLatestNormalizationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
         return self.latestVersion
 
     ### GROUPING MAP METHODS ###

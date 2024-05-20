@@ -224,16 +224,12 @@ class InstaEats(GroceryService):
                     )
                 # for diffraction-calibration workspaces
                 case "diffcal_output":
-                    diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(
-                        item.runNumber, item.useLiteMode, item.version, item.unit, item.groupingScheme
-                    )
+                    diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(item)
                     if item.isOutput:
                         res = {"result": True, "workspace": diffcalOutputWorkspaceName}
                     else:
                         res = self.fetchWorkspace(
-                            self._createDiffcalOutputWorkspaceFilename(
-                                item.runNumber, item.useLiteMode, item.version, item.unit, item.groupingScheme
-                            ),
+                            self._createDiffcalOutputWorkspaceFilename(item),
                             diffcalOutputWorkspaceName,
                             loader="ReheatLeftovers",
                         )
