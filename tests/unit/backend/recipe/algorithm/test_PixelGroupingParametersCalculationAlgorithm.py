@@ -2,11 +2,10 @@
 # * if those files are changed or moved, it will cause test failure;
 # * GOLDEN DATA must be IDENTICAL between local and remote tests.
 
-import json
 import socket
 import unittest
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List
 
 import pytest
 from mantid.simpleapi import (

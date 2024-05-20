@@ -149,10 +149,10 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                     continue
 
                 twoTheta = detectorInfo.twoTheta(int(detIndex))
-                solidAngleFactor = np.sin(twoTheta / 2.0)                
+                solidAngleFactor = np.sin(twoTheta / 2.0)
                 groupMin2Theta = min(groupMin2Theta, twoTheta)
                 groupMax2Theta = max(groupMax2Theta, twoTheta)
-                
+
                 twoTheta *= solidAngleFactor
                 groupMean2Theta += twoTheta
 
@@ -186,12 +186,16 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                     groupMean2Theta = 0.0
                     groupMeanPhi = 0.0
 
-                dMin = self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMax2Theta / 2.0))) * self.tofMin / self.L\
-                    if groupMax2Theta > np.finfo(float).eps\
+                dMin = (
+                    self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMax2Theta / 2.0))) * self.tofMin / self.L
+                    if groupMax2Theta > np.finfo(float).eps
                     else 0.0
-                dMax = self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMin2Theta / 2.0))) * self.tofMax / self.L\
-                    if groupMin2Theta > np.finfo(float).eps\
+                )
+                dMax = (
+                    self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMin2Theta / 2.0))) * self.tofMax / self.L
+                    if groupMin2Theta > np.finfo(float).eps
                     else 0.0
+                )
 
                 delta_d_over_d = resolutionWS.readY(groupIndex)[0]
 
