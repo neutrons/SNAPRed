@@ -26,6 +26,18 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class RedirectStateRoot:
+    """
+    Do not mock out state or data paths directly.
+    Instead, use this as context manager, in the form
+
+    ```
+    with RedirectState(instance.dataService) as tmpRoot:
+        <code here>
+        tmpRoot.addFileAs(some_file, target_in_tmp_root)
+        <more code here>
+    ```
+    """
+
     def __init__(self, dataService: LocalDataService):
         self.dataService = dataService
         self.oldself = dataService._constructCalibrationStateRoot
