@@ -149,11 +149,11 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                     continue
 
                 twoTheta = detectorInfo.twoTheta(int(detIndex))
-                solidAngleFactor = np.sin(twoTheta / 2.0)
-                twoTheta *= solidAngleFactor
-                
+                solidAngleFactor = np.sin(twoTheta / 2.0)                
                 groupMin2Theta = min(groupMin2Theta, twoTheta)
                 groupMax2Theta = max(groupMax2Theta, twoTheta)
+                
+                twoTheta *= solidAngleFactor
                 groupMean2Theta += twoTheta
 
                 try:
@@ -176,19 +176,22 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                 pixelCount += 1
 
             if pixelCount > 0:
-                if normalizationFactor >= np.finfo(float).eps:
+                if normalizationFactor > np.finfo(float).eps:
                     groupMeanL2 /= normalizationFactor
                     groupMean2Theta /= normalizationFactor
                     groupMeanPhi /= normalizationFactor
-                    dMin = self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMax2Theta / 2.0))) * self.tofMin / self.L
-                    dMax = self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMin2Theta / 2.0))) * self.tofMax / self.L                    
                 else:
                     # special case: all on-axis pixels
                     groupMeanL2 = 0.0
                     groupMean2Theta = 0.0
                     groupMeanPhi = 0.0
-                    dMin = 0.0
-                    dMax = 0.0
+
+                dMin = self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMax2Theta / 2.0))) * self.tofMin / self.L\
+                    if groupMax2Theta > np.finfo(float).eps\
+                    else 0.0
+                dMax = self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMin2Theta / 2.0))) * self.tofMax / self.L\
+                    if groupMin2Theta > np.finfo(float).eps\
+                    else 0.0
 
                 delta_d_over_d = resolutionWS.readY(groupIndex)[0]
 
