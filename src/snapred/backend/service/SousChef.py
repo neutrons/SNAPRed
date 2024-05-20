@@ -168,10 +168,11 @@ class SousChef(Service):
         return detectorPeaks
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
+        record = self.dataFactoryService.getNormalizationRecord(ingredients.runNumber, ingredients.useLiteMode)
         return ReductionIngredients(
             maskList=[],
             pixelGroups=self.prepManyPixelGroups(ingredients),
-            smoothingParameter=ingredients.smoothingParameter,
+            smoothingParameter=record.smoothingParameter,
             detectorPeaksMany=self.prepManyDetectorPeaks(ingredients),
         )
 

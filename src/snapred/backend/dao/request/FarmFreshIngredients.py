@@ -1,6 +1,6 @@
 from typing import List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.state import FocusGroup
@@ -8,7 +8,7 @@ from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
-class FarmFreshIngredients(BaseModel):
+class FarmFreshIngredients(BaseModel, extra=Extra.forbid):
     """
     from these, the Sous Chef can make everything
     """
@@ -26,9 +26,6 @@ class FarmFreshIngredients(BaseModel):
 
     ## needs to be mandatory for normcal
     calibrantSamplePath: Optional[str]
-
-    # needs to be mandatory for normalizaiton/reduction
-    smoothingParameter: Optional[float]
 
     ## the below are not-so-fresh, being fiddly optional parameters with defaults
     convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]

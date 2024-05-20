@@ -36,12 +36,12 @@ class ReductionRecipeTest(TestCase):
         groceries = {
             "inputWorkspace": "sample",
             "normalizationWorkspace": "norm",
-            "groupWorkspaces": ["group1", "group2"],
+            "groupingWorkspaces": ["group1", "group2"],
         }
         recipe.unbagGroceries(groceries)
         assert recipe.sampleWs == groceries["inputWorkspace"]
         assert recipe.normalizationWs == groceries["normalizationWorkspace"]
-        assert recipe.groupWorkspaces == groceries["groupWorkspaces"]
+        assert recipe.groupWorkspaces == groceries["groupingWorkspaces"]
 
         groceries = {
             "inputWorkspace": "sample",

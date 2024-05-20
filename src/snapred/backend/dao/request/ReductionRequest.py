@@ -11,7 +11,6 @@ class ReductionRequest(BaseModel):
     useLiteMode: bool
     focusGroup: Union[Optional[FocusGroup], List[FocusGroup]]
     calibrantSamplePath: str
-
-    smoothingParameter: float = Config["calibration.parameters.default.smoothing"]
+    userSelectedMaskPath: Optional[str]
     peakIntensityThreshold: float = Config["constants.PeakIntensityFractionThreshold"]
     version: Union[int, Literal["*"]] = "*"

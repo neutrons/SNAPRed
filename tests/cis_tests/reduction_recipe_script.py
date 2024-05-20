@@ -7,14 +7,12 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.data.GroceryService import GroceryService
 
 ## the code to test
-from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration as PixelAlgo
-from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration as GroupAlgo
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe as Recipe
 
 # for running through service layer
-from snapred.backend.service.CalibrationService import CalibrationService
-from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
-    
+from snapred.backend.dao.request.ReductionRequest import ReductionRequest
+from snapred.backend.service.ReductionService import ReductionService
+
 from snapred.meta.Config import Config
 from pathlib import Path
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng, ValueFormatter as wnvf
@@ -40,9 +38,8 @@ farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
     useLiteMode=isLite,
     focusGroup=list(groups.values()),
-    smoothingParameter=0.005,
     calibrantSamplePath=calibrantSamplePath,
-    peakIntensityThresold=peakThreshold,
+    peakIntensityThreshold=peakThreshold,
 )
 ingredients = SousChef().prepReductionIngredients(farmFresh)
 
@@ -62,25 +59,16 @@ clerk.name("inputWorkspace").neutron(runNumber).useLiteMode(isLite).add()
 clerk.name("diffcalWorkspace").diffcal_table(runNumber).add()
 clerk.name("normalizationWorkspace").normalization(runNumber).useLiteMode(isLite).add()
 
-groceryDict = clerk.buildDict()
-for key, value in groceryDict.items():
-    print(f"\tKEY={key} : {value}")
 groceries = GroceryService().fetchGroceryDict(
-    groceryDict=groceryDict
+    groceryDict=clerk.buildDict()
 )
-groceries["groupWorkspaces"] = groupingWorkspaces
-
-print(groceries.keys())
-print(groceries["groupWorkspaces"])
-print(groceries["groupingWorkspace"])
-
+groceries["groupingWorkspaces"] = groupingWorkspaces
 
 # NOTE: load the normalization the old way
 # this will prove that the grocery service is able to load it for us now, 
 # duplicated the previous behavior
 localdataservice = LocalDataService()
 normalizationRecord = localdataservice._getCurrentNormalizationRecord(runNumber, isLite)
-print(localdataservice._constructNormalizationDataPath(runNumber, isLite, version))
 version = normalizationRecord.version
 normalizationPath = Path(localdataservice._constructNormalizationDataPath(runNumber, isLite, version))
 normalizationWsName = wng.rawVanadium().runNumber(normalizationRecord.runNumber).build()
@@ -90,3 +78,28 @@ assert_wksp_almost_equal(normalizationWs["workspace"], groceries["normalizationW
 # run the recipe
 Recipe().cook(ingredients, groceries)
 
+assert False
+
+## Now test running through the service layer
+
+request = ReductionRequest(
+    runNumber = runNumber,
+    useLiteMode = isLite,
+    calibrantSamplePath = calibrantSamplePath,
+    peakIntensityThreshold=peakThreshold,
+)
+
+service = ReductionService()
+
+grouping2 = service.fetchReductionGroupings(request)
+request.focusGroup = grouping2["focusGroups"]
+assert grouping2["groupingWorkspaces"] == groupingWorkspaces
+
+ingredients2 = service.prepReductionIngredients(request)
+assert ingredients == ingredients2
+
+groceries2 = service.fetchReductionGrcoeries(request)
+groceries2["groupingWorkspaces"] = grouping2["groupingWorkspaces"]
+assert groceries2 == groceries
+
+service.reduce(request)

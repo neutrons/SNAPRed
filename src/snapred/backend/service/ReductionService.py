@@ -1,10 +1,6 @@
-import time
 from typing import Any, Dict
 
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
-from snapred.backend.dao.normalization import (
-    NormalizationIndexEntry,
-)
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
     ReductionRequest,
@@ -151,7 +147,6 @@ class ReductionService(Service):
         :return: The needed reduction ignredients.
         :rtype: ReductionIngredients
         """
-        # prepare ingredients
         cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
@@ -159,7 +154,6 @@ class ReductionService(Service):
             focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
-            smoothingParameter=request.smoothingParameter,
             peakIntensityThreshold=request.peakIntensityThreshold,
         )
         return self.sousChef.prepReductionIngredients(farmFresh)
@@ -197,14 +191,6 @@ class ReductionService(Service):
     @FromString
     def saveReduction(self, request):  # noqa ARG005
         raise NotImplementedError("Save the workspace by right-clicking on its name in the workspace list.")
-
-    def saveReductionToIndex(self, entry: NormalizationIndexEntry):
-        if entry.appliesTo is None:
-            entry.appliesTo = ">" + entry.runNumber
-        if entry.timestamp is None:
-            entry.timestamp = int(round(time.time() * 1000))
-        logger.info(f"Saving normalization index entry for Run Number {entry.runNumber}")
-        self.dataExportService.exportReductionIndexEntry(entry)
 
     def hasState(self, runNumber: str):
         return self.dataFactoryService.checkCalibrationStateExists(runNumber)

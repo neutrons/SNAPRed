@@ -47,7 +47,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         self.groceries = groceries
         self.sampleWs = groceries["inputWorkspace"]
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
-        self.groupWorkspaces = groceries["groupWorkspaces"]
+        self.groupWorkspaces = groceries["groupingWorkspaces"]
 
     def _cloneWorkspace(self, inputWorkspace: str, outputWorkspace: str) -> str:
         self.mantidSnapper.CloneWorkspace(
