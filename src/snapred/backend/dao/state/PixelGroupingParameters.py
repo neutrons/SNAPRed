@@ -10,8 +10,14 @@ class PixelGroupingParameters(BaseModel):
     # True => this group is fully masked
     isMasked: bool
 
-    # the average two-theta (radians) for this pixel grouping
+    # the mean sample to pixel distance (metres) for this pixel grouping
+    L2: float
+
+    # the mean two-theta (two times the polar angle in radians) for this pixel grouping
     twoTheta: float = Field(ge=0.0, le=2.0 * np.pi)
+
+    # the mean azimuth (radians) for this pixel grouping
+    azimuth: float = Field(ge=-np.pi, le=np.pi)
 
     # the minimum and maximum diffraction-resolvable d-spacing (Angstrom) for pixel grouping
     dResolution: Limit[float]

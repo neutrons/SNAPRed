@@ -454,7 +454,7 @@
     "useLiteMode": true,
     "creationDate": "2023-06-05T15:49:59.583421",
     "name": "test",
-    "version": 0
+    "version": 2
   },
   "pixelGroups":[
     {
@@ -472,7 +472,9 @@
         {
           "groupID": 0,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 2.1108948177427838,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.40224298673776404,
             "maximum": 2.0112149336888203
@@ -482,7 +484,9 @@
         {
           "groupID": 1,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.82310673131693,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.44278229953817677,
             "maximum": 2.213911497690884
@@ -492,7 +496,9 @@
         {
           "groupID": 2,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.5352228379083572,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.5040188478793922,
             "maximum": 2.5200942393969608
@@ -502,7 +508,9 @@
         {
           "groupID": 3,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.440276389170165,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.530714277849788,
             "maximum": 2.6535713892489396
@@ -512,7 +520,9 @@
         {
           "groupID": 4,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.1543988461042238,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.6414024711539658,
             "maximum": 3.207012355769829
@@ -522,7 +532,9 @@
         {
           "groupID": 5,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 0.8690010092470938,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.831438096217031,
             "maximum": 4.157190481085156
@@ -546,7 +558,9 @@
         {
           "groupID": 0,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.8230747956560218,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.4427877783643468,
             "maximum": 2.2139388918217344
@@ -556,7 +570,9 @@
         {
           "groupID": 1,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.1545587481738246,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.641323731469231,
             "maximum": 3.2066186573461555
@@ -580,7 +596,9 @@
         {
           "groupID": 0,
           "isMasked": false,
+          "L2": 10.0,
           "twoTheta": 1.4888167719149363,
+          "azimuth": 0.0,
           "dResolution": {
             "minimum": 0.5165770976155033,
             "maximum": 2.5828854880775167
@@ -638,7 +656,7 @@
     ]
   },
   "workspaces": {
-    "diffCalOutput": ["_tof_column_057514_v0002"],
+    "diffCalOutput": ["_tof_column_057514_v0002", "_dsp_column_057514_v0002"],
     "diffCalTable": ["_diffract_consts_057514_v0002"],
     "diffCalMask": ["_diffract_consts_mask_057514_v0002"]
   },

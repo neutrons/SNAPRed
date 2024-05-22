@@ -31,8 +31,16 @@ class PixelGroup(BaseModel):
         return [self.pixelGroupingParameters[gid].isMasked for gid in self.groupIDs]
 
     @property
+    def L2(self) -> List[float]:
+        return [self.pixelGroupingParameters[gid].L2 for gid in self.groupIDs]
+
+    @property
     def twoTheta(self) -> List[float]:
         return [self.pixelGroupingParameters[gid].twoTheta for gid in self.groupIDs]
+
+    @property
+    def azimuth(self) -> List[float]:
+        return [self.pixelGroupingParameters[gid].azimuth for gid in self.groupIDs]
 
     @property
     def dResolution(self) -> List[Limit[float]]:
@@ -52,7 +60,9 @@ class PixelGroup(BaseModel):
                 groupIDs[i]: PixelGroupingParameters(
                     groupID=groupIDs[i],
                     isMasked=kwargs["isMasked"][i],
+                    L2=kwargs["L2"][i],
                     twoTheta=kwargs["twoTheta"][i],
+                    azimuth=kwargs["azimuth"][i],
                     dResolution=kwargs["dResolution"][i],
                     dRelativeResolution=kwargs["dRelativeResolution"][i],
                 )
