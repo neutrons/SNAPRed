@@ -13,7 +13,7 @@ TAG_PREFIX = Config["metadata.tagPrefix"]
 
 
 class TestMetadataService(unittest.TestCase):
-    properties = list(WorkspaceMetadata.schema()["properties"].keys())
+    properties = list(WorkspaceMetadata.model_json_schema()["properties"].keys())
     propLogNames = [f"{TAG_PREFIX}{prop}" for prop in properties]
 
     @classmethod

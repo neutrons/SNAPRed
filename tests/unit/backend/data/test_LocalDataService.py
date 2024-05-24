@@ -1,18 +1,20 @@
-# ruff: noqa: E402
-
 import functools
 import importlib
 import json
 import logging
 import os
+import re
 import socket
 import tempfile
+import time
 import unittest.mock as mock
+from contextlib import ExitStack
 from pathlib import Path
 from random import randint, shuffle
-from typing import List, Literal
+from typing import List, Literal, Set
 
 import h5py
+import pydantic
 import pytest
 from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
@@ -23,16 +25,19 @@ from mantid.simpleapi import (
     CreateGroupingWorkspace,
     CreateSampleWorkspace,
     DeleteWorkspace,
+    DeleteWorkspaces,
     GroupWorkspaces,
     LoadEmptyInstrument,
     LoadInstrument,
     RenameWorkspaces,
+    SaveDiffCal,
     mtd,
 )
 from pydantic_core import ValidationError
 from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import ReductionIngredients
@@ -44,17 +49,29 @@ from snapred.backend.dao.request import (
     CreateIndexEntryRequest,
     CreateNormalizationRecordRequest,
 )
+from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.state.GroupingMap import GroupingMap
 from snapred.backend.data.Indexer import IndexerType
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.meta.Config import Config, Resource
-from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    ValueFormatter as wnvf,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceName,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceNameGenerator as wng,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceType as wngt,
+)
 from snapred.meta.redantic import parse_file_as, parse_raw_as, write_model_pretty
+from util.Config_helpers import Config_override
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
+from util.instrument_helpers import addInstrumentLogs, getInstrumentLogDescriptors
 from util.state_helpers import reduction_root_redirect, state_root_redirect
 
 LocalDataServiceModule = importlib.import_module(LocalDataService.__module__)
@@ -78,7 +95,8 @@ reductionIngredients = ReductionIngredients.model_validate_json(
     Resource.read("inputs/calibration/ReductionIngredients.json")
 )
 
-### GENERALIZED METHODS FOR TESTING NORMALIZATION / CALIBRATION / REDUCTION METHODS ###
+### GENERALIZED METHODS FOR TESTING NORMALIZATION / CALIBRATION METHODS ###
+# Note: the REDUCTION workflow does not use the Indexer system except indirectly.
 
 
 def do_test_index_missing(workflow):
@@ -184,10 +202,6 @@ def do_test_read_state_no_version(workflow: Literal["Calibration", "Normalizatio
 
 
 ### TESTS OF MISCELLANEOUS METHODS ###
-
-"""
-These tests should ONLY cover methods in the MISCELLANEOUS METHODS section
-"""
 
 
 def test_fileExists_yes():
@@ -330,6 +344,23 @@ def test_readStateConfig_calls_prepareStateRoot():
     localDataService._prepareStateRoot.assert_called_once()
 
 
+def test_getUniqueTimestamp():
+    localDataService = LocalDataService()
+    numberToGenerate = 10
+    tss = set([localDataService.getUniqueTimestamp() for n in range(numberToGenerate)])
+
+    # generated values should not be 'None' or 'int', they must be 'float'
+    for ts in tss:
+        assert isinstance(ts, float)
+    # generated values shall be distinct
+    assert len(tss) == numberToGenerate
+
+    # generated values should have distinct `struct_time`:
+    #   this check ensures that they differ by at least 1 second
+    ts_structs = set([time.gmtime(ts) for ts in tss])
+    assert len(ts_structs) == numberToGenerate
+
+
 def test_prepareStateRoot_creates_state_root_directory():
     # Test that the <state root> directory is created when it doesn't exist.
     localDataService = LocalDataService()
@@ -435,12 +466,10 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
 def test_writeGroupingMap_relative_paths():
     # Test that '_writeGroupingMap' preserves relative-path information.
     localDataService = LocalDataService()
-    savePath = Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"]
-    try:
-        Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = Resource.getPath(
-            "inputs/pixel_grouping/"
-        )
-
+    with Config_override(
+        "instrument.calibration.powder.grouping.home",
+        Resource.getPath("inputs/pixel_grouping/"),
+    ):
         with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
             stateId = "ab8704b0bc2a2342"
             stateRootPath = Path(tmpDir) / stateId
@@ -471,8 +500,6 @@ def test_writeGroupingMap_relative_paths():
             if not Path(focusGroup.definition).is_absolute():
                 relativePathCount += 1
         assert relativePathCount > 0
-    finally:
-        Config._config["instrument"]["calibration"]["powder"]["grouping"]["home"] = savePath
 
 
 @mock.patch(ThisService + "GetIPTS")
@@ -481,7 +508,7 @@ def test_calibrationFileExists(GetIPTS):  # noqa ARG002
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         tmpRoot.path().mkdir()
-        runNumber = "12345"
+        runNumber = "654321"
         assert localDataService.checkCalibrationFileExists(runNumber)
 
 
@@ -591,7 +618,7 @@ def test_getIPTS_cache():
         assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
 
-def test_workspaceIsInstance():
+def test_workspaceIsInstance(cleanup_workspace_at_exit):
     localDataService = LocalDataService()
     # Create a sample workspace.
     testWS0 = "test_ws"
@@ -599,19 +626,25 @@ def test_workspaceIsInstance():
         Filename=fakeInstrumentFilePath,
         OutputWorkspace=testWS0,
     )
+    # Assign the required sample log values
+    detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+    addInstrumentLogs(testWS0, **getInstrumentLogDescriptors(detectorState1))
+
     assert mtd.doesExist(testWS0)
+    cleanup_workspace_at_exit(testWS0)
     assert localDataService.workspaceIsInstance(testWS0, MatrixWorkspace)
 
     # Create diffraction-calibration table and mask workspaces.
     tableWS = "test_table"
     maskWS = "test_mask"
     createCompatibleDiffCalTable(tableWS, testWS0)
-    createCompatibleMask(maskWS, testWS0, fakeInstrumentFilePath)
+    createCompatibleMask(maskWS, testWS0)
     assert mtd.doesExist(tableWS)
+    cleanup_workspace_at_exit(tableWS)
     assert mtd.doesExist(maskWS)
+    cleanup_workspace_at_exit(maskWS)
     assert localDataService.workspaceIsInstance(tableWS, ITableWorkspace)
     assert localDataService.workspaceIsInstance(maskWS, MaskWorkspace)
-    mtd.clear()
 
 
 def test_workspaceIsInstance_no_ws():
@@ -1097,7 +1130,7 @@ def test_readWriteCalibrationRecord():
         assert actualRecord == record
 
 
-def test_writeCalibrationWorkspaces():
+def test_writeCalibrationWorkspaces(cleanup_workspace_at_exit):
     version = randint(2, 120)
     localDataService = LocalDataService()
     stateId = "ab8704b0bc2a2342"
@@ -1111,7 +1144,7 @@ def test_writeCalibrationWorkspaces():
         workspaces = testCalibrationRecord.workspaces.copy()
         runNumber = testCalibrationRecord.runNumber
         version = testCalibrationRecord.version
-        outputWSName = workspaces.pop(wngt.DIFFCAL_OUTPUT)[0]
+        outputDSPWSName = workspaces.pop(wngt.DIFFCAL_OUTPUT)[0]
         diagnosticWSName = workspaces.pop(wngt.DIFFCAL_DIAG)[0]
         tableWSName = workspaces.pop(wngt.DIFFCAL_TABLE)[0]
         maskWSName = workspaces.pop(wngt.DIFFCAL_MASK)[0]
@@ -1119,27 +1152,54 @@ def test_writeCalibrationWorkspaces():
             raise RuntimeError(f"unexpected workspace-types in record.workspaces: {workspaces}")
 
         # Create sample workspaces.
-        LoadEmptyInstrument(OutputWorkspace=outputWSName, Filename=fakeInstrumentFilePath)
-        # create the diagnostic workspace group
-        ws1 = CloneWorkspace(outputWSName)
-        GroupWorkspaces(InputWorkspaces=[ws1], OutputWorkspace=diagnosticWSName)
-        assert mtd.doesExist(outputWSName)
+        CreateSampleWorkspace(
+            OutputWorkspace=outputDSPWSName,
+            Function="One Peak",
+            NumBanks=1,
+            NumMonitors=1,
+            BankPixelWidth=5,
+            NumEvents=500,
+            Random=True,
+            XUnit="DSP",
+            XMin=0,
+            XMax=8000,
+            BinWidth=100,
+        )
+        LoadInstrument(
+            Workspace=outputDSPWSName,
+            Filename=fakeInstrumentFilePath,
+            RewriteSpectraMap=True,
+        )
+        # Assign the required sample log values
+        detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        addInstrumentLogs(outputDSPWSName, **getInstrumentLogDescriptors(detectorState1))
+        assert mtd.doesExist(outputDSPWSName)
+        cleanup_workspace_at_exit(outputDSPWSName)
+
+        # Create a grouping workspace to save as the diagnostic workspace.
+        ws1 = CloneWorkspace(outputDSPWSName)
+        GroupWorkspaces(
+            InputWorkspaces=[ws1],
+            OutputWorkspace=diagnosticWSName,
+        )
         assert mtd.doesExist(diagnosticWSName)
+        cleanup_workspace_at_exit(diagnosticWSName)
 
         # Create diffraction-calibration table and mask workspaces.
-        createCompatibleDiffCalTable(tableWSName, outputWSName)
-        createCompatibleMask(maskWSName, outputWSName, fakeInstrumentFilePath)
+        createCompatibleDiffCalTable(tableWSName, outputDSPWSName)
+        createCompatibleMask(maskWSName, outputDSPWSName)
         assert mtd.doesExist(tableWSName)
+        cleanup_workspace_at_exit(tableWSName)
         assert mtd.doesExist(maskWSName)
+        cleanup_workspace_at_exit(maskWSName)
 
         localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
 
-        outputFilename = Path(outputWSName + Config["calibration.diffraction.output.extension"])
+        outputFilename = Path(outputDSPWSName + Config["calibration.diffraction.output.extension"])
         diagnosticFilename = Path(diagnosticWSName + Config["calibration.diffraction.diagnostic.extension"])
         diffCalFilename = Path(wng.diffCalTable().runNumber(runNumber).version(version).build() + ".h5")
         for filename in [outputFilename, diagnosticFilename, diffCalFilename]:
             assert (basePath / filename).exists()
-        mtd.clear()
 
 
 ### TESTS OF NORMALIZATION METHODS ###
@@ -1217,7 +1277,7 @@ def test_readWriteNormalizationRecord():
         assert actualRecord == record
 
 
-def test_writeNormalizationWorkspaces():
+def test_writeNormalizationWorkspaces(cleanup_workspace_at_exit):
     version = randint(2, 120)
     stateId = "ab8704b0bc2a2342"
     localDataService = LocalDataService()
@@ -1245,21 +1305,23 @@ def test_writeNormalizationWorkspaces():
         CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS1)
         CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS2)
         assert mtd.doesExist(testWS0)
+        cleanup_workspace_at_exit(testWS0)
         assert mtd.doesExist(testWS1)
+        cleanup_workspace_at_exit(testWS1)
         assert mtd.doesExist(testWS2)
+        cleanup_workspace_at_exit(testWS2)
 
         localDataService.writeNormalizationWorkspaces(testNormalizationRecord)
 
         for wsName in testNormalizationRecord.workspaceNames:
             filename = Path(wsName + ".nxs")
             assert (basePath / filename).exists()
-    mtd.clear()
 
 
 ### TESTS OF REDUCTION METHODS ###
 
 
-def _writeSyntheticReductionRecord(filePath: Path, version: str):
+def _writeSyntheticReductionRecord(filePath: Path, timestamp: float):
     # Create a `ReductionRecord` JSON file to be used by the unit tests.
 
     # TODO: Implement methods to create the synthetic `CalibrationRecord` and `NormalizationRecord`.
@@ -1270,20 +1332,20 @@ def _writeSyntheticReductionRecord(filePath: Path, version: str):
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
     testRecord = ReductionRecord(
-        runNumbers=[testCalibration.runNumber],
+        runNumber=testCalibration.runNumber,
         useLiteMode=testCalibration.useLiteMode,
         calibration=testCalibration,
         normalization=testNormalization,
         pixelGroupingParameters={
             pg.focusGroup.name: list(pg.pixelGroupingParameters.values()) for pg in testCalibration.pixelGroups
         },
-        version=int(version),
+        timestamp=timestamp,
         stateId=testCalibration.calculationParameters.instrumentState.id,
         workspaceNames=[
             wng.reductionOutput()
             .runNumber(testCalibration.runNumber)
             .group(pg.focusGroup.name)
-            .version(testCalibration.version)
+            .timestamp(timestamp)
             .build()
             for pg in testCalibration.pixelGroups
         ],
@@ -1291,102 +1353,72 @@ def _writeSyntheticReductionRecord(filePath: Path, version: str):
     write_model_pretty(testRecord, filePath)
 
 
-def test_readWriteReductionRecord_no_version():
-    inputRecordFilePath = Resource.getPath("inputs/reduction/ReductionRecord_v0001.json")
+def _writeSyntheticReductionIngredients(filePath: Path):
+    # Create a `ReductionIngredients` JSON file to be used by the unit tests.
+
+    # TODO: Implement methods to create the synthetic `CalibrationRecord` and `NormalizationRecord`.
+    calibration = CalibrationRecord.model_validate_json(
+        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+    )
+    normalization = NormalizationRecord.model_validate_json(
+        Resource.read("inputs/normalization/NormalizationRecord.json")
+    )
+
+    peaksRefFile = "/outputs/predict_peaks/peaks.json"
+    peaks_ref = pydantic.TypeAdapter(List[GroupPeakList]).validate_json(Resource.read(peaksRefFile))
+
+    ingredients = ReductionIngredients(
+        calibration=calibration,
+        normalization=normalization,
+        pixelGroups=calibration.pixelGroups,
+        detectorPeaksMany=[peaks_ref, peaks_ref],
+    )
+    write_model_pretty(ingredients, filePath)
+
+
+def test_readWriteReductionRecord_timestamps():
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
     # Create the input data for this test:
     # _writeSyntheticReductionRecord(inputRecordFilePath, "1")
 
-    record_v0001 = parse_file_as(ReductionRecord, inputRecordFilePath)
-    # Get a second copy (version still set to `1`)
-    record_v0002 = parse_file_as(ReductionRecord, inputRecordFilePath)
+    with open(inputRecordFilePath, "r") as f:
+        testReductionRecord_v0001 = ReductionRecord.model_validate_json(f.read())
+    oldTimestamp = testReductionRecord_v0001.timestamp
 
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService):
-        # WARNING: 'writeReductionRecord' modifies <incoming record>.version,
+    # Get a second copy, with a different timestamp
+    newTimestamp = time.time()
+    dict_ = testReductionRecord_v0001.model_dump()
+    dict_["timestamp"] = newTimestamp
+    testReductionRecord_v0002 = ReductionRecord.model_validate(
+        dict_,
+    )
+    assert oldTimestamp != newTimestamp
 
-        # write: version will be set to a time
-        localDataService.writeReductionRecord(record_v0001)
-        actualRecord1 = localDataService.readReductionRecord(record_v0001.runNumbers[0], record_v0001.useLiteMode)
-
-        # write: version wille be set to a time
-        localDataService.writeReductionRecord(record_v0002)
-        actualRecord2 = localDataService.readReductionRecord(record_v0002.runNumbers[0], record_v0002.useLiteMode)
-
-    assert actualRecord1.version <= actualRecord2.version
-
-
-def test_readWriteReductionRecord_specified_version():
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord(inputRecordFilePath, "1")
-
-    record_v0001 = parse_file_as(ReductionRecord, inputRecordFilePath)
-    # Get a second copy (version still set to `1`)
-    record_v0002 = parse_file_as(ReductionRecord, inputRecordFilePath)
-
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService):
-        # WARNING: 'writeReductionRecord' modifies <incoming record>.version,
-
-        #  Important: start with version > 1: should not depend on any existing directory structure!
-
-        # write first version
-        version1 = randint(3, 20)
-        record_v0001.version = version1
-        localDataService.writeReductionRecord(record_v0001)
-
-        # write second version
-        version2 = randint(version1 + 1, 120)
-        assert version1 != version2
-        record_v0002.version = version2
-        localDataService.writeReductionRecord(record_v0002)
-
-        actualRecord = localDataService.readReductionRecord(
-            record_v0001.runNumbers[0],
-            record_v0001.useLiteMode,
-            version1,
-        )
-        assert actualRecord.version == version1
-        actualRecord = localDataService.readReductionRecord(
-            record_v0002.runNumbers[0],
-            record_v0002.useLiteMode,
-            version2,
-        )
-        assert actualRecord.version == version2
-
-
-def test_readWriteReductionRecord_with_version():
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-
-    testRecord = parse_file_as(ReductionRecord, inputRecordFilePath)
-    # Important: version != 1: should not depend on any existing directory structure.
-    testVersion = 10
-    testRecord.version = testVersion
-
-    # Temporarily use a single run number
-    runNumber = testRecord.runNumbers[0]
+    runNumber, useLiteMode = testReductionRecord_v0001.runNumber, testReductionRecord_v0001.useLiteMode
     stateId = "ab8704b0bc2a2342"
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
+        # write: old timestamp
+        localDataService.writeReductionRecord(testReductionRecord_v0001)
+        # write call should not modify timestamp
+        assert testReductionRecord_v0001.timestamp == oldTimestamp
+        actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, oldTimestamp)
+        assert actualRecord.timestamp == oldTimestamp
 
-        localDataService.writeReductionRecord(testRecord)
-
-        actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testVersion)
-    assert actualRecord.version == int(testVersion)
+        # write: new timestamp
+        actualRecord = localDataService.writeReductionRecord(testReductionRecord_v0002)
+        actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, newTimestamp)
+        assert actualRecord.timestamp == newTimestamp
 
 
 def test_readWriteReductionRecord():
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
     # Create the input data for this test:
     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
     with open(inputRecordFilePath, "r") as f:
         testRecord = ReductionRecord.model_validate_json(f.read())
 
-    # Temporarily use a single run number
-    runNumber = testRecord.runNumbers[0]
+    runNumber = testRecord.runNumber
     stateId = "ab8704b0bc2a2342"
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
@@ -1394,20 +1426,70 @@ def test_readWriteReductionRecord():
         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
         localDataService.groceryService = mock.Mock()
         localDataService.writeReductionRecord(testRecord)
-        actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testRecord.version)
+        actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testRecord.timestamp)
     assert actualRecord == testRecord
 
 
 @pytest.fixture()
-def createReductionWorkspaces():
-    # Create sample workspaces from a list of names:
-    #   * delete the workspaces in the list at teardown;
-    #   * any additional workspaces that need to be cleaned up
-    #   can be added to the _returned_ list.
-    _wss = []
+def readSyntheticReductionRecord():
+    # Read a `ReductionRecord` from the specified file path:
+    #   * update the record's timestamp and workspace-name list using the specified value.
 
-    def _createWorkspaces(wss: List[str]):
-        # Create sample reduction event workspaces with DSP units
+    def _readSyntheticReductionRecord(filePath: Path, timestamp: float) -> ReductionRecord:
+        with open(filePath, "r") as f:
+            record = ReductionRecord.model_validate_json(f.read())
+
+        # Update the record's list of workspace names:
+        #   * reconstruct complete `WorkspaceName` with builder.
+        #   * ensure that the names are unique to this test by using the new timestap => enables parallel testing;
+
+        wngReducedOutput = re.compile(
+            r"_reduced_([A-Za-z]+)_([A-Za-z]+)_([0-9]{6,})_([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})"
+        )
+        wngReductionPixelMask = re.compile(
+            r"_pixelmask_([0-9]{6,})_([0-9]{4})([0-9]{2})([0-9]{2})T([0-9]{2})([0-9]{2})([0-9]{2})"
+        )
+
+        wss: List[WorkspaceName] = []
+        for ws in record.workspaceNames:
+            wngOutput = wngReducedOutput.match(ws)
+            if wngOutput:
+                unit, grouping, runNumber = wngOutput.group(1), wngOutput.group(2), wngOutput.group(3)
+                ws_ = wng.reductionOutput().unit(unit).group(grouping).runNumber(runNumber).timestamp(timestamp).build()
+                wss.append(ws_)
+                continue
+            wngPixelMask = wngReductionPixelMask.match(ws)
+            if wngPixelMask:
+                runNumber = wngPixelMask.group(1)
+                ws_ = wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build()
+                wss.append(ws_)
+                continue
+            raise RuntimeError(f"unable to reconstruct 'WorkspaceName' from '{ws}'")
+
+        # Reconstruct the record, in order to modify the frozen fields
+        dict_ = record.model_dump()
+        dict_["timestamp"] = timestamp
+        #    WARNING: we cannot just use `model_validate` here,
+        #      it will recreate the `WorkspaceName(<original name>)` and
+        #        the `_builder` args will be stripped.
+        record = ReductionRecord.model_validate(dict_)
+        record.workspaceNames = wss
+
+        return record
+
+    yield _readSyntheticReductionRecord
+
+    # teardown...
+    pass
+
+
+@pytest.fixture()
+def createReductionWorkspaces(cleanup_workspace_at_exit):
+    # Create sample workspaces from a list of names:
+    #   * these workspaces are automatically deleted at teardown.
+
+    def _createWorkspaces(wss: List[WorkspaceName]):
+        # Create several sample reduction event workspaces with DSP units
         src = mtd.unique_hidden_name()
         CreateSampleWorkspace(
             OutputWorkspace=src,
@@ -1429,81 +1511,101 @@ def createReductionWorkspaces():
         )
         assert mtd.doesExist(src)
         for ws in wss:
-            CloneWorkspace(InputWorkspace=src, OutputWorkspace=ws)
+            wsType = ws.tokens("workspaceType")
+            match wsType:
+                case wngt.REDUCTION_PIXEL_MASK:
+                    createCompatibleMask(ws, src)
+                case _:
+                    CloneWorkspace(OutputWorkspace=ws, InputWorkspace=src)
             assert mtd.doesExist(ws)
+            cleanup_workspace_at_exit(ws)
+
         DeleteWorkspace(Workspace=src)
-        _wss.extend(wss)
-        return _wss
+        return wss
 
     yield _createWorkspaces
 
     # teardown
-    for ws in _wss:
-        if mtd.doesExist(ws):
-            try:
-                DeleteWorkspace(ws)
-            except:  # noqa: E722
-                pass
+    pass
 
 
-def test_writeReductionData(createReductionWorkspaces):
-    _uniquePrefix = "LDS_WRD_"
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-
-    testRecord = parse_file_as(ReductionRecord, inputRecordFilePath)
-    # Change the workspace names so that they will be unique to this test:
-    # => enables parallel testing.
-    testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
+def test_writeReductionData(readSyntheticReductionRecord, createReductionWorkspaces):
+    # In order to facilitate parallel testing: any workspace name used by this test should be unique.
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
+    _uniqueTimestamp = 1718908813.0250459
+    testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
 
     # Temporarily use a single run number
-    useLiteMode = testRecord.useLiteMode
-    runNumber = testRecord.runNumbers[0]
-    version = int(testRecord.version)
+    runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = "ab8704b0bc2a2342"
-    fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
-    fileName += Config["nexus.file.extension"]
-
-    wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService, stateId=stateId):
-        # Important to this test: use a path that doesn't already exist
-        reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-        assert not reductionFilePath.exists()
-
-        localDataService.writeReductionData(testRecord)
-
-        assert reductionFilePath.exists()
-
-
-def test_writeReductionData_metadata(createReductionWorkspaces):
-    _uniquePrefix = "LDS_WRD_"
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-
-    testRecord = parse_file_as(ReductionRecord, inputRecordFilePath)
-    # Change the workspace names so that they will be unique to this test:
-    # => enables parallel testing.
-    testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
-
-    # Temporarily use a single run number
-    useLiteMode = testRecord.useLiteMode
-    runNumber = testRecord.runNumbers[0]
-    version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
-    fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
+    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService.instrumentConfig = mock.Mock()
-        localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
 
         # Important to this test: use a path that doesn't already exist
-        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
+        reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
+        assert not reductionFilePath.exists()
+
+        # `writeReductionRecord` must be called first
+        localDataService.writeReductionRecord(testRecord)
+        localDataService.writeReductionData(testRecord)
+
+        assert reductionFilePath.exists()
+
+
+def test_writeReductionData_no_directories(readSyntheticReductionRecord, createReductionWorkspaces):  # noqa: ARG001
+    # In order to facilitate parallel testing: any workspace name used by this test should be unique.
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
+    _uniqueTimestamp = 1718908816.106522
+    testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
+
+    runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
+    stateId = "ab8704b0bc2a2342"
+    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
+    fileName += Config["nexus.file.extension"]
+
+    localDataService = LocalDataService()
+    with reduction_root_redirect(localDataService, stateId=stateId):
+        localDataService.instrumentConfig = mock.Mock()
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+
+        # Important to this test: use a path that doesn't already exist
+        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
+        assert not reductionRecordFilePath.exists()
+
+        # `writeReductionRecord` must be called first
+        # * deliberately _not_ done in this test => <reduction-data root> directory won't exist
+        with pytest.raises(RuntimeError) as einfo:
+            localDataService.writeReductionData(testRecord)
+        msg = str(einfo.value)
+    assert "reduction version directories" in msg
+    assert "do not exist" in msg
+
+
+def test_writeReductionData_metadata(readSyntheticReductionRecord, createReductionWorkspaces):
+    # In order to facilitate parallel testing: any workspace name used by this test should be unique.
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
+    _uniqueTimestamp = 1718909723.027197
+    testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
+
+    runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
+    stateId = "ab8704b0bc2a2342"
+    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
+    fileName += Config["nexus.file.extension"]
+
+    wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
+    localDataService = LocalDataService()
+    with reduction_root_redirect(localDataService, stateId=stateId):
+        localDataService.instrumentConfig = mock.Mock()
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+
+        # Important to this test: use a path that doesn't already exist
+        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
         assert not reductionRecordFilePath.exists()
 
         # `writeReductionRecord` must be called first
@@ -1518,34 +1620,26 @@ def test_writeReductionData_metadata(createReductionWorkspaces):
             assert actualRecord == testRecord
 
 
-def test_readWriteReductionData(createReductionWorkspaces):
-    _uniquePrefix = "LDS_RWRD_"
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
+def test_readWriteReductionData(readSyntheticReductionRecord, createReductionWorkspaces, cleanup_workspace_at_exit):
+    # In order to facilitate parallel testing: any workspace name used by this test should be unique.
+    _uniquePrefix = "_test_RWRD_"
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
+    _uniqueTimestamp = 1718909801.91552
+    testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
 
-    with open(inputRecordFilePath, "r") as f:
-        testRecord = ReductionRecord.model_validate_json(f.read())
-    # Change the workspace names so that they will be unique to this test:
-    # => enables parallel testing.
-    testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
-
-    # Temporarily use a single run number
-    useLiteMode = testRecord.useLiteMode
-    runNumber = testRecord.runNumbers[0]
-    version = int(testRecord.version)
+    runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = "ab8704b0bc2a2342"
-    fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
+    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService.instrumentConfig = mock.Mock()
-        localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
 
         # Important to this test: use a path that doesn't already exist
-        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
+        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
         assert not reductionRecordFilePath.exists()
 
         # `writeReductionRecord` needs to be called first
@@ -1559,9 +1653,10 @@ def test_readWriteReductionData(createReductionWorkspaces):
         #   * this just adds the `_uniquePrefix` one more time.
         RenameWorkspaces(InputWorkspaces=wss, Prefix=_uniquePrefix)
         # append to the cleanup list
-        wss.extend([_uniquePrefix + ws for ws in wss.copy()])
+        for ws in wss:
+            cleanup_workspace_at_exit(_uniquePrefix + ws)
 
-        actualRecord = localDataService.readReductionData(runNumber, useLiteMode, version)
+        actualRecord = localDataService.readReductionData(runNumber, useLiteMode, timestamp)
         assert actualRecord == testRecord
 
         # workspaces should have been reloaded with their original names
@@ -1577,22 +1672,72 @@ def test_readWriteReductionData(createReductionWorkspaces):
             assert equal
 
 
-# interlude -- missplaced path and version method tests #
+def test_readWriteReductionData_pixel_mask(
+    readSyntheticReductionRecord, createReductionWorkspaces, cleanup_workspace_at_exit
+):
+    # In order to facilitate parallel testing: any workspace name used by this test should be unique.
+    _uniquePrefix = "_test_RWRD_PM_"
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
+    _uniqueTimestamp = 1718909911.6432922
+    testRecord = readSyntheticReductionRecord(inputRecordFilePath, _uniqueTimestamp)
+
+    runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
+    stateId = "ab8704b0bc2a2342"
+    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
+    fileName += Config["nexus.file.extension"]
+    wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
+    localDataService = LocalDataService()
+    with reduction_root_redirect(localDataService, stateId=stateId):
+        localDataService.instrumentConfig = mock.Mock()
+        localDataService.getIPTS = mock.Mock(return_value="IPTS-12345")
+
+        # Important to this test: use a path that doesn't already exist
+        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
+        assert not reductionRecordFilePath.exists()
+
+        # `writeReductionRecord` needs to be called first
+        localDataService.writeReductionRecord(testRecord)
+        localDataService.writeReductionData(testRecord)
+
+        filePath = reductionRecordFilePath.parent / fileName
+        assert filePath.exists()
+
+        # 1) Verify that a pixel mask was separately written in `SaveDiffCal` format
+        maskName = wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build()
+        assert (reductionRecordFilePath.parent / (maskName + ".h5")).exists()
+
+        # move the existing test workspaces out of the way:
+        #   * this just adds the `_uniquePrefix`.
+        RenameWorkspaces(InputWorkspaces=wss, Prefix=_uniquePrefix)
+        # append to the cleanup list
+        for ws in wss:
+            cleanup_workspace_at_exit(_uniquePrefix + ws)
+
+        actualRecord = localDataService.readReductionData(runNumber, useLiteMode, timestamp)
+        # 2) Verify that a pixel mask was appended to the 'workspaceNames' list
+        assert maskName in actualRecord.workspaceNames
+
+        # 3) Verify that the pixel mask has been appended to the combined data file,
+        #      and that it is reloaded as a `MaskWorkspace` instance
+        pixelMaskKeyword = Config["mantid.workspace.nameTemplate.template.reduction.pixelMask"].split(",")[0]
+        # verify that a pixel mask was appended to the
+        maskIsAppendedToData = False
+        for ws in actualRecord.workspaceNames:
+            if pixelMaskKeyword in ws:
+                if isinstance(mtd[ws], MaskWorkspace):
+                    maskIsAppendedToData = True
+        assert maskIsAppendedToData
 
 
 def test__constructReductionDataFilePath():
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-    testRecord = parse_file_as(ReductionRecord, inputRecordFilePath)
+    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_20240614T130420.json"))
+    with open(inputRecordFilePath, "r") as f:
+        testRecord = ReductionRecord.model_validate_json(f.read())
 
-    # Temporarily use a single run number
-    useLiteMode = testRecord.useLiteMode
-    runNumber = testRecord.runNumbers[0]
-    version = int(testRecord.version)
+    runNumber, useLiteMode, timestamp = testRecord.runNumber, testRecord.useLiteMode, testRecord.timestamp
     stateId = "ab8704b0bc2a2342"
     testIPTS = "IPTS-12345"
-    fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
+    fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
     fileName += Config["nexus.file.extension"]
 
     expectedFilePath = (
@@ -1600,26 +1745,26 @@ def test__constructReductionDataFilePath():
         / stateId
         / ("lite" if useLiteMode else "native")
         / runNumber
-        / "v_{}".format(wnvf.formatVersion(version=version, use_v_prefix=False))
+        / wnvf.pathTimestamp(timestamp)
         / fileName
     )
 
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock(return_value=(stateId, None))
     localDataService.getIPTS = mock.Mock(return_value=testIPTS)
-    actualFilePath = localDataService._constructReductionDataFilePath(runNumber, useLiteMode, version)
+    actualFilePath = localDataService._constructReductionDataFilePath(runNumber, useLiteMode, timestamp)
     assert actualFilePath == expectedFilePath
 
 
 def test_getReductionRecordFilePath():
-    testVersion = randint(1, 20)
+    timestamp = time.time()
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._constructReductionDataRoot = mock.Mock()
     localDataService._constructReductionDataRoot.return_value = Path(Resource.getPath("outputs"))
-    actualPath = localDataService._constructReductionRecordFilePath("57514", True, testVersion)
-    assert actualPath == Path(Resource.getPath("outputs")) / wnvf.fileVersion(testVersion) / "ReductionRecord.json"
+    actualPath = localDataService._constructReductionRecordFilePath("57514", True, timestamp)
+    assert actualPath == Path(Resource.getPath("outputs")) / wnvf.pathTimestamp(timestamp) / "ReductionRecord.json"
 
 
 # end interlude #
@@ -1752,6 +1897,92 @@ def test_readDetectorState_bad_logs():
 
     with pytest.raises(ValidationError, match="Input should be a valid number"):
         localDataService.readDetectorState("123")
+
+
+@pytest.fixture()
+def instrumentWorkspace(cleanup_workspace_at_exit):
+    useLiteMode = True
+    wsName = mtd.unique_hidden_name()
+
+    # Load the bare instrument:
+    instrumentFilename = (
+        Config["instrument.lite.definition.file"] if useLiteMode else Config["instrument.native.definition.file"]
+    )
+    LoadEmptyInstrument(
+        Filename=instrumentFilename,
+        OutputWorkspace=wsName,
+    )
+    cleanup_workspace_at_exit(wsName)
+    yield wsName
+
+    # teardown...
+    pass
+
+
+def test_detectorStateFromWorkspace(instrumentWorkspace):
+    service = LocalDataService()
+    detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+    wsName = instrumentWorkspace
+
+    # --- duplicates `groceryService.updateInstrumentParameters`: -----
+    logsInfo = getInstrumentLogDescriptors(detectorState1)
+    addInstrumentLogs(wsName, **logsInfo)
+    # ------------------------------------------------------
+
+    actual = service.detectorStateFromWorkspace(wsName)
+    assert actual == detectorState1
+
+
+def test_detectorStateFromWorkspace_bad_logs(instrumentWorkspace):
+    service = LocalDataService()
+    detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+    wsName = instrumentWorkspace
+
+    # --- duplicates `groceryService.updateInstrumentParameters`: but skips a few log entries: -----
+    logsInfo = {
+        "logNames": [
+            "det_arc1",
+            "det_arc2",
+            "BL3:Mot:OpticsPos:Pos",
+            "det_lin1",
+            "det_lin2",
+        ],
+        "logTypes": [
+            "Number Series",
+            "Number Series",
+            "Number Series",
+            "Number Series",
+            "Number Series",
+        ],
+        "logValues": [
+            str(detectorState1.arc[0]),
+            str(detectorState1.arc[1]),
+            str(detectorState1.guideStat),
+            str(detectorState1.lin[0]),
+            str(detectorState1.lin[1]),
+        ],
+    }
+    addInstrumentLogs(wsName, **logsInfo)
+    # ------------------------------------------------------
+
+    with pytest.raises(RuntimeError, match="does not have all required logs"):
+        service.detectorStateFromWorkspace(wsName)
+
+
+def test_stateIdFromWorkspace(instrumentWorkspace):
+    service = LocalDataService()
+    detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+    wsName = instrumentWorkspace
+
+    # --- duplicates `groceryService.updateInstrumentParameters`: -----
+    logsInfo = getInstrumentLogDescriptors(detectorState1)
+    addInstrumentLogs(wsName, **logsInfo)
+    # ------------------------------------------------------
+
+    SHA = service._stateIdFromDetectorState(detectorState1)
+    expected = SHA.hex, SHA.decodedKey
+    actual = service.stateIdFromWorkspace(wsName)
+    assert actual == expected
 
 
 def test_initializeState():
@@ -1908,9 +2139,8 @@ def test_readGroupingMap_no_calibration_file():
     localDataService._readGroupingMap = mock.Mock()
 
     runNumber = "flan"
-    res = localDataService.readGroupingMap(runNumber)
-    assert res == localDataService._readDefaultGroupingMap.return_value
-    assert not localDataService._readGroupingMap.called
+    res = localDataService.readGroupingMap(runNumber)  # noqa: F841
+    assert localDataService._readDefaultGroupingMap.called
 
 
 def test_readGroupingMap_yes_calibration_file():
@@ -1921,8 +2151,7 @@ def test_readGroupingMap_yes_calibration_file():
     localDataService._readDefaultGroupingMap = mock.Mock(side_effect=RuntimeError("YOU IDIOT!"))
 
     runNumber = "flan"
-    res = localDataService.readGroupingMap(runNumber)
-    assert res == localDataService._readGroupingMap.return_value
+    res = localDataService.readGroupingMap(runNumber)  # noqa: F841
     assert not localDataService._readDefaultGroupingMap.called
 
 
@@ -2034,11 +2263,11 @@ def test_readCifFilePath(mock1):  # noqa: ARG001
 ##### TESTS OF WORKSPACE WRITE METHODS #####
 
 
-def test_writeWorkspace():
+def test_writeWorkspace(cleanup_workspace_at_exit):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
+    workspaceName = "test_workspace"
     with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as tmpPath:
-        workspaceName = "test_workspace"
         basePath = Path(tmpPath)
         filename = Path(workspaceName + ".nxs")
         # Create a test workspace to write.
@@ -2046,13 +2275,13 @@ def test_writeWorkspace():
             Filename=fakeInstrumentFilePath,
             OutputWorkspace=workspaceName,
         )
+        cleanup_workspace_at_exit(workspaceName)
         assert mtd.doesExist(workspaceName)
         localDataService.writeWorkspace(basePath, filename, workspaceName)
         assert (basePath / filename).exists()
-    mtd.clear()
 
 
-def test_writeRaggedWorkspace():
+def test_writeRaggedWorkspace(cleanup_workspace_at_exit):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
     with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpPath:
@@ -2073,15 +2302,16 @@ def test_writeRaggedWorkspace():
             XMax=8000,
             BinWidth=100,
         )
+        cleanup_workspace_at_exit(workspaceName)
+        cleanup_workspace_at_exit("test_out")
         assert mtd.doesExist(workspaceName)
         localDataService.writeRaggedWorkspace(basePath, filename, workspaceName)
         assert (basePath / filename).exists()
         localDataService.readRaggedWorkspace(basePath, filename, "test_out")
         assert mtd.doesExist("test_out")
-    mtd.clear()
 
 
-def test_writeGroupingWorkspace():
+def test_writeGroupingWorkspace(cleanup_workspace_at_exit):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
     with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as tmpPath:
@@ -2094,12 +2324,12 @@ def test_writeGroupingWorkspace():
             CustomGroupingString="1",
             InstrumentFilename=fakeInstrumentFilePath,
         )
+        cleanup_workspace_at_exit(workspaceName)
         localDataService.writeGroupingWorkspace(basePath, filename, workspaceName)
         assert (basePath / filename).exists()
-    mtd.clear()
 
 
-def test_writeDiffCalWorkspaces():
+def test_writeDiffCalWorkspaces(cleanup_workspace_at_exit):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
     with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
@@ -2113,20 +2343,53 @@ def test_writeDiffCalWorkspaces():
             Filename=fakeInstrumentFilePath,
             OutputWorkspace=instrumentDonor,
         )
+        # Assign the required sample log values
+        detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        addInstrumentLogs(instrumentDonor, **getInstrumentLogDescriptors(detectorState1))
+        cleanup_workspace_at_exit(instrumentDonor)
         assert mtd.doesExist(instrumentDonor)
+
         # Create table and mask workspaces to write.
-        createCompatibleMask(maskWSName, instrumentDonor, fakeInstrumentFilePath)
+        createCompatibleMask(maskWSName, instrumentDonor)
+        cleanup_workspace_at_exit(maskWSName)
         assert mtd.doesExist(maskWSName)
         createCompatibleDiffCalTable(tableWSName, instrumentDonor)
+        cleanup_workspace_at_exit(tableWSName)
         assert mtd.doesExist(tableWSName)
         localDataService.writeDiffCalWorkspaces(
             basePath, filename, tableWorkspaceName=tableWSName, maskWorkspaceName=maskWSName
         )
         assert (basePath / filename).exists()
-    mtd.clear()
 
 
-def test_writeDiffCalWorkspaces_bad_path():
+def test_writeDiffCalWorkspaces_mask_only(cleanup_workspace_at_exit):
+    localDataService = LocalDataService()
+    path = Resource.getPath("outputs")
+    with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
+        basePath = Path(basePath)
+        maskWSName = "test_mask"
+        filename = Path(maskWSName + ".h5")
+        # Create an instrument workspace.
+        instrumentDonor = "test_instrument_donor"
+        LoadEmptyInstrument(
+            Filename=fakeInstrumentFilePath,
+            OutputWorkspace=instrumentDonor,
+        )
+        # Assign the required sample log values
+        detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        addInstrumentLogs(instrumentDonor, **getInstrumentLogDescriptors(detectorState1))
+        cleanup_workspace_at_exit(instrumentDonor)
+        assert mtd.doesExist(instrumentDonor)
+
+        # Create mask workspace to write.
+        createCompatibleMask(maskWSName, instrumentDonor)
+        cleanup_workspace_at_exit(maskWSName)
+        assert mtd.doesExist(maskWSName)
+        localDataService.writeDiffCalWorkspaces(basePath, filename, maskWorkspaceName=maskWSName)
+        assert (basePath / filename).exists()
+
+
+def test_writeDiffCalWorkspaces_bad_path(cleanup_workspace_at_exit):
     localDataService = LocalDataService()
     path = Resource.getPath("outputs")
     with pytest.raises(  # noqa: PT012
@@ -2145,14 +2408,300 @@ def test_writeDiffCalWorkspaces_bad_path():
                 Filename=fakeInstrumentFilePath,
                 OutputWorkspace=instrumentDonor,
             )
+            cleanup_workspace_at_exit(instrumentDonor)
             assert mtd.doesExist(instrumentDonor)
+            # Assign the required sample log values
+            detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+            addInstrumentLogs(instrumentDonor, **getInstrumentLogDescriptors(detectorState1))
+
             # Create table and mask workspaces to write.
-            createCompatibleMask(maskWSName, instrumentDonor, fakeInstrumentFilePath)
+            createCompatibleMask(maskWSName, instrumentDonor)
+            cleanup_workspace_at_exit(maskWSName)
             assert mtd.doesExist(maskWSName)
             createCompatibleDiffCalTable(tableWSName, instrumentDonor)
+            cleanup_workspace_at_exit(tableWSName)
             assert mtd.doesExist(tableWSName)
             localDataService.writeDiffCalWorkspaces(
                 basePath, filename, tableWorkspaceName=tableWSName, maskWorkspaceName=maskWSName
             )
             assert (basePath / filename).exists()
-    mtd.clear()
+
+
+def test_writePixelMask(cleanup_workspace_at_exit):
+    localDataService = LocalDataService()
+    path = Resource.getPath("outputs")
+    with tempfile.TemporaryDirectory(dir=path, suffix=os.sep) as basePath:
+        basePath = Path(basePath)
+        maskWSName = "test_mask"
+        filename = Path(maskWSName + ".h5")
+        # Create an instrument workspace.
+        instrumentDonor = "test_instrument_donor"
+        LoadEmptyInstrument(
+            Filename=fakeInstrumentFilePath,
+            OutputWorkspace=instrumentDonor,
+        )
+        # Assign the required sample log values
+        detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        addInstrumentLogs(instrumentDonor, **getInstrumentLogDescriptors(detectorState1))
+        cleanup_workspace_at_exit(instrumentDonor)
+        assert mtd.doesExist(instrumentDonor)
+
+        # Create mask workspace to write.
+        createCompatibleMask(maskWSName, instrumentDonor)
+        cleanup_workspace_at_exit(maskWSName)
+        assert mtd.doesExist(maskWSName)
+        localDataService.writePixelMask(basePath, filename, maskWorkspaceName=maskWSName)
+        assert (basePath / filename).exists()
+
+
+## TESTS OF REDUCTION PIXELMASK METHODS
+
+
+class TestReductionPixelMasks:
+    @pytest.fixture(autouse=True, scope="class")
+    @classmethod
+    def _setup_test_data(
+        cls,
+        create_sample_workspace,
+        create_sample_pixel_mask,
+    ):
+        # Warning: the order of class `__init__` vs. autouse-fixture setup calls is ambiguous;
+        #   for this reason, the `service` attribute, and anything that is initialized using it,
+        #   is initialized _here_ in this fixture.
+
+        cls.service = LocalDataService()
+
+        cls.runNumber1 = "123456"
+        cls.runNumber2 = "123457"
+        cls.runNumber3 = "123458"
+        cls.runNumber4 = "123459"
+        cls.useLiteMode = True
+
+        cls.timestamp1 = cls.service.getUniqueTimestamp()
+        cls.timestamp2 = cls.service.getUniqueTimestamp()
+        cls.timestamp3 = cls.service.getUniqueTimestamp()
+        cls.timestamp4 = cls.service.getUniqueTimestamp()
+
+        # Arbitrary, but distinct, `DetectorState`s used for realistic instrument initialization
+        cls.detectorState1 = DetectorState(arc=(1.0, 2.0), wav=3.0, freq=4.0, guideStat=1, lin=(5.0, 6.0))
+        cls.detectorState2 = DetectorState(arc=(7.0, 8.0), wav=9.0, freq=10.0, guideStat=2, lin=(11.0, 12.0))
+
+        # The corresponding stateId:
+        cls.stateId1 = cls.service._stateIdFromDetectorState(cls.detectorState1).hex
+        cls.stateId2 = cls.service._stateIdFromDetectorState(cls.detectorState2).hex
+
+        cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
+        cls.instrumentLiteFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
+        instrumentFilePath = cls.instrumentLiteFilePath if cls.useLiteMode else cls.instrumentFilePath
+
+        # create instrument workspaces for each state
+        cls.sampleWS1 = mtd.unique_hidden_name()
+        create_sample_workspace(cls.sampleWS1, cls.detectorState1, instrumentFilePath)
+        cls.sampleWS2 = mtd.unique_hidden_name()
+        create_sample_workspace(cls.sampleWS2, cls.detectorState2, instrumentFilePath)
+        assert cls.service.stateIdFromWorkspace(cls.sampleWS1)[0] == cls.stateId1
+        assert cls.service.stateIdFromWorkspace(cls.sampleWS2)[0] == cls.stateId2
+
+        # random fraction used for mask initialization
+        cls.randomFraction = 0.2
+
+        # Create a pair of mask workspaces for each state
+        cls.maskWS1 = wng.reductionUserPixelMask().numberTag(1).build()
+        cls.maskWS2 = wng.reductionUserPixelMask().numberTag(2).build()
+        cls.maskWS3 = wng.reductionPixelMask().runNumber(cls.runNumber3).timestamp(cls.timestamp3).build()
+        cls.maskWS4 = wng.reductionPixelMask().runNumber(cls.runNumber4).timestamp(cls.timestamp4).build()
+        create_sample_pixel_mask(cls.maskWS1, cls.detectorState1, instrumentFilePath, cls.randomFraction)
+        create_sample_pixel_mask(cls.maskWS2, cls.detectorState2, instrumentFilePath, cls.randomFraction)
+        create_sample_pixel_mask(cls.maskWS3, cls.detectorState1, instrumentFilePath, cls.randomFraction)
+        create_sample_pixel_mask(cls.maskWS4, cls.detectorState2, instrumentFilePath, cls.randomFraction)
+        assert cls.service.stateIdFromWorkspace(cls.maskWS1)[0] == cls.stateId1
+        assert cls.service.stateIdFromWorkspace(cls.maskWS2)[0] == cls.stateId2
+        assert cls.service.stateIdFromWorkspace(cls.maskWS3)[0] == cls.stateId1
+        assert cls.service.stateIdFromWorkspace(cls.maskWS4)[0] == cls.stateId2
+        yield
+
+        # teardown...
+        pass
+
+    def _createReductionFileSystem(self):
+        tss = (self.timestamp1, self.timestamp2)
+        masks_ = {
+            self.runNumber1: {tss[0]: self.maskWS1, tss[1]: self.maskWS3},
+            self.runNumber2: {tss[0]: self.maskWS1, tss[1]: self.maskWS3},
+            self.runNumber3: {tss[0]: self.maskWS2, tss[1]: self.maskWS4},
+            self.runNumber4: {tss[0]: self.maskWS2, tss[1]: self.maskWS4},
+        }
+        for runNumber in (self.runNumber1, self.runNumber2, self.runNumber3, self.runNumber4):
+            for ts in tss:
+                # Warnings:
+                # * this depends on `_constructReductionDataRoot` mock in `_setup_test_mocks`;
+                # * this depends on `_generateStateId` mock in `_setup_test_mocks`:
+                #   so only a few run numbers will be set up to work.
+
+                dataPath = self.service._constructReductionDataPath(runNumber, self.useLiteMode, ts)
+                dataPath.mkdir(parents=True)
+                maskFilePath = dataPath / (wng.reductionPixelMask().runNumber(runNumber).timestamp(ts).build() + ".h5")
+                SaveDiffCal(MaskWorkspace=masks_[runNumber][ts], Filename=str(maskFilePath))
+                assert maskFilePath.exists()
+
+    @pytest.fixture(autouse=True)
+    def _setup_test_mocks(
+        self,
+        monkeypatch,
+        Config_override_fixture,
+    ):
+        monkeypatch.setattr(
+            self.service,
+            "_generateStateId",
+            lambda runNumber: {
+                self.runNumber1: (self.stateId1, None),
+                self.runNumber2: (self.stateId1, None),
+                self.runNumber3: (self.stateId2, None),
+                self.runNumber4: (self.stateId2, None),
+            }[runNumber],
+        )
+        monkeypatch.setattr(
+            self.service,
+            "getIPTS",
+            lambda runNumber: {
+                self.runNumber1: "/SNS/SNAP/IPTS-1",
+                self.runNumber2: "/SNS/SNAP/IPTS-1",
+                self.runNumber3: "/SNS/SNAP/IPTS-2",
+                self.runNumber4: "/SNS/SNAP/IPTS-2",
+            }[runNumber],
+        )
+
+        stack = ExitStack()
+        tmpPath = stack.enter_context(tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")))
+        Config_override_fixture("instrument.reduction.home", tmpPath)
+        self._createReductionFileSystem()
+
+        # "instrument.<lite mode>.pixelResolution" is used by `isCompatibleMask`
+        Config_override_fixture(
+            "instrument." + ("lite" if self.useLiteMode else "native") + ".pixelResolution",
+            # match non-monitor pixel count to the sample masks
+            mtd[self.maskWS1].getInstrument().getNumberDetectors(True),
+        )
+        Config_override_fixture(
+            "instrument." + ("lite" if not self.useLiteMode else "native") + ".pixelResolution",
+            # arbitrary, incorrect pixel count:
+            4 * mtd[self.maskWS1].getInstrument().getNumberDetectors(True),
+        )
+        yield
+
+        # teardown...
+        stack.close()
+
+    def test_isCompatibleMask_state(self):
+        assert self.service.isCompatibleMask(self.maskWS1, self.runNumber1, self.useLiteMode)
+        assert not self.service.isCompatibleMask(self.maskWS1, self.runNumber3, self.useLiteMode)
+
+    def test_isCompatibleMask_mode(self):
+        assert self.service.isCompatibleMask(self.maskWS1, self.runNumber1, self.useLiteMode)
+        assert not self.service.isCompatibleMask(self.maskWS1, self.runNumber1, not self.useLiteMode)
+
+    def test_getCompatibleReductionMasks_resident(self):
+        # Check that resident masks are compatible.
+
+        # Compatible resident masks: one check for each run number
+        masks = self.service.getCompatibleReductionMasks(self.runNumber1, self.useLiteMode)
+        for name in ["MaskWorkspace"]:
+            assert name in masks
+        for name in ["MaskWorkspace_2"]:
+            assert name not in masks
+
+        masks = self.service.getCompatibleReductionMasks(self.runNumber3, self.useLiteMode)
+        for name in ["MaskWorkspace_2"]:
+            assert name in masks
+        for name in ["MaskWorkspace"]:
+            assert name not in masks
+
+    def test_getCompatibleReductionMasks_resident_pixel(self):
+        # Check that any _resident_ pixel masks are compatible:
+        #   this test checks against "reduction_pixelmask..." left over from
+        #   any previous reductions.
+
+        # Compatible, resident pixel mask => list should include this mask
+        residentMask1 = wng.reductionPixelMask().runNumber(self.runNumber1).timestamp(self.timestamp1).build()
+        CloneWorkspace(
+            InputWorkspace=self.maskWS1,
+            OutputWorkspace=residentMask1,
+        )
+
+        # Incompatible resident pixel mask => list should not include this mask
+        # (This mask actually has an incompatible state.  We're avoiding running tests in native mode.)
+        residentMask2 = wng.reductionPixelMask().runNumber(self.runNumber1).timestamp(self.timestamp2).build()
+        CloneWorkspace(
+            InputWorkspace=self.maskWS2,
+            OutputWorkspace=residentMask2,
+        )
+
+        # To simplify this case, an incompatible resident "reduction_pixelmask" will be excluded,
+        #   even of there is an on-disk version (with the same name) which would be compatible.
+        masks = self.service.getCompatibleReductionMasks(self.runNumber1, self.useLiteMode)
+        assert residentMask1 in masks
+        assert residentMask2 not in masks
+
+        DeleteWorkspaces(WorkspaceList=[residentMask1, residentMask2])
+
+    def test_getCompatibleReductionMasks_nonresident(self):
+        # Check that non-resident masks are compatible.
+
+        # Compatible resident masks: one check for each run number
+        masks = self.service.getCompatibleReductionMasks(self.runNumber1, self.useLiteMode)
+        # Ignore user-generated masks
+        masks = [m for m in masks if "pixelmask" in m]
+        for name in masks:
+            assert self.runNumber1 in name or self.runNumber2 in name
+            assert self.runNumber3 not in name
+            assert self.runNumber4 not in name
+
+        masks = self.service.getCompatibleReductionMasks(self.runNumber3, self.useLiteMode)
+        # Ignore user-generated masks
+        masks = [m for m in masks if "pixelmask" in m]
+        for name in masks:
+            assert self.runNumber3 in name or self.runNumber4 in name
+            assert self.runNumber1 not in name
+            assert self.runNumber2 not in name
+
+    def test_getCompatibleReductionMasks_nonresident_filenames(self):
+        # Check that list of masks includes only valid file paths.
+
+        # Compatible masks: one check for each run number
+        masks = self.service.getCompatibleReductionMasks(self.runNumber1, self.useLiteMode)
+        # Ignore user-generated masks
+        masks = [m for m in masks if "pixelmask" in m]
+        for mask in masks:
+            runNumber, timestamp = mask.tokens("runNumber", "timestamp")
+            filePath = self.service._constructReductionDataPath(runNumber, self.useLiteMode, timestamp) / (
+                wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build() + ".h5"
+            )
+            assert filePath.exists()
+
+        masks = self.service.getCompatibleReductionMasks(self.runNumber3, self.useLiteMode)
+        # Ignore user-generated masks
+        masks = [m for m in masks if "pixelmask" in m]
+        for mask in masks:
+            runNumber, timestamp = mask.tokens("runNumber", "timestamp")
+            filePath = self.service._constructReductionDataPath(runNumber, self.useLiteMode, timestamp) / (
+                wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build() + ".h5"
+            )
+            assert filePath.exists()
+
+    def test_getCompatibleReductionMasks_no_duplicates(self):
+        # Check that list of masks includes no duplicates.
+
+        # Compatible resident masks: one check for each run number
+        masks = self.service.getCompatibleReductionMasks(self.runNumber1, self.useLiteMode)
+        duplicates: Set[WorkspaceName] = set()
+        for name in masks:
+            if name in duplicates:
+                pytest.fail("masks list contains duplicate entries")
+            duplicates.add(name)
+
+        masks = self.service.getCompatibleReductionMasks(self.runNumber3, self.useLiteMode)
+        duplicates = set()
+        for name in masks:
+            if name in duplicates:
+                pytest.fail("masks list contains duplicate entries")
+            duplicates.add(name)

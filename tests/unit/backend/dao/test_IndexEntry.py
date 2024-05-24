@@ -8,7 +8,7 @@ testData = {
     "appliesTo": "1234",
     "comments": "test",
     "author": "test",
-    "timestamp": 1234,
+    "timestamp": 1234.1234,
 }
 
 

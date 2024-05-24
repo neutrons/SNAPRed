@@ -42,7 +42,7 @@ class WorkspaceMetadata(BaseModel):
 @mock.patch(thisRecipe + "WorkspaceMetadata", WorkspaceMetadata)
 @mock.patch(readRecipe + "WorkspaceMetadata", WorkspaceMetadata)
 class TestWriteWorkspaceMetadata(unittest.TestCase):
-    properties = list(WorkspaceMetadata.schema()["properties"].keys())
+    properties = list(WorkspaceMetadata.model_json_schema()["properties"].keys())
     propLogNames = [TAG_PREFIX + prop for prop in properties]
 
     def setUp(self):

@@ -32,15 +32,13 @@ from snapred.meta.Config import Config
 # Test helper utility routines:
 # -----------------------------
 #
-#  createCompatibleMask(maskWSName: str, templateWSName: str, instrumentFileName: str)
+#  createCompatibleMask(maskWSName: str, templateWSName: str)
 #  #   A mask workspace will be created in the ADS, with no values masked: this workspace will have the
 #  #     format expected by the 'DiffractionCalibrationRecipe', 'PixelDiffractionCalibration', and
 #  #     'GroupDiffractionCalibration' algorithms, and can be used to mask detectors prior to the
 #  #     start of a diffraction-calibration sequence.
 #  #      * maskWSName: the name of the mask workspace to be created
 #  #      * templateWSName: a template workspace to be used for validation
-#  #      * instrumentFileName: a file specifying the instrument to be used to create the mask workspace
-#  #        (this instrument should match the instrument of the template workspace).
 #
 #  setSpectraToZero(inputWS: MatrixWorkspace, nss: Sequence[int])
 #  # Zero out all spectra in a list of spectra
@@ -104,7 +102,7 @@ Config._config["cis_mode"] = False
 farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
     useLiteMode=isLite,
-    focusGroup={"name": groupingScheme, "definition": ""},
+    focusGroups=[{"name": groupingScheme, "definition": ""}],
     cifPath=cifPath,
     calibrantSamplePath=calibrantSamplePath,
     peakIntensityThresold=peakThreshold,
@@ -125,7 +123,7 @@ groceries = GroceryService().fetchGroceryList(clerk.buildList())
 inputWSName = groceries[0]
 groupingWSName = groceries[1]
 maskWSName = inputWSName + '_mask'
-createCompatibleMask(maskWSName, inputWSName, instrumentFilePath)
+createCompatibleMask(maskWSName, inputWSName)
 
 ### Here any specific spectra or isolated detectors can be masked in the input, if required for testing...
 # ---
@@ -229,7 +227,7 @@ groceries = GroceryService().fetchGroceryDict(
 inputWSName = groceries['inputWorkspace']
 groupingWSName = groceries['groupingWorkspace']
 maskWSName = inputWSName + '_mask'
-createCompatibleMask(maskWSName, inputWSName, instrumentFilePath)
+createCompatibleMask(maskWSName, inputWSName)
 
 ### Here any specific spectra or isolated detectors can be masked in the input, if required for testing...
 # ---

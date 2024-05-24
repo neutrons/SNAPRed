@@ -1,12 +1,8 @@
-from typing import List, Optional
-
 from pydantic import BaseModel, ConfigDict
-
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class PreprocessReductionIngredients(BaseModel):
-    maskList: Optional[List[WorkspaceName]] = None
+    pass
 
     model_config = ConfigDict(
         extra="forbid",

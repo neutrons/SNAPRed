@@ -35,7 +35,7 @@ groups = LocalDataService().readGroupingMap(runNumber).getMap(isLite)
 farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
     useLiteMode=isLite,
-    focusGroup=list(groups.values()),
+    focusGroups=list(groups.values()),
 )
 ingredients = SousChef().prepReductionIngredients(farmFresh)
 

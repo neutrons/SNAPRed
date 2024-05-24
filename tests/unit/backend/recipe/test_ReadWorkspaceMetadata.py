@@ -38,7 +38,7 @@ class WorkspaceMetadata(BaseModel):
 # if your test fails with this patch, then fix your test instead
 @mock.patch(thisRecipe + "WorkspaceMetadata", WorkspaceMetadata)
 class TestReadWorkspaceMetadata(unittest.TestCase):
-    properties = list(WorkspaceMetadata.schema()["properties"].keys())
+    properties = list(WorkspaceMetadata.model_json_schema()["properties"].keys())
     propLogNames = [TAG_PREFIX + prop for prop in properties]
 
     def setUp(self):

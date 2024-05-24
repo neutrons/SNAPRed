@@ -7,17 +7,16 @@ import unittest
 from collections.abc import Sequence
 from typing import Any, Tuple
 
+import numpy
 import numpy as np
 from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
     CompareWorkspaces,
-    CopyInstrumentParameters,
     CreateEmptyTableWorkspace,
+    CreateWorkspace,
     DeleteWorkspace,
     ExtractMask,
-    LoadInstrument,
-    WorkspaceFactory,
     mtd,
 )
 
@@ -38,27 +37,23 @@ def createCompatibleDiffCalTable(tableWSName: str, templateWSName: str) -> ITabl
     return ws
 
 
-def createCompatibleMask(maskWSName: str, templateWSName: str, instrumentFilePath: str) -> MaskWorkspace:
+def createCompatibleMask(maskWSName: str, templateWSName: str) -> MaskWorkspace:
     """
-    Create a `MaskWorkspace` compatible with a template workspace and instrument
-      (At present, due to limitations in the Mantid python API, the instrumentFilePath is necessary.)
+    Create a `MaskWorkspace` compatible with a template workspace
     """
+
     templateWS = mtd[templateWSName]
-    inst = templateWS.getInstrument()
-    # Exclude pixels which are monitors:
-    mask = WorkspaceFactory.create("SpecialWorkspace2D", NVectors=inst.getNumberDetectors(True), XLength=1, YLength=1)
-    mtd[maskWSName] = mask
-    LoadInstrument(
-        Workspace=maskWSName,
-        Filename=instrumentFilePath,
-        RewriteSpectraMap=False,
+
+    # Number of non-monitor pixels
+    pixelCount = templateWS.getInstrument().getNumberDetectors(True)
+
+    mask = CreateWorkspace(
+        OutputWorkspace=maskWSName,
+        NSpec=pixelCount,
+        DataX=list(np.zeros((pixelCount,))),
+        DataY=list(np.zeros((pixelCount,))),
+        ParentWorkspace=templateWSName,
     )
-    if mask.getInstrument().getNumberDetectors(True) != templateWS.getInstrument().getNumberDetectors(True):
-        raise RuntimeError(
-            f'Instrument file resource "{instrumentFilePath}" does not describe the template workspace' "s instrument"
-        )
-    # Copy any configurable instrument parameters from the template workspace.
-    CopyInstrumentParameters(InputWorkspace=templateWSName, OutputWorkspace=maskWSName)
 
     # Rebuild the spectra map "by hand" to exclude detectors which are monitors.
     info = mask.detectorInfo()
@@ -75,8 +70,46 @@ def createCompatibleMask(maskWSName: str, templateWSName: str, instrumentFilePat
         wi += 1
 
     # Convert workspace to a MaskWorkspace instance.
-    ExtractMask(InputWorkspace=maskWSName, OutputWorkspace=maskWSName)
+    ExtractMask(OutputWorkspace=maskWSName, InputWorkspace=maskWSName)
     assert isinstance(mtd[maskWSName], MaskWorkspace)
+
+    return mtd[maskWSName]
+
+
+def arrayFromMask(maskWSName: str) -> numpy.ndarray:
+    """
+    Initialize a 1D numpy boolean array from a mask workspace.
+    """
+    mask = mtd[maskWSName]
+
+    # Number of non-monitor pixels
+    pixelCount = mask.getInstrument().getNumberDetectors(True)
+    assert pixelCount == mask.getNumberHistograms()
+
+    flags = np.zeros((pixelCount,), dtype=bool)
+    for wi in range(pixelCount):
+        flags[wi] = mask.readY(wi)[0] != 0.0
+    assert mask.getNumberMasked() == np.count_nonzero(flags)
+    return flags
+
+
+def initializeRandomMask(maskWSName: str, fraction: float) -> MaskWorkspace:
+    """
+    Initialize an existing mask workspace by masking a random fraction of its values:
+      * maskWSName: input mask workspace;
+      * fraction: a value in [0.0, 1.0) indicating the fraction of values to mask.
+    """
+    mask = mtd[maskWSName]
+
+    # Number of non-monitor pixels
+    pixelCount = mask.getInstrument().getNumberDetectors(True)
+    assert pixelCount == mask.getNumberHistograms()
+
+    flags = np.random.random_sample((pixelCount,))
+    flags = flags < fraction
+    for wi in range(pixelCount):
+        mask.setY(wi, [1.0 if flags[wi] else 0.0])
+    assert mask.getNumberMasked() == np.count_nonzero(flags)
     return mask
 
 

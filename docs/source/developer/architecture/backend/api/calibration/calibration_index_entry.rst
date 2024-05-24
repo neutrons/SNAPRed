@@ -26,7 +26,7 @@ Attributes:
 
 - author (str): The name of the individual responsible for the calibration entry, ensuring traceability and accountability.
 
-- timestamp (Optional[int]): A Unix timestamp marking the creation or last update of the calibration entry, offering a chronological
+- timestamp (Optional[float]): A Unix timestamp marking the creation or last update of the calibration entry, offering a chronological
   reference for data management.
 
 

@@ -72,7 +72,7 @@ def test_state_root_override_enter(
         assert Path(stateRootPath) == expectedStateRootPath
         assert Path(stateRootPath).exists()
         assert Path(stateRootPath).joinpath("groupingMap.json").exists()
-        versionString = wnvf.fileVersion(VERSION_DEFAULT)
+        versionString = wnvf.pathVersion(VERSION_DEFAULT)
         assert (Path(stateRootPath) / "lite" / "diffraction" / versionString / "CalibrationParameters.json").exists()
 
 
@@ -165,11 +165,11 @@ def test_state_root_redirect_no_stateid():
 
 
 def test_state_root_redirect_with_stateid():
-    stateId = "not_a_real_id"
+    stateId = "1234567890123456"
     localDataService = LocalDataService()
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         # make sure the root is pointing to this state ID
-        assert localDataService._generateStateId() == (stateId, "gibberish")
+        assert localDataService._generateStateId() == (stateId, None)
         assert localDataService._constructCalibrationStateRoot() == tmpRoot.path()
         assert stateId == localDataService._constructCalibrationStateRoot().parts[-1]
 
@@ -190,10 +190,10 @@ def test_reduction_root_redirect_no_stateid():
 
 
 def test_reduction_root_redirect_with_stateid():
-    stateId = "not_a_real_id"
+    stateId = "1234567890123456"
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         # make sure the root is pointing to this state ID
-        assert localDataService._generateStateId() == (stateId, "gibberish")
+        assert localDataService._generateStateId() == (stateId, None)
         assert localDataService._constructReductionStateRoot() == tmpRoot.path()
         assert stateId == localDataService._constructReductionStateRoot().parts[-1]

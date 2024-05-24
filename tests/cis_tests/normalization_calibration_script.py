@@ -53,7 +53,7 @@ instrumentState = DFS.getCalibrationState(runNumber).instrumentState
 farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
     useLiteMode=isLite,
-    focusGroup={"name": groupingScheme, "definition": groupPath},
+    focusGroups=[{"name": groupingScheme, "definition": groupPath}],
     cifPath=cifPath,
     calibrantSamplePath=samplePath,
 )
