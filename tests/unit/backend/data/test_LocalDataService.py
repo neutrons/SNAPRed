@@ -240,7 +240,7 @@ def test_prepareStateRoot_creates_state_root_directory():
         stateId = "ab8704b0bc2a2342"
         stateRootPath = Path(tmpDir) / stateId
         groupingMapFilePath = stateRootPath / "groupingMap.json"
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(stateRootPath))
+        localDataService._constructStateRoot = mock.Mock(return_value=str(stateRootPath))
         defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
         localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
@@ -260,7 +260,7 @@ def test_prepareStateRoot_existing_state_root():
         os.makedirs(stateRootPath)
 
         groupingMapFilePath = stateRootPath / "groupingMap.json"
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(stateRootPath))
+        localDataService._constructStateRoot = mock.Mock(return_value=str(stateRootPath))
         defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
         localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
@@ -277,7 +277,7 @@ def test_prepareStateRoot_writes_grouping_map():
         stateId = "ab8704b0bc2a2342"
         stateRootPath = Path(tmpDir) / stateId
         groupingMapFilePath = stateRootPath / "groupingMap.json"
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(stateRootPath))
+        localDataService._constructStateRoot = mock.Mock(return_value=str(stateRootPath))
         defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
         localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
@@ -296,7 +296,7 @@ def test_prepareStateRoot_sets_grouping_map_stateid():
         stateId = "ab8704b0bc2a2342"
         stateRootPath = Path(tmpDir) / stateId
         groupingMapFilePath = stateRootPath / "groupingMap.json"
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(stateRootPath))
+        localDataService._constructStateRoot = mock.Mock(return_value=str(stateRootPath))
         defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
         localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
@@ -323,7 +323,7 @@ def test_prepareStateRoot_no_default_grouping_map():
             FileNotFoundError,
             match=f'required default grouping-schema map "{defaultGroupingMapFilePath}" does not exist',
         ):
-            localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(stateRootPath))
+            localDataService._constructStateRoot = mock.Mock(return_value=str(stateRootPath))
             localDataService._defaultGroupingMapPath = mock.Mock(return_value=Path(defaultGroupingMapFilePath))
             localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
             localDataService._prepareStateRoot(stateId)
@@ -350,7 +350,7 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
         groupingMap.coerceStateId(otherStateId)
         write_model_pretty(groupingMap, groupingMapFilePath)
 
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(stateRootPath))
+        localDataService._constructStateRoot = mock.Mock(return_value=str(stateRootPath))
         defaultGroupingMap = GroupingMap.parse_file(defaultGroupingMapFilePath)
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
         localDataService._groupingMapPath = mock.Mock(return_value=groupingMapFilePath)
@@ -412,7 +412,7 @@ def test_calibrationFileExists(GetIPTS):  # noqa ARG002
         assert Path(tmpDir).exists()
         localDataService = LocalDataService()
         localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=tmpDir)
+        localDataService._constructStateRoot = mock.Mock(return_value=tmpDir)
         runNumber = "654321"
         assert localDataService.checkCalibrationFileExists(runNumber)
 
@@ -450,7 +450,7 @@ def test_calibrationFileExists_not(GetIPTS):  # noqa ARG002
         localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
         nonExistentPath = Path(tmpDir) / "1755"
         assert not nonExistentPath.exists()
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(nonExistentPath))
+        localDataService._constructStateRoot = mock.Mock(return_value=str(nonExistentPath))
         runNumber = "654321"
         assert not localDataService.checkCalibrationFileExists(runNumber)
 
@@ -624,8 +624,8 @@ def test_readCalibrationIndexMissing():
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._readReductionParameters = mock.Mock()
-    localDataService._constructCalibrationStateRoot = mock.Mock()
-    localDataService._constructCalibrationStateRoot.return_value = Resource.getPath("outputs")
+    localDataService._constructStateRoot = mock.Mock()
+    localDataService._constructStateRoot.return_value = Resource.getPath("outputs")
     assert len(localDataService.readCalibrationIndex("123", True)) == 0
 
 
@@ -635,8 +635,8 @@ def test_readNormalizationIndexMissing():
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._readReductionParameters = mock.Mock()
-    localDataService._constructCalibrationStateRoot = mock.Mock()
-    localDataService._constructCalibrationStateRoot.return_value = Resource.getPath("outputs")
+    localDataService._constructStateRoot = mock.Mock()
+    localDataService._constructStateRoot.return_value = Resource.getPath("outputs")
     assert len(localDataService.readNormalizationIndex("123", True)) == 0
 
 
@@ -754,7 +754,7 @@ def test_readWriteCalibrationRecord_version_numbers():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=f"{tempdir}/")
+        localDataService._constructStateRoot = mock.Mock(return_value=f"{tempdir}/")
         # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
         #   and <incoming record>.calibrationFittingIngredients.version.
 
@@ -784,7 +784,7 @@ def test_readWriteCalibrationRecord_specified_version():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=f"{tempdir}/")
+        localDataService._constructStateRoot = mock.Mock(return_value=f"{tempdir}/")
         # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
         #   and <incoming record>.calibrationFittingIngredients.version.
 
@@ -806,7 +806,7 @@ def test_readWriteCalibrationRecord_with_version():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock(return_value=("123", "456"))
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=f"{tempdir}/")
+        localDataService._constructStateRoot = mock.Mock(return_value=f"{tempdir}/")
         localDataService.writeCalibrationRecord(
             CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
         )
@@ -823,7 +823,7 @@ def test_readWriteCalibrationRecord():
         localDataService = LocalDataService()
         localDataService.instrumentConfig = mock.Mock()
         localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=f"{tempdir}/")
+        localDataService._constructStateRoot = mock.Mock(return_value=f"{tempdir}/")
         localDataService.writeCalibrationRecord(testCalibrationRecord)
         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
     assert actualRecord.runNumber == "57514"
@@ -1075,7 +1075,7 @@ def test_getCalibrationRecordPath():
     localDataService._constructCalibrationStatePath = mock.Mock()
     localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
     actualPath = localDataService.getCalibrationRecordPath("57514", True, testVersion)
-    assert actualPath == Resource.getPath("outputs") + f"/{wnvf.fileVersion(testVersion)}/CalibrationRecord.json"
+    assert actualPath == Path(Resource.getPath("outputs"), wnvf.fileVersion(testVersion), "CalibrationRecord.json")
 
 
 def test_getNormalizationRecordPath():
@@ -1086,7 +1086,7 @@ def test_getNormalizationRecordPath():
     localDataService._constructNormalizationStatePath = mock.Mock()
     localDataService._constructNormalizationStatePath.return_value = Resource.getPath("outputs/")
     actualPath = localDataService.getNormalizationRecordPath("57514", True, testVersion)
-    assert actualPath == Resource.getPath("outputs") + f"/{wnvf.fileVersion(testVersion)}/NormalizationRecord.json"
+    assert actualPath == Path(Resource.getPath("outputs"), wnvf.fileVersion(testVersion), "NormalizationRecord.json")
 
 
 def test_extractFileVersion():
@@ -1248,7 +1248,7 @@ def test__constructCalibrationParametersFilePath():
     localDataService._generateStateId = mock.Mock(return_value=("ab8704b0bc2a2342", None))
     localDataService._constructCalibrationStatePath = mock.Mock(return_value=Resource.getPath("outputs/"))
     actualPath = localDataService._constructCalibrationParametersFilePath("57514", True, testVersion)
-    assert actualPath == Resource.getPath("outputs") + f"/{wnvf.fileVersion(testVersion)}/CalibrationParameters.json"
+    assert actualPath == Path(Resource.getPath("outputs"), wnvf.fileVersion(testVersion), "CalibrationParameters.json")
 
 
 def test_readCalibrationState():
@@ -1515,7 +1515,7 @@ def test_initializeState_calls_prepareStateRoot():
         stateId = "ab8704b0bc2a2342"
         stateRootPath = Path(f"{tmpDir}/") / stateId
         localDataService._constructCalibrationStatePath = mock.Mock(return_value=str(stateRootPath))
-        localDataService._constructCalibrationStateRoot = mock.Mock(return_value=str(stateRootPath))
+        localDataService._constructStateRoot = mock.Mock(return_value=str(stateRootPath))
 
         assert not stateRootPath.exists()
         localDataService.initializeState(runNumber, useLiteMode, "test")
@@ -1634,8 +1634,8 @@ def test_readGroupingMap_initialized_state():
         service = LocalDataService()
         stateId = "ab8704b0bc2a2342"
         stateRoot = Path(f"{tempdir}/{stateId}")
-        service._constructCalibrationStateRoot = mock.Mock()
-        service._constructCalibrationStateRoot.return_value = str(stateRoot)
+        service._constructStateRoot = mock.Mock()
+        service._constructStateRoot.return_value = str(stateRoot)
         stateRoot.mkdir()
         shutil.copy(Path(Resource.getPath("inputs/pixel_grouping/groupingMap.json")), stateRoot)
         groupingMap = service._readGroupingMap(stateId)

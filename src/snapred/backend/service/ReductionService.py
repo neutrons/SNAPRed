@@ -147,14 +147,10 @@ class ReductionService(Service):
         :return: The needed reduction ignredients.
         :rtype: ReductionIngredients
         """
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroup,
-            cifPath=cifPath,
-            calibrantSamplePath=request.calibrantSamplePath,
-            peakIntensityThreshold=request.peakIntensityThreshold,
         )
         return self.sousChef.prepReductionIngredients(farmFresh)
 

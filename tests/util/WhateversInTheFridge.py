@@ -40,16 +40,16 @@ class RedirectStateRoot:
 
     def __init__(self, dataService: LocalDataService):
         self.dataService = dataService
-        self.oldself = dataService._constructCalibrationStateRoot
+        self.oldself = dataService._constructStateRoot
 
     def __enter__(self):
         self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
         self.tmppath = Path(self.tmpdir.name)
-        self.dataService._constructCalibrationStateRoot = lambda *x, **y: self.tmpdir.name
+        self.dataService._constructStateRoot = lambda *x, **y: self.tmpdir.name
         return self
 
     def __exit__(self, *arg, **kwargs):
-        self.dataService._constructCalibrationStateRoot = self.oldself
+        self.dataService._constructStateRoot = self.oldself
         self.tmpdir.cleanup()
         assert not self.tmppath.exists()
         del self.tmpdir

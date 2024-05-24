@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import parse_raw_as
 
@@ -51,6 +51,8 @@ class SousChef(Service):
 
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
         calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber, ingredients.useLiteMode)
+        calibration.calibrantSamplePath = ingredients.calibrantSamplePath
+        calibration.peakIntensityThreshold = ingredients.peakIntensityThreshold
         calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers
         return calibration
 
@@ -167,12 +169,28 @@ class SousChef(Service):
         ingredients.focusGroup = focusGroups
         return detectorPeaks
 
-    def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
-        record = self.dataFactoryService.getNormalizationRecord(ingredients.runNumber, ingredients.useLiteMode)
+    def prepReductionIngredients(
+        self, ingredients: FarmFreshIngredients, version: Optional[int] = None
+    ) -> ReductionIngredients:
+        # some of the reduction ingredients MUST match those used in the calibration/normalization processes
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(
+            ingredients.runNumber, ingredients.useLiteMode, version
+        )
+        normalizationRecord = self.dataFactoryService.getNormalizationRecord(
+            ingredients.runNumber, ingredients.useLiteMode, version
+        )
+        # grab nformation from records
+        ingredients.calibrantSamplePath = calibrationRecord.calibrationFittingIngredients.calibrantSamplePath
+        ingredients.cifPath = self.dataFactoryService.getCifFilePath(
+            ingredients.calibrantSamplePath.split("/")[-1].split(".")[0]
+        )
+        ingredients.peakIntensityThreshold = calibrationRecord.calibrationFittingIngredients.peakIntensityThreshold
         return ReductionIngredients(
             maskList=[],
             pixelGroups=self.prepManyPixelGroups(ingredients),
-            smoothingParameter=record.smoothingParameter,
+            smoothingParameter=normalizationRecord.smoothingParameter,
+            calibrantSamplePath=ingredients.calibrantSamplePath,
+            peakIntensityThresold=ingredients.peakIntensityThreshold,
             detectorPeaksMany=self.prepManyDetectorPeaks(ingredients),
         )
 
