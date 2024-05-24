@@ -1,5 +1,5 @@
 import json
-import time
+from collections.abc import Iterable
 from typing import Any, Dict, List
 
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
@@ -8,16 +8,27 @@ from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
 )
+from snapred.backend.dao.request.ReductionRequest import Versions
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.ReductionRecipe import ReductionRecipe
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceName,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceNameGenerator as wng,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceType as wngt,
+)
 from snapred.meta.validator.RunNumberValidator import RunNumberValidator
 
 logger = snapredLogger.getLogger(__name__)
@@ -42,6 +53,7 @@ class ReductionService(Service):
         self.groceryService = GroceryService()
         self.groceryClerk = GroceryListItem.builder()
         self.sousChef = SousChef()
+        self.mantidSnapper = MantidSnapper(None, __name__)
         self.registerPath("", self.reduction)
         self.registerPath("ingredients", self.prepReductionIngredients)
         self.registerPath("groceries", self.fetchReductionGroceries)
@@ -50,18 +62,12 @@ class ReductionService(Service):
         self.registerPath("save", self.saveReduction)
         self.registerPath("load", self.loadReduction)
         self.registerPath("hasState", self.hasState)
+        self.registerPath("getCompatibleMasks", self.getCompatibleMasks)
         return
 
     @staticmethod
     def name():
         return "reduction"
-
-    @FromString
-    def fakeMethod(self):  # pragma: no cover
-        # NOTE this is not a real method
-        # it's here to be used in the registered paths above, for the moment
-        # when possible this and its registered paths should be deleted
-        raise NotImplementedError("You tried to access an invalid path in the reduction service.")
 
     @FromString
     def reduction(self, request: ReductionRequest):
@@ -71,16 +77,14 @@ class ReductionService(Service):
         :param request: a ReductionRequest object holding needed information
         :type request: ReductionRequest
         """
-        groupResults = self.fetchReductionGroupings(request)
-        focusGroups = groupResults["focusGroups"]
-        groupingWorkspaces = groupResults["groupingWorkspaces"]
-        request.focusGroups = focusGroups
+        groupingResults = self.fetchReductionGroupings(request)
+        request.focusGroups = groupingResults["focusGroups"]
 
         ingredients = self.prepReductionIngredients(request)
 
         groceries = self.fetchReductionGroceries(request)
         # attach the list of grouping workspaces to the grocery dictionary
-        groceries["groupingWorkspaces"] = groupingWorkspaces
+        groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
 
         return ReductionRecipe().cook(ingredients, groceries)
 
@@ -99,8 +103,8 @@ class ReductionService(Service):
         :rtype: Dict[str, Any]
         """
         # fetch all valid groups for this run state
-        res = self.loadAllGroupings(request.runNumber, request.useLiteMode)
-        return res
+        result = self.loadAllGroupings(request.runNumber, request.useLiteMode)
+        return result
 
     @FromString
     def loadAllGroupings(self, runNumber: str, useLiteMode: bool) -> Dict[str, Any]:
@@ -129,6 +133,35 @@ class ReductionService(Service):
             "groupingWorkspaces": groupingWorkspaces,
         }
 
+    # WARNING: `WorkspaceName` does not work with `@FromString`!
+    def prepCombinedMask(self, runNumber: str, useLiteMode: bool, pixelMasks: Iterable[WorkspaceName]) -> WorkspaceName:
+        """
+        Combine all of the individual pixel masks for application and final output
+        """
+
+        """
+        Implementation notes:
+            * RE incoming `pixelMasks`:
+            sub-selection from
+              `self.dataFactoryService.getCompatibleReductionMasks(ingredients.runNumber, ingredients.useLiteMode)`
+            ==> TO / FROM mask-dropdown in Reduction panel
+            This MUST be a list of valid `WorkspaceName` (i.e. containing their original `builder` attribute)
+        """
+
+        # no reduction timestamp has been assigned yet
+        combinedMask = wng.reductionPixelMask().runNumber(runNumber).build()
+        self.groceryService.fetchCompatiblePixelMask(combinedMask, runNumber, useLiteMode)
+        for n, mask in enumerate(pixelMasks):
+            self.mantidSnapper.BinaryOperateMasks(
+                f"combine from pixel mask {n}...",
+                InputWorkspace1=combinedMask,
+                InputWorkspace2=mask,
+                OperationType="OR",
+                OutputWorkspace=combinedMask,
+            )
+        self.mantidSnapper.executeQueue()
+        return combinedMask
+
     @FromString
     def prepReductionIngredients(self, request: ReductionRequest) -> ReductionIngredients:
         """
@@ -150,9 +183,10 @@ class ReductionService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroups,
+            focusGroups=request.focusGroups,
             keepUnfocused=request.keepUnfocused,
             convertUnitsTo=request.convertUnitsTo,
+            versions=request.versions,
         )
         return self.sousChef.prepReductionIngredients(farmFresh)
 
@@ -163,8 +197,8 @@ class ReductionService(Service):
 
             - neutron run data
             - diffcal tables
-            - pixel mask workspaces
-            - normalizations
+            - normalization
+            - combined pixel-mask workspace
 
         :param request: a reduction request
         :type request: ReductionRequest
@@ -173,36 +207,68 @@ class ReductionService(Service):
             - "inputworkspace"
             - "diffcalWorkspace"
             - "normalizationWorkspace"
+            - "maskWorkspace"
 
         :rtype: Dict[str, Any]
         """
-        # gather input workspace and the diffcal table
-        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
-            request.useLiteMode
-        ).add()
-        normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
-            request.runNumber, request.useLiteMode
-        )
-        self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
-            request.useLiteMode
-        ).add()
-        return self.groceryService.fetchGroceryDict(groceryDict=self.groceryClerk.buildDict())
+        # Fetch pixel masks
+        residentMasks = {}
+        combinedMask = None
+        if request.pixelMasks:
+            for mask in request.pixelMasks:
+                match mask.tokens("workspaceType"):
+                    case wngt.REDUCTION_PIXEL_MASK:
+                        runNumber, timestamp = mask.tokens("runNumber", "timestamp")
+                        self.groceryClerk.name(mask).reduction_pixel_mask(runNumber, timestamp).useLiteMode(
+                            request.useLiteMode
+                        ).add()
+                    case wngt.REDUCTION_USER_PIXEL_MASK:
+                        numberTag = mask.tokens("numberTag")
+                        residentMasks[mask] = wng.reductionUserPixelMask().numberTag(numberTag).build()
+                    case _:
+                        raise RuntimeError(
+                            f"reduction pixel mask '{mask}' has unexpected workspace-type '{mask.tokens('workspaceType')}'"  # noqa: E501
+                        )
 
-    @FromString
+            # Load any non-resident pixel masks
+            maskGroceries = self.groceryService.fetchGroceryDict(
+                self.groceryClerk.buildDict(),
+                **residentMasks,
+            )
+            # combine all of the pixel masks, for application and final output
+            combinedMask = self.prepCombinedMask(request.runNumber, request.useLiteMode, maskGroceries.values())
+
+        # gather the input workspace and the diffcal table
+        self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
+
+        # As an interim solution: set the request "versions" field to the latest calibration and normalization versions.
+        #   TODO: set these when the request is initially generated.
+        request.versions = Versions(
+            self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode),
+            self.dataFactoryService.getThisOrLatestNormalizationVersion(request.runNumber, request.useLiteMode),
+        )
+
+        self.groceryClerk.name("diffcalWorkspace").diffcal_table(
+            request.runNumber, request.versions.calibration
+        ).useLiteMode(request.useLiteMode).add()
+        self.groceryClerk.name("normalizationWorkspace").normalization(
+            request.runNumber, request.versions.normalization
+        ).useLiteMode(request.useLiteMode).add()
+
+        return self.groceryService.fetchGroceryDict(
+            groceryDict=self.groceryClerk.buildDict(),
+            **({"maskWorkspace": combinedMask} if combinedMask else {}),
+        )
+
     def saveReduction(self, request: ReductionExportRequest):
-        version = request.version
-        if version is None:
-            version = int(time.time())
         record = request.reductionRecord
-        record.version = version
-        record.calculationParameters.version = version
         self.dataExportService.exportReductionRecord(record)
         self.dataExportService.exportReductionData(record)
 
-    def loadReduction(self):
-        raise NotImplementedError("SNAPRed cannot load reductions")
+    def loadReduction(self, stateId: str, timestamp: float):
+        # 1) Create the file path from the stateId and the timestamp;
+        # 2) Load the reduction record and workspaces using `DataFactoryService.getReductionData`.
+        raise NotImplementedError("not implemented: 'ReductionService.loadReduction")
 
     def hasState(self, runNumber: str):
         if not RunNumberValidator.validateRunNumber(runNumber):
@@ -213,7 +279,7 @@ class ReductionService(Service):
     def _groupByStateId(self, requests: List[SNAPRequest]):
         stateIDs = {}
         for request in requests:
-            runNumber = str(json.loads(request.payload)["runNumber"])
+            runNumber = json.loads(request.payload)["runNumber"]
             stateID, _ = self.dataFactoryService.constructStateId(runNumber)
             if stateIDs.get(stateID) is None:
                 stateIDs[stateID] = []
@@ -223,11 +289,15 @@ class ReductionService(Service):
     def _groupByVanadiumVersion(self, requests: List[SNAPRequest]):
         versions = {}
         for request in requests:
-            runNumber = str(json.loads(request.payload)["runNumber"])
+            runNumber = json.loads(request.payload)["runNumber"]
             useLiteMode = bool(json.loads(request.payload)["useLiteMode"])
-            normalVersion = self.dataFactoryService.getThisOrCurrentNormalizationVersion(runNumber, useLiteMode)
-            version = "normalization_" + str(normalVersion)
+            normalizationVersion = self.dataFactoryService.getThisOrCurrentNormalizationVersion(runNumber, useLiteMode)
+            version = "normalization_" + str(normalizationVersion)
             if versions.get(version) is None:
                 versions[version] = []
             versions[version].append(request)
         return versions
+
+    def getCompatibleMasks(self, request: ReductionRequest) -> List[WorkspaceName]:
+        runNumber, useLiteMode = request.runNumber, request.useLiteMode
+        return self.dataFactoryService.getCompatibleReductionMasks(runNumber, useLiteMode)

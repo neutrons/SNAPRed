@@ -20,7 +20,7 @@ class ReadWorkspaceMetadata(Recipe[WorkspaceMetadata]):
         """
         Create the metadata object
         """
-        properties = list(WorkspaceMetadata.schema()["properties"].keys())
+        properties = list(WorkspaceMetadata.model_json_schema()["properties"].keys())
         self.metadata = {}
         run = self.mantidSnapper.mtd[self.workspace].getRun()  # NOTE this is a mantid object that holds logs
         for prop in properties:

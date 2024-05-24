@@ -12,7 +12,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 class WorkspaceMetadataService(Service):
     def __init__(self):
         super().__init__()
-        self.properties = list(WorkspaceMetadata.schema()["properties"].keys())
+        self.properties = list(WorkspaceMetadata.model_json_schema()["properties"].keys())
         return
 
     @staticmethod

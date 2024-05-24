@@ -22,9 +22,10 @@ class Record(VersionedObject, extra="allow"):
 
     runNumber: str
     useLiteMode: bool
+
     # NOTE calculationParameters is a VERSIONED object.
-    # the version on the calculation parameters MUST match the version on this record.
-    # a future validator should enforce this condition
+    #   the version on the calculation parameters MUST match the version on this record.
+    # TODO (complicated): add a validator to enforce this.
     calculationParameters: CalculationParameters
 
     @field_validator("runNumber", mode="before")

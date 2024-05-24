@@ -65,6 +65,12 @@ class GroceryListBuilder:
         self._tokens["version"] = version
         return self
 
+    def reduction_pixel_mask(self, runId: str, timestamp: float):
+        self._tokens["workspaceType"] = "reduction_pixel_mask"
+        self._tokens["runNumber"] = runId
+        self._tokens["timestamp"] = timestamp
+        return self
+
     def native(self):
         self._tokens["useLiteMode"] = False
         return self

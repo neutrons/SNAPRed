@@ -21,7 +21,7 @@ class WriteWorkspaceMetadata(Recipe[WorkspaceMetadata]):
         prevMetadata = ReadWorkspaceMetadata().cook({"workspace": self.workspace})
 
         # if the input WorkspaceMetadata has unset values, set them from the logs
-        self.properties = list(WorkspaceMetadata.schema()["properties"].keys())
+        self.properties = list(WorkspaceMetadata.model_json_schema()["properties"].keys())
         metadata = WorkspaceMetadata.model_validate(ingredients).dict()
         for prop in self.properties:
             if metadata[prop] == UNSET:
