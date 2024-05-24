@@ -55,9 +55,12 @@ class ReductionWorkflow(WorkflowImplementer):
         responses = []
         for runNumber in runNumbers:
             payload = RunConfig(runNumber=runNumber)
-            request = SNAPRequest(path="reduction", payload=payload.json())
+            # TODO: Handle Continue Anyway
+            request = SNAPRequest(path="reduction/reduce", payload=payload.json())
             response = self.interfaceController.executeRequest(request)
             responses.append(response)
+            # pop runnumber from the list
+            self._reductionView.removeRunNumber(runNumber)
             self.responses.append(response)
 
         return responses

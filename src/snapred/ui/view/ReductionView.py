@@ -78,8 +78,9 @@ class ReductionView(QWidget):
                 raise ValueError(
                     "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
                 )
-        if self.pixelMaskDropdown.currentIndex() < 0:
-            raise ValueError("Please select a pixel mask.")
+        # They dont need to select a pixel mask
+        # if self.pixelMaskDropdown.currentIndex() < 0:
+        #     raise ValueError("Please select a pixel mask.")
         return True
 
     def getRunNumbers(self):

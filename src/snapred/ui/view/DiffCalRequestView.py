@@ -19,8 +19,8 @@ class DiffCalRequestView(BackendRequestView):
 
     """
 
-    def __init__(self, jsonForm, samples=[], groups=[], parent=None):
-        super().__init__(jsonForm, "", parent=parent)
+    def __init__(self, samples=[], groups=[], parent=None):
+        super().__init__(parent=parent)
 
         # input fields
         self.runNumberField = self._labeledField("Run Number")

@@ -49,9 +49,8 @@ class DiffCalTweakPeakView(BackendRequestView):
     signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum, Pair)
     signalUpdateRecalculationButton = Signal(bool)
 
-    def __init__(self, jsonForm, samples=[], groups=[], parent=None):
-        selection = "calibration/diffractionCalibration"
-        super().__init__(jsonForm, selection, parent=parent)
+    def __init__(self, samples=[], groups=[], parent=None):
+        super().__init__(parent=parent)
 
         # create the run number field and lite mode toggle
         self.runNumberField = self._labeledField("Run Number")
