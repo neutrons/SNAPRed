@@ -2,11 +2,10 @@
 # * if those files are changed or moved, it will cause test failure;
 # * GOLDEN DATA must be IDENTICAL between local and remote tests.
 
-import json
 import socket
 import unittest
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List
 
 import pytest
 from mantid.simpleapi import (
@@ -27,13 +26,14 @@ from snapred.backend.recipe.algorithm.PixelGroupingParametersCalculationAlgorith
     PixelGroupingParametersCalculationAlgorithm as ThisAlgo,
 )
 from snapred.meta.Config import Resource
+from snapred.meta.redantic import write_model_list_pretty
 from util.helpers import (
     createCompatibleMask,
     maskComponentByName,
 )
 
 GENERATE_GOLDEN_DATA = False
-GOLDEN_DATA_DATE = "2024-03-20"  # date.today().isoformat()
+GOLDEN_DATA_DATE = "2024-05-20"  # date.today().isoformat()
 
 # Override to run "as if" on analysis machine (but don't require access to SNS filesystem):
 REMOTE_OVERRIDE = False
@@ -375,51 +375,30 @@ class PixelGroupCalculation(unittest.TestCase):
 
         return pixelGroupingParams_calc
 
-    def compareToReference(self, pixelGroupingParams_calc, referenceParametersFile):
+    def compareToReference(self, actual: List[PixelGroupingParameters], referenceParametersFile: str):
         if Path(referenceParametersFile).exists():
-            # parse the reference file. Note, in the reference file each kind of parameter is grouped into its own list
+            # parse the reference file.
             with open(referenceParametersFile) as f:
-                pixelGroupingParams_ref = json.load(f)
+                expected: List[PixelGroupingParameters] = parse_raw_as(
+                    List[PixelGroupingParameters],
+                    f.read(),
+                )
 
-            # compare calculated and reference parameters
-            number_of_groupings_calc = len(pixelGroupingParams_calc)
-            assert len(pixelGroupingParams_ref["isMasked"]) == number_of_groupings_calc
-            assert len(pixelGroupingParams_ref["twoTheta"]) == number_of_groupings_calc
-            assert len(pixelGroupingParams_ref["dMin"]) == number_of_groupings_calc
-            assert len(pixelGroupingParams_ref["dMax"]) == number_of_groupings_calc
-            assert len(pixelGroupingParams_ref["delDOverD"]) == number_of_groupings_calc
+            # compare calculated parameters with golden data
+            assert len(expected) == len(actual)
 
-            for index, param in enumerate(pixelGroupingParams_ref["isMasked"]):
-                assert param is pixelGroupingParams_calc[index].isMasked
+            for index, param in enumerate(expected):
+                assert param.isMasked is actual[index].isMasked
+                assert pytest.approx(param.L2, 1.0e-6) == actual[index].L2
+                assert pytest.approx(param.twoTheta, 1.0e-6) == actual[index].twoTheta
+                assert pytest.approx(param.azimuth, 1.0e-6) == actual[index].azimuth
+                assert pytest.approx(param.dResolution.minimum, 1.0e-6) == actual[index].dResolution.minimum
+                assert pytest.approx(param.dResolution.maximum, 1.0e-6) == actual[index].dResolution.maximum
+                assert pytest.approx(param.dRelativeResolution, 1.0e-6) == actual[index].dRelativeResolution
 
-            for index, param in enumerate(pixelGroupingParams_ref["twoTheta"]):
-                assert pytest.approx(param, 1.0e-6) == pixelGroupingParams_calc[index].twoTheta
-
-            for index, param in enumerate(pixelGroupingParams_ref["dMin"]):
-                assert pytest.approx(param, 1.0e-6) == pixelGroupingParams_calc[index].dResolution.minimum
-
-            for index, param in enumerate(pixelGroupingParams_ref["dMax"]):
-                assert pytest.approx(param, 1.0e-6) == pixelGroupingParams_calc[index].dResolution.maximum
-
-            for index, param in enumerate(pixelGroupingParams_ref["delDOverD"]):
-                assert pytest.approx(param, 1.0e-6) == pixelGroupingParams_calc[index].dRelativeResolution
         elif GENERATE_GOLDEN_DATA:
             # GENERATE new GOLDEN data:
-            pixelGroupingParams_ref: Dict[str, List[Union[float, bool]]] = {
-                "isMasked": [],
-                "twoTheta": [],
-                "dMin": [],
-                "dMax": [],
-                "delDOverD": [],
-            }
-            for index in range(len(pixelGroupingParams_calc)):
-                pixelGroupingParams_ref["isMasked"].append(pixelGroupingParams_calc[index].isMasked)
-                pixelGroupingParams_ref["twoTheta"].append(pixelGroupingParams_calc[index].twoTheta)
-                pixelGroupingParams_ref["dMin"].append(pixelGroupingParams_calc[index].dResolution.minimum)
-                pixelGroupingParams_ref["dMax"].append(pixelGroupingParams_calc[index].dResolution.maximum)
-                pixelGroupingParams_ref["delDOverD"].append(pixelGroupingParams_calc[index].dRelativeResolution)
-            with open(referenceParametersFile, "w") as f:
-                f.write(json.dumps(pixelGroupingParams_ref, indent=2))
+            write_model_list_pretty(actual, referenceParametersFile)
 
     # LOCAL TESTS ON TEST INSTRUMENT
 
