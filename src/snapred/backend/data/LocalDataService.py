@@ -263,7 +263,7 @@ class LocalDataService:
             mode = "lite"
         else:
             mode = "native"
-        return Path(self._constructCalibrationStateRoot(stateId), mode, "diffraction")
+        return Path(self._constructCalibrationStateRoot(stateId), mode, "normalization")
 
     @validate_arguments
     def _constructCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Optional[Version]) -> Path:
