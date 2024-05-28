@@ -48,6 +48,7 @@ class DiffCalTweakPeakView(BackendRequestView):
     signalPeakThresholdUpdate = Signal(float)
     signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum, Pair, float)
     signalUpdateRecalculationButton = Signal(bool)
+    signalMaxChiSqUpdate = Signal(float)
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = "calibration/diffractionCalibration"
@@ -59,6 +60,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.maxChiSqField = self._labeledField("Max Chi Sq", QLineEdit(str(self.MAX_CHI_SQ)))
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalPeakThresholdUpdate.connect(self._updatePeakThreshold)
+        self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -121,6 +123,12 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def updatePeakThreshold(self, peakThreshold):
         self.signalPeakThresholdUpdate.emit(float(peakThreshold))
+
+    def _updateMaxChiSq(self, maxChiSq):
+        self.maxChiSqField.setText(str(maxChiSq))
+
+    def updateMaxChiSq(self, maxChiSq):
+        self.signalMaxChiSqUpdate.emit(maxChiSq)
 
     def updateFields(self, sampleIndex, groupingIndex, peakIndex):
         self.sampleDropdown.setCurrentIndex(sampleIndex)
