@@ -158,7 +158,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
         self.peakFunction = view.peakFunctionDropdown.currentText()
-        self.maxChiSq = float(view.maxChiSqField.text()) if view.maxChiSqField.text() else self.DEFAULT_MAX_CHI_SQ
+        self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
         self._tweakPeakView.updateRunNumber(self.runNumber)
         self._saveView.updateRunNumber(self.runNumber)
