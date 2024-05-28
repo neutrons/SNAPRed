@@ -34,3 +34,4 @@ class DiffractionCalibrationRequest(BaseModel):
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     maximumOffset: float = Config["calibration.diffraction.maximumOffset"]
     fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
+    maxChiSq: float

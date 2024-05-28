@@ -27,3 +27,4 @@ class DiffractionCalibrationIngredients(BaseModel):
     convergenceThreshold: float = float(Config["calibration.diffraction.convergenceThreshold"])
     peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
+    maxChiSq: float

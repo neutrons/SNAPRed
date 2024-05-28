@@ -192,4 +192,5 @@ class SousChef(Service):
             peakFunction=ingredients.peakFunction,
             convergenceThreshold=ingredients.convergenceThreshold,
             maxOffset=ingredients.maxOffset,
+            maxChiSq=ingredients.maxChiSq,
         )
