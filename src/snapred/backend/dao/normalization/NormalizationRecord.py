@@ -20,6 +20,7 @@ class NormalizationRecord(BaseModel):
     useLiteMode: bool
     backgroundRunNumber: str
     smoothingParameter: float
+    peakIntensityThreshold: float
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     calibration: Calibration
     workspaceNames: List[str] = []

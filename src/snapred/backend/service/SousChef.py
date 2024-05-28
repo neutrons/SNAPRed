@@ -184,7 +184,7 @@ class SousChef(Service):
         ingredients.cifPath = self.dataFactoryService.getCifFilePath(
             ingredients.calibrantSamplePath.split("/")[-1].split(".")[0]
         )
-        ingredients.peakIntensityThreshold = calibrationRecord.calibrationFittingIngredients.peakIntensityThreshold
+        ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
         return ReductionIngredients(
             maskList=[],
             pixelGroups=self.prepManyPixelGroups(ingredients),

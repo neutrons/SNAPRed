@@ -158,11 +158,13 @@ class NormalizationService(Service):
             useLiteMode=request.useLiteMode,
             calibrantSamplePath=request.calibrantSamplePath,
             fwhmMultipliers=request.fwhmMultipliers,
+            peakIntensityThreshold=request.peakIntensityThreshold,
         )
         calibration = self.sousChef.prepCalibration(farmFresh)
         record = NormalizationRecord(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
+            peakIntensityThreshold=request.peakIntensityThreshold,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             calibration=calibration,
