@@ -225,7 +225,7 @@ class LocalDataService:
         Optional: throws exception if nothing found.
         """
         fileList: List[str] = []
-        for fname in glob.glob(pattern, recursive=True):
+        for fname in glob.glob(str(pattern), recursive=True):
             if os.path.isfile(fname):
                 fileList.append(fname)
         if len(fileList) == 0 and throws:
@@ -939,9 +939,6 @@ class LocalDataService:
         self.writeCalibrationState(calibration, version)
         # write the default diffcal table
         self._writeDefaultDiffCalTable(runId, useLiteMode)
-        calibrationPath = Path(self._constructCalibrationStatePath(stateId, useLiteMode))
-        calibrationPath.mkdir(parents=True, exist_ok=True)
-        write_model_list_pretty([], calibrationPath / "CalibrationIndex.json")
         return calibration
 
     def _prepareStateRoot(self, stateId: str):

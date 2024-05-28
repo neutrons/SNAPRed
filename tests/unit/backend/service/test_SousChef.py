@@ -324,12 +324,17 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "ReductionIngredients")
     def test_prepReductionIngredients(self, ReductionIngredients):
-        record = mock.Mock(smoothingParamter=1.0)
+        record = mock.Mock(
+            smoothingParamter=1.0,
+            calibrationFittingIngredients=mock.Mock(calibrantSamplePath="a/b.x"),
+        )
         self.instance.prepRunConfig = mock.Mock()
         self.instance.prepManyPixelGroups = mock.Mock()
         self.instance.prepManyDetectorPeaks = mock.Mock()
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock()
         self.instance.dataFactoryService.getReductionState = mock.Mock()
         self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=record)
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=record)
 
         res = self.instance.prepReductionIngredients(self.ingredients)
 
