@@ -23,7 +23,7 @@ groceryService = GroceryService()
 
 #User input ###########################
 runNumber = "46680" #"57482"
-calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrationSamples/Diamond_001.json"
+calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrantSamples/Diamond_001.json"
 peakThreshold = 0.01
 isLite = True
 Config._config["cis_mode"] = True
