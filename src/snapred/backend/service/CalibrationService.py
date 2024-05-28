@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 from typing import Dict, List
 
 from pydantic import parse_raw_as
@@ -102,7 +103,7 @@ class CalibrationService(Service):
         self, request: DiffractionCalibrationRequest
     ) -> DiffractionCalibrationIngredients:
         # fetch the ingredients needed to focus and plot the peaks
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -329,7 +330,7 @@ class CalibrationService(Service):
         # However, its actual implementation did not actually loop over a list.
         # I removed most of the parts that implied a loop or list.
         # This can be easily refactored to a loop structure when needed
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.run.runNumber,
             useLiteMode=request.useLiteMode,

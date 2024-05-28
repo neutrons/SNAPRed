@@ -22,10 +22,11 @@ logger = snapredLogger.getLogger(__name__)
 class ReductionService(Service):
     """
 
-    This service orchestrates reduction of scientific data, utilizing a range of data objects,
-    services, and recipes.  It is a pivotal component designed to streamline the reductionn workflow,
-    ensuring efficiency and accuracy across operations.
-    Use it wisely.
+    The reduction service coordinates preparing ingredients and workspaces for use in the reduction workflow,
+    and calling the reduction recipe.
+
+    Note that reduction requires first loading all groupings for the state, prior to preparing the ingredients.
+    This is a separate call to GroceryService, before the call to load the other workspace data.
 
     """
 

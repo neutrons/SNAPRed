@@ -1,9 +1,7 @@
 # ruff: noqa: ARG005 ARG002
 import json
 import os
-import shutil
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 from mantid.simpleapi import mtd
@@ -23,46 +21,6 @@ from snapred.meta.decorators.Singleton import Singleton
 
 Version = Union[int, Literal["*"]]
 logger = snapredLogger.getLogger(__name__)
-
-
-class RedirectStateRoot:
-    """
-    Do not mock out state or data paths directly.
-    Instead, use this as context manager, in the form
-
-    ```
-    with RedirectState(instance.dataService) as tmpRoot:
-        <code here>
-        tmpRoot.addFileAs(some_file, target_in_tmp_root)
-        <more code here>
-    ```
-    """
-
-    def __init__(self, dataService: LocalDataService):
-        self.dataService = dataService
-        self.oldself = dataService._constructStateRoot
-
-    def __enter__(self):
-        self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
-        self.tmppath = Path(self.tmpdir.name)
-        self.dataService._constructStateRoot = lambda *x, **y: self.tmpdir.name
-        return self
-
-    def __exit__(self, *arg, **kwargs):
-        self.dataService._constructStateRoot = self.oldself
-        self.tmpdir.cleanup()
-        assert not self.tmppath.exists()
-        del self.tmpdir
-
-    def path(self):
-        return self.tmppath
-
-    def addFileAs(self, source: str, target: str):
-        assert self.tmppath in list(Path(target).parents)
-        Path(target).parent.mkdir(parents=True)
-        shutil.copy2(source, target)
-        assert Path(target).exists()
-        print(f"FILE SAVED AS {target}")
 
 
 @Singleton

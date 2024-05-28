@@ -1,9 +1,11 @@
 import shutil
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.meta.Config import Resource
 
 # IMPLEMENTATION NOTES:
 # * Because so many other required directories are nested under
@@ -28,7 +30,7 @@ def state_root_override(runNumber: str, name: str, useLiteMode: bool = False, de
     # __enter__
     dataService = LocalDataService()
     stateId, _ = dataService._generateStateId(runNumber)
-    stateRoot = Path(dataService._constructStateRoot(stateId))
+    stateRoot = Path(dataService._constructCalibrationStateRoot(stateId))
     if stateRoot.exists():
         raise RuntimeError(f"state-root directory '{stateRoot}' already exists -- please move it out of the way!")
 
@@ -51,3 +53,43 @@ def state_root_fixture():
 
     # teardown => __exit__
     _stack.close()
+
+
+class state_root_redirect:
+    """
+    This context manager will create a temporary directory and patch a LocalDataService so that its
+    state root directory points inside the temporary directory.  Files can be easily added to the
+    directory using `addFileAs`.  Usage is
+
+    ```
+    with state_root_redirect(instance.dataService) as tmpRoot:
+        <code here>
+        tmpRoot.addFileAs(some_file, target_in_tmp_root)
+        <more code here>
+    ```
+    """
+
+    def __init__(self, dataService: LocalDataService):
+        self.dataService = dataService
+        self.oldself = dataService._constructCalibrationStateRoot
+
+    def __enter__(self):
+        self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
+        self.tmppath = Path(self.tmpdir.name)
+        self.dataService._constructCalibrationStateRoot = lambda *x, **y: self.tmpdir.name  # noqa ARG005
+        return self
+
+    def __exit__(self, *arg, **kwargs):
+        self.dataService._constructCalibrationStateRoot = self.oldself
+        self.tmpdir.cleanup()
+        assert not self.tmppath.exists()
+        del self.tmpdir
+
+    def path(self):
+        return self.tmppath
+
+    def addFileAs(self, source: str, target: str):
+        assert self.tmppath in list(Path(target).parents)
+        Path(target).parent.mkdir(parents=True)
+        shutil.copy2(source, target)
+        assert Path(target).exists()

@@ -18,7 +18,7 @@ class TestSousChef(unittest.TestCase):
             runNumber="123",
             useLiteMode=True,
             focusGroup={"name": "apple", "definition": "banana/coconut"},
-            calibrantSamplePath="path/to/sample",
+            calibrantSamplePath="path/to/sample.xyz",
             cifPath="path/to/cif",
         )
 
@@ -339,6 +339,7 @@ class TestSousChef(unittest.TestCase):
         res = self.instance.prepReductionIngredients(self.ingredients)
 
         assert self.instance.prepManyPixelGroups.called_once_with(self.ingredients)
+        assert self.instance.dataFactoryService.getCifFilePath.called_once_with("sample")
         assert ReductionIngredients.called_once_with(
             maskList=[],
             pixelGroups=self.instance.prepManyPixelGroups.return_value,

@@ -101,8 +101,8 @@ class TestDataFactoryService(unittest.TestCase):
         actual = self.instance.checkCalibrationStateExists("123")
         assert actual == self.expected("123")
 
-    def test_getSamplePaths(self):
-        actual = self.instance.getSamplePaths()
+    def test_getSampleFilePaths(self):
+        actual = self.instance.getSampleFilePaths()
         assert actual == self.expected()
 
     def test_getCalibrantSample(self):

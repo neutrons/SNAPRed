@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from pydantic import parse_raw_as
@@ -113,7 +114,7 @@ class SousChef(Service):
 
     def prepCrystallographicInfo(self, ingredients: FarmFreshIngredients) -> CrystallographicInfo:
         if not ingredients.cifPath:
-            samplePath = ingredients.calibrantSamplePath.split("/")[-1].split(".")[0]
+            samplePath = Path(ingredients.calibrantSamplePath).stem
             ingredients.cifPath = self.dataFactoryService.getCifFilePath(samplePath)
         key = (ingredients.cifPath, ingredients.crystalDBounds.minimum, ingredients.crystalDBounds.maximum)
         if key not in self._xtalCache:
@@ -181,9 +182,7 @@ class SousChef(Service):
         )
         # grab nformation from records
         ingredients.calibrantSamplePath = calibrationRecord.calibrationFittingIngredients.calibrantSamplePath
-        ingredients.cifPath = self.dataFactoryService.getCifFilePath(
-            ingredients.calibrantSamplePath.split("/")[-1].split(".")[0]
-        )
+        ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
         ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
         return ReductionIngredients(
             maskList=[],

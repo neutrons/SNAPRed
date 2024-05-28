@@ -247,7 +247,7 @@ class LocalDataService:
 
     ##### PATH METHODS #####
 
-    def _constructStateRoot(self, stateId) -> Path:
+    def _constructCalibrationStateRoot(self, stateId) -> Path:
         return Path(Config["instrument.calibration.powder.home"], str(stateId))
 
     def _constructCalibrationStatePath(self, stateId, useLiteMode) -> Path:
@@ -256,14 +256,14 @@ class LocalDataService:
             mode = "lite"
         else:
             mode = "native"
-        return Path(self._constructStateRoot(stateId), mode, "diffraction")
+        return Path(self._constructCalibrationStateRoot(stateId), mode, "diffraction")
 
     def _constructNormalizationStatePath(self, stateId, useLiteMode) -> Path:
         if useLiteMode:
             mode = "lite"
         else:
             mode = "native"
-        return Path(self._constructStateRoot(stateId), mode, "diffraction")
+        return Path(self._constructCalibrationStateRoot(stateId), mode, "diffraction")
 
     @validate_arguments
     def _constructCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Optional[Version]) -> Path:
@@ -409,12 +409,10 @@ class LocalDataService:
         if not isinstance(file, str):
             return None
         else:
-            return int(file.split("/v_")[-1].split("/")[0])
-
-    def _extractDirVersion(self, dire: str) -> int:
-        if not isinstance(dire, str):
-            return None
-        return int(dire.split("/")[-2].split("_")[-1])
+            for part in Path(file).parts:
+                if "v_" in part:
+                    return int(part.split("_")[-1])
+        return None
 
     def _getLatestThing(
         self,
@@ -449,7 +447,7 @@ class LocalDataService:
         calibrationStatePath = self._constructCalibrationStatePath(stateId, useLiteMode)
         calibrationVersionPath = f"{calibrationStatePath}v_*/"
         versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
-        versions = [self._extractDirVersion(dire) for dire in versionDirs]
+        versions = [self._extractFileVersion(dire) for dire in versionDirs]
         return self._getLatestThing(versions)
 
     def _getLatestNormalizationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
@@ -459,7 +457,7 @@ class LocalDataService:
         normalizationStatePath = self._constructNormalizationStatePath(stateId, useLiteMode)
         normalizationVersionPath = f"{normalizationStatePath}v_*/"
         versionDirs = self._findMatchingDirList(normalizationVersionPath, throws=False)
-        versions = [self._extractDirVersion(dire) for dire in versionDirs]
+        versions = [self._extractFileVersion(dire) for dire in versionDirs]
         return self._getLatestThing(versions)
 
     @validate_arguments
@@ -699,7 +697,7 @@ class LocalDataService:
 
     ##### CALIBRANT SAMPLE METHODS #####
 
-    def readSamplePaths(self):
+    def readSampleFilePaths(self):
         sampleFolder = Config["instrument.calibration.sample.home"]
         extensions = Config["instrument.calibration.sample.extensions"]
         # collect list of all json in folder
@@ -929,7 +927,7 @@ class LocalDataService:
         )
 
         # Make sure that the state root directory has been initialized:
-        stateRootPath = self._constructStateRoot(stateId)
+        stateRootPath = self._constructCalibrationStateRoot(stateId)
         if not os.path.exists(stateRootPath):
             # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
@@ -945,7 +943,7 @@ class LocalDataService:
         """
         Create the state root directory, and populate it with any necessary metadata files.
         """
-        stateRootPath = self._constructStateRoot(stateId)
+        stateRootPath = self._constructCalibrationStateRoot(stateId)
         if not os.path.exists(stateRootPath):
             os.makedirs(stateRootPath)
 
@@ -974,7 +972,7 @@ class LocalDataService:
         # if found, try to construct the path and test if the path exists
         else:
             stateID, _ = self._generateStateId(runId)
-            calibrationStatePath: str = self._constructStateRoot(stateID)
+            calibrationStatePath: str = self._constructCalibrationStateRoot(stateID)
             if os.path.exists(calibrationStatePath):
                 return True
             else:
@@ -1019,7 +1017,7 @@ class LocalDataService:
         return Path(GroupingMap.calibrationGroupingHome(), "defaultGroupingMap.json")
 
     def _groupingMapPath(self, stateId) -> Path:
-        return Path(self._constructStateRoot(stateId), "groupingMap.json")
+        return Path(self._constructCalibrationStateRoot(stateId), "groupingMap.json")
 
     ## WRITING WORKSPACES TO DISK
 

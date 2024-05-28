@@ -10,11 +10,11 @@ def test_getGroupingMap():
     assert actual == service.dataFactoryService.getGroupingMap.return_value
 
 
-def test_getSamplePaths():
+def test_getSampleFilePaths():
     service = Service()
     service.dataFactoryService = mock.Mock()
-    actual = service.getSamplePaths()
-    assert actual == service.dataFactoryService.getSamplePaths.return_value
+    actual = service.getSampleFilePaths()
+    assert actual == service.dataFactoryService.getSampleFilePaths.return_value
 
 
 def test_getConfigs():

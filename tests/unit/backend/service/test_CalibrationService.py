@@ -267,7 +267,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             run=RunConfig(runNumber=self.runNumber),
             useLiteMode=True,
             focusGroup={"name": fakeMetrics.focusGroupName, "definition": ""},
-            calibrantSamplePath="egg/muffin/biscuit",
+            calibrantSamplePath="egg/muffin/biscuit.pastry",
             peakFunction="Gaussian",
             crystalDMin=0,
             crystalDMax=10,
@@ -279,6 +279,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Assert correct method calls
         assert FarmFreshIngredients.call_count == 1
         assert FitMultiplePeaksRecipe.called_once_with(self.instance.sousChef.prepPeakIngredients({}))
+        assert self.instance.dataFactoryService.getCifFilePath.called_once_with("biscuit")
 
         # Assert the result is as expected
         assert response == CalibrationAssessmentResponse.return_value
@@ -467,6 +468,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Perform assertions to check the result and method calls
         assert FarmFreshIngredients.call_count == 1
+        assert self.instance.dataFactoryService.getCifFilePath.called_once_with("cake_egg")
         assert res == self.instance.sousChef.prepDiffractionCalibrationIngredients(mockFF)
 
     def test_fetchDiffractionCalibrationGroceries(self):

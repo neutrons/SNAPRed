@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.ingredients import (
@@ -72,7 +73,7 @@ class NormalizationService(Service):
         groupingScheme = request.focusGroup.name
 
         # prepare ingredients
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -193,7 +194,7 @@ class NormalizationService(Service):
         self.dataExportService.exportNormalizationIndexEntry(entry)
 
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -226,7 +227,7 @@ class NormalizationService(Service):
 
     @FromString
     def smoothDataExcludingPeaks(self, request: SmoothDataExcludingPeaksRequest):
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
