@@ -875,8 +875,8 @@ class LocalDataService:
 
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
 
-    # @validate_arguments
-    # @ExceptionHandler(StateValidationException)
+    @validate_arguments
+    @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         stateId, _ = self._generateStateId(runId)
         version = self.VERSION_START
