@@ -121,6 +121,7 @@ class SyntheticData(object):
             calPath=Resource.getPath("outputs/calibration/"),
             maxOffset=100.0,  # bins: '100.0' seems to work
             pixelGroup=self.fakePixelGroup,
+            maxChiSq=100.0,
         )
 
     @staticmethod

@@ -35,3 +35,4 @@ class CalibrationAssessmentRequest(BaseModel):
     peakIntensityThreshold: float
     nBinsAcrossPeakWidth: int
     fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
+    maxChiSq: float

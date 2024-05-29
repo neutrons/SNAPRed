@@ -20,6 +20,7 @@ class TestSousChef(unittest.TestCase):
             focusGroup={"name": "apple", "definition": "banana/coconut"},
             calibrantSamplePath="path/to/sample",
             cifPath="path/to/cif",
+            maxChiSq=100.0,
         )
 
     def tearDown(self):

@@ -41,4 +41,4 @@ class FarmFreshIngredients(BaseModel):
         maximum=Config["constants.CrystallographicInfo.dMax"],
     )
     fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
-    maxChiSq: float
+    maxChiSq: Optional[float]
