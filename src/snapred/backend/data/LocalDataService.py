@@ -270,9 +270,7 @@ class LocalDataService:
 
     @validate_arguments
     def _constructReductionRecordFilePath(self, runNumber: str, useLiteMode: bool, version: str) -> Path:
-        recordPath = (
-            self._constructReductionDataPath(runNumber, useLiteMode, version) / "ReductionRecord.json"
-        )
+        recordPath = self._constructReductionDataPath(runNumber, useLiteMode, version) / "ReductionRecord.json"
         return recordPath
 
     @validate_arguments
@@ -696,9 +694,7 @@ class LocalDataService:
         return record
 
     @validate_arguments
-    def readReductionRecord(
-        self, runNumber: str, useLiteMode: bool, version: Optional[int] = None
-    ) -> ReductionRecord:
+    def readReductionRecord(self, runNumber: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
         if version is None:
             version = str(self._getLatestReductionVersionNumber(runNumber, useLiteMode))
         record = None

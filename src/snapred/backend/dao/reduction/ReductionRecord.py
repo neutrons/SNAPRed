@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from pydantic import BaseModel, validator, root_validator, ValidationError
+from pydantic import BaseModel, ValidationError, root_validator, validator
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -35,11 +35,10 @@ class ReductionRecord(BaseModel):
 
     @root_validator(allow_reuse=True)
     def checkStateId(cls, values):
-                
         cal = values.get("calibration")
-        norm = values.get("normalization")        
+        norm = values.get("normalization")
         redStateId = values.get("stateId")
-        
+
         calStateId = cal.calibrationFittingIngredients.instrumentState.id
         normStateId = norm.calibration.instrumentState.id
         if not (calStateId == normStateId == redStateId):

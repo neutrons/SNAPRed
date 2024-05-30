@@ -1217,11 +1217,11 @@ def test_readWriteReductionRecord_version_numbers():
     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
     # Create the input data for this test:
     # _writeSyntheticReductionRecord(inputRecordFilePath, "1")
-    
+
     testReductionRecord_v0001 = ReductionRecord.parse_file(inputRecordFilePath)
     # Get a second copy (version still set to `1`)
     testReductionRecord_v0002 = ReductionRecord.parse_file(inputRecordFilePath)
-    
+
     # Temporarily use a single run number
     useLiteMode = testReductionRecord_v0001.useLiteMode
     runNumber = testReductionRecord_v0001.runNumbers[0]
@@ -1337,9 +1337,7 @@ def test_readWriteReductionRecord():
         localDataService._constructReductionRecordFilePath.return_value = Path(tempdir) / "ReductionRecord.json"
         localDataService.groceryService = mock.Mock()
         localDataService.writeReductionRecord(testRecord)
-        actualRecord = localDataService.readReductionRecord(
-            runNumber, testRecord.useLiteMode, testRecord.version
-        )
+        actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testRecord.version)
     assert actualRecord == testRecord
 
 
@@ -1420,9 +1418,7 @@ def test_writeReductionData(createReductionWorkspaces):
         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
 
         # Important to this test: use a path that doesn't already exist
-        reductionDataPath = (
-            Path(tempdir) / stateId / ("lite" if useLiteMode else "native") / runNumber / "v_0001"
-        )
+        reductionDataPath = Path(tempdir) / stateId / ("lite" if useLiteMode else "native") / runNumber / "v_0001"
         localDataService._constructReductionDataPath = mock.Mock()
         localDataService._constructReductionDataPath.return_value = reductionDataPath
         localDataService._constructReductionRecordFilePath = mock.Mock()
@@ -1464,9 +1460,7 @@ def test_writeReductionData_no_directories(createReductionWorkspaces):
         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
 
         # Important to this test: use a path that doesn't already exist
-        reductionDataPath = (
-            Path(tempdir) / stateId / ("lite" if useLiteMode else "native") / runNumber / "v_0001"
-        )
+        reductionDataPath = Path(tempdir) / stateId / ("lite" if useLiteMode else "native") / runNumber / "v_0001"
         localDataService._constructReductionDataPath = mock.Mock()
         localDataService._constructReductionDataPath.return_value = reductionDataPath
         localDataService._constructReductionRecordFilePath = mock.Mock()
@@ -1510,9 +1504,7 @@ def test_writeReductionData_metadata(createReductionWorkspaces):
         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
 
         # Important to this test: use a path that doesn't already exist
-        reductionDataPath = (
-            Path(tempdir) / stateId / ("lite" if useLiteMode else "native") / runNumber / "v_0001"
-        )
+        reductionDataPath = Path(tempdir) / stateId / ("lite" if useLiteMode else "native") / runNumber / "v_0001"
         localDataService._constructReductionDataPath = mock.Mock()
         localDataService._constructReductionDataPath.return_value = reductionDataPath
         localDataService._constructReductionRecordFilePath = mock.Mock()
@@ -1559,9 +1551,7 @@ def test_readWriteReductionData(createReductionWorkspaces):
         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
 
         # Important to this test: use a path that doesn't already exist
-        reductionDataPath = (
-            Path(tempdir) / stateId / ("lite" if useLiteMode else "native") / runNumber / "v_0001"
-        )
+        reductionDataPath = Path(tempdir) / stateId / ("lite" if useLiteMode else "native") / runNumber / "v_0001"
         localDataService._constructReductionDataPath = mock.Mock()
         localDataService._constructReductionDataPath.return_value = reductionDataPath
         localDataService._constructReductionRecordFilePath = mock.Mock()
