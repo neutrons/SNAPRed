@@ -19,7 +19,7 @@ class NormalizationIndexEntry(BaseModel):
     runNumber: str
     useLiteMode: bool
     backgroundRunNumber: str
-    version: Optional[str]
+    version: Optional[int]
     appliesTo: Optional[str]
     comments: Optional[str]
     author: Optional[str]
