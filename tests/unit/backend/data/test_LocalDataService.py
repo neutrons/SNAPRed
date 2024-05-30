@@ -618,6 +618,17 @@ def test__readRunConfig():
     assert actual.runNumber == "57514"
 
 
+def test_constructPVFilePath():
+    # ensure the file path is pointing at the correct place
+    with tempfile.TemporaryDirectory(dir=Resource.getPath("outputs")) as tmpdir:
+        mockRunConfig = mock.Mock(IPTS=tmpdir)
+        localDataService = LocalDataService()
+        localDataService._readRunConfig = mock.Mock(return_value=mockRunConfig)
+        path = localDataService._constructPVFilePath("123")
+        print(list(path.parents))
+        assert tmpdir == str(path.parents[1])
+
+
 @mock.patch("h5py.File", return_value="not None")
 def test_readPVFile(h5pyMock):  # noqa: ARG001
     localDataService = LocalDataService()
