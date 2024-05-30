@@ -879,9 +879,11 @@ class GroceryService:
                         item.version = self.dataService._getVersionFromCalibrationIndex(
                             item.runNumber, item.useLiteMode
                         )
+                        record = self.dataService.readCalibrationRecord(item.runNumber, item.useLiteMode, item.version)
                     tableWorkspaceName = self._createDiffcalTableWorkspaceName(
-                        item.runNumber, item.useLiteMode, item.version
+                        record.runNumber, item.useLiteMode, item.version
                     )
+                    item.runNumber = record.runNumber
                     if item.isOutput:
                         res = {"result": True, "workspace": tableWorkspaceName}
                     else:
