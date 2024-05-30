@@ -145,7 +145,6 @@ class SousChef(Service):
         )
         dMin = ingredients.crystalDBounds.minimum
         dMax = ingredients.crystalDBounds.maximum
-        res = None
         if key not in self._peaksCache:
             ingredients = self.prepPeakIngredients(ingredients)
             res = DetectorPeakPredictorRecipe().executeRecipe(

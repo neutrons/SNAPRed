@@ -161,6 +161,20 @@ class TestDataFactoryService(unittest.TestCase):
         actual = self.instance.getNormalizationDataWorkspace("456", True, 8, "bunko")
         assert actual == self.instance.groceryService.fetchWorkspace.return_value
 
+    ## TEST REDUCTION METHODS
+
+    def test_getReductionDataPath(self):
+        actual = self.instance.getReductionDataPath("12345", True, "Column", "11")
+        assert actual == self.expected("12345", True, "Column", "11")
+
+    def test_getReductionRecord(self):
+        actual = self.instance.getReductionRecord("12345", True, "Column", 11)
+        assert actual == self.expected("12345", True, "Column", 11)
+
+    def test_getReductionData(self):
+        actual = self.instance.getReductionData("12345", True, "Column", 11)
+        assert actual == self.expected("12345", True, "Column", 11)
+
     ##### TEST WORKSPACE METHODS ####
 
     def test_workspaceDoesExist(self):
