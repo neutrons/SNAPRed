@@ -242,7 +242,7 @@ class LocalDataService:
 
     def _appendVersion(self, root: Path, version: str) -> Path:
         # Append a version directory to a data path
-        return root / "v_{}".format(wnvf.formatVersion(version=version, use_v_prefix=False))
+        return root / wnvf.fileVersion(version)
 
     def _constructCalibrationStateRoot(self, stateId) -> Path:
         return Path(Config["instrument.calibration.powder.home"]) / str(stateId)

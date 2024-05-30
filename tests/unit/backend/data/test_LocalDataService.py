@@ -492,19 +492,19 @@ def test_getIPTS_cache():
     instrument = "SNAP"
     runNumber = "123"
     key = (runNumber, instrument)
-    correctIPTS = Resource.getPath("inputs/testInstrument/IPTS-456/")
-    incorrectIPTS = Resource.getPath("inputs/testInstrument/IPTS-789/")
+    correctIPTS = Path(Resource.getPath("inputs/testInstrument/IPTS-456"))
+    incorrectIPTS = Path(Resource.getPath("inputs/testInstrument/IPTS-789"))
 
     # direct GetIPTS to look in the exact folder where it should look
     # it is very stupid, so if you don't tell it exactly then it won't look there
-    with amend_config(data_dir=correctIPTS):
+    with amend_config(data_dir=str(correctIPTS / "nexus")):
         res = localDataService.getIPTS(*key)
-        assert res == correctIPTS
+        assert res == str(correctIPTS) + os.sep
         assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
         # call again and make sure the cached value is being returned
         res = localDataService.getIPTS(*key)
-        assert res == correctIPTS
+        assert res == str(correctIPTS) + os.sep
 
         # WARNING: For this test: mocking `GetIPTS` at the module level is also possible,
         #   but this was not implemented correctly previously.
@@ -519,16 +519,16 @@ def test_getIPTS_cache():
         assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=1, misses=1, maxsize=128, currsize=1)
 
     # now try it again, but with another IPTS directory
-    with amend_config(data_dir=incorrectIPTS):
+    with amend_config(data_dir=str(incorrectIPTS / "nexus")):
         # previous correct value should still be the cached value
         res = localDataService.getIPTS(*key)
-        assert res == correctIPTS
+        assert res == str(correctIPTS) + os.sep
         assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=2, misses=1, maxsize=128, currsize=1)
 
         # clear the cache,  make sure the new value is being returned
         localDataService.getIPTS.cache_clear()
         res = localDataService.getIPTS(*key)
-        assert res == incorrectIPTS
+        assert res == str(incorrectIPTS) + os.sep
         assert localDataService.getIPTS.cache_info() == functools._CacheInfo(hits=0, misses=1, maxsize=128, currsize=1)
 
 
@@ -1573,6 +1573,10 @@ def test_readWriteReductionData(createReductionWorkspaces):
         actualRecord = localDataService.readReductionData(runNumber, useLiteMode, version)
         assert actualRecord == testRecord
         # workspaces should have been reloaded with their original names
+        # Implementation note:
+        #   * the workspaces must match _exactly_ here, so `CompareWorkspaces` must be used;
+        #   please do _not_ replace this with one of the `assert_almost_equal` methods:
+        #   -- they do not necessarily do what you think they should do...
         for ws in actualRecord.workspaceNames:
             equal, _ = CompareWorkspaces(
                 Workspace1=ws,
