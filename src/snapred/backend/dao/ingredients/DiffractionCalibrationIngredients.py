@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.RunConfig import RunConfig
@@ -9,7 +9,7 @@ from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
-class DiffractionCalibrationIngredients(BaseModel):
+class DiffractionCalibrationIngredients(BaseModel, extra=Extra.forbid):
     """
 
     The DiffractionCalibrationIngredients class encapsulates all the necessary components for
@@ -27,4 +27,4 @@ class DiffractionCalibrationIngredients(BaseModel):
     convergenceThreshold: float = float(Config["calibration.diffraction.convergenceThreshold"])
     peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
-    maxChiSq: float
+    maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]

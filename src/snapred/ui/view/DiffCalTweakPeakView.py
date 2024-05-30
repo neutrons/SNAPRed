@@ -96,10 +96,10 @@ class DiffCalTweakPeakView(BackendRequestView):
         # add all elements to the grid layout
         self.layout.addWidget(self.runNumberField, 0, 0)
         self.layout.addWidget(self.litemodeToggle, 0, 1)
-        self.layout.addWidget(self.maxChiSqField, 0, 2)
         self.layout.addWidget(self.navigationBar, 1, 0)
         self.layout.addWidget(self.canvas, 2, 0, 1, -1)
         self.layout.addLayout(peakControlLayout, 3, 0, 1, 2)
+        self.layout.addWidget(self.maxChiSqField, 3, 0, 1, 3)
         self.layout.addWidget(self.sampleDropdown, 4, 0)
         self.layout.addWidget(self.groupingFileDropdown, 4, 1)
         self.layout.addWidget(self.peakFunctionDropdown, 4, 2)

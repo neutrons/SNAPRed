@@ -1,7 +1,7 @@
 # TODO this can probably be relaced in the code with FarmFreshIngredients
 
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -9,7 +9,7 @@ from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
-class DiffractionCalibrationRequest(BaseModel):
+class DiffractionCalibrationRequest(BaseModel, extra=Extra.forbid):
     """
 
     The DiffractionCalibrationRequest class is designed to kick-start the calibration process
@@ -34,4 +34,4 @@ class DiffractionCalibrationRequest(BaseModel):
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     maximumOffset: float = Config["calibration.diffraction.maximumOffset"]
     fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
-    maxChiSq: float
+    maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
