@@ -4,6 +4,7 @@ import json
 import os
 from copy import deepcopy
 from errno import ENOENT as NOT_FOUND
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
@@ -62,9 +63,6 @@ def _createFileNotFoundError(msg, filename):
 
 @Singleton
 class LocalDataService:
-    reductionParameterCache: Dict[str, Any] = {}
-    iptsCache: Dict[Tuple[str, str], Any] = {}
-    stateIdCache: Dict[str, ObjectSHA] = {}
     instrumentConfig: "InstrumentConfig"
     verifyPaths: bool = True
 
@@ -149,11 +147,10 @@ class LocalDataService:
             stateId=diffCalibration.instrumentState.id,
         )
 
+    @lru_cache
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
-        key = (runNumber, instrumentName)
-        if key not in self.iptsCache:
-            self.iptsCache[key] = GetIPTS(RunNumber=int(runNumber), Instrument=instrumentName)
-        return str(self.iptsCache[key])
+        ipts = GetIPTS(runNumber, instrumentName)
+        return str(ipts)
 
     def workspaceIsInstance(self, wsName: str, wsType: Any) -> bool:
         # Is the workspace an instance of the specified type.
@@ -177,31 +174,29 @@ class LocalDataService:
             calibrationState=None,
         )  # TODO: where to find case? "before" "after"
 
-    def _constructPVFilePath(self, runId: str):
+    def _constructPVFilePath(self, runId: str) -> Path:
         runConfig = self._readRunConfig(runId)
-        return (
-            runConfig.IPTS
-            + self.instrumentConfig.nexusDirectory
-            + "/SNAP_"
-            + str(runConfig.runNumber)
-            + self.instrumentConfig.nexusFileExtension
+        return Path(
+            runConfig.IPTS,
+            self.instrumentConfig.nexusDirectory,
+            "/SNAP_",
+            str(runConfig.runNumber),
+            self.instrumentConfig.nexusFileExtension,
         )
 
     def _readPVFile(self, runId: str):
-        fName: str = self._constructPVFilePath(runId)
+        fileName: Path = self._constructPVFilePath(runId)
 
-        if os.path.exists(fName):
-            f = h5py.File(fName, "r")
+        if fileName.exists():
+            h5 = h5py.File(fileName, "r")
         else:
-            raise FileNotFoundError(f"PVFile '{fName}' does not exist")
-        return f
+            raise FileNotFoundError(f"PVFile '{fileName}' does not exist")
+        return h5
 
+    # NOTE `lru_cache` decorator needs to be on the outside
+    @lru_cache
     @ExceptionHandler(StateValidationException)
     def _generateStateId(self, runId: str) -> Tuple[str, str]:
-        if runId in self.stateIdCache:
-            SHA = self.stateIdCache[runId]
-            return SHA.hex, SHA.decodedKey
-
         detectorState = self.readDetectorState(runId)
         stateID = StateId(
             vdet_arc1=detectorState.arc[0],
@@ -215,7 +210,6 @@ class LocalDataService:
             # det_lin2=detectorState.lin[1],
         )
         SHA = ObjectSHA.fromObject(stateID)
-        self.stateIdCache[runId] = SHA
 
         return SHA.hex, SHA.decodedKey
 
@@ -247,73 +241,66 @@ class LocalDataService:
 
     ##### PATH METHODS #####
 
+    def _appendVersion(self, root: Path, version: str) -> Path:
+        # Append a version directory to a data path
+        return Path(root, wnvf.fileVersion(version))
+
     def _constructCalibrationStateRoot(self, stateId) -> Path:
         return Path(Config["instrument.calibration.powder.home"], str(stateId))
 
     def _constructCalibrationStatePath(self, stateId, useLiteMode) -> Path:
-        # TODO: Propagate pathlib through codebase
-        if useLiteMode:
-            mode = "lite"
-        else:
-            mode = "native"
+        mode = "lite" if useLiteMode else "native"
         return Path(self._constructCalibrationStateRoot(stateId), mode, "diffraction")
 
     def _constructNormalizationStatePath(self, stateId, useLiteMode) -> Path:
-        if useLiteMode:
-            mode = "lite"
-        else:
-            mode = "native"
+        mode = "lite" if useLiteMode else "native"
         return Path(self._constructCalibrationStateRoot(stateId), mode, "normalization")
 
     @validate_arguments
-    def _constructCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Optional[Version]) -> Path:
+    def _constructCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         """
         Generates the path for an instrument state's versioned calibration files.
         """
         stateId, _ = self._generateStateId(runId)
-        statePath = self._constructCalibrationStatePath(stateId, useLiteMode)
-        if version is None:
-            version = self._getLatestCalibrationVersionNumber(stateId, useLiteMode)
-        return Path(statePath, wnvf.fileVersion(version))
+        return self._appendVersion(self._constructCalibrationStatePath(stateId, useLiteMode), version)
 
     @validate_arguments
-    def _constructNormalizationDataPath(self, runId: str, useLiteMode: bool, version: Optional[Version]) -> Path:
+    def _constructNormalizationDataPath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         """
         Generates the path for an instrument state's versioned normalization calibration files.
         """
         stateId, _ = self._generateStateId(runId)
-        statePath = self._constructNormalizationStatePath(stateId, useLiteMode)
-        if version is None:
-            version = self._getLatestNormalizationVersionNumber(stateId, useLiteMode)
-        return Path(statePath, wnvf.fileVersion(version))
+        return self._appendVersion(self._constructNormalizationStatePath(stateId, useLiteMode), version)
 
     @validate_arguments
-    def _constructCalibrationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version):
+    def _constructCalibrationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         return Path(self._constructCalibrationDataPath(runId, useLiteMode, version), "CalibrationParameters.json")
 
     @validate_arguments
-    def _constructNormalizationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version):
+    def _constructNormalizationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         return Path(self._constructNormalizationDataPath(runId, useLiteMode, version), "NormalizationParameters.json")
+
+    # TODO reduction paths
 
     ##### INDEX / VERSION METHODS #####
 
     def readCalibrationIndex(self, runId: str, useLiteMode: bool):
         # Need to run this because of its side effect, TODO: Remove side effect
         stateId, _ = self._generateStateId(runId)
-        calibrationPath = self._constructCalibrationStatePath(stateId, useLiteMode)
-        indexPath = Path(calibrationPath, "CalibrationIndex.json")
+        calibrationPath: Path = self._constructCalibrationStatePath(stateId, useLiteMode)
+        indexPath: Path = Path(calibrationPath, "CalibrationIndex.json")
         calibrationIndex: List[CalibrationIndexEntry] = []
-        if os.path.exists(indexPath):
+        if indexPath.exists():
             calibrationIndex = parse_file_as(List[CalibrationIndexEntry], indexPath)
         return calibrationIndex
 
     def readNormalizationIndex(self, runId: str, useLiteMode: bool):
         # Need to run this because of its side effect, TODO: Remove side effect
         stateId, _ = self._generateStateId(runId)
-        normalizationPath = self._constructNormalizationStatePath(stateId, useLiteMode)
-        indexPath = Path(normalizationPath, "NormalizationIndex.json")
+        normalizationPath: Path = self._constructNormalizationStatePath(stateId, useLiteMode)
+        indexPath: Path = Path(normalizationPath, "NormalizationIndex.json")
         normalizationIndex: List[NormalizationIndexEntry] = []
-        if os.path.exists(indexPath):
+        if indexPath.exists():
             normalizationIndex = parse_file_as(List[NormalizationIndexEntry], indexPath)
         return normalizationIndex
 
@@ -381,8 +368,8 @@ class LocalDataService:
 
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         stateId, _ = self._generateStateId(entry.runNumber)
-        calibrationPath: str = self._constructCalibrationStatePath(stateId, entry.useLiteMode)
-        indexPath: str = calibrationPath + "CalibrationIndex.json"
+        calibrationPath: Path = self._constructCalibrationStatePath(stateId, entry.useLiteMode)
+        indexPath: Path = Path(calibrationPath, "CalibrationIndex.json")
         # append to index and write to file
         calibrationIndex = self.readCalibrationIndex(entry.runNumber, entry.useLiteMode)
         calibrationIndex.append(entry)
@@ -390,29 +377,29 @@ class LocalDataService:
 
     def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
         stateId, _ = self._generateStateId(entry.runNumber)
-        normalizationPath = self._constructNormalizationStatePath(stateId, entry.useLiteMode)
-        indexPath = Path(normalizationPath, "NormalizationIndex.json")
+        normalizationPath: Path = self._constructNormalizationStatePath(stateId, entry.useLiteMode)
+        indexPath: Path = Path(normalizationPath, "NormalizationIndex.json")
         # append to index and write to file
         normalizationIndex = self.readNormalizationIndex(entry.runNumber, entry.useLiteMode)
         normalizationIndex.append(entry)
         write_model_list_pretty(normalizationIndex, indexPath)
 
     @validate_arguments
-    def getCalibrationRecordPath(self, runId: str, useLiteMode: bool, version: Version):
+    def getCalibrationRecordPath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         return Path(self._constructCalibrationDataPath(runId, useLiteMode, version), "CalibrationRecord.json")
 
     @validate_arguments
-    def getNormalizationRecordPath(self, runId: str, useLiteMode: bool, version: Version):
+    def getNormalizationRecordPath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         return Path(self._constructNormalizationDataPath(runId, useLiteMode, version), "NormalizationRecord.json")
 
     def _extractFileVersion(self, file: str) -> int:
-        if not isinstance(file, str):
-            return None
-        else:
+        version = None
+        if isinstance(file, str) or isinstance(file, Path):
             for part in Path(file).parts:
                 if "v_" in part:
-                    return int(part.split("_")[-1])
-        return None
+                    version = int(part.split("_")[-1])
+                    break
+        return version
 
     def _getLatestThing(
         self,
@@ -440,25 +427,26 @@ class LocalDataService:
         _, latestFile = self._getLatestThing(fileVersions, otherThings=foundFiles)
         return latestFile
 
+    def _getLatestVersionNumber(self, versionRoot: Path) -> int:
+        """
+        Examine the filesystem to get the latest version number.
+        """
+        versionPathGlob = str(versionRoot / "v_*")
+        versionDirs = self._findMatchingDirList(versionPathGlob, throws=False)
+        versions = [self._extractFileVersion(dir_) for dir_ in versionDirs]
+        return self._getLatestThing(versions)
+
     def _getLatestCalibrationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
         """
         Ignoring the calibration index, get the version number of the latest set of calibration files.
         """
-        calibrationStatePath = self._constructCalibrationStatePath(stateId, useLiteMode)
-        calibrationVersionPath = f"{calibrationStatePath}v_*/"
-        versionDirs = self._findMatchingDirList(calibrationVersionPath, throws=False)
-        versions = [self._extractFileVersion(dire) for dire in versionDirs]
-        return self._getLatestThing(versions)
+        return self._getLatestVersionNumber(self._constructCalibrationStatePath(stateId, useLiteMode))
 
     def _getLatestNormalizationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
         """
         Ignoring the normalization index, get the version number of the latest set of normalization files.
         """
-        normalizationStatePath = self._constructNormalizationStatePath(stateId, useLiteMode)
-        normalizationVersionPath = f"{normalizationStatePath}v_*/"
-        versionDirs = self._findMatchingDirList(normalizationVersionPath, throws=False)
-        versions = [self._extractFileVersion(dire) for dire in versionDirs]
-        return self._getLatestThing(versions)
+        return self._getLatestVersionNumber(self._constructNormalizationStatePath(stateId, useLiteMode))
 
     @validate_arguments
     def _getCurrentCalibrationRecord(self, runId: str, useLiteMode: bool):
@@ -475,13 +463,13 @@ class LocalDataService:
     @validate_arguments
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         latestFile = ""
-        recordPath: str = str(
+        recordPathGlob: str = str(
             self.getNormalizationRecordPath(runId, useLiteMode, version if version is not None else "*")
         )
         if version is not None:
-            latestFile = self._getFileOfVersion(recordPath, version)
+            latestFile = self._getFileOfVersion(recordPathGlob, version)
         else:
-            latestFile = self._getLatestFile(recordPath)
+            latestFile = self._getLatestFile(recordPathGlob)
         record: NormalizationRecord = None  # noqa: F821
         if latestFile:
             logger.info(f"reading NormalizationRecord from {latestFile}")
@@ -493,7 +481,7 @@ class LocalDataService:
         self, record: NormalizationRecord, version: Optional[int] = None
     ) -> NormalizationRecord:  # noqa: F821
         """
-        Persists a `NormalizationRecord` to either a new version folder, or overwrite a specific version.
+        Persists a `NormalizationRecord` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version numbers of incoming `NormalizationRecord` and its nested `Normalization`.
         """
         runNumber = record.runNumber
@@ -501,7 +489,7 @@ class LocalDataService:
         previousVersion = self._getLatestNormalizationVersionNumber(stateId, record.useLiteMode)
         if version is None:
             version = max(record.version, previousVersion + 1)
-        recordPath: str = self.getNormalizationRecordPath(runNumber, record.useLiteMode, version)
+        recordPath: Path = self.getNormalizationRecordPath(runNumber, record.useLiteMode, version)
         record.version = version
 
         # There seems no need to write the _nested_ Normalization,
@@ -510,9 +498,9 @@ class LocalDataService:
         # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
         record.calibration.version = version
 
-        normalizationPath = self._constructNormalizationDataPath(runNumber, record.useLiteMode, version)
+        normalizationPath: Path = self._constructNormalizationDataPath(runNumber, record.useLiteMode, version)
         # check if directory exists for runId
-        if not os.path.exists(normalizationPath):
+        if not normalizationPath.exists():
             os.makedirs(normalizationPath)
         # append to record and write to file
         write_model_pretty(record, recordPath)
@@ -524,8 +512,8 @@ class LocalDataService:
         Writes the workspaces associated with a `NormalizationRecord` to disk:
         -- assumes that `writeNormalizationRecord` has already been called, and that the version folder exists
         """
-        normalizationDataPath = Path(
-            self._constructNormalizationDataPath(record.runNumber, record.useLiteMode, record.version)
+        normalizationDataPath: Path = self._constructNormalizationDataPath(
+            record.runNumber, record.useLiteMode, record.version
         )
         for workspace in record.workspaceNames:
             filename = workspace + "_" + wnvf.formatVersion(record.version)
@@ -538,19 +526,19 @@ class LocalDataService:
                 self.writeWorkspace(normalizationDataPath, filename, workspace)
         return record
 
-    ##### CALIBRATION METODS #####
+    ##### CALIBRATION METHODS #####
 
     @validate_arguments
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         recordFile: str = None
         if version is not None:
-            recordPath = self.getCalibrationRecordPath(runId, useLiteMode, version)
-            recordFile = self._getFileOfVersion(str(recordPath), version)
+            recordPathGlob: str = str(self.getCalibrationRecordPath(runId, useLiteMode, version))
+            recordFile = self._getFileOfVersion(recordPathGlob, version)
         else:
-            recordPath: str = self.getCalibrationRecordPath(runId, useLiteMode, "*")
-            recordFile = self._getLatestFile(str(recordPath))
+            recordPathGlob: str = str(self.getCalibrationRecordPath(runId, useLiteMode, "*"))
+            recordFile = self._getLatestFile(recordPathGlob)
         record: CalibrationRecord = None
-        if recordFile:
+        if recordFile is not None:
             logger.info(f"reading CalibrationRecord from {recordFile}")
             record = parse_file_as(CalibrationRecord, recordFile)
         return record
@@ -565,7 +553,7 @@ class LocalDataService:
         previousVersion: int = self._getLatestCalibrationVersionNumber(stateId, record.useLiteMode)
         if version is None:
             version = max(record.version, previousVersion + 1)
-        recordPath: str = self.getCalibrationRecordPath(runNumber, record.useLiteMode, str(version))
+        recordPath: Path = self.getCalibrationRecordPath(runNumber, record.useLiteMode, str(version))
         record.version = version
 
         # As above at 'writeNormalizationRecord':
@@ -575,9 +563,9 @@ class LocalDataService:
         # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
         record.calibrationFittingIngredients.version = version
 
-        calibrationPath = self._constructCalibrationDataPath(runNumber, record.useLiteMode, version)
+        calibrationPath: Path = self._constructCalibrationDataPath(runNumber, record.useLiteMode, version)
         # check if directory exists for runId
-        if not os.path.exists(calibrationPath):
+        if not calibrationPath.exists():
             os.makedirs(calibrationPath)
 
         # Update the to-be saved record's "workspaces" information
@@ -641,9 +629,7 @@ class LocalDataService:
         Writes the workspaces associated with a `CalibrationRecord` to disk:
         -- assumes that `writeCalibrationRecord` has already been called, and that the version folder exists
         """
-        calibrationDataPath = Path(
-            self._constructCalibrationDataPath(record.runNumber, record.useLiteMode, record.version)
-        )
+        calibrationDataPath = self._constructCalibrationDataPath(record.runNumber, record.useLiteMode, record.version)
 
         # Assumes all workspaces are of WNG-type:
         workspaces = record.workspaces.copy()
@@ -694,6 +680,10 @@ class LocalDataService:
         if workspaces:
             raise RuntimeError(f"not implemented: unable to save unexpected workspace types: {workspaces}")
         return record
+
+    ##### REDUCTION METHODS #####
+
+    # TODO
 
     ##### CALIBRANT SAMPLE METHODS #####
 
@@ -755,14 +745,14 @@ class LocalDataService:
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         # check to see if such a folder exists, if not create it and initialize it
-        calibrationStatePath = self._constructCalibrationParametersFilePath(runId, useLiteMode, "*")
+        calibrationStatePathGlob: str = str(self._constructCalibrationParametersFilePath(runId, useLiteMode, "*"))
 
         latestFile = ""
         if version is not None:
-            latestFile = self._getFileOfVersion(calibrationStatePath, version)
+            latestFile = self._getFileOfVersion(calibrationStatePathGlob, version)
         else:
             # TODO: This should refer to the calibration index
-            latestFile = self._getLatestFile(calibrationStatePath)
+            latestFile = self._getLatestFile(calibrationStatePathGlob)
 
         calibrationState = None
         if latestFile:
@@ -775,7 +765,7 @@ class LocalDataService:
 
     @validate_arguments
     def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        normalizationStatePathGlob = self._constructNormalizationParametersFilePath(runId, useLiteMode, "*")
+        normalizationStatePathGlob = str(self._constructNormalizationParametersFilePath(runId, useLiteMode, "*"))
 
         latestFile = ""
         if version is not None:
@@ -801,21 +791,21 @@ class LocalDataService:
             version = max(calibration.version, previousVersion + 1)
 
         # Check for the existence of a calibration parameters file
-        calibrationParametersFilePath = self._constructCalibrationParametersFilePath(
+        calibrationParametersFilePath: Path = self._constructCalibrationParametersFilePath(
             calibration.seedRun,
             calibration.useLiteMode,
             version,
         )
-        if os.path.exists(calibrationParametersFilePath):
+        if calibrationParametersFilePath.exists():
             logger.warning(f"overwriting calibration parameters at {calibrationParametersFilePath}")
 
         calibration.version = int(version)
-        calibrationDataPath = self._constructCalibrationDataPath(
+        calibrationDataPath: Path = self._constructCalibrationDataPath(
             calibration.seedRun,
             calibration.useLiteMode,
             version,
         )
-        if not os.path.exists(calibrationDataPath):
+        if not calibrationDataPath.exists():
             os.makedirs(calibrationDataPath)
         # write the calibration state.
         write_model_pretty(calibration, calibrationParametersFilePath)
@@ -830,20 +820,20 @@ class LocalDataService:
         if version is None:
             version = max(normalization.version, previousVersion + 1)
         # check for the existence of a normalization parameters file
-        normalizationParametersFilePath = self._constructNormalizationParametersFilePath(
+        normalizationParametersFilePath: Path = self._constructNormalizationParametersFilePath(
             normalization.seedRun,
             normalization.useLiteMode,
             version,
         )
-        if os.path.exists(normalizationParametersFilePath):
+        if normalizationParametersFilePath.exists():
             logger.warning(f"overwriting normalization parameters at {normalizationParametersFilePath}")
         normalization.version = int(version)
-        normalizationDataPath = self._constructNormalizationDataPath(
+        normalizationDataPath: Path = self._constructNormalizationDataPath(
             normalization.seedRun,
             normalization.useLiteMode,
             version,
         )
-        if not os.path.exists(normalizationDataPath):
+        if not normalizationDataPath.exists():
             os.makedirs(normalizationDataPath)
         write_model_pretty(normalization, normalizationParametersFilePath)
 
@@ -927,8 +917,8 @@ class LocalDataService:
         )
 
         # Make sure that the state root directory has been initialized:
-        stateRootPath = self._constructCalibrationStateRoot(stateId)
-        if not os.path.exists(stateRootPath):
+        stateRootPath: Path = Path(self._constructCalibrationStateRoot(stateId))
+        if not stateRootPath.exists():
             # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
             #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
             self._prepareStateRoot(stateId)
@@ -943,8 +933,8 @@ class LocalDataService:
         """
         Create the state root directory, and populate it with any necessary metadata files.
         """
-        stateRootPath = self._constructCalibrationStateRoot(stateId)
-        if not os.path.exists(stateRootPath):
+        stateRootPath: Path = Path(self._constructCalibrationStateRoot(stateId))
+        if not stateRootPath.exists():
             os.makedirs(stateRootPath)
 
         # If no `GroupingMap` JSON file is present at the <state root>,
@@ -963,7 +953,7 @@ class LocalDataService:
         if not runId.isdigit() or int(runId) < Config["instrument.startingRunNumber"]:
             return False
 
-        # first make sure the run number has a valid IPTS
+        # then make sure the run number has a valid IPTS
         try:
             self.getIPTS(runId)
         # if no IPTS found, return false
@@ -972,16 +962,13 @@ class LocalDataService:
         # if found, try to construct the path and test if the path exists
         else:
             stateID, _ = self._generateStateId(runId)
-            calibrationStatePath: str = self._constructCalibrationStateRoot(stateID)
-            if os.path.exists(calibrationStatePath):
-                return True
-            else:
-                return False
+            calibrationStatePath: Path = self._constructCalibrationStateRoot(stateID)
+            return calibrationStatePath.exists()
 
     ##### GROUPING MAP METHODS #####
 
     def _readGroupingMap(self, stateId: str) -> GroupingMap:
-        path = self._groupingMapPath(stateId)
+        path: Path = self._groupingMapPath(stateId)
         if not path.exists():
             raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
         return parse_file_as(GroupingMap, path)
@@ -996,14 +983,14 @@ class LocalDataService:
             return self._readDefaultGroupingMap()
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
-        path = self._defaultGroupingMapPath()
+        path: Path = self._defaultGroupingMapPath()
         if not path.exists():
             raise FileNotFoundError(f'required default grouping-schema map "{path}" does not exist')
         return parse_file_as(GroupingMap, path)
 
     def _writeGroupingMap(self, stateId: str, groupingMap: GroupingMap):
         # Write a GroupingMap to a file in JSON format, but only if it has been modified.
-        groupingMapPath = self._groupingMapPath(stateId)
+        groupingMapPath: Path = self._groupingMapPath(stateId)
         if not groupingMapPath.parent.exists():
             raise FileNotFoundError(f'state-root directory "{groupingMapPath.parent}" does not exist')
 
@@ -1019,18 +1006,37 @@ class LocalDataService:
     def _groupingMapPath(self, stateId) -> Path:
         return Path(self._constructCalibrationStateRoot(stateId), "groupingMap.json")
 
-    ## WRITING WORKSPACES TO DISK
+    ## WRITING AND READING WORKSPACES TO / FROM DISK
 
-    def writeWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
+    def writeWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName, append=False):
         """
         Write a MatrixWorkspace (derived) workspace to disk in nexus format.
         """
-        if filename.suffix != ".nxs":
-            raise RuntimeError(f"[writeWorkspace]: specify filename including '.nxs' extension, not {filename}")
+        if not str(filename).endswith(".nxs.h5") and not str(filename).endswith(".nxs"):
+            raise RuntimeError(
+                f"[writeWorkspace]: specify filename including '.nxs' or '.nxs.h5' extension, not {filename}"
+            )
         self.mantidSnapper.SaveNexus(
-            "Save a workspace with Nexus",
+            "Save a workspace using Nexus format",
             InputWorkspace=workspaceName,
             Filename=str(path / filename),
+            Append=append,
+        )
+        self.mantidSnapper.executeQueue()
+
+    def readWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName, entryNumber: int = 0):
+        """
+        Read a MatrixWorkspace (derived) workspace from disk in nexus format.
+        """
+        if not str(filename).endswith(".nxs.h5") and not str(filename).endswith(".nxs"):
+            raise RuntimeError(
+                f"[readWorkspace]: specify filename including '.nxs' or '.nxs.h5' extension, not {filename}"
+            )
+        self.mantidSnapper.LoadNexus(
+            "Load a workspace using Nexus format",
+            OutputWorkspace=workspaceName,
+            Filename=str(path / filename),
+            EntryNumber=entryNumber,
         )
         self.mantidSnapper.executeQueue()
 

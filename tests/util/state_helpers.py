@@ -69,18 +69,24 @@ class state_root_redirect:
     ```
     """
 
-    def __init__(self, dataService: LocalDataService):
+    def __init__(self, dataService: LocalDataService, *, stateId: str = None):
         self.dataService = dataService
+        self.stateId = stateId
         self.oldself = dataService._constructCalibrationStateRoot
+        self.oldstateId = dataService._generateStateId
 
     def __enter__(self):
         self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
         self.tmppath = Path(self.tmpdir.name)
-        self.dataService._constructCalibrationStateRoot = lambda *x, **y: self.tmpdir.name  # noqa ARG005
+        if self.stateId is not None:
+            self.tmppath = self.tmppath / Path(self.stateId)
+            self.dataService._generateStateId = lambda *x, **y: (self.stateId, "gibberish")  # noqa ARG005
+        self.dataService._constructCalibrationStateRoot = lambda *x, **y: self.tmppath  # noqa ARG005
         return self
 
     def __exit__(self, *arg, **kwargs):
         self.dataService._constructCalibrationStateRoot = self.oldself
+        self.dataService._generateStateId = self.oldstateId
         self.tmpdir.cleanup()
         assert not self.tmppath.exists()
         del self.tmpdir
@@ -90,6 +96,6 @@ class state_root_redirect:
 
     def addFileAs(self, source: str, target: str):
         assert self.tmppath in list(Path(target).parents)
-        Path(target).parent.mkdir(parents=True)
+        Path(target).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
         assert Path(target).exists()
