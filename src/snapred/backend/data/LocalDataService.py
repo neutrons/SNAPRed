@@ -322,7 +322,7 @@ class LocalDataService:
             # filter for latest applicable
             relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runId), calibrationIndex))
             if len(relevantEntries) < 1:
-                raise ValueError(f"No applicable calibration index entries found for runId {runId}")
+                return None
             latestCalibration = relevantEntries[-1]
             version = latestCalibration.version
         return version
@@ -343,7 +343,7 @@ class LocalDataService:
             # filter for latest applicable
             relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runId), normalizationIndex))
             if len(relevantEntries) < 1:
-                raise ValueError(f"No applicable calibration index entries found for runId {runId}")
+                return None
             latestNormalization = relevantEntries[-1]
             version = latestNormalization.version
         return version

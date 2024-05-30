@@ -1198,10 +1198,33 @@ def test__getVersionFromCalibrationIndex():
     localDataService.readCalibrationIndex = mock.Mock()
     localDataService.readCalibrationIndex.return_value = [mock.Mock()]
     localDataService.readCalibrationIndex.return_value[0] = CalibrationIndexEntry(
-        timestamp=123, useLiteMode=True, version="1", appliesTo="123", runNumber="123", comments="", author=""
+        timestamp=123,
+        useLiteMode=True,
+        version=1,
+        appliesTo="123",
+        runNumber="123",
+        comments="",
+        author="",
     )
     actualVersion = localDataService._getVersionFromCalibrationIndex("123", True)
-    assert actualVersion == "1"
+    assert actualVersion == 1
+
+
+def test__getVersionFromCalibrationIndex_nuffink():
+    localDataService = LocalDataService()
+    localDataService.readCalibrationIndex = mock.Mock()
+    localDataService.readCalibrationIndex.return_value = [mock.Mock()]
+    localDataService.readCalibrationIndex.return_value[0] = CalibrationIndexEntry(
+        timestamp=123,
+        useLiteMode=True,
+        version=1,
+        appliesTo=">123",
+        runNumber="123",
+        comments="",
+        author="",
+    )
+    actualVersion = localDataService._getVersionFromCalibrationIndex("123", True)
+    assert actualVersion is None
 
 
 def test__getVersionFromNormalizationIndex():
@@ -1210,7 +1233,7 @@ def test__getVersionFromNormalizationIndex():
     localDataService.readNormalizationIndex.return_value = [mock.Mock()]
     localDataService.readNormalizationIndex.return_value[0] = NormalizationIndexEntry(
         timestamp=123,
-        version="1",
+        version=1,
         appliesTo="123",
         runNumber="123",
         useLiteMode=True,
@@ -1219,7 +1242,25 @@ def test__getVersionFromNormalizationIndex():
         author="",
     )
     actualVersion = localDataService._getVersionFromNormalizationIndex("123", True)
-    assert actualVersion == "1"
+    assert actualVersion == 1
+
+
+def test__getVersionFromNormalizationIndex_nuffink():
+    localDataService = LocalDataService()
+    localDataService.readNormalizationIndex = mock.Mock()
+    localDataService.readNormalizationIndex.return_value = [mock.Mock()]
+    localDataService.readNormalizationIndex.return_value[0] = NormalizationIndexEntry(
+        timestamp=123,
+        version=1,
+        appliesTo=">123",
+        runNumber="123",
+        useLiteMode=True,
+        backgroundRunNumber="456",
+        comments="",
+        author="",
+    )
+    actualVersion = localDataService._getVersionFromNormalizationIndex("123", True)
+    assert actualVersion is None
 
 
 def test__getCurrentCalibrationRecord():
