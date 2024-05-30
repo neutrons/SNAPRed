@@ -27,10 +27,10 @@ calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrantSamples/Diamond_001.
 peakThreshold = 0.01
 isLite = True
 Config._config["cis_mode"] = True
-version="*"
-
+version=None
 
 ### PREP INGREDIENTS ################
+
 
 groups = LocalDataService().readGroupingMap(runNumber).getMap(isLite)
 
