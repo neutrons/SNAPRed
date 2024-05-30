@@ -178,3 +178,7 @@ constants:
 
 metadata:
   tagPrefix: testSNAPfuntime_
+
+ui:
+  workflow:
+    dryRun: false

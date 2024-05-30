@@ -161,3 +161,7 @@ docs:
 
 metadata:
   tagPrefix: SNAPRed_
+
+ui:
+  workflow:
+    dryRun: false

@@ -4,7 +4,9 @@ from snapred.backend.dao.request import (
     ClearWorkspaceRequest,
     RenameWorkspaceRequest,
 )
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.log.logger import snapredLogger
+from snapred.meta.Config import Config
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.widget.ActionPrompt import ActionPrompt
 from snapred.ui.widget.Workflow import Workflow
@@ -13,6 +15,8 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class WorkflowImplementer:
+    _dryRun = Config["ui.workflow.dryRun"]
+
     def __init__(self, parent=None):
         self.requests = []
         self.responses = []
@@ -57,16 +61,26 @@ class WorkflowImplementer:
             self.workflow.widget,
         )
 
-    def request(self, path, payload=None):
-        request = SNAPRequest(path=path, payload=payload)
+    def _request(self, request: SNAPRequest):
         response = self.interfaceController.executeRequest(request)
         self._handleComplications(response)
+        return response
+
+    def _stubbedRequest(self):
+        from unittest import mock
+
+        return SNAPResponse(code=ResponseCode.OK, data=mock.MagicMock())
+
+    def request(self, path, payload=None):
+        request = SNAPRequest(path=path, payload=payload)
+        response = None
+        if self._dryRun is True:
+            response = self._stubbedRequest()
+        else:
+            response = self._request(request)
         self.requests.append(request)
         self.responses.append(response)
         return response
-
-    def verifyForm(self, form):
-        return form.verify()
 
     def _handleComplications(self, result):
         self.responseHandler.handle(result)

@@ -5,6 +5,7 @@ from qtpy.QtCore import QObject, QThread, Signal
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
+from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
 
@@ -13,7 +14,7 @@ class Worker(QObject):
     success = Signal(bool)
     result = Signal(object)
     progress = Signal(int)
-
+    _dryRun = Config["ui.workflow.dryRun"]
     target = None
     args = None
 
@@ -42,9 +43,17 @@ class Worker(QObject):
             traceback.print_exc()
 
             results = SNAPResponse(code=ResponseCode.ERROR, message=str(e))
-        self.result.emit(results)
-        self.success.emit(results.code < ResponseCode.MAX_OK)
-        self.finished.emit()
+
+        if isinstance(results, SNAPResponse):
+            self.result.emit(results)
+            self.success.emit(results.code < ResponseCode.MAX_OK)
+            self.finished.emit()
+        else:
+            if self._dryRun:
+                self.result.emit(SNAPResponse(code=ResponseCode.OK))
+                self.success.emit(True)
+                self.finished.emit()
+            raise ValueError("Worker target must return a SNAPResponse object.")
 
 
 class InfiniteWorker(QObject):

@@ -1,5 +1,4 @@
-from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao import RunConfig, SNAPRequest
+from snapred.backend.dao.request import ReductionRequest
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.ui.view.ReductionView import ReductionView
@@ -11,9 +10,7 @@ logger = snapredLogger.getLogger(__name__)
 
 class ReductionWorkflow(WorkflowImplementer):
     def __init__(self, parent=None):
-        self.requests = []
-        self.responses = []
-        self.interfaceController = InterfaceController()
+        super().__init__(parent)
 
         self._reductionView = ReductionView(parent=parent)
 
@@ -52,24 +49,19 @@ class ReductionWorkflow(WorkflowImplementer):
 
         runNumbers = self._reductionView.getRunNumbers()
 
-        responses = []
         for runNumber in runNumbers:
-            payload = RunConfig(runNumber=runNumber)
+            payload = ReductionRequest(
+                runNumber=runNumber,
+                useLiteMode=self._reductionView.liteModeToggle.field.getState(),
+                # TODO: hardcoded for now till we pull it from the right file
+                calibrantSamplePath="SNS/SNAP/shared/Calibration/CalibrationSamples/Diamond_001.json",
+            )
             # TODO: Handle Continue Anyway
-            request = SNAPRequest(path="reduction/reduce", payload=payload.json())
-            response = self.interfaceController.executeRequest(request)
-            responses.append(response)
-            # pop runnumber from the list
+            self.request(path="reduction/", payload=payload.json())
             self._reductionView.removeRunNumber(runNumber)
-            self.responses.append(response)
 
-        return responses
+        return self.responses[-1]
 
     @property
     def widget(self):
         return self.workflow.presenter.widget
-
-    def show(self):
-        # wrap workflow.presenter.widget in a QMainWindow
-        # show the QMainWindow
-        pass
