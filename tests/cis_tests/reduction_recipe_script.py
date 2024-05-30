@@ -27,12 +27,13 @@ calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrationSamples/vanadium_c
 peakThreshold = 0.01
 isLite = True
 Config._config["cis_mode"] = True
-version="*"
+version=None
 
 localdataservice = LocalDataService()
 
 normalizationRecord = localdataservice._getCurrentNormalizationRecord(runNumber, isLite)
-print(localdataservice._constructNormalizationDataPath(runNumber, isLite, version))
+print(localdataservice._constructNormalizationDataPath(runNumber, isLite, version if version else "*"))
+if not normalizationRecord: raise ValueError("Normalization missing for given run and version, please correct your data")
 version = normalizationRecord.version
 
 normalizationPath = Path(localdataservice._constructNormalizationDataPath(runNumber, isLite, version))
