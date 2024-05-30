@@ -1,10 +1,12 @@
-from typing import Dict, List
+from typing import Any, Dict, List
 
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, ValidationError, root_validator, validator
+
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class ReductionRecord(BaseModel):
@@ -16,25 +18,31 @@ class ReductionRecord(BaseModel):
     """
 
     runNumbers: List[str]
-    isLite: bool
+    useLiteMode: bool
     calibration: CalibrationRecord
     normalization: NormalizationRecord
-    pixelGroupingParameters: Dict[str, PixelGroupingParameters]
+    pixelGroupingParameters: Dict[str, List[PixelGroupingParameters]]
     version: int
     stateId: ObjectSHA
-    workspaceNames: List[str]
+    workspaceNames: List[WorkspaceName]
 
-    @root_validator
+    @validator("stateId", pre=True, allow_reuse=True)
+    def str_to_ObjectSHA(cls, v: Any) -> Any:
+        # ObjectSHA to be stored in JSON as _only_ a single hex string, for the hex digest itself
+        if isinstance(v, str):
+            return ObjectSHA(hex=v, decodedKey=None)
+        return v
+
+    @root_validator(allow_reuse=True)
     def checkStateId(cls, values):
         cal = values.get("calibration")
         norm = values.get("normalization")
-        redStateID = values.get("stateID")
+        redStateId = values.get("stateId")
 
         calStateId = cal.calibrationFittingIngredients.instrumentState.id
         normStateId = norm.calibration.instrumentState.id
-
-        if not (calStateId == normStateId == redStateID.hex):
-            raise ValueError("Calibration, normalization, and reduction records are not from the same state.")
+        if not (calStateId == normStateId == redStateId):
+            raise ValidationError("Calibration, normalization, and reduction records are not from the same state.")
 
         return values
 

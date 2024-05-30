@@ -54,7 +54,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         self.inputWSName = self.getPropertyValue("InputWorkspace")
         self.groupingWSName = self.getPropertyValue("GroupingWorkspace")
         self.outputWSName = self.getPropertyValue("OutputWorkspace")
-        self.rebinOutput = self.getPropertyValue("RebinOutput")
+        self.rebinOutput = self.getProperty("RebinOutput").value
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}

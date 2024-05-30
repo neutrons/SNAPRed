@@ -81,6 +81,16 @@ class TestDataExportService(unittest.TestCase):
         self.instance.exportNormalizationWorkspaces(mock.Mock())
         assert self.instance.dataService.writeNormalizationWorkspaces.called
 
+    ##### TEST REDUCTION METHODS #####
+
+    def test_exportReductionRecord(self):
+        self.instance.exportReductionRecord(mock.Mock())
+        assert self.instance.dataService.writeReductionRecord.called
+
+    def test_exportReductionData(self):
+        self.instance.exportReductionData(mock.Mock())
+        assert self.instance.dataService.writeReductionData.called
+
     ##### TEST WORKSPACE METHODS #####
 
     def test_exportWorkspace(self):

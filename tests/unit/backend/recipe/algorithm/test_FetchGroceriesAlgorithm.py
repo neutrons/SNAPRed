@@ -96,7 +96,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
         algo.setPropertyValue("Filename", self.filepath)
         assert self.filepath == algo.getPropertyValue("Filename")
 
-        # chek failure if no workspace property given
+        # check failure if no workspace property given
         fetched_groceries = f"_fetched_groceries_{self.runNumber}"
         with pytest.raises(RuntimeError) as e:
             algo.execute()

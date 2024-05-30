@@ -11,7 +11,7 @@ def test_calibration_record_dropdown(qtbot):
     # test filling in the dropdown
     runNumber = "1234"
     useLiteMode = False
-    version = "1"
+    version = 1
     calibrationIndexEntries = [
         CalibrationIndexEntry(runNumber=runNumber, useLiteMode=useLiteMode, version=version, comments="", author="")
     ]

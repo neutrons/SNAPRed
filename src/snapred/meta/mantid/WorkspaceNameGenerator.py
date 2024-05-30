@@ -26,6 +26,11 @@ class WorkspaceType(str, Enum):
     FOCUSED_RAW_VANADIUM = "focusedRawVanadium"
     SMOOTHED_FOCUSED_RAW_VANADIUM = "smoothedFocusedRawVanadium"
 
+    # "${reduction.home}/<stateSHA>/<lite mode: 'lite' | 'native'>/<grouping>/<runNumber>/<versions...>
+    # <reduction tag>_<lite mode>_<runNumber>_<version tag>
+    REDUCTION_OUTPUT = "reductionOutput"
+    REDUCTION_OUTPUT_GROUP = "reductionOutputGroup"
+
 
 class NameBuilder:
     def __init__(self, template: str, keys: List[str], delimiter: str, **kwargs):
@@ -79,13 +84,20 @@ class ValueFormatter:
         return "ts" + timestamp
 
     @staticmethod
+    def formatStateId(stateId: str):
+        return stateId[-8:]
+
+    @staticmethod
     def formatValueByKey(key: str, value: any):
-        if key == "runNumber":
-            value = ValueFormatter.formatRunNumber(value)
-        elif key == "version":
-            value = ValueFormatter.formatVersion(value)
-        elif key == "timestamp":
-            value = ValueFormatter.formatTimestamp(value)
+        match key:
+            case "runNumber":
+                value = ValueFormatter.formatRunNumber(value)
+            case "version":
+                value = ValueFormatter.formatVersion(value)
+            case "timestamp":
+                value = ValueFormatter.formatTimestamp(value)
+            case "stateId":
+                value = ValueFormatter.formatStateId(value)
         return value
 
 
@@ -233,6 +245,23 @@ class _WorkspaceNameGenerator:
             self._normCalSmoothedFocusedRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
+            version="",
+        )
+
+    def reductionOutput(self):
+        return NameBuilder(
+            self._reductionOutputTemplate,
+            self._reductionOutputTemplateKeys,
+            self._delimiter,
+            unit=self.Units.DSP,
+            version="",
+        )
+
+    def reductionOutputGroup(self):
+        return NameBuilder(
+            self._reductionOutputGroupTemplate,
+            self._reductionOutputGroupTemplateKeys,
+            self._delimiter,
             version="",
         )
 

@@ -385,6 +385,12 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
+        # validate the version number
+        try:
+            version = int(view.fieldVersion.get(None))
+            assert version >= 0
+        except (AssertionError, ValueError, TypeError):
+            raise TypeError("Version must be a nonnegative integer")
         # pull fields from view for calibration save
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=view.fieldRunNumber.get(),

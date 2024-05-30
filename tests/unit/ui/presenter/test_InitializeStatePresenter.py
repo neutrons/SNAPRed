@@ -5,14 +5,13 @@ import pytest
 from qtpy.QtWidgets import QApplication, QWidget
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresenter
+from util.script_as_test import not_a_test
 
 app = QApplication(sys.argv)
 
 
+@not_a_test
 class TestableQWidget(QWidget):
-    # not a 'pytest' test case:
-    __test__ = False
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setEnabled = MagicMock()

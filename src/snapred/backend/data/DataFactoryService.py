@@ -1,9 +1,11 @@
 import os
+from pathlib import Path
 from typing import Dict, Optional
 
 from pydantic import validate_arguments
 
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
+from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
@@ -125,6 +127,22 @@ class DataFactoryService:
     def getNormalizationDataWorkspace(self, runId: str, useLiteMode: bool, version: str, name: str):
         path = self.getNormalizationDataPath(runId, useLiteMode, version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
+
+    ##### REDUCTION METHODS #####
+
+    @validate_arguments
+    def getReductionDataPath(self, runId: str, useLiteMode: bool, grouping: str, version: str) -> Path:
+        return self.lookupService._constructReductionDataPath(runId, useLiteMode, grouping, version)
+
+    @validate_arguments
+    def getReductionRecord(
+        self, runId: str, useLiteMode: bool, grouping: str, version: Optional[int] = None
+    ) -> ReductionRecord:
+        return self.lookupService.readReductionRecord(runId, useLiteMode, grouping, version)
+
+    @validate_arguments
+    def getReductionData(self, runId: str, useLiteMode: bool, grouping: str, version: int) -> ReductionRecord:
+        return self.lookupService.readReductionData(runId, useLiteMode, grouping, version)
 
     ##### WORKSPACE METHODS #####
 
