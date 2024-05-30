@@ -203,6 +203,13 @@ class NormalizationWorkflow(WorkflowImplementer):
         normalizationRecord.workspaceNames.append(self.responses[-2].data["focusedVanadium"])
         normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
 
+        # validate the version number
+        try:
+            version = int(view.fieldVersion.get(None))
+            assert version >= 0
+        except (AssertionError, ValueError, TypeError):
+            raise TypeError("Version must be a nonnegative integer.")
+
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
             useLiteMode=self.useLiteMode,
