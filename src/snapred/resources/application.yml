@@ -25,6 +25,10 @@ instrument:
           - hdf
           - xml
           - nxs
+  reduction:
+    # Here "{IPTS}" will be substituted with the IPTS-directory name for a specified <runNumber>
+    home: ${instrument.home}/{IPTS}/shared/SNAPRed
+
   config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
     pixelResolution: 1179648
@@ -59,10 +63,6 @@ calibration:
   file:
     extension: .json
     prefix: SNAPcalibLog
-  reduction:
-    output:
-      extension: .nxs
-      format: "{}_calibration_reduction_result"
   diffraction:
     output:
       extension: .tar
@@ -106,6 +106,9 @@ mantid:
           rawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
           focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
           smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_cor,{version}"
+        reduction:
+          output: "reduced,{unit},{group},{runNumber},{version}"
+          output_group: "reduced,{stateId},{version}"
       units:
         dSpacing: DSP
         timeOfFlight: TOF

@@ -18,7 +18,7 @@ class CalibrationIndexEntry(BaseModel):
 
     runNumber: str
     useLiteMode: bool
-    version: Optional[str]
+    version: Optional[int]
     appliesTo: Optional[str]
     comments: str
     author: str
