@@ -88,6 +88,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         peakControlLayout.addWidget(self.fieldFWHMleft)
         peakControlLayout.addWidget(self.fieldFWHMright)
         peakControlLayout.addWidget(self.fieldThreshold)
+        peakControlLayout.addWidget(self.maxChiSqField)
 
         # a big ol recalculate button
         self.recalculationButton = QPushButton("Recalculate")
@@ -99,7 +100,6 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.layout.addWidget(self.navigationBar, 1, 0)
         self.layout.addWidget(self.canvas, 2, 0, 1, -1)
         self.layout.addLayout(peakControlLayout, 3, 0, 1, 2)
-        self.layout.addWidget(self.maxChiSqField, 3, 0, 1, 3)
         self.layout.addWidget(self.sampleDropdown, 4, 0)
         self.layout.addWidget(self.groupingFileDropdown, 4, 1)
         self.layout.addWidget(self.peakFunctionDropdown, 4, 2)
