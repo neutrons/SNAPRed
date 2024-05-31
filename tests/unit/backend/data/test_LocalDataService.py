@@ -626,7 +626,7 @@ def test_constructPVFilePath():
     mockRunConfig = mock.Mock(IPTS=mockIPTS)
     localDataService._readRunConfig = mock.Mock(return_value=mockRunConfig)
     path = localDataService._constructPVFilePath("123")
-    # the path should be /path/to/outpurs/<tmpdir>/nexus/SNAP_123.nxs.h5
+    # the path should be /path/to/testInstrument/IPTS-456/nexus/SNAP_123.nxs.h5
     assert mockIPTS == str(path.parents[1])
 
 
