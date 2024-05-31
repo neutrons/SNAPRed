@@ -181,9 +181,7 @@ class LocalDataService:
         return Path(
             runConfig.IPTS,
             self.instrumentConfig.nexusDirectory,
-            "SNAP_",
-            str(runConfig.runNumber),
-            self.instrumentConfig.nexusFileExtension,
+            f"SNAP_{str(runConfig.runNumber)}{self.instrumentConfig.nexusFileExtension}",
         )
 
     def _readPVFile(self, runId: str):

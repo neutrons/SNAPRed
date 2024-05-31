@@ -61,11 +61,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
-        self._saveView = NormalizationSaveView(
-            "Saving Normalization",
-            self.saveSchema,
-            parent,
-        )
+        self._saveView = NormalizationSaveView(parent)
 
         # connect signal to populate the grouping dropdown after run is selected
         self._requestView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
@@ -203,12 +199,14 @@ class NormalizationWorkflow(WorkflowImplementer):
         normalizationRecord.workspaceNames.append(self.responses[-2].data["focusedVanadium"])
         normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
 
+        version = view.fieldVersion.get(None)
         # validate the version number
-        try:
-            version = int(view.fieldVersion.get(None))
-            assert version >= 0
-        except (AssertionError, ValueError, TypeError):
-            raise TypeError("Version must be a nonnegative integer.")
+        if version is not None:
+            try:
+                version = int(view.fieldVersion.get(None))
+                assert version >= 0
+            except (AssertionError, ValueError, TypeError):
+                raise TypeError("Version must be a nonnegative integer")
 
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
@@ -217,7 +215,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
             appliesTo=view.fieldAppliesTo.get(),
-            version=view.fieldVersion.get(None),
+            version=version,
         )
 
         payload = NormalizationExportRequest(

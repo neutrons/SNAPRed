@@ -338,7 +338,7 @@ class CalibrationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             # fiddly bits
-            peakFucntion=request.peakFunction,
+            peakFunction=request.peakFunction,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
             peakIntensityThreshold=request.peakIntensityThreshold,
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
