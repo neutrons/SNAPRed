@@ -201,12 +201,13 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         version = view.fieldVersion.get(None)
         # validate the version number
+        version = view.fieldVersion.get(None)
         if version is not None:
             try:
-                version = int(view.fieldVersion.get(None))
+                version = int(version)
                 assert version >= 0
             except (AssertionError, ValueError, TypeError):
-                raise TypeError("Version must be a nonnegative integer")
+                raise TypeError("Version must be a nonnegative integer.")
 
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),

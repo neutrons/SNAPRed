@@ -581,6 +581,18 @@ def test__readRunConfig():
     assert actual.runNumber == "57514"
 
 
+def test_constructPVFilePath():
+    # ensure the file path points to inside the IPTS folder
+    localDataService = LocalDataService()
+    # mock the IPTS to point to somewhere then construct the path
+    mockIPTS = Resource.getPath("inputs/testInstrument/IPTS-456")
+    mockRunConfig = mock.Mock(IPTS=mockIPTS)
+    localDataService._readRunConfig = mock.Mock(return_value=mockRunConfig)
+    path = localDataService._constructPVFilePath("123")
+    # the path should be /path/to/testInstrument/IPTS-456/nexus/SNAP_123.nxs.h5
+    assert mockIPTS == str(path.parents[1])
+
+
 @mock.patch("h5py.File", return_value="not None")
 def test_readPVFile(h5pyMock):  # noqa: ARG001
     localDataService = LocalDataService()
