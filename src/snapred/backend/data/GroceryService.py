@@ -589,7 +589,7 @@ class GroceryService:
             data = self.grocer.executeRecipe(filename, workspaceName, loader)
 
         if useLiteMode:
-            self.convertToLiteMode(workspaceName)
+            self.convertToLiteMode(workspaceName, runNumber)
 
         return data
 
@@ -655,7 +655,7 @@ class GroceryService:
             # then reduce its resolution to make the lite raw workspace
             self.getCloneOfWorkspace(nativeRawWorkspaceName, rawWorkspaceName)
             self._loadedRuns[key] = 0
-            self.convertToLiteMode(rawWorkspaceName)
+            self.convertToLiteMode(rawWorkspaceName, runNumber)
 
         # create a copy of the raw data for use
         workspaceName = self._createCopyNeutronWorkspaceName(runNumber, useLiteMode, self._loadedRuns[key] + 1)
@@ -879,10 +879,10 @@ class GroceryService:
                         item.version = self.dataService._getVersionFromCalibrationIndex(
                             item.runNumber, item.useLiteMode
                         )
-                    record = self.dataService.readCalibrationRecord(item.runNumber, item.useLiteMode, item.version)
-                    item.runNumber = record.runNumber
+                    # record = self.dataService.readCalibrationRecord(item.runNumber, item.useLiteMode, item.version)
+                    # item.runNumber = record.runNumber
                     tableWorkspaceName = self._createDiffcalTableWorkspaceName(
-                        record.runNumber, item.useLiteMode, record.version
+                        item.runNumber, item.useLiteMode, item.version
                     )
                     if item.isOutput:
                         res = {"result": True, "workspace": tableWorkspaceName}
@@ -931,7 +931,7 @@ class GroceryService:
         data.update(kwargs)
         return data
 
-    def convertToLiteMode(self, workspace: WorkspaceName):
+    def convertToLiteMode(self, workspace: WorkspaceName, runNumber: str):
         """
         Given a workspace, converts it (in place) to Lite mode using the lite data service.
 
@@ -941,7 +941,7 @@ class GroceryService:
 
         from snapred.backend.service.LiteDataService import LiteDataService
 
-        LiteDataService().reduceLiteData(workspace, workspace)
+        LiteDataService().reduceLiteData(workspace, workspace, runNumber)
 
     ## CLEANUP METHODS
 

@@ -1019,8 +1019,11 @@ class LocalDataService:
         """
         Write a MatrixWorkspace (derived) workspace to disk in nexus format.
         """
-        if filename.suffix != ".nxs":
-            raise RuntimeError(f"[writeWorkspace]: specify filename including '.nxs' extension, not {filename}")
+        allowed = [".nxs", ".h5"]
+        if filename.suffix not in allowed:
+            raise RuntimeError(
+                f"[writeWorkspace]: specify filename including '.nxs' extension, not {filename}, {filename.suffix}"
+            )
         self.mantidSnapper.SaveNexus(
             "Save a workspace with Nexus",
             InputWorkspace=workspaceName,
