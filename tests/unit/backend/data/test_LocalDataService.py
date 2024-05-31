@@ -619,14 +619,15 @@ def test__readRunConfig():
 
 
 def test_constructPVFilePath():
-    # ensure the file path is pointing at the correct place
-    with tempfile.TemporaryDirectory(dir=Resource.getPath("outputs")) as tmpdir:
-        mockRunConfig = mock.Mock(IPTS=tmpdir)
-        localDataService = LocalDataService()
-        localDataService._readRunConfig = mock.Mock(return_value=mockRunConfig)
-        path = localDataService._constructPVFilePath("123")
-        print(list(path.parents))
-        assert tmpdir == str(path.parents[1])
+    # ensure the file path points to inside the IPTS folder
+    localDataService = LocalDataService()
+    # mock the IPTS to point to somewhere then construct the path
+    mockIPTS = Resource.getPath("inputs/testInstrument/IPTS-456")
+    mockRunConfig = mock.Mock(IPTS=mockIPTS)
+    localDataService._readRunConfig = mock.Mock(return_value=mockRunConfig)
+    path = localDataService._constructPVFilePath("123")
+    # the path should be /path/to/outpurs/<tmpdir>/nexus/SNAP_123.nxs.h5
+    assert mockIPTS == str(path.parents[1])
 
 
 @mock.patch("h5py.File", return_value="not None")
