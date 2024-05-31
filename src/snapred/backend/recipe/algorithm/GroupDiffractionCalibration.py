@@ -30,8 +30,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
     def category(self):
         return "SNAPRed Diffraction Calibration"
 
-    MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
-
     def PyInit(self):
         # declare properties
         self.declareProperty(
@@ -81,6 +79,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.dMax = ingredients.pixelGroup.dMax()
         self.dBin = ingredients.pixelGroup.dBin()
         pixelGroupIDs = ingredients.pixelGroup.groupIDs
+
+        # used to be a constant pulled from application.yml
+        self.maxChiSq = ingredients.maxChiSq
 
         # from the pixel group, read the overall min/max TOF and binning
         self.TOF = ingredients.pixelGroup.timeOfFlight
@@ -193,7 +194,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         badPeaks = []
         if len(chi2) > 2:
             for index, item in enumerate(chi2):
-                if item < self.MAX_CHI_SQ:
+                if item < self.maxChiSq:
                     totalLowChi2 = totalLowChi2 + 1
                 else:
                     badPeaks.append(
@@ -205,13 +206,13 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                     )
             if totalLowChi2 < 2:
                 logger.warning(
-                    f"Insufficient number of well-fitted peaks (chi2 < {self.MAX_CHI_SQ})."
+                    f"Insufficient number of well-fitted peaks (chi2 < {self.maxChiSq})."
                     + "Try to adjust parameters in Tweak Peak Peek tab"
                     + f"Bad peaks info: {badPeaks}"
                 )
                 print(tabDict)
             else:
-                logger.info(f"Sufficient number of well-fitted peaks (chi2 < {self.MAX_CHI_SQ}).: {totalLowChi2}")
+                logger.info(f"Sufficient number of well-fitted peaks (chi2 < {self.maxChiSq}).: {totalLowChi2}")
 
     def PyExec(self) -> None:
         """
@@ -256,7 +257,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 InputWorkspace=self.outputWStof,
                 TofBinning=self.TOF.params,
                 PeakFunction=self.peakFunction,
-                MaxChiSq=self.MAX_CHI_SQ,
+                MaxChiSq=self.maxChiSq,
                 BackgroundType="Linear",
                 PeakPositions=self.groupedPeaks[groupID],
                 PeakWindow=self.groupedPeakBoundaries[groupID],

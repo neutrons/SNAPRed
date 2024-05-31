@@ -127,6 +127,7 @@ class CalibrationService(Service):
             convergenceThreshold=request.convergenceThreshold,
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
+            maxChiSq=request.maxChiSq,
         )
         return self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
 
@@ -348,11 +349,12 @@ class CalibrationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             # fiddly bits
-            peakFucntion=request.peakFunction,
+            peakFunction=request.peakFunction,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
             peakIntensityThreshold=request.peakIntensityThreshold,
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
+            maxChiSq=request.maxChiSq,
         )
         pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
         detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh)
