@@ -25,13 +25,20 @@ def _removeWhitespace(string):
 
 class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
     def test_pyexec(self):  # noqa: ARG002
-        fakeInputWorkspace = "mock_input_workspace"
-        fitPeaksDiagnosis = WorkspaceGroup()
-        mtd.addOrReplace(fakeInputWorkspace, fitPeaksDiagnosis)
-
         # Mock input data
         fakeInputWorkspace = "mock_input_workspace"
         vals = np.array([[1.0], [2.0], [3.0]])
+        fakeInputWorkspaceData = {
+            "PeakPosition": MagicMock(readY=MagicMock(return_value=vals), readX=MagicMock(return_value=vals)),
+            "Parameters": MagicMock(
+                rowCount=MagicMock(return_value=3),
+                row=MagicMock(side_effect=np.array([{"Sigma": 0.1}, {"Sigma": 0.2}, {"Sigma": 0.3}])),
+            ),
+            "Workspace": np.array(["ws1", "ws2", "ws3"]),
+            "ParameterError": np.array([{}, {}, {}]),
+        }
+        fitPeaksDiagnosis = WorkspaceGroup()
+        mtd.addOrReplace(fakeInputWorkspace, fitPeaksDiagnosis)
         CreateWorkspace(
             OutputWorkspace="PeakPosition",
             DataX=vals,
@@ -94,7 +101,7 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         algorithm.mantidSnapper.mtd = {
             fakeInputWorkspace: MagicMock(
                 getNumberOfEntries=MagicMock(return_value=4),
-                getItem=MagicMock(side_effect=fitPeaksDiagnosis.values()),
+                getItem=MagicMock(side_effect=fakeInputWorkspaceData.values()),
             )
         }
         # Call the PyExec method to test
