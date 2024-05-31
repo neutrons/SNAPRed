@@ -439,7 +439,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                     WorkspaceList=[f"{diagnosticWStmp}{self.diagnosticSuffix[x]}"],
                 )
             # combine the table workspaces
-            for x in [FitOutputEnum.Parameters.value]:
+            for x in [FitOutputEnum.Parameters.value, FitOutputEnum.PeakPosition.value]:
                 self.mantidSnapper.ConjoinTableWorkspaces(
                     "Conjoin peak fit parameter workspaces",
                     InputWorkspace1=f"{diagnosticWS}{self.diagnosticSuffix[x]}",
