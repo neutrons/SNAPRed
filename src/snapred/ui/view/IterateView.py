@@ -1,13 +1,6 @@
-import json
+from qtpy.QtWidgets import QGridLayout, QLabel, QWidget
 
-from qtpy.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushButton, QWidget
-
-from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.meta.decorators.Resettable import Resettable
-from snapred.ui.threading.worker_pool import WorkerPool
-from snapred.ui.widget.LabeledField import LabeledField
-from snapred.ui.widget.SampleDropDown import SampleDropDown
 
 
 @Resettable

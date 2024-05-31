@@ -1,12 +1,10 @@
 import json
-from sys import version
 
-from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao import SNAPRequest, SNAPResponse
-from snapred.backend.dao.normalization import NormalizationIndexEntry, NormalizationRecord
+from snapred.backend.dao.normalization import NormalizationIndexEntry
 from snapred.backend.dao.request import (
-    NormalizationCalibrationRequest,
+    HasStateRequest,
     NormalizationExportRequest,
+    NormalizationRequest,
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.log.logger import snapredLogger
@@ -25,7 +23,7 @@ class NormalizationWorkflow(WorkflowImplementer):
     """
 
     This system orchestrates a full workflow for scientific data normalization, guiding users through each step with
-    interactive PyQt5 widgets and custom views. Starting with default settings for initialization, it progresses
+    interactive qt widgets and custom views. Starting with default settings for initialization, it progresses
     through calibration, parameter adjustments, and ends with saving normalization data, offering views like
     NormalizationRequestView, NormalizationTweakPeakView, and NormalizationSaveView for an interactive user workflow.
     The workflow dynamically adjusts to different datasets and requirements, ensuring adaptability. Key phases include
@@ -40,9 +38,6 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         self.initializationComplete = False
 
-        # TODO enable set by toggle
-        self.useLiteMode = True
-
         self.assessmentSchema = self.request(path="api/parameters", payload="normalization/assessment").data
         self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
 
@@ -52,7 +47,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.samplePaths = self.request(path="config/samplePaths").data
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
         self.groupingMap = self.defaultGroupingMap
-        self.focusGroups = self.groupingMap.getMap(self.useLiteMode)
+        self.focusGroups = self.groupingMap.lite
 
         self._requestView = NormalizationRequestView(
             jsonForm,
@@ -66,11 +61,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
-        self._saveView = NormalizationSaveView(
-            "Saving Normalization",
-            self.saveSchema,
-            parent,
-        )
+        self._saveView = NormalizationSaveView(parent)
 
         # connect signal to populate the grouping dropdown after run is selected
         self._requestView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
@@ -79,9 +70,9 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=None, parent=parent)
-            .addNode(self._triggerNormalizationCalibration, self._requestView, "Normalization Calibration")
+            .addNode(self._triggerNormalization, self._requestView, "Normalization Calibration")
             .addNode(self._specifyNormalization, self._tweakPeakView, "Tweak Parameters")
-            .addNode(self._saveNormalizationCalibration, self._saveView, "Saving")
+            .addNode(self._saveNormalization, self._saveView, "Saving")
             .build()
         )
         self.workflow.presenter.setResetLambda(self.reset)
@@ -91,19 +82,24 @@ class NormalizationWorkflow(WorkflowImplementer):
     def _populateGroupingDropdown(self):
         # when the run number is updated, grab the grouping map and populate grouping drop down
         runNumber = self._requestView.runNumberField.text()
-        useLiteMode = self._requestView.litemodeToggle.field.getState()
+        self.useLiteMode = self._requestView.litemodeToggle.field.getState()
 
         self._requestView.litemodeToggle.setEnabled(False)
         self._requestView.groupingFileDropdown.setEnabled(False)
         # TODO: Use threads, account for fail cases
         try:
             # check if the state exists -- if so load its grouping map
-            hasState = self.request(path="calibration/hasState", payload=runNumber).data
+            payload = HasStateRequest(
+                runId=runNumber,
+                useLiteMode=self.useLiteMode,
+            )
+            hasState = self.request(path="calibration/hasState", payload=payload.json()).data
+            # hasState = self.request(path="calibration/hasState", payload=runNumber).data
             if hasState:
                 self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
             else:
                 self.groupingMap = self.defaultGroupingMap
-            self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            self.focusGroups = self.groupingMap.getMap(self.useLiteMode)
 
             # populate and reenable the drop down
             self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
@@ -129,11 +125,12 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._requestView.groupingFileDropdown.setEnabled(True)
 
     @EntryExitLogger(logger=logger)
-    def _triggerNormalizationCalibration(self, workflowPresenter):
+    def _triggerNormalization(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for normalization
 
         self.runNumber = view.getFieldText("runNumber")
+        self.useLiteMode = view.litemodeToggle.field.getState()
         self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
         self.sampleIndex = view.sampleDropdown.currentIndex()
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
@@ -144,8 +141,9 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.prevThreshold = float(self._tweakPeakView.fieldThreshold.field.text())
 
         # init the payload
-        payload = NormalizationCalibrationRequest(
+        payload = NormalizationRequest(
             runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=self.focusGroups[self.focusGroupPath],
@@ -178,8 +176,9 @@ class NormalizationWorkflow(WorkflowImplementer):
 
     @EntryExitLogger(logger=logger)
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
-        payload = NormalizationCalibrationRequest(
+        payload = NormalizationRequest(
             runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=list(self.focusGroups.items())[self.prevGroupingIndex][1],
@@ -192,7 +191,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         return response
 
     @EntryExitLogger(logger=logger)
-    def _saveNormalizationCalibration(self, workflowPresenter):
+    def _saveNormalization(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
 
         normalizationRecord = self.responses[-1].data
@@ -200,13 +199,23 @@ class NormalizationWorkflow(WorkflowImplementer):
         normalizationRecord.workspaceNames.append(self.responses[-2].data["focusedVanadium"])
         normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
 
+        # validate the version number
+        version = view.fieldVersion.get(None)
+        if version is not None:
+            try:
+                version = int(version)
+                assert version >= 0
+            except (AssertionError, ValueError, TypeError):
+                raise TypeError("Version must be a nonnegative integer.")
+
         normalizationIndexEntry = NormalizationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
             appliesTo=view.fieldAppliesTo.get(),
-            version=view.fieldVersion.get(None),
+            version=version,
         )
 
         payload = NormalizationExportRequest(
@@ -217,9 +226,10 @@ class NormalizationWorkflow(WorkflowImplementer):
         return response
 
     @EntryExitLogger(logger=logger)
-    def callNormalizationCalibration(self, index, smoothingParameter, dMin, dMax, peakThreshold):
-        payload = NormalizationCalibrationRequest(
+    def callNormalization(self, index, smoothingParameter, dMin, dMax, peakThreshold):
+        payload = NormalizationRequest(
             runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
@@ -242,6 +252,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focusWorkspace,
+            useLiteMode=self.useLiteMode,
             outputWorkspace=smoothWorkspace,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
@@ -279,7 +290,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
             # check the case, apply correct update
             if groupingFileChanged:
-                self.callNormalizationCalibration(index, smoothingValue, dMin, dMax, peakThreshold)
+                self.callNormalization(index, smoothingValue, dMin, dMax, peakThreshold)
             elif peakListWillChange:
                 self.applySmoothingUpdate(index, smoothingValue, dMin, dMax, peakThreshold)
             elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:

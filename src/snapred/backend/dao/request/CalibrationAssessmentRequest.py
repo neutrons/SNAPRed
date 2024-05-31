@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.RunConfig import RunConfig
@@ -10,7 +10,7 @@ from snapred.meta.mantid.AllowedPeakTypes import ALLOWED_PEAK_TYPES
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationAssessmentRequest(BaseModel):
+class CalibrationAssessmentRequest(BaseModel, extra=Extra.forbid):
     """
 
     The CalibrationAssessmentRequest class is crafted to streamline the process of initiating
@@ -35,3 +35,4 @@ class CalibrationAssessmentRequest(BaseModel):
     peakIntensityThreshold: float
     nBinsAcrossPeakWidth: int
     fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
+    maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]

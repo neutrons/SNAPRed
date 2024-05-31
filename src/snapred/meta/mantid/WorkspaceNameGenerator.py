@@ -1,8 +1,10 @@
 import re
 from enum import Enum
-from typing import Dict, List
+from typing import List, Literal, Optional, Union
 
 from snapred.meta.Config import Config
+
+Version = Union[int, Literal["*"]]
 
 
 class WorkspaceName(str):
@@ -24,6 +26,11 @@ class WorkspaceType(str, Enum):
     RAW_VANADIUM = "rawVanadium"
     FOCUSED_RAW_VANADIUM = "focusedRawVanadium"
     SMOOTHED_FOCUSED_RAW_VANADIUM = "smoothedFocusedRawVanadium"
+
+    # "${reduction.home}/<stateSHA>/<lite mode: 'lite' | 'native'>/<grouping>/<runNumber>/<versions...>
+    # <reduction tag>_<lite mode>_<runNumber>_<version tag>
+    REDUCTION_OUTPUT = "reductionOutput"
+    REDUCTION_OUTPUT_GROUP = "reductionOutputGroup"
 
 
 class NameBuilder:
@@ -51,30 +58,47 @@ class NameBuilder:
 
 
 class ValueFormatter:
+    class vPrefix:
+        WORKSPACE = True
+        FILE = False
+
     @staticmethod
     def formatRunNumber(runNumber: str):
         return str(runNumber).zfill(6)
 
     @staticmethod
-    def formatVersion(version, use_v_prefix: bool = True):
-        if version == "":
-            return version
+    def formatVersion(version: Optional[Version], use_v_prefix: vPrefix = vPrefix.WORKSPACE):
+        if version is None:
+            return ""
         if not version == "*":
             version = str(version).zfill(4)
-        return "v" + version if use_v_prefix else version
+        if use_v_prefix:
+            version = "v" + version
+        return version
+
+    @staticmethod
+    def fileVersion(version: Optional[Version]):
+        return "v_" + ValueFormatter.formatVersion(version, use_v_prefix=False)
 
     @staticmethod
     def formatTimestamp(timestamp: str):
         return "ts" + timestamp
 
     @staticmethod
+    def formatStateId(stateId: str):
+        return stateId[-8:]
+
+    @staticmethod
     def formatValueByKey(key: str, value: any):
-        if key == "runNumber":
-            value = ValueFormatter.formatRunNumber(value)
-        elif key == "version":
-            value = ValueFormatter.formatVersion(value)
-        elif key == "timestamp":
-            value = ValueFormatter.formatTimestamp(value)
+        match key:
+            case "runNumber":
+                value = ValueFormatter.formatRunNumber(value)
+            case "version":
+                value = ValueFormatter.formatVersion(value)
+            case "timestamp":
+                value = ValueFormatter.formatTimestamp(value)
+            case "stateId":
+                value = ValueFormatter.formatStateId(value)
         return value
 
 
@@ -151,11 +175,19 @@ class _WorkspaceNameGenerator:
 
     def diffCalInput(self):
         return NameBuilder(
-            self._diffCalInputTemplate, self._diffCalInputTemplateKeys, self._delimiter, unit=self.Units.TOF
+            self._diffCalInputTemplate,
+            self._diffCalInputTemplateKeys,
+            self._delimiter,
+            unit=self.Units.TOF,
         )
 
     def diffCalTable(self):
-        return NameBuilder(self._diffCalTableTemplate, self._diffCalTableTemplateKeys, self._delimiter, version="")
+        return NameBuilder(
+            self._diffCalTableTemplate,
+            self._diffCalTableTemplateKeys,
+            self._delimiter,
+            version="",
+        )
 
     def diffCalOutput(self):
         return NameBuilder(
@@ -168,13 +200,27 @@ class _WorkspaceNameGenerator:
         )
 
     def diffCalMask(self):
-        return NameBuilder(self._diffCalMaskTemplate, self._diffCalMaskTemplateKeys, self._delimiter, version="")
+        return NameBuilder(
+            self._diffCalMaskTemplate,
+            self._diffCalMaskTemplateKeys,
+            self._delimiter,
+            version="",
+        )
 
     def diffCalMetric(self):
-        return NameBuilder(self._diffCalMetricTemplate, self._diffCalMetricTemplateKeys, self._delimiter, version="")
+        return NameBuilder(
+            self._diffCalMetricTemplate,
+            self._diffCalMetricTemplateKeys,
+            self._delimiter,
+            version="",
+        )
 
     def diffCalTimedMetric(self):
-        return NameBuilder(self._diffCalTimedMetricTemplate, self._diffCalTimedMetricTemplateKeys, self._delimiter)
+        return NameBuilder(
+            self._diffCalTimedMetricTemplate,
+            self._diffCalTimedMetricTemplateKeys,
+            self._delimiter,
+        )
 
     def rawVanadium(self):
         return NameBuilder(
@@ -183,6 +229,7 @@ class _WorkspaceNameGenerator:
             self._delimiter,
             unit=self.Units.TOF,
             group=self.Groups.UNFOC,
+            version="",
         )
 
     def focusedRawVanadium(self):
@@ -191,6 +238,7 @@ class _WorkspaceNameGenerator:
             self._normCalFocusedRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
+            version="",
         )
 
     def smoothedFocusedRawVanadium(self):
@@ -199,6 +247,24 @@ class _WorkspaceNameGenerator:
             self._normCalSmoothedFocusedRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
+            version="",
+        )
+
+    def reductionOutput(self):
+        return NameBuilder(
+            self._reductionOutputTemplate,
+            self._reductionOutputTemplateKeys,
+            self._delimiter,
+            unit=self.Units.DSP,
+            version="",
+        )
+
+    def reductionOutputGroup(self):
+        return NameBuilder(
+            self._reductionOutputGroupTemplate,
+            self._reductionOutputGroupTemplateKeys,
+            self._delimiter,
+            version="",
         )
 
 

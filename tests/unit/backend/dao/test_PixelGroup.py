@@ -1,14 +1,8 @@
 # ruff: noqa: E722, PT011, PT012
 
 import unittest
-from unittest import mock
 
 import pytest
-from mantid.simpleapi import (
-    DeleteWorkspace,
-    LoadEmptyInstrument,
-)
-from pydantic.error_wrappers import ValidationError
 from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
@@ -23,7 +17,9 @@ class TestPixelGroup(unittest.TestCase):
         cls.nBinsAcrossPeakWidth = 7
         cls.groupIDs = [2, 3, 7, 11]
         cls.isMasked = [False, False, False, False]
+        cls.L2 = [10.0, 10.0, 10.0, 10.0]
         cls.twoTheta = [0.1, 0.2, 0.3, 0.4]
+        cls.azimuth = [0.0, 0.0, 0.0, 0.0]
         cls.dResolution = [
             Limit(minimum=1.0e-3, maximum=1.0),
             Limit(minimum=1.0e-3, maximum=2.0),
@@ -35,7 +31,9 @@ class TestPixelGroup(unittest.TestCase):
             PixelGroupingParameters(
                 groupID=cls.groupIDs[i],
                 isMasked=False,
+                L2=10.0,
                 twoTheta=cls.twoTheta[i],
+                azimuth=0.0,
                 dResolution=cls.dResolution[i],
                 dRelativeResolution=cls.dRelativeResolution[i],
             )
@@ -85,7 +83,9 @@ class TestPixelGroup(unittest.TestCase):
             pg = PixelGroup(
                 groupIDs=self.groupIDs,
                 isMasked=self.isMasked,
+                L2=self.L2,
                 twoTheta=self.twoTheta,
+                azimuth=self.azimuth,
                 dResolution=self.dResolution,
                 dRelativeResolution=self.dRelativeResolution,
                 nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,

@@ -1,12 +1,11 @@
 # ruff: noqa: E402, ARG002
-import os
 import tempfile
 import unittest
 import unittest.mock as mock
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List
-from unittest.mock import ANY, MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
@@ -20,7 +19,6 @@ from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRe
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.meta.Config import Config
-from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
@@ -38,15 +36,14 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from snapred.backend.dao import Limit
     from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
     from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
-    from snapred.backend.dao.request.DiffractionCalibrationRequest import DiffractionCalibrationRequest
     from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+    from snapred.backend.dao.request.HasStateRequest import HasStateRequest
     from snapred.backend.dao.state import PixelGroup
     from snapred.backend.dao.state.FocusGroup import FocusGroup
     from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe
@@ -70,7 +67,9 @@ with mock.patch.dict(
         calibrationService = CalibrationService()
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
-        calibrationService.saveCalibrationToIndex(CalibrationIndexEntry(runNumber="1", comments="", author=""))
+        calibrationService.saveCalibrationToIndex(
+            CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
+        )
         assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
         assert savedEntry.appliesTo == ">1"
@@ -98,7 +97,7 @@ with mock.patch.dict(
     def test_getCalibrationIndex():
         calibrationService = CalibrationService()
         calibrationService.dataFactoryService.getCalibrationIndex = mock.Mock(
-            return_value=CalibrationIndexEntry(runNumber="1", comments="", author="")
+            return_value=CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
         )
         calibrationService.getCalibrationIndex(MagicMock(run=MagicMock(runNumber="123")))
         assert calibrationService.dataFactoryService.getCalibrationIndex.called
@@ -256,6 +255,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="good/cif/path")
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
 
+        FarmFreshIngredients.return_value.get.return_value = True
+
         # Call the method to test
         request = CalibrationAssessmentRequest(
             workspaces={
@@ -272,6 +273,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             crystalDMax=10,
             peakIntensityThreshold=0,
             nBinsAcrossPeakWidth=0,
+            maxChiSq=100.0,
         )
         response = self.instance.assessQuality(request)
 
@@ -315,6 +317,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.instance.dataFactoryService.getCalibrationDataPath = MagicMock(return_value=tmpDir)
+            self.instance.groceryService.dataService.readCalibrationRecord = MagicMock()
+            self.instance.groceryService.fetchCalibrationWorkspaces = MagicMock()
+            self.instance.groceryService._createDiffcalTableWorkspaceName = MagicMock()
+            self.instance.groceryService.fetchGroceryDict = MagicMock()
             self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
@@ -327,7 +333,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             # Delete any existing _data_ workspaces:
             for wss in calibRecord.workspaces.values():
                 for ws in wss:
-                    DeleteWorkspace(Workspace=ws)
+                    if mtd.doesExist(ws):
+                        DeleteWorkspace(Workspace=ws)
 
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=True)
             with pytest.raises(RuntimeError) as excinfo:  # noqa: PT011
@@ -345,6 +352,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+            self.instance.groceryService.dataService.readCalibrationRecord = MagicMock(return_value=calibRecord)
             self.instance.groceryService._getCalibrationDataPath = MagicMock(return_value=tmpDir)
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
 
@@ -372,7 +380,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.create_fake_diffcal_files(Path(tmpDir), calibRecord.workspaces, calibRecord.version)
 
             # Call the method to test. Use a mocked run and a mocked version
-            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+            mockRequest = MagicMock(
+                runId=calibRecord.runNumber, useLiteMode=True, version=calibRecord.version, checkExistent=False
+            )
+            self.instance.groceryService.dataService.readCalibrationRecord = MagicMock(return_value=calibRecord)
             self.instance.groceryService._getCalibrationDataPath = MagicMock(return_value=tmpDir)
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
             self.instance.loadQualityAssessment(mockRequest)
@@ -596,9 +607,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         request = InitializeStateRequest(
             runId=testCalibration.seedRun,
             humanReadableName="friendly name",
+            useLiteMode=True,
         )
         self.instance.initializeState(request)
-        mockInitializeState.assert_called_once_with(request.runId, request.humanReadableName)
+        mockInitializeState.assert_called_once_with(request.runId, request.useLiteMode, request.humanReadableName)
 
     def test_getState(self):
         testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
@@ -618,20 +630,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_hasState(self):
         mockCheckCalibrationStateExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.checkCalibrationStateExists = mockCheckCalibrationStateExists
-        self.instance.hasState(self.runNumber)
+        request = HasStateRequest(
+            runId=self.runNumber,
+            useLiteMode=True,
+        )
+        self.instance.hasState(request)
         mockCheckCalibrationStateExists.assert_called_once_with(self.runNumber)
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

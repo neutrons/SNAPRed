@@ -1,6 +1,5 @@
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
 from snapred.ui.presenter.WorkflowPresenter import WorkflowPresenter
-from snapred.ui.view.WorkflowView import WorkflowView
 
 
 class Workflow:

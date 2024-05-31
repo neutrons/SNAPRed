@@ -1,5 +1,4 @@
 import pathlib
-from datetime import datetime
 from typing import Dict
 
 from mantid.api import (
@@ -17,7 +16,6 @@ from mantid.kernel import Direction
 
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.meta.Config import Config
 
 logger = snapredLogger.getLogger(__name__)
 

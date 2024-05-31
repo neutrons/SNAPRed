@@ -1,5 +1,3 @@
-import json
-from ast import In
 from typing import Dict
 
 from mantid.api import (
@@ -38,6 +36,11 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             validator=StringMandatoryValidator(),
             direction=Direction.Input,
         )
+        self.declareProperty(
+            "RebinOutput",
+            defaultValue=True,
+            direction=Direction.Input,
+        )
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -51,6 +54,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         self.inputWSName = self.getPropertyValue("InputWorkspace")
         self.groupingWSName = self.getPropertyValue("GroupingWorkspace")
         self.outputWSName = self.getPropertyValue("OutputWorkspace")
+        self.rebinOutput = self.getProperty("RebinOutput").value
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
@@ -96,15 +100,17 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             OutputWorkspace=self.outputWSName,
             PreserveEvents=True,
         )
-        self.mantidSnapper.RebinRagged(
-            "Rebinning ragged bins...",
-            InputWorkspace=self.outputWSName,
-            XMin=self.dMin,
-            XMax=self.dMax,
-            Delta=self.dBin,
-            OutputWorkspace=self.outputWSName,
-            PreserveEvents=False,
-        )
+        # TODO: Compress events here if preserving events
+        if self.rebinOutput is True:
+            self.mantidSnapper.RebinRagged(
+                "Rebinning ragged bins...",
+                InputWorkspace=self.outputWSName,
+                XMin=self.dMin,
+                XMax=self.dMax,
+                Delta=self.dBin,
+                OutputWorkspace=self.outputWSName,
+                PreserveEvents=False,
+            )
 
         self.mantidSnapper.executeQueue()
         self.setPropertyValue("OutputWorkspace", self.outputWSName)

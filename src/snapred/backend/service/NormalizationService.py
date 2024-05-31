@@ -1,21 +1,18 @@
-import re
 import time
-from typing import Any, Dict
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
 from snapred.backend.dao.normalization import (
-    Normalization,
     NormalizationIndexEntry,
     NormalizationRecord,
 )
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
     FocusSpectraRequest,
-    NormalizationCalibrationRequest,
     NormalizationExportRequest,
+    NormalizationRequest,
     SmoothDataExcludingPeaksRequest,
     VanadiumCorrectionRequest,
 )
@@ -68,7 +65,7 @@ class NormalizationService(Service):
         return "normalization"
 
     @FromString
-    def normalization(self, request: NormalizationCalibrationRequest):
+    def normalization(self, request: NormalizationRequest):
         if not self._sameStates(request.runNumber, request.backgroundRunNumber):
             raise ValueError("Run number and background run number must be of the same Instrument State.")
 
@@ -154,7 +151,7 @@ class NormalizationService(Service):
         return stateId1 == stateId2
 
     @FromString
-    def normalizationAssessment(self, request: NormalizationCalibrationRequest):
+    def normalizationAssessment(self, request: NormalizationRequest):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             focusGroup=request.focusGroup,
@@ -165,7 +162,7 @@ class NormalizationService(Service):
         calibration = self.sousChef.prepCalibration(farmFresh)
         record = NormalizationRecord(
             runNumber=request.runNumber,
-            isLite=request.useLiteMode,
+            useLiteMode=request.useLiteMode,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             calibration=calibration,
@@ -178,7 +175,8 @@ class NormalizationService(Service):
         entry = request.normalizationIndexEntry
         version = entry.version
         normalizationRecord = request.normalizationRecord
-        normalizationRecord.version = version
+        if version is not None:
+            normalizationRecord.version = version
         normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
         normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
         entry.version = normalizationRecord.version

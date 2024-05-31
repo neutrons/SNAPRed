@@ -22,7 +22,9 @@
       "delTOverT": 0.002,
       "delLOverL": 6.452e-05,
       "delThNoGuide": 0.0006667,
-      "delThWithGuide": 0.0032
+      "delThWithGuide": 0.0032,
+      "width": 1600.0,
+      "frequency": 60.4
       },
     "detectorState": {
       "arc": [-65.3, 104.95],
@@ -41,6 +43,7 @@
     "peakTailCoefficient" : 2.0
   },
   "seedRun": 57514,
+  "useLiteMode": true,
   "creationDate": "2023-06-05T15:49:59.583421",
   "name": "test"
 }

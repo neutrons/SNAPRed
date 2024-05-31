@@ -25,3 +25,5 @@ class InstrumentConfig(BaseModel):
     delLOverL: float
     delThNoGuide: float
     delThWithGuide: float
+    width: float
+    frequency: float

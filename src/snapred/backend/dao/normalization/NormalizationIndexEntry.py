@@ -2,6 +2,8 @@ from typing import Optional
 
 from pydantic import BaseModel, validator
 
+from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
+
 
 class NormalizationIndexEntry(BaseModel):
     """
@@ -15,8 +17,9 @@ class NormalizationIndexEntry(BaseModel):
     """
 
     runNumber: str
+    useLiteMode: bool
     backgroundRunNumber: str
-    version: Optional[str]
+    version: Optional[int]
     appliesTo: Optional[str]
     comments: Optional[str]
     author: Optional[str]
@@ -30,13 +33,4 @@ class NormalizationIndexEntry(BaseModel):
         integrity of data referencing.
 
         """
-        testValue = v
-        if testValue is not None:
-            if testValue.startswith(">") or testValue.startswith("<"):
-                testValue = testValue[1:]
-                try:
-                    int(testValue)
-                except ValueError:
-                    raise ValueError("appliesTo must be in the format of 'runNumber', '>runNumber', or '<runNumber'.")
-
-        return v
+        return CalibrationIndexEntry.appliesToFormatChecker(v)

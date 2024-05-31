@@ -1,19 +1,10 @@
 import unittest
 from collections.abc import Sequence
-from typing import Any, Dict, List, Tuple
-from unittest import mock
 
-import pytest
-from mantid.api import ITableWorkspace, MatrixWorkspace
-from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
-from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
+from mantid.api import MatrixWorkspace
+from mantid.dataobjects import GroupingWorkspace
 
 # needed to make mocked ingredients
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.FocusGroup import FocusGroup
-from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
 
@@ -21,7 +12,6 @@ from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiff
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import (
     GroupDiffractionCalibration as ThisAlgo,  # noqa: E402
 )
-from snapred.meta.Config import Resource
 from util.diffraction_calibration_synthetic_data import SyntheticData
 from util.helpers import deleteWorkspaceNoThrow, maskGroups, mutableWorkspaceClones, setGroupSpectraToZero
 
@@ -294,18 +284,3 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
                 assert maskWS.isMasked(int(det))
         deleteWorkspaceNoThrow(inputWSName)
         deleteWorkspaceNoThrow(maskWSName)
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

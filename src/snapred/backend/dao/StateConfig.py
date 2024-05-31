@@ -1,19 +1,14 @@
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, root_validator, validate_model, validator
 
 from snapred.backend.dao.calibration import Calibration
 from snapred.backend.dao.ObjectSHA import ObjectSHA
-from snapred.backend.dao.state.DiffractionCalibrant import DiffractionCalibrant
-from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.GroupingMap import GroupingMap
-from snapred.backend.dao.state.NormalizationCalibrant import NormalizationCalibrant
 
 
 class StateConfig(BaseModel):
     calibration: Calibration
-    diffractionCalibrant: Optional[DiffractionCalibrant]
-    normalizationCalibrant: Optional[NormalizationCalibrant]
     vanadiumFilePath: str = ""  # Needs to be removed when Normalization changes go in
 
     # 'groupingMap' (not really Optional), has its own separate JSON file:

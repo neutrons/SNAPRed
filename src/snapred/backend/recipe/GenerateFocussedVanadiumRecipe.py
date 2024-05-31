@@ -1,16 +1,19 @@
-import json
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
 from snapred.backend.dao.ingredients import GenerateFocussedVanadiumIngredients as Ingredients
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
+from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
 
 
+Pallet = Tuple[Ingredients, Dict[str, str]]
+
+
 @Singleton
-class GenerateFocussedVanadiumRecipe:
+class GenerateFocussedVanadiumRecipe(Recipe[Ingredients]):
     """
 
     The purpose of this recipe is to generate a focussed vandium. This recipe will take a
@@ -20,36 +23,45 @@ class GenerateFocussedVanadiumRecipe:
 
     """
 
-    def __init__(self):
-        pass
-
     def chopIngredients(self, ingredients: Ingredients):
         self.smoothingParameter = ingredients.smoothingParameter
-        self.detectorPeaks = ingredients.detectorPeaks
+        self.detectorPeaks = list_to_raw(ingredients.detectorPeaks)
+        self.dMin = ingredients.pixelGroup.dMin()
+        self.dMax = ingredients.pixelGroup.dMax()
+        self.dBin = ingredients.pixelGroup.dBin()
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
-        self.rawInput = groceries["inputWorkspace"]
-        self.outputWS = groceries["outputWorkspace"]
+        self.inputWS = groceries["inputWorkspace"]
+        self.outputWS = groceries.get("outputWorkspace", groceries["inputWorkspace"])
 
-    def executeRecipe(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
-        self.chopIngredients(ingredients)
-        self.unbagGroceries(groceries)
-        data: Dict[str, Any] = {"result": False}
+    def queueAlgos(self):
+        """
+        Queues up the procesing algorithms for the recipe.
+        Requires: unbagged groceries.
+        """
+        self.mantidSnapper.SmoothDataExcludingPeaksAlgo(
+            "Smoothing Data Excluding Peaks...",
+            InputWorkspace=self.outputWS,
+            OutputWorkspace=self.outputWS,
+            DetectorPeaks=self.detectorPeaks,
+            SmoothingParameter=self.smoothingParameter,
+        )
 
-        if self.rawInput is not None:
-            logger.info("Generating focussed vanadium...")
-            smoothAlgo = SmoothDataExcludingPeaksAlgo()
-            smoothAlgo.initialize()
-            smoothAlgo.setProperty("InputWorkspace", self.rawInput)
-            smoothAlgo.setProperty("OutputWorkspace", self.outputWS)
-            smoothAlgo.setProperty("DetectorPeaks", ingredients.detectorPeaks)
-            smoothAlgo.setProperty("SmoothingParameter", ingredients.smoothingParameter)
-
-            smoothAlgo.execute()
-            data["outputWorkspace"] = smoothAlgo.getPropertyValue("OutputWorkspace")
+    def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
+        self.prep(ingredients, groceries)
+        output = None
+        if self.inputWS is not None:
+            self.execute()
+            output = self.outputWS
         else:
             raise NotImplementedError("Fake Vanadium not implemented yet.")
 
-        logger.info(f"Finished generating focussed vanadium for {self.rawInput}...")
-        data["result"] = True
-        return data
+        logger.info(f"Finished generating focussed vanadium for {self.inputWS}...")
+        return output
+
+    def cater(self, shipment: List[Pallet]):
+        outputs = []
+        for ingredients, groceries in shipment:
+            outputs.append(self.cook(ingredients, groceries))
+
+        return outputs

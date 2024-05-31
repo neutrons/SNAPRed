@@ -1,6 +1,5 @@
 from typing import Optional
 
-from matplotlib import use
 from pydantic import BaseModel
 
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -8,7 +7,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 
 class FocusSpectraRequest(BaseModel):
     runNumber: str
-    useLiteMode: bool = True
+    useLiteMode: bool
     focusGroup: FocusGroup
 
     inputWorkspace: str

@@ -1,9 +1,4 @@
-from typing import Optional
-
 from pydantic import BaseModel
-
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.meta.Config import Config
 
 
 class CalibrationLoadAssessmentRequest(BaseModel):
@@ -19,4 +14,5 @@ class CalibrationLoadAssessmentRequest(BaseModel):
 
     runId: str
     version: str
+    useLiteMode: bool
     checkExistent: bool  # if true, do not generate assessment if it already exists

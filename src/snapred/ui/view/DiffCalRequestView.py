@@ -64,3 +64,6 @@ class DiffCalRequestView(BackendRequestView):
 
     def getRunNumber(self):
         return self.runNumberField.text()
+
+    def getLiteMode(self):
+        return self.litemodeToggle.field.getState()

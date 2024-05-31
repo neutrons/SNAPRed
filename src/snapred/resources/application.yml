@@ -1,14 +1,18 @@
 # environment: dev
 
+IPTS:
+  default: /SNS
+  root: /SNS
+
 orchestration:
   path:
     delimiter: /
 
 instrument:
   name: SNAP
-  home: /SNS/SNAP/
+  home: ${IPTS.root}/SNAP
   calibration:
-    home: ${instrument.home}shared/Calibration
+    home: ${instrument.home}/shared/Calibration
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
       extensions:
@@ -21,11 +25,15 @@ instrument:
           - hdf
           - xml
           - nxs
+  reduction:
+    # Here "{IPTS}" will be substituted with the IPTS-directory name for a specified <runNumber>
+    home: ${instrument.home}/{IPTS}/shared/SNAPRed
+
   config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
     pixelResolution: 1179648
     definition:
-      file: ${instrument.home}shared/Malcolm/dataFiles/SNAP_Definition.xml
+      file: ${instrument.home}/shared/Malcolm/dataFiles/SNAP_Definition.xml
   lite:
     pixelResolution: 18432
     definition:
@@ -33,6 +41,7 @@ instrument:
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
+  startingVersionNumber: 0
 
 nexus:
   lite:
@@ -54,10 +63,6 @@ calibration:
   file:
     extension: .json
     prefix: SNAPcalibLog
-  reduction:
-    output:
-      extension: .nxs
-      format: "{}_calibration_reduction_result"
   diffraction:
     output:
       extension: .tar
@@ -98,9 +103,12 @@ mantid:
           metric: "calib_metrics,{metricName},{runNumber},{version}"
           timedMetric: "calib_metrics,{metricName},{runNumber},{timestamp}"
         normCal:
-          rawVanadium: "{unit},{group},{runNumber},raw_van_corr"
-          focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr"
-          smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_cor"
+          rawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
+          focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
+          smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_cor,{version}"
+        reduction:
+          output: "reduced,{unit},{group},{runNumber},{version}"
+          output_group: "reduced,{stateId},{version}"
       units:
         dSpacing: DSP
         timeOfFlight: TOF
@@ -121,7 +129,7 @@ logging:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
 
 samples:
-  home: ${instrument.calibration.home}/CalibrantSamples
+  home: ${instrument.calibration.sample.home}
 
 cis_mode: false
 

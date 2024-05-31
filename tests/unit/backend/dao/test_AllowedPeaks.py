@@ -38,6 +38,7 @@ def test_literal_good():
                 crystalDMax=10.0,
                 peakIntensityThreshold=1.0,
                 nBinsAcrossPeakWidth=10,
+                maxChiSq=100.0,
             )
         except ValidationError:
             pytest.fail("unexpected `ValidationError` during test")

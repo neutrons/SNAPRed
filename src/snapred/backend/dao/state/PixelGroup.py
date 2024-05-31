@@ -1,8 +1,7 @@
 from enum import IntEnum
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
-import numpy as np
-from pydantic import BaseModel, parse_obj_as
+from pydantic import BaseModel
 
 from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -32,8 +31,16 @@ class PixelGroup(BaseModel):
         return [self.pixelGroupingParameters[gid].isMasked for gid in self.groupIDs]
 
     @property
+    def L2(self) -> List[float]:
+        return [self.pixelGroupingParameters[gid].L2 for gid in self.groupIDs]
+
+    @property
     def twoTheta(self) -> List[float]:
         return [self.pixelGroupingParameters[gid].twoTheta for gid in self.groupIDs]
+
+    @property
+    def azimuth(self) -> List[float]:
+        return [self.pixelGroupingParameters[gid].azimuth for gid in self.groupIDs]
 
     @property
     def dResolution(self) -> List[Limit[float]]:
@@ -53,7 +60,9 @@ class PixelGroup(BaseModel):
                 groupIDs[i]: PixelGroupingParameters(
                     groupID=groupIDs[i],
                     isMasked=kwargs["isMasked"][i],
+                    L2=kwargs["L2"][i],
                     twoTheta=kwargs["twoTheta"][i],
+                    azimuth=kwargs["azimuth"][i],
                     dResolution=kwargs["dResolution"][i],
                     dRelativeResolution=kwargs["dRelativeResolution"][i],
                 )

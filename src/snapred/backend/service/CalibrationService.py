@@ -1,8 +1,7 @@
-import json
 import time
 from typing import Dict, List
 
-from pydantic import parse_file_as, parse_raw_as
+from pydantic import parse_raw_as
 
 from snapred.backend.dao import Limit, RunConfig
 from snapred.backend.dao.calibration import (
@@ -25,6 +24,7 @@ from snapred.backend.dao.request import (
     FarmFreshIngredients,
     FitMultiplePeaksRequest,
     FocusSpectraRequest,
+    HasStateRequest,
     InitializeStateRequest,
 )
 from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
@@ -38,18 +38,14 @@ from snapred.backend.recipe.GenericRecipe import (
     CalibrationMetricExtractionRecipe,
     FitMultiplePeaksRecipe,
     FocusSpectraRecipe,
-    GenerateTableWorkspaceFromListOfDictRecipe,
 )
-from snapred.backend.recipe.GroupWorkspaceIterator import GroupWorkspaceIterator
 from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
-from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -131,6 +127,7 @@ class CalibrationService(Service):
             convergenceThreshold=request.convergenceThreshold,
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
+            maxChiSq=request.maxChiSq,
         )
         return self.sousChef.prepDiffractionCalibrationIngredients(farmFresh)
 
@@ -210,7 +207,8 @@ class CalibrationService(Service):
         entry = request.calibrationIndexEntry
         version = entry.version
         calibrationRecord = request.calibrationRecord
-        calibrationRecord.version = version
+        if version is not None:
+            calibrationRecord.version = version
         calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
         calibrationRecord = self.dataExportService.exportCalibrationWorkspaces(calibrationRecord)
         entry.version = calibrationRecord.version
@@ -219,7 +217,7 @@ class CalibrationService(Service):
     @FromString
     def load(self, run: RunConfig):
         runId = run.runNumber
-        return self.dataFactoryService.getCalibrationRecord(runId)
+        return self.dataFactoryService.getCalibrationRecord(runId, run.useLiteMode)
 
     @FromString
     def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
@@ -232,17 +230,19 @@ class CalibrationService(Service):
 
     @FromString
     def initializeState(self, request: InitializeStateRequest):
-        return self.dataExportService.initializeState(request.runId, request.humanReadableName)
+        return self.dataExportService.initializeState(request.runId, request.useLiteMode, request.humanReadableName)
 
     @FromString
     def getState(self, runs: List[RunConfig]):
         states = []
         for run in runs:
-            state = self.dataFactoryService.getStateConfig(run.runNumber)
+            state = self.dataFactoryService.getStateConfig(run.runNumber, run.useLiteMode)
             states.append(state)
         return states
 
-    def hasState(self, runId: str):
+    @FromString
+    def hasState(self, request: HasStateRequest):
+        runId = request.runId
         return self.dataFactoryService.checkCalibrationStateExists(runId)
 
     # TODO make the inputs here actually work
@@ -259,15 +259,17 @@ class CalibrationService(Service):
     @FromString
     def getCalibrationIndex(self, request: CalibrationIndexRequest):
         run = request.run
-        calibrationIndex = self.dataFactoryService.getCalibrationIndex(run.runNumber)
+        calibrationIndex = self.dataFactoryService.getCalibrationIndex(run.runNumber, run.useLiteMode)
         return calibrationIndex
 
     @FromString
     def loadQualityAssessment(self, request: CalibrationLoadAssessmentRequest):
         runId = request.runId
+        useLiteMode = request.useLiteMode
         version = request.version
+        useLiteMode = request.useLiteMode
 
-        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, version)
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, version)
         if calibrationRecord is None:
             errorTxt = f"No calibration record found for run {runId}, version {version}."
             logger.error(errorTxt)
@@ -347,11 +349,12 @@ class CalibrationService(Service):
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             # fiddly bits
-            peakFucntion=request.peakFunction,
+            peakFunction=request.peakFunction,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
             peakIntensityThreshold=request.peakIntensityThreshold,
             nBinsAcrossPeakWidth=request.nBinsAcrossPeakWidth,
             fwhmMultipliers=request.fwhmMultipliers,
+            maxChiSq=request.maxChiSq,
         )
         pixelGroup = self.sousChef.prepPixelGroup(farmFresh)
         detectorPeaks = self.sousChef.prepDetectorPeaks(farmFresh)
@@ -365,7 +368,7 @@ class CalibrationService(Service):
 
         record = CalibrationRecord(
             runNumber=request.run.runNumber,
-            isLite=request.useLiteMode,
+            useLiteMode=request.useLiteMode,
             crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
             calibrationFittingIngredients=self.sousChef.prepCalibration(farmFresh),
             pixelGroups=[pixelGroup],

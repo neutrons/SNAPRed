@@ -1,19 +1,10 @@
-import json
 import unittest
-from typing import List
 from unittest import mock
 
 import pytest
-from mantid.api import PythonAlgorithm
-from mantid.kernel import Direction
 from mantid.simpleapi import mtd
-from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as TheseIngredients
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
-from snapred.meta.Config import Config, Resource
+from snapred.meta.Config import Config
 from util.diffraction_calibration_synthetic_data import SyntheticData
 from util.helpers import deleteWorkspaceNoThrow
 
@@ -122,7 +113,6 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
 
     def test_execute_with_algos(self):
         # create sample data
-        from datetime import date
 
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"
@@ -181,18 +171,3 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         assert result["calibrationTable"] == "fake"
         assert result["outputWorkspace"] == "fake"
         assert result["maskWorkspace"] == "fake"
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

@@ -3,11 +3,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
 
@@ -23,6 +20,7 @@ class TestSousChef(unittest.TestCase):
             focusGroup={"name": "apple", "definition": "banana/coconut"},
             calibrantSamplePath="path/to/sample",
             cifPath="path/to/cif",
+            maxChiSq=100.0,
         )
 
     def tearDown(self):
@@ -33,6 +31,20 @@ class TestSousChef(unittest.TestCase):
     def tearDownClass(cls):
         for ws in mtd.getObjectNames():
             DeleteWorkspace(ws)
+
+    def test_prepManyDetectorPeaks(self):
+        self.instance.prepDetectorPeaks = mock.Mock()
+        self.ingredients.focusGroup = [self.ingredients.focusGroup]
+        res = self.instance.prepManyDetectorPeaks(self.ingredients)
+        assert res[0] == self.instance.prepDetectorPeaks.return_value
+        assert self.instance.prepDetectorPeaks.called_once_with(self.ingredients, purgePeaks=False)
+
+    def test_prepManyPixelGroups(self):
+        self.instance.prepPixelGroup = mock.Mock()
+        self.ingredients.focusGroup = [self.ingredients.focusGroup]
+        res = self.instance.prepManyPixelGroups(self.ingredients)
+        assert res[0] == self.instance.prepPixelGroup.return_value
+        assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
 
     def test_prepFocusGroup_exists(self):
         # create a temp file to be used a the path for the focus group
@@ -102,7 +114,6 @@ class TestSousChef(unittest.TestCase):
         res = self.instance.prepCalibrantSample(self.ingredients)
         assert res == self.instance.dataFactoryService.lookupService.readCalibrantSample.return_value
 
-    @mock.patch(thisService + "os.path.isfile", mock.Mock(return_value=True))
     @mock.patch(thisService + "PixelGroup")
     @mock.patch(thisService + "PixelGroupingParametersCalculationRecipe")
     @mock.patch(thisService + "PixelGroupingIngredients")
@@ -315,18 +326,18 @@ class TestSousChef(unittest.TestCase):
     @mock.patch(thisService + "ReductionIngredients")
     def test_prepReductionIngredients(self, ReductionIngredients):
         self.instance.prepRunConfig = mock.Mock()
-        self.instance.prepPixelGroup = mock.Mock()
+        self.instance.prepManyPixelGroups = mock.Mock()
+        self.instance.prepManyDetectorPeaks = mock.Mock()
         self.instance.dataFactoryService.getReductionState = mock.Mock()
 
         res = self.instance.prepReductionIngredients(self.ingredients)
 
-        assert self.instance.prepRunConfig.called_once_with(self.ingredients.runNumber)
-        assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
-        assert self.instance.dataFactoryService.getReductionState.called_once_with(self.ingredients.runNumber)
+        assert self.instance.prepManyPixelGroups.called_once_with(self.ingredients)
         assert ReductionIngredients.called_once_with(
-            reductionState=self.instance.dataFactoryService.getReductionState.return_value,
-            runConfig=self.instance.prepRunConfig.return_value,
-            pixelGroup=self.instance.prepPixelGroup.return_value,
+            maskList=[],
+            pixelGroups=self.instance.prepManyPixelGroups.return_value,
+            smoothingParameter=self.ingredients.smoothingParameter,
+            detectorPeaksMany=self.instance.prepManyDetectorPeaks.return_value,
         )
         assert res == ReductionIngredients.return_value
 

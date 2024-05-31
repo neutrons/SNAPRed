@@ -1,8 +1,9 @@
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel
 
 from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.meta.Config import Config
 
 
 class NormalizationRecord(BaseModel):
@@ -16,10 +17,11 @@ class NormalizationRecord(BaseModel):
     """
 
     runNumber: str
-    isLite: bool
+    useLiteMode: bool
     backgroundRunNumber: str
     smoothingParameter: float
+    # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     calibration: Calibration
     workspaceNames: List[str] = []
-    version: Optional[int]
+    version: int = Config["instrument.startingVersionNumber"]
     dMin: float

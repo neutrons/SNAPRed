@@ -1,5 +1,4 @@
 import json
-from sys import version
 
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.calibration import CalibrationIndexEntry
@@ -9,8 +8,8 @@ from snapred.backend.dao.request import (
     DiffractionCalibrationRequest,
     FitMultiplePeaksRequest,
     FocusSpectraRequest,
+    HasStateRequest,
 )
-from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
@@ -37,10 +36,11 @@ class DiffCalWorkflow(WorkflowImplementer):
     """
 
     DEFAULT_DMIN = Config["constants.CrystallographicInfo.dMin"]
-    DEFAULT_DMAX = Config["constants.CrystallographicInfo.dMin"]
+    DEFAULT_DMAX = Config["constants.CrystallographicInfo.dMax"]
     DEFAULT_NBINS = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     DEFAULT_CONV = Config["calibration.diffraction.convergenceThreshold"]
     DEFAULT_PEAK_THRESHOLD = Config["calibration.diffraction.peakIntensityThreshold"]
+    DEFAULT_MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
     def __init__(self, jsonForm, parent=None):
         super().__init__(parent)
@@ -115,7 +115,11 @@ class DiffCalWorkflow(WorkflowImplementer):
         # TODO: Use threads, account for fail cases
         try:
             # check if the state exists -- if so load its grouping map
-            hasState = self.request(path="calibration/hasState", payload=runNumber).data
+            payload = HasStateRequest(
+                runId=runNumber,
+                useLiteMode=useLiteMode,
+            )
+            hasState = self.request(path="calibration/hasState", payload=payload.json()).data
             if hasState:
                 self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
             else:
@@ -154,6 +158,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
         self.peakFunction = view.peakFunctionDropdown.currentText()
+        self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
         self._tweakPeakView.updateRunNumber(self.runNumber)
         self._saveView.updateRunNumber(self.runNumber)
@@ -170,6 +175,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             view.peakFunctionDropdown.currentIndex(),
         )
         self._tweakPeakView.updatePeakThreshold(self.peakThreshold)
+        self._tweakPeakView.updateMaxChiSq(self.maxChiSq)
 
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
@@ -182,6 +188,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             convergenceThreshold=self.convergenceThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
+            maxChiSq=self.maxChiSq,
         )
 
         self.ingredients = self.request(path="calibration/ingredients", payload=payload.json()).data
@@ -208,7 +215,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         return response
 
     @ExceptionToErrLog
-    def onValueChange(self, groupingIndex, dMin, dMax, peakThreshold, peakFunction, fwhm):
+    def onValueChange(self, groupingIndex, dMin, dMax, peakThreshold, peakFunction, fwhm, maxChiSq):
         self._tweakPeakView.disableRecalculateButton()
         # TODO: This is a temporary solution,
         # this should have never been setup to all run on the same thread.
@@ -223,13 +230,21 @@ class DiffCalWorkflow(WorkflowImplementer):
             thresholdChanged = peakThreshold != self.prevThreshold
             peakFunctionChanged = peakFunction != self.peakFunction
             fwhmChanged = fwhm != self.prevFWHM
-            if dMinValueChanged or dMaxValueChanged or thresholdChanged or peakFunctionChanged or fwhmChanged:
-                self._renewIngredients(dMin, dMax, peakThreshold, peakFunction, fwhm)
+            maxChiSqChanged = maxChiSq != self.maxChiSq
+            if (
+                dMinValueChanged
+                or dMaxValueChanged
+                or thresholdChanged
+                or peakFunctionChanged
+                or fwhmChanged
+                or maxChiSqChanged
+            ):
+                self._renewIngredients(dMin, dMax, peakThreshold, peakFunction, fwhm, maxChiSq)
                 self._renewFitPeaks(peakFunction)
 
             # if the grouping file changes, load new grouping and refocus
             if groupingIndex != self.prevGroupingIndex:
-                self._renewIngredients(dMin, dMax, peakThreshold, peakFunction, fwhm)
+                self._renewIngredients(dMin, dMax, peakThreshold, peakFunction, fwhm, maxChiSq)
                 self._renewFocus(groupingIndex)
                 self._renewFitPeaks(peakFunction)
 
@@ -246,13 +261,14 @@ class DiffCalWorkflow(WorkflowImplementer):
             self.prevThreshold = peakThreshold
             self.peakFunction = peakFunction
             self.prevGroupingIndex = groupingIndex
+            self.maxChiSq = maxChiSq
         except Exception as e:  # noqa BLE001
             print(e)
 
         # renable button when graph is updated
         self._tweakPeakView.enableRecalculateButton()
 
-    def _renewIngredients(self, dMin, dMax, peakThreshold, peakFunction, fwhm):
+    def _renewIngredients(self, dMin, dMax, peakThreshold, peakFunction, fwhm, maxChiSq):
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
@@ -264,6 +280,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             crystalDMax=dMax,
             peakIntensityThreshold=peakThreshold,
             fwhmMultipliers=fwhm,
+            maxChiSq=maxChiSq,
         )
         response = self.request(path="calibration/ingredients", payload=payload.json())
         self.ingredients = response.data
@@ -313,6 +330,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             convergenceThreshold=self.convergenceThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
+            maxChiSq=self.maxChiSq,
         )
 
         response = self.request(path="calibration/diffraction", payload=payload.json())
@@ -335,6 +353,7 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakIntensityThreshold=self.prevThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
             fwhmMultipliers=self.prevFWHM,
+            maxChiSq=self.maxChiSq,
         )
 
         response = self.request(path="calibration/assessment", payload=payload.json())
@@ -344,7 +363,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.outputs.extend(assessmentResponse.metricWorkspaces)
         for calibrationWorkspaces in self.calibrationRecord.workspaces.values():
             self.outputs.extend(calibrationWorkspaces)
-        self._assessmentView.updateRunNumber(self.runNumber)
+        self._assessmentView.updateRunNumber(self.runNumber, self.useLiteMode)
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
@@ -367,13 +386,22 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
+        # validate the version number
+        version = view.fieldVersion.get(None)
+        if version is not None:
+            try:
+                version = int(version)
+                assert version >= 0
+            except (AssertionError, ValueError, TypeError):
+                raise TypeError("Version must be a nonnegative integer")
         # pull fields from view for calibration save
         calibrationIndexEntry = CalibrationIndexEntry(
             runNumber=view.fieldRunNumber.get(),
+            useLiteMode=self.useLiteMode,
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
             appliesTo=view.fieldAppliesTo.get(),
-            version=view.fieldVersion.get(None),
+            version=version,
         )
 
         # if this is not the first iteration, account for choice.

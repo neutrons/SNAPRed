@@ -1,19 +1,22 @@
+# ruff: noqa: F811
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from mantid.api import AlgorithmManager, mtd
+from mantid.simpleapi import mtd
+from pydantic import validate_arguments
 
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.dao.state import DetectorState, GroupingMap
+from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
+from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from snapred.meta.redantic import list_to_raw_pretty
 
 
 @Singleton
@@ -30,6 +33,7 @@ class GroceryService:
 
     def __init__(self, dataService: LocalDataService = None):
         self.dataService = self._defaultClass(dataService, LocalDataService)
+        self.workspaceMetadataService = WorkspaceMetadataService()
 
         # _loadedRuns caches a count of the number of copies made from the neutron-data workspace
         #   corresponding to a given (runNumber, isLiteMode) key:
@@ -44,6 +48,7 @@ class GroceryService:
         self._loadedInstruments: Dict[Tuple[str, bool], str] = {}
 
         self.grocer = FetchGroceriesRecipe()
+        self.mantidSnapper = MantidSnapper(None, "Utensils")
 
     def _defaultClass(self, val, clazz):
         if val is None:
@@ -177,6 +182,7 @@ class GroceryService:
         ext = instr + ".extension"
         return self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext]
 
+    @validate_arguments
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
         if groupingScheme == "Lite":
             path = str(Config["instrument.lite.map.file"])
@@ -185,17 +191,28 @@ class GroceryService:
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
-    def _createDiffcalOutputWorkspaceFilename(self, runNumber: str, version: str, unit: str, group: str) -> str:
+    @validate_arguments
+    def _createDiffcalOutputWorkspaceFilename(
+        self, runNumber: str, useLiteMode: bool, version: Optional[int], unit: str, group: str
+    ) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
-            Path(self._getCalibrationDataPath(runNumber, version))
-            / (self._createDiffcalOutputWorkspaceName(runNumber, version, unit, group) + ext)
+            Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
+            / (self._createDiffcalOutputWorkspaceName(runNumber, useLiteMode, version, unit, group) + ext)
         )
 
-    def _createDiffcalTableFilename(self, runNumber: str, version: str) -> str:
+    @validate_arguments
+    def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
-            Path(self._getCalibrationDataPath(runNumber, version))
-            / (self._createDiffcalTableWorkspaceName(runNumber, version) + ".h5")
+            Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
+            / (self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version) + ".h5")
+        )
+
+    @validate_arguments
+    def _createNormalizationWorkspaceFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
+        return str(
+            Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
+            / (self._createNormalizationWorkspaceName(runNumber, useLiteMode, version) + ".nxs")
         )
 
     ## WORKSPACE NAME METHODS
@@ -225,14 +242,41 @@ class GroceryService:
     def _createDiffcalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runNumber).build()
 
-    def _createDiffcalOutputWorkspaceName(self, runNumber: str, version: str, unit: str, group: str) -> WorkspaceName:
+    def _createDiffcalOutputWorkspaceName(
+        self,
+        runNumber: str,
+        useLiteMode: bool,  # noqa ARG002
+        version: str,
+        unit: str,
+        group: str,
+    ) -> WorkspaceName:
         return wng.diffCalOutput().unit(unit).runNumber(runNumber).version(version).group(group).build()
 
-    def _createDiffcalTableWorkspaceName(self, runNumber: str, version: str = "") -> WorkspaceName:
+    @validate_arguments
+    def _createDiffcalTableWorkspaceName(
+        self,
+        runNumber: str,
+        useLiteMode: bool,  # noqa: ARG002
+        version: Optional[int],
+    ) -> WorkspaceName:
         return wng.diffCalTable().runNumber(runNumber).version(version).build()
 
-    def _createDiffcalMaskWorkspaceName(self, runNumber: str, version: str = "") -> WorkspaceName:
+    @validate_arguments
+    def _createDiffcalMaskWorkspaceName(
+        self,
+        runNumber: str,
+        useLiteMode: bool,  # noqa: ARG002
+        version: Optional[int],
+    ) -> WorkspaceName:
         return wng.diffCalMask().runNumber(runNumber).version(version).build()
+
+    def _createNormalizationWorkspaceName(
+        self,
+        runNumber: str,
+        useLiteMode: bool,  # noqa: ARG002
+        version: str = Optional[int],
+    ) -> WorkspaceName:
+        return wng.rawVanadium().runNumber(runNumber).version(version).build()
 
     ## ACCESSING WORKSPACES
     """
@@ -268,10 +312,12 @@ class GroceryService:
         :param newName: the name to replace the workspace name in the ADS
         :type newName: WorkspaceName
         """
-        renameAlgo = AlgorithmManager.create("RenameWorkspace")
-        renameAlgo.setProperty("InputWorkspace", oldName)
-        renameAlgo.setProperty("OutputWorkspace", newName)
-        renameAlgo.execute()
+        self.mantidSnapper.RenameWorkspace(
+            f"Renaming {oldName} to {newName}",
+            InputWorkspace=oldName,
+            OutputWorkspace=newName,
+        )
+        self.mantidSnapper.executeQueue()
 
     def getWorkspaceForName(self, name: WorkspaceName):
         """
@@ -311,6 +357,41 @@ class GroceryService:
         else:
             ws = None
         return ws
+
+    def getWorkspaceTag(self, workspaceName: str, logname: str):
+        """
+        Simple wrapper to get a workspace metadata tag, for the service layer.
+        Returns a tag for a given workspace. Raise an error if the workspace
+        does not exist.
+
+        :param workspaceName: the name of the workspace containing the tag
+        :type workspaceName: string
+        :param logname: the name of the log, usually for diffcal or normalization
+        :type logname: string
+        :return: string of the tag, default value is "unset"
+        """
+        if self.workspaceDoesExist(workspaceName):
+            return self.workspaceMetadataService.readMetadataTag(workspaceName, logname)
+        else:
+            raise RuntimeError(f"Workspace {workspaceName} does not exist")
+
+    def setWorkspaceTag(self, workspaceName: str, logname: str, logvalue: str):
+        """
+        Simple wrapper to set a workspace metadata tag, for the service layer.
+        Sets a tag for a given workspace. Raise an error if the workspace
+        does not exist.
+
+        :param workspaceName: the name of the workspace containing the tag
+        :type workspaceName: string
+        :param logname: the name of the log, usually for diffcal or normalization
+        :type logname: string
+        :param logvalue: tag value to be set, must exist in the WorkspaceMetadata dao
+        :type logvalue: string
+        """
+        if self.workspaceDoesExist(workspaceName):
+            self.workspaceMetadataService.writeMetadataTag(workspaceName, logname, logvalue)
+        else:
+            raise RuntimeError(f"Workspace {workspaceName} does not exist")
 
     ## FETCH METHODS
     """
@@ -355,10 +436,12 @@ class GroceryService:
                     if useLiteMode
                     else Config["instrument.native.definition.file"]
                 )
-                loadEmptyInstrument = AlgorithmManager.create("LoadEmptyInstrument")
-                loadEmptyInstrument.setProperty("Filename", instrumentFilename)
-                loadEmptyInstrument.setProperty("OutputWorkspace", wsName)
-                loadEmptyInstrument.execute()
+                self.mantidSnapper.LoadEmptyInstrument(
+                    f"Loading instrument at {instrumentFilename} to {wsName}",
+                    Filename=instrumentFilename,
+                    OutputWorkspace=wsName,
+                )
+                self.mantidSnapper.executeQueue()
 
                 # Initialize the instrument parameters
                 # (Reserved run-numbers will use the unmodified instrument.)
@@ -395,14 +478,16 @@ class GroceryService:
         logsAdded = 0
         for paramName in ("arc", "lin"):
             for index in range(2):
-                addSampleLog = AlgorithmManager.create("AddSampleLog")
-                addSampleLog.setProperty("Workspace", wsName)
-                addSampleLog.setProperty("LogName", "det_" + paramName + str(index + 1))
-                addSampleLog.setProperty("LogText", str(getattr(detectorState, paramName)[index]))
-                addSampleLog.setProperty("LogType", "Number Series")
-                addSampleLog.setProperty("UpdateInstrumentParameters", (logsAdded >= 3))
-                addSampleLog.execute()
+                self.mantidSnapper.AddSampleLog(
+                    f"Updating parameter {paramName}{str(index + 1)}",
+                    Workspace=wsName,
+                    LogName=f"det_{paramName}{str(index + 1)}",
+                    LogText=str(getattr(detectorState, paramName)[index]),
+                    LogType="Number Series",
+                    UpdateInstrumentParameters=(logsAdded >= 3),
+                )
                 logsAdded += 1
+        self.mantidSnapper.executeQueue()
 
     def _getDetectorState(self, runNumber: str) -> DetectorState:
         """
@@ -418,7 +503,8 @@ class GroceryService:
         # This method is provided to facilitate workspace loading with a _complete_ instrument state
         return self.dataService.readDetectorState(runNumber)
 
-    def _getCalibrationDataPath(self, runNumber: str, version: str) -> str:
+    @validate_arguments
+    def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         """
         Get a path to the directory with the calibration data
 
@@ -427,7 +513,7 @@ class GroceryService:
         :param version: the calibration version to use in the lookup
         :type version: str
         """
-        return self.dataService._constructCalibrationDataPath(runNumber, version)
+        return self.dataService._constructCalibrationDataPath(runNumber, useLiteMode, version)
 
     def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> Dict[str, Any]:
         """
@@ -576,6 +662,7 @@ class GroceryService:
         data["result"] = self.getCloneOfWorkspace(rawWorkspaceName, workspaceName) is not None
         data["workspace"] = workspaceName
         self._loadedRuns[key] += 1
+
         return data
 
     def fetchLiteDataMap(self) -> WorkspaceName:
@@ -653,8 +740,8 @@ class GroceryService:
         """
 
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
-        tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber, version)
-        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, version)
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
+        maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
 
         if self.workspaceDoesExist(tableWorkspaceName):
             data = {
@@ -664,7 +751,7 @@ class GroceryService:
             }
         else:
             # table + mask are in the same hdf5 file:
-            filename = self._createDiffcalTableFilename(runNumber, version)
+            filename = self._createDiffcalTableFilename(runNumber, useLiteMode, version)
 
             # Unless overridden: use a cached workspace as the instrument donor.
             instrumentPropertySource, instrumentSource = (
@@ -684,6 +771,65 @@ class GroceryService:
                 loaderArgs=json.dumps({"CalibrationTable": tableWorkspaceName, "MaskWorkspace": maskWorkspaceName}),
             )
             data["workspace"] = tableWorkspaceName
+
+        return data
+
+    @validate_arguments
+    def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: int) -> WorkspaceName:
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", useLiteMode, str(version))
+        self.mantidSnapper.CalculateDiffCalTable(
+            "Generate the default diffcal table",
+            InputWorkspace=self._fetchInstrumentDonor(runNumber, useLiteMode),
+            CalibrationTable=tableWorkspaceName,
+        )
+        self.mantidSnapper.executeQueue()
+        if self.workspaceDoesExist(tableWorkspaceName):
+            return tableWorkspaceName
+        else:
+            raise RuntimeError(f"Could not create a default diffcal file for run {runNumber}")
+
+    def fetchNormalizationWorkspaces(self, item: GroceryListItem) -> Dict[str, Any]:
+        """
+        Fetch normalization workspaces
+
+        :param item: a GroceryListItem corresponding to the normalization workspaces
+        :type item: GroceryListItem
+        :return: a dictionary with
+
+            - "result", true if everything ran correctly
+            - "loader", either "LoadNexusProcessed" or "cached"
+            - "workspace", the name of the new workspace in the ADS;
+                this defaults to the name of the normalization workspace,
+
+        :rtype: Dict[str, Any]
+        """
+
+        runNumber, useLiteMode, version = item.runNumber, item.useLiteMode, item.version
+        workspaceName = self._createNormalizationWorkspaceName(runNumber, useLiteMode, version)
+
+        if self.workspaceDoesExist(workspaceName):
+            data = {
+                "result": True,
+                "loader": "cached",
+                "workspace": workspaceName,
+            }
+        else:
+            filename = self._createNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
+
+            # Unless overridden: use a cached workspace as the instrument donor.
+            instrumentPropertySource, instrumentSource = (
+                ("InstrumentDonor", self._fetchInstrumentDonor(runNumber, useLiteMode))
+                if not item.instrumentPropertySource
+                else (item.instrumentPropertySource, item.instrumentSource)
+            )
+            data = self.grocer.executeRecipe(
+                filename=filename,
+                workspace=workspaceName,
+                loader="LoadNexusProcessed",
+                instrumentPropertySource=instrumentPropertySource,
+                instrumentSource=instrumentSource,
+            )
+            data["workspace"] = workspaceName
 
         return data
 
@@ -716,32 +862,49 @@ class GroceryService:
                 # for diffraction-calibration workspaces
                 case "diffcal_output":
                     diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(
-                        item.runNumber, item.version, item.unit, item.groupingScheme
+                        item.runNumber, item.useLiteMode, item.version, item.unit, item.groupingScheme
                     )
                     if item.isOutput:
                         res = {"result": True, "workspace": diffcalOutputWorkspaceName}
                     else:
                         res = self.fetchWorkspace(
                             self._createDiffcalOutputWorkspaceFilename(
-                                item.runNumber, item.version, item.unit, item.groupingScheme
+                                item.runNumber, item.useLiteMode, item.version, item.unit, item.groupingScheme
                             ),
                             diffcalOutputWorkspaceName,
                             loader="ReheatLeftovers",
                         )
                 case "diffcal_table":
-                    tableWorkspaceName = self._createDiffcalTableWorkspaceName(item.runNumber, item.version)
+                    if not item.version:
+                        item.version = self.dataService._getVersionFromCalibrationIndex(
+                            item.runNumber, item.useLiteMode
+                        )
+                        record = self.dataService.readCalibrationRecord(item.runNumber, item.useLiteMode, item.version)
+                        if record is not None:
+                            item.runNumber = record.runNumber
+                    tableWorkspaceName = self._createDiffcalTableWorkspaceName(
+                        item.runNumber, item.useLiteMode, item.version
+                    )
                     if item.isOutput:
                         res = {"result": True, "workspace": tableWorkspaceName}
                     else:
                         res = self.fetchCalibrationWorkspaces(item)
                         res["workspace"] = tableWorkspaceName
                 case "diffcal_mask":
-                    maskWorkspaceName = self._createDiffcalMaskWorkspaceName(item.runNumber, item.version)
+                    maskWorkspaceName = self._createDiffcalMaskWorkspaceName(
+                        item.runNumber, item.useLiteMode, item.version
+                    )
                     if item.isOutput:
                         res = {"result": True, "workspace": maskWorkspaceName}
                     else:
                         res = self.fetchCalibrationWorkspaces(item)
                         res["workspace"] = maskWorkspaceName
+                case "normalization":
+                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(item.runNumber, item.version)
+                    if item.isOutput:
+                        res = {"result": True, "workspace": normalizationWorkspaceName}
+                    else:
+                        res = self.fetchNormalizationWorkspaces(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
             # check that the fetch operation succeeded and if so append the workspace
@@ -793,9 +956,11 @@ class GroceryService:
         :param name: the name of the workspace in the ADS to be deleted.
         :type name: WorkspaceName
         """
-        deleteAlgo = AlgorithmManager.create("WashDishes")
-        deleteAlgo.setProperty("Workspace", name)
-        deleteAlgo.execute()
+        self.mantidSnapper.WashDishes(
+            f"Washing dish {name}",
+            Workspace=name,
+        )
+        self.mantidSnapper.executeQueue()
 
     # TODO: move `deleteWorkspace` methods to `DataExportService` via `LocalDataService`
     def deleteWorkspaceUnconditional(self, name: WorkspaceName):
@@ -807,9 +972,11 @@ class GroceryService:
         :type name: WorkspaceName
         """
         if self.workspaceDoesExist(name):
-            deleteAlgo = AlgorithmManager.create("DeleteWorkspace")
-            deleteAlgo.setProperty("Workspace", name)
-            deleteAlgo.execute()
+            self.mantidSnapper.DeleteWorkspace(
+                f"Deleting workspace {name}",
+                Workspace=name,
+            )
+            self.mantidSnapper.executeQueue()
         else:
             pass
 

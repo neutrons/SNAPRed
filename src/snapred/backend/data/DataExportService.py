@@ -1,10 +1,15 @@
 from pathlib import Path
+from typing import Optional
+
+from pydantic import validate_arguments
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.decorators.Singleton import Singleton
@@ -23,6 +28,21 @@ class DataExportService:
             val = clazz()
         return val
 
+    ##### MISCELLANEOUS #####
+
+    def exportCalibrantSampleFile(self, entry: CalibrantSamples):
+        self.dataService.writeCalibrantSample(entry)
+
+    ##### REDUCTION METHODS #####
+
+    # NOTE will be added shortly
+
+    ##### CALIBRATION METHODS #####
+
+    @validate_arguments
+    def initializeState(self, runId: str, useLiteMode: bool, name: str):
+        return self.dataService.initializeState(runId, useLiteMode, name)
+
     def exportCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         self.dataService.writeCalibrationIndexEntry(entry)
 
@@ -32,11 +52,10 @@ class DataExportService:
     def exportCalibrationWorkspaces(self, record: CalibrationRecord):
         return self.dataService.writeCalibrationWorkspaces(record)
 
-    def exportCalibrantSampleFile(self, entry: CalibrantSamples):
-        self.dataService.writeCalibrantSample(entry)
+    def exportCalibrationState(self, calibration: Calibration):
+        return self.dataService.writeCalibrationState(calibration)
 
-    def exportCalibrationState(self, runId: str, calibration: Calibration):
-        return self.dataService.writeCalibrationState(runId, calibration)
+    ##### NORMALIZATION METHODS #####
 
     def exportNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
         self.dataService.writeNormalizationIndexEntry(entry)
@@ -47,17 +66,29 @@ class DataExportService:
     def exportNormalizationWorkspaces(self, record: NormalizationRecord):
         return self.dataService.writeNormalizationWorkspaces(record)
 
+    def exportNormalizationState(self, normalization: Normalization):
+        return self.dataService.writeNormalizationState(normalization)
+
+    ##### REDUCTION METHODS #####
+
+    def exportReductionRecord(self, record: ReductionRecord, version: Optional[int] = None) -> ReductionRecord:
+        return self.dataService.writeReductionRecord(record, version)
+
+    def exportReductionData(self, record: ReductionRecord):
+        return self.dataService.writeReductionData(record)
+
+    ##### WORKSPACE METHODS #####
+
+    @validate_arguments
     def exportWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
         Write a MatrixWorkspace (derived) workspace to disk in nexus format.
         """
         return self.dataService.writeWorkspace(path, filename, workspaceName)
 
+    @validate_arguments
     def exportRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
         Write a MatrixWorkspace (derived) workspace to disk in nexus format.
         """
         return self.dataService.writeRaggedWorkspace(path, filename, workspaceName)
-
-    def initializeState(self, runId: str, name: str):
-        return self.dataService.initializeState(runId, name)

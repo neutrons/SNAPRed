@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, validator
 
@@ -34,7 +34,7 @@ class InstrumentState(BaseModel):
 
     @validator("id", pre=True, allow_reuse=True)
     def str_to_ObjectSHA(cls, v: Any) -> Any:
-        # ObjectSHA stored in JSON as _only_ a single hex string, for the hex digest itself
+        # ObjectSHA to be stored in JSON as _only_ a single hex string, for the hex digest itself
         if isinstance(v, str):
             return ObjectSHA(hex=v, decodedKey=None)
         return v

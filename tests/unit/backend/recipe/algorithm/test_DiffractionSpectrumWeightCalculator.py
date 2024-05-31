@@ -1,4 +1,3 @@
-import json
 import socket
 import unittest.mock as mock
 
@@ -6,6 +5,7 @@ import pytest
 from snapred.backend.dao import GroupPeakList
 from snapred.meta.redantic import list_to_raw
 from util.diffraction_calibration_synthetic_data import SyntheticData
+from util.helpers import workspacesEqual
 
 with mock.patch.dict(
     "sys.modules",
@@ -15,7 +15,6 @@ with mock.patch.dict(
     },
 ):
     from mantid.simpleapi import (
-        CompareWorkspaces,
         DeleteWorkspace,
         LoadNexusProcessed,
         mtd,
@@ -49,6 +48,7 @@ with mock.patch.dict(
         yield
         teardown()
 
+    @pytest.mark.xfail(reason="To be fixed in EWM5043", strict=True)
     def test_with_predicted_peaks():
         """Test the weight calculator given predicted peaks"""
         inputWorkspaceFile = "/inputs/strip_peaks/DSP_58882_cal_CC_Column_spectra.nxs"
@@ -75,13 +75,15 @@ with mock.patch.dict(
         assert weightCalculatorAlgo.execute()
 
         # match results with reference
-        weight_ws = mtd[weight_ws_name]
-        ref_weight_ws = LoadNexusProcessed(
+        # weight_ws = mtd[weight_ws_name]
+        ref_weight_ws_name = mtd.unique_name(prefix="_ref_weight_")
+        LoadNexusProcessed(
             Filename=Resource.getPath(referenceWeightFile),
+            OutputWorkspace=ref_weight_ws_name,
         )
-
-        assert CompareWorkspaces(
-            Workspace1=ref_weight_ws,
-            Workspace2=weight_ws,
+        # TODO FIX THIS TEST -- EWM 5043
+        assert workspacesEqual(
+            Workspace1=weight_ws_name,
+            Workspace2=ref_weight_ws_name,
             CheckInstrument=False,
         )

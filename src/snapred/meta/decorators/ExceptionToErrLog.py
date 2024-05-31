@@ -1,7 +1,6 @@
 import functools
-from typing import Any, Callable, Optional, Type
+from typing import Any, Callable
 
-from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 
 logger = snapredLogger.getLogger(__name__)

@@ -60,7 +60,7 @@ For a simplified breakdown of where you may want to implement parts of your code
    :maxdepth: 1
    :caption: Index
 
-   api/normalization/normalization_calibration_request
+   api/normalization/normalization_request
    api/normalization/normalization_export_request
    api/normalization/normalization_index_entry
    api/normalization/normalization_record

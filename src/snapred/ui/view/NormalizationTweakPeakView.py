@@ -1,4 +1,3 @@
-import math
 from typing import List
 
 import matplotlib.pyplot as plt
@@ -12,7 +11,7 @@ from qtpy.QtWidgets import (
     QMessageBox,
     QPushButton,
 )
-from workbench.plotting.figuremanager import FigureManagerWorkbench, MantidFigureCanvas
+from workbench.plotting.figuremanager import MantidFigureCanvas
 from workbench.plotting.toolbar import WorkbenchNavigationToolbar
 
 from snapred.backend.dao import GroupPeakList
@@ -20,14 +19,13 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.SmoothingSlider import SmoothingSlider
-from snapred.ui.widget.Toggle import Toggle
 
 
 @Resettable
 class NormalizationTweakPeakView(BackendRequestView):
     """
 
-    This PyQt5 GUI component is designed for adjusting peak normalization parameters in SNAPRed,
+    This qt GUI component is designed for adjusting peak normalization parameters in SNAPRed,
     offering a user-friendly interface that combines input fields, dropdowns, sliders, and a
     real-time matplotlib plot area. It is built for dynamic interaction and visualization, allowing
     users to see the impact of their adjustments on the normalization settings instantly. Key

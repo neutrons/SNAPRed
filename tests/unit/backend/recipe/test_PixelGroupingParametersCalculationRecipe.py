@@ -1,79 +1,80 @@
-import json
 import unittest.mock as mock
+from typing import List
 
 import pytest
-
-with mock.patch("mantid.api.AlgorithmManager") as MockAlgorithmManager:
-    from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
-    from snapred.backend.dao.Limit import Limit
-    from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
-    from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
-    from snapred.meta.redantic import list_to_raw
-
-    mockAlgo = mock.Mock()
-    MockAlgorithmManager.create.return_value = mockAlgo
-
-    @mock.patch("snapred.backend.recipe.PixelGroupingParametersCalculationRecipe.BinnedValue")
-    def test_execute_successful(mockBinnedValue):
-        # mock algorithm execution result and output
-        mockAlgo.execute.return_value = "passed"
-        params = PixelGroupingParameters(
-            groupID=1,
-            isMasked=False,
-            twoTheta=3.14,
-            dResolution=Limit(minimum=0.1, maximum=1.0),
-            dRelativeResolution=0.01,
-        )
-        mock_output_val = [params]
-        mockAlgo.getProperty("OutputParameters").value = list_to_raw(mock_output_val)
-
-        # execute recipe with mocked input
-        recipe = PixelGroupingParametersCalculationRecipe()
-        ingredients = mock.Mock(return_value="good ingredients")
-        ingredients.nBinsAcrossPeakWidth = 7
-        groceries = {
-            "groupingWorkspace": mock.Mock(return_value="grouping workspace"),
-            "maskWorkspace": mock.Mock(return_value="mask workspace"),
-        }
-        data = recipe.executeRecipe(ingredients, groceries)
-
-        assert mockAlgo.execute.called
-        assert isinstance(data, dict)
-        assert data["result"] is not None
-        assert data["result"] == "passed"
-        assert isinstance(data["parameters"], list)
-        assert data["parameters"][0] == mock_output_val[0]
-        assert data["tof"] == mockBinnedValue.return_value
-
-    def test_execute_unsuccessful():
-        mockAlgo.execute.side_effect = RuntimeError("passed")
-
-        recipe = PixelGroupingParametersCalculationRecipe()
-        ingredients = mock.Mock()
-        groceries = {
-            "groupingWorkspace": mock.Mock(return_value="grouping workspace"),
-            "maskWorkspace": mock.Mock(return_value="mask workspace"),
-        }
-
-        try:
-            recipe.executeRecipe(ingredients, groceries)
-        except Exception as e:  # noqa: E722 BLE001
-            assert str(e) == "passed"  # noqa: PT017
-            assert mockAlgo.execute.called
-        else:
-            # fail if execute did not raise an exception
-            pytest.fail("Test should have raised RuntimeError, but no error raised")
+from snapred.backend.dao.Limit import Limit
+from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import PixelGroupingParametersCalculationRecipe
+from snapred.meta.redantic import list_to_raw
 
 
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
+@mock.patch("snapred.backend.recipe.PixelGroupingParametersCalculationRecipe.BinnedValue")
+def test_execute_successful(mockBinnedValue):
+    # mock algorithm execution result and output
+    params = PixelGroupingParameters(
+        groupID=1,
+        isMasked=False,
+        L2=10.0,
+        twoTheta=3.14,
+        azimuth=0.0,
+        dResolution=Limit(minimum=0.1, maximum=1.0),
+        dRelativeResolution=0.01,
+    )
+    mock_output_val = [params]
+    mockAlgo = mock.Mock(return_value=list_to_raw(mock_output_val))
 
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)
+    # execute recipe with mocked input
+    recipe = PixelGroupingParametersCalculationRecipe()
+    recipe.mantidSnapper.PixelGroupingParametersCalculationAlgorithm = mockAlgo
+    ingredients = mock.Mock(json=mock.Mock(return_value="good ingredients"))
+    ingredients.nBinsAcrossPeakWidth = 7
+    groceries = {
+        "groupingWorkspace": "grouping workspace",
+        "maskWorkspace": "mask workspace",
+    }
+    data = recipe.executeRecipe(ingredients, groceries)
+
+    assert mockAlgo.call_count == 1
+    assert isinstance(data, dict)
+    assert data["result"]
+    assert isinstance(data["parameters"], list)
+    assert data["parameters"][0] == mock_output_val[0]
+    assert data["tof"] == mockBinnedValue.return_value
+
+
+def test_execute_unsuccessful():
+    mockAlgo = mock.Mock(side_effect=RuntimeError("passed"))
+
+    recipe = PixelGroupingParametersCalculationRecipe()
+    recipe.mantidSnapper.PixelGroupingParametersCalculationAlgorithm = mockAlgo
+    ingredients = mock.Mock()
+    groceries = {
+        "groupingWorkspace": "grouping workspace",
+        "maskWorkspace": "mask workspace",
+    }
+
+    with pytest.raises(RuntimeError) as e:
+        recipe.executeRecipe(ingredients, groceries)
+    assert str(e.value) == "passed"  # noqa: PT017
+    assert mockAlgo.call_count == 1
+
+
+@mock.patch("snapred.backend.recipe.PixelGroupingParametersCalculationRecipe.parse_raw_as")
+@mock.patch("snapred.backend.recipe.PixelGroupingParametersCalculationRecipe.BinnedValue")
+def test_resolve_callback(BinnedValue, parse_raw_as):
+    BinnedValue.return_value = "tof"
+    parse_raw_as.return_value = [mock.Mock(dRelativeResolution=1.0)]
+    mockAlgo = mock.Mock(return_value=mock.Mock(get=mock.Mock(return_value="done")))
+
+    recipe = PixelGroupingParametersCalculationRecipe()
+    recipe.mantidSnapper.PixelGroupingParametersCalculationAlgorithm = mockAlgo
+    ingredients = mock.Mock(nBinsAcrossPeakWidth=10)
+    groceries = {
+        "groupingWorkspace": "grouping workspace",
+        "maskWorkspace": "mask workspace",
+    }
+    data = recipe.executeRecipe(ingredients, groceries)
+    assert data["result"]
+    assert data["tof"] == BinnedValue.return_value
+    assert data["parameters"] == parse_raw_as.return_value
+    assert parse_raw_as.called_once_with(List[PixelGroupingParameters], "done")

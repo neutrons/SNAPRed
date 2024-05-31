@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import List, Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, Extra
 
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.state import FocusGroup
@@ -8,7 +8,7 @@ from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
-class FarmFreshIngredients(BaseModel):
+class FarmFreshIngredients(BaseModel, extra=Extra.forbid):
     """
     from these, the Sous Chef can make everything
     """
@@ -19,10 +19,13 @@ class FarmFreshIngredients(BaseModel):
     runNumber: str
     version: Optional[str]
     useLiteMode: bool
-    focusGroup: FocusGroup
+    focusGroup: Union[FocusGroup, List[FocusGroup]]
 
     ## needs to be mandatory for diffcal
     cifPath: Optional[str]
+
+    # needs to be mandatory for normalizaiton/reduction
+    smoothingParameter: Optional[float]
 
     ## needs to be mandatory for normcal
     calibrantSamplePath: Optional[str]
@@ -38,3 +41,4 @@ class FarmFreshIngredients(BaseModel):
         maximum=Config["constants.CrystallographicInfo.dMax"],
     )
     fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
+    maxChiSq: Optional[float] = Config["constants.GroupDiffractionCalibration.MaxChiSq"]

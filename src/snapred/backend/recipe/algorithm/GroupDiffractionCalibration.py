@@ -1,5 +1,4 @@
-import json
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from mantid.api import (
     AlgorithmFactory,
@@ -10,14 +9,10 @@ from mantid.api import (
 )
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction, StringMandatoryValidator
-from mantid.simpleapi import mtd
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
-from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.ConjoinTableWorkspaces import ConjoinTableWorkspaces
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitOutputEnum
-from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -75,7 +70,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
 
     def chopIngredients(self, ingredients: Ingredients) -> None:
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
-        from datetime import date
 
         """Receive the ingredients from the recipe, and exctract the needed pieces for this algorithm."""
         self.runNumber: str = ingredients.runConfig.runNumber
@@ -87,6 +81,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.dMax = ingredients.pixelGroup.dMax()
         self.dBin = ingredients.pixelGroup.dBin()
         pixelGroupIDs = ingredients.pixelGroup.groupIDs
+
+        # used to be a constant pulled from application.yml
+        self.maxChiSq = ingredients.maxChiSq
 
         # from the pixel group, read the overall min/max TOF and binning
         self.TOF = ingredients.pixelGroup.timeOfFlight
@@ -206,7 +203,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         badPeaks = []
         if len(chi2) > 2:
             for index, item in enumerate(chi2):
-                if item < self.MAX_CHI_SQ:
+                if item < self.maxChiSq:
                     totalLowChi2 = totalLowChi2 + 1
                 else:
                     badPeaks.append(
@@ -218,13 +215,13 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                     )
             if totalLowChi2 < 2:
                 logger.warning(
-                    f"Insufficient number of well-fitted peaks (chi2 < {self.MAX_CHI_SQ})."
+                    f"Insufficient number of well-fitted peaks (chi2 < {self.maxChiSq})."
                     + "Try to adjust parameters in Tweak Peak Peek tab"
                     + f"Bad peaks info: {badPeaks}"
                 )
                 print(tabDict)
             else:
-                logger.info(f"Sufficient number of well-fitted peaks (chi2 < {self.MAX_CHI_SQ}).: {totalLowChi2}")
+                logger.info(f"Sufficient number of well-fitted peaks (chi2 < {self.maxChiSq}).: {totalLowChi2}")
 
     def PyExec(self) -> None:
         """
@@ -278,7 +275,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 DiagnosticWorkspaces=diagnosticWSgroup,
                 # specific to PDCalibration
                 TofBinning=self.TOF.params,
-                MaxChiSq=self.MAX_CHI_SQ,
+                MaxChiSq=self.maxChiSq,
                 CalibrationParameters="DIFC",
                 OutputCalibrationTable=DIFCpd,
                 MaskWorkspace=self.maskWS,
@@ -455,5 +452,4 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         )
 
 
-# Register algorithm with Mantid
 AlgorithmFactory.subscribe(GroupDiffractionCalibration)

@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List
 
 # from qtpy import signals and widgets
 from qtpy.QtCore import Signal
@@ -25,7 +25,7 @@ class DiffCalAssessmentView(QWidget):
 
     """
 
-    signalRunNumberUpdate = Signal(str)
+    signalRunNumberUpdate = Signal(str, bool)
     signalError = Signal(str)
 
     def __init__(self, name, jsonSchemaMap, parent=None):
@@ -70,7 +70,7 @@ class DiffCalAssessmentView(QWidget):
             # populate the combo-box from the input calibration index entries
             for entry in calibrationIndex:
                 name = f"Version: {entry.version}; Run: {entry.runNumber}"
-                self.calibrationRecordDropdown.addItem(name, (entry.runNumber, entry.version))
+                self.calibrationRecordDropdown.addItem(name, (entry.runNumber, entry.useLiteMode, entry.version))
         self.calibrationRecordDropdown.setCurrentIndex(0)
 
     def getCalibrationRecordCount(self):
@@ -93,8 +93,8 @@ class DiffCalAssessmentView(QWidget):
         msgBox.setFixedSize(500, 200)
         msgBox.exec()
 
-    def updateRunNumber(self, runNumber):
-        self.signalRunNumberUpdate.emit(runNumber)
+    def updateRunNumber(self, runNumber, useLiteMode):
+        self.signalRunNumberUpdate.emit(runNumber, useLiteMode)
 
     def verify(self):
         # TODO vwhat fields need to be verified?

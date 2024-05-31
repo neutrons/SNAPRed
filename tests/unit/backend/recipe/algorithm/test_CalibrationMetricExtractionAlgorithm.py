@@ -1,12 +1,11 @@
 import json
 import unittest
 from typing import List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from mantid.api import AlgorithmManager, WorkspaceGroup
-from mantid.kernel import Direction
+from mantid.api import WorkspaceGroup
 from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, mtd
 from pydantic import parse_raw_as
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
@@ -54,20 +53,26 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
             PixelGroupingParameters(
                 groupID=0,
                 isMasked=False,
+                L2=10.0,
                 twoTheta=30.0 * (np.pi / 180.0),
+                azimuth=0.0,
                 dResolution={"minimum": 0.1, "maximum": 0.2},
                 dRelativeResolution=0.1,
             ),
             PixelGroupingParameters(
                 groupID=1,
                 isMasked=False,
+                L2=10.0,
                 twoTheta=40.0 * (np.pi / 180.0),
+                azimuth=0.0,
                 dResolution={"minimum": 0.1, "maximum": 0.2},
                 dRelativeResolution=0.1,
             ),
             PixelGroupingParameters(
                 groupID=2,
                 isMasked=False,
+                L2=10.0,
+                azimuth=0.0,
                 twoTheta=50.0 * (np.pi / 180.0),
                 dResolution={"minimum": 0.1, "maximum": 0.2},
                 dRelativeResolution=0.1,
@@ -84,6 +89,14 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         algorithm.initialize()
         algorithm.setProperty("InputWorkspace", fakeInputWorkspace)
         algorithm.setProperty("PixelGroup", fakePixelGroup.json())
+        # mock out the mtd return
+        algorithm.mantidSnapper = MagicMock()
+        algorithm.mantidSnapper.mtd = {
+            fakeInputWorkspace: MagicMock(
+                getNumberOfEntries=MagicMock(return_value=4),
+                getItem=MagicMock(side_effect=fitPeaksDiagnosis.values()),
+            )
+        }
         # Call the PyExec method to test
         algorithm.execute()
 

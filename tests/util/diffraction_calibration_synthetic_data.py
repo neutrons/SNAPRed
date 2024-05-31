@@ -8,14 +8,11 @@
 
 import secrets
 from collections import namedtuple
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import mantid
 import numpy as np
-from mantid.api import ITableWorkspace, MatrixWorkspace
-from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
     ConvertUnits,
     CreateSampleWorkspace,
@@ -115,15 +112,13 @@ class SyntheticData(object):
 
         self.ingredients = DiffractionCalibrationIngredients(
             runConfig=self.fakeRunConfig,
-            focusGroup=self.fakeFocusGroup,
-            instrumentState=self.fakeInstrumentState,
             groupedPeakLists=[
                 GroupPeakList(groupID=key, peaks=peakLists[key], maxfwhm=maxFWHM) for key in peakLists.keys()
             ],
             convergenceThreshold=0.5,
-            calPath=Resource.getPath("outputs/calibration/"),
             maxOffset=100.0,  # bins: '100.0' seems to work
             pixelGroup=self.fakePixelGroup,
+            maxChiSq=100.0,
         )
 
     @staticmethod

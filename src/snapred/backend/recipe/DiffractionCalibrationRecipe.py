@@ -5,10 +5,8 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
-from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 

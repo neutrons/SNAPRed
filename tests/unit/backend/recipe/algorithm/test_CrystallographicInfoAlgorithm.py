@@ -20,15 +20,15 @@ with mock.patch.dict(
         fakeCIF = Resource.getPath("/inputs/crystalInfo/fake_file.cif")
         xtalAlgo = Algo()
         xtalAlgo.initialize()
-        xtalAlgo.setProperty("cifPath", fakeCIF)
-        assert fakeCIF == xtalAlgo.getProperty("cifPath").value
+        xtalAlgo.setProperty("CifPath", fakeCIF)
+        assert fakeCIF == xtalAlgo.getProperty("CifPath").value
 
     def test_failed_path():
         """Test failure of crystal ingestion algo with a bad path name"""
         fakeCIF = Resource.getPath("/inputs/crystalInfo/fake_file.cif")
         xtalAlgo = Algo()
         xtalAlgo.initialize()
-        xtalAlgo.setProperty("cifPath", fakeCIF)
+        xtalAlgo.setProperty("CifPath", fakeCIF)
         with pytest.raises(Exception):  # noqa: PT011
             xtalAlgo.execute()
 
@@ -38,13 +38,12 @@ with mock.patch.dict(
         try:
             xtalAlgo = Algo()
             xtalAlgo.initialize()
-            xtalAlgo.setProperty("cifPath", goodCIF)
+            xtalAlgo.setProperty("CifPath", goodCIF)
             xtalAlgo.setProperty("dMin", 1.0)
             xtalAlgo.setProperty("dMax", 10.0)
             xtalAlgo.execute()
-            xtalInfo = json.loads(xtalAlgo.getPropertyValue("crystalInfo"))
-            xtalStructure = json.loads(xtalAlgo.getPropertyValue("crystalStructure"))
-            print(xtalStructure)
+            xtalInfo = json.loads(xtalAlgo.getPropertyValue("CrystalInfo"))
+            xtallography = json.loads(xtalAlgo.getPropertyValue("Crystallography"))
         except Exception:  # noqa: BLE001
             pytest.fail("valid file failed to open")
         else:
@@ -52,8 +51,8 @@ with mock.patch.dict(
             assert xtalInfo["peaks"][5]["hkl"] == [4, 0, 0]
             assert xtalInfo["peaks"][0]["dSpacing"] == 3.13592994862768
             assert xtalInfo["peaks"][4]["dSpacing"] == 1.0453099828758932
-            assert xtalStructure["cifFile"] == goodCIF
-            assert xtalStructure["spaceGroup"] == "F d -3 m"
+            assert xtallography["cifFile"] == goodCIF
+            assert xtallography["spaceGroup"] == "F d -3 m"
 
     def test_from_xtal():
         """Test success of crystal ingestion algo using Crystallography object"""
@@ -62,7 +61,7 @@ with mock.patch.dict(
 
         goodCIF = Resource.getPath("/inputs/crystalInfo/example.cif")
         atom = Atom(symbol="Si", coordinates=[0.125, 0.125, 0.125], siteOccupationFactor=1.0)
-        xtal = Crystallography(
+        xtallography = Crystallography(
             cifFile=goodCIF,
             spaceGroup="F d -3 m",
             latticeParameters=[5.43159, 5.43159, 5.43159, 90.0, 90.0, 90.0],
@@ -71,12 +70,12 @@ with mock.patch.dict(
         try:
             xtalAlgo = Algo()
             xtalAlgo.initialize()
-            xtalAlgo.setProperty("crystalStructure", xtal.json())
+            xtalAlgo.setProperty("Crystallography", xtallography.json())
             xtalAlgo.setProperty("dMin", 1.0)
             xtalAlgo.setProperty("dMax", 10.0)
             xtalAlgo.execute()
-            xtalInfo = json.loads(xtalAlgo.getPropertyValue("crystalInfo"))
-            xtalStructure = json.loads(xtalAlgo.getPropertyValue("crystalStructure"))
+            xtalInfo = json.loads(xtalAlgo.getPropertyValue("CrystalInfo"))
+            xtallography2 = json.loads(xtalAlgo.getPropertyValue("Crystallography"))
         except Exception:  # noqa: BLE001
             pytest.fail("valid file failed to open")
         else:
@@ -84,5 +83,5 @@ with mock.patch.dict(
             assert xtalInfo["peaks"][5]["hkl"] == [4, 0, 0]
             assert xtalInfo["peaks"][0]["dSpacing"] == 3.13592994862768
             assert xtalInfo["peaks"][4]["dSpacing"] == 1.0453099828758932
-            assert xtalStructure["cifFile"] == goodCIF
-            assert xtalStructure["spaceGroup"] == "F d -3 m"
+            assert xtallography2["cifFile"] == goodCIF
+            assert xtallography2["spaceGroup"] == "F d -3 m"
