@@ -11,7 +11,6 @@ from mantid.simpleapi import (
 from snapred.backend.recipe.algorithm.ConjoinTableWorkspaces import (
     ConjoinTableWorkspaces as Algo,  # noqa: E402
 )
-from snapred.meta.Config import Resource
 
 
 class TestConjoinWorkspaces(unittest.TestCase):

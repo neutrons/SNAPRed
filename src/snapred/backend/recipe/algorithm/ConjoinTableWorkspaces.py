@@ -3,14 +3,10 @@ from typing import Dict
 from mantid.api import (
     AlgorithmFactory,
     ITableWorkspaceProperty,
-    PropertyMode,
     PythonAlgorithm,
-    mtd,
 )
 from mantid.kernel import Direction
 from mantid.simpleapi import DeleteWorkspace
-
-from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 
 
 class ConjoinTableWorkspaces(PythonAlgorithm):
