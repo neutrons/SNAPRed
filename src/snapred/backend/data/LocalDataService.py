@@ -181,7 +181,7 @@ class LocalDataService:
         return Path(
             runConfig.IPTS,
             self.instrumentConfig.nexusDirectory,
-            "/SNAP_",
+            "SNAP_",
             str(runConfig.runNumber),
             self.instrumentConfig.nexusFileExtension,
         )
