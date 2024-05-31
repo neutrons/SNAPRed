@@ -880,7 +880,8 @@ class GroceryService:
                             item.runNumber, item.useLiteMode
                         )
                         record = self.dataService.readCalibrationRecord(item.runNumber, item.useLiteMode, item.version)
-                        item.runNumber = record.runNumber
+                        if record is not None:
+                            item.runNumber = record.runNumber
                     tableWorkspaceName = self._createDiffcalTableWorkspaceName(
                         item.runNumber, item.useLiteMode, item.version
                     )
