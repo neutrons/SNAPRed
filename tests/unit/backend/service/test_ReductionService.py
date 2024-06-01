@@ -45,9 +45,7 @@ class TestReductionService(unittest.TestCase):
         self.request = ReductionRequest(
             runNumber="123",
             useLiteMode=False,
-            calibrantSamplePath="path/to/sample",
             focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
-            smoothingParameter=0.5,
         )
         self.instance.sousChef = self.sculleryBoy
         self.instance.groceryService = self.instaEats

@@ -4269,5 +4269,7 @@
       }
     ]
   ],
-  "smoothingParameter": 0.5
+  "smoothingParameter": 0.5,
+  "peakIntensityThreshold": 0.05,
+  "calibrantSamplePath": "path/to/sample"
 }

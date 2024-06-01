@@ -28,7 +28,7 @@ class ReductionRecipeTest(TestCase):
         recipe = ReductionRecipe()
         ingredients = mock.Mock()
         recipe.chopIngredients(ingredients)
-        assert ingredients == recipe.ingredients
+        assert ingredients.copy() == recipe.ingredients
 
     def test_unbagGroceries(self):
         recipe = ReductionRecipe()
