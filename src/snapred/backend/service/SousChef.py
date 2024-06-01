@@ -179,16 +179,16 @@ class SousChef(Service):
         normalizationRecord = self.dataFactoryService.getNormalizationRecord(
             ingredients.runNumber, ingredients.useLiteMode, version
         )
-        # grab nformation from records
+        # grab information from records
         ingredients.calibrantSamplePath = calibrationRecord.calibrationFittingIngredients.calibrantSamplePath
         ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
         ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
         return ReductionIngredients(
-            maskList=[],
+            maskList=[],  # TODO coming soon to a store near you!
             pixelGroups=self.prepManyPixelGroups(ingredients),
             smoothingParameter=normalizationRecord.smoothingParameter,
             calibrantSamplePath=ingredients.calibrantSamplePath,
-            peakIntensityThresold=ingredients.peakIntensityThreshold,
+            peakIntensityThreshold=ingredients.peakIntensityThreshold,
             detectorPeaksMany=self.prepManyDetectorPeaks(ingredients),
         )
 

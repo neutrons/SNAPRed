@@ -262,6 +262,8 @@ class LocalDataService:
         Generates the path for an instrument state's versioned calibration files.
         """
         stateId, _ = self._generateStateId(runId)
+        if version is None:
+            version = self._getLatestCalibrationVersionNumber(stateId, useLiteMode)
         return self._appendVersion(self._constructCalibrationStatePath(stateId, useLiteMode), version)
 
     @validate_arguments
@@ -270,6 +272,8 @@ class LocalDataService:
         Generates the path for an instrument state's versioned normalization calibration files.
         """
         stateId, _ = self._generateStateId(runId)
+        if version is None:
+            version = self._getLatestNormalizationVersionNumber(stateId, useLiteMode)
         return self._appendVersion(self._constructNormalizationStatePath(stateId, useLiteMode), version)
 
     @validate_arguments

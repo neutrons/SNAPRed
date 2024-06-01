@@ -23,14 +23,12 @@ groceryService = GroceryService()
 
 #User input ###########################
 runNumber = "46680" #"57482"
-calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrantSamples/Diamond_001.json"
-peakThreshold = 0.01
 isLite = True
 Config._config["cis_mode"] = True
 version=None
 
-### PREP INGREDIENTS ################
 
+### PREP INGREDIENTS ################
 
 groups = LocalDataService().readGroupingMap(runNumber).getMap(isLite)
 
@@ -38,8 +36,6 @@ farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
     useLiteMode=isLite,
     focusGroup=list(groups.values()),
-    calibrantSamplePath=calibrantSamplePath,
-    peakIntensityThreshold=peakThreshold,
 )
 ingredients = SousChef().prepReductionIngredients(farmFresh)
 
@@ -80,13 +76,11 @@ Recipe().cook(ingredients, groceries)
 
 assert False
 
-## Now test running through the service layer
+### TEST THROUGH THE SERVICE LAYER ###
 
 request = ReductionRequest(
     runNumber = runNumber,
     useLiteMode = isLite,
-    calibrantSamplePath = calibrantSamplePath,
-    peakIntensityThreshold=peakThreshold,
 )
 
 service = ReductionService()
@@ -98,8 +92,18 @@ assert grouping2["groupingWorkspaces"] == groupingWorkspaces
 ingredients2 = service.prepReductionIngredients(request)
 assert ingredients == ingredients2
 
-groceries2 = service.fetchReductionGrcoeries(request)
+groceries2 = service.fetchReductionGroceries(request)
 groceries2["groupingWorkspaces"] = grouping2["groupingWorkspaces"]
-assert groceries2 == groceries
 
-service.reduce(request)
+# NOTE the groceries will have the "copyX" keyword in them
+# indicating how many times they have been loaded.  
+# Apart from that, the two lists should be identical.
+import re
+for key in groceries.keys():
+    if "copy" in groceries[key]:
+        groceries[key] = re.sub('_copy\d', '', groceries[key])
+    if "copy" in groceries2[key]:
+        groceries2[key] = re.sub('_copy\d', '', groceries2[key])
+assert groceries == groceries2
+
+service.reduction(request)

@@ -1,11 +1,11 @@
 from typing import List, Literal, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 
 
-class ReductionRequest(BaseModel):
+class ReductionRequest(BaseModel, extra=Extra.forbid):
     runNumber: Union[str, List[str]]
     useLiteMode: bool
     focusGroup: Union[Optional[FocusGroup], List[FocusGroup]]

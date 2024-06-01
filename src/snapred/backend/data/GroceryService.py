@@ -882,7 +882,7 @@ class GroceryService:
                             loader="ReheatLeftovers",
                         )
                 case "diffcal_table":
-                    if not item.version:
+                    if not isinstance(item.version, int):
                         item.version = self.dataService._getVersionFromCalibrationIndex(
                             item.runNumber, item.useLiteMode
                         )
@@ -907,11 +907,18 @@ class GroceryService:
                         res = self.fetchCalibrationWorkspaces(item)
                         res["workspace"] = maskWorkspaceName
                 case "normalization":
-                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(item.runNumber, item.version)
-                    if item.version is None or item.version == "*":
+                    if not isinstance(item.version, int):
                         item.version = self.dataService._getVersionFromNormalizationIndex(
                             item.runNumber, item.useLiteMode
                         )
+                        record = self.dataService.readNormalizationRecord(
+                            item.runNumber, item.useLiteMode, item.version
+                        )
+                        if record is not None:
+                            item.runNumber = record.runNumber
+                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(
+                        item.runNumber, item.useLiteMode, item.version
+                    )
                     if item.isOutput:
                         res = {"result": True, "workspace": normalizationWorkspaceName}
                     else:
