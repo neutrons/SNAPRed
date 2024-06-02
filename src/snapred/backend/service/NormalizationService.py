@@ -187,7 +187,7 @@ class NormalizationService(Service):
 
     def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
         if entry.appliesTo is None:
-            entry.appliesTo = ">" + entry.runNumber
+            entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * 1000))
         logger.info(f"Saving normalization index entry for Run Number {entry.runNumber}")

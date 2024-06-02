@@ -211,7 +211,7 @@ class CalibrationService(Service):
     @FromString
     def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
         if entry.appliesTo is None:
-            entry.appliesTo = ">" + entry.runNumber
+            entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
