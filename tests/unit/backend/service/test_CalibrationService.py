@@ -72,7 +72,7 @@ with mock.patch.dict(
         )
         assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
-        assert savedEntry.appliesTo == ">1"
+        assert savedEntry.appliesTo == ">=1"
         assert savedEntry.timestamp is not None
 
     def test_save():
