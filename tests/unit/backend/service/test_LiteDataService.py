@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -17,7 +18,7 @@ class TestLiteDataService(unittest.TestCase):
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite_map")
         liteDataService.dataExportService.exportWorkspace = Mock()
-        liteDataService.dataExportService.getFullLiteDataFilePath = Mock(return_value="dir/IPTS-555")
+        liteDataService.dataExportService.getFullLiteDataFilePath = Mock(return_value=Path("dir/IPTS-555/data.nxs.h5"))
 
         inputWorkspace = "_test_liteservice_555"
         outputWorkspace = "_test_output_lite_"

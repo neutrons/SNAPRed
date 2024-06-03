@@ -42,8 +42,8 @@ class LiteDataService(Service):
                 OutputWorkspace=outputWorkspace,
             )
             fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
-            path = fullPath.rsplit("/", 1)[0]
-            fileName = fullPath.rsplit("/", 1)[1]
+            path = fullPath.parent
+            fileName = fullPath.name
             self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
         except Exception as e:
             raise e

@@ -34,12 +34,12 @@ class DataExportService:
     def exportCalibrantSampleFile(self, entry: CalibrantSamples):
         self.dataService.writeCalibrantSample(entry)
 
-    def getFullLiteDataFilePath(self, runNumber: str):
+    def getFullLiteDataFilePath(self, runNumber: str) -> Path:
         path = self.dataService.getIPTS(runNumber)
         pre = "nexus.lite.prefix"
         ext = "nexus.lite.extension"
         fileName = Config[pre] + str(runNumber) + Config[ext]
-        return path + fileName
+        return Path(path, fileName)
 
     ##### REDUCTION METHODS #####
 
