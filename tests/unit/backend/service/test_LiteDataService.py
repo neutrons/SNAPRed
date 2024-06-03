@@ -21,9 +21,8 @@ class TestLiteDataService(unittest.TestCase):
 
         inputWorkspace = "_test_liteservice_"
         outputWorkspace = "_test_output_lite_"
-        runNumber = 555
 
-        liteDataService.reduceLiteData(inputWorkspace, outputWorkspace, runNumber)
+        liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
 
         assert mock_executeRecipe.called_with(
             InputWorkspace=inputWorkspace,
@@ -43,8 +42,7 @@ class TestLiteDataService(unittest.TestCase):
 
         inputWorkspace = "_test_liteservice_"
         outputWorkspace = "_test_output_lite_"
-        runNumber = 555
 
         with pytest.raises(RuntimeError) as e:
-            liteDataService.reduceLiteData(inputWorkspace, outputWorkspace, runNumber)
+            liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
         assert "oops!" in str(e.value)

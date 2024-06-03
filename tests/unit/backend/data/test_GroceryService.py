@@ -792,7 +792,7 @@ class TestGroceryService(unittest.TestCase):
         res = self.instance.fetchNeutronDataSingleUse(*liteItem)
         assert self.instance._loadedRuns.get(testKeyLite) is None
         workspaceNameLite = self.instance._createNeutronWorkspaceName(*liteItem)
-        self.instance.convertToLiteMode.assert_called_once_with(workspaceNameLite, self.runNumber)
+        self.instance.convertToLiteMode.assert_called_once_with(workspaceNameLite)
         assert mtd.doesExist(workspaceNameLite)
 
     def test_fetch_cached_native(self):
@@ -1552,7 +1552,7 @@ class TestGroceryService(unittest.TestCase):
 
         # now call to make lite
         workspacename = self.instance._createNeutronWorkspaceName(self.runNumber, False)
-        self.instance.convertToLiteMode(workspacename, self.runNumber)
+        self.instance.convertToLiteMode(workspacename)
         # assert the call to lite data mode fetched the lite data map
         assert self.instance.fetchGroupingDefinition.called_once_with("Lite", False)
         # assert that the lite data service was created and called

@@ -33,10 +33,10 @@ class LiteDataService(Service):
         self,
         inputWorkspace: WorkspaceName,
         outputWorkspace: WorkspaceName,
-        runNumber: str,
         instrumentDefinition: str = None,
     ) -> Dict[Any, Any]:
         liteDataMap = self._ensureLiteDataMap()
+        runNumber = inputWorkspace.split("_")[-1].lstrip("0")
         try:
             data = Recipe().executeRecipe(
                 InputWorkspace=inputWorkspace,
