@@ -210,7 +210,6 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                     + "Try to adjust parameters in Tweak Peak Peek tab"
                     + f"Bad peaks info: {badPeaks}"
                 )
-                print(tabDict)
             else:
                 logger.info(f"Sufficient number of well-fitted peaks (chi2 < {self.maxChiSq}).: {totalLowChi2}")
 

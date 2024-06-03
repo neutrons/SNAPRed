@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.ingredients import (
@@ -72,7 +73,7 @@ class NormalizationService(Service):
         groupingScheme = request.focusGroup.name
 
         # prepare ingredients
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -158,11 +159,13 @@ class NormalizationService(Service):
             useLiteMode=request.useLiteMode,
             calibrantSamplePath=request.calibrantSamplePath,
             fwhmMultipliers=request.fwhmMultipliers,
+            peakIntensityThreshold=request.peakIntensityThreshold,
         )
         calibration = self.sousChef.prepCalibration(farmFresh)
         record = NormalizationRecord(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
+            peakIntensityThreshold=request.peakIntensityThreshold,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             calibration=calibration,
@@ -184,14 +187,14 @@ class NormalizationService(Service):
 
     def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
         if entry.appliesTo is None:
-            entry.appliesTo = ">" + entry.runNumber
+            entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * 1000))
         logger.info(f"Saving normalization index entry for Run Number {entry.runNumber}")
         self.dataExportService.exportNormalizationIndexEntry(entry)
 
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -224,7 +227,7 @@ class NormalizationService(Service):
 
     @FromString
     def smoothDataExcludingPeaks(self, request: SmoothDataExcludingPeaksRequest):
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,

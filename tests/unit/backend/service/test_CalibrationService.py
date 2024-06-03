@@ -72,7 +72,7 @@ with mock.patch.dict(
         )
         assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
-        assert savedEntry.appliesTo == ">1"
+        assert savedEntry.appliesTo == ">=1"
         assert savedEntry.timestamp is not None
 
     def test_save():
@@ -267,7 +267,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             run=RunConfig(runNumber=self.runNumber),
             useLiteMode=True,
             focusGroup={"name": fakeMetrics.focusGroupName, "definition": ""},
-            calibrantSamplePath="egg/muffin/biscuit",
+            calibrantSamplePath="egg/muffin/biscuit.pastry",
             peakFunction="Gaussian",
             crystalDMin=0,
             crystalDMax=10,
@@ -280,6 +280,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Assert correct method calls
         assert FarmFreshIngredients.call_count == 1
         assert FitMultiplePeaksRecipe.called_once_with(self.instance.sousChef.prepPeakIngredients({}))
+        assert self.instance.dataFactoryService.getCifFilePath.called_once_with("biscuit")
 
         # Assert the result is as expected
         assert response == CalibrationAssessmentResponse.return_value
@@ -468,6 +469,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Perform assertions to check the result and method calls
         assert FarmFreshIngredients.call_count == 1
+        assert self.instance.dataFactoryService.getCifFilePath.called_once_with("cake_egg")
         assert res == self.instance.sousChef.prepDiffractionCalibrationIngredients(mockFF)
 
     def test_fetchDiffractionCalibrationGroceries(self):
@@ -594,11 +596,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         request = mock.Mock()
         res = self.instance.fitPeaks(request)
         assert res == FitMultiplePeaksRecipe.return_value.executeRecipe.return_value
-
-    # TODO remove this --- it only exists to make codecov happy
-    def test_reduction(self):
-        with pytest.raises(NotImplementedError):
-            self.instance.fakeMethod()
 
     def test_initializeState(self):
         testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))

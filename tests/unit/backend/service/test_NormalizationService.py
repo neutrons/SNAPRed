@@ -64,7 +64,7 @@ with mock.patch.dict(
         )
         assert normalizationService.dataExportService.exportNormalizationIndexEntry.called
         savedEntry = normalizationService.dataExportService.exportNormalizationIndexEntry.call_args.args[0]
-        assert savedEntry.appliesTo == ">1"
+        assert savedEntry.appliesTo == ">=1"
         assert savedEntry.timestamp is not None
 
 

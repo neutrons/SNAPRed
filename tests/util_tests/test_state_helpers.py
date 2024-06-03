@@ -5,10 +5,11 @@ from pathlib import Path
 
 import pytest
 from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from util.state_helpers import state_root_override
+from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
 
 VERSION_START = Config["instrument.startingVersionNumber"]
 
@@ -132,3 +133,66 @@ def test_state_root_override_exit_no_delete(mockReadPVFile, mockReadInstrumentCo
         assert Path(stateRootPath).exists()
     assert Path(stateRootPath).exists()
     shutil.rmtree(stateRootPath)
+
+
+def test_state_root_redirect_no_stateid():
+    localDataService = LocalDataService()
+    oldSelf = localDataService._constructCalibrationStateRoot
+    with state_root_redirect(localDataService) as tmpRoot:
+        # make sure the path exists
+        assert tmpRoot.path().exists()
+        # make sure the data service's path points to the tmp directory
+        assert localDataService._constructCalibrationStateRoot() == tmpRoot.path()
+        assert localDataService._generateStateId()[0] == tmpRoot.path().parts[-1]
+        # make sure a file can be added inside the directory
+        tmpRoot.addFileAs(
+            Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"),
+            localDataService.getCalibrationRecordFilePath("xyz", True, 1),
+        )
+        ans = localDataService.readCalibrationRecord("xyz", True, 1)
+        assert ans == CalibrationRecord.parse_file(Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))
+        # make sure files can only be added inside the directory
+        with pytest.raises(AssertionError):
+            tmpRoot.addFileAs(
+                Resource.getPath("inputs/calibration/CalibrationRecord_v0002.json"),
+                "here",
+            )
+    # make sure the directory is deleted at exit
+    assert not tmpRoot.path().exists()
+    # make sure the construct state root method is restored on exit
+    assert oldSelf == localDataService._constructCalibrationStateRoot
+
+
+def test_state_root_redirect_with_stateid():
+    stateId = "not_a_real_id"
+    localDataService = LocalDataService()
+    with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
+        # make sure the root is pointing to this state ID
+        assert localDataService._generateStateId() == (stateId, "gibberish")
+        assert localDataService._constructCalibrationStateRoot() == tmpRoot.path()
+        assert stateId == localDataService._constructCalibrationStateRoot().parts[-1]
+
+
+def test_reduction_root_redirect_no_stateid():
+    localDataService = LocalDataService()
+    oldSelf = localDataService._constructReductionStateRoot
+    with reduction_root_redirect(localDataService) as tmpRoot:
+        # make sure the path exists
+        assert tmpRoot.path().exists()
+        # make sure the data service's path points to the tmp directory
+        assert localDataService._constructReductionStateRoot() == tmpRoot.path()
+        assert localDataService._generateStateId()[0] == tmpRoot.path().parts[-1]
+    # make sure the directory is deleted at exit
+    assert not tmpRoot.path().exists()
+    # make sure the construct state root method is restored on exit
+    assert oldSelf == localDataService._constructReductionStateRoot
+
+
+def test_reduction_root_redirect_with_stateid():
+    stateId = "not_a_real_id"
+    localDataService = LocalDataService()
+    with reduction_root_redirect(localDataService, stateId=stateId) as tmpRoot:
+        # make sure the root is pointing to this state ID
+        assert localDataService._generateStateId() == (stateId, "gibberish")
+        assert localDataService._constructReductionStateRoot() == tmpRoot.path()
+        assert stateId == localDataService._constructReductionStateRoot().parts[-1]
