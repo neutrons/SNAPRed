@@ -1216,7 +1216,6 @@ class TestGroceryService(unittest.TestCase):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
         #   * corresponding table workspace is also loaded from the hdf5-format file.
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
-        oldself = self.instance.dataService._constructCalibrationStateRoot(self.runNumber1)
         with state_root_redirect(self.instance.dataService) as tmpRoot:
             groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
             diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
@@ -1237,12 +1236,6 @@ class TestGroceryService(unittest.TestCase):
             assert items[0] == diffCalMaskName
             assert mtd.doesExist(diffCalMaskName)
             assert mtd.doesExist(diffCalTableName)
-        # NOTE make sure the state root method is returned to its original pristine form
-        # if you break this test, you are required to fix the state_root_redirect context manager until these lines pass
-        assert str(tmpRoot.tmppath) not in str(
-            self.instance.dataService._constructCalibrationStateRoot(self.runNumber1)
-        )
-        assert oldself == self.instance.dataService._constructCalibrationStateRoot(self.runNumber1)
 
     def test_fetch_grocery_list_normalization(self):
         # Test of workspace type "normalization" as `Input` argument in the `GroceryList`

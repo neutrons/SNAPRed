@@ -420,11 +420,11 @@ class LocalDataService:
         write_model_list_pretty(normalizationIndex, indexPath)
 
     @validate_arguments
-    def getCalibrationRecordPath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
+    def getCalibrationRecordFilePath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         return self._constructCalibrationDataPath(runId, useLiteMode, version) / "CalibrationRecord.json"
 
     @validate_arguments
-    def getNormalizationRecordPath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
+    def getNormalizationRecordFilePath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         return self._constructNormalizationDataPath(runId, useLiteMode, version) / "NormalizationRecord.json"
 
     def _extractFileVersion(self, file: str) -> int:
@@ -495,7 +495,7 @@ class LocalDataService:
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         latestFile = ""
         recordPathGlob: str = str(
-            self.getNormalizationRecordPath(runId, useLiteMode, version if version is not None else "*")
+            self.getNormalizationRecordFilePath(runId, useLiteMode, version if version is not None else "*")
         )
         if version is not None:
             latestFile = self._getFileOfVersion(recordPathGlob, version)
@@ -525,7 +525,7 @@ class LocalDataService:
         previousVersion = self._getLatestNormalizationVersionNumber(stateId, record.useLiteMode)
         if version is None:
             version = max(record.version, previousVersion + 1)
-        recordPath: Path = self.getNormalizationRecordPath(runNumber, record.useLiteMode, version)
+        recordPath: Path = self.getNormalizationRecordFilePath(runNumber, record.useLiteMode, version)
         record.version = version
 
         # There seems no need to write the _nested_ Normalization,
@@ -568,10 +568,10 @@ class LocalDataService:
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         recordFile: str = None
         if version is not None:
-            recordPathGlob: str = str(self.getCalibrationRecordPath(runId, useLiteMode, version))
+            recordPathGlob: str = str(self.getCalibrationRecordFilePath(runId, useLiteMode, version))
             recordFile = self._getFileOfVersion(recordPathGlob, version)
         else:
-            recordPathGlob: str = str(self.getCalibrationRecordPath(runId, useLiteMode, "*"))
+            recordPathGlob: str = str(self.getCalibrationRecordFilePath(runId, useLiteMode, "*"))
             recordFile = self._getLatestFile(recordPathGlob)
         record: CalibrationRecord = None
         if recordFile is not None:
@@ -594,7 +594,7 @@ class LocalDataService:
         previousVersion: int = self._getLatestCalibrationVersionNumber(stateId, record.useLiteMode)
         if version is None:
             version = max(record.version, previousVersion + 1)
-        recordPath: Path = self.getCalibrationRecordPath(runNumber, record.useLiteMode, str(version))
+        recordPath: Path = self.getCalibrationRecordFilePath(runNumber, record.useLiteMode, str(version))
         record.version = version
 
         # As above at 'writeNormalizationRecord':

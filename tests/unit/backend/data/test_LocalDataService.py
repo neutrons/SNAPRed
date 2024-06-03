@@ -1042,7 +1042,7 @@ def test_readWriteNormalizationRecord_specified_version():
         assert actualRecord.version == firstVersion
         assert actualRecord.calibration.version == firstVersion
         assert actualRecord.useLiteMode == useLiteMode
-        assert localDataService.getNormalizationRecordPath(runNumber, useLiteMode, firstVersion).exists()
+        assert localDataService.getNormalizationRecordFilePath(runNumber, useLiteMode, firstVersion).exists()
         # write: version == testVersion
         testVersion = VERSION_START + 3
         testNormalizationRecord.version = testVersion
@@ -1053,8 +1053,8 @@ def test_readWriteNormalizationRecord_specified_version():
         actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode, testVersion)
         assert actualRecord.version == testVersion
         assert actualRecord.useLiteMode == useLiteMode
-        assert localDataService.getNormalizationRecordPath(runNumber, useLiteMode, firstVersion).exists()
-        assert localDataService.getNormalizationRecordPath(runNumber, useLiteMode, testVersion).exists()
+        assert localDataService.getNormalizationRecordFilePath(runNumber, useLiteMode, firstVersion).exists()
+        assert localDataService.getNormalizationRecordFilePath(runNumber, useLiteMode, testVersion).exists()
         # test can still read earlier version
         actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode, firstVersion)
         assert actualRecord.version == firstVersion
@@ -1358,8 +1358,8 @@ def test_writeReductionData_no_directories(createReductionWorkspaces):
         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
 
         # Important to this test: use a path that doesn't already exist
-        reductionRecordPath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-        assert not reductionRecordPath.exists()
+        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
+        assert not reductionRecordFilePath.exists()
 
         # `writeReductionRecord` must be called first
         # * deliberately _not_ done in this test => <reduction-data root> directory won't exist
@@ -1396,14 +1396,14 @@ def test_writeReductionData_metadata(createReductionWorkspaces):
         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
 
         # Important to this test: use a path that doesn't already exist
-        reductionRecordPath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-        assert not reductionRecordPath.exists()
+        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
+        assert not reductionRecordFilePath.exists()
 
         # `writeReductionRecord` must be called first
         localDataService.writeReductionRecord(testRecord)
         localDataService.writeReductionData(testRecord)
 
-        filePath = reductionRecordPath.parent / fileName
+        filePath = reductionRecordFilePath.parent / fileName
         assert filePath.exists()
         with h5py.File(filePath, "r") as h5:
             dict_ = n5m.extractMetadataGroup(h5, "/metadata")
@@ -1437,14 +1437,14 @@ def test_readWriteReductionData(createReductionWorkspaces):
         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
 
         # Important to this test: use a path that doesn't already exist
-        reductionRecordPath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-        assert not reductionRecordPath.exists()
+        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
+        assert not reductionRecordFilePath.exists()
 
         # `writeReductionRecord` needs to be called first
         localDataService.writeReductionRecord(testRecord)
         localDataService.writeReductionData(testRecord)
 
-        filePath = reductionRecordPath.parent / fileName
+        filePath = reductionRecordFilePath.parent / fileName
         assert filePath.exists()
 
         # move the existing test workspaces out of the way:
@@ -1500,29 +1500,29 @@ def test__constructReductionDataFilePath():
     assert actualFilePath == expectedFilePath
 
 
-def test_getCalibrationRecordPath():
+def test_getCalibrationRecordFilePath():
     testVersion = randint(1, 20)
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._constructCalibrationStatePath = mock.Mock()
     localDataService._constructCalibrationStatePath.return_value = Path(Resource.getPath("outputs"))
-    actualPath = localDataService.getCalibrationRecordPath("57514", True, testVersion)
+    actualPath = localDataService.getCalibrationRecordFilePath("57514", True, testVersion)
     assert actualPath == Path(Resource.getPath("outputs")) / wnvf.fileVersion(testVersion) / "CalibrationRecord.json"
 
 
-def test_getNormalizationRecordPath():
+def test_getNormalizationRecordFilePath():
     testVersion = randint(1, 20)
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("123", "456")
     localDataService._constructNormalizationStatePath = mock.Mock()
     localDataService._constructNormalizationStatePath.return_value = Path(Resource.getPath("outputs"))
-    actualPath = localDataService.getNormalizationRecordPath("57514", True, testVersion)
+    actualPath = localDataService.getNormalizationRecordFilePath("57514", True, testVersion)
     assert actualPath == Path(Resource.getPath("outputs")) / wnvf.fileVersion(testVersion) / "NormalizationRecord.json"
 
 
-def test_getReductionRecordPath():
+def test_getReductionRecordFilePath():
     testVersion = randint(1, 20)
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock()
