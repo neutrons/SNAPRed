@@ -8,6 +8,7 @@ from mantid.simpleapi import mtd
 from pydantic import validate_arguments
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.state import (
     GroupingMap,
 )
@@ -121,6 +122,16 @@ class WhateversInTheFridge(LocalDataService):
     @validate_arguments
     def _getLatestNormalizationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
         return self.latestVersion
+
+    ### REDUCTION METHODS ###
+
+    def writeReductionRecord(self, record: ReductionRecord, version: Optional[int]) -> ReductionRecord:
+        record.runNumbers.append("writeReductionRecord")
+        return record
+
+    def writeReductionData(self, record: ReductionRecord) -> ReductionRecord:
+        record.runNumbers.append("writeReductionData")
+        return record
 
     ### GROUPING MAP METHODS ###
 

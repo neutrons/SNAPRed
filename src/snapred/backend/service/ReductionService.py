@@ -3,6 +3,7 @@ from typing import Any, Dict
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
+    ReductionExportRequest,
     ReductionRequest,
 )
 from snapred.backend.data.DataExportService import DataExportService
@@ -46,8 +47,7 @@ class ReductionService(Service):
         self.registerPath("groupings", self.fetchReductionGroupings)
         self.registerPath("loadGroupings", self.loadAllGroupings)
         self.registerPath("save", self.saveReduction)
-        self.registerPath("load", self.fakeMethod)
-        self.registerPath("index", self.fakeMethod)
+        self.registerPath("load", self.loadReduction)
         self.registerPath("hasState", self.hasState)
         return
 
@@ -186,8 +186,13 @@ class ReductionService(Service):
         return self.groceryService.fetchGroceryDict(groceryDict=self.groceryClerk.buildDict())
 
     @FromString
-    def saveReduction(self, request):  # noqa ARG005
-        raise NotImplementedError("Save the workspace by right-clicking on its name in the workspace list.")
+    def saveReduction(self, request: ReductionExportRequest):
+        record = request.reductionRecord
+        record = self.dataExportService.exportReductionRecord(record)
+        record = self.dataExportService.exportReductionData(record)
+
+    def loadReduction(self):
+        raise NotImplementedError("SNAPRed cannot load reductions")
 
     def hasState(self, runNumber: str):
         return self.dataFactoryService.checkCalibrationStateExists(runNumber)

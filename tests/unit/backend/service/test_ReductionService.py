@@ -3,19 +3,23 @@ import unittest
 import unittest.mock as mock
 from typing import List
 
+import pytest
 from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
 from pydantic import parse_obj_as
-from snapred.backend.dao.request.ReductionRequest import ReductionRequest
 
 # Mock out of scope modules before importing DataExportService
 
 localMock = mock.Mock()
 
-
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
+from snapred.backend.dao.request import (
+    ReductionExportRequest,
+    ReductionRequest,
+)
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.service.ReductionService import ReductionService
 from util.InstaEats import InstaEats
@@ -47,10 +51,20 @@ class TestReductionService(unittest.TestCase):
             useLiteMode=False,
             focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
         )
+        ## Mock out the assistant services
         self.instance.sousChef = self.sculleryBoy
         self.instance.groceryService = self.instaEats
         self.instance.dataFactoryService.lookupService = self.instaEats.dataService
         self.instance.dataExportService.dataService = self.instaEats.dataService
+
+    def test_name(self):
+        ## this makes codecov happy
+        assert "reduction" == self.instance.name()
+
+    def test_fakeMethod(self):
+        ## this makes codecov happy
+        with pytest.raises(NotImplementedError):
+            self.instance.fakeMethod()
 
     def test_loadAllGroupings(self):
         data = self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode)
@@ -85,6 +99,19 @@ class TestReductionService(unittest.TestCase):
         assert ReductionRecipe.called
         assert ReductionRecipe.return_value.cook.called_once_with(ingredients, groceries)
         assert res == ReductionRecipe.return_value.cook.return_value
+
+    def test_saveReduction(self):
+        # this method only needs to call the methods in the data service
+        # the corresponding methods are setup to add themselves to the list of run numbers
+        record = ReductionRecord.construct(runNumbers=["test"])
+        request = ReductionExportRequest(reductionRecord=record)
+        self.instance.saveReduction(request)
+        assert record.runNumbers == ["test", "writeReductionRecord", "writeReductionData"]
+
+    def test_loadReduction(self):
+        ## this makes codecov happy
+        with pytest.raises(NotImplementedError):
+            self.instance.loadReduction()
 
     def test_hasState(self):
         assert self.instance.hasState("123")
