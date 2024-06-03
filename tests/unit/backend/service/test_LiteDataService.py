@@ -1,28 +1,42 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest import mock
 from unittest.mock import Mock, patch
 
 import pytest
+from mantid.simpleapi import CloneWorkspace, CreateSingleValuedWorkspace
+from snapred.backend.service.LiteDataService import LiteDataService
+from snapred.meta.Config import Resource
 
 
 class TestLiteDataService(unittest.TestCase):
-    @patch("snapred.backend.recipe.GenericRecipe.GenericRecipe.executeRecipe")
+    @patch("snapred.backend.service.LiteDataService.Recipe.executeRecipe")
     def test_reduceLiteData_calls_executeRecipe_with_correct_arguments(
         self,
-        mock_executeRecipe,
+        executeRecipe,
     ):
-        mock_executeRecipe.return_value = {}
+        executeRecipe.return_value = {}
+        executeRecipe.side_effect = lambda **kwargs: CloneWorkspace(
+            InputWorkspace=kwargs["InputWorkspace"],
+            OutputWorkspace=kwargs["OutputWorkspace"],
+        )
 
-        from snapred.backend.service.LiteDataService import LiteDataService
+        inputWorkspace = "_test_liteservice_555"
+        outputWorkspace = "_test_output_lite_"
+        CreateSingleValuedWorkspace(OutputWorkspace=inputWorkspace)
 
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite_map")
+        with TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/") as tmpdir:
+            outputPath = Path(tmpdir, "555.nxs.h5")
+            assert not outputPath.exists()
+            liteDataService.dataExportService.getFullLiteDataFilePath = mock.Mock(return_value=outputPath)
 
-        inputWorkspace = "_test_liteservice_"
-        outputWorkspace = "_test_output_lite_"
+            liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
+            assert outputPath.exists()
 
-        liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
-
-        assert mock_executeRecipe.called_with(
+        assert executeRecipe.called_with(
             InputWorkspace=inputWorkspace,
             OutputWorkspace=outputWorkspace,
             LiteDataMapWorkspace=liteDataService._ensureLiteDataMap.return_value,
@@ -38,7 +52,7 @@ class TestLiteDataService(unittest.TestCase):
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite map")
 
-        inputWorkspace = "_test_liteservice_"
+        inputWorkspace = "_test_liteservice_555"
         outputWorkspace = "_test_output_lite_"
 
         with pytest.raises(RuntimeError) as e:
