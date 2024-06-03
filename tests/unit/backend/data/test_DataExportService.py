@@ -33,6 +33,10 @@ class TestDataExportService(unittest.TestCase):
         self.instance.exportCalibrantSampleFile(mock.Mock())
         assert self.instance.dataService.writeCalibrantSample.called
 
+    def test_getFullLiteDataFilePath(self):
+        self.instance.getFullLiteDataFilePath(mock.Mock())
+        assert self.instance.dataService.getIPTS.called
+
     ##### TEST REDUCTION METHODS #####
 
     # NOTE will exist in future
