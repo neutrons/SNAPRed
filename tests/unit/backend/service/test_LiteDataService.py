@@ -16,10 +16,10 @@ class TestLiteDataService(unittest.TestCase):
 
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite_map")
-        liteDataService.dataService.getIPTS = Mock(return_value="IPTS-555")
         liteDataService.dataExportService.exportWorkspace = Mock()
+        liteDataService.dataExportService.getFullLiteDataFilePath = Mock(return_value="dir/IPTS-555")
 
-        inputWorkspace = "_test_liteservice_"
+        inputWorkspace = "_test_liteservice_555"
         outputWorkspace = "_test_output_lite_"
 
         liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
@@ -40,7 +40,7 @@ class TestLiteDataService(unittest.TestCase):
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite map")
 
-        inputWorkspace = "_test_liteservice_"
+        inputWorkspace = "_test_liteservice_555"
         outputWorkspace = "_test_output_lite_"
 
         with pytest.raises(RuntimeError) as e:

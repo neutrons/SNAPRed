@@ -12,6 +12,7 @@ from snapred.backend.dao.normalization.NormalizationRecord import NormalizationR
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -32,6 +33,13 @@ class DataExportService:
 
     def exportCalibrantSampleFile(self, entry: CalibrantSamples):
         self.dataService.writeCalibrantSample(entry)
+
+    def getFullLiteDataFilePath(self, runNumber: str):
+        path = self.dataService.getIPTS(runNumber)
+        pre = "nexus.lite.prefix"
+        ext = "nexus.lite.extension"
+        fileName = Config[pre] + str(runNumber) + Config[ext]
+        return path + fileName
 
     ##### REDUCTION METHODS #####
 

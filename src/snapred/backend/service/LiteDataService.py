@@ -1,10 +1,8 @@
 from typing import Any, Dict
 
 from snapred.backend.data.DataExportService import DataExportService
-from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.recipe.GenericRecipe import LiteDataRecipe as Recipe
 from snapred.backend.service.Service import Service
-from snapred.meta.Config import Config
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
@@ -16,7 +14,6 @@ class LiteDataService(Service):
         super().__init__()
         self.registerPath("createLiteData", self.reduceLiteData)
         self.dataExportService = DataExportService()
-        self.dataService = LocalDataService()
         return
 
     @staticmethod
@@ -44,10 +41,9 @@ class LiteDataService(Service):
                 LiteInstrumentDefinitionFile=instrumentDefinition,
                 OutputWorkspace=outputWorkspace,
             )
-            path = self.dataService.getIPTS(runNumber)
-            pre = "nexus.lite.prefix"
-            ext = "nexus.lite.extension"
-            fileName = Config[pre] + str(runNumber) + Config[ext]
+            fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
+            path = fullPath.rsplit("/", 1)[0]
+            fileName = fullPath.rsplit("/", 1)[1]
             self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
         except Exception as e:
             raise e
