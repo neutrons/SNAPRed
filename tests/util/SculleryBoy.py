@@ -117,6 +117,7 @@ class SculleryBoy:
             runConfig=self.prepRunConfig(ingredients.runNumber),
             pixelGroup=self.prepPixelGroup(ingredients),
             groupedPeakLists=self.prepDetectorPeaks(ingredients),
+            maxChiSq=100.0,
         )
 
     # these methods are not in SousChef, but are needed to build other things

@@ -46,8 +46,9 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     signalRunNumberUpdate = Signal(str)
     signalPeakThresholdUpdate = Signal(float)
-    signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum, Pair)
+    signalValueChanged = Signal(int, float, float, float, SymmetricPeakEnum, Pair, float)
     signalUpdateRecalculationButton = Signal(bool)
+    signalMaxChiSqUpdate = Signal(float)
 
     def __init__(self, jsonForm, samples=[], groups=[], parent=None):
         selection = "calibration/diffractionCalibration"
@@ -56,8 +57,10 @@ class DiffCalTweakPeakView(BackendRequestView):
         # create the run number field and lite mode toggle
         self.runNumberField = self._labeledField("Run Number")
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
+        self.maxChiSqField = self._labeledField("Max Chi Sq", QLineEdit(str(self.MAX_CHI_SQ)))
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
         self.signalPeakThresholdUpdate.connect(self._updatePeakThreshold)
+        self.signalMaxChiSqUpdate.connect(self._updateMaxChiSq)
 
         # create the graph elements
         self.figure = plt.figure(constrained_layout=True)
@@ -69,11 +72,11 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.groupingFileDropdown = self._sampleDropDown("Grouping File", groups)
         self.peakFunctionDropdown = self._sampleDropDown("Peak Function", [p.value for p in SymmetricPeakEnum])
 
-        # disable run number, lite mode, sample, peak fucnction -- cannot be changed now
+        # disable run number, lite mode, sample, peak function -- cannot be changed now
         for x in [self.runNumberField, self.litemodeToggle, self.sampleDropdown]:
             x.setEnabled(False)
 
-        # create the peak adustment controls
+        # create the peak adjustment controls
         self.fielddMin = self._labeledField("dMin", QLineEdit(str(self.DMIN)))
         self.fielddMax = self._labeledField("dMax", QLineEdit(str(self.DMAX)))
         self.fieldFWHMleft = self._labeledField("FWHM left", QLineEdit(str(self.FWHM.left)))
@@ -85,6 +88,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         peakControlLayout.addWidget(self.fieldFWHMleft)
         peakControlLayout.addWidget(self.fieldFWHMright)
         peakControlLayout.addWidget(self.fieldThreshold)
+        peakControlLayout.addWidget(self.maxChiSqField)
 
         # a big ol recalculate button
         self.recalculationButton = QPushButton("Recalculate")
@@ -120,6 +124,12 @@ class DiffCalTweakPeakView(BackendRequestView):
     def updatePeakThreshold(self, peakThreshold):
         self.signalPeakThresholdUpdate.emit(float(peakThreshold))
 
+    def _updateMaxChiSq(self, maxChiSq):
+        self.maxChiSqField.setText(str(maxChiSq))
+
+    def updateMaxChiSq(self, maxChiSq):
+        self.signalMaxChiSqUpdate.emit(maxChiSq)
+
     def updateFields(self, sampleIndex, groupingIndex, peakIndex):
         self.sampleDropdown.setCurrentIndex(sampleIndex)
         self.groupingFileDropdown.setCurrentIndex(groupingIndex)
@@ -137,11 +147,12 @@ class DiffCalTweakPeakView(BackendRequestView):
                 left=float(self.fieldFWHMleft.text()),
                 right=float(self.fieldFWHMright.text()),
             )
+            maxChiSq = float(self.maxChiSqField.text())
         except ValueError as e:
             QMessageBox.warning(
                 self,
                 "Invalid Peak Parameters",
-                f"One of dMin, dMax, or peak threshold is invalid: {str(e)}",
+                f"One of dMin, dMax, peak threshold, or max chi sq is invalid: {str(e)}",
                 QMessageBox.Ok,
             )
             return
@@ -163,7 +174,7 @@ class DiffCalTweakPeakView(BackendRequestView):
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(groupingIndex, dMin, dMax, peakThreshold, peakFunction, fwhm)
+        self.signalValueChanged.emit(groupingIndex, dMin, dMax, peakThreshold, peakFunction, fwhm, maxChiSq)
 
     def updateGraphs(self, workspace, peaks, diagnostic):
         # get the updated workspaces and optimal graph grid
@@ -182,8 +193,12 @@ class DiffCalTweakPeakView(BackendRequestView):
             fitted_peaks = mtd[diagnostic].getItem(incr * wkspIndex + FitOutputEnum.Workspace.value)
             param_table = mtd[diagnostic].getItem(incr * wkspIndex + FitOutputEnum.Parameters.value).toDict()
             chisq = param_table["chi2"]
-            self.goodPeaksCount[wkspIndex] = len([peak for chi2, peak in zip(chisq, peaks) if chi2 < self.MAX_CHI_SQ])
-            self.badPeaks[wkspIndex] = [peak for chi2, peak in zip(chisq, peaks) if chi2 >= self.MAX_CHI_SQ]
+            self.goodPeaksCount[wkspIndex] = len(
+                [peak for chi2, peak in zip(chisq, peaks) if chi2 < float(self.maxChiSqField.text())]
+            )
+            self.badPeaks[wkspIndex] = [
+                peak for chi2, peak in zip(chisq, peaks) if chi2 >= float(self.maxChiSqField.text())
+            ]
             # prepare the plot area
             ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
             ax.tick_params(direction="in")
@@ -200,8 +215,8 @@ class DiffCalTweakPeakView(BackendRequestView):
                 # areas inside peak bounds (to be shaded)
                 under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]
                 # the color: blue = GOOD, red = BAD
-                color = "blue" if chi2 < self.MAX_CHI_SQ else "red"
-                alpha = 0.3 if chi2 < self.MAX_CHI_SQ else 0.8
+                color = "blue" if chi2 < float(self.maxChiSqField.text()) else "red"
+                alpha = 0.3 if chi2 < float(self.maxChiSqField.text()) else 0.8
                 # now shade
                 ax.fill_between(x, y, where=under_peaks, color=color, alpha=alpha)
             # plot the min and max value for peaks
@@ -251,7 +266,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             msg = "Peaks in the following groups have chi-squared values exceeding the maximum allowed value.\n"
             for groupID, badPeak in enumerate(self.badPeaks):
                 msg = msg + f"\tgroup {groupID + 1} has bad peaks at {[peak.value for peak in badPeak]}\n"
-            msg = msg + "Adjust FWHM, dMin, dMax, peak intensity threshold, ect. to better fit more peaks."
+            msg = msg + "Adjust FWHM, dMin, dMax, peak intensity threshold, etc. to better fit more peaks."
             raise ValueError(msg)
 
     def _testContinueAnywayStates(self):

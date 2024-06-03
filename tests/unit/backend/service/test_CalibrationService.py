@@ -273,6 +273,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             crystalDMax=10,
             peakIntensityThreshold=0,
             nBinsAcrossPeakWidth=0,
+            maxChiSq=100.0,
         )
         response = self.instance.assessQuality(request)
 
