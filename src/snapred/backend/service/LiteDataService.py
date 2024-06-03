@@ -44,14 +44,11 @@ class LiteDataService(Service):
                 LiteInstrumentDefinitionFile=instrumentDefinition,
                 OutputWorkspace=outputWorkspace,
             )
-            try:
-                path = self.dataService.getIPTS(runNumber)
-                pre = "nexus.lite.prefix"
-                ext = "nexus.lite.extension"
-                fileName = Config[pre] + runNumber + Config[ext]
-                self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
-            except Exception as e:  # noqa: BLE001
-                print(e)
+            path = self.dataService.getIPTS(runNumber)
+            pre = "nexus.lite.prefix"
+            ext = "nexus.lite.extension"
+            fileName = Config[pre] + str(runNumber) + Config[ext]
+            self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
         except Exception as e:
             raise e
         return data

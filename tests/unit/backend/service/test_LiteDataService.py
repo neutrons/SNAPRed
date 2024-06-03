@@ -16,6 +16,8 @@ class TestLiteDataService(unittest.TestCase):
 
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite_map")
+        liteDataService.dataService.getIPTS = Mock(return_value="IPTS-555")
+        liteDataService.dataExportService.exportWorkspace = Mock()
 
         inputWorkspace = "_test_liteservice_"
         outputWorkspace = "_test_output_lite_"
