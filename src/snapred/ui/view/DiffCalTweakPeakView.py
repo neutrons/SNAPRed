@@ -260,7 +260,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             for tooFew in tooFews:
                 msg = msg + f"\tgroup {tooFew.groupID} has \t {len(tooFew.peaks)} peaks\n"
             msg = msg + "Would you like to continue anyway?"
-            raise ContinueWarning(msg)
+            raise ContinueWarning(msg, ContinueWarning.Type.LOW_PEAK_COUNT)
 
     def verify(self):
         self._testFailStates()

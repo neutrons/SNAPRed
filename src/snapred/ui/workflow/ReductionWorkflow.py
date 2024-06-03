@@ -1,4 +1,5 @@
 from snapred.backend.dao.request import ReductionRequest
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.ui.view.ReductionView import ReductionView
@@ -13,6 +14,7 @@ class ReductionWorkflow(WorkflowImplementer):
         super().__init__(parent)
 
         self._reductionView = ReductionView(parent=parent)
+        self.continueAnywayFlags = None
 
         self._reductionView.enterRunNumberButton.clicked.connect(lambda: self._populatePixelMaskDropdown())
 
@@ -22,10 +24,17 @@ class ReductionWorkflow(WorkflowImplementer):
                 self._triggerReduction,
                 self._reductionView,
                 "Reduction",
+                continueAnywayHandler=self._continueReductionHandler,
             )
             .build()
         )
         self.workflow.presenter.setResetLambda(self.reset)
+
+    def _continueReductionHandler(self, continueInfo):
+        if isinstance(continueInfo, ContinueWarning.Model):
+            self.continueAnywayFlags = self.continueAnywayFlags | continueInfo.flag
+        else:
+            raise ValueError(f"Invalid continueInfo type: {type(continueInfo)}, expecting ContinueWarning.Model.")
 
     @ExceptionToErrLog
     def _populatePixelMaskDropdown(self):
@@ -53,6 +62,7 @@ class ReductionWorkflow(WorkflowImplementer):
             payload = ReductionRequest(
                 runNumber=runNumber,
                 useLiteMode=self._reductionView.liteModeToggle.field.getState(),
+                continueFlags=self.continueAnywayFlags,
                 # TODO: hardcoded for now till we pull it from the right file
                 calibrantSamplePath="SNS/SNAP/shared/Calibration/CalibrationSamples/Diamond_001.json",
             )

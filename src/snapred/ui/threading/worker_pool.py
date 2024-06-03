@@ -32,7 +32,7 @@ class Worker(QObject):
                 results = self.target()
             # results.code = 200 # set to 200 for testing
         except ContinueWarning as w:
-            results = SNAPResponse(code=ResponseCode.CONTINUE_WARNING, message=str(w))
+            results = SNAPResponse(code=ResponseCode.CONTINUE_WARNING, message=w.model.json())
         except RecoverableException as e:
             results = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.errorMsg)
         except Exception as e:  # noqa: BLE001
