@@ -654,24 +654,14 @@ class LocalDataService:
         for wsName in workspaces.pop(wngt.DIFFCAL_TABLE, []):
             # Rebuild the workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple table workspaces.
-            ws = (
-                wng.diffCalTable()
-                .runNumber(record.runNumber)
-                .version(record.version)
-                .build()
-            )
+            ws = wng.diffCalTable().runNumber(record.runNumber).version(record.version).build()
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_TABLE] = wss
         wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_MASK, []):
             # Rebuild the workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple mask workspaces.
-            ws = (
-                wng.diffCalMask()
-                .runNumber(record.runNumber)
-                .version(record.version)
-                .build()
-            )
+            ws = wng.diffCalMask().runNumber(record.runNumber).version(record.version).build()
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_MASK] = wss
         savedRecord = deepcopy(record)
