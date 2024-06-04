@@ -4,14 +4,17 @@ from typing import Dict, List, Optional
 
 from pydantic import parse_file_as
 
-from snapred.backend.dao.IndexEntry import IndexEntry, Version
+from snapred.backend.dao.IndexEntry import IndexEntry, Version, Nonentry
 from snapred.backend.dao.Record import Nonrecord, Record
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import StrEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import (
-    write_model_list_pretty,
+    write_model_list_pretty, write_model_pretty
 )
 
 logger = snapredLogger.getLogger(__name__)
@@ -35,7 +38,7 @@ class Indexor:
 
     indexorType: IndexorType
 
-    # starting version number -- the first run printed
+    # starting version numbers
     VERSION_START = Config["version.error"]
     VERSION_DEFAULT = Config["version.error"]
     UNINITIALIZED = Config["version.error"]
@@ -212,6 +215,7 @@ class Indexor:
     def readIndex(self) -> Dict[Version, IndexEntry]:
         # create the index from the index file
         indexPath: Path = self.indexPath()
+        print(indexPath)
         indexList: List[IndexEntry] = []
         if indexPath.exists():
             indexList = parse_file_as(List[IndexEntry], indexPath)
@@ -221,16 +225,16 @@ class Indexor:
         write_model_list_pretty(self.index.values(), self.indexPath())
 
     def addIndexEntry(self, entry: IndexEntry, version: Optional[Version] = None):
-        if version == "*":
+        if not isinstance(version, int):
             version = self.nextVersion()
-        if version is None:
-            version = entry.version
         entry.version = version
         self.index[entry.version] = entry
         self.writeIndex()
 
     def indexEntryFromRecord(self, record: Record) -> IndexEntry:
-        return IndexEntry.construct(
+        entry = Nonentry
+        if record is not Nonrecord:
+            entry = IndexEntry.construct(
             runNumber=record.runNumber,
             useLiteMode=record.useLiteMode,
             version=record.version,
@@ -239,19 +243,32 @@ class Indexor:
             comments="This index entry was created from a record",
             timestamp=0,
         )
+        return entry
 
     ## record manipulation methods ##
 
-    """
-    The Indexor should not handle writing any records, only reading them.
-    From a record it only needs a small amount of important information.
-    The records contain much more information, which is not handled by the Indexor.
-    """
-
     def readRecord(self, version: Version):
-        file = self.recordPath(version)
-        if file.exists():
-            record = parse_file_as(Record, file)
+        if not isinstance(version, int):
+            version = self.currentVersion()
+        filePath = self.recordPath(version)
+        if filePath.exists():
+            match(self.indexorType):
+                case IndexorType.CALIBRATION:
+                    record = CalibrationRecord.parse_file(filePath)
+                case IndexorType.NORMALIZATION:
+                    record = NormalizationRecord.parse_file(filePath)
+                case IndexorType.REDUCTION:
+                    record = ReductionRecord.parse_file(filePath)
+                case IndexorType.DEFAULT:
+                    record = Record.parse_file(filePath)
         else:
             record = Nonrecord
         return record
+    
+    def writeRecord(self, record: Record, version: Optional[int]):
+        if not isinstance(version, int):
+            version = self.nextVersion()
+        record.version = version
+        filePath = self.recordPath(version)
+        filePath.parent.mkdir(parents=True, exist_ok=True)
+        write_model_pretty(record, filePath)

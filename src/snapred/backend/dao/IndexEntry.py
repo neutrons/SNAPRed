@@ -63,7 +63,7 @@ Nonentry = IndexEntry(
     runNumber="none",
     useLiteMode=False,
     version=UNINITIALIZED,
-    appliesTo="<=0",
+    appliesTo="<0",
     comments="this is a non-entry - do not use",
     author="SNAPRed Internal",
     timestamp=0,

@@ -728,21 +728,22 @@ def test__findMatchingFileList():
 
     # def test_writeNormalizationIndexEntry():
     localDataService = LocalDataService()
-    localDataService.instrumentConfig = mock.Mock()
-    localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("123", "456")
-    localDataService._readReductionParameters = mock.Mock()
-    localDataService._constructNormalizationStatePath = mock.Mock()
-    localDataService._constructNormalizationStatePath.return_value = Path(Resource.getPath("outputs"))
-    expectedFilePath = Path(Resource.getPath("outputs")) / "NormalizationIndex.json"
-    localDataService.writeNormalizationIndexEntry(
-        NormalizationIndexEntry(
-            runNumber="57514",
-            useLiteMode=True,
-            backgroundRunNumber="58813",
-            comments="test comment",
-            author="test author",
-        ),
+    with state_root_redirect(localDataService):
+        assert len(localDataService.readCalibrationIndex("123", True)) == 0
+
+
+def test_readNormalizationIndexMissing():
+    localDataService = LocalDataService()
+    with state_root_redirect(localDataService):
+        assert len(localDataService.readNormalizationIndex("123", True)) == 0
+
+
+def test_readWriteCalibrationIndexEntry():
+    entry = CalibrationIndexEntry(
+        runNumber="57514",
+        useLiteMode=True,
+        comments="test comment",
+        author="test author",
     )
     assert expectedFilePath.exists()
 
@@ -753,81 +754,47 @@ def test__findMatchingFileList():
 #     os.remove(expectedFilePath)
 #     assert len(fileContent) > 0
 
-#     actualEntries = parse_raw_as(List[NormalizationIndexEntry], fileContent)
-#     assert len(actualEntries) > 0
-#     assert actualEntries[0].runNumber == "57514"
+def test_readWriteNormalizationIndexEntry():
+    entry = NormalizationIndexEntry(
+        runNumber="57514",
+        backgroundRunNumber="58813",
+        useLiteMode=True,
+        comments="test comment",
+        author="test author",
+    )
+    localDataService = LocalDataService()
+    with state_root_redirect(localDataService):
+        localDataService.writeNormalizationIndexEntry(entry)
+        actualEntries = localDataService.readNormalizationIndex(entry.runNumber, entry.useLiteMode)
+    assert len(actualEntries) > 0
+    assert actualEntries[0].runNumber == "57514"
 
 
-# def test_readCalibrationIndexExisting():
-#     localDataService = LocalDataService()
-#     localDataService.instrumentConfig = mock.Mock()
-#     localDataService._generateStateId = mock.Mock()
-#     localDataService._generateStateId.return_value = ("123", "456")
-#     # localDataService._readReductionParameters = mock.Mock()
-#     localDataService._constructCalibrationStatePath = mock.Mock()
-#     localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
-#     expectedFilePath = Resource.getPath("outputs/") + "CalibrationIndex.json"
-#     localDataService.writeCalibrationIndexEntry(
-#         CalibrationIndexEntry(runNumber="57514", useLiteMode=True, comments="test comment", author="test author"),
-#     )
-#     actualEntries = localDataService.readCalibrationIndex("57514", True)
-#     os.remove(expectedFilePath)
-
-#     assert len(actualEntries) > 0
-#     assert actualEntries[0].runNumber == "57514"
-
-
-# def test_readNormalizationIndexExisting():
-#     localDataService = LocalDataService()
-#     localDataService.instrumentConfig = mock.Mock()
-#     localDataService._generateStateId = mock.Mock()
-#     localDataService._generateStateId.return_value = ("123", "456")
-#     localDataService._readReductionParameters = mock.Mock()
-#     localDataService._constructNormalizationStatePath = mock.Mock(return_value=Resource.getPath("outputs/"))
-#     expectedFilePath = Resource.getPath("outputs/") + "NormalizationIndex.json"
-#     localDataService.writeNormalizationIndexEntry(
-#         NormalizationIndexEntry(
-#             runNumber="57514",
-#             useLiteMode=True,
-#             backgroundRunNumber="58813",
-#             comments="test comment",
-#             author="test author",
-#         )
-#     )
-#     actualEntries = localDataService.readNormalizationIndex("57514", True)
-#     os.remove(expectedFilePath)
-
-#     assert len(actualEntries) > 0
-#     assert actualEntries[0].runNumber == "57514"
-
-
-def readReductionIngredientsFromFile():
-    with Resource.open("/inputs/calibration/ReductionIngredients.json", "r") as f:
-        return ReductionIngredients.parse_raw(f.read())
+# def readReductionIngredientsFromFile():
+#     with Resource.open("/inputs/calibration/ReductionIngredients.json", "r") as f:
+#         return ReductionIngredients.parse_raw(f.read())
 
 
 def test_readWriteCalibrationRecord_version_numbers():
-    testCalibrationRecord_v0001 = CalibrationRecord.parse_file(
-        Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json")
+    localDataService = LocalDataService()
+    stateId = "ab8704b0bc2a2342"
+    testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
+        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
     )
     testCalibrationRecord_v0002 = CalibrationRecord.parse_file(
         Resource.getPath("inputs/calibration/CalibrationRecord_v0002.json")
     )
-    stateId = "ab8704b0bc2a2342"
-    localDataService = LocalDataService()
-    with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
+    with state_root_redirect(localDataService, stateId=stateId):
+        localDataService.instrumentConfig = mock.Mock()
         # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
         #   and <incoming record>.calibrationFittingIngredients.version.
 
         # write: version == 1
         localDataService.writeCalibrationRecord(testCalibrationRecord_v0001)
         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
-        entry = localDataService.calibrationIndex("57514", True).indexEntryFromRecord(testCalibrationRecord_v0001)
-        localDataService.calibrationIndex("57514", True).addIndexEntry(entry)
-        print(actualRecord)
         assert actualRecord.version == 1
         assert actualRecord.calibrationFittingIngredients.version == 1
-        assert isinstance(actualRecord, CalibrationRecord)
+
         # write: version == 2
         localDataService.writeCalibrationRecord(testCalibrationRecord_v0002)
         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
@@ -840,31 +807,33 @@ def test_readWriteCalibrationRecord_version_numbers():
 
 ##
 def test_readWriteCalibrationRecord_specified_version():
-    testCalibrationRecord_v0001 = CalibrationRecord.parse_file(
-        Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json")
+    localDataService = LocalDataService()
+    stateId = "ab8704b0bc2a2342"
+    testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
+        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
     )
     testCalibrationRecord_v0002 = CalibrationRecord.parse_file(
         Resource.getPath("inputs/calibration/CalibrationRecord_v0002.json")
     )
-    stateId = "ab8704b0bc2a2342"
-    localDataService = LocalDataService()
-    with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
+    with state_root_redirect(localDataService, stateId=stateId):
+        localDataService.instrumentConfig = mock.Mock()
         # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
         #   and <incoming record>.calibrationFittingIngredients.version.
 
-        # write: version == 1
-        localDataService.writeCalibrationRecord(testCalibrationRecord_v0001)
-        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
-        entry = localDataService.calibrationIndex("57514", True).indexEntryFromRecord(testCalibrationRecord_v0001)
-        localDataService.calibrationIndex("57514", True).addIndexEntry(entry)
-        assert actualRecord.version == 1
-        assert actualRecord.calibrationFittingIngredients.version == 1
-        # write: version == 2
-        localDataService.writeCalibrationRecord(testCalibrationRecord_v0002)
-        actualRecord = localDataService.readCalibrationRecord("57514", True, 1)
-        assert actualRecord.version == 1
-        actualRecord = localDataService.readCalibrationRecord("57514", True, 1)
-        assert actualRecord.version == 2
+        # Important: start with version > 1: should not depend on any existing directory structure!
+
+        # write: version == 3
+        localDataService.writeCalibrationRecord(testCalibrationRecord_v0001, version="3")
+        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True, version="3")
+        assert actualRecord.version == 3
+        assert actualRecord.calibrationFittingIngredients.version == 3
+
+        # write: version == 4
+        localDataService.writeCalibrationRecord(testCalibrationRecord_v0002, version="4")
+        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True, version="3")
+        assert actualRecord.version == 3
+        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True, version="4")
+        assert actualRecord.version == 4
 
 
 def test_readWriteCalibrationRecord_with_version():
@@ -974,105 +943,132 @@ def test_writeCalibrationWorkspaces():
         mtd.clear()
 
 
-def test_writeCalibrationWorkspaces_no_units():
-    # test that diffraction-calibration output workspace names require units
+# def test_isApplicableEntry_greaterThanEquals():
+#     localDataService = LocalDataService()
+#     localDataService.writeWorkspace = mock.Mock()
+#     localDataService._constructCalibrationDataPath = mock.Mock(return_value="not/a/path")
+#     testCalibrationRecord = CalibrationRecord.parse_raw(
+#         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+#     )
+#     testCalibrationRecord.workspaces = {
+#         wngt.DIFFCAL_OUTPUT: ["_diffoc_057514_v0001", "_dsp_diffoc_057514_v0001"],
+#         wngt.DIFFCAL_TABLE: ["_diffract_consts_057514_v0001"],
+#         wngt.DIFFCAL_MASK: ["_diffract_consts_mask_057514_v0001"],
+#     }
+#     with pytest.raises(  # noqa: PT012
+#         RuntimeError,
+#         match=f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name",
+#     ):
+#         localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
+
+
+# def test_readWriteNormalizationRecord_version_numbers():
+#     stateId = "ab8704b0bc2a2342"
+#     testNormalizationRecord = NormalizationRecord.parse_raw(
+#         Resource.read("inputs/normalization/NormalizationRecord.json")
+#     )
+#     useLiteMode = True
+#     testNormalizationRecord.useLiteMode = useLiteMode
+#     testNormalizationRecord.version = VERSION_START
+#     localDataService = LocalDataService()
+#     with state_root_redirect(localDataService, stateId=stateId):
+#         # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
+#         # and <incoming record>.normalization.version.
+
+#         # write: version == VERSION_START
+#         testVersion = VERSION_START
+#         localDataService.writeNormalizationRecord(record)
+#         localDataService.writeNormalizationIndexEntry(entry)
+#         actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode)
+#         assert actualRecord.version == testVersion
+#         assert actualRecord.calibration.version == testVersion
+#         assert actualRecord.useLiteMode == useLiteMode
+#         assert isinstance(actualRecord, NormalizationRecord)
+
+#         # write: version == VERSION_START + 1
+#         record.version == "*"
+#         testVersion = VERSION_START + 1
+#         testNormalizationRecord.version = testVersion
+#         localDataService.writeNormalizationRecord(testNormalizationRecord)
+#         actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode)
+#         assert actualRecord.version == testVersion
+#         assert actualRecord.calibration.version == testVersion
+#         assert actualRecord.useLiteMode == useLiteMode
+
+#         # write: version == VERSION_START + 2
+#         testVersion = VERSION_START + 2
+#         localDataService.writeNormalizationRecord(testNormalizationRecord)
+#         actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode)
+#         assert actualRecord.version == testVersion
+#         assert actualRecord.calibration.version == testVersion
+#         assert actualRecord.useLiteMode == useLiteMode
+#         assert isinstance(actualRecord, NormalizationRecord)
+#     assert actualRecord.runNumber == "57514"
+#     assert actualRecord == record
+
+
+# def test_readWriteNormalizationRecord_specified_version():
+#     stateId = "ab8704b0bc2a2342"
+#     runNumber = "57514"
+#     useLiteMode = False
+#     record = NormalizationRecord.parse_raw(Resource.read("inputs/normalization/NormalizationRecord.json"))
+#     record.runNumber = runNumber
+#     record.version = "*"
+#     record.useLiteMode = useLiteMode
+#     entry = NormalizationIndexEntry(
+#         runNumber=record.runNumber, backgroundRunNumber="x", useLiteMode=useLiteMode, version="*"
+#     )
+#     testNormalizationRecord.version = VERSION_START
+#     testNormalizationRecord.useLiteMode = useLiteMode
+#     localDataService = LocalDataService()
+#     with state_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
+#         # and <incoming record>.normalization.version.
+
+#         # write: version == VERSION_START
+#         firstVersion = VERSION_START
+#         localDataService.writeNormalizationRecord(record)
+#         localDataService.writeNormalizationIndexEntry(entry)
+#         actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode)
+#         assert actualRecord.version == firstVersion
+#         assert actualRecord.calibration.version == firstVersion
+#         assert actualRecord.useLiteMode == useLiteMode
+#         assert localDataService.getNormalizationRecordFilePath(runNumber, useLiteMode, firstVersion).exists()
+#         # write: version == testVersion
+#         testVersion = VERSION_START + 3
+#         record.version = testVersion
+#         entry.version = testVersion
+#         localDataService.writeNormalizationRecord(record, testVersion)
+#         localDataService.writeNormalizationIndexEntry(entry, testVersion)
+#         actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode)
+#         assert actualRecord.version == testVersion
+#         assert actualRecord.calibration.version == testVersion
+#         assert actualRecord.useLiteMode == useLiteMode
+#         actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode, testVersion)
+#         assert actualRecord.version == testVersion
+#         assert actualRecord.calibration.version == testVersion
+#         assert actualRecord.useLiteMode == useLiteMode
+#         assert localDataService.getNormalizationRecordFilePath(runNumber, useLiteMode, firstVersion).exists()
+#         assert localDataService.getNormalizationRecordFilePath(runNumber, useLiteMode, testVersion).exists()
+#         # test can still read earlier version
+#         actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode, firstVersion)
+#         assert actualRecord.version == firstVersion
+#         assert actualRecord.useLiteMode == useLiteMode
+
+
+def test_readWriteCalibrationRecord():
     localDataService = LocalDataService()
-    localDataService.writeWorkspace = mock.Mock()
-    localDataService._constructCalibrationDataPath = mock.Mock(return_value="not/a/path")
+    stateId = "ab8704b0bc2a2342"
     testCalibrationRecord = CalibrationRecord.parse_raw(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
     )
-    testCalibrationRecord.workspaces = {
-        wngt.DIFFCAL_OUTPUT: ["_diffoc_057514_v0001", "_dsp_diffoc_057514_v0001"],
-        wngt.DIFFCAL_TABLE: ["_diffract_consts_057514_v0001"],
-        wngt.DIFFCAL_MASK: ["_diffract_consts_mask_057514_v0001"],
-    }
-    with pytest.raises(  # noqa: PT012
-        RuntimeError,
-        match=f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name",
-    ):
-        localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
-
-
-def test_readWriteNormalizationRecord_version_numbers():
-    stateId = "ab8704b0bc2a2342"
-    testNormalizationRecord = NormalizationRecord.parse_raw(
-        Resource.read("inputs/normalization/NormalizationRecord.json")
-    )
-    useLiteMode = True
-    testNormalizationRecord.useLiteMode = useLiteMode
-    testNormalizationRecord.version = VERSION_START
-    localDataService = LocalDataService()
-    with state_root_redirect(localDataService, stateId=stateId):
-        # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
-        # and <incoming record>.normalization.version.
-
-        # write: version == VERSION_START + 1
-        testVersion = VERSION_START + 1
-        testNormalizationRecord.version = testVersion
-        localDataService.writeNormalizationRecord(testNormalizationRecord)
-        actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode)
-        assert actualRecord.version == testVersion
-        assert actualRecord.calibration.version == testVersion
-        assert actualRecord.useLiteMode == useLiteMode
-
-        # write: version == VERSION_START + 2
-        testVersion = VERSION_START + 2
-        localDataService.writeNormalizationRecord(testNormalizationRecord)
-        actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode)
-        assert actualRecord.version == testVersion
-        assert actualRecord.calibration.version == testVersion
-        assert actualRecord.useLiteMode == useLiteMode
-    assert actualRecord.runNumber == "57514"
-    assert actualRecord == testNormalizationRecord
-
-
-def test_readWriteNormalizationRecord_specified_version():
-    stateId = "ab8704b0bc2a2342"
-    runNumber = "57514"
-    useLiteMode = False
-
-    testNormalizationRecord = NormalizationRecord.parse_raw(
-        Resource.read("inputs/normalization/NormalizationRecord.json")
-    )
-    testNormalizationRecord.version = VERSION_START
-    testNormalizationRecord.useLiteMode = useLiteMode
-    localDataService = LocalDataService()
     with state_root_redirect(localDataService, stateId=stateId):
         localDataService.instrumentConfig = mock.Mock()
-        # WARNING: 'writeNormalizationRecord' modifies <incoming record>.version,
-        # and <incoming record>.normalization.version.
-
-        # Important to include version steps > 1: should not depend on any existing directory structure!
-
-        # write: version == VERSION_START + 1
-        firstVersion = VERSION_START + 1
-        localDataService.writeNormalizationRecord(testNormalizationRecord)
-        actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode)
-        assert actualRecord.version == firstVersion
-        assert actualRecord.calibration.version == firstVersion
-        assert actualRecord.useLiteMode == useLiteMode
-        assert localDataService.getNormalizationRecordFilePath(runNumber, useLiteMode, firstVersion).exists()
-        # write: version == testVersion
-        testVersion = VERSION_START + 3
-        record.version = testVersion
-        entry.version = testVersion
-        localDataService.writeNormalizationRecord(record, testVersion)
-        localDataService.writeNormalizationIndexEntry(entry, testVersion)
-        actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode)
-        assert actualRecord.version == testVersion
-        assert actualRecord.calibration.version == testVersion
-        assert actualRecord.useLiteMode == useLiteMode
-        actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode, testVersion)
-        assert actualRecord.version == testVersion
-        assert actualRecord.calibration.version == testVersion
-        assert actualRecord.useLiteMode == useLiteMode
-        assert localDataService.getNormalizationRecordFilePath(runNumber, useLiteMode, firstVersion).exists()
-        assert localDataService.getNormalizationRecordFilePath(runNumber, useLiteMode, testVersion).exists()
-        # test can still read earlier version
-        actualRecord = localDataService.readNormalizationRecord(runNumber, useLiteMode, firstVersion)
-        assert actualRecord.version == firstVersion
-        assert actualRecord.useLiteMode == useLiteMode
+        localDataService.writeCalibrationRecord(testCalibrationRecord)
+        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
+    assert actualRecord.runNumber == "57514"
+    assert actualRecord == testCalibrationRecord
 
 
 def test_readWriteNormalizationRecord():
@@ -1092,426 +1088,426 @@ def test_readWriteNormalizationRecord():
     assert actualRecord == testNormalizationRecord
 
 
-def test_writeNormalizationWorkspaces():
-    stateId = "ab8704b0bc2a2342"
-    localDataService = LocalDataService()
-    testNormalizationRecord = NormalizationRecord.parse_raw(
-        Resource.read("inputs/normalization/NormalizationRecord.json")
-    )
-    with state_root_redirect(localDataService, stateId=stateId):
-        # Workspace names need to match the names that are used in the test record.
-        runNumber = testNormalizationRecord.runNumber  # noqa: F841
-        useLiteMode = testNormalizationRecord.useLiteMode
-        version = testNormalizationRecord.version  # noqa: F841
-        testWS0, testWS1, testWS2 = testNormalizationRecord.workspaceNames
-
-        basePath = localDataService._constructNormalizationDataPath(runNumber, useLiteMode, version)
-
-        # Create sample workspaces.
-        LoadEmptyInstrument(
-            Filename=fakeInstrumentFilePath,
-            OutputWorkspace=testWS0,
-        )
-        CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS1)
-        CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS2)
-        assert mtd.doesExist(testWS0)
-        assert mtd.doesExist(testWS1)
-        assert mtd.doesExist(testWS2)
-
-        localDataService.writeNormalizationWorkspaces(testNormalizationRecord)
-
-        for wsName in testNormalizationRecord.workspaceNames:
-            filename = Path(wsName + "_" + wnvf.formatVersion(version) + ".nxs")
-            assert (basePath / filename).exists()
-    mtd.clear()
-
-
-def _writeSyntheticReductionRecord(filePath: Path, version: str):
-    # Create a `ReductionRecord` JSON file to be used by the unit tests.
-
-    # TODO: Implement methods to create the synthetic `CalibrationRecord` and `NormalizationRecord`.
-    testCalibration = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
-    testNormalization = NormalizationRecord.parse_raw(Resource.read("inputs/normalization/NormalizationRecord.json"))
-    testRecord = ReductionRecord(
-        runNumbers=[testCalibration.runNumber],
-        useLiteMode=testCalibration.useLiteMode,
-        calibration=testCalibration,
-        normalization=testNormalization,
-        pixelGroupingParameters={
-            pg.focusGroup.name: list(pg.pixelGroupingParameters.values()) for pg in testCalibration.pixelGroups
-        },
-        version=int(version),
-        stateId=testCalibration.calibrationFittingIngredients.instrumentState.id,
-        workspaceNames=[
-            wng.reductionOutput()
-            .runNumber(testCalibration.runNumber)
-            .group(pg.focusGroup.name)
-            .version(testCalibration.version)
-            .build()
-            for pg in testCalibration.pixelGroups
-        ],
-    )
-    write_model_pretty(testRecord, filePath)
-
-
-def test_readWriteReductionRecord_version_numbers():
-    inputRecordFilePath = Resource.getPath("inputs/reduction/ReductionRecord_v0001.json")
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord(inputRecordFilePath, "1")
-
-    testReductionRecord_v0001 = ReductionRecord.parse_file(inputRecordFilePath)
-    # Get a second copy (version still set to `1`)
-    testReductionRecord_v0002 = ReductionRecord.parse_file(inputRecordFilePath)
-
-    # Temporarily use a single run number
-    useLiteMode = testReductionRecord_v0001.useLiteMode
-    runNumber = testReductionRecord_v0001.runNumbers[0]
-    stateId = "ab8704b0bc2a2342"
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-        # WARNING: 'writeReductionRecord' modifies <incoming record>.version,
-
-        # write: version == 1
-        localDataService.writeReductionRecord(testReductionRecord_v0001)
-        actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode)
-        assert actualRecord.version == 1
-
-        # write: version == 2
-        localDataService.writeReductionRecord(testReductionRecord_v0002)
-        actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode)
-        assert actualRecord.version == 2
-    assert actualRecord == testReductionRecord_v0002
-
-
-def test_readWriteReductionRecord_specified_version():
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord(inputRecordFilePath, "1")
-
-    testReductionRecord_v0001 = ReductionRecord.parse_file(inputRecordFilePath)
-    # Get a second copy (version still set to `1`)
-    testReductionRecord_v0002 = ReductionRecord.parse_file(inputRecordFilePath)
-
-    # Temporarily use a single run number
-    useLiteMode = testReductionRecord_v0001.useLiteMode
-    runNumber = testReductionRecord_v0001.runNumbers[0]
-    stateId = "ab8704b0bc2a2342"
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService, stateId=stateId):
-        # WARNING: 'writeReductionRecord' modifies <incoming record>.version,
-
-        #  Important: start with version > 1: should not depend on any existing directory structure!
-
-        # write: version == 3
-        localDataService.writeReductionRecord(testReductionRecord_v0001, version="3")
-        actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, version="3")
-        assert actualRecord.version == 3
-
-        # write: version == 4
-        actualRecord = localDataService.writeReductionRecord(testReductionRecord_v0002, version="4")
-        # -- version should have been modified to `4`
-        assert actualRecord.version == 4
-
-        actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, version="3")
-        assert actualRecord.version == 3
-        actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, version="4")
-        assert actualRecord.version == 4
-
-
-def test_readWriteReductionRecord_with_version():
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
-    # Important: version != 1: should not depend on any existing directory structure.
-    testVersion = "10"
-
-    # Temporarily use a single run number
-    runNumber = testRecord.runNumbers[0]
-    stateId = "ab8704b0bc2a2342"
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-
-        actualRecord = localDataService.writeReductionRecord(testRecord, testVersion)
-        # -- version should have been modified to int(testVersion)
-        assert actualRecord.version == int(testVersion)
-
-        actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testVersion)
-    assert actualRecord.version == int(testVersion)
-
-
-def test_readWriteReductionRecord():
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
-
-    # Temporarily use a single run number
-    runNumber = testRecord.runNumbers[0]
-    stateId = "ab8704b0bc2a2342"
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-        localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
-        localDataService.groceryService = mock.Mock()
-        localDataService.writeReductionRecord(testRecord)
-        actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testRecord.version)
-    assert actualRecord == testRecord
-
-
-@pytest.fixture()
-def createReductionWorkspaces():
-    # Create sample workspaces from a list of names:
-    #   * delete the workspaces in the list at teardown;
-    #   * any additional workspaces that need to be cleaned up
-    #   can be added to the _returned_ list.
-    _wss = []
-
-    def _createWorkspaces(wss: List[str]):
-        # Create sample reduction event workspaces with DSP units
-        src = mtd.unique_hidden_name()
-        CreateSampleWorkspace(
-            OutputWorkspace=src,
-            Function="One Peak",
-            NumBanks=1,
-            NumMonitors=1,
-            BankPixelWidth=5,
-            NumEvents=500,
-            Random=True,
-            XUnit="DSP",
-            XMin=0,
-            XMax=8000,
-            BinWidth=100,
-        )
-        LoadInstrument(
-            Workspace=src,
-            Filename=fakeInstrumentFilePath,
-            RewriteSpectraMap=True,
-        )
-        assert mtd.doesExist(src)
-        for ws in wss:
-            CloneWorkspace(InputWorkspace=src, OutputWorkspace=ws)
-            assert mtd.doesExist(ws)
-        DeleteWorkspace(Workspace=src)
-        _wss.extend(wss)
-        return _wss
-
-    yield _createWorkspaces
-
-    # teardown
-    for ws in _wss:
-        if mtd.doesExist(ws):
-            try:
-                DeleteWorkspace(ws)
-            except:  # noqa: E722
-                pass
-
-
-def test_writeReductionData(createReductionWorkspaces):
-    _uniquePrefix = "LDS_WRD_"
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
-    # Change the workspace names so that they will be unique to this test:
-    # => enables parallel testing.
-    testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
-
-    # Temporarily use a single run number
-    useLiteMode = testRecord.useLiteMode
-    runNumber = testRecord.runNumbers[0]
-    version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
-    fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
-    fileName += Config["nexus.file.extension"]
-
-    wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-        localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
-
-        # Important to this test: use a path that doesn't already exist
-        reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-        assert not reductionFilePath.exists()
-
-        # `writeReductionRecord` must be called first
-        localDataService.writeReductionRecord(testRecord)
-        localDataService.writeReductionData(testRecord)
-
-        assert reductionFilePath.exists()
-
-
-def test_writeReductionData_no_directories(createReductionWorkspaces):
-    _uniquePrefix = "LDS_WRD_"
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
-    # Change the workspace names so that they will be unique to this test:
-    # => enables parallel testing.
-    testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
-
-    # Temporarily use a single run number
-    useLiteMode = testRecord.useLiteMode
-    runNumber = testRecord.runNumbers[0]
-    version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
-    fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
-    fileName += Config["nexus.file.extension"]
-
-    wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-        localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
-
-        # Important to this test: use a path that doesn't already exist
-        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-        assert not reductionRecordFilePath.exists()
-
-        # `writeReductionRecord` must be called first
-        # * deliberately _not_ done in this test => <reduction-data root> directory won't exist
-        with pytest.raises(RuntimeError) as einfo:
-            localDataService.writeReductionData(testRecord)
-        msg = str(einfo.value)
-    assert "reduction version directories" in msg
-    assert "do not exist" in msg
-
-
-def test_writeReductionData_metadata(createReductionWorkspaces):
-    _uniquePrefix = "LDS_WRD_"
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
-    # Change the workspace names so that they will be unique to this test:
-    # => enables parallel testing.
-    testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
-
-    # Temporarily use a single run number
-    useLiteMode = testRecord.useLiteMode
-    runNumber = testRecord.runNumbers[0]
-    version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
-    fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
-    fileName += Config["nexus.file.extension"]
-
-    wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-        localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
-
-        # Important to this test: use a path that doesn't already exist
-        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-        assert not reductionRecordFilePath.exists()
-
-        # `writeReductionRecord` must be called first
-        localDataService.writeReductionRecord(testRecord)
-        localDataService.writeReductionData(testRecord)
-
-        filePath = reductionRecordFilePath.parent / fileName
-        assert filePath.exists()
-        with h5py.File(filePath, "r") as h5:
-            dict_ = n5m.extractMetadataGroup(h5, "/metadata")
-            actualRecord = ReductionRecord.parse_obj(dict_)
-            assert actualRecord == testRecord
-
-
-def test_readWriteReductionData(createReductionWorkspaces):
-    _uniquePrefix = "LDS_RWRD_"
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
-    # Change the workspace names so that they will be unique to this test:
-    # => enables parallel testing.
-    testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
-
-    # Temporarily use a single run number
-    useLiteMode = testRecord.useLiteMode
-    runNumber = testRecord.runNumbers[0]
-    version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
-    fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
-    fileName += Config["nexus.file.extension"]
-
-    wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
-    localDataService = LocalDataService()
-    with reduction_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-        localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
-
-        # Important to this test: use a path that doesn't already exist
-        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-        assert not reductionRecordFilePath.exists()
-
-        # `writeReductionRecord` needs to be called first
-        localDataService.writeReductionRecord(testRecord)
-        localDataService.writeReductionData(testRecord)
-
-        filePath = reductionRecordFilePath.parent / fileName
-        assert filePath.exists()
-
-        # move the existing test workspaces out of the way:
-        #   * this just adds the `_uniquePrefix` one more time.
-        RenameWorkspaces(InputWorkspaces=wss, Prefix=_uniquePrefix)
-        # append to the cleanup list
-        wss.extend([_uniquePrefix + ws for ws in wss.copy()])
-
-        actualRecord = localDataService.readReductionData(runNumber, useLiteMode, version)
-        assert actualRecord == testRecord
-        # workspaces should have been reloaded with their original names
-        # Implementation note:
-        #   * the workspaces must match _exactly_ here, so `CompareWorkspaces` must be used;
-        #   please do _not_ replace this with one of the `assert_almost_equal` methods:
-        #   -- they do not necessarily do what you think they should do...
-        for ws in actualRecord.workspaceNames:
-            equal, _ = CompareWorkspaces(
-                Workspace1=ws,
-                Workspace2=_uniquePrefix + ws,
-            )
-            assert equal
-
-
-def test__constructReductionDataFilePath():
-    inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-    # Create the input data for this test:
-    # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
-
-    # Temporarily use a single run number
-    useLiteMode = testRecord.useLiteMode
-    runNumber = testRecord.runNumbers[0]
-    version = int(testRecord.version)
-    stateId = "ab8704b0bc2a2342"
-    testIPTS = "IPTS-12345"
-    fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
-    fileName += Config["nexus.file.extension"]
-
-    expectedFilePath = (
-        Path(Config["instrument.reduction.home"].format(IPTS=testIPTS))
-        / stateId
-        / ("lite" if useLiteMode else "native")
-        / runNumber
-        / "v_{}".format(wnvf.formatVersion(version=version, use_v_prefix=False))
-        / fileName
-    )
-
-    localDataService = LocalDataService()
-    localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = (stateId, None)
-    localDataService.getIPTS = mock.Mock(return_value=testIPTS)
-    actualFilePath = localDataService._constructReductionDataFilePath(runNumber, useLiteMode, version)
-    assert actualFilePath == expectedFilePath
+# def test_writeNormalizationWorkspaces():
+#     stateId = "ab8704b0bc2a2342"
+#     localDataService = LocalDataService()
+#     testNormalizationRecord = NormalizationRecord.parse_raw(
+#         Resource.read("inputs/normalization/NormalizationRecord.json")
+#     )
+#     with state_root_redirect(localDataService, stateId=stateId):
+#         # Workspace names need to match the names that are used in the test record.
+#         runNumber = testNormalizationRecord.runNumber  # noqa: F841
+#         useLiteMode = testNormalizationRecord.useLiteMode
+#         version = testNormalizationRecord.version  # noqa: F841
+#         testWS0, testWS1, testWS2 = testNormalizationRecord.workspaceNames
+
+#         basePath = localDataService._constructNormalizationDataPath(runNumber, useLiteMode, version)
+
+#         # Create sample workspaces.
+#         LoadEmptyInstrument(
+#             Filename=fakeInstrumentFilePath,
+#             OutputWorkspace=testWS0,
+#         )
+#         CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS1)
+#         CloneWorkspace(InputWorkspace=testWS0, OutputWorkspace=testWS2)
+#         assert mtd.doesExist(testWS0)
+#         assert mtd.doesExist(testWS1)
+#         assert mtd.doesExist(testWS2)
+
+#         localDataService.writeNormalizationWorkspaces(testNormalizationRecord)
+
+#         for wsName in testNormalizationRecord.workspaceNames:
+#             filename = Path(wsName + "_" + wnvf.formatVersion(version) + ".nxs")
+#             assert (basePath / filename).exists()
+#     mtd.clear()
+
+
+# def _writeSyntheticReductionRecord(filePath: Path, version: str):
+#     # Create a `ReductionRecord` JSON file to be used by the unit tests.
+
+#     # TODO: Implement methods to create the synthetic `CalibrationRecord` and `NormalizationRecord`.
+#     testCalibration = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+#     testNormalization = NormalizationRecord.parse_raw(Resource.read("inputs/normalization/NormalizationRecord.json"))
+#     testRecord = ReductionRecord(
+#         runNumbers=[testCalibration.runNumber],
+#         useLiteMode=testCalibration.useLiteMode,
+#         calibration=testCalibration,
+#         normalization=testNormalization,
+#         pixelGroupingParameters={
+#             pg.focusGroup.name: list(pg.pixelGroupingParameters.values()) for pg in testCalibration.pixelGroups
+#         },
+#         version=int(version),
+#         stateId=testCalibration.calibrationFittingIngredients.instrumentState.id,
+#         workspaceNames=[
+#             wng.reductionOutput()
+#             .runNumber(testCalibration.runNumber)
+#             .group(pg.focusGroup.name)
+#             .version(testCalibration.version)
+#             .build()
+#             for pg in testCalibration.pixelGroups
+#         ],
+#     )
+#     write_model_pretty(testRecord, filePath)
+
+
+# def test_readWriteReductionRecord_version_numbers():
+#     inputRecordFilePath = Resource.getPath("inputs/reduction/ReductionRecord_v0001.json")
+#     # Create the input data for this test:
+#     # _writeSyntheticReductionRecord(inputRecordFilePath, "1")
+
+#     testReductionRecord_v0001 = ReductionRecord.parse_file(inputRecordFilePath)
+#     # Get a second copy (version still set to `1`)
+#     testReductionRecord_v0002 = ReductionRecord.parse_file(inputRecordFilePath)
+
+#     # Temporarily use a single run number
+#     useLiteMode = testReductionRecord_v0001.useLiteMode
+#     runNumber = testReductionRecord_v0001.runNumbers[0]
+#     stateId = "ab8704b0bc2a2342"
+#     localDataService = LocalDataService()
+#     with reduction_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         # WARNING: 'writeReductionRecord' modifies <incoming record>.version,
+
+#         # write: version == 1
+#         localDataService.writeReductionRecord(testReductionRecord_v0001)
+#         actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode)
+#         assert actualRecord.version == 1
+
+#         # write: version == 2
+#         localDataService.writeReductionRecord(testReductionRecord_v0002)
+#         actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode)
+#         assert actualRecord.version == 2
+#     assert actualRecord == testReductionRecord_v0002
+
+
+# def test_readWriteReductionRecord_specified_version():
+#     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+#     # Create the input data for this test:
+#     # _writeSyntheticReductionRecord(inputRecordFilePath, "1")
+
+#     testReductionRecord_v0001 = ReductionRecord.parse_file(inputRecordFilePath)
+#     # Get a second copy (version still set to `1`)
+#     testReductionRecord_v0002 = ReductionRecord.parse_file(inputRecordFilePath)
+
+#     # Temporarily use a single run number
+#     useLiteMode = testReductionRecord_v0001.useLiteMode
+#     runNumber = testReductionRecord_v0001.runNumbers[0]
+#     stateId = "ab8704b0bc2a2342"
+#     localDataService = LocalDataService()
+#     with reduction_root_redirect(localDataService, stateId=stateId):
+#         # WARNING: 'writeReductionRecord' modifies <incoming record>.version,
+
+#         #  Important: start with version > 1: should not depend on any existing directory structure!
+
+#         # write: version == 3
+#         localDataService.writeReductionRecord(testReductionRecord_v0001, version="3")
+#         actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, version="3")
+#         assert actualRecord.version == 3
+
+#         # write: version == 4
+#         actualRecord = localDataService.writeReductionRecord(testReductionRecord_v0002, version="4")
+#         # -- version should have been modified to `4`
+#         assert actualRecord.version == 4
+
+#         actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, version="3")
+#         assert actualRecord.version == 3
+#         actualRecord = localDataService.readReductionRecord(runNumber, useLiteMode, version="4")
+#         assert actualRecord.version == 4
+
+
+# def test_readWriteReductionRecord_with_version():
+#     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+#     # Create the input data for this test:
+#     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
+
+#     testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+#     # Important: version != 1: should not depend on any existing directory structure.
+#     testVersion = "10"
+
+#     # Temporarily use a single run number
+#     runNumber = testRecord.runNumbers[0]
+#     stateId = "ab8704b0bc2a2342"
+#     localDataService = LocalDataService()
+#     with reduction_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+
+#         actualRecord = localDataService.writeReductionRecord(testRecord, testVersion)
+#         # -- version should have been modified to int(testVersion)
+#         assert actualRecord.version == int(testVersion)
+
+#         actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testVersion)
+#     assert actualRecord.version == int(testVersion)
+
+
+# def test_readWriteReductionRecord():
+#     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+#     # Create the input data for this test:
+#     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
+#     testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+
+#     # Temporarily use a single run number
+#     runNumber = testRecord.runNumbers[0]
+#     stateId = "ab8704b0bc2a2342"
+#     localDataService = LocalDataService()
+#     with reduction_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
+#         localDataService.groceryService = mock.Mock()
+#         localDataService.writeReductionRecord(testRecord)
+#         actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testRecord.version)
+#     assert actualRecord == testRecord
+
+
+# @pytest.fixture()
+# def createReductionWorkspaces():
+#     # Create sample workspaces from a list of names:
+#     #   * delete the workspaces in the list at teardown;
+#     #   * any additional workspaces that need to be cleaned up
+#     #   can be added to the _returned_ list.
+#     _wss = []
+
+#     def _createWorkspaces(wss: List[str]):
+#         # Create sample reduction event workspaces with DSP units
+#         src = mtd.unique_hidden_name()
+#         CreateSampleWorkspace(
+#             OutputWorkspace=src,
+#             Function="One Peak",
+#             NumBanks=1,
+#             NumMonitors=1,
+#             BankPixelWidth=5,
+#             NumEvents=500,
+#             Random=True,
+#             XUnit="DSP",
+#             XMin=0,
+#             XMax=8000,
+#             BinWidth=100,
+#         )
+#         LoadInstrument(
+#             Workspace=src,
+#             Filename=fakeInstrumentFilePath,
+#             RewriteSpectraMap=True,
+#         )
+#         assert mtd.doesExist(src)
+#         for ws in wss:
+#             CloneWorkspace(InputWorkspace=src, OutputWorkspace=ws)
+#             assert mtd.doesExist(ws)
+#         DeleteWorkspace(Workspace=src)
+#         _wss.extend(wss)
+#         return _wss
+
+#     yield _createWorkspaces
+
+#     # teardown
+#     for ws in _wss:
+#         if mtd.doesExist(ws):
+#             try:
+#                 DeleteWorkspace(ws)
+#             except:  # noqa: E722
+#                 pass
+
+
+# def test_writeReductionData(createReductionWorkspaces):
+#     _uniquePrefix = "LDS_WRD_"
+#     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+#     # Create the input data for this test:
+#     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
+
+#     testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+#     # Change the workspace names so that they will be unique to this test:
+#     # => enables parallel testing.
+#     testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
+
+#     # Temporarily use a single run number
+#     useLiteMode = testRecord.useLiteMode
+#     runNumber = testRecord.runNumbers[0]
+#     version = int(testRecord.version)
+#     stateId = "ab8704b0bc2a2342"
+#     fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
+#     fileName += Config["nexus.file.extension"]
+
+#     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
+#     localDataService = LocalDataService()
+#     with reduction_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
+
+#         # Important to this test: use a path that doesn't already exist
+#         reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
+#         assert not reductionFilePath.exists()
+
+#         # `writeReductionRecord` must be called first
+#         localDataService.writeReductionRecord(testRecord)
+#         localDataService.writeReductionData(testRecord)
+
+#         assert reductionFilePath.exists()
+
+
+# def test_writeReductionData_no_directories(createReductionWorkspaces):
+#     _uniquePrefix = "LDS_WRD_"
+#     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+#     # Create the input data for this test:
+#     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
+
+#     testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+#     # Change the workspace names so that they will be unique to this test:
+#     # => enables parallel testing.
+#     testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
+
+#     # Temporarily use a single run number
+#     useLiteMode = testRecord.useLiteMode
+#     runNumber = testRecord.runNumbers[0]
+#     version = int(testRecord.version)
+#     stateId = "ab8704b0bc2a2342"
+#     fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
+#     fileName += Config["nexus.file.extension"]
+
+#     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
+#     localDataService = LocalDataService()
+#     with reduction_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
+
+#         # Important to this test: use a path that doesn't already exist
+#         reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
+#         assert not reductionRecordFilePath.exists()
+
+#         # `writeReductionRecord` must be called first
+#         # * deliberately _not_ done in this test => <reduction-data root> directory won't exist
+#         with pytest.raises(RuntimeError) as einfo:
+#             localDataService.writeReductionData(testRecord)
+#         msg = str(einfo.value)
+#     assert "reduction version directories" in msg
+#     assert "do not exist" in msg
+
+
+# def test_writeReductionData_metadata(createReductionWorkspaces):
+#     _uniquePrefix = "LDS_WRD_"
+#     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+#     # Create the input data for this test:
+#     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
+
+#     testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+#     # Change the workspace names so that they will be unique to this test:
+#     # => enables parallel testing.
+#     testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
+
+#     # Temporarily use a single run number
+#     useLiteMode = testRecord.useLiteMode
+#     runNumber = testRecord.runNumbers[0]
+#     version = int(testRecord.version)
+#     stateId = "ab8704b0bc2a2342"
+#     fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
+#     fileName += Config["nexus.file.extension"]
+
+#     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
+#     localDataService = LocalDataService()
+#     with reduction_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
+
+#         # Important to this test: use a path that doesn't already exist
+#         reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
+#         assert not reductionRecordFilePath.exists()
+
+#         # `writeReductionRecord` must be called first
+#         localDataService.writeReductionRecord(testRecord)
+#         localDataService.writeReductionData(testRecord)
+
+#         filePath = reductionRecordFilePath.parent / fileName
+#         assert filePath.exists()
+#         with h5py.File(filePath, "r") as h5:
+#             dict_ = n5m.extractMetadataGroup(h5, "/metadata")
+#             actualRecord = ReductionRecord.parse_obj(dict_)
+#             assert actualRecord == testRecord
+
+
+# def test_readWriteReductionData(createReductionWorkspaces):
+#     _uniquePrefix = "LDS_RWRD_"
+#     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+#     # Create the input data for this test:
+#     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
+
+#     testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+#     # Change the workspace names so that they will be unique to this test:
+#     # => enables parallel testing.
+#     testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
+
+#     # Temporarily use a single run number
+#     useLiteMode = testRecord.useLiteMode
+#     runNumber = testRecord.runNumbers[0]
+#     version = int(testRecord.version)
+#     stateId = "ab8704b0bc2a2342"
+#     fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
+#     fileName += Config["nexus.file.extension"]
+
+#     wss = createReductionWorkspaces(testRecord.workspaceNames)  # noqa: F841
+#     localDataService = LocalDataService()
+#     with reduction_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
+
+#         # Important to this test: use a path that doesn't already exist
+#         reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
+#         assert not reductionRecordFilePath.exists()
+
+#         # `writeReductionRecord` needs to be called first
+#         localDataService.writeReductionRecord(testRecord)
+#         localDataService.writeReductionData(testRecord)
+
+#         filePath = reductionRecordFilePath.parent / fileName
+#         assert filePath.exists()
+
+#         # move the existing test workspaces out of the way:
+#         #   * this just adds the `_uniquePrefix` one more time.
+#         RenameWorkspaces(InputWorkspaces=wss, Prefix=_uniquePrefix)
+#         # append to the cleanup list
+#         wss.extend([_uniquePrefix + ws for ws in wss.copy()])
+
+#         actualRecord = localDataService.readReductionData(runNumber, useLiteMode, version)
+#         assert actualRecord == testRecord
+#         # workspaces should have been reloaded with their original names
+#         # Implementation note:
+#         #   * the workspaces must match _exactly_ here, so `CompareWorkspaces` must be used;
+#         #   please do _not_ replace this with one of the `assert_almost_equal` methods:
+#         #   -- they do not necessarily do what you think they should do...
+#         for ws in actualRecord.workspaceNames:
+#             equal, _ = CompareWorkspaces(
+#                 Workspace1=ws,
+#                 Workspace2=_uniquePrefix + ws,
+#             )
+#             assert equal
+
+
+# def test__constructReductionDataFilePath():
+#     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+#     # Create the input data for this test:
+#     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
+#     testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+
+#     # Temporarily use a single run number
+#     useLiteMode = testRecord.useLiteMode
+#     runNumber = testRecord.runNumbers[0]
+#     version = int(testRecord.version)
+#     stateId = "ab8704b0bc2a2342"
+#     testIPTS = "IPTS-12345"
+#     fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
+#     fileName += Config["nexus.file.extension"]
+
+#     expectedFilePath = (
+#         Path(Config["instrument.reduction.home"].format(IPTS=testIPTS))
+#         / stateId
+#         / ("lite" if useLiteMode else "native")
+#         / runNumber
+#         / "v_{}".format(wnvf.formatVersion(version=version, use_v_prefix=False))
+#         / fileName
+#     )
+
+#     localDataService = LocalDataService()
+#     localDataService._generateStateId = mock.Mock()
+#     localDataService._generateStateId.return_value = (stateId, None)
+#     localDataService.getIPTS = mock.Mock(return_value=testIPTS)
+#     actualFilePath = localDataService._constructReductionDataFilePath(runNumber, useLiteMode, version)
+#     assert actualFilePath == expectedFilePath
 
 
 def test_getCalibrationRecordFilePath():
@@ -1547,202 +1543,78 @@ def test_getReductionRecordFilePath():
     assert actualPath == Path(Resource.getPath("outputs")) / wnvf.fileVersion(testVersion) / "ReductionRecord.json"
 
 
-def test_extractFileVersion():
-    testVersion = randint(1, 20)
-    testFile = f"Powder/1234/{wnvf.fileVersion(testVersion)}/CalibrationRecord.json"
-    localDataService = LocalDataService()
-    actualVersion = localDataService._extractFileVersion(testFile)
-    assert actualVersion == testVersion
-
-
-# def test_getLatestThing():
+# def test__getVersionFromCalibrationIndex():
 #     localDataService = LocalDataService()
-
-#     # with nothing, results defaults
-#     ans = localDataService._getLatestThing([])
-#     assert ans == VERSION_START
-#     ans1, ans2 = localDataService._getLatestThing([], otherThings=[])
-#     assert ans1 == VERSION_START
-#     assert ans2 is None
-
-#     # with integers
-#     result = randint(10, 20)
-#     things = list(range(result + 1))
-#     shuffle(things)
-#     ans = localDataService._getLatestThing(things)
-#     assert ans == result
-
-#     # with floats
-#     result = 3.4
-#     things = [1.2, result, 1.7]
-#     ans = localDataService._getLatestThing(things)
-#     assert ans == result
-
-#     # with other things
-#     result = (randint(4, 10), "bundt")
-#     things = [1, 2, 3]
-#     cakes = ["devil", "angel", "lemon"]
-#     place = 1
-#     things.insert(place, result[0])
-#     cakes.insert(place, result[1])
-#     ans = localDataService._getLatestThing(things, otherThings=cakes)
-#     assert ans == result
+#     localDataService.readCalibrationIndex = mock.Mock()
+#     localDataService.readCalibrationIndex.return_value = [mock.Mock()]
+#     localDataService.readCalibrationIndex.return_value[0] = CalibrationIndexEntry(
+#         timestamp=123,
+#         useLiteMode=True,
+#         version=1,
+#         appliesTo="123",
+#         runNumber="123",
+#         comments="",
+#         author="",
+#     )
+#     actualVersion = localDataService._getVersionFromCalibrationIndex("123", True)
+#     assert actualVersion == 1
 
 
-def test__getFileOfVersion():
-    expected = randint(10, 20)
-    file_pattern = lambda x: f"/{x}/CalibrationRecord.json"  # noqa E731
-    someFiles = [file_pattern(wnvf.fileVersion(i)) for i in range(expected + 1)]
-    shuffle(someFiles)
-    localDataService = LocalDataService()
-    localDataService._findMatchingFileList = mock.Mock(return_value=someFiles)
-    actualFile = localDataService._getFileOfVersion(file_pattern("*"), expected)
-    assert actualFile == file_pattern(wnvf.fileVersion(expected))
-
-
-def test__getLatestFile():
-    expected = randint(10, 20)
-    file_pattern = lambda x: f"Powder/1234/{x}/CalibrationRecord.json"  # noqa E731
-    someFiles = [file_pattern(wnvf.fileVersion(i)) for i in range(expected + 1)]
-    shuffle(someFiles)
-    localDataService = LocalDataService()
-    localDataService._findMatchingFileList = mock.Mock(return_value=someFiles)
-    actualFile = localDataService._getLatestFile(file_pattern("*"))
-    assert actualFile == file_pattern(wnvf.fileVersion(expected))
-
-
-# def test__isApplicableEntry_equals():
+# def test__getVersionFromCalibrationIndex_nuffink():
 #     localDataService = LocalDataService()
-#     entry = mock.Mock()
-#     entry.appliesTo = "123"
-#     assert localDataService._isApplicableEntry(entry, "123")
+#     localDataService.readCalibrationIndex = mock.Mock()
+#     localDataService.readCalibrationIndex.return_value = [mock.Mock()]
+#     localDataService.readCalibrationIndex.return_value[0] = CalibrationIndexEntry(
+#         timestamp=123,
+#         useLiteMode=True,
+#         version=1,
+#         appliesTo=">123",
+#         runNumber="123",
+#         comments="",
+#         author="",
+#     )
+#     actualVersion = localDataService._getVersionFromCalibrationIndex("123", True)
+#     assert actualVersion is None
 
 
-# def test__isApplicableEntry_greaterThan():
+# def test__getVersionFromNormalizationIndex():
 #     localDataService = LocalDataService()
-#     entry = mock.Mock()
-#     entry.appliesTo = ">123"
-#     assert localDataService._isApplicableEntry(entry, "456")
+#     localDataService.readNormalizationIndex = mock.Mock()
+#     localDataService.readNormalizationIndex.return_value = [mock.Mock()]
+#     localDataService.readNormalizationIndex.return_value[0] = NormalizationIndexEntry(
+#         timestamp=123,
+#         version=1,
+#         appliesTo="123",
+#         runNumber="123",
+#         useLiteMode=True,
+#         backgroundRunNumber="456",
+#         comments="",
+#         author="",
+#     )
+#     actualVersion = localDataService._getVersionFromNormalizationIndex("123", True)
+#     assert actualVersion == 1
 
 
-# def test__isApplicableEntry_lessThan():
+# def test__getVersionFromNormalizationIndex_nuffink():
 #     localDataService = LocalDataService()
-#     entry = mock.Mock()
-#     entry.appliesTo = "<123"
-#     assert localDataService._isApplicableEntry(entry, "99")
-
-
-# def test_isApplicableEntry_lessThanEquals():
-#     localDataService = LocalDataService()
-#     entry = mock.Mock()
-#     entry.appliesTo = "<=123"
-#     assert localDataService._isApplicableEntry(entry, "123")
-#     assert localDataService._isApplicableEntry(entry, "99")
-#     assert not localDataService._isApplicableEntry(entry, "456")
-
-
-# def test_isApplicableEntry_greaterThanEquals():
-#     localDataService = LocalDataService()
-#     entry = mock.Mock()
-#     entry.appliesTo = ">=123"
-#     assert localDataService._isApplicableEntry(entry, "123")
-#     assert localDataService._isApplicableEntry(entry, "456")
-#     assert not localDataService._isApplicableEntry(entry, "99")
-
-
-def test__getVersionFromCalibrationIndex():
-    localDataService = LocalDataService()
-    localDataService.readCalibrationIndex = mock.Mock()
-    localDataService.readCalibrationIndex.return_value = [mock.Mock()]
-    localDataService.readCalibrationIndex.return_value[0] = CalibrationIndexEntry(
-        timestamp=123,
-        useLiteMode=True,
-        version=1,
-        appliesTo="123",
-        runNumber="123",
-        comments="",
-        author="",
-    )
-    actualVersion = localDataService._getVersionFromCalibrationIndex("123", True)
-    assert actualVersion == 1
-
-
-def test__getVersionFromCalibrationIndex_nuffink():
-    localDataService = LocalDataService()
-    localDataService.readCalibrationIndex = mock.Mock()
-    localDataService.readCalibrationIndex.return_value = [mock.Mock()]
-    localDataService.readCalibrationIndex.return_value[0] = CalibrationIndexEntry(
-        timestamp=123,
-        useLiteMode=True,
-        version=1,
-        appliesTo=">123",
-        runNumber="123",
-        comments="",
-        author="",
-    )
-    actualVersion = localDataService._getVersionFromCalibrationIndex("123", True)
-    assert actualVersion is None
-
-
-def test__getVersionFromNormalizationIndex():
-    localDataService = LocalDataService()
-    localDataService.readNormalizationIndex = mock.Mock()
-    localDataService.readNormalizationIndex.return_value = [mock.Mock()]
-    localDataService.readNormalizationIndex.return_value[0] = NormalizationIndexEntry(
-        timestamp=123,
-        version=1,
-        appliesTo="123",
-        runNumber="123",
-        useLiteMode=True,
-        backgroundRunNumber="456",
-        comments="",
-        author="",
-    )
-    actualVersion = localDataService._getVersionFromNormalizationIndex("123", True)
-    assert actualVersion == 1
-
-
-def test__getVersionFromNormalizationIndex_nuffink():
-    localDataService = LocalDataService()
-    localDataService.readNormalizationIndex = mock.Mock()
-    localDataService.readNormalizationIndex.return_value = [mock.Mock()]
-    localDataService.readNormalizationIndex.return_value[0] = NormalizationIndexEntry(
-        timestamp=123,
-        version=1,
-        appliesTo=">123",
-        runNumber="123",
-        useLiteMode=True,
-        backgroundRunNumber="456",
-        comments="",
-        author="",
-    )
-    actualVersion = localDataService._getVersionFromNormalizationIndex("123", True)
-    assert actualVersion is None
-
-
-def test__getCurrentCalibrationRecord():
-    localDataService = LocalDataService()
-    localDataService._getVersionFromCalibrationIndex = mock.Mock()
-    localDataService._getVersionFromCalibrationIndex.return_value = "1"
-    localDataService.readCalibrationRecord = mock.Mock()
-    mockRecord = mock.Mock()
-    localDataService.readCalibrationRecord.return_value = mockRecord
-    actualRecord = localDataService._getCurrentCalibrationRecord("123", True)
-    assert actualRecord == mockRecord
-
-
-def test__getCurrentNormalizationRecord():
-    localDataService = LocalDataService()
-    localDataService._getVersionFromNormalizationIndex = mock.Mock()
-    localDataService._getVersionFromNormalizationIndex.return_value = "1"
-    mockRecord = mock.Mock()
-    localDataService.readNormalizationRecord = mock.Mock(return_value=mockRecord)
-    actualRecord = localDataService._getCurrentNormalizationRecord("123", True)
-    assert actualRecord == mockRecord
+#     localDataService.readNormalizationIndex = mock.Mock()
+#     localDataService.readNormalizationIndex.return_value = [mock.Mock()]
+#     localDataService.readNormalizationIndex.return_value[0] = NormalizationIndexEntry(
+#         timestamp=123,
+#         version=1,
+#         appliesTo=">123",
+#         runNumber="123",
+#         useLiteMode=True,
+#         backgroundRunNumber="456",
+#         comments="",
+#         author="",
+#     )
+#     actualVersion = localDataService._getVersionFromNormalizationIndex("123", True)
+#     assert actualVersion is None
 
 
 def test__constructCalibrationParametersFilePath():
-    stateId = "ab8704b0bc2a2342"
+    stateId = "delete_this_directory"
     testVersion = randint(10, 20)
     localDataService = LocalDataService()
     localDataService._generateStateId = mock.Mock(return_value=(stateId, "gibberish"))
@@ -1768,32 +1640,27 @@ def test_readCalibrationState():
 
 
 def test_readCalibrationState_no_file():
+    stateId = "ab8704b0bc2a2342"
     localDataService = LocalDataService()
-    localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
+    localDataService._generateStateId = mock.Mock(return_value=(stateId, "gibberish"))
     localDataService._constructCalibrationParametersFilePath = mock.Mock()
-    localDataService._constructCalibrationParametersFilePath.return_value = Resource.getPath(
-        "ab8704b0bc2a2342/v_0001/CalibrationParameters.json"
+    localDataService._constructCalibrationParametersFilePath.return_value = Path(
+        Resource.getPath("ab8704b0bc2a2342/v_0001/CalibrationParameters.json")
     )
-    localDataService._getLatestFile = mock.Mock()
-    localDataService._getLatestFile.return_value = None
     with pytest.raises(RecoverableException):
         localDataService.readCalibrationState("57514", False)
 
 
 def test_readNormalizationState():
+    stateId = "ab8704b0bc2a2342"
     localDataService = LocalDataService()
-    localDataService._generateStateId = mock.Mock()
-    localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
-    localDataService.getNormalizationStatePath = mock.Mock()
-    localDataService.getNormalizationStatePath.return_value = Path(
-        Resource.getPath("ab8704b0bc2a2342/v_0001/NormalizationParameters.json")
-    )
-    localDataService._getLatestFile = mock.Mock()
-    localDataService._getLatestFile.return_value = Resource.getPath("inputs/normalization/NormalizationParameters.json")
-    localDataService._getCurrentNormalizationRecord = mock.Mock()
+    with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
+        tmpRoot.addFileAs(
+            Resource.getPath("inputs/normalization/NormalizationParameters.json"),
+            localDataService._constructNormalizationParametersFilePath("57514", True, 3),            
+        )
+        actualState = localDataService.readNormalizationState("57514", True, 3)
     testNormalizationState = Normalization.parse_raw(Resource.read("inputs/normalization/NormalizationParameters.json"))
-    actualState = localDataService.readNormalizationState("57514", True)
     assert actualState == testNormalizationState
 
 

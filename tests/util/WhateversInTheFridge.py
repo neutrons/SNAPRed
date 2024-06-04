@@ -103,7 +103,7 @@ class WhateversInTheFridge(LocalDataService):
         return self.latestVersion
 
     @validate_arguments
-    def _getLatestCalibrationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
+    def _getLatestCalibrationVersionNumber(self, runId: str, useLiteMode: bool) -> int:
         return self.latestVersion
 
     ### NORMALIZATION METHODS ###
@@ -123,7 +123,7 @@ class WhateversInTheFridge(LocalDataService):
         return self.latestVersion
 
     @validate_arguments
-    def _getLatestNormalizationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
+    def _getLatestNormalizationVersionNumber(self, runId: str, useLiteMode: bool) -> int:
         return self.latestVersion
 
     ### REDUCTION METHODS ###
