@@ -66,6 +66,8 @@ calibration:
   diffraction:
     output:
       extension: .tar
+    diagnostic:
+      extension: .nxs.h5
     maximumIterations: 5
     convergenceThreshold: 0.5
     peakIntensityThreshold: 0.05

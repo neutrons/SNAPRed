@@ -611,22 +611,12 @@ class LocalDataService:
 
         # Update the to-be saved record's "workspaces" information
         #   to correspond to the filenames that will actually be saved to disk.
-        savedWorkspaces = {}
         workspaces = record.workspaces.copy()
         wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []):
             # Rebuild the workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
-            if wng.Units.TOF.lower() in wsName:
-                ws = (
-                    wng.diffCalOutput()
-                    .unit(wng.Units.TOF)
-                    .runNumber(record.runNumber)
-                    .version(record.version)
-                    .group(record.focusGroupCalibrationMetrics.focusGroupName)
-                    .build()
-                )
-            elif wng.Units.DSP.lower() in wsName:
+            if wng.Units.DSP.lower() in wsName:
                 ws = (
                     wng.diffCalOutput()
                     .unit(wng.Units.DSP)
@@ -642,17 +632,46 @@ class LocalDataService:
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_OUTPUT] = wss
         wss = []
+        for wsName in workspaces.pop(wngt.DIFFCAL_DIAG, []):
+            # Rebuild the workspace name to strip any "iteration" number:
+            #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
+            if wng.Units.DIAG.lower() in wsName:
+                ws = (
+                    wng.diffCalOutput()
+                    .unit(wng.Units.DIAG)
+                    .runNumber(record.runNumber)
+                    .version(record.version)
+                    .group(record.focusGroupCalibrationMetrics.focusGroupName)
+                    .build()
+                )
+            else:
+                raise RuntimeError(
+                    f"cannot save a workspace-type: {wngt.DIFFCAL_DIAG} without a units token in its name {wsName}"
+                )
+            wss.append(ws)
+        savedWorkspaces[wngt.DIFFCAL_DIAG] = wss
+        wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_TABLE, []):
             # Rebuild the workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple table workspaces.
-            ws = wng.diffCalTable().runNumber(record.runNumber).version(record.version).build()
+            ws = (
+                wng.diffCalTable()
+                .runNumber(record.runNumber)
+                .version(record.version)
+                .build()
+            )
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_TABLE] = wss
         wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_MASK, []):
             # Rebuild the workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple mask workspaces.
-            ws = wng.diffCalMask().runNumber(record.runNumber).version(record.version).build()
+            ws = (
+                wng.diffCalMask()
+                .runNumber(record.runNumber)
+                .version(record.version)
+                .build()
+            )
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_MASK] = wss
         savedRecord = deepcopy(record)
@@ -678,17 +697,7 @@ class LocalDataService:
             # Rebuild the filename to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
             ext = Config["calibration.diffraction.output.extension"]
-            if wng.Units.TOF.lower() in wsName:
-                filename = Path(
-                    wng.diffCalOutput()
-                    .unit(wng.Units.TOF)
-                    .runNumber(record.runNumber)
-                    .version(record.version)
-                    .group(record.focusGroupCalibrationMetrics.focusGroupName)
-                    .build()
-                    + ext
-                )
-            elif wng.Units.DSP.lower() in wsName:
+            if wng.Units.DSP.lower() in wsName:
                 filename = Path(
                     wng.diffCalOutput()
                     .unit(wng.Units.DSP)
@@ -703,6 +712,21 @@ class LocalDataService:
                     f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
                 )
             self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
+        for wsName in workspaces.pop(wngt.DIFFCAL_DIAG, []):
+            ext = Config["calibration.diffraction.diagnostic.extension"]
+            if wng.Units.DIAG.lower() in wsName:
+                filename = Path(
+                    wng.diffCalOutput()
+                    .unit(wng.Units.DIAG)
+                    .runNumber(record.runNumber)
+                    .version(record.version)
+                    .group(record.focusGroupCalibrationMetrics.focusGroupName)
+                    .build()
+                    + ext
+                )
+            else:
+                raise RuntimeError(f"Cannot save workspace-type {wngt.DIFFCAL_DIAG} without diagnostic in its name")
+            self.writeWorkspace(calibrationDataPath, filename, wsName)
         for tableWSName, maskWSName in zip(
             workspaces.pop(wngt.DIFFCAL_TABLE, []),
             workspaces.pop(wngt.DIFFCAL_MASK, []),
