@@ -1,9 +1,11 @@
 import shutil
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.meta.Config import Resource
 
 # IMPLEMENTATION NOTES:
 # * Because so many other required directories are nested under
@@ -51,3 +53,99 @@ def state_root_fixture():
 
     # teardown => __exit__
     _stack.close()
+
+
+class state_root_redirect:
+    """
+    This context manager will create a temporary directory and patch a LocalDataService so that its
+    state root directory points inside the temporary directory.  Files can be easily added to the
+    directory using `addFileAs`.  Usage is
+
+    ```
+    with state_root_redirect(instance.dataService) as tmpRoot:
+        <code here>
+        tmpRoot.addFileAs(some_file, target_in_tmp_root)
+        <more code here>
+    ```
+    """
+
+    def __init__(self, dataService: LocalDataService, *, stateId: str = None):
+        self.dataService = dataService
+        self.stateId = stateId
+        self.oldself = dataService._constructCalibrationStateRoot
+        self.oldstateId = dataService._generateStateId
+
+    def __enter__(self):
+        self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
+        self.tmppath = Path(self.tmpdir.name)
+        if self.stateId is not None:
+            self.tmppath = self.tmppath / Path(self.stateId)
+        else:
+            self.stateId = str(self.tmppath.parts[-1])
+        self.dataService._generateStateId = lambda *x, **y: (self.stateId, "gibberish")  # noqa ARG005
+        self.dataService._constructCalibrationStateRoot = lambda *x, **y: self.tmppath  # noqa ARG005
+        return self
+
+    def __exit__(self, *arg, **kwargs):
+        self.dataService._constructCalibrationStateRoot = self.oldself
+        self.dataService._generateStateId = self.oldstateId
+        self.tmpdir.cleanup()
+        assert not self.tmppath.exists()
+        del self.tmpdir
+
+    def path(self) -> Path:
+        return self.tmppath
+
+    def addFileAs(self, source: str, target: str):
+        assert self.tmppath in list(Path(target).parents)
+        Path(target).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+        assert Path(target).exists()
+
+
+class reduction_root_redirect:
+    """
+    This context manager will create a temporary directory and patch a LocalDataService so that its
+    state root directory points inside the temporary directory.  Files can be easily added to the
+    directory using `addFileAs`.  Usage is
+
+    ```
+    with state_root_redirect(instance.dataService) as tmpRoot:
+        <code here>
+        tmpRoot.addFileAs(some_file, target_in_tmp_root)
+        <more code here>
+    ```
+    """
+
+    def __init__(self, dataService: LocalDataService, *, stateId: str = None):
+        self.dataService = dataService
+        self.stateId = stateId
+        self.oldself = dataService._constructReductionStateRoot
+        self.oldstateId = dataService._generateStateId
+
+    def __enter__(self):
+        self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
+        self.tmppath = Path(self.tmpdir.name)
+        if self.stateId is not None:
+            self.tmppath = self.tmppath / Path(self.stateId)
+        else:
+            self.stateId = str(self.tmppath.parts[-1])
+        self.dataService._generateStateId = lambda *x, **y: (self.stateId, "gibberish")  # noqa ARG005
+        self.dataService._constructReductionStateRoot = lambda *x, **y: self.tmppath  # noqa ARG005
+        return self
+
+    def __exit__(self, *arg, **kwargs):
+        self.dataService._constructReductionStateRoot = self.oldself
+        self.dataService._generateStateId = self.oldstateId
+        self.tmpdir.cleanup()
+        assert not self.tmppath.exists()
+        del self.tmpdir
+
+    def path(self) -> Path:
+        return self.tmppath
+
+    def addFileAs(self, source: str, target: str):
+        assert self.tmppath in list(Path(target).parents)
+        Path(target).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+        assert Path(target).exists()

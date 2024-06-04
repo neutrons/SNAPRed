@@ -1,4 +1,5 @@
-from typing import Dict, List, Tuple
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import parse_raw_as
 
@@ -51,6 +52,8 @@ class SousChef(Service):
 
     def prepCalibration(self, ingredients: FarmFreshIngredients) -> Calibration:
         calibration = self.dataFactoryService.getCalibrationState(ingredients.runNumber, ingredients.useLiteMode)
+        calibration.calibrantSamplePath = ingredients.calibrantSamplePath
+        calibration.peakIntensityThreshold = ingredients.peakIntensityThreshold
         calibration.instrumentState.fwhmMultipliers = ingredients.fwhmMultipliers
         return calibration
 
@@ -111,7 +114,7 @@ class SousChef(Service):
 
     def prepCrystallographicInfo(self, ingredients: FarmFreshIngredients) -> CrystallographicInfo:
         if not ingredients.cifPath:
-            samplePath = ingredients.calibrantSamplePath.split("/")[-1].split(".")[0]
+            samplePath = Path(ingredients.calibrantSamplePath).stem
             ingredients.cifPath = self.dataFactoryService.getCifFilePath(samplePath)
         key = (ingredients.cifPath, ingredients.crystalDBounds.minimum, ingredients.crystalDBounds.maximum)
         if key not in self._xtalCache:
@@ -166,11 +169,26 @@ class SousChef(Service):
         ingredients.focusGroup = focusGroups
         return detectorPeaks
 
-    def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
+    def prepReductionIngredients(
+        self, ingredients: FarmFreshIngredients, version: Optional[int] = None
+    ) -> ReductionIngredients:
+        # some of the reduction ingredients MUST match those used in the calibration/normalization processes
+        calibrationRecord = self.dataFactoryService.getCalibrationRecord(
+            ingredients.runNumber, ingredients.useLiteMode, version
+        )
+        normalizationRecord = self.dataFactoryService.getNormalizationRecord(
+            ingredients.runNumber, ingredients.useLiteMode, version
+        )
+        # grab information from records
+        ingredients.calibrantSamplePath = calibrationRecord.calibrationFittingIngredients.calibrantSamplePath
+        ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
+        ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
         return ReductionIngredients(
-            maskList=[],
+            maskList=[],  # TODO coming soon to a store near you!
             pixelGroups=self.prepManyPixelGroups(ingredients),
-            smoothingParameter=ingredients.smoothingParameter,
+            smoothingParameter=normalizationRecord.smoothingParameter,
+            calibrantSamplePath=ingredients.calibrantSamplePath,
+            peakIntensityThreshold=ingredients.peakIntensityThreshold,
             detectorPeaksMany=self.prepManyDetectorPeaks(ingredients),
         )
 

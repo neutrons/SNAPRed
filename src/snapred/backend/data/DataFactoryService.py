@@ -54,8 +54,8 @@ class DataFactoryService:
     def getCifFilePath(self, sampleId):
         return self.lookupService.readCifFilePath(sampleId)
 
-    def getSamplePaths(self):
-        return self.lookupService.readSamplePaths()
+    def getSampleFilePaths(self):
+        return self.lookupService.readSampleFilePaths()
 
     def getGroupingMap(self, runId: str):
         return self.lookupService.readGroupingMap(runId)

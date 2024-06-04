@@ -24,9 +24,6 @@ class FarmFreshIngredients(BaseModel, extra=Extra.forbid):
     ## needs to be mandatory for diffcal
     cifPath: Optional[str]
 
-    # needs to be mandatory for normalizaiton/reduction
-    smoothingParameter: Optional[float]
-
     ## needs to be mandatory for normcal
     calibrantSamplePath: Optional[str]
 

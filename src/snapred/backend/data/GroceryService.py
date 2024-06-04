@@ -2,7 +2,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from mantid.simpleapi import mtd
 from pydantic import validate_arguments
@@ -17,6 +17,8 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+
+Version = Union[int, Literal["*"]]
 
 
 @Singleton
@@ -192,17 +194,15 @@ class GroceryService:
         return str(path)
 
     @validate_arguments
-    def _createDiffcalOutputWorkspaceFilename(
-        self, runNumber: str, useLiteMode: bool, version: Optional[int], unit: str, group: str
-    ) -> str:
+    def _createDiffcalOutputWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
-            Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
-            / (self._createDiffcalOutputWorkspaceName(runNumber, useLiteMode, version, unit, group) + ext)
+            Path(self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version))
+            / (self._createDiffcalOutputWorkspaceName(item) + ext)
         )
 
     @validate_arguments
-    def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
+    def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
             / (self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version) + ".h5")
@@ -211,7 +211,7 @@ class GroceryService:
     @validate_arguments
     def _createNormalizationWorkspaceFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
-            Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
+            Path(self._getNormalizationDataPath(runNumber, useLiteMode, version))
             / (self._createNormalizationWorkspaceName(runNumber, useLiteMode, version) + ".nxs")
         )
 
@@ -242,15 +242,15 @@ class GroceryService:
     def _createDiffcalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runNumber).build()
 
-    def _createDiffcalOutputWorkspaceName(
-        self,
-        runNumber: str,
-        useLiteMode: bool,  # noqa ARG002
-        version: str,
-        unit: str,
-        group: str,
-    ) -> WorkspaceName:
-        return wng.diffCalOutput().unit(unit).runNumber(runNumber).version(version).group(group).build()
+    def _createDiffcalOutputWorkspaceName(self, item: GroceryListItem) -> WorkspaceName:
+        return (
+            wng.diffCalOutput()
+            .unit(item.unit)
+            .runNumber(item.runNumber)
+            .version(item.version)
+            .group(item.groupingScheme)
+            .build()
+        )
 
     @validate_arguments
     def _createDiffcalTableWorkspaceName(
@@ -504,7 +504,7 @@ class GroceryService:
         return self.dataService.readDetectorState(runNumber)
 
     @validate_arguments
-    def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
+    def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
         """
         Get a path to the directory with the calibration data
 
@@ -514,6 +514,18 @@ class GroceryService:
         :type version: str
         """
         return self.dataService._constructCalibrationDataPath(runNumber, useLiteMode, version)
+
+    @validate_arguments
+    def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
+        """
+        Get a path to the directory with the normalization data
+
+        :param runNumber: a run number, whose state will be looked up
+        :type runNumber: str
+        :param version: the normalization version to use in the lookup
+        :type version: str
+        """
+        return self.dataService._constructNormalizationDataPath(runNumber, useLiteMode, version)
 
     def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> Dict[str, Any]:
         """
@@ -775,8 +787,8 @@ class GroceryService:
         return data
 
     @validate_arguments
-    def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: int) -> WorkspaceName:
-        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", useLiteMode, str(version))
+    def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: Version) -> WorkspaceName:
+        tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", useLiteMode, version)
         self.mantidSnapper.CalculateDiffCalTable(
             "Generate the default diffcal table",
             InputWorkspace=self._fetchInstrumentDonor(runNumber, useLiteMode),
@@ -842,7 +854,6 @@ class GroceryService:
         """
         groceries = []
         for item in groceryList:
-            print(item)
             match item.workspaceType:
                 # for neutron data stored in a nexus file
                 case "neutron":
@@ -861,21 +872,17 @@ class GroceryService:
                     )
                 # for diffraction-calibration workspaces
                 case "diffcal_output":
-                    diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(
-                        item.runNumber, item.useLiteMode, item.version, item.unit, item.groupingScheme
-                    )
+                    diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(item)
                     if item.isOutput:
                         res = {"result": True, "workspace": diffcalOutputWorkspaceName}
                     else:
                         res = self.fetchWorkspace(
-                            self._createDiffcalOutputWorkspaceFilename(
-                                item.runNumber, item.useLiteMode, item.version, item.unit, item.groupingScheme
-                            ),
+                            self._createDiffcalOutputWorkspaceFilename(item),
                             diffcalOutputWorkspaceName,
                             loader="ReheatLeftovers",
                         )
                 case "diffcal_table":
-                    if not item.version:
+                    if not isinstance(item.version, int):
                         item.version = self.dataService._getVersionFromCalibrationIndex(
                             item.runNumber, item.useLiteMode
                         )
@@ -900,7 +907,18 @@ class GroceryService:
                         res = self.fetchCalibrationWorkspaces(item)
                         res["workspace"] = maskWorkspaceName
                 case "normalization":
-                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(item.runNumber, item.version)
+                    if not isinstance(item.version, int):
+                        item.version = self.dataService._getVersionFromNormalizationIndex(
+                            item.runNumber, item.useLiteMode
+                        )
+                        record = self.dataService.readNormalizationRecord(
+                            item.runNumber, item.useLiteMode, item.version
+                        )
+                        if record is not None:
+                            item.runNumber = record.runNumber
+                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(
+                        item.runNumber, item.useLiteMode, item.version
+                    )
                     if item.isOutput:
                         res = {"result": True, "workspace": normalizationWorkspaceName}
                     else:

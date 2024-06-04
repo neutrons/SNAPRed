@@ -36,7 +36,7 @@ class ReductionRecipe(Recipe[Ingredients]):
         """
         Chops off the needed elements of the ingredients.
         """
-        self.ingredients = ingredients
+        self.ingredients = ingredients.copy()
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
         """
@@ -44,10 +44,10 @@ class ReductionRecipe(Recipe[Ingredients]):
         The input sample data workpsace, inputworkspace, is required, in dspacing
 
         """
-        self.groceries = groceries
+        self.groceries = groceries.copy()
         self.sampleWs = groceries["inputWorkspace"]
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
-        self.groupWorkspaces = groceries["groupWorkspaces"]
+        self.groupWorkspaces = groceries["groupingWorkspaces"]
 
     def _cloneWorkspace(self, inputWorkspace: str, outputWorkspace: str) -> str:
         self.mantidSnapper.CloneWorkspace(

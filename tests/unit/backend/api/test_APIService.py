@@ -40,10 +40,8 @@ with mock.patch.dict(
         mockService = MockService()
         serviceDirectory.registerService(mockService)
         validPaths = apiService.getValidPaths()
-        print(validPaths)
         with Resource.open("/outputs/APIServicePaths.json", "r") as f:
             import json
 
             actualValidPaths = json.load(f)
-            print(actualValidPaths)
             assert validPaths == actualValidPaths

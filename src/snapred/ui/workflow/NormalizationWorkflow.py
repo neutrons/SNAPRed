@@ -199,6 +199,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         normalizationRecord.workspaceNames.append(self.responses[-2].data["focusedVanadium"])
         normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
 
+        version = view.fieldVersion.get(None)
         # validate the version number
         version = view.fieldVersion.get(None)
         if version is not None:

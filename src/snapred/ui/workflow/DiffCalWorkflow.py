@@ -386,6 +386,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
+        version = view.fieldVersion.get(None)
         # validate the version number
         version = view.fieldVersion.get(None)
         if version is not None:

@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 from typing import Dict, List
 
 from pydantic import parse_raw_as
@@ -79,7 +80,6 @@ class CalibrationService(Service):
         self.groceryService = GroceryService()
         self.groceryClerk = GroceryListItem.builder()
         self.sousChef = SousChef()
-        self.registerPath("reduction", self.fakeMethod)
         self.registerPath("ingredients", self.prepDiffractionCalibrationIngredients)
         self.registerPath("groceries", self.fetchDiffractionCalibrationGroceries)
         self.registerPath("focus", self.focusSpectra)
@@ -87,13 +87,10 @@ class CalibrationService(Service):
         self.registerPath("save", self.save)
         self.registerPath("load", self.load)
         self.registerPath("initializeState", self.initializeState)
-        self.registerPath("calculatePixelGroupingParameters", self.fakeMethod)
         self.registerPath("hasState", self.hasState)
-        self.registerPath("checkDataExists", self.fakeMethod)
         self.registerPath("assessment", self.assessQuality)
         self.registerPath("loadQualityAssessment", self.loadQualityAssessment)
         self.registerPath("index", self.getCalibrationIndex)
-        self.registerPath("retrievePixelGroupingParams", self.fakeMethod)
         self.registerPath("diffraction", self.diffractionCalibration)
         return
 
@@ -102,18 +99,11 @@ class CalibrationService(Service):
         return "calibration"
 
     @FromString
-    def fakeMethod(self):  # pragma: no cover
-        # NOTE this is not a real method
-        # it's here to be used in the registered paths above, for the moment
-        # when possible this and its registered paths should be deleted
-        raise NotImplementedError("You tried to access an invalid path in the calibration service.")
-
-    @FromString
     def prepDiffractionCalibrationIngredients(
         self, request: DiffractionCalibrationRequest
     ) -> DiffractionCalibrationIngredients:
         # fetch the ingredients needed to focus and plot the peaks
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -222,7 +212,7 @@ class CalibrationService(Service):
     @FromString
     def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
         if entry.appliesTo is None:
-            entry.appliesTo = ">" + entry.runNumber
+            entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
@@ -341,7 +331,7 @@ class CalibrationService(Service):
         # However, its actual implementation did not actually loop over a list.
         # I removed most of the parts that implied a loop or list.
         # This can be easily refactored to a loop structure when needed
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.run.runNumber,
             useLiteMode=request.useLiteMode,
