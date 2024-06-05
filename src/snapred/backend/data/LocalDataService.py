@@ -32,8 +32,8 @@ from snapred.backend.dao.state import (
     InstrumentState,
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
-from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.data.Indexor import Indexor, IndexorType
+from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger

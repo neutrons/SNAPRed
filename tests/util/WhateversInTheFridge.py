@@ -56,7 +56,7 @@ class WhateversInTheFridge(LocalDataService):
         if not filePath.is_absolute():
             filePath = Path(Config["samples.home"]).joinpath(filePath)
         return str(filePath)
-    
+
     def readDetectorState(self, runId: str):
         return DetectorState.construct(wav=1.0)
 

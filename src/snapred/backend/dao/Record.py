@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Extra
 
-from snapred.backend.dao.IndexEntry import Version, UNINITIALIZED
-from snapred.meta.Config import Config
+from snapred.backend.dao.IndexEntry import UNINITIALIZED, Version
 
 
 class Record(BaseModel, extra=Extra.allow):
@@ -24,7 +23,7 @@ class Record(BaseModel, extra=Extra.allow):
 
 
 Nonrecord = Record(
-    runNumber = "none",
-    useLiteMode = False,
-    version = UNINITIALIZED,
+    runNumber="none",
+    useLiteMode=False,
+    version=UNINITIALIZED,
 )

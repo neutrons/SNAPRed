@@ -30,6 +30,7 @@ from snapred.backend.dao.state import (
     InstrumentState,
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
+from snapred.backend.data.Indexor import Indexor, IndexorType
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
@@ -37,13 +38,11 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.backend.data.Indexor import Indexor, IndexorType
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import (
-    write_model_list_pretty,
     write_model_pretty,
 )
 
@@ -254,14 +253,13 @@ class LocalDataService:
         else:
             mode = "native"
         return f"{self._constructCalibrationStateRoot(stateId)}/{str(mode)}/normalization/"
-    
+
     @validate_arguments
     def _constructCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Version):
         """
         Generates the path for an instrument state's versioned calibration files.
         """
         return self.calibrationIndex(runId, useLiteMode).versionPath(version)
-
 
     @validate_arguments
     def _constructNormalizationDataPath(self, runId: str, useLiteMode: bool, version: Version):
@@ -574,7 +572,6 @@ class LocalDataService:
         if os.path.exists(calibrationParametersFilePath):
             logger.warning(f"overwriting calibration parameters at {calibrationParametersFilePath}")
 
-        
         calibrationDataPath = indexor.versionPath(version)
         if not os.path.exists(calibrationDataPath):
             os.makedirs(calibrationDataPath)
@@ -691,7 +688,7 @@ class LocalDataService:
 
         # # write an empty calibration index
         # defaultRecord = CalibrationRecord(
-            
+
         # )
         self.calibrationIndex(runId, useLiteMode).writeIndex()
         return calibration
@@ -758,7 +755,7 @@ class LocalDataService:
         else:
             path = self._constructCalibrationStateRoot(stateId)
         return path
-    
+
     def index(self, runNumber: str, useLiteMode: bool, indexorType: IndexorType):
         stateId, _ = self._generateStateId(runNumber)
         key = (stateId, useLiteMode, indexorType)
@@ -769,28 +766,28 @@ class LocalDataService:
 
     def calibrationIndex(self, runId: str, useLiteMode: bool):
         return self.index(runId, useLiteMode, IndexorType.CALIBRATION)
-    
+
     def currentCalibrationVersion(self, runId: str, useLiteMode: bool):
         return self.index(runId, useLiteMode, IndexorType.CALIBRATION).currentVersion()
-    
+
     def nextCalibrationVersion(self, runId: str, useLiteMode: bool):
         return self.index(runId, useLiteMode, IndexorType.CALIBRATION).nextVersion()
-    
+
     def latestCalibrationVersion(self, runId: str, useLiteMode: bool):
         return self.index(runId, useLiteMode, IndexorType.CALIBRATION).latestApplicableVersion(runId)
 
     def normalizationIndex(self, runId: str, useLiteMode: bool):
         return self.index(runId, useLiteMode, IndexorType.NORMALIZATION)
-    
+
     def currentNormalizationVersion(self, runId: str, useLiteMode: bool):
         return self.index(runId, useLiteMode, IndexorType.NORMALIZATION).currentVersion()
-    
+
     def nextNormalizationVersion(self, runId: str, useLiteMode: bool):
         return self.index(runId, useLiteMode, IndexorType.NORMALIZATION).nextVersion()
-    
+
     def latestNormalizationVersion(self, runId: str, useLiteMode: bool):
         return self.index(runId, useLiteMode, IndexorType.NORMALIZATION).latestApplicableVersion(runId)
-    
+
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         self.calibrationIndex(entry.runNumber, entry.useLiteMode).addIndexEntry(entry)
 

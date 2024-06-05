@@ -675,59 +675,56 @@ def test__findMatchingFileList():
     assert actual is not None
     assert len(actual) == 1
 
+    # def test_readCalibrationIndexMissing():
+    #     runNumber = "123"
+    #     useLiteMode = True
+    #     stateId = "xyz"
+    #     localDataService = LocalDataService()
+    #     localDataService.index = mock.Mock(allVersions=[])
+    #     localDataService._generateStateId = mock.Mock(return_value = (stateId, "gibberish"))
+    #     ans = localDataService.readCalibrationIndex(runNumber, True)
+    #     assert localDataService.index.assert_called_once_with(stateId, useLiteMode, "Calibration")
+    #     assert localDataService.readCalibrationIndex == []
+    #     # localDataService.instrumentConfig = mock.Mock()
 
-# def test_readCalibrationIndexMissing():
-#     runNumber = "123"
-#     useLiteMode = True
-#     stateId = "xyz"
-#     localDataService = LocalDataService()
-#     localDataService.index = mock.Mock(allVersions=[])
-#     localDataService._generateStateId = mock.Mock(return_value = (stateId, "gibberish"))
-#     ans = localDataService.readCalibrationIndex(runNumber, True)
-#     assert localDataService.index.assert_called_once_with(stateId, useLiteMode, "Calibration")
-#     assert localDataService.readCalibrationIndex == []
-#     # localDataService.instrumentConfig = mock.Mock()
+    #     # localDataService._readReductionParameters = mock.Mock()
+    #     # localDataService._constructCalibrationStateRoot = mock.Mock()
+    #     # localDataService._constructCalibrationStateRoot.return_value = Path(Resource.getPath("outputs"))
+    #     # assert len(localDataService.readCalibrationIndex("123", True)) == 0
 
-#     # localDataService._readReductionParameters = mock.Mock()
-#     # localDataService._constructCalibrationStateRoot = mock.Mock()
-#     # localDataService._constructCalibrationStateRoot.return_value = Path(Resource.getPath("outputs"))
-#     # assert len(localDataService.readCalibrationIndex("123", True)) == 0
+    # def test_readNormalizationIndexMissing():
+    #     localDataService = LocalDataService()
+    #     localDataService.instrumentConfig = mock.Mock()
+    #     localDataService._generateStateId = mock.Mock()
+    #     localDataService._generateStateId.return_value = ("123", "456")
+    #     localDataService._readReductionParameters = mock.Mock()
+    #     localDataService._constructCalibrationStateRoot = mock.Mock()
+    #     localDataService._constructCalibrationStateRoot.return_value = Resource.getPath("outputs")
+    #     assert len(localDataService.readNormalizationIndex("123", True)) == 0
 
+    # def test_writeCalibrationIndexEntry():
+    #     localDataService = LocalDataService()
+    #     localDataService.instrumentConfig = mock.Mock()
+    #     localDataService._generateStateId = mock.Mock()
+    #     localDataService._generateStateId.return_value = ("123", "456")
+    #     localDataService._readReductionParameters = mock.Mock()
+    #     localDataService._constructCalibrationStatePath = mock.Mock()
+    #     localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
+    #     expectedFilePath = Resource.getPath("outputs/") + "CalibrationIndex.json"
+    #     localDataService.writeCalibrationIndexEntry(
+    #         CalibrationIndexEntry(runNumber="57514", useLiteMode=True, comments="test comment", author="test author"),
+    #     )
+    #     assert os.path.exists(expectedFilePath)
 
-# def test_readNormalizationIndexMissing():
-#     localDataService = LocalDataService()
-#     localDataService.instrumentConfig = mock.Mock()
-#     localDataService._generateStateId = mock.Mock()
-#     localDataService._generateStateId.return_value = ("123", "456")
-#     localDataService._readReductionParameters = mock.Mock()
-#     localDataService._constructCalibrationStateRoot = mock.Mock()
-#     localDataService._constructCalibrationStateRoot.return_value = Resource.getPath("outputs")
-#     assert len(localDataService.readNormalizationIndex("123", True)) == 0
+    #     fileContent = ""
+    #     with open(expectedFilePath, "r") as indexFile:
+    #         fileContent = indexFile.read()
+    #     os.remove(expectedFilePath)
+    #     assert len(fileContent) > 0
 
-
-# def test_writeCalibrationIndexEntry():
-#     localDataService = LocalDataService()
-#     localDataService.instrumentConfig = mock.Mock()
-#     localDataService._generateStateId = mock.Mock()
-#     localDataService._generateStateId.return_value = ("123", "456")
-#     localDataService._readReductionParameters = mock.Mock()
-#     localDataService._constructCalibrationStatePath = mock.Mock()
-#     localDataService._constructCalibrationStatePath.return_value = Resource.getPath("outputs/")
-#     expectedFilePath = Resource.getPath("outputs/") + "CalibrationIndex.json"
-#     localDataService.writeCalibrationIndexEntry(
-#         CalibrationIndexEntry(runNumber="57514", useLiteMode=True, comments="test comment", author="test author"),
-#     )
-#     assert os.path.exists(expectedFilePath)
-
-#     fileContent = ""
-#     with open(expectedFilePath, "r") as indexFile:
-#         fileContent = indexFile.read()
-#     os.remove(expectedFilePath)
-#     assert len(fileContent) > 0
-
-#     actualEntries = parse_raw_as(List[CalibrationIndexEntry], fileContent)
-#     assert len(actualEntries) > 0
-#     assert actualEntries[0].runNumber == "57514"
+    #     actualEntries = parse_raw_as(List[CalibrationIndexEntry], fileContent)
+    #     assert len(actualEntries) > 0
+    #     assert actualEntries[0].runNumber == "57514"
 
     # def test_writeNormalizationIndexEntry():
     localDataService = LocalDataService()
@@ -748,6 +745,7 @@ def test__findMatchingFileList():
         ),
     )
     assert expectedFilePath.exists()
+
 
 #     fileContent = ""
 #     with open(expectedFilePath, "r") as indexFile:

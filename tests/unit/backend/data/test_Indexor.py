@@ -1,25 +1,20 @@
 # ruff: noqa: E402
 
 import importlib
-import json
-import unittest
 import tempfile
-import unittest.mock as mock
+import unittest
 from pathlib import Path
-from random import randint, shuffle
+from random import randint
 from typing import List
 
-import pytest
-from pydantic import parse_raw_as, parse_file_as
-from snapred.backend.dao.Record import Record, Nonrecord
+from pydantic import parse_file_as
+from snapred.backend.dao.IndexEntry import IndexEntry, Nonentry
+from snapred.backend.dao.Record import Record
+from snapred.backend.data.Indexor import Indexor, IndexorType
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as WNG
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
-from snapred.meta.redantic import write_model_pretty, write_model_list_pretty
-from snapred.backend.data.Indexor import Indexor, IndexorType
-from snapred.backend.dao.IndexEntry import IndexEntry, Nonentry
+from snapred.meta.redantic import write_model_list_pretty, write_model_pretty
 
 LocalDataServiceModule = importlib.import_module(LocalDataService.__module__)
 ThisService = "snapred.backend.data.LocalDataService."
@@ -27,8 +22,8 @@ ThisService = "snapred.backend.data.LocalDataService."
 VERSION_START = Config["version..start"]
 UNITIALIZED = Config["version.error"]
 
-class TestIndexor(unittest.TestCase):
 
+class TestIndexor(unittest.TestCase):
     ## some helpers for the tests ##
 
     def setUp(self):
@@ -40,39 +35,35 @@ class TestIndexor(unittest.TestCase):
 
     def initIndexor(self, type=IndexorType.DEFAULT):
         return Indexor(type=type, directory=self.path)
-    
+
     def indexEntry(self, version):
         return IndexEntry(
-            runNumber = randint(1000, 5000),
-            useLiteMode = bool(randint(0,1)),
-            version = version,
+            runNumber=randint(1000, 5000),
+            useLiteMode=bool(randint(0, 1)),
+            version=version,
         )
-    
+
     def record(self, version, *, runNumber=None):
         if runNumber is None:
             runNumber = randint(1000, 5000)
-        return Record(
-            runNumber = runNumber,
-            useLiteMode = bool(randint(0,1)),
-            version = version
-        )
-    
+        return Record(runNumber=runNumber, useLiteMode=bool(randint(0, 1)), version=version)
+
     def recordFromIndexEntry(self, entry: IndexError) -> Record:
         return Record(
-            runNumber = entry.runNumber,
-            useLiteMode = entry.useLiteMode,
-            version = entry.version,
+            runNumber=entry.runNumber,
+            useLiteMode=entry.useLiteMode,
+            version=entry.version,
         )
-    
+
     def indexPath(self):
         return self.path / "Index.json"
-    
+
     def versionPath(self, version):
         return self.path / wnvf.fileVersion(version)
 
     def recordPath(self, version):
         return self.versionPath(version) / "Record.json"
-    
+
     def makeVersionDir(self, version):
         self.versionPath(version).mkdir()
 
@@ -93,12 +84,12 @@ class TestIndexor(unittest.TestCase):
         assert self.indexor.VERSION_START != UNITIALIZED
 
     def test_init_versions_exist(self):
-        versionList = [1,2,3,4]
+        versionList = [1, 2, 3, 4]
         index = {version: self.indexEntry(version) for version in versionList}
         write_model_list_pretty(index.values(), self.indexPath())
         for version in versionList:
             self.makeVersionDir(version)
-        
+
         self.indexor = self.initIndexor()
 
         assert self.indexor.index == index
@@ -107,7 +98,7 @@ class TestIndexor(unittest.TestCase):
     def test_init_versions_missing_index(self):
         # create a situation where the index is missing a value shown in the directory tree
         # then the indexor should create an index entry based off of the directory record
-        versionList = [1,2,3,4]
+        versionList = [1, 2, 3, 4]
         index = {version: self.indexEntry(version) for version in versionList}
         # remove version 3 and write the index
         del index[3]
@@ -117,7 +108,7 @@ class TestIndexor(unittest.TestCase):
         # - add a v_000x/CalibrationRecord.json for each version
         for version in versionList:
             self.writeRecordVersion(version)
-        
+
         self.indexor = self.initIndexor()
 
         # what we expect -- an index with version 1, 2, 3, 4
@@ -133,7 +124,7 @@ class TestIndexor(unittest.TestCase):
     def test_init_versions_missing_directory(self):
         # create a situation where the index has a value not reflected in directory tree
         # then the indexor should delete that index entry
-        versionList = [1,2,3,4]
+        versionList = [1, 2, 3, 4]
         index = {version: self.indexEntry(version) for version in versionList}
         write_model_list_pretty(list(index.values()), self.indexPath())
         # remove version 3
@@ -152,7 +143,7 @@ class TestIndexor(unittest.TestCase):
         assert self.indexor.index == expectedIndex
 
     def test_delete_save_on_exit(self):
-        versionList = [1,2,3]
+        versionList = [1, 2, 3]
         # now add all the needed files as before
         for version in versionList:
             self.writeRecordVersion(version)
@@ -165,13 +156,13 @@ class TestIndexor(unittest.TestCase):
         assert len(savedIndex) == len(versionList)
 
     def test_delete_reconcile_versions(self):
-        versionList = [1,2,3]
+        versionList = [1, 2, 3]
         index = {version: self.indexEntry(version) for version in versionList}
         write_model_list_pretty(list(index.values()), self.indexPath())
         # now add all the needed files as before
         for version in versionList:
             self.writeRecordVersion(version)
-        
+
         # add an index entry but don't save a file
         # the index will not have the next version
         self.indexor = self.initIndexor()
@@ -216,12 +207,12 @@ class TestIndexor(unittest.TestCase):
         assert list(self.indexor.readDirectoryList()) == versions
         # now check that the current version advances when an entry is added
         assert self.indexor.currentVersion() == max(versions)
-        self.indexor.addIndexEntry(self.indexEntry(randint(1,5)))
-        assert self.indexor.currentVersion() == max(versions)+1
+        self.indexor.addIndexEntry(self.indexEntry(randint(1, 5)))
+        assert self.indexor.currentVersion() == max(versions) + 1
 
     def test_currentVersion_dirHigher(self):
-        dirVersions = [1,2,3]
-        indexVersions = [1,2]
+        dirVersions = [1, 2, 3]
+        indexVersions = [1, 2]
         index = {version: self.indexEntry(version) for version in indexVersions}
         write_model_list_pretty(index.values(), self.indexPath())
         for version in dirVersions:
@@ -231,8 +222,8 @@ class TestIndexor(unittest.TestCase):
         assert self.indexor.currentVersion() == max(dirVersions)
 
     def test_currentVersion_indexhigher(self):
-        dirVersions = [1,2]
-        indexVersions = [1,2,3]
+        dirVersions = [1, 2]
+        indexVersions = [1, 2, 3]
         index = {version: self.indexEntry(version) for version in indexVersions}
         write_model_list_pretty(index.values(), self.indexPath())
         for version in dirVersions:
@@ -242,7 +233,6 @@ class TestIndexor(unittest.TestCase):
         assert self.indexor.currentVersion() == max(dirVersions)
 
     def test_nextVersion(self):
-
         # NOTE all double-calls are deliberate to ensure no change in state on call
 
         expectedIndex = {}
@@ -256,7 +246,7 @@ class TestIndexor(unittest.TestCase):
         # the first "next" version is the start
         assert self.indexor.nextVersion() == VERSION_START
         assert self.indexor.nextVersion() == VERSION_START
-        
+
         # add an entry to the calibration index
         here = VERSION_START
         # it should be added at the start
@@ -343,7 +333,7 @@ class TestIndexor(unittest.TestCase):
         # enssure match
         assert self.indexor.currentVersion() == here
         assert self.indexor.nextVersion() == here + 1
-        
+
     ### TESTS OF VERSION COMPARISON METHODS ###
 
     def test__isApplicableEntry_equals(self):
@@ -415,7 +405,7 @@ class TestIndexor(unittest.TestCase):
             self.writeRecordVersion(version)
         self.indexor = self.initIndexor()
         self.indexor.currentPath() == self.versionPath(max(versionList))
-    
+
     def test_latestApplicablePath(self):
         runNumber = "123"
         versionList = [3, 4, 5]
@@ -431,16 +421,16 @@ class TestIndexor(unittest.TestCase):
     ### TEST INDEX MANIPULATION METHODS ###
 
     def test_readIndex(self):
-        versionList = [randint(0,120) for i in range(20)]
+        versionList = [randint(0, 120) for i in range(20)]
         index = {version: self.indexEntry(version) for version in versionList}
         write_model_list_pretty(list(index.values()), self.indexPath())
-        
+
         self.indexor = self.initIndexor()
         ans = self.indexor.readIndex()
         assert ans == index
 
     def test_readWriteIndex(self):
-        versionList = [1,2,3,4]
+        versionList = [1, 2, 3, 4]
         index = {version: self.indexEntry(version) for version in versionList}
         self.indexor = self.initIndexor()
         self.indexor.index = index
@@ -459,7 +449,7 @@ class TestIndexor(unittest.TestCase):
 
     def test_addEntry_writes(self):
         self.indexor = self.initIndexor()
-        for i in range(3,10):
+        for i in range(3, 10):
             self.indexor.addIndexEntry(self.indexEntry(i))
             readIndex = parse_file_as(List[IndexEntry], self.indexor.indexPath())
             assert readIndex == list(self.indexor.index.values())

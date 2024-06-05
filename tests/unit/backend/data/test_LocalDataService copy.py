@@ -4,45 +4,17 @@ import importlib
 import json
 import logging
 import os
-import shutil
 import socket
 import tempfile
 import unittest.mock as mock
 from pathlib import Path
-from random import randint, shuffle
-from typing import List
 
 import pytest
-from mantid.api import ITableWorkspace, MatrixWorkspace
-from mantid.dataobjects import MaskWorkspace
-from mantid.simpleapi import (
-    CloneWorkspace,
-    CreateGroupingWorkspace,
-    CreateSampleWorkspace,
-    LoadEmptyInstrument,
-    LoadInstrument,
-    mtd,
-)
-from pydantic import parse_raw_as
-from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
-from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.ingredients import ReductionIngredients
-from snapred.backend.dao.normalization.Normalization import Normalization
-from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
-from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.state.GroupingMap import GroupingMap
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.backend.data.Indexor import Indexor, IndexorType
-from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.meta.Config import Config, Resource
-from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as WNG
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
-from snapred.meta.redantic import write_model_pretty
-from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 
 LocalDataServiceModule = importlib.import_module(LocalDataService.__module__)
 ThisService = "snapred.backend.data.LocalDataService."
@@ -830,7 +802,6 @@ def test_readStateConfig():
 #         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
 #     assert actualRecord.runNumber == "57514"
 #     assert actualRecord == testCalibrationRecord
-
 
 
 # def test_writeCalibrationWorkspaces():

@@ -1,5 +1,6 @@
 from snapred.backend.dao.IndexEntry import IndexEntry
 
+
 class CalibrationIndexEntry(IndexEntry):
     """
 
@@ -12,5 +13,5 @@ class CalibrationIndexEntry(IndexEntry):
     'runNumber' or a comparison format, enhancing data integrity by enforcing consistent entry formats.
 
     """
-    pass
 
+    pass
