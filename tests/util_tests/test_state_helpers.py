@@ -1,6 +1,6 @@
 # Unit tests for `tests/util/state_helpers.py`
-import shutil
 import pdb
+import shutil
 import unittest.mock as mock
 from pathlib import Path
 
@@ -86,15 +86,18 @@ def initPVFileMock() -> mock.Mock:
         [1.2],
         [1],
         [1.0],
-        [2.0],        
+        [2.0],
     ]
     return mock_
+
 
 @mock.patch.object(LocalDataService, "_generateStateId")
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
-def test_state_root_override_enter(mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath, mockGenerateStateId):
+def test_state_root_override_enter(
+    mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath, mockGenerateStateId
+):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
@@ -102,7 +105,7 @@ def test_state_root_override_enter(mockReadPVFile, mockReadInstrumentConfig, moc
     mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
 
     mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
-    
+
     stateId = "ab8704b0bc2a2342"
     mockGenerateStateId.return_value = stateId
     runNumber = "123456"
