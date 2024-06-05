@@ -5,7 +5,6 @@ from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
-from snapred.ui.threading.worker_pool import WorkerPool
 from snapred.ui.widget.SuccessDialog import SuccessDialog
 
 
@@ -18,7 +17,6 @@ class InitializeStatePresenter(QObject):
     based on the outcomes of these requests.
     """
 
-    worker_pool = WorkerPool()
     stateInitialized = Signal(SNAPResponse)
 
     def __init__(self, view):
