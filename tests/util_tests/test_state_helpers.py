@@ -1,5 +1,4 @@
 # Unit tests for `tests/util/state_helpers.py`
-import pdb
 import shutil
 import unittest.mock as mock
 from pathlib import Path
@@ -107,11 +106,11 @@ def test_state_root_override_enter(
     mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
 
     stateId = "ab8704b0bc2a2342"
-    mockGenerateStateId.return_value = stateId
+    decodedKey = "some_decoded_key"
+    mockGenerateStateId.return_value = (stateId, decodedKey)
     runNumber = "123456"
     stateName = "my happy state"
     useLiteMode = True
-    pdb.set_trace()
     with state_root_override(runNumber, stateName, useLiteMode) as stateRootPath:
         assert Path(stateRootPath) == Path(Config["instrument.calibration.powder.home"]) / stateId
         assert Path(stateRootPath).exists()
