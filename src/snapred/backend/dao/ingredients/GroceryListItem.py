@@ -7,12 +7,16 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as
 
 logger = snapredLogger.getLogger(__name__)
 
+KnownUnits = Literal[wng.Units.TOF, wng.Units.DSP, wng.Units.DIAG]
+known_units = list(get_args(KnownUnits))
+
 
 GroceryTypes = Literal[
     "neutron",
     "grouping",
     "diffcal",
     "diffcal_output",
+    "diffcal_diagnostic",
     "diffcal_table",
     "diffcal_mask",
     "normalization",
@@ -45,7 +49,7 @@ class GroceryListItem(BaseModel):
     version: Optional[int]
     groupingScheme: Optional[str]
 
-    unit: Optional[Literal[wng.Units.TOF, wng.Units.DSP]]
+    unit: Optional[KnownUnits]
 
     # SpecialWorkspace2D-derived workspaces (e.g. grouping or mask workspaces)
     #   require an instrument definition, these next two properties indicate
@@ -84,7 +88,7 @@ class GroceryListItem(BaseModel):
                 raise ValueError("if 'instrumentSource' is specified then 'instrumentPropertySource' must be specified")
         if v.get("unit") is not None:
             unit_ = v.get("unit")
-            if unit_ not in (wng.Units.TOF, wng.Units.DSP):
+            if unit_ not in known_units:
                 raise ValueError(f"unknown unit '{unit_}' specified")
         match v["workspaceType"]:
             case "neutron":
@@ -120,7 +124,7 @@ class GroceryListItem(BaseModel):
                 if v.get("runNumber") is None:
                     raise ValueError("diffraction-calibration input table workspace requires a run number")
             # output (i.e. special-order) workspaces
-            case "diffcal_output":
+            case "diffcal_output" | "diffcal_diagnostic":
                 if v.get("runNumber") is None:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
                 if v.get("instrumentPropertySource") is not None:

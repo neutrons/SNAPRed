@@ -5,9 +5,9 @@ from mantid.api import (
     AlgorithmFactory,
     FileAction,
     FileProperty,
-    MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceProperty,
 )
 from mantid.kernel import (
     Direction,
@@ -41,7 +41,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             doc="Path to file to be loaded",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output),
+            WorkspaceProperty("OutputWorkspace", "", Direction.Output),
             doc="Workspace containing the loaded data",
         )
         self.declareProperty(
@@ -79,7 +79,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             doc="Path of an associated instrument definition file",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("InstrumentDonor", "", Direction.Input, PropertyMode.Optional),
+            WorkspaceProperty("InstrumentDonor", "", Direction.Input, PropertyMode.Optional),
             doc="Workspace to optionally take the instrument from",
         )
         self.setRethrows(True)

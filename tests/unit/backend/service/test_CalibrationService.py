@@ -167,9 +167,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                         tableWSName = wsName
                     case wngt.DIFFCAL_MASK:
                         maskWSName = wsName
+                    case wngt.DIFFCAL_DIAG:
+                        filename = Path(wsName + ".nxs.h5")
+                        self.instance.dataExportService.exportWorkspace(path, filename, self.sampleWS)
                     case _:
                         filename = Path(wsName + ".tar")
                         self.instance.dataExportService.exportRaggedWorkspace(path, filename, self.sampleWS)
+
         # For the moment, only one set of 'table' + 'mask' workspace is assumed
         if tableWSName or maskWSName:
             filename = Path(tableWSName + ".h5")
@@ -420,10 +424,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
             self.instance.loadQualityAssessment(mockRequest)
 
-    def test_load_quality_assessment_dsp_and_tof(self):
+    def test_load_quality_assessment_dsp_and_diag(self):
         calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
         calibRecord.workspaces = {
-            "diffCalOutput": ["_dsp_diffoc_057514", "_tof_diffoc_057514"],
+            "diffCalOutput": ["_dsp_diffoc_057514"],
+            "diffCalDiagnostic": ["_diagnostic_diffoc_057514"],
             "diffCalTable": ["_diffract_consts_057514"],
             "diffCalMask": ["_diffract_consts_mask_057514"],
         }
@@ -437,13 +442,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.loadQualityAssessment(mockRequest)
         calledWithDict = mockFetchGroceryDict.call_args[0][0]
         assert calledWithDict["diffCalOutput_0000"].unit == wng.Units.DSP
-        assert calledWithDict["diffCalOutput_0001"].unit == wng.Units.TOF
+        assert calledWithDict["diffCalDiagnostic_0000"].unit == wng.Units.DIAG
 
     def test_load_quality_assessment_unexpected_type(self):
         with pytest.raises(RuntimeError, match=r"not implemented: unable to load unexpected"):  # noqa: PT012
             calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
             calibRecord.workspaces = {
-                "diffCalOutput": ["_tof_diffoc_057514"],
+                "diffCalOutput": ["_dsp_diffoc_057514"],
                 "diffCalTable": ["_diffract_consts_057514"],
                 "diffCalMask": ["_diffract_consts_mask_057514"],
                 "rawVanadium": ["_unexpected_workspace_type"],

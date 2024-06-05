@@ -18,6 +18,9 @@ from mantid.kernel import amend_config
 from mantid.simpleapi import (
     CreateGroupingWorkspace,
     CreateSampleWorkspace,
+    CreateSingleValuedWorkspace,
+    DeleteWorkspace,
+    GroupWorkspaces,
     LoadEmptyInstrument,
     LoadInstrument,
     mtd,
@@ -870,31 +873,14 @@ def test_writeCalibrationWorkspaces():
         workspaces = testCalibrationRecord.workspaces.copy()
         runNumber = testCalibrationRecord.runNumber
         version = testCalibrationRecord.version
-        outputTOFWSName, outputDSPWSName = workspaces.pop(wngt.DIFFCAL_OUTPUT)
+        outputDSPWSName = workspaces.pop(wngt.DIFFCAL_OUTPUT)[0]
+        diagnosticWSname = workspaces.pop(wngt.DIFFCAL_DIAG)[0]
         tableWSName = workspaces.pop(wngt.DIFFCAL_TABLE)[0]
         maskWSName = workspaces.pop(wngt.DIFFCAL_MASK)[0]
         if workspaces:
             raise RuntimeError(f"unexpected workspace-types in record.workspaces: {workspaces}")
 
         # Create sample workspaces.
-        CreateSampleWorkspace(
-            OutputWorkspace=outputTOFWSName,
-            Function="One Peak",
-            NumBanks=1,
-            NumMonitors=1,
-            BankPixelWidth=5,
-            NumEvents=500,
-            Random=True,
-            XUnit="TOF",
-            XMin=0,
-            XMax=8000,
-            BinWidth=100,
-        )
-        LoadInstrument(
-            Workspace=outputTOFWSName,
-            Filename=fakeInstrumentFilePath,
-            RewriteSpectraMap=True,
-        )
         CreateSampleWorkspace(
             OutputWorkspace=outputDSPWSName,
             Function="One Peak",
@@ -913,27 +899,30 @@ def test_writeCalibrationWorkspaces():
             Filename=fakeInstrumentFilePath,
             RewriteSpectraMap=True,
         )
-        assert mtd.doesExist(outputTOFWSName)
         assert mtd.doesExist(outputDSPWSName)
 
+        # Create a grouping workspace to save as the diagnostic workspace.
+        ws1 = CreateSingleValuedWorkspace()
+        GroupWorkspaces(
+            InputWorkspaces=[ws1],
+            OutputWorkspace=diagnosticWSname,
+        )
+        assert mtd.doesExist(diagnosticWSname)
+
         # Create diffraction-calibration table and mask workspaces.
-        createCompatibleDiffCalTable(tableWSName, outputTOFWSName)
-        createCompatibleMask(maskWSName, outputTOFWSName, fakeInstrumentFilePath)
+        createCompatibleDiffCalTable(tableWSName, outputDSPWSName)
+        createCompatibleMask(maskWSName, outputDSPWSName, fakeInstrumentFilePath)
         assert mtd.doesExist(tableWSName)
         assert mtd.doesExist(maskWSName)
 
         localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
 
+        dspFilename = Path(outputDSPWSName + Config["calibration.diffraction.output.extension"])
+        diagFilename = Path(diagnosticWSname + Config["calibration.diffraction.diagnostic.extension"])
         diffCalFilename = Path(wng.diffCalTable().runNumber(runNumber).version(version).build() + ".h5")
-        for wsNames in testCalibrationRecord.workspaces.values():
-            for wsName in wsNames:
-                ws = mtd[wsName]
-                filename = (
-                    Path(wsName + Config["calibration.diffraction.output.extension"])
-                    if not (isinstance(ws, ITableWorkspace) or isinstance(ws, MaskWorkspace))
-                    else diffCalFilename
-                )
-                assert (basePath / filename).exists()
+        assert (basePath / dspFilename).exists()
+        assert (basePath / diagFilename).exists()
+        assert (basePath / diffCalFilename).exists()
         mtd.clear()
 
 
