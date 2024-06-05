@@ -611,6 +611,7 @@ class LocalDataService:
 
         # Update the to-be saved record's "workspaces" information
         #   to correspond to the filenames that will actually be saved to disk.
+        savedWorkspaces = {}
         workspaces = record.workspaces.copy()
         wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []):
@@ -703,6 +704,7 @@ class LocalDataService:
                 )
             self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
         for wsName in workspaces.pop(wngt.DIFFCAL_DIAG, []):
+            print(f"WORKSPACE {wsName}")
             ext = Config["calibration.diffraction.diagnostic.extension"]
             if wng.Units.DIAG.lower() in wsName:
                 filename = Path(
@@ -717,6 +719,7 @@ class LocalDataService:
             else:
                 raise RuntimeError(f"Cannot save workspace-type {wngt.DIFFCAL_DIAG} without diagnostic in its name")
             self.writeWorkspace(calibrationDataPath, filename, wsName)
+            assert (calibrationDataPath / filename).exists()
         for tableWSName, maskWSName in zip(
             workspaces.pop(wngt.DIFFCAL_TABLE, []),
             workspaces.pop(wngt.DIFFCAL_MASK, []),

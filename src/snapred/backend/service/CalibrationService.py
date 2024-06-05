@@ -298,11 +298,7 @@ class CalibrationService(Service):
         for n, wsName in enumerate(workspaces.pop(wngt.DIFFCAL_OUTPUT, [])):
             # The specific property name used here will not be used later, but there must be no collisions.
             self.groceryClerk.name(wngt.DIFFCAL_OUTPUT + "_" + str(n).zfill(4))
-            if wng.Units.TOF.lower() in wsName:
-                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.TOF).group(
-                    calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
-                ).add()
-            elif wng.Units.DSP.lower() in wsName:
+            if wng.Units.DSP.lower() in wsName:
                 self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.DSP).group(
                     calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
                 ).add()
@@ -310,6 +306,12 @@ class CalibrationService(Service):
                 raise RuntimeError(
                     f"cannot load a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
                 )
+        for n, wsName in enumerate(workspaces.pop(wngt.DIFFCAL_DIAG, [])):
+            self.groceryClerk.name(wngt.DIFFCAL_DIAG + "_" + str(n).zfill(4))
+            if wng.Units.DIAG.lower() in wsName:
+                self.groceryClerk.diffcal_diagnostic(runId, version).unit(wng.Units.DIAG).group(
+                    calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
+                ).add()
         for n, (tableWSName, maskWSName) in enumerate(
             zip(
                 workspaces.pop(wngt.DIFFCAL_TABLE, []),

@@ -656,7 +656,8 @@
     ]
   },
   "workspaces": {
-    "diffCalOutput": ["_tof_column_057514_v0001", "_dsp_column_057514_v0001"],
+    "diffCalOutput": ["_dsp_column_057514_v0001"],
+    "diffCalDiagnostic": ["_diagnostic_column_057514_v0001"],
     "diffCalTable": ["_diffract_consts_057514_v0001"],
     "diffCalMask": ["_diffract_consts_mask_057514_v0001"]
   },

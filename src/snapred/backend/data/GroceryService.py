@@ -202,6 +202,14 @@ class GroceryService:
         )
 
     @validate_arguments
+    def _createDiffcalDiagnosticWorkspaceFilename(self, item: GroceryListItem) -> str:
+        ext = Config["calibration.diffraction.diagnostic.extension"]
+        return str(
+            Path(self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version))
+            / (self._createDiffcalOutputWorkspaceName(item) + ext)
+        )
+
+    @validate_arguments
     def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
@@ -880,6 +888,16 @@ class GroceryService:
                             self._createDiffcalOutputWorkspaceFilename(item),
                             diffcalOutputWorkspaceName,
                             loader="ReheatLeftovers",
+                        )
+                case "diffcal_diagnostic":
+                    diffcalDiagnosticWorkspaceName = self._createDiffcalOutputWorkspaceName(item)
+                    if item.isOutput:
+                        res = {"result": True, "workspace": diffcalDiagnosticWorkspaceName}
+                    else:
+                        res = self.fetchWorkspace(
+                            self._createDiffcalDiagnosticWorkspaceFilename(item),
+                            diffcalDiagnosticWorkspaceName,
+                            loader="LoadNexusProcessed",
                         )
                 case "diffcal_table":
                     if not isinstance(item.version, int):

@@ -16,6 +16,7 @@ GroceryTypes = Literal[
     "grouping",
     "diffcal",
     "diffcal_output",
+    "diffcal_diagnostic",
     "diffcal_table",
     "diffcal_mask",
     "normalization",
@@ -123,7 +124,7 @@ class GroceryListItem(BaseModel):
                 if v.get("runNumber") is None:
                     raise ValueError("diffraction-calibration input table workspace requires a run number")
             # output (i.e. special-order) workspaces
-            case "diffcal_output":
+            case "diffcal_output" | "diffcal_diagnostic":
                 if v.get("runNumber") is None:
                     raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
                 if v.get("instrumentPropertySource") is not None:
