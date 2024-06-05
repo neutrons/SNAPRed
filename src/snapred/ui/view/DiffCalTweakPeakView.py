@@ -183,30 +183,27 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.goodPeaksCount = [0] * numGraphs
         self.badPeaks = [[]] * numGraphs
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
+        fitted_peaks = mtd[diagnostic].getItem(FitOutputEnum.Workspace.value)
+        param_table = mtd[diagnostic].getItem(FitOutputEnum.Parameters.value).toDict()
+        index = param_table["wsindex"]
+        allChisq = param_table["chi2"]
+        maxChiSq = float(self.maxChiSqField.text())
 
         # now re-draw the figure
         self.figure.clear()
-        incr = len(FitOutputEnum)
         for wkspIndex in range(numGraphs):
             peaks = self.peaks[wkspIndex].peaks
             # collect the fit chi-sq parameters for this spectrum, and the fits
-            fitted_peaks = mtd[diagnostic].getItem(incr * wkspIndex + FitOutputEnum.Workspace.value)
-            param_table = mtd[diagnostic].getItem(incr * wkspIndex + FitOutputEnum.Parameters.value).toDict()
-            chisq = param_table["chi2"]
-            self.goodPeaksCount[wkspIndex] = len(
-                [peak for chi2, peak in zip(chisq, peaks) if chi2 < float(self.maxChiSqField.text())]
-            )
-            self.badPeaks[wkspIndex] = [
-                peak for chi2, peak in zip(chisq, peaks) if chi2 >= float(self.maxChiSqField.text())
-            ]
+            chisq = [x2 for i, x2 in zip(index, allChisq) if i == wkspIndex]
+            self.goodPeaksCount[wkspIndex] = len([peak for chi2, peak in zip(chisq, peaks) if chi2 < maxChiSq])
+            self.badPeaks[wkspIndex] = [peak for chi2, peak in zip(chisq, peaks) if chi2 >= maxChiSq]
             # prepare the plot area
             ax = self.figure.add_subplot(nrows, ncols, wkspIndex + 1, projection="mantid")
             ax.tick_params(direction="in")
             ax.set_title(f"Group ID: {wkspIndex + 1}")
-            # plot the data
+            # plot the data and fitted
             ax.plot(mtd[workspace], wkspIndex=wkspIndex, label="data", normalize_by_bin_width=True)
-            # plot the fitted peaks
-            ax.plot(fitted_peaks, wkspIndex=0, label="fit", color="black", normalize_by_bin_width=True)
+            ax.plot(fitted_peaks, wkspIndex=wkspIndex, label="fit", color="black", normalize_by_bin_width=True)
             ax.legend(loc=1)
             # fill in the discovered peaks for easier viewing
             x, y, _, _ = get_spectrum(mtd[workspace], wkspIndex, normalize_by_bin_width=True)

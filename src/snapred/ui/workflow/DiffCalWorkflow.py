@@ -201,7 +201,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.prevThreshold = payload.peakIntensityThreshold
         self.prevFWHM = payload.fwhmMultipliers  # NOTE set in __init__ to defaults
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
-        self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}"
+        self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}_pre"
 
         # focus the workspace to view the peaks
         self._renewFocus(self.prevGroupingIndex)
@@ -341,7 +341,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             focusGroup=self.focusGroups[self.focusGroupPath],
             calibrantSamplePath=self.calibrantSamplePath,
             workspaces={
-                wngt.DIFFCAL_OUTPUT: [response.data["outputDSPWorkspace"], response.data["outputTOFWorkspace"]],
+                wngt.DIFFCAL_OUTPUT: [response.data["outputWorkspace"]],
+                wngt.DIFFCAL_DIAG: [response.data["diagnosticWorkspace"]],
                 wngt.DIFFCAL_TABLE: [response.data["calibrationTable"]],
                 wngt.DIFFCAL_MASK: [response.data["maskWorkspace"]],
             },

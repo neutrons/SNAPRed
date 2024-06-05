@@ -49,8 +49,8 @@ class DiffractionCalibrationRecipe:
 
         self.rawInput = groceries["inputWorkspace"]
         self.groupingWS = groceries["groupingWorkspace"]
-        self.outputTOFWS = groceries["outputTOFWorkspace"]
-        self.outputDSPWS = groceries["outputDSPWorkspace"]
+        self.diagnosticWS = groceries["diagnosticWorkspace"]
+        self.outputDSPWS = groceries["outputWorkspace"]
         self.calTable = groceries.get("calibrationTable", "")
         self.maskWS = groceries.get("maskWorkspace", "")
 
@@ -104,8 +104,8 @@ class DiffractionCalibrationRecipe:
         groupedAlgo = GroupDiffractionCalibration()
         groupedAlgo.initialize()
         groupedAlgo.setProperty("InputWorkspace", self.rawInput)
-        groupedAlgo.setProperty("OutputWorkspaceTOF", self.outputTOFWS)
-        groupedAlgo.setProperty("OutputWorkspacedSpacing", self.outputDSPWS)
+        groupedAlgo.setProperty("OutputWorkspace", self.outputDSPWS)
+        groupedAlgo.setProperty("DiagnosticWorkspace", self.diagnosticWS)
         groupedAlgo.setProperty("GroupingWorkspace", self.groupingWS)
         groupedAlgo.setProperty("Ingredients", ingredients.json())
         groupedAlgo.setProperty("PreviousCalibrationTable", self.calTable)
@@ -114,8 +114,8 @@ class DiffractionCalibrationRecipe:
         try:
             groupedAlgo.execute()
             data["calibrationTable"] = groupedAlgo.getPropertyValue("FinalCalibrationTable")
-            data["outputTOFWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspaceTOF")
-            data["outputDSPWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspacedSpacing")
+            data["diagnosticWorkspace"] = groupedAlgo.getPropertyValue("DiagnosticWorkspace")
+            data["outputWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspace")
             data["maskWorkspace"] = groupedAlgo.getPropertyValue("MaskWorkspace")
         except RuntimeError as e:
             errorString = str(e)

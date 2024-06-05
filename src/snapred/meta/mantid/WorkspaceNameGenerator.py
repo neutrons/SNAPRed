@@ -18,6 +18,7 @@ class WorkspaceType(str, Enum):
     RUN = "run"
     DIFFCAL_INPUT = "diffCalInput"
     DIFFCAL_OUTPUT = "diffCalOutput"
+    DIFFCAL_DIAG = "diffCalDiagnostic"
     DIFFCAL_TABLE = "diffCalTable"
     DIFFCAL_MASK = "diffCalMask"
     DIFFCAL_METRIC = "diffCalMetric"
@@ -146,6 +147,7 @@ class _WorkspaceNameGenerator:
         _templateRoot = "mantid.workspace.nameTemplate.units"
         DSP = Config[f"{_templateRoot}.dSpacing"]
         TOF = Config[f"{_templateRoot}.timeOfFlight"]
+        DIAG = Config[f"{_templateRoot}.diagnostic"]
 
     class Groups:
         _templateRoot = "mantid.workspace.nameTemplate.groups"

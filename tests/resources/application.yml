@@ -73,6 +73,8 @@ calibration:
   diffraction:
     output:
       extension: .tar
+    diagnostic:
+      extension: .nxs.h5
     convergenceThreshold: 0.5
     peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10
@@ -119,6 +121,7 @@ mantid:
         units:
           dSpacing: dsp
           timeOfFlight: tof
+          diagnostic: diagnostic
         groups:
           unfocussed: unfoc
           all: all
