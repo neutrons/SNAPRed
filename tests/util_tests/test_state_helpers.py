@@ -106,7 +106,7 @@ def test_state_root_override_enter(
     mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
 
     stateId = "ab8704b0bc2a2342"
-    decodedKey = "some_decoded_key"
+    decodedKey = None
     mockGenerateStateId.return_value = (stateId, decodedKey)
     runNumber = "123456"
     stateName = "my happy state"

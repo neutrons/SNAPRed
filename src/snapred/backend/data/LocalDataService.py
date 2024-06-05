@@ -1031,7 +1031,7 @@ class LocalDataService:
             peakTailCoefficient=peakTailCoefficient,
         )
 
-        calibrationReturn = None
+        calibrationReturnValue = None
 
         for liteMode in [True, False]:
             # finally add seedRun, creation date, and a human readable name
@@ -1057,9 +1057,9 @@ class LocalDataService:
             self._writeDefaultDiffCalTable(runId, liteMode)
 
             if useLiteMode == liteMode:
-                calibrationReturn = calibration
+                calibrationReturnValue = calibration
 
-        return calibrationReturn
+        return calibrationReturnValue
 
     def _prepareStateRoot(self, stateId: str):
         """
