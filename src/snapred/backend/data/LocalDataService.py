@@ -1033,13 +1033,13 @@ class LocalDataService:
 
         calibrationReturn = None
 
-        for LiteMode in [True, False]:
+        for liteMode in [True, False]:
             # finally add seedRun, creation date, and a human readable name
             calibration = Calibration(
                 instrumentState=instrumentState,
                 name=name,
                 seedRun=runId,
-                useLiteMode=LiteMode,
+                useLiteMode=liteMode,
                 creationDate=datetime.datetime.now(),
                 version=self.VERSION_START,
             )
@@ -1054,9 +1054,9 @@ class LocalDataService:
             # write the calibration state
             self.writeCalibrationState(calibration, version)
             # write the default diffcal table
-            self._writeDefaultDiffCalTable(runId, LiteMode)
+            self._writeDefaultDiffCalTable(runId, liteMode)
 
-            if useLiteMode == LiteMode:
+            if useLiteMode == liteMode:
                 calibrationReturn = calibration
 
         return calibrationReturn
