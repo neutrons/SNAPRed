@@ -1,5 +1,5 @@
+from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
-
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.LabeledCheckBox import LabeledCheckBox
 from snapred.ui.widget.LabeledField import LabeledField
@@ -9,8 +9,12 @@ from snapred.ui.widget.Toggle import Toggle
 
 @Resettable
 class ReductionView(QWidget):
+    signalRemoveRunNumber = Signal(int)
+
     def __init__(self, pixelMasks=[], parent=None):
         super().__init__(parent)
+
+        self.runNumbers = []
 
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
@@ -52,22 +56,38 @@ class ReductionView(QWidget):
         self.enterRunNumberButton.clicked.connect(self.addRunNumber)
         self.clearButton.clicked.connect(self.clearRunNumbers)
 
+        self.signalRemoveRunNumber.connect(self._removeRunNumber)
+
     def addRunNumber(self):
-        runNumber = self.runNumberInput.text().strip()
-        if runNumber:
+        runNumberList = self.parseInputRunNumbers()
+        if runNumberList is not None:
+            self.runNumbers.extend(runNumberList)
+            self.updateRunNumberList()
+            self.runNumberInput.clear()
+
+    def parseInputRunNumbers(self):
+        runNumberString = self.runNumberInput.text().strip()
+        if runNumberString:
             try:
-                runNumberList = [int(num.strip()) for num in runNumber.split(",") if num.strip().isdigit()]
-                currentText = self.runNumberDisplay.toPlainText()
-                currentRunNumbers = set(int(num) for num in currentText.split("\n") if num.strip().isdigit())
-                newRunNumbers = currentRunNumbers.union(runNumberList)
-                self.runNumberDisplay.setText("\n".join(map(str, sorted(newRunNumbers))))
-                self.runNumberInput.clear()
+                runNumberList = [int(num.strip()) for num in runNumberString.split(",") if num.strip().isdigit()]
+                return runNumberList
             except ValueError:
                 raise ValueError(
                     "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
                 )
 
+    def removeRunNumber(self, runNumber):
+        self.signalRemoveRunNumber.emit(runNumber)
+
+    def _removeRunNumber(self, runNumber):
+        self.runNumbers.remove(runNumber)
+        self.updateRunNumberList()
+
+    def updateRunNumberList(self):
+        self.runNumberDisplay.setText("\n".join(map(str, sorted(self.runNumbers))))
+
     def clearRunNumbers(self):
+        self.runNumbers.clear()
         self.runNumberDisplay.clear()
 
     def verify(self):
@@ -78,13 +98,13 @@ class ReductionView(QWidget):
                 raise ValueError(
                     "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
                 )
-        if self.pixelMaskDropdown.currentIndex() < 0:
-            raise ValueError("Please select a pixel mask.")
+        # They dont need to select a pixel mask
+        # if self.pixelMaskDropdown.currentIndex() < 0:
+        #     raise ValueError("Please select a pixel mask.")
         return True
 
     def getRunNumbers(self):
-        currentText = self.runNumberDisplay.toPlainText()
-        return [int(num.strip()) for num in currentText.split("\n") if num.strip().isdigit()]
+        return self.runNumbers
 
     # Placeholder for checkBox logic
     """

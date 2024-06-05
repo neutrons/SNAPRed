@@ -55,13 +55,6 @@ snapred.ui.view.DiffCalTweakPeakView module
    :exclude-members: signalRunNumberUpdate, signalValueChanged, signalUpdateRecalculationButton, signalPeakThresholdUpdate, signalMaxChiSqUpdate
    :show-inheritance:
 
-snapred.ui.view.FitMultiplePeaksView module
--------------------------------------------
-
-.. automodule:: snapred.ui.view.FitMultiplePeaksView
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 snapred.ui.view.InitializeStateCheckView module
 -----------------------------------------------
@@ -139,10 +132,10 @@ snapred.ui.view.PromptUserforCalibrationInputView module
    :show-inheritance:
    :exclude-members: dataEntered
 
-snapred.ui.view.ReductionView module
+snapred.ui.view.reduction.ReductionView module
 ------------------------------------
 
-.. automodule:: snapred.ui.view.ReductionView
+.. automodule:: snapred.ui.view.reduction.ReductionView
    :members:
    :undoc-members:
    :exclude-members: signalRunNumberUpdate

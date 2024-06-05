@@ -3,6 +3,7 @@ from qtpy.QtWidgets import QMainWindow
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import ClearWorkspaceRequest
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
@@ -145,6 +146,8 @@ class WorkflowPresenter(object):
     def _handleComplications(self, result):
         self.responseHandler.handle(result)
 
-    def continueAnyway(self):
+    def continueAnyway(self, continueInfo: ContinueWarning.Model):
+        if self.model.continueAnywayHandler:
+            self.model.continueAnywayHandler(continueInfo)
         self.model.nextModel.continueAction(self)
         self.advanceWorkflow()

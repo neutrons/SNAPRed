@@ -5,6 +5,8 @@ from typing import Callable
 
 from qtpy import QtWidgets
 
+from snapred.backend.error.ContinueWarning import ContinueWarning
+
 
 @dataclass
 class WorkflowNodeModel(object):
@@ -14,6 +16,7 @@ class WorkflowNodeModel(object):
     name: str = "Unnamed"
     required: bool = True
     iterate: bool = False
+    continueAnywayHandler: Callable[[ContinueWarning.Model], None] = None
 
     def __iter__(self):
         return _WorkflowModelIterator(self)

@@ -1,5 +1,3 @@
-import json
-
 from snapred.backend.dao.normalization import NormalizationIndexEntry
 from snapred.backend.dao.request import (
     HasStateRequest,
@@ -33,16 +31,10 @@ class NormalizationWorkflow(WorkflowImplementer):
 
     """
 
-    def __init__(self, jsonForm, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
         self.initializationComplete = False
-
-        self.assessmentSchema = self.request(path="api/parameters", payload="normalization/assessment").data
-        self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
-
-        self.saveSchema = self.request(path="api/parameters", payload="normalization/save").data
-        self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
 
         self.samplePaths = self.request(path="config/samplePaths").data
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
@@ -50,13 +42,11 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.focusGroups = self.groupingMap.lite
 
         self._requestView = NormalizationRequestView(
-            jsonForm,
             samplePaths=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
         self._tweakPeakView = NormalizationTweakPeakView(
-            jsonForm,
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
@@ -129,9 +119,9 @@ class NormalizationWorkflow(WorkflowImplementer):
         view = workflowPresenter.widget.tabView
         # pull fields from view for normalization
 
-        self.runNumber = view.getFieldText("runNumber")
+        self.runNumber = view.runNumberField.field.text()
         self.useLiteMode = view.litemodeToggle.field.getState()
-        self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
+        self.backgroundRunNumber = view.backgroundRunNumberField.field.text()
         self.sampleIndex = view.sampleDropdown.currentIndex()
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
         self.samplePath = view.sampleDropdown.currentText()

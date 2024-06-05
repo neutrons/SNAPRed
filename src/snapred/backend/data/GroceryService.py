@@ -10,6 +10,7 @@ from pydantic import validate_arguments
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
@@ -17,6 +18,8 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+
+logger = snapredLogger.getLogger(__name__)
 
 Version = Union[int, Literal["*"]]
 
@@ -220,7 +223,10 @@ class GroceryService:
     def _createNormalizationWorkspaceFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
             Path(self._getNormalizationDataPath(runNumber, useLiteMode, version))
-            / (self._createNormalizationWorkspaceName(runNumber, useLiteMode, version) + ".nxs")
+            / (
+                self._createNormalizationWorkspaceName(runNumber, useLiteMode, version)
+                + Config["calibration.normalization.output.ws.extension"]
+            )
         )
 
     ## WORKSPACE NAME METHODS
@@ -918,14 +924,25 @@ class GroceryService:
                     res["workspace"] = maskWorkspaceName
                 case "normalization":
                     if not isinstance(item.version, int):
+                        logger.info(f"Version not detected for run {item.runNumber}, fetching from index.")
                         item.version = self.dataService._getVersionFromNormalizationIndex(
                             item.runNumber, item.useLiteMode
                         )
+                        if item.version is None:
+                            raise RuntimeError(
+                                f"Could not find any Normalizations associated with run {item.runNumber}"
+                            )
+                        logger.info(f"Found version {item.version} for run {item.runNumber}")
                         record = self.dataService.readNormalizationRecord(
                             item.runNumber, item.useLiteMode, item.version
                         )
                         if record is not None:
                             item.runNumber = record.runNumber
+                    logger.info(f"Fetching normalization workspace for run {item.runNumber}, version {item.version}")
+                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(
+                        item.runNumber, item.useLiteMode, item.version
+                    )
+
                     res = self.fetchNormalizationWorkspaces(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
