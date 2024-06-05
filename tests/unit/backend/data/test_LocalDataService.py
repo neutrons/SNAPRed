@@ -9,22 +9,17 @@ import socket
 import tempfile
 import unittest.mock as mock
 from pathlib import Path
-from random import randint, shuffle
+from random import randint
 
-import h5py
 import pytest
 from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import amend_config
 from mantid.simpleapi import (
-    CloneWorkspace,
-    CompareWorkspaces,
     CreateGroupingWorkspace,
     CreateSampleWorkspace,
-    DeleteWorkspace,
     LoadEmptyInstrument,
     LoadInstrument,
-    RenameWorkspaces,
     mtd,
 )
 from pydantic import parse_raw_as
@@ -36,11 +31,9 @@ from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
-from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.state.GroupingMap import GroupingMap
 from snapred.backend.data.LocalDataService import LocalDataService
-from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -48,7 +41,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import write_model_pretty
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
-from util.state_helpers import reduction_root_redirect, state_root_redirect
+from util.state_helpers import state_root_redirect
 
 LocalDataServiceModule = importlib.import_module(LocalDataService.__module__)
 ThisService = "snapred.backend.data.LocalDataService."
@@ -753,6 +746,7 @@ def test_readWriteCalibrationIndexEntry():
 #         fileContent = indexFile.read()
 #     os.remove(expectedFilePath)
 #     assert len(fileContent) > 0
+
 
 def test_readWriteNormalizationIndexEntry():
     entry = NormalizationIndexEntry(
@@ -1657,7 +1651,7 @@ def test_readNormalizationState():
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         tmpRoot.addFileAs(
             Resource.getPath("inputs/normalization/NormalizationParameters.json"),
-            localDataService._constructNormalizationParametersFilePath("57514", True, 3),            
+            localDataService._constructNormalizationParametersFilePath("57514", True, 3),
         )
         actualState = localDataService.readNormalizationState("57514", True, 3)
     testNormalizationState = Normalization.parse_raw(Resource.read("inputs/normalization/NormalizationParameters.json"))

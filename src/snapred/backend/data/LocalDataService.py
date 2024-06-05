@@ -297,7 +297,7 @@ class LocalDataService:
 
     def normalizationIndex(self, runId: str, useLiteMode: bool):
         return self.index(runId, useLiteMode, IndexorType.NORMALIZATION)
-    
+
     def reductionIndex(self, runId: str, useLiteMode: bool):
         return self.index(runId, useLiteMode, IndexorType.REDUCTION)
 
@@ -500,7 +500,7 @@ class LocalDataService:
         #     record = parse_file_as(NormalizationRecord, latestFile)  # noqa: F821
         if version is None:
             version = self._getVersionFromNormalizationIndex(runId, useLiteMode)
-        record =  self.normalizationIndex(runId, useLiteMode).readRecord(version)
+        record = self.normalizationIndex(runId, useLiteMode).readRecord(version)
         if record is not Nonrecord:
             record = NormalizationRecord.parse_obj(record)
         return record
@@ -946,7 +946,9 @@ class LocalDataService:
         Writes a `Normalization` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Normalization`.
         """
-        previousVersion: int = self._getLatestNormalizationVersionNumber(normalization.seedRun, normalization.useLiteMode)
+        previousVersion: int = self._getLatestNormalizationVersionNumber(
+            normalization.seedRun, normalization.useLiteMode
+        )
         if version is None:
             version = max(normalization.version, previousVersion + 1)
         # check for the existence of a normalization parameters file

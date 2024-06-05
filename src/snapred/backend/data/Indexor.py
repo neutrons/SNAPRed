@@ -4,18 +4,16 @@ from typing import Dict, List, Optional
 
 from pydantic import parse_file_as
 
-from snapred.backend.dao.IndexEntry import IndexEntry, Version, Nonentry
-from snapred.backend.dao.Record import Nonrecord, Record
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.IndexEntry import IndexEntry, Nonentry, Version
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.Record import Nonrecord, Record
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import StrEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from snapred.meta.redantic import (
-    write_model_list_pretty, write_model_pretty
-)
+from snapred.meta.redantic import write_model_list_pretty, write_model_pretty
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -235,14 +233,14 @@ class Indexor:
         entry = Nonentry
         if record is not Nonrecord:
             entry = IndexEntry.construct(
-            runNumber=record.runNumber,
-            useLiteMode=record.useLiteMode,
-            version=record.version,
-            appliesTo=f">={record.runNumber}",
-            author="SNAPRed Internal",
-            comments="This index entry was created from a record",
-            timestamp=0,
-        )
+                runNumber=record.runNumber,
+                useLiteMode=record.useLiteMode,
+                version=record.version,
+                appliesTo=f">={record.runNumber}",
+                author="SNAPRed Internal",
+                comments="This index entry was created from a record",
+                timestamp=0,
+            )
         return entry
 
     ## record manipulation methods ##
@@ -252,7 +250,7 @@ class Indexor:
             version = self.currentVersion()
         filePath = self.recordPath(version)
         if filePath.exists():
-            match(self.indexorType):
+            match self.indexorType:
                 case IndexorType.CALIBRATION:
                     record = CalibrationRecord.parse_file(filePath)
                 case IndexorType.NORMALIZATION:
@@ -264,7 +262,7 @@ class Indexor:
         else:
             record = Nonrecord
         return record
-    
+
     def writeRecord(self, record: Record, version: Optional[int]):
         if not isinstance(version, int):
             version = self.nextVersion()
