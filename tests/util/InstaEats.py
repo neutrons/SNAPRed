@@ -224,39 +224,21 @@ class InstaEats(GroceryService):
                     )
                 # for diffraction-calibration workspaces
                 case "diffcal_output":
-                    diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(item)
-                    if item.isOutput:
-                        res = {"result": True, "workspace": diffcalOutputWorkspaceName}
-                    else:
-                        res = self.fetchWorkspace(
-                            self._createDiffcalOutputWorkspaceFilename(item),
-                            diffcalOutputWorkspaceName,
-                            loader="ReheatLeftovers",
-                        )
-                case "diffcal_table":
-                    tableWorkspaceName = self._createDiffcalTableWorkspaceName(
-                        item.runNumber, item.useLiteMode, item.version
+                    res = self.fetchWorkspace(
+                        self._createDiffcalOutputWorkspaceFilename(item),
+                        self._createDiffcalOutputWorkspaceName(item),
+                        loader="ReheatLeftovers",
                     )
-                    if item.isOutput:
-                        res = {"result": True, "workspace": tableWorkspaceName}
-                    else:
-                        res = self.fetchCalibrationWorkspaces(item)
-                        res["workspace"] = tableWorkspaceName
+                case "diffcal_table":
+                    res = self.fetchCalibrationWorkspaces(item)
                 case "diffcal_mask":
                     maskWorkspaceName = self._createDiffcalMaskWorkspaceName(
                         item.runNumber, item.useLiteMode, item.version
                     )
-                    if item.isOutput:
-                        res = {"result": True, "workspace": maskWorkspaceName}
-                    else:
-                        res = self.fetchCalibrationWorkspaces(item)
-                        res["workspace"] = maskWorkspaceName
+                    res = self.fetchCalibrationWorkspaces(item)
+                    res["workspace"] = maskWorkspaceName
                 case "normalization":
-                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(item.runNumber, item.version)
-                    if item.isOutput:
-                        res = {"result": True, "workspace": normalizationWorkspaceName}
-                    else:
-                        res = self.fetchNormalizationWorkspaces(item)
+                    res = self.fetchNormalizationWorkspaces(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
             # check that the fetch operation succeeded and if so append the workspace
