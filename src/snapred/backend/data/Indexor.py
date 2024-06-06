@@ -42,7 +42,7 @@ class Indexor:
     VERSION_DEFAULT = Config["version.error"]
     UNINITIALIZED = Config["version.error"]
 
-    ## constructor/destructor methods ##
+    ## CONSTRUCTOR / DESTRUCTOR METHODS ##
 
     def __init__(self, *, indexorType: str, directory: Path | str) -> None:
         self.indexorType = indexorType
@@ -81,7 +81,7 @@ class Indexor:
             if version not in versions:
                 del self.index[version]
 
-    ## version getters ##
+    ## VERSION GETTERS ##
 
     def allVersions(self) -> List[Version]:
         return list(self.index.keys())
@@ -144,7 +144,7 @@ class Indexor:
 
         return version
 
-    ## version comparison methods ##
+    ## VERSION COMPARISON METHODS ##
 
     def _isApplicableEntry(self, entry: IndexEntry, runNumber1: str):
         """
@@ -167,7 +167,7 @@ class Indexor:
         }
         return expressions[symbol](int(runNumber1), int(runNumber2))
 
-    ## path methods ##
+    ## PATH METHODS ##
 
     def indexPath(self):
         """
@@ -204,7 +204,7 @@ class Indexor:
     def latestApplicablePath(self, runNumber: str) -> Path:
         return self.versionPath(self.latestApplicableVersion(runNumber))
 
-    ## index manipulation methods ##
+    ## INDEX MANIPULATION METHODS ##
 
     def getIndex(self) -> List[IndexEntry]:
         if self.index == {}:
@@ -246,7 +246,7 @@ class Indexor:
             )
         return entry
 
-    ## record manipulation methods ##
+    ## RECORD READ / WRITE METHODS ##
 
     def readRecord(self, version: int):
         if not isinstance(version, int):
@@ -274,7 +274,7 @@ class Indexor:
         filePath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(record, filePath)
 
-    ## parameter manipulation methods ##
+    ## STATE PARAMETER READ / WRITE METHODS ##
 
     def readParameters(self, version: Optional[int]):
         if not isinstance(version, int):

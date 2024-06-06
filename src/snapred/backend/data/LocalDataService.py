@@ -315,7 +315,7 @@ class LocalDataService:
         key = (stateId, useLiteMode, indexorType)
         if self.indexor.get(key) is None:
             path = self._statePathForWorkflow(*key)
-            self.indexor[key] = Indexor(type=indexorType, directory=path)
+            self.indexor[key] = Indexor(indexorType=indexorType, directory=path)
         return self.indexor[(stateId, useLiteMode, indexorType)]
 
     def calibrationIndex(self, runId: str, useLiteMode: bool):
