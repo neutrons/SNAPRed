@@ -265,28 +265,30 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runNumber)
         fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
         fileName += Config["nexus.file.extension"]
-        filePath = (
-            self.reductionIndex(
-                runNumber,
-                useLiteMode,
-            ).versionPath(version)
-            / fileName
-        )
+        filePath = self.reductionIndex(runNumber, useLiteMode).versionPath(version) / fileName
         return filePath
 
     ##### VERSIONING / INDEXING METHODS #####
 
-    def _statePathForWorkflow(self, stateId, useLiteMode, indexorType: IndexorType):
+    def _statePathForWorkflow(self, stateId: str, useLiteMode: bool, indexorType: IndexorType):
         if indexorType == IndexorType.CALIBRATION:
             path = self._constructCalibrationStatePath(stateId, useLiteMode)
         elif indexorType == IndexorType.NORMALIZATION:
             path = self._constructNormalizationStatePath(stateId, useLiteMode)
+        elif indexorType == IndexorType.REDUCTION:
+            # NOTE the "stateId" should actually be a runNumber for reduction
+            path = self._constructReductionDataRoot(stateId, useLiteMode)
         else:
-            path = self._constructCalibrationStateRoot(stateId)
+            mode = "lite" if useLiteMode else "native"
+            path = self._constructCalibrationStateRoot(stateId) / mode
         return path
 
     def index(self, runNumber: str, useLiteMode: bool, indexorType: IndexorType):
-        stateId, _ = self._generateStateId(runNumber)
+        # NOTE the reduction state path is determined by run number, not state id
+        if indexorType is IndexorType.REDUCTION:
+            stateId = runNumber
+        else:
+            stateId, _ = self._generateStateId(runNumber)
         key = (stateId, useLiteMode, indexorType)
         if self.indexor.get(key) is None:
             path = self._statePathForWorkflow(*key)
