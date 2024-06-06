@@ -880,25 +880,17 @@ class GroceryService:
                     )
                 # for diffraction-calibration workspaces
                 case "diffcal_output":
-                    diffcalOutputWorkspaceName = self._createDiffcalOutputWorkspaceName(item)
-                    if item.isOutput:
-                        res = {"result": True, "workspace": diffcalOutputWorkspaceName}
-                    else:
-                        res = self.fetchWorkspace(
-                            self._createDiffcalOutputWorkspaceFilename(item),
-                            diffcalOutputWorkspaceName,
-                            loader="ReheatLeftovers",
-                        )
+                    res = self.fetchWorkspace(
+                        self._createDiffcalOutputWorkspaceFilename(item),
+                        self._createDiffcalOutputWorkspaceName(item),
+                        loader="ReheatLeftovers",
+                    )
                 case "diffcal_diagnostic":
-                    diffcalDiagnosticWorkspaceName = self._createDiffcalOutputWorkspaceName(item)
-                    if item.isOutput:
-                        res = {"result": True, "workspace": diffcalDiagnosticWorkspaceName}
-                    else:
-                        res = self.fetchWorkspace(
-                            self._createDiffcalDiagnosticWorkspaceFilename(item),
-                            diffcalDiagnosticWorkspaceName,
-                            loader="LoadNexusProcessed",
-                        )
+                    self.fetchWorkspace(
+                        self._createDiffcalDiagnosticWorkspaceFilename(item),
+                        self._createDiffcalOutputWorkspaceName(item),
+                        loader="LoadNexusProcessed",
+                    )
                 case "diffcal_table":
                     if not isinstance(item.version, int):
                         item.version = self.dataService._getVersionFromCalibrationIndex(
@@ -907,23 +899,23 @@ class GroceryService:
                         record = self.dataService.readCalibrationRecord(item.runNumber, item.useLiteMode, item.version)
                         if record is not None:
                             item.runNumber = record.runNumber
+                    # NOTE: fetchCalibrationWorkspaces will set the workspace name
+                    # to that of the table workspace.  Because of possible confusion with
+                    # the behavior of mask workspace, the workspace name is manually set here.
                     tableWorkspaceName = self._createDiffcalTableWorkspaceName(
                         item.runNumber, item.useLiteMode, item.version
                     )
-                    if item.isOutput:
-                        res = {"result": True, "workspace": tableWorkspaceName}
-                    else:
-                        res = self.fetchCalibrationWorkspaces(item)
-                        res["workspace"] = tableWorkspaceName
+                    res = self.fetchCalibrationWorkspaces(item)
+                    res["workspace"] = tableWorkspaceName
                 case "diffcal_mask":
+                    # NOTE: fetchCalibrationWorkspaces will set the workspace name
+                    # to that of the table workspace, not the mask.  This must be
+                    # manually overwritten with correct workspace name.
                     maskWorkspaceName = self._createDiffcalMaskWorkspaceName(
                         item.runNumber, item.useLiteMode, item.version
                     )
-                    if item.isOutput:
-                        res = {"result": True, "workspace": maskWorkspaceName}
-                    else:
-                        res = self.fetchCalibrationWorkspaces(item)
-                        res["workspace"] = maskWorkspaceName
+                    res = self.fetchCalibrationWorkspaces(item)
+                    res["workspace"] = maskWorkspaceName
                 case "normalization":
                     if not isinstance(item.version, int):
                         item.version = self.dataService._getVersionFromNormalizationIndex(
@@ -934,13 +926,7 @@ class GroceryService:
                         )
                         if record is not None:
                             item.runNumber = record.runNumber
-                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(
-                        item.runNumber, item.useLiteMode, item.version
-                    )
-                    if item.isOutput:
-                        res = {"result": True, "workspace": normalizationWorkspaceName}
-                    else:
-                        res = self.fetchNormalizationWorkspaces(item)
+                    res = self.fetchNormalizationWorkspaces(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
             # check that the fetch operation succeeded and if so append the workspace
@@ -958,6 +944,9 @@ class GroceryService:
 
         :param groceryDict: a dictionary of GroceryListItems, keyed by a property name
         :type groceryDict: Dict[str, GrocerListItem]
+        :param kwargs: keyword arguments will be added to the created dictionary as argName: argValue.
+            Use this to add additional workspaces to the dictionary for easier use in recipes.
+        :type kwargs: Dict[string, WorkspaceName]
         :return: the workspace names of the fetched groceries, matched to their original keys
         :rtype: List[WorkspaceName]
         """
