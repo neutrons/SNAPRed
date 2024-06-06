@@ -940,6 +940,9 @@ class GroceryService:
 
         :param groceryDict: a dictionary of GroceryListItems, keyed by a property name
         :type groceryDict: Dict[str, GrocerListItem]
+        :param kwargs: keyword arguments will be added to the created dictionary as argName: argValue.
+            Use this to add additional workspaces to the dictionary for easier use in recipes.
+        :type kwargs: Dict[string, WorkspaceName]
         :return: the workspace names of the fetched groceries, matched to their original keys
         :rtype: List[WorkspaceName]
         """
