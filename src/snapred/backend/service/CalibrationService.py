@@ -128,20 +128,22 @@ class CalibrationService(Service):
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(
             request.focusGroup.name
         ).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.specialOrder().name("diagnosticWorkspace").diffcal_output(request.runNumber).unit(
-            wng.Units.DIAG
-        ).group(request.focusGroup.name).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.specialOrder().name("outputWorkspace").diffcal_output(request.runNumber).unit(
-            wng.Units.DSP
-        ).group(request.focusGroup.name).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.specialOrder().name("calibrationTable").diffcal_table(request.runNumber).useLiteMode(
-            request.useLiteMode
-        ).add()
-        self.groceryClerk.specialOrder().name("maskWorkspace").diffcal_mask(request.runNumber).useLiteMode(
-            request.useLiteMode
-        ).add()
+        diffcalOutputName = (
+            wng.diffCalOutput().unit(wng.Units.DSP).runNumber(request.runNumber).group(request.focusGroup.name).build()
+        )
+        diagnosticWorkspaceName = (
+            wng.diffCalOutput().unit(wng.Units.DIAG).runNumber(request.runNumber).group(request.focusGroup.name).build()
+        )
+        calibrationTableName = wng.diffCalTable().runNumber(request.runNumber).build()
+        calibrationMaskName = wng.diffCalMask().runNumber(request.runNumber).build()
 
-        return self.groceryService.fetchGroceryDict(self.groceryClerk.buildDict())
+        return self.groceryService.fetchGroceryDict(
+            self.groceryClerk.buildDict(),
+            outputWorkspace=diffcalOutputName,
+            diagnosticWorkspace=diagnosticWorkspaceName,
+            calibrationTable=calibrationTableName,
+            maskWorkspace=calibrationMaskName,
+        )
 
     @FromString
     def diffractionCalibration(self, request: DiffractionCalibrationRequest):
