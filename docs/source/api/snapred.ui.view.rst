@@ -138,7 +138,7 @@ snapred.ui.view.reduction.ReductionView module
 .. automodule:: snapred.ui.view.reduction.ReductionView
    :members:
    :undoc-members:
-   :exclude-members: signalRunNumberUpdate
+   :exclude-members:
    :show-inheritance:
 
 snapred.ui.view.TestPanelView module
