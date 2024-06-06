@@ -1054,28 +1054,35 @@ class LocalDataService:
             peakTailCoefficient=peakTailCoefficient,
         )
 
-        # finally add seedRun, creation date, and a human readable name
-        calibration = Calibration(
-            instrumentState=instrumentState,
-            name=name,
-            seedRun=runId,
-            useLiteMode=useLiteMode,
-            creationDate=datetime.datetime.now(),
-            version=self.VERSION_START,
-        )
+        calibrationReturnValue = None
 
-        # Make sure that the state root directory has been initialized:
-        stateRootPath: Path = self._constructCalibrationStateRoot(stateId)
-        if not stateRootPath.exists():
-            # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
-            #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
-            self._prepareStateRoot(stateId)
+        for liteMode in [True, False]:
+            # finally add seedRun, creation date, and a human readable name
+            calibration = Calibration(
+                instrumentState=instrumentState,
+                name=name,
+                seedRun=runId,
+                useLiteMode=liteMode,
+                creationDate=datetime.datetime.now(),
+                version=self.VERSION_START,
+            )
 
-        # write the calibration state
-        self.writeCalibrationState(calibration, version)
-        # write the default diffcal table
-        self._writeDefaultDiffCalTable(runId, useLiteMode)
-        return calibration
+            # Make sure that the state root directory has been initialized:
+            stateRootPath: Path = self._constructCalibrationStateRoot(stateId)
+            if not stateRootPath.exists():
+                # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
+                #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
+                self._prepareStateRoot(stateId)
+
+            # write the calibration state
+            self.writeCalibrationState(calibration, version)
+            # write the default diffcal table
+            self._writeDefaultDiffCalTable(runId, liteMode)
+
+            if useLiteMode == liteMode:
+                calibrationReturnValue = calibration
+
+        return calibrationReturnValue
 
     def _prepareStateRoot(self, stateId: str):
         """

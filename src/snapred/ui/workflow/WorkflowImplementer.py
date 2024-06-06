@@ -69,8 +69,10 @@ class WorkflowImplementer:
         return form.verify()
 
     def _handleComplications(self, result):
-        self.responseHandler.handle(result)
-        self.responseHandler.rethrow(result)
+        if result.code == 400:
+            self.responseHandler.rethrow(result)
+        else:
+            self.responseHandler.handle(result)
 
     @property
     def widget(self):

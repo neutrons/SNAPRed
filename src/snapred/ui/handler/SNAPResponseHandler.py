@@ -33,11 +33,13 @@ class SNAPResponseHandler(QWidget):
             if userSelectedContinueAnyway:
                 self.continueAnyway.emit()
         else:
-            self.rethrow()
+            self.rethrow(result)
 
+    @staticmethod
     def _isErrorCode(code):
         return code >= ResponseCode.ERROR
 
+    @staticmethod
     def _isRecoverableError(code):
         return ResponseCode.RECOVERABLE <= code < ResponseCode.ERROR
 
