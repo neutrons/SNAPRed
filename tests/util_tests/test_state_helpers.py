@@ -26,10 +26,38 @@ def _cleanup_directories():
 
 def initPVFileMock() -> mock.Mock:
     mock_ = mock.Mock()
-    # 4X: seven required `readDetectorState` log entries:
+    # 8X: seven required `readDetectorState` log entries:
     #   * generated stateId hex-digest: 'ab8704b0bc2a2342',
     #   * generated `DetectorInfo` matches that from 'inputs/calibration/CalibrationParameters.json'
     mock_.get.side_effect = [
+        [1],
+        [2],
+        [1.1],
+        [1.2],
+        [1],
+        [1.0],
+        [2.0],
+        [1],
+        [2],
+        [1.1],
+        [1.2],
+        [1],
+        [1.0],
+        [2.0],
+        [1],
+        [2],
+        [1.1],
+        [1.2],
+        [1],
+        [1.0],
+        [2.0],
+        [1],
+        [2],
+        [1.1],
+        [1.2],
+        [1],
+        [1.0],
+        [2.0],
         [1],
         [2],
         [1.1],
@@ -62,10 +90,13 @@ def initPVFileMock() -> mock.Mock:
     return mock_
 
 
+@mock.patch.object(LocalDataService, "_generateStateId")
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
-def test_state_root_override_enter(mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath):
+def test_state_root_override_enter(
+    mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath, mockGenerateStateId
+):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
@@ -75,6 +106,8 @@ def test_state_root_override_enter(mockReadPVFile, mockReadInstrumentConfig, moc
     mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
 
     stateId = "ab8704b0bc2a2342"
+    decodedKey = None
+    mockGenerateStateId.return_value = (stateId, decodedKey)
     runNumber = "123456"
     stateName = "my happy state"
     useLiteMode = True
