@@ -5,6 +5,7 @@ from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
+from snapred.ui.widget.LoadingCursor import LoadingCursor
 from snapred.ui.widget.SuccessDialog import SuccessDialog
 
 
@@ -37,6 +38,8 @@ class InitializeStatePresenter(QObject):
         self._initializeState(runNumber, stateName, useLiteMode)
 
     def _initializeState(self, runNumber, stateName, useLiteMode):
+        self.loadingCursor = LoadingCursor(self.view)
+        self.loadingCursor.show()
         payload = InitializeStateRequest(runId=str(runNumber), humanReadableName=stateName, useLiteMode=useLiteMode)
         request = SNAPRequest(path="/calibration/initializeState", payload=payload.json())
         response = self.interfaceController.executeRequest(request)
@@ -46,7 +49,9 @@ class InitializeStatePresenter(QObject):
         self.view.beginFlowButton.setEnabled(True)
         if response.code == ResponseCode.ERROR:
             QMessageBox.critical(self.view, "Error", "Error: " + response.message)
+            self.loadingCursor.close()
         else:
             self.stateInitialized.emit(response)
+            self.loadingCursor.close()
             successDialog = SuccessDialog(self.view)
             successDialog.exec_()
