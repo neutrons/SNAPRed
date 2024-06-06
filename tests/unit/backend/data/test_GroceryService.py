@@ -99,7 +99,6 @@ class TestGroceryService(unittest.TestCase):
         # rather than the LocalDataService, just grab whatevers in the fridge
         cls.fridge = WhateversInTheFridge()
         cls.fridge.readDetectorState = mock.Mock(return_value=cls.detectorState1)
-        # cls.fridge._constructCalibrationDataPath = mock.Mock(return_value="/does/not/exist")
 
         # cleanup at per-test teardown
         cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS]

@@ -5,6 +5,7 @@ import unittest
 import unittest.mock as mock
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, DeleteWorkspace, mtd
+from snapred.backend.dao.IndexEntry import Nonentry
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
@@ -34,13 +35,21 @@ class TestDataFactoryService(unittest.TestCase):
         ]
         # these are treated specially for specific returns
         exceptions = ["readInstrumentConfig", "readStateConfig", "readRunConfig"]
-        method_list = [method for method in method_list if method not in exceptions]
+        needIndexor = ["calibrationIndex", "normalizationIndex"]
+        method_list = [method for method in method_list if method not in exceptions and method not in needIndexor]
         for x in method_list:
             setattr(getattr(cls.mockLookupService, x), "side_effect", lambda *x: cls.expected(cls, *x))
         # these are treated specially as returning specific object types
         cls.mockLookupService.readInstrumentConfig.return_value = InstrumentConfig.construct({})
         cls.mockLookupService.readStateConfig.return_value = StateConfig.construct({})
         cls.mockLookupService.readRunConfig.return_value = RunConfig.construct({})
+        # these are treated specially to give the return of a mocked indexor
+        mockIndexor = mock.Mock(
+            versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, *x)),
+            getIndex=mock.Mock(return_value=[Nonentry]),
+        )
+        cls.mockLookupService.calibrationIndex.return_value = mockIndexor
+        cls.mockLookupService.normalizationIndex.return_value = mockIndexor
 
     def setUp(self):
         self.instance = DataFactoryService()
@@ -88,18 +97,10 @@ class TestDataFactoryService(unittest.TestCase):
         actual = self.instance.constructStateId(arg)
         assert actual == self.expected(arg)
 
-    def test_getCalibrationState(self):
-        actual = self.instance.getCalibrationState("123", False)
-        assert actual == self.expected("123", False)
-
     def test_getGroupingMap(self):
         arg = mock.Mock()
         actual = self.instance.getGroupingMap(arg)
         assert actual == self.expected(arg)
-
-    def test_checkCalibrationStateExists(self):
-        actual = self.instance.checkCalibrationStateExists("123")
-        assert actual == self.expected("123")
 
     def test_getSampleFilePaths(self):
         actual = self.instance.getSampleFilePaths()
@@ -113,18 +114,28 @@ class TestDataFactoryService(unittest.TestCase):
         actual = self.instance.getCifFilePath("testId")
         assert actual == self.expected("testId")
 
-    def test_getCalibrationIndex(self):
-        run = "123"
-        useLiteMode = False
-        actual = self.instance.getCalibrationIndex(run, useLiteMode)
-        assert actual == self.expected(run, useLiteMode)
+    ## TEST CALIBRATION METHODS
 
     def test_getCalibrationDataPath(self):
         run = "123"
         version = 17
         useLiteMode = False
         actual = self.instance.getCalibrationDataPath(run, useLiteMode, version)
-        assert actual == self.expected(run, useLiteMode, version)
+        assert actual == self.expected(version)  # NOTE mock indexor called only with version
+
+    def test_checkCalibrationStateExists(self):
+        actual = self.instance.checkCalibrationStateExists("123")
+        assert actual == self.expected("123")
+
+    def test_getCalibrationState(self):
+        actual = self.instance.getCalibrationState("123", False)
+        assert actual == self.expected("123", False)
+
+    def test_getCalibrationIndex(self):
+        run = "123"
+        useLiteMode = False
+        actual = self.instance.getCalibrationIndex(run, useLiteMode)
+        assert actual == [Nonentry]
 
     def test_getCalibrationRecord(self):
         runId = "345"
@@ -142,7 +153,7 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getNormalizationDataPath(self):
         actual = self.instance.getNormalizationDataPath("123", True, 0)
-        assert actual == self.expected("123", True, 0)
+        assert actual == self.expected(0)  # NOTE mock indexor called only with version
 
     def test_getNormalizationState(self):
         actual = self.instance.getNormalizationState("123", False)
@@ -150,7 +161,7 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getNormalizationIndex(self):
         actual = self.instance.getNormalizationIndex("123", False)
-        assert actual == self.expected("123", False)
+        assert actual == [Nonentry]
 
     def test_getNormalizationRecord(self):
         actual = self.instance.getNormalizationRecord("123", False, 7)
@@ -164,16 +175,16 @@ class TestDataFactoryService(unittest.TestCase):
     ## TEST REDUCTION METHODS
 
     def test_getReductionDataPath(self):
-        actual = self.instance.getReductionDataPath("12345", True, "Column", "11")
-        assert actual == self.expected("12345", True, "Column", "11")
+        actual = self.instance.getReductionDataPath("12345", True, 11)
+        assert actual == self.expected("12345", True, 11)
 
     def test_getReductionRecord(self):
-        actual = self.instance.getReductionRecord("12345", True, "Column", 11)
-        assert actual == self.expected("12345", True, "Column", 11)
+        actual = self.instance.getReductionRecord("12345", True, 11)
+        assert actual == self.expected("12345", True, 11)
 
     def test_getReductionData(self):
-        actual = self.instance.getReductionData("12345", True, "Column", 11)
-        assert actual == self.expected("12345", True, "Column", 11)
+        actual = self.instance.getReductionData("12345", True, 11)
+        assert actual == self.expected("12345", True, 11)
 
     ##### TEST WORKSPACE METHODS ####
 

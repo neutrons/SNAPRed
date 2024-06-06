@@ -292,7 +292,7 @@ class Indexor:
 
         parametersPath = self.parametersPath(version)
         if parametersPath.exists():
-            logger.warning(f"Overwiring {self.indexorType} parameters at {parametersPath}")
+            logger.warning(f"Overwriting {self.indexorType} parameters at {parametersPath}")
         else:
             parametersPath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(state, parametersPath)

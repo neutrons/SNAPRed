@@ -521,7 +521,7 @@ class GroceryService:
         :param version: the calibration version to use in the lookup
         :type version: str
         """
-        return self.dataService._constructCalibrationDataPath(runNumber, useLiteMode, version)
+        return self.dataService.calibrationIndex(runNumber, useLiteMode).versionPath(version)
 
     @validate_arguments
     def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
@@ -533,7 +533,7 @@ class GroceryService:
         :param version: the normalization version to use in the lookup
         :type version: str
         """
-        return self.dataService._constructNormalizationDataPath(runNumber, useLiteMode, version)
+        return self.dataService.normalizationIndex(runNumber, useLiteMode).versionPath(version)
 
     def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> Dict[str, Any]:
         """
@@ -895,9 +895,9 @@ class GroceryService:
                     indexor = self.dataService.calibrationIndex(item.runNumber, item.useLiteMode)
                     if not isinstance(item.version, int):
                         item.version = indexor.latestApplicableVersion(item.runNumber)
-                        record = indexor.readRecord(item.version)
-                        if record is not None:
-                            item.runNumber = record.runNumber
+                    record = indexor.readRecord(item.version)
+                    if record is not None:
+                        item.runNumber = record.runNumber
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
                     # to that of the table workspace.  Because of possible confusion with
                     # the behavior of mask workspace, the workspace name is manually set here.
@@ -908,7 +908,7 @@ class GroceryService:
                     res["workspace"] = tableWorkspaceName
                 case "diffcal_mask":
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
-                    # to that of the table workspace, not the mask.  This must be 
+                    # to that of the table workspace, not the mask.  This must be
                     # manually overwritten with correct workspace name.
                     maskWorkspaceName = self._createDiffcalMaskWorkspaceName(
                         item.runNumber, item.useLiteMode, item.version
@@ -919,9 +919,9 @@ class GroceryService:
                     indexor = self.dataService.normalizationIndex(item.runNumber, item.useLiteMode)
                     if not isinstance(item.version, int):
                         item.version = indexor.latestApplicableVersion(item.runNumber)
-                        record = indexor.readRecord(item.version)
-                        if record is not None:
-                            item.runNumber = record.runNumber
+                    record = indexor.readRecord(item.version)
+                    if record is not None:
+                        item.runNumber = record.runNumber
                     res = self.fetchNormalizationWorkspaces(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")

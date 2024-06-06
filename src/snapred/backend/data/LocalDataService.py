@@ -244,28 +244,6 @@ class LocalDataService:
         mode = "lite" if useLiteMode else "native"
         return self._constructCalibrationStateRoot(stateId) / mode / "normalization"
 
-    @validate_arguments
-    def _constructCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
-        """
-        Generates the path for an instrument state's versioned calibration files.
-        """
-        return self.calibrationIndex(runId, useLiteMode).versionPath(version)
-
-    @validate_arguments
-    def _constructNormalizationDataPath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
-        """
-        Generates the path for an instrument state's versioned normalization calibration files.
-        """
-        return self.normalizationIndex(runId, useLiteMode).versionPath(version)
-
-    @validate_arguments
-    def _constructCalibrationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
-        return self.calibrationIndex(runId, useLiteMode).parametersPath(version)
-
-    @validate_arguments
-    def _constructNormalizationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
-        return self.normalizationIndex(runId, useLiteMode).parametersPath(version)
-
     # reduction paths #
 
     @validate_arguments
@@ -283,20 +261,17 @@ class LocalDataService:
         return reductionStateRoot / mode / runNumber
 
     @validate_arguments
-    def _constructReductionDataPath(self, runNumber: str, useLiteMode: bool, version: Version) -> Path:
-        return self._appendVersion(self._constructReductionDataRoot(runNumber, useLiteMode), version)
-
-    @validate_arguments
-    def _constructReductionRecordFilePath(self, runNumber: str, useLiteMode: bool, version: Version) -> Path:
-        recordPath = self._constructReductionDataPath(runNumber, useLiteMode, version) / "ReductionRecord.json"
-        return recordPath
-
-    @validate_arguments
     def _constructReductionDataFilePath(self, runNumber: str, useLiteMode: bool, version: Version) -> Path:
         stateId, _ = self._generateStateId(runNumber)
         fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
         fileName += Config["nexus.file.extension"]
-        filePath = self._constructReductionDataPath(runNumber, useLiteMode, version) / fileName
+        filePath = (
+            self.reductionIndex(
+                runNumber,
+                useLiteMode,
+            ).versionPath(version)
+            / fileName
+        )
         return filePath
 
     ##### VERSIONING / INDEXING METHODS #####
@@ -338,14 +313,6 @@ class LocalDataService:
 
     def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
         self.normalizationIndex(entry.runNumber, entry.useLiteMode).addIndexEntry(entry)
-
-    @validate_arguments
-    def getCalibrationRecordFilePath(self, runId: str, useLiteMode: bool, version: Version):
-        return self.calibrationIndex(runId, useLiteMode).recordPath(version)
-
-    @validate_arguments
-    def getNormalizationRecordFilePath(self, runId: str, useLiteMode: bool, version: Version):
-        return self.normalizationIndex(runId, useLiteMode).recordPath(version)
 
     # def _extractFileVersion(self, file: str) -> int:
     #     if not isinstance(file, str):
@@ -576,13 +543,10 @@ class LocalDataService:
 
     @validate_arguments
     def readReductionRecord(self, runNumber: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
+        indexor = self.reductionIndex(runNumber, useLiteMode)
         if version is None:
-            version = str(self._getLatestReductionVersionNumber(runNumber, useLiteMode))
-        record = None
-        if version is not None:
-            filePath: Path = self._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-            record = parse_file_as(ReductionRecord, filePath)
-        return record
+            version = indexor.currentVersion()
+        return indexor.readRecord(version)
 
     def writeReductionRecord(self, record: ReductionRecord, version: Optional[int] = None) -> ReductionRecord:
         """
@@ -590,49 +554,42 @@ class LocalDataService:
         * side effect: updates version numbers of incoming `ReductionRecord`;
         * must be called before any call to `writeReductionData`.
         """
-        # For the moment, a single run number is assumed:
-        runNumber = record.runNumbers[0]
-
+        indexor = self.reductionIndex(record.runNumber, record.useLiteMode)
         if version is None:
-            versionNumber = self._getLatestReductionVersionNumber(runNumber, record.useLiteMode)
-            versionNumber += 1
-            version = str(versionNumber)
-        filePath: Path = self._constructReductionRecordFilePath(runNumber, record.useLiteMode, version)
-        record.version = int(version)
+            version = indexor.nextVersion()
+        record.version = version
 
-        if not filePath.parent.exists():
-            filePath.parent.mkdir(parents=True, exist_ok=True)
-        write_model_pretty(record, filePath)
+        indexor.writeRecord(record, version)
         logger.info(f"wrote ReductionRecord: version: {version}")
         return record
 
-    def writeReductionData(self, record: ReductionRecord):
+    def writeReductionData(self, record: ReductionRecord, version: Optional[int] = None):
         """
         Persists the reduction data associated with a `ReductionRecord`
         """
+        indexor = self.reductionIndex(record.runNumber, record.useLiteMode)
+        if version is None:
+            version = indexor.nextVersion()
+        record.version = Version
 
-        # For the moment, a single run number is assumed:
-        runNumber = record.runNumbers[0]
-        version = str(record.version)
-
-        dataFilePath = self._constructReductionDataFilePath(runNumber, record.useLiteMode, version)
-        if not dataFilePath.parent.exists():
-            # WARNING: `writeReductionRecord` must be called before `writeReductionData`.
-            raise RuntimeError(f"reduction version directories {dataFilePath.parent} do not exist")
+        recordPath = indexor.recordPath(version)
+        if not recordPath.parent.exists():
+            recordPath.parent.mkdir(parents=True, exist_ok=True)
 
         for ws in record.workspaceNames:
             # Append workspaces to hdf5 file, in order of the `workspaces` list
             ws_ = mtd[ws]
             if ws_.isRaggedWorkspace():
-                raise RuntimeError("not implemented: append ragged workspace to reduction data file")
+                self.writeRaggedWorkspace(recordPath.parent, Path(recordPath.name), ws)
+                # raise RuntimeError("not implemented: append ragged workspace to reduction data file")
             else:
-                self.writeWorkspace(dataFilePath.parent, Path(dataFilePath.name), ws, append=True)
+                self.writeWorkspace(recordPath.parent, Path(recordPath.name), ws, append=True)
 
         # Append the "metadata" group, containing the `ReductionRecord` metadata
-        with h5py.File(dataFilePath, "a") as h5:
+        with h5py.File(recordPath, "a") as h5:
             n5m.insertMetadataGroup(h5, record.dict(), "/metadata")
 
-        logger.info(f"wrote reduction data to {dataFilePath}: version: {version}")
+        logger.info(f"wrote reduction data to {recordPath}: version: {version}")
 
     @validate_arguments
     def readReductionData(self, runNumber: str, useLiteMode: bool, version: int) -> ReductionRecord:

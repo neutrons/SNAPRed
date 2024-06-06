@@ -1,12 +1,10 @@
 from typing import List
 
-from pydantic import BaseModel
-
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.meta.Config import Config
+from snapred.backend.dao.Record import Record
 
 
-class NormalizationRecord(BaseModel):
+class NormalizationRecord(Record):
     """
 
     This class is crucial for tracking the specifics of each normalization step, facilitating
@@ -16,13 +14,17 @@ class NormalizationRecord(BaseModel):
 
     """
 
+    # inhereited from Record
     runNumber: str
     useLiteMode: bool
+    version: int
+
+    # specific to normalization records
     backgroundRunNumber: str
     smoothingParameter: float
     peakIntensityThreshold: float
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     calibration: Calibration
     workspaceNames: List[str] = []
-    version: int = Config["version.normalization.start"]
+
     dMin: float

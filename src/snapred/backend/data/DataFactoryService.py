@@ -83,7 +83,7 @@ class DataFactoryService:
 
     @validate_arguments
     def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: int):
-        return self.lookupService._constructCalibrationDataPath(runId, useLiteMode, version)
+        return self.lookupService.calibrationIndex(runId, useLiteMode).versionPath(version)
 
     def checkCalibrationStateExists(self, runId: str):
         return self.lookupService.checkCalibrationFileExists(runId)
@@ -94,7 +94,7 @@ class DataFactoryService:
 
     @validate_arguments
     def getCalibrationIndex(self, runId: str, useLiteMode: bool):
-        return self.lookupService.calibrationIndex(runId, useLiteMode)
+        return self.lookupService.calibrationIndex(runId, useLiteMode).getIndex()
 
     @validate_arguments
     def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
@@ -102,14 +102,14 @@ class DataFactoryService:
 
     @validate_arguments
     def getCalibrationDataWorkspace(self, runId: str, useLiteMode: bool, version: str, name: str):
-        path = self.getCalibrationDataPath(runId, useLiteMode, version)
+        path = self.lookupService.calibrationIndex(runId, useLiteMode).versionPath(version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     ##### NORMALIZATION METHODS #####
 
     @validate_arguments
     def getNormalizationDataPath(self, runId: str, useLiteMode: bool, version: int):
-        return self.lookupService._constructNormalizationDataPath(runId, useLiteMode, version)
+        return self.lookupService.normalizationIndex(runId, useLiteMode).versionPath(version)
 
     @validate_arguments
     def getNormalizationState(self, runId: str, useLiteMode: bool):
@@ -117,7 +117,7 @@ class DataFactoryService:
 
     @validate_arguments
     def getNormalizationIndex(self, runId: str, useLiteMode: bool):
-        return self.lookupService.normalizationIndex(runId, useLiteMode)
+        return self.lookupService.normalizationIndex(runId, useLiteMode).getIndex()
 
     @validate_arguments
     def getNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
@@ -131,14 +131,12 @@ class DataFactoryService:
     ##### REDUCTION METHODS #####
 
     @validate_arguments
-    def getReductionDataPath(self, runId: str, useLiteMode: bool, grouping: str, version: str) -> Path:
-        return self.lookupService._constructReductionDataPath(runId, useLiteMode, grouping, version)
+    def getReductionDataPath(self, runId: str, useLiteMode: bool, version: str) -> Path:
+        return self.lookupService.reductionIndex(runId, useLiteMode).versionPath(version)
 
     @validate_arguments
-    def getReductionRecord(
-        self, runId: str, useLiteMode: bool, grouping: str, version: Optional[int] = None
-    ) -> ReductionRecord:
-        return self.lookupService.readReductionRecord(runId, useLiteMode, grouping, version)
+    def getReductionRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
+        return self.lookupService.readReductionRecord(runId, useLiteMode, version)
 
     @validate_arguments
     def getReductionData(self, runId: str, useLiteMode: bool, grouping: str, version: int) -> ReductionRecord:

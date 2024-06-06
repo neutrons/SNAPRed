@@ -1,15 +1,16 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, ValidationError, root_validator, validator
+from pydantic import ValidationError, root_validator, validator
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
+from snapred.backend.dao.Record import Record
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
-class ReductionRecord(BaseModel):
+class ReductionRecord(Record):
     """
     This class plays a fundamental role in the data reduction process, central to refining and
     transforming raw experimental data into a format suitable for scientific analysis. It acts as
@@ -17,12 +18,17 @@ class ReductionRecord(BaseModel):
     calibration, normalization, and pixel grouping details.
     """
 
-    runNumbers: List[str]
+    # inherited from Record
+    runNumber: Optional[str] = None
     useLiteMode: bool
+    version: int
+
+    # specific to reduction records
+    runNumbers: List[str]
     calibration: CalibrationRecord
     normalization: NormalizationRecord
     pixelGroupingParameters: Dict[str, List[PixelGroupingParameters]]
-    version: int
+
     stateId: ObjectSHA
     workspaceNames: List[WorkspaceName]
 
@@ -32,6 +38,15 @@ class ReductionRecord(BaseModel):
         if isinstance(v, str):
             return ObjectSHA(hex=v, decodedKey=None)
         return v
+
+    @root_validator(allow_reuse=True)
+    def setRunNumber(cls, values):
+        if values.get("runNumber") is not None:
+            raise ValidationError(
+                "runNumber (singular) cannot be set on Reduction records; \
+                    set the runNumbers list instead."
+            )
+        values["runNumber"] = values["runNumbers"][0]
 
     @root_validator(allow_reuse=True)
     def checkStateId(cls, values):
