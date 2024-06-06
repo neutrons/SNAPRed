@@ -67,11 +67,6 @@ class GroceryListItem(BaseModel):
     # name the property the workspace will be used for
     propertyName: Optional[str]
 
-    # flag to indicate if this is an _output_ workspace:
-    # an output workspace will not be loaded,
-    # it may or may not already exist in the ADS
-    isOutput: bool = False
-
     def builder():
         # NOTE this import is here to avoid circular dependencies -- don't bother trying to move it
         from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder

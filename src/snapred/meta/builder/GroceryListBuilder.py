@@ -30,10 +30,6 @@ class GroceryListBuilder:
         self._tokens["runNumber"] = runId
         return self
 
-    def specialOrder(self):
-        self._tokens["isOutput"] = True
-        return self
-
     def diffcal(self, runId: str):
         self._tokens["workspaceType"] = "diffcal"
         self._tokens["runNumber"] = runId
