@@ -10,7 +10,6 @@ from mantid.simpleapi import (
 from pydantic import ValidationError
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
 class TestGroceryListBuilder(unittest.TestCase):

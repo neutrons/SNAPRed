@@ -909,7 +909,7 @@ class GroceryService:
                     res["workspace"] = tableWorkspaceName
                 case "diffcal_mask":
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
-                    # to that of the table workspace, not the mask.  This must be 
+                    # to that of the table workspace, not the mask.  This must be
                     # manually overwritten with correct workspace name.
                     maskWorkspaceName = self._createDiffcalMaskWorkspaceName(
                         item.runNumber, item.useLiteMode, item.version
