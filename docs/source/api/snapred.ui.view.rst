@@ -133,7 +133,7 @@ snapred.ui.view.PromptUserforCalibrationInputView module
    :exclude-members: dataEntered
 
 snapred.ui.view.reduction.ReductionView module
-------------------------------------
+----------------------------------------------
 
 .. automodule:: snapred.ui.view.reduction.ReductionView
    :members:
