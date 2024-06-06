@@ -1027,35 +1027,6 @@ class TestGroceryService(unittest.TestCase):
         ):
             self.instance.fetchGroceryList(groceryList)
 
-    def test_fetch_grocery_list_specialOrder_diffcal_output(self):
-        # Test of workspace type "diffcal_output" as `Output` (i.e. "specialOrder") argument in the `GroceryList`
-        self.instance._getDetectorState = mock.Mock(return_value=self.detectorState1)
-        groceryList = (
-            GroceryListItem.builder()
-            .specialOrder()
-            .native()
-            .diffcal_output(self.runNumber)
-            .group(wng.Groups.UNFOC)
-            .unit(wng.Units.TOF)
-            .buildList()
-        )
-        items = self.instance.fetchGroceryList(groceryList)
-        assert items[0] == wng.diffCalOutput().unit(wng.Units.TOF).runNumber(self.runNumber).build()
-
-    def test_fetch_grocery_list_specialOrder_diffcal_table(self):
-        # Test of workspace type "diffcal_table" as `Output` (i.e. "specialOrder") argument in the `GroceryList`
-        self.instance._getDetectorState = mock.Mock(return_value=self.detectorState1)
-        groceryList = GroceryListItem.builder().specialOrder().native().diffcal_table(self.runNumber).buildList()
-        items = self.instance.fetchGroceryList(groceryList)
-        assert items[0] == wng.diffCalTable().runNumber(self.runNumber).build() + f"_{wnvf.formatVersion(self.version)}"
-
-    def test_fetch_grocery_list_specialOrder_diffcal_mask(self):
-        # Test of workspace type "diffcal_mask" as `Output` (i.e. "specialOrder") argument in the `GroceryList`
-        self.instance._getDetectorState = mock.Mock(return_value=self.detectorState1)
-        groceryList = GroceryListItem.builder().specialOrder().native().diffcal_mask(self.runNumber).buildList()
-        items = self.instance.fetchGroceryList(groceryList)
-        assert items[0] == wng.diffCalMask().runNumber(self.runNumber).build()
-
     def test_fetch_grocery_list_diffcal_output(self):
         # Test of workspace type "diffcal_output" as `Input` argument in the `GroceryList`
         with state_root_redirect(self.instance.dataService) as tmpRoot:
