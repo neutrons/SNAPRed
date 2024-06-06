@@ -1,12 +1,7 @@
-from datetime import datetime
-
-from pydantic import BaseModel
-
-from snapred.backend.dao.state import InstrumentState
-from snapred.meta.Config import Config
+from snapred.backend.dao.state.StateParameters import StateParameters
 
 
-class Normalization(BaseModel):
+class Normalization(StateParameters):
     """
 
     This class represents a normalization opject with essential attributes to track its origin,
@@ -16,9 +11,4 @@ class Normalization(BaseModel):
 
     """
 
-    instrumentState: InstrumentState
-    seedRun: int
-    useLiteMode: bool
-    creationDate: datetime
-    name: str
-    version: int = Config["version.normalization.start"]
+    pass

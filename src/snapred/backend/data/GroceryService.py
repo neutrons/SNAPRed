@@ -900,11 +900,10 @@ class GroceryService:
                             loader="LoadNexusProcessed",
                         )
                 case "diffcal_table":
+                    indexor = self.dataService.calibrationIndex(item.runNumber, item.useLiteMode)
                     if not isinstance(item.version, int):
-                        item.version = self.dataService._getVersionFromCalibrationIndex(
-                            item.runNumber, item.useLiteMode
-                        )
-                        record = self.dataService.readCalibrationRecord(item.runNumber, item.useLiteMode, item.version)
+                        item.version = indexor.latestApplicableVersion(item.runNumber)
+                        record = indexor.readRecord(item.version)
                         if record is not None:
                             item.runNumber = record.runNumber
                     tableWorkspaceName = self._createDiffcalTableWorkspaceName(
@@ -925,13 +924,10 @@ class GroceryService:
                         res = self.fetchCalibrationWorkspaces(item)
                         res["workspace"] = maskWorkspaceName
                 case "normalization":
+                    indexor = self.dataService.normalizationIndex(item.runNumber, item.useLiteMode)
                     if not isinstance(item.version, int):
-                        item.version = self.dataService._getVersionFromNormalizationIndex(
-                            item.runNumber, item.useLiteMode
-                        )
-                        record = self.dataService.readNormalizationRecord(
-                            item.runNumber, item.useLiteMode, item.version
-                        )
+                        item.version = indexor.latestApplicableVersion(item.runNumber)
+                        record = indexor.readRecord(item.version)
                         if record is not None:
                             item.runNumber = record.runNumber
                     normalizationWorkspaceName = self._createNormalizationWorkspaceName(

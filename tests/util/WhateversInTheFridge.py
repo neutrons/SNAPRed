@@ -12,6 +12,7 @@ from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.state import (
     GroupingMap,
 )
+from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
@@ -40,7 +41,7 @@ class WhateversInTheFridge(LocalDataService):
         self.verifyPaths = False
         self.instrumentConfig = self.readInstrumentConfig()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
-        self.latestVersion = Config["instrument.startingVersionNumber"]
+        self.latestVersion = Config["version..start"]
 
     ### MISCELLANEOUS ###
     def readCifFilePath(self, sampleId: str):
@@ -102,9 +103,9 @@ class WhateversInTheFridge(LocalDataService):
     def _getVersionFromCalibrationIndex(self, runId: str, useLiteMode: bool) -> int:
         return self.latestVersion
 
-    @validate_arguments
-    def _getLatestCalibrationVersionNumber(self, runId: str, useLiteMode: bool) -> int:
-        return self.latestVersion
+    # @validate_arguments
+    # def _getLatestCalibrationVersionNumber(self, runId: str, useLiteMode: bool) -> int:
+    #     return self.latestVersion
 
     ### NORMALIZATION METHODS ###
 
@@ -122,9 +123,9 @@ class WhateversInTheFridge(LocalDataService):
     def _getVersionFromNormalizationIndex(self, runId: str, useLiteMode: bool) -> int:
         return self.latestVersion
 
-    @validate_arguments
-    def _getLatestNormalizationVersionNumber(self, runId: str, useLiteMode: bool) -> int:
-        return self.latestVersion
+    # @validate_arguments
+    # def _getLatestNormalizationVersionNumber(self, runId: str, useLiteMode: bool) -> int:
+    #     return self.latestVersion
 
     ### REDUCTION METHODS ###
 

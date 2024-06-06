@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 from snapred.backend.dao.ingredients import ReductionIngredients
-from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
@@ -12,7 +11,7 @@ from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.meta.Config import Config, Resource
 from util.InstaEats import InstaEats
-from util.WhateversInTheFridge import RedirectStateRoot
+from util.state_helpers import state_root_redirect
 
 VERSION_START = Config["version.calibration.start"]
 
@@ -24,13 +23,13 @@ reductionIngredients = ReductionIngredients.parse_file(reductionIngredientsPath)
 class ImitationDataService(LocalDataService):
     stateId = "notarealstate000"
 
-    def _generateStateId(self, *x, **y):
+    def _generateStateId(self, *x, **y):  # noqa ARG002
         return self.stateId, 0
 
-    def getIPTS(self, *x, **y):
+    def getIPTS(self, *x, **y):  # noqa ARG002
         return Resource.getPath("inputs/testInstrument/IPTS-456/")
 
-    def readDetectorState(self, runId: str):
+    def readDetectorState(self, runId: str):  # noqa ARG002
         return DetectorState.construct(wav=1.0)
 
     def _defaultGroupingMapPath(self) -> Path:
@@ -51,7 +50,7 @@ def test_calibration_versioning():
     lds = ImitationDataService()
     dfs = DataFactoryService(lookupService=lds)
     des = DataExportService(dataService=lds)
-    with RedirectStateRoot(lds, stateId="notarealstate000") as tmpRoot:
+    with state_root_redirect(lds, stateId="notarealstate000") as tmpRoot:
         # start with unitialized state
         stateId, _ = dfs.lookupService._generateStateId(runNumber)
         assert stateId == tmpRoot.stateId

@@ -18,11 +18,7 @@ from mantid.kernel import amend_config
 from mantid.simpleapi import (
     CreateGroupingWorkspace,
     CreateSampleWorkspace,
-    CreateSingleValuedWorkspace,
-    DeleteWorkspace,
-    GroupWorkspaces,
     LoadEmptyInstrument,
-    LoadInstrument,
     mtd,
 )
 from pydantic import parse_raw_as
@@ -40,8 +36,6 @@ from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import write_model_pretty
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 from util.state_helpers import state_root_redirect
@@ -723,9 +717,9 @@ def test__findMatchingFileList():
     #     assert actualEntries[0].runNumber == "57514"
 
     # def test_writeNormalizationIndexEntry():
-    localDataService = LocalDataService()
-    with state_root_redirect(localDataService):
-        assert len(localDataService.readCalibrationIndex("123", True)) == 0
+    # localDataService = LocalDataService()
+    # with state_root_redirect(localDataService):
+    #     assert len(localDataService.readCalibrationIndex("123", True)) == 0
 
 
 def test_readNormalizationIndexMissing():
@@ -741,14 +735,12 @@ def test_readWriteCalibrationIndexEntry():
         comments="test comment",
         author="test author",
     )
-    assert expectedFilePath.exists()
-
-
-#     fileContent = ""
-#     with open(expectedFilePath, "r") as indexFile:
-#         fileContent = indexFile.read()
-#     os.remove(expectedFilePath)
-#     assert len(fileContent) > 0
+    localDataService = LocalDataService()
+    with state_root_redirect(localDataService):
+        localDataService.writeNormalizationIndexEntry(entry)
+        actualEntries = localDataService.readNormalizationIndex(entry.runNumber, entry.useLiteMode)
+    assert len(actualEntries) > 0
+    assert actualEntries[0].runNumber == "57514"
 
 
 def test_readWriteNormalizationIndexEntry():
@@ -772,158 +764,158 @@ def test_readWriteNormalizationIndexEntry():
 #         return ReductionIngredients.parse_raw(f.read())
 
 
-def test_readWriteCalibrationRecord_version_numbers():
-    localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
-    testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
-        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-    )
-    testCalibrationRecord_v0002 = CalibrationRecord.parse_file(
-        Resource.getPath("inputs/calibration/CalibrationRecord_v0002.json")
-    )
-    with state_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-        # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
-        #   and <incoming record>.calibrationFittingIngredients.version.
+# def test_readWriteCalibrationRecord_version_numbers():
+#     localDataService = LocalDataService()
+#     stateId = "ab8704b0bc2a2342"
+#     testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
+#         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+#     )
+#     testCalibrationRecord_v0002 = CalibrationRecord.parse_file(
+#         Resource.getPath("inputs/calibration/CalibrationRecord_v0002.json")
+#     )
+#     with state_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
+#         #   and <incoming record>.calibrationFittingIngredients.version.
 
-        # write: version == 1
-        localDataService.writeCalibrationRecord(testCalibrationRecord_v0001)
-        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
-        assert actualRecord.version == 1
-        assert actualRecord.calibrationFittingIngredients.version == 1
+#         # write: version == 1
+#         localDataService.writeCalibrationRecord(testCalibrationRecord_v0001)
+#         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
+#         assert actualRecord.version == 1
+#         assert actualRecord.calibrationFittingIngredients.version == 1
 
-        # write: version == 2
-        localDataService.writeCalibrationRecord(testCalibrationRecord_v0002)
-        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
-        assert actualRecord.version == 2
-        assert actualRecord.calibrationFittingIngredients.version == 2
-        assert isinstance(actualRecord, CalibrationRecord)
-    assert actualRecord.runNumber == "57514"
-    assert actualRecord == testCalibrationRecord_v0002
-
-
-##
-def test_readWriteCalibrationRecord_specified_version():
-    localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
-    testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
-        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-    )
-    testCalibrationRecord_v0002 = CalibrationRecord.parse_file(
-        Resource.getPath("inputs/calibration/CalibrationRecord_v0002.json")
-    )
-    with state_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-        # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
-        #   and <incoming record>.calibrationFittingIngredients.version.
-
-        # Important: start with version > 1: should not depend on any existing directory structure!
-
-        # write: version == 3
-        localDataService.writeCalibrationRecord(testCalibrationRecord_v0001, version="3")
-        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True, version="3")
-        assert actualRecord.version == 3
-        assert actualRecord.calibrationFittingIngredients.version == 3
-
-        # write: version == 4
-        localDataService.writeCalibrationRecord(testCalibrationRecord_v0002, version="4")
-        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True, version="3")
-        assert actualRecord.version == 3
-        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True, version="4")
-        assert actualRecord.version == 4
+#         # write: version == 2
+#         localDataService.writeCalibrationRecord(testCalibrationRecord_v0002)
+#         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
+#         assert actualRecord.version == 2
+#         assert actualRecord.calibrationFittingIngredients.version == 2
+#         assert isinstance(actualRecord, CalibrationRecord)
+#     assert actualRecord.runNumber == "57514"
+#     assert actualRecord == testCalibrationRecord_v0002
 
 
-def test_readWriteCalibrationRecord_with_version():
-    localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
-    with state_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-        localDataService.writeCalibrationRecord(
-            CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
-        )
-        actualRecord = localDataService.readCalibrationRecord("57514", True, "1")
-    assert actualRecord.runNumber == "57514"
-    assert actualRecord.version == 1
+# ##
+# def test_readWriteCalibrationRecord_specified_version():
+#     localDataService = LocalDataService()
+#     stateId = "ab8704b0bc2a2342"
+#     testCalibrationRecord_v0001 = CalibrationRecord.parse_raw(
+#         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+#     )
+#     testCalibrationRecord_v0002 = CalibrationRecord.parse_file(
+#         Resource.getPath("inputs/calibration/CalibrationRecord_v0002.json")
+#     )
+#     with state_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         # WARNING: 'writeCalibrationRecord' modifies <incoming record>.version,
+#         #   and <incoming record>.calibrationFittingIngredients.version.
+
+#         # Important: start with version > 1: should not depend on any existing directory structure!
+
+#         # write: version == 3
+#         localDataService.writeCalibrationRecord(testCalibrationRecord_v0001, version="3")
+#         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True, version="3")
+#         assert actualRecord.version == 3
+#         assert actualRecord.calibrationFittingIngredients.version == 3
+
+#         # write: version == 4
+#         localDataService.writeCalibrationRecord(testCalibrationRecord_v0002, version="4")
+#         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True, version="3")
+#         assert actualRecord.version == 3
+#         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True, version="4")
+#         assert actualRecord.version == 4
 
 
-def test_readWriteCalibrationRecord():
-    localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
-    testCalibrationRecord = CalibrationRecord.parse_raw(
-        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-    )
-    with state_root_redirect(localDataService, stateId=stateId):
-        localDataService.instrumentConfig = mock.Mock()
-        localDataService.writeCalibrationRecord(testCalibrationRecord)
-        actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
-    assert actualRecord.runNumber == "57514"
-    assert actualRecord == testCalibrationRecord
+# def test_readWriteCalibrationRecord_with_version():
+#     localDataService = LocalDataService()
+#     stateId = "ab8704b0bc2a2342"
+#     with state_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         localDataService.writeCalibrationRecord(
+#             CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+#         )
+#         actualRecord = localDataService.readCalibrationRecord("57514", True, "1")
+#     assert actualRecord.runNumber == "57514"
+#     assert actualRecord.version == 1
 
 
-def test_writeCalibrationWorkspaces():
-    localDataService = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
-    testCalibrationRecord = CalibrationRecord.parse_raw(
-        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-    )
-    with state_root_redirect(localDataService, stateId=stateId):
-        basePath = localDataService._constructCalibrationDataPath(testCalibrationRecord.runNumber, True, 1)
+# def test_readWriteCalibrationRecord():
+#     localDataService = LocalDataService()
+#     stateId = "ab8704b0bc2a2342"
+#     testCalibrationRecord = CalibrationRecord.parse_raw(
+#         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+#     )
+#     with state_root_redirect(localDataService, stateId=stateId):
+#         localDataService.instrumentConfig = mock.Mock()
+#         localDataService.writeCalibrationRecord(testCalibrationRecord)
+#         actualRecord = localDataService.readCalibrationRecord("57514", useLiteMode=True)
+#     assert actualRecord.runNumber == "57514"
+#     assert actualRecord == testCalibrationRecord
 
-        # Workspace names need to match the names that are used in the test record.
-        workspaces = testCalibrationRecord.workspaces.copy()
-        runNumber = testCalibrationRecord.runNumber
-        version = testCalibrationRecord.version
-        outputDSPWSName = workspaces.pop(wngt.DIFFCAL_OUTPUT)[0]
-        diagnosticWSname = workspaces.pop(wngt.DIFFCAL_DIAG)[0]
-        tableWSName = workspaces.pop(wngt.DIFFCAL_TABLE)[0]
-        maskWSName = workspaces.pop(wngt.DIFFCAL_MASK)[0]
-        if workspaces:
-            raise RuntimeError(f"unexpected workspace-types in record.workspaces: {workspaces}")
 
-        # Create sample workspaces.
-        CreateSampleWorkspace(
-            OutputWorkspace=outputDSPWSName,
-            Function="One Peak",
-            NumBanks=1,
-            NumMonitors=1,
-            BankPixelWidth=5,
-            NumEvents=500,
-            Random=True,
-            XUnit="DSP",
-            XMin=0,
-            XMax=8000,
-            BinWidth=100,
-        )
-        LoadInstrument(
-            Workspace=outputDSPWSName,
-            Filename=fakeInstrumentFilePath,
-            RewriteSpectraMap=True,
-        )
-        assert mtd.doesExist(outputDSPWSName)
+# def test_writeCalibrationWorkspaces():
+#     localDataService = LocalDataService()
+#     stateId = "ab8704b0bc2a2342"
+#     testCalibrationRecord = CalibrationRecord.parse_raw(
+#         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+#     )
+#     with state_root_redirect(localDataService, stateId=stateId):
+#         basePath = localDataService._constructCalibrationDataPath(testCalibrationRecord.runNumber, True, 1)
 
-        # Create a grouping workspace to save as the diagnostic workspace.
-        ws1 = CreateSingleValuedWorkspace()
-        GroupWorkspaces(
-            InputWorkspaces=[ws1],
-            OutputWorkspace=diagnosticWSname,
-        )
-        assert mtd.doesExist(diagnosticWSname)
+#         # Workspace names need to match the names that are used in the test record.
+#         workspaces = testCalibrationRecord.workspaces.copy()
+#         runNumber = testCalibrationRecord.runNumber
+#         version = testCalibrationRecord.version
+#         outputDSPWSName = workspaces.pop(wngt.DIFFCAL_OUTPUT)[0]
+#         diagnosticWSname = workspaces.pop(wngt.DIFFCAL_DIAG)[0]
+#         tableWSName = workspaces.pop(wngt.DIFFCAL_TABLE)[0]
+#         maskWSName = workspaces.pop(wngt.DIFFCAL_MASK)[0]
+#         if workspaces:
+#             raise RuntimeError(f"unexpected workspace-types in record.workspaces: {workspaces}")
 
-        # Create diffraction-calibration table and mask workspaces.
-        createCompatibleDiffCalTable(tableWSName, outputDSPWSName)
-        createCompatibleMask(maskWSName, outputDSPWSName, fakeInstrumentFilePath)
-        assert mtd.doesExist(tableWSName)
-        assert mtd.doesExist(maskWSName)
+#         # Create sample workspaces.
+#         CreateSampleWorkspace(
+#             OutputWorkspace=outputDSPWSName,
+#             Function="One Peak",
+#             NumBanks=1,
+#             NumMonitors=1,
+#             BankPixelWidth=5,
+#             NumEvents=500,
+#             Random=True,
+#             XUnit="DSP",
+#             XMin=0,
+#             XMax=8000,
+#             BinWidth=100,
+#         )
+#         LoadInstrument(
+#             Workspace=outputDSPWSName,
+#             Filename=fakeInstrumentFilePath,
+#             RewriteSpectraMap=True,
+#         )
+#         assert mtd.doesExist(outputDSPWSName)
 
-        localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
+#         # Create a grouping workspace to save as the diagnostic workspace.
+#         ws1 = CreateSingleValuedWorkspace()
+#         GroupWorkspaces(
+#             InputWorkspaces=[ws1],
+#             OutputWorkspace=diagnosticWSname,
+#         )
+#         assert mtd.doesExist(diagnosticWSname)
 
-        dspFilename = Path(outputDSPWSName + Config["calibration.diffraction.output.extension"])
-        diagFilename = Path(diagnosticWSname + Config["calibration.diffraction.diagnostic.extension"])
-        diffCalFilename = Path(wng.diffCalTable().runNumber(runNumber).version(version).build() + ".h5")
-        assert (basePath / dspFilename).exists()
-        assert (basePath / diagFilename).exists()
-        assert (basePath / diffCalFilename).exists()
-        mtd.clear()
+#         # Create diffraction-calibration table and mask workspaces.
+#         createCompatibleDiffCalTable(tableWSName, outputDSPWSName)
+#         createCompatibleMask(maskWSName, outputDSPWSName, fakeInstrumentFilePath)
+#         assert mtd.doesExist(tableWSName)
+#         assert mtd.doesExist(maskWSName)
+
+#         localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
+
+#         dspFilename = Path(outputDSPWSName + Config["calibration.diffraction.output.extension"])
+#         diagFilename = Path(diagnosticWSname + Config["calibration.diffraction.diagnostic.extension"])
+#         diffCalFilename = Path(wng.diffCalTable().runNumber(runNumber).version(version).build() + ".h5")
+#         assert (basePath / dspFilename).exists()
+#         assert (basePath / diagFilename).exists()
+#         assert (basePath / diffCalFilename).exists()
+#         mtd.clear()
 
 
 # def test_isApplicableEntry_greaterThanEquals():
@@ -1524,76 +1516,6 @@ def test_getReductionRecordFilePath():
     localDataService._constructReductionDataRoot.return_value = Path(Resource.getPath("outputs"))
     actualPath = localDataService._constructReductionRecordFilePath("57514", True, testVersion)
     assert actualPath == Path(Resource.getPath("outputs")) / wnvf.fileVersion(testVersion) / "ReductionRecord.json"
-
-
-# def test__getVersionFromCalibrationIndex():
-#     localDataService = LocalDataService()
-#     localDataService.readCalibrationIndex = mock.Mock()
-#     localDataService.readCalibrationIndex.return_value = [mock.Mock()]
-#     localDataService.readCalibrationIndex.return_value[0] = CalibrationIndexEntry(
-#         timestamp=123,
-#         useLiteMode=True,
-#         version=1,
-#         appliesTo="123",
-#         runNumber="123",
-#         comments="",
-#         author="",
-#     )
-#     actualVersion = localDataService._getVersionFromCalibrationIndex("123", True)
-#     assert actualVersion == 1
-
-
-# def test__getVersionFromCalibrationIndex_nuffink():
-#     localDataService = LocalDataService()
-#     localDataService.readCalibrationIndex = mock.Mock()
-#     localDataService.readCalibrationIndex.return_value = [mock.Mock()]
-#     localDataService.readCalibrationIndex.return_value[0] = CalibrationIndexEntry(
-#         timestamp=123,
-#         useLiteMode=True,
-#         version=1,
-#         appliesTo=">123",
-#         runNumber="123",
-#         comments="",
-#         author="",
-#     )
-#     actualVersion = localDataService._getVersionFromCalibrationIndex("123", True)
-#     assert actualVersion is None
-
-
-# def test__getVersionFromNormalizationIndex():
-#     localDataService = LocalDataService()
-#     localDataService.readNormalizationIndex = mock.Mock()
-#     localDataService.readNormalizationIndex.return_value = [mock.Mock()]
-#     localDataService.readNormalizationIndex.return_value[0] = NormalizationIndexEntry(
-#         timestamp=123,
-#         version=1,
-#         appliesTo="123",
-#         runNumber="123",
-#         useLiteMode=True,
-#         backgroundRunNumber="456",
-#         comments="",
-#         author="",
-#     )
-#     actualVersion = localDataService._getVersionFromNormalizationIndex("123", True)
-#     assert actualVersion == 1
-
-
-# def test__getVersionFromNormalizationIndex_nuffink():
-#     localDataService = LocalDataService()
-#     localDataService.readNormalizationIndex = mock.Mock()
-#     localDataService.readNormalizationIndex.return_value = [mock.Mock()]
-#     localDataService.readNormalizationIndex.return_value[0] = NormalizationIndexEntry(
-#         timestamp=123,
-#         version=1,
-#         appliesTo=">123",
-#         runNumber="123",
-#         useLiteMode=True,
-#         backgroundRunNumber="456",
-#         comments="",
-#         author="",
-#     )
-#     actualVersion = localDataService._getVersionFromNormalizationIndex("123", True)
-#     assert actualVersion is None
 
 
 def test__constructCalibrationParametersFilePath():

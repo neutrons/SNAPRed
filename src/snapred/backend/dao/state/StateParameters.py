@@ -1,4 +1,9 @@
-from snapred.backend.dao.state.StateParameters import StateParameters
+from datetime import datetime
+
+from pydantic import BaseModel, Extra
+
+from snapred.backend.dao.IndexEntry import UNINITIALIZED, Version
+from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 # NOTE: the __init__ loads CalibrationExportRequest, which imports Calibration, which causes
 #       a circular import situation.  In the future, need to remove the circualr import
@@ -6,14 +11,20 @@ from snapred.backend.dao.state.StateParameters import StateParameters
 # from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 
 
-class Calibration(StateParameters):
+class StateParameters(BaseModel, extra=Extra.allow):
     """
 
-    The Calibration class acts as a container for parameters primarily utilized in fitting processes within the context
+    The stateParameters class acts as a container for parameters primarily utilized in fitting processes within the
+    context
     of scientific data analysis. It encompasses static details such as the instrumentState indicating the condition of
     the instrument at the time of calibration, seedRun for identifying the initial data set, creationDate marking when
     the calibration was created, along with a name and a default version number.
 
     """
 
-    pass
+    instrumentState: InstrumentState
+    seedRun: int
+    useLiteMode: bool
+    creationDate: datetime
+    name: str
+    version: Version = UNINITIALIZED

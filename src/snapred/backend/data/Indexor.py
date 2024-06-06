@@ -9,6 +9,7 @@ from snapred.backend.dao.IndexEntry import IndexEntry, Nonentry, Version
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.Record import Nonrecord, Record
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
+from snapred.backend.dao.state.StateParameters import StateParameters
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import StrEnum
@@ -43,10 +44,10 @@ class Indexor:
 
     ## constructor/destructor methods ##
 
-    def __init__(self, *, type: str, directory: Path | str) -> None:
-        self.indexorType = type
+    def __init__(self, *, indexorType: str, directory: Path | str) -> None:
+        self.indexorType = indexorType
         self.VERSION_START = Config[f"version.{self.indexorType.lower()}.start"]
-        if type == IndexorType.CALIBRATION:
+        if indexorType == IndexorType.CALIBRATION:
             self.VERSION_DEFAULT = Config[f"version.{self.indexorType.lower()}.default"]
         self.rootDirectory = Path(directory)
         self.index = self.readIndex()
@@ -220,7 +221,9 @@ class Indexor:
         return {index.version: index for index in indexList}
 
     def writeIndex(self):
-        write_model_list_pretty(self.index.values(), self.indexPath())
+        path = self.indexPath()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        write_model_list_pretty(self.index.values(), path)
 
     def addIndexEntry(self, entry: IndexEntry, version: Optional[Version] = None):
         if not isinstance(version, int):
@@ -245,7 +248,7 @@ class Indexor:
 
     ## record manipulation methods ##
 
-    def readRecord(self, version: Version):
+    def readRecord(self, version: int):
         if not isinstance(version, int):
             version = self.currentVersion()
         filePath = self.recordPath(version)
@@ -270,3 +273,26 @@ class Indexor:
         filePath = self.recordPath(version)
         filePath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(record, filePath)
+
+    ## parameter manipulation methods ##
+
+    def readParameters(self, version: Optional[int]):
+        if not isinstance(version, int):
+            version = self.currentVersion()
+        latestFile = self.parametersPath(version)
+        state = StateParameters.parse_file(latestFile)
+        if state is None:
+            raise ValueError(f"No {self.indexorType} State found on filesystem")
+        return state
+
+    def writeParameters(self, state: StateParameters, version: Optional[int]):
+        if not isinstance(version, int):
+            version = self.nextVersion()
+        state.version = version
+
+        parametersPath = self.parametersPath(version)
+        if parametersPath.exists():
+            logger.warning(f"Overwiring {self.indexorType} parameters at {parametersPath}")
+        else:
+            parametersPath.parent.mkdir(parents=True, exist_ok=True)
+        write_model_pretty(state, parametersPath)
