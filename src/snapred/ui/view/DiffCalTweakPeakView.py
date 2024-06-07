@@ -50,9 +50,8 @@ class DiffCalTweakPeakView(BackendRequestView):
     signalUpdateRecalculationButton = Signal(bool)
     signalMaxChiSqUpdate = Signal(float)
 
-    def __init__(self, jsonForm, samples=[], groups=[], parent=None):
-        selection = "calibration/diffractionCalibration"
-        super().__init__(jsonForm, selection, parent=parent)
+    def __init__(self, samples=[], groups=[], parent=None):
+        super().__init__(parent=parent)
 
         # create the run number field and lite mode toggle
         self.runNumberField = self._labeledField("Run Number")
@@ -273,7 +272,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             for tooFew in tooFews:
                 msg = msg + f"\tgroup {tooFew.groupID} has \t {len(tooFew.peaks)} peaks\n"
             msg = msg + "Would you like to continue anyway?"
-            raise ContinueWarning(msg)
+            raise ContinueWarning(msg, ContinueWarning.Type.LOW_PEAK_COUNT)
 
     def verify(self):
         self._testFailStates()
