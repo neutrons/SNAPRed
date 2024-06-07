@@ -1,13 +1,13 @@
 from qtpy.QtCore import Signal
-from qtpy.QtWidgets import QGridLayout, QLabel, QLineEdit, QWidget
+from qtpy.QtWidgets import QLabel
 
 from snapred.meta.decorators.Resettable import Resettable
-from snapred.ui.widget.LabeledField import LabeledField
+from snapred.ui.view.BackendRequestView import BackendRequestView
 
 
 # TODO rebase on BackendRequestView
 @Resettable
-class NormalizationSaveView(QWidget):
+class NormalizationSaveView(BackendRequestView):
     """
     This class creates a qt widget interface for efficiently saving normalization data in SNAPRed
     after user assessment. It provides a structured and intuitive environment for users to input and
@@ -21,35 +21,31 @@ class NormalizationSaveView(QWidget):
     signalBackgroundRunNumberUpdate = Signal(str)
 
     def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.layout = QGridLayout()
-        self.setLayout(self.layout)
-
+        super(NormalizationSaveView, self).__init__(parent)
         self.interactionText = QLabel("Assessment Complete! Would you like to save the normalization now?")
 
-        self.fieldRunNumber = LabeledField("Run Number :", QLineEdit(parent=self), self)
+        self.fieldRunNumber = self._labeledLineEdit("Run Number :")
         self.fieldRunNumber.setEnabled(False)
         self.signalRunNumberUpdate.connect(self._updateRunNumber)
 
-        self.fieldBackgroundRunNumber = LabeledField("Background Run Number :", QLineEdit(parent=self), self)
+        self.fieldBackgroundRunNumber = self._labeledLineEdit("Background Run Number :")
         self.fieldBackgroundRunNumber.setEnabled(False)
         self.signalBackgroundRunNumberUpdate.connect(self._updateBackgroundRunNumber)
 
-        self.fieldVersion = LabeledField("Version :", QLineEdit(parent=self), self)
+        self.fieldVersion = self._labeledLineEdit("Version :")
         # add tooltip to leave blank for new version
         self.fieldVersion.setToolTip("Leave blank for new version!")
 
-        self.fieldAppliesTo = LabeledField("Applies To :", QLineEdit(parent=self), self)
+        self.fieldAppliesTo = self._labeledLineEdit("Applies To :")
         self.fieldAppliesTo.setToolTip(
             "Determines which runs this normalization applies to. 'runNumber', '>runNumber', or \
                 '<runNumber', default is '>runNumber'."
         )
 
-        self.fieldComments = LabeledField("Comments :", QLineEdit(parent=self), self)
+        self.fieldComments = self._labeledLineEdit("Comments :")
         self.fieldComments.setToolTip("Comments about the normalization, documentation of important information.")
 
-        self.fieldAuthor = LabeledField("Author :", QLineEdit(parent=self), self)
+        self.fieldAuthor = self._labeledLineEdit("Author :")
         self.fieldAuthor.setToolTip("Author of the normalization.")
 
         self.layout.addWidget(self.interactionText)

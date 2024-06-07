@@ -1,5 +1,3 @@
-import json
-
 from snapred.backend.dao import RunConfig
 from snapred.backend.dao.calibration import CalibrationIndexEntry
 from snapred.backend.dao.request import (
@@ -42,7 +40,7 @@ class DiffCalWorkflow(WorkflowImplementer):
     DEFAULT_PEAK_THRESHOLD = Config["calibration.diffraction.peakIntensityThreshold"]
     DEFAULT_MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
-    def __init__(self, jsonForm, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
         # create a tree of flows for the user to successfully execute diffraction calibration
         # DiffCal Request ->
@@ -50,34 +48,22 @@ class DiffCalWorkflow(WorkflowImplementer):
         # Calibrate       ->
         # Assess          ->
         # Save?           ->
-
-        self.assessmentSchema = self.request(path="api/parameters", payload="calibration/assessment").data
-        # for each key, read string and convert to json
-        self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
-
-        self.saveSchema = self.request(path="api/parameters", payload="calibration/save").data
-        self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
-
         self.samplePaths = self.request(path="config/samplePaths").data
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
         self.groupingMap = self.defaultGroupingMap
         self.focusGroups = self.groupingMap.lite
 
         self._requestView = DiffCalRequestView(
-            jsonForm,
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
         self._tweakPeakView = DiffCalTweakPeakView(
-            jsonForm,
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
         self._assessmentView = DiffCalAssessmentView(
-            "Assessing Calibration",
-            self.assessmentSchema,
             parent=parent,
         )
         self._saveView = DiffCalSaveView(parent)

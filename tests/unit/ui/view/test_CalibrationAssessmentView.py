@@ -5,7 +5,7 @@ from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 
 
 def test_calibration_record_dropdown(qtbot):
-    view = DiffCalAssessmentView(name="Test", jsonSchemaMap=MagicMock())
+    view = DiffCalAssessmentView()
     assert view.getCalibrationRecordCount() == 0
 
     # test filling in the dropdown
@@ -27,7 +27,7 @@ def test_calibration_record_dropdown(qtbot):
 
 
 def test_error_on_load_calibration_record(qtbot):
-    view = DiffCalAssessmentView(name="Test", jsonSchemaMap=MagicMock())
+    view = DiffCalAssessmentView()
     qtbot.addWidget(view.loadButton)
     view.onError = MagicMock()
     view.loadButton.click()

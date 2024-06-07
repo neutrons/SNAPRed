@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 import h5py
 from mantid.kernel import PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
-from pydantic import parse_file_as, validate_arguments
+from pydantic import ValidationError, parse_file_as, validate_arguments
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -33,6 +33,7 @@ from snapred.backend.dao.state import (
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
+from snapred.backend.error.OutdatedDataSchemaError import OutdatedDataSchemaError
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
@@ -504,7 +505,11 @@ class LocalDataService:
         record: NormalizationRecord = None  # noqa: F821
         if latestFile:
             logger.info(f"reading NormalizationRecord from {latestFile}")
-            record = parse_file_as(NormalizationRecord, latestFile)  # noqa: F821
+            try:
+                record = parse_file_as(NormalizationRecord, latestFile)  # noqa: F821
+            except ValidationError as e:
+                logger.error(f"Error parsing {latestFile}: {e}")
+                raise OutdatedDataSchemaError(f"It looks like the data schema for {latestFile} is outdated.") from e
 
         return record
 
@@ -576,7 +581,11 @@ class LocalDataService:
         record: CalibrationRecord = None
         if recordFile is not None:
             logger.info(f"reading CalibrationRecord from {recordFile}")
-            record = parse_file_as(CalibrationRecord, recordFile)
+            try:
+                record = parse_file_as(CalibrationRecord, recordFile)
+            except ValidationError as e:
+                logger.error(f"Error parsing {recordFile}: {e}")
+                raise OutdatedDataSchemaError(f"It looks like the data schema for {recordFile} is outdated.") from e
         return record
 
     @validate_arguments

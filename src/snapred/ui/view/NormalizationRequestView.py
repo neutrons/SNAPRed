@@ -16,15 +16,13 @@ class NormalizationRequestView(BackendRequestView):
 
     """
 
-    def __init__(self, jsonForm, samplePaths=[], groups=[], parent=None):
-        super(NormalizationRequestView, self).__init__(jsonForm, "", parent=parent)
+    def __init__(self, samplePaths=[], groups=[], parent=None):
+        super(NormalizationRequestView, self).__init__(parent=parent)
 
         # input fields
-        self.runNumberField = self._labeledField("Run Number:", jsonForm.getField("runNumber"))
+        self.runNumberField = self._labeledLineEdit("Run Number:")
         self.litemodeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.backgroundRunNumberField = self._labeledField(
-            "Background Run Number:", jsonForm.getField("backgroundRunNumber")
-        )
+        self.backgroundRunNumberField = self._labeledLineEdit("Background Run Number:")
 
         # drop downs
         self.sampleDropdown = self._sampleDropDown("Select Sample", samplePaths)

@@ -48,9 +48,8 @@ class NormalizationTweakPeakView(BackendRequestView):
     signalUpdateFields = Signal(int, int, float)
     signalPopulateGroupingDropdown = Signal(list)
 
-    def __init__(self, jsonForm, samples=[], groups=[], parent=None):
-        selection = ""
-        super().__init__(jsonForm, selection, parent=parent)
+    def __init__(self, samples=[], groups=[], parent=None):
+        super().__init__(parent=parent)
 
         # create the run number fields
         self.fieldRunNumber = self._labeledField("Run Number", QLineEdit(parent=self))

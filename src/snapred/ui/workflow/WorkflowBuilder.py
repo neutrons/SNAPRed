@@ -9,7 +9,9 @@ class WorkflowBuilder:
         self._iterateLambda = iterateLambda
         self._workflow = None
 
-    def addNode(self, continueAction, subview, name="Unnamed", required=True, iterate=False):
+    def addNode(
+        self, continueAction, subview, name="Unnamed", required=True, iterate=False, continueAnywayHandler=None
+    ):
         if self._workflow is None:
             self._workflow = WorkflowNodeModel(
                 continueAction=continueAction,
@@ -18,6 +20,7 @@ class WorkflowBuilder:
                 name=name,
                 required=required,
                 iterate=iterate,
+                continueAnywayHandler=continueAnywayHandler,
             )
         else:
             currentWorkflow = self._workflow
@@ -30,6 +33,7 @@ class WorkflowBuilder:
                 name=name,
                 required=required,
                 iterate=iterate,
+                continueAnywayHandler=continueAnywayHandler,
             )
         return self
 
