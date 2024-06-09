@@ -1,9 +1,10 @@
-from typing import List
+from typing import Any, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.meta.Config import Config
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class NormalizationRecord(BaseModel):
@@ -23,6 +24,18 @@ class NormalizationRecord(BaseModel):
     peakIntensityThreshold: float
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     calibration: Calibration
-    workspaceNames: List[str] = []
+    workspaceNames: List[WorkspaceName] = []
     version: int = Config["instrument.startingVersionNumber"]
     dMin: float
+
+    @field_validator("runNumber", "backgroundRunNumber", mode="before")
+    @classmethod
+    def validate_runNumber(cls, v: Any) -> Any:
+        if isinstance(v, int):
+            v = str(v)
+        return v
+
+    model_config = ConfigDict(
+        # required in order to use 'WorkspaceName'
+        arbitrary_types_allowed=True,
+    )

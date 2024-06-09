@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
@@ -28,7 +28,19 @@ class CalibrationRecord(BaseModel):
     crystalInfo: CrystallographicInfo
     useLiteMode: bool
     calibrationFittingIngredients: Calibration
-    pixelGroups: Optional[List[PixelGroup]]  # TODO: really shouldn't be optional, will be when sns data fixed
+    pixelGroups: Optional[List[PixelGroup]] = None  # TODO: really shouldn't be optional, will be when sns data fixed
     focusGroupCalibrationMetrics: FocusGroupMetric
     workspaces: Dict[WorkspaceType, List[WorkspaceName]]
     version: int = Config["instrument.startingVersionNumber"]
+
+    @field_validator("runNumber", mode="before")
+    @classmethod
+    def validate_runNumber(cls, v: Any) -> Any:
+        if isinstance(v, int):
+            v = str(v)
+        return v
+
+    model_config = ConfigDict(
+        # required in order to use 'WorkspaceName'
+        arbitrary_types_allowed=True,
+    )

@@ -2,6 +2,7 @@ import unittest
 
 import pytest
 from mantid.geometry import CrystalStructure
+from pydantic import ValidationError
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.meta.Config import Resource
@@ -30,21 +31,22 @@ class TestCrystallography(unittest.TestCase):
         assert self.crystal.spaceGroupString == "F d -3 m"
 
     def test_SixLatticeParams(self):
+        # all should fail: not enough lattice parameters
         for i in range(1, 5):
             with pytest.raises(Exception):  # noqa: PT011
                 Crystallography(
                     cifFile=Resource.getPath("/inputs/crystalInfo/example.cif"),
                     spaceGroup="F d -3 m",
-                    latticeParameters=range(1, i + 1),
+                    latticeParameters=tuple(range(1, i + 1)),
                     atoms=[Atom(symbol="Si", coordinates=[0.125, 0.125, 0.125], siteOccupationFactor=1.0)],
                 )
-        with pytest.raises(Exception):  # noqa: PT011
-            Crystallography(
-                cifFile=Resource.getPath("/inputs/crystalInfo/example.cif"),
-                spaceGroup="F d -3 m",
-                latticeParameters=range(6),
-                atoms=[Atom(symbol="Si", coordinates=[0.125, 0.125, 0.125], siteOccupationFactor=1.0)],
-            )
+        # should succeed: 6 lattice parameters
+        Crystallography(
+            cifFile=Resource.getPath("/inputs/crystalInfo/example.cif"),
+            spaceGroup="F d -3 m",
+            latticeParameters=tuple(range(6)),
+            atoms=[Atom(symbol="Si", coordinates=[0.125, 0.125, 0.125], siteOccupationFactor=1.0)],
+        )
 
     def test_settableInMantid(self):
         crystalStruct = CrystalStructure(
@@ -76,9 +78,9 @@ class TestCrystallography(unittest.TestCase):
         assert xtal == self.crystal
 
     def test_invalid(self):
-        with pytest.raises(AttributeError):
+        with pytest.raises(ValidationError):
             Crystallography(1, 2)
-        with pytest.raises(AttributeError):
+        with pytest.raises(ValidationError):
             Crystallography(2, "string")
-        with pytest.raises(AttributeError):
+        with pytest.raises(ValidationError):
             Crystallography("string", 2)

@@ -1,13 +1,12 @@
 from enum import IntEnum
 from typing import Generic, Tuple, TypeVar
 
-from pydantic import root_validator
-from pydantic.generics import GenericModel
+from pydantic import BaseModel, model_validator
 
 T = TypeVar("T")
 
 
-class Limit(GenericModel, Generic[T]):
+class Limit(BaseModel, Generic[T]):
     """
     The Limit class defines minimum and maximum limits for a given
     type `T`, ensuring through validation that the minimum is not
@@ -18,20 +17,14 @@ class Limit(GenericModel, Generic[T]):
     minimum: T
     maximum: T
 
-    @root_validator(allow_reuse=True)
-    def validate_scalar_fields(cls, values):
-        if values.get("minimum") > values.get("maximum"):
+    @model_validator(mode="after")
+    def validate_scalar_fields(self):
+        if self.minimum > self.maximum:
             raise ValueError("min cannot be greater than max")
-        return values
-
-    # TODO for use in new pydantic
-    # @model_validator(mode='before')
-    # def validate_scalar_fields(cls, values):
-    #     assert values.get("minimum") <= values.get("maximum")
-    #     return values
+        return self
 
 
-class Pair(GenericModel, Generic[T]):
+class Pair(BaseModel, Generic[T]):
     """
     The `Pair` class primarily facilitates the mapping of two related values,
     adaptable to contexts where these values need to be interpreted or
@@ -56,7 +49,7 @@ class Pair(GenericModel, Generic[T]):
         return self.right
 
 
-class LimitedValue(GenericModel, Generic[T]):
+class LimitedValue(BaseModel, Generic[T]):
     """
     `LimitedValue` ensures that a given value of type `T` falls within specified
     minimum and maximum limits. It enforces the constraint that the value must
@@ -67,21 +60,14 @@ class LimitedValue(GenericModel, Generic[T]):
     minimum: T
     maximum: T
 
-    @root_validator(allow_reuse=True)
-    def validate_scalar_fields(cls, values):
-        if not values.get("minimum") <= values.get("value") <= values.get("maximum"):
-            value, minV, maxV = (values["value"], values["minimum"], values["maximum"])
-            raise ValueError(f"value {value} must be between min {minV} and max {maxV}")
-        return values
-
-    # TODO for use in new pydantic
-    # @model_validator(mode='before')
-    # def validate_scalar_fields(cls, values):
-    #     assert values.get("minimum") <= values.get("value") <= values.get("maximum")
-    #     return values
+    @model_validator(mode="after")
+    def validate_scalar_fields(self):
+        if not self.minimum <= self.value <= self.maximum:
+            raise ValueError(f"value {self.value} must be between min {self.minimum} and max {self.maximum}")
+        return self
 
 
-class BinnedValue(GenericModel, Generic[T]):
+class BinnedValue(BaseModel, Generic[T]):
     """
     `BinnedValue` defines a range and bin width for values of type `T`,
     alongside a binning mode (linear or logarithmic). It validates the
@@ -104,10 +90,10 @@ class BinnedValue(GenericModel, Generic[T]):
     def params(self) -> Tuple[float, float, float]:
         return (self.minimum, self.binningMode * abs(self.binWidth), self.maximum)
 
-    @root_validator(allow_reuse=True)
-    def validate_scalar_fields(cls, values):
-        if not values.get("minimum") < values.get("maximum"):
-            raise ValueError("min cannot be greater than max")
-        if values.get("binWidth") < 0:
-            values["binWidth"] = abs(values.get("binWidth"))
-        return values
+    @model_validator(mode="after")
+    def validate_scalar_fields(self):
+        if not self.minimum < self.maximum:
+            raise ValueError(f"min {self.minimum} cannot be greater than max {self.maximum}")
+        if self.binWidth < 0:
+            self.binWidth = abs(self.binWidth)
+        return self

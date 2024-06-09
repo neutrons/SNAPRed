@@ -4,8 +4,6 @@ from enum import Enum
 from numbers import Number
 from typing import Any, Dict
 
-# *** DEBUG ***
-
 """
     Construct a Nexus-compatible HDF5 representation from the dict corresponding to
     any Pydantic BaseModel instance, or reconstruct such a dict from its HDF5 representation:
@@ -23,6 +21,9 @@ class NexusHDF5Metadata:
         if isinstance(s, Enum):
             # order matters: may be strenum or intenum
             return s.value
+        elif issubclass(type(s), str) and not type(s) == str:  # noqa: E721
+            # (e.g. `WorkspaceName` type): coerce it back to an _actual_ string
+            return super(type(s), s).__str__()
         elif isinstance(s, (Number, str, bytes)):
             return s
         return str(s)
@@ -159,9 +160,10 @@ class NexusHDF5Metadata:
                 branchPath = "/".join(path[:-2])
                 branch = root.require_group(branchPath) if branchPath else root
                 branch.create_dataset(name, data=value)
-            except:
-                print(f"[{path}]; {name}: {value}")
-                raise
+            except Exception as e:
+                raise RuntimeError(
+                    f"Unable to construct hdf5 dataset for path: [{path}]; {name}: {value}: type: {type(value)}"
+                ) from e
 
     @staticmethod
     def insertMetadataGroup(h5, data: Dict[str, Any], groupName="/metadata"):

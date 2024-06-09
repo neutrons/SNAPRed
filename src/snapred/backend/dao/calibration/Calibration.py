@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
@@ -23,12 +23,23 @@ class Calibration(BaseModel):
     """
 
     instrumentState: InstrumentState
-    seedRun: int
+
+    # Assuming that 'seedRun' is a 'runNumber'
+    #   it's definitely _not_ OK, that it is a string everywhere else, and an `int` here? :(
+    seedRun: str
+
     useLiteMode: bool
     creationDate: datetime
     name: str
     version: int = Config["instrument.startingVersionNumber"]
 
     # these are saved for later use in reduction
-    calibrantSamplePath: Optional[str]
-    peakIntensityThreshold: Optional[float]
+    calibrantSamplePath: Optional[str] = None
+    peakIntensityThreshold: Optional[float] = None
+
+    @field_validator("seedRun", mode="before")
+    @classmethod
+    def validate_runNumber(cls, v):
+        if isinstance(v, int):
+            v = str(v)
+        return v

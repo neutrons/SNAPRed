@@ -10,7 +10,6 @@ from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pydantic import parse_file_as
 import json
 
 ## For creating ingredients
@@ -43,7 +42,7 @@ def getCalibrantSample(samplePath):
         atom["symbol"] = atom.pop("atom_type")
         atom["coordinates"] = atom.pop("atom_coordinates")
         atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
-    sample = CalibrantSamples.parse_raw(json.dumps(sampleJson))
+    sample = CalibrantSamples.model_validate_json(json.dumps(sampleJson))
     return sample
 ###########################################################################################################
 

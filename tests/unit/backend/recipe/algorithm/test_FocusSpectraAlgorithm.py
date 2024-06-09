@@ -20,7 +20,7 @@ class TestFocusSpectra(unittest.TestCase):
         self.maxOffset = 2
         self.fakeRunNumber = "555"
 
-        self.pixelGroup = PixelGroup.parse_file(Resource.getPath("/inputs/diffcal/fakePixelGroup.json"))
+        self.pixelGroup = PixelGroup.model_validate_json(Resource.read("/inputs/diffcal/fakePixelGroup.json"))
 
         self.fakeRawData = f"_test_focusSpectra_{self.fakeRunNumber}"
         self.fakeGroupingWorkspace = f"_test_focusSpectra_difc_{self.fakeRunNumber}"

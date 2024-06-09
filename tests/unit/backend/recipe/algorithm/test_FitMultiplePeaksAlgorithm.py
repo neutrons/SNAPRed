@@ -2,7 +2,7 @@ import os
 import unittest.mock as mock
 from typing import List
 
-from pydantic import parse_raw_as
+import pydantic
 
 with mock.patch.dict(
     "sys.modules",
@@ -30,7 +30,9 @@ with mock.patch.dict(
         fmpAlgo.setPropertyValue("InputWorkspace", wsName)
         fmpAlgo.setProperty("DetectorPeaks", list_to_raw(peaks))
         assert fmpAlgo.getPropertyValue("InputWorkspace") == wsName
-        assert parse_raw_as(List[GroupPeakList], fmpAlgo.getPropertyValue("DetectorPeaks")) == peaks
+        assert (
+            pydantic.TypeAdapter(List[GroupPeakList]).validate_json(fmpAlgo.getPropertyValue("DetectorPeaks")) == peaks
+        )
 
     def test_execute():
         inputFile = os.path.join(Resource._resourcesPath, "inputs", "fitMultPeaks", "FitMultiplePeaksTestWS.nxs")

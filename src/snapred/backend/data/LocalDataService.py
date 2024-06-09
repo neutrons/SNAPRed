@@ -9,9 +9,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import h5py
+import pydantic
 from mantid.kernel import PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
-from pydantic import ValidationError, parse_file_as, validate_arguments
+from pydantic import ValidationError, validate_call
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -104,6 +105,7 @@ class LocalDataService:
             instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
             instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
             instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
+            instrumentParameterMap["version"] = str(instrumentParameterMap["version"])
             instrumentConfig = InstrumentConfig(**instrumentParameterMap)
         except KeyError as e:
             raise KeyError(f"{e}: while reading instrument configuration '{self.instrumentConfigPath}'") from e
@@ -257,7 +259,7 @@ class LocalDataService:
         mode = "lite" if useLiteMode else "native"
         return self._constructCalibrationStateRoot(stateId) / mode / "normalization"
 
-    @validate_arguments
+    @validate_call
     def _constructCalibrationDataPath(self, runId: str, useLiteMode: bool, version: Optional[Version]) -> Path:
         """
         Generates the path for an instrument state's versioned calibration files.
@@ -267,7 +269,7 @@ class LocalDataService:
             version = self._getLatestCalibrationVersionNumber(stateId, useLiteMode)
         return self._appendVersion(self._constructCalibrationStatePath(stateId, useLiteMode), version)
 
-    @validate_arguments
+    @validate_call
     def _constructNormalizationDataPath(self, runId: str, useLiteMode: bool, version: Optional[Version]) -> Path:
         """
         Generates the path for an instrument state's versioned normalization calibration files.
@@ -277,17 +279,17 @@ class LocalDataService:
             version = self._getLatestNormalizationVersionNumber(stateId, useLiteMode)
         return self._appendVersion(self._constructNormalizationStatePath(stateId, useLiteMode), version)
 
-    @validate_arguments
+    @validate_call
     def _constructCalibrationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         return self._constructCalibrationDataPath(runId, useLiteMode, version) / "CalibrationParameters.json"
 
-    @validate_arguments
+    @validate_call
     def _constructNormalizationParametersFilePath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         return self._constructNormalizationDataPath(runId, useLiteMode, version) / "NormalizationParameters.json"
 
     # reduction paths #
 
-    @validate_arguments
+    @validate_call
     def _constructReductionStateRoot(self, runNumber: str) -> Path:
         stateId, _ = self._generateStateId(runNumber)
         IPTS = Path(self.getIPTS(runNumber))
@@ -295,22 +297,22 @@ class LocalDataService:
         reductionHome = Path(Config["instrument.reduction.home"].format(IPTS=IPTS.name))
         return reductionHome / stateId
 
-    @validate_arguments
+    @validate_call
     def _constructReductionDataRoot(self, runNumber: str, useLiteMode: bool) -> Path:
         reductionStateRoot = self._constructReductionStateRoot(runNumber)
         mode = "lite" if useLiteMode else "native"
         return reductionStateRoot / mode / runNumber
 
-    @validate_arguments
+    @validate_call
     def _constructReductionDataPath(self, runNumber: str, useLiteMode: bool, version: Version) -> Path:
         return self._appendVersion(self._constructReductionDataRoot(runNumber, useLiteMode), version)
 
-    @validate_arguments
+    @validate_call
     def _constructReductionRecordFilePath(self, runNumber: str, useLiteMode: bool, version: Version) -> Path:
         recordPath = self._constructReductionDataPath(runNumber, useLiteMode, version) / "ReductionRecord.json"
         return recordPath
 
-    @validate_arguments
+    @validate_call
     def _constructReductionDataFilePath(self, runNumber: str, useLiteMode: bool, version: Version) -> Path:
         stateId, _ = self._generateStateId(runNumber)
         fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
@@ -327,7 +329,9 @@ class LocalDataService:
         indexPath: Path = calibrationPath / "CalibrationIndex.json"
         calibrationIndex: List[CalibrationIndexEntry] = []
         if indexPath.exists():
-            calibrationIndex = parse_file_as(List[CalibrationIndexEntry], indexPath)
+            # calibrationIndex = parse_file_as(List[CalibrationIndexEntry], indexPath)
+            with open(indexPath) as f:
+                calibrationIndex = pydantic.TypeAdapter(List[CalibrationIndexEntry]).validate_json(f.read())
         return calibrationIndex
 
     def readNormalizationIndex(self, runId: str, useLiteMode: bool):
@@ -337,7 +341,9 @@ class LocalDataService:
         indexPath: Path = normalizationPath / "NormalizationIndex.json"
         normalizationIndex: List[NormalizationIndexEntry] = []
         if indexPath.exists():
-            normalizationIndex = parse_file_as(List[NormalizationIndexEntry], indexPath)
+            # normalizationIndex = parse_file_as(List[NormalizationIndexEntry], indexPath)
+            with open(indexPath) as f:
+                normalizationIndex = pydantic.TypeAdapter(List[NormalizationIndexEntry]).validate_json(f.read())
         return normalizationIndex
 
     def _parseAppliesTo(self, appliesTo: str):
@@ -420,11 +426,11 @@ class LocalDataService:
         normalizationIndex.append(entry)
         write_model_list_pretty(normalizationIndex, indexPath)
 
-    @validate_arguments
+    @validate_call
     def getCalibrationRecordFilePath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         return self._constructCalibrationDataPath(runId, useLiteMode, version) / "CalibrationRecord.json"
 
-    @validate_arguments
+    @validate_call
     def getNormalizationRecordFilePath(self, runId: str, useLiteMode: bool, version: Version) -> Path:
         return self._constructNormalizationDataPath(runId, useLiteMode, version) / "NormalizationRecord.json"
 
@@ -492,7 +498,7 @@ class LocalDataService:
 
     ##### NORMALIZATION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         latestFile = ""
         recordPathGlob: str = str(
@@ -506,14 +512,15 @@ class LocalDataService:
         if latestFile:
             logger.info(f"reading NormalizationRecord from {latestFile}")
             try:
-                record = parse_file_as(NormalizationRecord, latestFile)  # noqa: F821
+                with open(latestFile, "r") as f:
+                    record = NormalizationRecord.model_validate_json(f.read())
             except ValidationError as e:
                 logger.error(f"Error parsing {latestFile}: {e}")
                 raise OutdatedDataSchemaError(f"It looks like the data schema for {latestFile} is outdated.") from e
 
         return record
 
-    @validate_arguments
+    @validate_call
     def _getCurrentNormalizationRecord(self, runId: str, useLiteMode: bool):
         version = self._getVersionFromNormalizationIndex(runId, useLiteMode)
         return self.readNormalizationRecord(runId, useLiteMode, version)
@@ -569,7 +576,7 @@ class LocalDataService:
 
     ##### CALIBRATION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         recordFile: str = None
         if version is not None:
@@ -582,13 +589,14 @@ class LocalDataService:
         if recordFile is not None:
             logger.info(f"reading CalibrationRecord from {recordFile}")
             try:
-                record = parse_file_as(CalibrationRecord, recordFile)
+                with open(recordFile, "r") as f:
+                    record = CalibrationRecord.model_validate_json(f.read())
             except ValidationError as e:
                 logger.error(f"Error parsing {recordFile}: {e}")
                 raise OutdatedDataSchemaError(f"It looks like the data schema for {recordFile} is outdated.") from e
         return record
 
-    @validate_arguments
+    @validate_call
     def _getCurrentCalibrationRecord(self, runId: str, useLiteMode: bool):
         version = self._getVersionFromCalibrationIndex(runId, useLiteMode)
         return self.readCalibrationRecord(runId, useLiteMode, version)
@@ -750,14 +758,15 @@ class LocalDataService:
 
     ##### REDUCTION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def readReductionRecord(self, runNumber: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
         if version is None:
             version = str(self._getLatestReductionVersionNumber(runNumber, useLiteMode))
         record = None
         if version is not None:
             filePath: Path = self._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-            record = parse_file_as(ReductionRecord, filePath)
+            with open(filePath, "r") as f:
+                record = ReductionRecord.model_validate_json(f.read())
         return record
 
     def writeReductionRecord(self, record: ReductionRecord, version: Optional[int] = None) -> ReductionRecord:
@@ -810,7 +819,7 @@ class LocalDataService:
 
         logger.info(f"wrote reduction data to {dataFilePath}: version: {version}")
 
-    @validate_arguments
+    @validate_call
     def readReductionData(self, runNumber: str, useLiteMode: bool, version: int) -> ReductionRecord:
         """
         This method is complementary to `writeReductionData`:
@@ -824,7 +833,7 @@ class LocalDataService:
         # read the metadata first, in order to use the workspaceNames list
         record = None
         with h5py.File(dataFilePath, "r") as h5:
-            record = ReductionRecord.parse_obj(n5m.extractMetadataGroup(h5, "/metadata"))
+            record = ReductionRecord.model_validate(n5m.extractMetadataGroup(h5, "/metadata"))
         for ws in record.workspaceNames:
             if mtd.doesExist(ws):
                 raise RuntimeError(f"[readReductionData]: workspace {ws} already exists in the ADS")
@@ -874,7 +883,7 @@ class LocalDataService:
                 atom["symbol"] = atom.pop("atom_type")
                 atom["coordinates"] = atom.pop("atom_coordinates")
                 atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
-            sample = CalibrantSamples.parse_raw(json.dumps(sampleJson))
+            sample = CalibrantSamples.model_validate_json(json.dumps(sampleJson))
             return sample
 
     def readCifFilePath(self, sampleId: str):
@@ -893,7 +902,7 @@ class LocalDataService:
 
     ##### READ / WRITE STATE METHODS #####
 
-    @validate_arguments
+    @validate_call
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         # check to see if such a folder exists, if not create it and initialize it
@@ -908,14 +917,15 @@ class LocalDataService:
 
         calibrationState = None
         if latestFile:
-            calibrationState = parse_file_as(Calibration, latestFile)
+            with open(latestFile, "r") as f:
+                calibrationState = Calibration.model_validate_json(f.read())
 
         if calibrationState is None:
             raise ValueError("calibrationState is None")
 
         return calibrationState
 
-    @validate_arguments
+    @validate_call
     def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         normalizationStatePathGlob = str(self._constructNormalizationParametersFilePath(runId, useLiteMode, "*"))
 
@@ -928,7 +938,8 @@ class LocalDataService:
 
         normalizationState = None
         if latestFile:
-            normalizationState = parse_file_as(Normalization, latestFile)
+            with open(latestFile, "r") as f:
+                normalizationState = Normalization.model_validate_json(f.read())
 
         return normalizationState
 
@@ -1004,7 +1015,7 @@ class LocalDataService:
             raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")
         return detectorState
 
-    @validate_arguments
+    @validate_call
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
         from snapred.backend.data.GroceryService import GroceryService
 
@@ -1016,7 +1027,7 @@ class LocalDataService:
         calibrationDataPath = self._constructCalibrationDataPath(runNumber, useLiteMode, version)
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
 
-    @validate_arguments
+    @validate_call
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         stateId, _ = self._generateStateId(runId)
@@ -1029,7 +1040,7 @@ class LocalDataService:
         instrumentConfig = self.readInstrumentConfig()
         # then pull static values specified by Malcolm from resources
         defaultGroupSliceValue = Config["calibration.parameters.default.groupSliceValue"]
-        fwhmMultipliers = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
+        fwhmMultipliers = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
         peakTailCoefficient = Config["calibration.parameters.default.peakTailCoefficient"]
         gsasParameters = GSASParameters(
             alpha=Config["calibration.parameters.default.alpha"], beta=Config["calibration.parameters.default.beta"]
@@ -1129,7 +1140,9 @@ class LocalDataService:
         path: Path = self._groupingMapPath(stateId)
         if not path.exists():
             raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
-        return parse_file_as(GroupingMap, path)
+        with open(path, "r") as f:
+            groupingMap = GroupingMap.model_validate_json(f.read())
+        return groupingMap
 
     def readGroupingMap(self, runNumber: str):
         # if the state exists then lookup its grouping map
@@ -1144,7 +1157,9 @@ class LocalDataService:
         path: Path = self._defaultGroupingMapPath()
         if not path.exists():
             raise FileNotFoundError(f'required default grouping-schema map "{path}" does not exist')
-        return parse_file_as(GroupingMap, path)
+        with open(path, "r") as f:
+            groupingMap = GroupingMap.model_validate_json(f.read())
+        return groupingMap
 
     def _writeGroupingMap(self, stateId: str, groupingMap: GroupingMap):
         # Write a GroupingMap to a file in JSON format, but only if it has been modified.

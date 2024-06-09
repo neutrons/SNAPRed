@@ -23,7 +23,7 @@ class TestMetadataService(unittest.TestCase):
 
     def setUp(self):
         self.values = ["exists", "alternate"]
-        self.metadata = WorkspaceMetadata.parse_obj(dict(zip(self.properties, self.values)))
+        self.metadata = WorkspaceMetadata.model_validate(dict(zip(self.properties, self.values)))
         return super().setUp()
 
     def tearDown(self) -> None:
