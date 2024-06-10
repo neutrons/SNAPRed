@@ -5,6 +5,7 @@ import pytest
 from qtpy.QtWidgets import QApplication, QWidget
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresenter
+from snapred.ui.widget.LoadingCursor import LoadingCursor
 from util.script_as_test import not_a_test
 
 app = QApplication(sys.argv)
@@ -67,6 +68,9 @@ def test__handleResponse_error(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     error_response = SNAPResponse(code=ResponseCode.ERROR, message="Error message")
 
+    # Initialize loadingCursor
+    workflow.loadingCursor = LoadingCursor(view)
+
     with patch("qtpy.QtWidgets.QMessageBox.critical") as mock_critical:
         workflow._handleResponse(error_response)
         mock_critical.assert_called_once()
@@ -75,6 +79,9 @@ def test__handleResponse_error(setup_view_and_workflow):
 def test__handleResponse_success(setup_view_and_workflow):
     view, workflow = setup_view_and_workflow
     success_response = SNAPResponse(code=ResponseCode.OK)
+
+    # Initialize loadingCursor
+    workflow.loadingCursor = LoadingCursor(view)
 
     with patch("snapred.ui.widget.SuccessDialog.SuccessDialog.exec_") as mock_dialog_exec:
         workflow._handleResponse(success_response)

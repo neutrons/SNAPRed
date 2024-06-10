@@ -939,7 +939,7 @@ class GroceryService:
                         if record is not None:
                             item.runNumber = record.runNumber
                     logger.info(f"Fetching normalization workspace for run {item.runNumber}, version {item.version}")
-                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(
+                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(  # noqa: F841
                         item.runNumber, item.useLiteMode, item.version
                     )
 
