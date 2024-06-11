@@ -1,12 +1,15 @@
-### Algorithm: `CrystallographicInfoAlgorithm`
+Algorithm: `CrystallographicInfoAlgorithm`
+==========================================
 
-#### Description:
+Description:
+------------
 This algorithm ingests crystallographic information from a CIF file or a provided
 crystallography JSON string. It generates unique reflections within a specified
 d-spacing range, calculates the d-values and structure factors (F^2), and
 packages this information into a `CrystallographicInfo` object.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **CifPath**:
    - **Type**: `String`
    - **Direction**: `Input`
@@ -31,7 +34,8 @@ packages this information into a `CrystallographicInfo` object.
    - **Property Mode**: `Mandatory`
    - **Description**: Maximum d-spacing for reflection generation. Default value is set from configuration.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **CrystalInfo**:
    - **Type**: `String`
    - **Direction**: `Output`

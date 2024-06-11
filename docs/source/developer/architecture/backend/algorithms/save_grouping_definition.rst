@@ -1,11 +1,14 @@
-### Algorithm: `SaveGroupingDefinition`
+Algorithm: `SaveGroupingDefinition`
+===================================
 
-#### Description:
+Description:
+------------
 This algorithm takes in a grouping definition (file or object) and saves it in a diffraction
 calibration file format. Either a grouping filename or a grouping workspace must be specified,
 but not both.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **GroupingFilename**:
     - **Type**: `FileProperty`
     - **Direction**: `Input`
@@ -40,5 +43,4 @@ but not both.
     - **Type**: `MatrixWorkspace`
     - **Direction**: `Input`
     - **Property Mode**: `Optional`
-    - **Description**: Workspace to optionally take the instrument from, when GroupingFilename is
-    in XML format.
+    - **Description**: Workspace to optionally take the instrument from, when GroupingFilename is in XML format.

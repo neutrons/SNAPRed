@@ -1,17 +1,21 @@
-### Algorithm: `MakeDirtyDish`
+Algorithm: `MakeDirtyDish`
+==========================
 
-#### Description:
+Description:
+------------
 This algorithm records a workspace in a state for the CIS to view later by
 cloning the input workspace to an output workspace if CIS mode is enabled.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **InputWorkspace**:
    - **Type**: `Workspace`
    - **Direction**: `Input`
    - **Property Mode**: `Mandatory`
    - **Description**: The workspace to be cloned.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **OutputWorkspace**:
    - **Type**: `Workspace`
    - **Direction**: `Output`

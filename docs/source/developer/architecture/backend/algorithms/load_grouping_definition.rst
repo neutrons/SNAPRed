@@ -1,11 +1,14 @@
-### Algorithm: `LoadGroupingDefinition`
+Algorithm: `LoadGroupingDefinition`
+===================================
 
-#### Description:
+Description:
+------------
 This algorithm creates a grouping workspace from a grouping definition file.
 It supports NEXUS, XML, and HDF formats and uses an associated instrument
 specified by various means.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **GroupingFilename**:
    - **Type**: `FileProperty`
    - **Direction**: `Input`
@@ -30,7 +33,8 @@ specified by various means.
    - **Property Mode**: `Optional`
    - **Description**: Workspace to optionally take the instrument from, when GroupingFilename is in XML format.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **OutputWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Output`

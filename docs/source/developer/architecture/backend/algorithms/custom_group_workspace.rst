@@ -1,12 +1,15 @@
-### Algorithm: `CustomGroupWorkspace`
+Algorithm: `CustomGroupWorkspace`
+=================================
 
-#### Description:
+Description:
+------------
 This algorithm orchestrates loading grouping workspaces and then grouping them
 into a `GroupedWorkspace`. Although the loading behavior is no longer needed,
 the algorithm is retained to call Mantid's `GroupWorkspaces` for maintaining
 conformity with previous processes.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **GroupingWorkspaces**:
    - **Type**: `StringArrayProperty`
    - **Direction**: `Input`
@@ -19,7 +22,8 @@ conformity with previous processes.
    - **Property Mode**: `Optional`
    - **Description**: Focus group information (additional metadata, usage not explicitly defined in the provided code).
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **OutputWorkspace**:
    - **Type**: `WorkspaceGroup`
    - **Direction**: `Output`

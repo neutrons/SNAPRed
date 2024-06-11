@@ -1,11 +1,14 @@
-### Algorithm: `FocusSpectraAlgorithm`
+Algorithm: `FocusSpectraAlgorithm`
+==================================
 
-#### Description:
+Description:
+------------
 This algorithm focuses diffraction data using a specified grouping workspace.
 It converts the input workspace to d-spacing, applies diffraction focusing,
 and optionally rebins the output.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **InputWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Input`
@@ -30,7 +33,8 @@ and optionally rebins the output.
    - **Property Mode**: `Optional`
    - **Description**: Flag indicating whether to rebin the output workspace.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **OutputWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Output`

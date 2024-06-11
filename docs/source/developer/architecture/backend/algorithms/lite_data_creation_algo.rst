@@ -1,11 +1,14 @@
-### Algorithm: `LiteDataCreationAlgo`
+Algorithm: `LiteDataCreationAlgo`
+=================================
 
-#### Description:
+Description:
+------------
 This algorithm converts a full-resolution dataset to a lite resolution dataset
 using a specified grouping workspace. It optionally compresses the output and
 can delete the non-lite workspace.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **InputWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Input`
@@ -30,7 +33,8 @@ can delete the non-lite workspace.
    - **Property Mode**: `Optional`
    - **Description**: Flag indicating whether to automatically delete the non-lite workspace after conversion.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **OutputWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Output`

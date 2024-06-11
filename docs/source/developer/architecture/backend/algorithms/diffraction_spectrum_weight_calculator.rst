@@ -1,12 +1,15 @@
-### Algorithm: `DiffractionSpectrumWeightCalculator`
+Algorithm: `DiffractionSpectrumWeightCalculator`
+================================================
 
-#### Description:
+Description:
+------------
 This algorithm calculates weights for diffraction spectra based on predicted peaks.
 It clones the input workspace to create a weight workspace, applies zero weights to
 regions around the predicted peaks, and handles event data by converting it to
 histogram data if necessary.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **InputWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Input`
@@ -19,7 +22,8 @@ histogram data if necessary.
    - **Property Mode**: `Mandatory`
    - **Description**: JSON string of predicted peaks.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **WeightWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Output`

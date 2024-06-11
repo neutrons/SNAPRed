@@ -1,11 +1,14 @@
-### Algorithm: `MaskDetectorFlags`
+Algorithm: `MaskDetectorFlags`
+==============================
 
-#### Description:
+Description:
+------------
 This algorithm initializes detector flags from a mask workspace. Unlike Mantid's `MaskDetectors`,
 it does not clear any masked spectra or move masked detectors to group zero for grouping
 workspaces.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **MaskWorkspace**:
    - **Type**: `MaskWorkspace`
    - **Direction**: `Input`

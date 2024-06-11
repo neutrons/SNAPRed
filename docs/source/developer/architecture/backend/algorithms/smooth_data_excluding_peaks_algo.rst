@@ -1,10 +1,13 @@
-### Algorithm: `SmoothDataExcludingPeaksAlgo`
+Algorithm: `SmoothDataExcludingPeaksAlgo`
+=========================================
 
-#### Description:
+Description:
+------------
 This algorithm removes peaks from a given workspace and smooths the data using a spline function. It processes the
 input workspace to exclude specified peaks and then applies a smoothing spline to the remaining data.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **InputWorkspace**:
     - **Type**: `MatrixWorkspace`
     - **Direction**: `Input`

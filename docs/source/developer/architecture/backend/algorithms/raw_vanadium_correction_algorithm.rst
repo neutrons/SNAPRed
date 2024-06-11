@@ -1,11 +1,14 @@
-### Algorithm: `RawVanadiumCorrectionAlgorithm`
+Algorithm: `RawVanadiumCorrectionAlgorithm`
+===========================================
 
-#### Description:
+Description:
+------------
 This algorithm processes raw vanadium data, correcting it by subtracting background data,
 scaling, and applying absorption corrections based on the sample geometry. The result is
 a corrected dataset suitable for further analysis.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **InputWorkspace**:
     - **Type**: `MatrixWorkspace`
     - **Direction**: `Input`
@@ -22,8 +25,7 @@ a corrected dataset suitable for further analysis.
     - **Type**: `MatrixWorkspace`
     - **Direction**: `Input`
     - **Property Mode**: `Mandatory`
-    - **Description**: Workspace containing corrected data; if none given, the
-    InputWorkspace will be overwritten.
+    - **Description**: Workspace containing corrected data; if none given, the InputWorkspace will be overwritten.
 
 4. **Ingredients**:
     - **Type**: `String`

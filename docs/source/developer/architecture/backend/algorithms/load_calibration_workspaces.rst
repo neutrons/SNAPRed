@@ -1,11 +1,14 @@
-### Algorithm: `LoadCalibrationWorkspaces`
+Algorithm: `LoadCalibrationWorkspaces`
+======================================
 
-#### Description:
+Description:
+------------
 This algorithm creates a table workspace and a mask workspace from a calibration-data
 HDF5 file. It uses an instrument donor workspace to load the calibration constants and
 mask data.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **Filename**:
    - **Type**: `FileProperty`
    - **Direction**: `Input`
@@ -18,7 +21,8 @@ mask data.
    - **Property Mode**: `Mandatory`
    - **Description**: Workspace to use as an instrument donor.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **CalibrationTable**:
    - **Type**: `ITableWorkspace`
    - **Direction**: `Output`

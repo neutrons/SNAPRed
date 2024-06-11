@@ -1,11 +1,14 @@
-### Algorithm: `ConjoinTableWorkspaces`
+Algorithm: `ConjoinTableWorkspaces`
+===================================
 
-#### Description:
+Description:
+------------
 This algorithm combines two table workspaces by adding the rows of the second workspace
 to the first. It ensures that the columns of both workspaces match in number, names, and
 types.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **InputWorkspace1**:
    - **Type**: `ITableWorkspace`
    - **Direction**: `InOut`
@@ -24,5 +27,6 @@ types.
    - **Property Mode**: `Optional`
    - **Description**: Flag indicating whether to automatically delete the second workspace after conjoining.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 - **InputWorkspace1**: The modified workspace with rows from `InputWorkspace2` added.

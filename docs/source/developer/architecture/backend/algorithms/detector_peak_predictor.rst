@@ -1,11 +1,14 @@
-### Algorithm: `DetectorPeakPredictor`
+Algorithm: `DetectorPeakPredictor`
+==================================
 
-#### Description:
+Description:
+------------
 This algorithm predicts detector peaks based on the provided detector peak ingredients.
 It calculates the beta terms, full width at half maximum (FWHM), and generates a list
 of `DetectorPeak` objects for each group, optionally purging duplicates.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **Ingredients**:
    - **Type**: `String`
    - **Direction**: `Input`
@@ -18,7 +21,8 @@ of `DetectorPeak` objects for each group, optionally purging duplicates.
    - **Property Mode**: `Optional`
    - **Description**: Flag to indicate whether to purge duplicate peaks.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **DetectorPeaks**:
    - **Type**: `String`
    - **Direction**: `Output`

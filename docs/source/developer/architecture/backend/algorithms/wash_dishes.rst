@@ -1,9 +1,12 @@
-### Algorithm: `WashDishes`
+Algorithm: `WashDishes`
+=======================
 
-#### Description:
+Description:
+------------
 This algorithm deletes specified workspaces from the Mantid workspace list unless the CIS mode is enabled. It ensures that only existing workspaces are attempted to be deleted.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **Workspace**:
     - **Type**: `String`
     - **Direction**: `Input`

@@ -1,10 +1,13 @@
-### Algorithm: `PixelDiffractionCalibration`
+Algorithm: `PixelDiffractionCalibration`
+========================================
 
-#### Description:
+Description:
+------------
 This algorithm calculates the offset-corrected DIFC associated with a given workspace as part of diffraction calibration.
 It may be re-called iteratively with `execute` to ensure convergence.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **InputWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Input`
@@ -23,7 +26,8 @@ It may be re-called iteratively with `execute` to ensure convergence.
    - **Property Mode**: `Mandatory`
    - **Description**: JSON string of the DiffractionCalibrationIngredients.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **CalibrationTable**:
    - **Type**: `ITableWorkspace`
    - **Direction**: `Output`

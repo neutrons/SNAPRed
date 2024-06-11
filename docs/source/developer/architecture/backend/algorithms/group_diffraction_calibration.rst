@@ -1,11 +1,14 @@
-### Algorithm: `GroupDiffractionCalibration`
+Algorithm: `GroupDiffractionCalibration`
+========================================
 
-#### Description:
+Description:
+------------
 This algorithm calculates the group-aligned DIFC associated with a given workspace,
 as part of diffraction calibration. It processes input neutron data, applies
 diffraction calibration, and outputs various calibration and diagnostic workspaces.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **InputWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Input`
@@ -30,7 +33,8 @@ diffraction calibration, and outputs various calibration and diagnostic workspac
    - **Property Mode**: `Mandatory`
    - **Description**: JSON string containing the ingredients for the algorithm.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **OutputWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Output`

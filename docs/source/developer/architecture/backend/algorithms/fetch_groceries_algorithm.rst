@@ -1,10 +1,13 @@
-### Algorithm: `FetchGroceriesAlgorithm`
+Algorithm: `FetchGroceriesAlgorithm`
+====================================
 
-#### Description:
+Description:
+------------
 This algorithm is used for general-purpose loading of Nexus data or grouping workspaces.
 It supports various loader types and handles different file formats.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **Filename**:
    - **Type**: `FileProperty`
    - **Direction**: `Input`
@@ -41,7 +44,8 @@ It supports various loader types and handles different file formats.
    - **Property Mode**: `Optional`
    - **Description**: Workspace to optionally take the instrument from.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **OutputWorkspace**:
    - **Type**: `Workspace`
    - **Direction**: `Output`

@@ -1,11 +1,14 @@
-### Algorithm: `PurgeOverlappingPeaksAlgorithm`
+Algorithm: `PurgeOverlappingPeaksAlgorithm`
+===========================================
 
-#### Description:
+Description:
+------------
 This algorithm purges overlapping peaks from a list of peaks based on intensity and d-spacing range. It
 ensures that only non-overlapping peaks within a specified d-spacing range and above a specified
 intensity threshold are retained.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **Ingredients**:
    - **Type**: `String`
    - **Direction**: `Input`
@@ -30,7 +33,8 @@ intensity threshold are retained.
    - **Property Mode**: `Mandatory`
    - **Description**: Maximum d-spacing for peak selection.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **OutputPeakMap**:
    - **Type**: `String`
    - **Direction**: `Output`

@@ -1,11 +1,14 @@
-### Algorithm: `FitMultiplePeaksAlgorithm`
+Algorithm: `FitMultiplePeaksAlgorithm`
+======================================
 
-#### Description:
+Description:
+------------
 This algorithm fits multiple peaks in a given workspace using a specified peak function.
 It processes the input workspace, fits the peaks, and outputs the results in various
 workspaces, grouped together.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **InputWorkspace**:
    - **Type**: `MatrixWorkspace`
    - **Direction**: `Input`
@@ -24,7 +27,8 @@ workspaces, grouped together.
    - **Property Mode**: `Mandatory`
    - **Description**: Type of peak function to use. Valid options are those in `allowed_peak_type_list`.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **OutputWorkspaceGroup**:
    - **Type**: `WorkspaceGroup`
    - **Direction**: `Output`

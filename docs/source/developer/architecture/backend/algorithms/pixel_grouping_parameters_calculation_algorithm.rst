@@ -1,12 +1,15 @@
-### Algorithm: `PixelGroupingParametersCalculationAlgorithm`
+Algorithm: `PixelGroupingParametersCalculationAlgorithm`
+========================================================
 
-#### Description:
+Description:
+------------
 This algorithm calculates state-derived parameters for pixel groupings.
 It uses information from the provided grouping workspace and optional
 mask workspace to compute various grouping parameters such as mean L2,
 twoTheta, azimuth, and dSpacing resolution.
 
-#### Expected Inputs:
+Expected Inputs:
+----------------
 1. **Ingredients**:
    - **Type**: `String`
    - **Direction**: `Input`
@@ -26,7 +29,8 @@ twoTheta, azimuth, and dSpacing resolution.
    - **Property Mode**: `Optional`
    - **Description**: The mask workspace for a specified calibration run number and version.
 
-#### Expected Outputs:
+Expected Outputs:
+-----------------
 1. **OutputParameters**:
    - **Type**: `String`
    - **Direction**: `Output`
