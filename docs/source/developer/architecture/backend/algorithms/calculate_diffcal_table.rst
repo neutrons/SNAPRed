@@ -4,8 +4,8 @@ Algorithm: `CalculateDiffCalTable`
 Description:
 ------------
 This algorithm calculates a diffraction calibration table based on the input workspace. It uses the
-instrument definition within the workspace to create a DIFC table and then converts this table into
-a calibration table.
+instrument definition within the workspace and calls the CalculateDIFC algorithm, which moronically
+creates matrix workspace, and converts the matrix workspace into a calibration table.
 
 Expected Inputs:
 ----------------
