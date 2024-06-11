@@ -130,7 +130,7 @@ class DataFactoryService:
     
     @validate_arguments
     def getNormalizationVersion(self, runId: str, useLiteMode: bool):
-        return self.lookupService._getVersionFromNormalizationIndex(runId, useLiteMode)
+        return self.lookupService.getVersionFromNormalizationIndex(runId, useLiteMode)
 
     ##### REDUCTION METHODS #####
 
