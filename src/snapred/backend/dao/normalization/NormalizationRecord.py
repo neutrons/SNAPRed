@@ -2,6 +2,7 @@ from typing import List
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.indexing.Record import Record
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
 class NormalizationRecord(Record):
@@ -25,6 +26,6 @@ class NormalizationRecord(Record):
     peakIntensityThreshold: float
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     calibration: Calibration
-    workspaceNames: List[str] = []
+    workspaceNames: List[WorkspaceName] = []
 
     dMin: float

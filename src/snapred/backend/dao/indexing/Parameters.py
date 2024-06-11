@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, Extra, field_validator
 from snapred.backend.dao.indexing.IndexEntry import UNINITIALIZED, Version
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
@@ -24,8 +24,15 @@ class Parameters(BaseModel, extra=Extra.allow):
     """
 
     instrumentState: InstrumentState
-    seedRun: int
+    seedRun: str
     useLiteMode: bool
     creationDate: datetime
     name: str
     version: Version = UNINITIALIZED
+
+    @field_validator("seedRun", mode="before")
+    @classmethod
+    def validate_runNumber(cls, v):
+        if isinstance(v, int):
+            v = str(v)
+        return v

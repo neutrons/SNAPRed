@@ -1,3 +1,5 @@
+from typing import Optional
+
 from snapred.backend.dao.indexing.Parameters import Parameters
 
 
@@ -11,4 +13,14 @@ class Calibration(Parameters):
 
     """
 
-    pass
+    # inherits from Parameters
+    # - instrumentState: InstrumentState
+    # - seedRun: str
+    # - useLiteMode: bool
+    # - creationDate: datetime
+    # - name: str
+    # - version: Union[int, UNINITIALIZED]
+
+    # these are saved for later use in reduction
+    calibrantSamplePath: Optional[str] = None
+    peakIntensityThreshold: Optional[float] = None

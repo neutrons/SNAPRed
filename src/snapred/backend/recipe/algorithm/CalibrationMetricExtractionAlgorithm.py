@@ -51,7 +51,7 @@ class CalibrationMetricExtractionAlgorithm(PythonAlgorithm):
         inputWorkspace = self.getProperty("InputWorkspace").value
         # inputWorkspace = self.mantidSnapper.mtd[inputWorkspace]
 
-        pixelGroup = PixelGroup.parse_raw(self.getPropertyValue("PixelGroup"))
+        pixelGroup = PixelGroup.model_validate_json(self.getPropertyValue("PixelGroup"))
         pixelGroupingParameters = list(pixelGroup.pixelGroupingParameters.values())
         # collect all params and peak positions
         peakPos = inputWorkspace.getItem(FitOutputEnum.PeakPosition.value)

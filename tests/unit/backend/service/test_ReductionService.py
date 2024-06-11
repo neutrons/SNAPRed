@@ -4,12 +4,12 @@ import unittest.mock as mock
 from random import randint
 from typing import List
 
+import pydantic
 import pytest
 from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
-from pydantic import parse_obj_as
 
 # Mock out of scope modules before importing DataExportService
 
@@ -72,8 +72,8 @@ class TestReductionService(unittest.TestCase):
 
     def test_loadAllGroupings(self):
         data = self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode)
-        assert parse_obj_as(List[FocusGroup], data["focusGroups"])
-        assert parse_obj_as(List[str], data["groupingWorkspaces"])
+        assert pydantic.TypeAdapter(List[FocusGroup]).validate_python(data["focusGroups"])
+        assert pydantic.TypeAdapter(List[str]).validate_python(data["groupingWorkspaces"])
 
     def test_fetchReductionGroupings(self):
         data = self.instance.fetchReductionGroupings(self.request)
@@ -84,7 +84,7 @@ class TestReductionService(unittest.TestCase):
         # Call the method with the provided parameters
         res = self.instance.prepReductionIngredients(self.request)
 
-        assert ReductionIngredients.parse_obj(res)
+        assert ReductionIngredients.model_validate(res)
         assert res == self.instance.sousChef.prepReductionIngredients(self.request)
 
     def test_fetchReductionGroceries(self):

@@ -6,9 +6,11 @@ import unittest.mock as mock
 from random import randint
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, DeleteWorkspace, mtd
+from snapred.backend.dao.calibration import Calibration
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state import InstrumentState
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -41,9 +43,21 @@ class TestDataFactoryService(unittest.TestCase):
         method_list = [method for method in method_list if method not in exceptions and method not in needIndexor]
         for x in method_list:
             setattr(getattr(cls.mockLookupService, x), "side_effect", lambda *x: cls.expected(cls, *x))
+
+        mockStateId = "04bd2c53f6bf6754"
+        mockInstrumentState = InstrumentState.construct(id=mockStateId)
+        mockCalibration = Calibration.construct(instrumentState=mockInstrumentState)
+
         # these are treated specially as returning specific object types
         cls.mockLookupService.readInstrumentConfig.return_value = InstrumentConfig.construct({})
-        cls.mockLookupService.readStateConfig.return_value = StateConfig.construct({})
+        #
+        # ... allow the `StateConfig` to actually complete validation:
+        #   this is required because `getReductionState` is declared in the wrong place... :(
+        #
+        cls.mockLookupService.readStateConfig.return_value = StateConfig.construct(
+            stateId=mockStateId,
+            calibration=mockCalibration,
+        )
         cls.mockLookupService.readRunConfig.return_value = RunConfig.construct({})
         # these are treated specially to give the return of a mocked indexor
         cls.mockLookupService.calibrationIndexor.return_value = mock.Mock(

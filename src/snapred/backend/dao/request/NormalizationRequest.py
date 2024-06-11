@@ -25,4 +25,4 @@ class NormalizationRequest(BaseModel):
     crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
     peakIntensityThreshold: float = Config["constants.PeakIntensityFractionThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
-    fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
+    fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])

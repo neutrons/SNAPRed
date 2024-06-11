@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 import h5py
 from mantid.kernel import PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
-from pydantic import parse_file_as, validate_arguments
+from pydantic import validate_call
 
 from snapred.backend.dao import (
     GSASParameters,
@@ -108,6 +108,7 @@ class LocalDataService:
             instrumentParameterMap["maxBandwidth"] = instrumentParameterMap.pop("extendedNeutronBandwidth")
             instrumentParameterMap["delTOverT"] = instrumentParameterMap.pop("delToT")
             instrumentParameterMap["delLOverL"] = instrumentParameterMap.pop("delLoL")
+            instrumentParameterMap["version"] = str(instrumentParameterMap["version"])
             instrumentConfig = InstrumentConfig(**instrumentParameterMap)
         except KeyError as e:
             raise KeyError(f"{e}: while reading instrument configuration '{self.instrumentConfigPath}'") from e
@@ -246,7 +247,7 @@ class LocalDataService:
 
     # reduction paths #
 
-    @validate_arguments
+    @validate_call
     def _constructReductionStateRoot(self, runNumber: str) -> Path:
         stateId, _ = self._generateStateId(runNumber)
         IPTS = Path(self.getIPTS(runNumber))
@@ -254,13 +255,13 @@ class LocalDataService:
         reductionHome = Path(Config["instrument.reduction.home"].format(IPTS=IPTS.name))
         return reductionHome / stateId
 
-    @validate_arguments
+    @validate_call
     def _constructReductionDataRoot(self, runNumber: str, useLiteMode: bool) -> Path:
         reductionStateRoot = self._constructReductionStateRoot(runNumber)
         mode = "lite" if useLiteMode else "native"
         return reductionStateRoot / mode / runNumber
 
-    @validate_arguments
+    @validate_call
     def _constructReductionDataFilePath(self, runNumber: str, useLiteMode: bool, version: Version) -> Path:
         stateId, _ = self._generateStateId(runNumber)
         fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
@@ -329,7 +330,7 @@ class LocalDataService:
 
     ##### NORMALIZATION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         """
         Will return a normalization record for the given version.
@@ -391,7 +392,7 @@ class LocalDataService:
 
     ##### CALIBRATION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         """
         Will return a calibration record for the given version.
@@ -556,7 +557,7 @@ class LocalDataService:
 
     ##### REDUCTION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def readReductionRecord(self, runNumber: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
         """
         Will return a reduction record for the given version.
@@ -612,7 +613,7 @@ class LocalDataService:
 
         logger.info(f"wrote reduction data to {dataFilepath}: version: {version}")
 
-    @validate_arguments
+    @validate_call
     def readReductionData(self, runNumber: str, useLiteMode: bool, version: int) -> ReductionRecord:
         """
         This method is complementary to `writeReductionData`:
@@ -626,7 +627,7 @@ class LocalDataService:
         # read the metadata first, in order to use the workspaceNames list
         record = None
         with h5py.File(dataFilePath, "r") as h5:
-            record = ReductionRecord.parse_obj(n5m.extractMetadataGroup(h5, "/metadata"))
+            record = ReductionRecord.model_validate(n5m.extractMetadataGroup(h5, "/metadata"))
         for ws in record.workspaceNames:
             if mtd.doesExist(ws):
                 raise RuntimeError(f"[readReductionData]: workspace {ws} already exists in the ADS")
@@ -641,7 +642,7 @@ class LocalDataService:
 
     ##### READ / WRITE STATE METHODS #####
 
-    @validate_arguments
+    @validate_call
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         indexor = self.calibrationIndexor(runId, useLiteMode)
@@ -651,7 +652,7 @@ class LocalDataService:
         parameters = indexor.readParameters(version)
         return Calibration.parse_obj(parameters)
 
-    @validate_arguments
+    @validate_call
     def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         indexor = self.normalizationIndexor(runId, useLiteMode)
         # NOTE if we prefer latest version in index, uncomment below
@@ -691,7 +692,7 @@ class LocalDataService:
             raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")
         return detectorState
 
-    @validate_arguments
+    @validate_call
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
         from snapred.backend.data.GroceryService import GroceryService
 
@@ -704,7 +705,7 @@ class LocalDataService:
         calibrationDataPath = indexor.versionPath(version)
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
 
-    @validate_arguments
+    @validate_call
     @ExceptionHandler(StateValidationException)
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         stateId, _ = self._generateStateId(runId)
@@ -717,7 +718,7 @@ class LocalDataService:
         instrumentConfig = self.readInstrumentConfig()
         # then pull static values specified by Malcolm from resources
         defaultGroupSliceValue = Config["calibration.parameters.default.groupSliceValue"]
-        fwhmMultipliers = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
+        fwhmMultipliers = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
         peakTailCoefficient = Config["calibration.parameters.default.peakTailCoefficient"]
         gsasParameters = GSASParameters(
             alpha=Config["calibration.parameters.default.alpha"], beta=Config["calibration.parameters.default.beta"]
@@ -871,7 +872,9 @@ class LocalDataService:
         path: Path = self._groupingMapPath(stateId)
         if not path.exists():
             raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
-        return parse_file_as(GroupingMap, path)
+        with open(path, "r") as f:
+            groupingMap = GroupingMap.model_validate_json(f.read())
+        return groupingMap
 
     def readGroupingMap(self, runNumber: str):
         # if the state exists then lookup its grouping map
@@ -886,7 +889,9 @@ class LocalDataService:
         path: Path = self._defaultGroupingMapPath()
         if not path.exists():
             raise FileNotFoundError(f'required default grouping-schema map "{path}" does not exist')
-        return parse_file_as(GroupingMap, path)
+        with open(path, "r") as f:
+            groupingMap = GroupingMap.model_validate_json(f.read())
+        return groupingMap
 
     def _writeGroupingMap(self, stateId: str, groupingMap: GroupingMap):
         # Write a GroupingMap to a file in JSON format, but only if it has been modified.

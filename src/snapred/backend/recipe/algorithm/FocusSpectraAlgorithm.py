@@ -78,7 +78,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         return errors
 
     def PyExec(self):
-        ingredients: Ingredients = Ingredients.parse_raw(self.getPropertyValue("Ingredients"))
+        ingredients: Ingredients = Ingredients.model_validate_json(self.getPropertyValue("Ingredients"))
         self.chopIngredients(ingredients)
         self.unbagGroceries()
 

@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Extra
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Extra, field_validator
 from snapred.backend.dao.indexing.IndexEntry import UNINITIALIZED, IndexEntry, Nonentry, Version
 
 
@@ -36,8 +38,22 @@ class Record(BaseModel, extra=Extra.allow):
             )
         return entry
 
+    @field_validator("runNumber", mode="before")
+    @classmethod
+    def validate_runNumber(cls, v: Any) -> Any:
+        if isinstance(v, int):
+            v = str(v)
+        return v
+
+    model_config = ConfigDict(
+        # required in order to use 'WorkspaceName'
+        arbitrary_types_allowed=True,
+    )
+
 
 Nonrecord = Record(
+    # NOTE use the Nonrecord when a record is expected, but none present.
+    # Use this in preference to None.
     runNumber="none",
     useLiteMode=False,
     version=UNINITIALIZED,

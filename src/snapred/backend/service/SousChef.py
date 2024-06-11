@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from pydantic import parse_raw_as
+import pydantic
 
 from snapred.backend.dao import CrystallographicInfo, GroupPeakList, RunConfig
 from snapred.backend.dao.calibration import Calibration
@@ -129,6 +129,11 @@ class SousChef(Service):
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
         )
 
+    @staticmethod
+    def parseGroupPeakList(src: str) -> List[GroupPeakList]:
+        # Implemented as a separate method to facilitate testing
+        return pydantic.TypeAdapter(List[GroupPeakList]).validate_json(src)
+
     def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=True) -> List[GroupPeakList]:
         # NOTE purging overlapping peaks is necessary for proper functioning inside the DiffCal process
         # this should not be user-settable, and therefore should not be included inside the FarmFreshIngredients list
@@ -157,7 +162,8 @@ class SousChef(Service):
                     dMin=dMin,
                     dMax=dMax,
                 )
-            self._peaksCache[key] = parse_raw_as(List[GroupPeakList], res)
+            self._peaksCache[key] = self.parseGroupPeakList(res)
+
         return self._peaksCache[key]
 
     def prepManyDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[List[GroupPeakList]]:

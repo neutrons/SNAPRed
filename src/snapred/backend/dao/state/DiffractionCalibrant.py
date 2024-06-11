@@ -9,8 +9,8 @@ class DiffractionCalibrant(BaseModel):
     runNumber: str
     filename: str
     diffCalPath: str
-    name: Optional[str]
-    latticeParameters: Optional[str]  # though it is a csv string of floats
-    reference: Optional[str]
-    crystallographicInfo: Optional[CrystallographicInfo]
-    fSquaredThreshold: Optional[float]
+    name: Optional[str] = None
+    latticeParameters: Optional[str] = None  # though it is a csv string of floats
+    reference: Optional[str] = None
+    crystallographicInfo: Optional[CrystallographicInfo] = None
+    fSquaredThreshold: Optional[float] = None

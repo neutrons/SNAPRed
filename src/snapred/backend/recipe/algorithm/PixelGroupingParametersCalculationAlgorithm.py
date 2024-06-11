@@ -75,7 +75,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.log().notice("Calculate pixel grouping state-derived parameters")
 
         # define/calculate some auxiliary state-derived parameters
-        ingredients = PixelGroupingIngredients.parse_raw(self.getProperty("Ingredients").value)
+        ingredients = PixelGroupingIngredients.model_validate_json(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
         self.unbagGroceries(ingredients)
 

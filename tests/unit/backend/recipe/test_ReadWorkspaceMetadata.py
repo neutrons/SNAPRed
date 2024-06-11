@@ -11,7 +11,7 @@ import pytest
 
 # mantid imports
 from mantid.simpleapi import AddSampleLogMultiple, CreateSingleValuedWorkspace, mtd
-from pydantic import BaseModel, Extra, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 # the algorithm to test
 from snapred.backend.dao.WorkspaceMetadata import UNSET
@@ -25,11 +25,13 @@ TAG_PREFIX = Config["metadata.tagPrefix"]
 
 # this mocks out the original workspace metadata class
 # to ensure the algorithm is as generic as possible in case of later extension
-class WorkspaceMetadata(BaseModel, extra=Extra.forbid):
+class WorkspaceMetadata(BaseModel):
     fruit: Literal[UNSET, "apple", "pear", "orange"] = UNSET
     veggie: Literal[UNSET, "broccoli", "cauliflower"] = UNSET
     bread: Literal[UNSET, "sourdough", "pumpernickel"] = UNSET
     dairy: Literal[UNSET, "milk", "cheese", "yogurt", "butter"] = UNSET
+
+    model_config = ConfigDict(extra="forbid")
 
 
 # NOTE do NOT remove this patch
@@ -41,7 +43,7 @@ class TestReadWorkspaceMetadata(unittest.TestCase):
 
     def setUp(self):
         self.values = ["apple", "broccoli", "sourdough", "cheese"]
-        self.metadata = WorkspaceMetadata.parse_obj(dict(zip(self.properties, self.values)))
+        self.metadata = WorkspaceMetadata.model_validate(dict(zip(self.properties, self.values)))
         return super().setUp()
 
     def tearDown(self) -> None:

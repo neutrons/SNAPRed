@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from pydantic import validate_arguments
+from pydantic import validate_call
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
@@ -46,7 +46,7 @@ class DataExportService:
 
     ##### CALIBRATION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def initializeState(self, runId: str, useLiteMode: bool, name: str):
         return self.dataService.initializeState(runId, useLiteMode, name)
 
@@ -122,14 +122,14 @@ class DataExportService:
 
     ##### WORKSPACE METHODS #####
 
-    @validate_arguments
+    # @validate_call # until further notice: does not work with 'WorkspaceName'
     def exportWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
         Write a MatrixWorkspace (derived) workspace to disk in nexus format.
         """
         return self.dataService.writeWorkspace(path, filename, workspaceName)
 
-    @validate_arguments
+    # @validate_call # until further notice: does not work with 'WorkspaceName'
     def exportRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
         Write a MatrixWorkspace (derived) workspace to disk in nexus format.

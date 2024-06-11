@@ -69,8 +69,9 @@ def _capture_logging(monkeypatch):
 
 
 fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
-reductionIngredientsPath = Resource.getPath("inputs/calibration/ReductionIngredients.json")
-reductionIngredients = ReductionIngredients.parse_file(reductionIngredientsPath)
+reductionIngredients = ReductionIngredients.model_validate_json(
+    Resource.read("inputs/calibration/ReductionIngredients.json")
+)
 
 ### TESTS OF MISCELLANEOUS METHODS ###
 
@@ -171,10 +172,7 @@ def test_readStateConfig():
     parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
-        tmpRoot.addFileAs(
-            groupingMapPath,
-            localDataService._groupingMapPath(tmpRoot.stateId),
-        )
+        tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.addFileAs(parametersPath, localDataService.calibrationIndexor("57514", True).parametersPath(1))
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
@@ -187,10 +185,7 @@ def test_readStateConfig_attaches_grouping_map():
     parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
-        tmpRoot.addFileAs(
-            groupingMapPath,
-            localDataService._groupingMapPath(tmpRoot.stateId),
-        )
+        tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.addFileAs(parametersPath, localDataService.calibrationIndexor("57514", True).parametersPath(1))
         actual = localDataService.readStateConfig("57514", True)
     expectedMap = GroupingMap.parse_file(groupingMapPath)
@@ -248,8 +243,8 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
     localDataService._generateStateId = mock.Mock()
     localDataService._generateStateId.return_value = ("ab8704b0bc2a2342", None)
     localDataService.readCalibrationState = mock.Mock()
-    localDataService.readCalibrationState.return_value = Calibration.parse_file(
-        Resource.getPath("inputs/calibration/CalibrationParameters.json")
+    localDataService.readCalibrationState.return_value = Calibration.model_validate_json(
+        Resource.read("inputs/calibration/CalibrationParameters.json")
     )
 
     localDataService._groupingMapPath = mock.Mock()
@@ -370,6 +365,11 @@ def test_workspaceIsInstance_no_ws():
     testWS0 = "test_ws"
     assert not mtd.doesExist(testWS0)
     assert not localDataService.workspaceIsInstance(testWS0, MatrixWorkspace)
+
+
+# NOTE if your merge tries to put
+#       test_write_model_pretty_StateConfig_excludes_grouping_map
+# at the point, do NOT place it here.  It goes above, in the section of miscellaneous method tests
 
 
 def test_readRunConfig():
@@ -802,7 +802,7 @@ def test_readWriteNormalizationIndexEntry():
 
 def readReductionIngredientsFromFile():
     with Resource.open("/inputs/calibration/ReductionIngredients.json", "r") as f:
-        return ReductionIngredients.parse_raw(f.read())
+        return ReductionIngredients.model_validate_json(f.read())
 
 
 ### METHODS FOR TESTING NORMALIZATION / CALIBRATION / REDUCTION METHODS ###
@@ -922,7 +922,7 @@ def test_writeNormalizationRecord_no_version():
 def test_writeNormalizationWorkspaces():
     stateId = "ab8704b0bc2a2342"
     localDataService = LocalDataService()
-    testNormalizationRecord = NormalizationRecord.parse_raw(
+    testNormalizationRecord = NormalizationRecord.model_validate_json(
         Resource.read("inputs/normalization/NormalizationRecord.json")
     )
     with state_root_redirect(localDataService, stateId=stateId):
@@ -1066,8 +1066,12 @@ def _writeSyntheticReductionRecord(filePath: Path, version: str):
     # Create a `ReductionRecord` JSON file to be used by the unit tests.
 
     # TODO: Implement methods to create the synthetic `CalibrationRecord` and `NormalizationRecord`.
-    testCalibration = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
-    testNormalization = NormalizationRecord.parse_raw(Resource.read("inputs/normalization/NormalizationRecord.json"))
+    testCalibration = CalibrationRecord.model_validate_json(
+        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+    )
+    testNormalization = NormalizationRecord.model_validate_json(
+        Resource.read("inputs/normalization/NormalizationRecord.json")
+    )
     testRecord = ReductionRecord(
         runNumbers=[testCalibration.runNumber],
         useLiteMode=testCalibration.useLiteMode,
@@ -1167,7 +1171,8 @@ def test_readWriteReductionRecord_with_version():
     # Create the input data for this test:
     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
 
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+    with open(inputRecordFilePath, "r") as f:
+        testRecord = ReductionRecord.model_validate_json(f.read())
     # Important: version != 1: should not depend on any existing directory structure.
     testVersion = 10
 
@@ -1190,7 +1195,8 @@ def test_readWriteReductionRecord():
     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
     # Create the input data for this test:
     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+    with open(inputRecordFilePath, "r") as f:
+        testRecord = ReductionRecord.model_validate_json(f.read())
 
     # Temporarily use a single run number
     runNumber = testRecord.runNumbers[0]
@@ -1259,7 +1265,8 @@ def test_writeReductionData(createReductionWorkspaces):
     # Create the input data for this test:
     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
 
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+    with open(inputRecordFilePath, "r") as f:
+        testRecord = ReductionRecord.model_validate_json(f.read())
     # Change the workspace names so that they will be unique to this test:
     # => enables parallel testing.
     testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
@@ -1284,13 +1291,19 @@ def test_writeReductionData(createReductionWorkspaces):
         assert reductionFilePath.exists()
 
 
+# NOTE if your merge tries to put
+#      test_writeReductionData_no_directories
+# here, do NOT include it.  It is unnecessary now that Indexor handles this
+
+
 def test_writeReductionData_metadata(createReductionWorkspaces):
     _uniquePrefix = "LDS_WRD_"
     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
     # Create the input data for this test:
     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
 
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+    with open(inputRecordFilePath, "r") as f:
+        testRecord = ReductionRecord.model_validate_json(f.read())
     # Change the workspace names so that they will be unique to this test:
     # => enables parallel testing.
     testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
@@ -1321,7 +1334,7 @@ def test_writeReductionData_metadata(createReductionWorkspaces):
         assert filePath.exists()
         with h5py.File(filePath, "r") as h5:
             dict_ = n5m.extractMetadataGroup(h5, "/metadata")
-            actualRecord = ReductionRecord.parse_obj(dict_)
+            actualRecord = ReductionRecord.model_validate(dict_)
             assert actualRecord == testRecord
 
 
@@ -1331,7 +1344,8 @@ def test_readWriteReductionData(createReductionWorkspaces):
     # Create the input data for this test:
     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
 
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+    with open(inputRecordFilePath, "r") as f:
+        testRecord = ReductionRecord.model_validate_json(f.read())
     # Change the workspace names so that they will be unique to this test:
     # => enables parallel testing.
     testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
@@ -1474,6 +1488,19 @@ def test_readWriteCalibrationState():
     assert ans == calibration
 
 
+# NOTE if your merge tries to put any of the following tests here:
+# - getFileOfVersion
+# - getLatestFile
+# - isApplicableEntry
+# - getVersionFromXIndex
+# - _constructXParametersFilePath
+# do NOT put them here, as that functionality is taken over by the Indexor
+
+
+# NOTE if your merge tries to put any tests for reading / writing states
+# do NOT put that here.
+
+
 def test_readWriteNormalizationState():
     # NOTE this test is already covered by tests of the Indexor
     # but it doesn't hurt to retain this test anyway
@@ -1507,7 +1534,7 @@ def test_readDetectorState():
     ]
     localDataService._readPVFile.return_value = pvFileMock
 
-    testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+    testCalibration = Calibration.model_validate_json(Resource.read("inputs/calibration/CalibrationParameters.json"))
     testDetectorState = testCalibration.instrumentState.detectorState
 
     actualDetectorState = localDataService.readDetectorState("123")
@@ -1595,7 +1622,9 @@ def test_initializeState():
     localDataService._readPVFile.return_value = pvFileMock
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
-    testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+    testCalibrationData = Calibration.model_validate_json(
+        Resource.read("inputs/calibration/CalibrationParameters.json")
+    )
     testCalibrationData.useLiteMode = useLiteMode
 
     localDataService.readInstrumentConfig = mock.Mock()
@@ -1642,7 +1671,9 @@ def test_initializeState_calls_prepareStateRoot():
     localDataService._readPVFile.return_value = pvFileMock
     localDataService._writeDefaultDiffCalTable = mock.Mock()
 
-    testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+    testCalibrationData = Calibration.model_validate_json(
+        Resource.read("inputs/calibration/CalibrationParameters.json")
+    )
 
     localDataService.readInstrumentConfig = mock.Mock()
     localDataService.readInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
@@ -1815,6 +1846,12 @@ def test_readSampleFilePaths():
     assert "/sample2.json" in result
 
 
+# NOTE if your merge tries to put
+#      test_readGroupingMap_no
+#      test_readGroupingMap_yes
+# here, do NOT put them here.  They belong below in the section testing groupung map methods
+
+
 def test_readNoSampleFilePaths():
     localDataService = LocalDataService()
     localDataService._findMatchingFileList = mock.Mock()
@@ -1843,7 +1880,7 @@ def test_writeCalibrantSample_success():  # noqa: ARG002
     sample = mock.MagicMock()
     sample.name = "apple"
     sample.unique_id = "banana"
-    sample.json.return_value = "I like to eat, eat, eat"
+    sample.model_dump_json.return_value = "I like to eat, eat, eat"
     temp = Config._config["samples"]["home"]
     with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tempdir:
         Config._config["samples"]["home"] = tempdir

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
-from pydantic import validate_arguments
+from pydantic import validate_call
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
@@ -67,7 +67,7 @@ class WhateversInTheFridge(LocalDataService):
 
     ### CALIBRATION METHODS ###
 
-    @validate_arguments
+    @validate_call
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         version = version if version is not None else self.latestVersion
         record = CalibrationRecord.construct(
@@ -79,7 +79,7 @@ class WhateversInTheFridge(LocalDataService):
 
     ### NORMALIZATION METHODS ###
 
-    @validate_arguments
+    @validate_call
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         version = version if version is not None else self.latestVersion
         record = NormalizationRecord.construct(

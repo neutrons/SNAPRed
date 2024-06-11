@@ -61,7 +61,7 @@ with mock.patch.dict(
 
     def readReductionIngredientsFromFile():
         with Resource.open("/inputs/calibration/ReductionIngredients.json", "r") as f:
-            return ReductionIngredients.parse_raw(f.read())
+            return ReductionIngredients.model_validate_json(f.read())
 
     # test export calibration
     def test_exportCalibrationIndex():
@@ -191,14 +191,12 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 maskWorkspaceName=self.sampleMaskWS if maskWSName else "",
             )
 
-    @patch(thisService + "parse_raw_as")
     @patch(thisService + "CalibrationMetricExtractionRecipe")
     @patch(thisService + "FocusGroupMetric")
     def test_collectMetrics(
         self,
         FocusGroupMetric,
         CalibrationMetricExtractionRecipe,
-        parse_raw_as,
     ):
         # mock the inputs to the function
         focussedData = MagicMock(spec_set=str)
@@ -207,7 +205,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         pixelGroup = MagicMock(spec_set=PixelGroup)
 
         # mock external method calls
-        parse_raw_as.side_effect = lambda x, y: y  # noqa: ARG005
+        self.instance.parseCalibrationMetricList = mock.Mock(
+            side_effect=lambda y: y,
+        )
         mockMetric = mock.Mock()
         CalibrationMetricExtractionRecipe.return_value.executeRecipe.return_value = mockMetric
 
@@ -219,7 +219,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             InputWorkspace=focussedData,
             PixelGroup=pixelGroup,
         )
-        assert parse_raw_as.called_once_with(List[CalibrationMetric], mockMetric)
+        assert self.instance.parseCalibrationMetricList.called_once_with(mockMetric)
         assert FocusGroupMetric.called_once_with(
             focusGroupName=focusGroup.name,
             calibrationMetric=mockMetric,  # NOTE this is because of above lambda
@@ -236,7 +236,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     @patch(
         thisService + "CalibrationMetricsWorkspaceIngredients",
         return_value=MagicMock(
-            calibrationRecord=CalibrationRecord.parse_raw(
+            calibrationRecord=CalibrationRecord.model_validate_json(
                 Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
             ),
             timestamp="123",
@@ -320,7 +320,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockCalibrationMetricsWorkspaceIngredients,
     ):
         mockRequest = MagicMock(runId=self.runNumber, version=self.version, checkExistent=False)
-        calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+        calibRecord = CalibrationRecord.model_validate_json(
+            Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+        )
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
         with pytest.raises(Exception) as excinfo:  # noqa: PT011
             self.instance.loadQualityAssessment(mockRequest)
@@ -329,7 +331,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_load_quality_assessment_check_existent_metrics(self):
         path = Resource.getPath("outputs")
         with tempfile.TemporaryDirectory(dir=path, suffix="/") as tmpDir:
-            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+            calibRecord = CalibrationRecord.model_validate_json(
+                Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+            )
             self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
@@ -434,7 +438,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_load_quality_assessment_no_units(self):
         with pytest.raises(RuntimeError, match=r"without a units token in its name"):  # noqa: PT012
-            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+            calibRecord = CalibrationRecord.model_validate_json(
+                Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+            )
             calibRecord.workspaces = {
                 "diffCalOutput": ["_diffoc_057514"],
                 "diffCalTable": ["_diffract_consts_057514"],
@@ -447,7 +453,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.instance.loadQualityAssessment(mockRequest)
 
     def test_load_quality_assessment_dsp_and_diag(self):
-        calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+        calibRecord = CalibrationRecord.model_validate_json(
+            Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+        )
         calibRecord.workspaces = {
             "diffCalOutput": ["_dsp_diffoc_057514"],
             "diffCalDiagnostic": ["_diagnostic_diffoc_057514"],
@@ -468,7 +476,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_load_quality_assessment_unexpected_type(self):
         with pytest.raises(RuntimeError, match=r"not implemented: unable to load unexpected"):  # noqa: PT012
-            calibRecord = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+            calibRecord = CalibrationRecord.model_validate_json(
+                Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+            )
             calibRecord.workspaces = {
                 "diffCalOutput": ["_dsp_diffoc_057514"],
                 "diffCalTable": ["_diffract_consts_057514"],
@@ -625,7 +635,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert res == FitMultiplePeaksRecipe.return_value.executeRecipe.return_value
 
     def test_initializeState(self):
-        testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        testCalibration = Calibration.model_validate_json(
+            Resource.read("inputs/calibration/CalibrationParameters.json")
+        )
         mockInitializeState = mock.Mock(return_value=testCalibration.instrumentState)
         self.instance.dataExportService.initializeState = mockInitializeState
         request = InitializeStateRequest(
@@ -637,7 +649,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockInitializeState.assert_called_once_with(request.runId, request.useLiteMode, request.humanReadableName)
 
     def test_getState(self):
-        testCalibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        testCalibration = Calibration.model_validate_json(
+            Resource.read("inputs/calibration/CalibrationParameters.json")
+        )
         testConfig = StateConfig.construct()
         testConfig.calibration = testCalibration
         states = [deepcopy(testConfig), deepcopy(testConfig), deepcopy(testConfig)]

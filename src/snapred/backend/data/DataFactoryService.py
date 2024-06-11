@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Dict, Optional
 
-from pydantic import validate_arguments
+from pydantic import validate_call
 
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.reduction import ReductionRecord
@@ -62,83 +62,82 @@ class DataFactoryService:
 
     ##### CALIBRATION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: int):
         return self.lookupService.calibrationIndexor(runId, useLiteMode).versionPath(version)
 
     def checkCalibrationStateExists(self, runId: str):
         return self.lookupService.checkCalibrationFileExists(runId)
 
-    @validate_arguments
+    @validate_call
     def getCalibrationState(self, runId: str, useLiteMode: bool):
         return self.lookupService.readCalibrationState(runId, useLiteMode)
 
-    @validate_arguments
+    @validate_call
     def getCalibrationIndex(self, runId: str, useLiteMode: bool):
         return self.lookupService.calibrationIndexor(runId, useLiteMode).getIndex()
 
-    @validate_arguments
+    @validate_call
     def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         """
         If no version is passed, will use the latest version applicable to runId
         """
         return self.lookupService.readCalibrationRecord(runId, useLiteMode, version)
 
-    @validate_arguments
+    @validate_call
     def getCalibrationDataWorkspace(self, runId: str, useLiteMode: bool, version: int, name: str):
         path = self.lookupService.calibrationIndexor(runId, useLiteMode).versionPath(version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     ##### NORMALIZATION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def getNormalizationDataPath(self, runId: str, useLiteMode: bool, version: int):
         return self.lookupService.normalizationIndexor(runId, useLiteMode).versionPath(version)
 
-    @validate_arguments
+    @validate_call
     def getNormalizationState(self, runId: str, useLiteMode: bool):
         return self.lookupService.readNormalizationState(runId, useLiteMode)
 
-    @validate_arguments
+    @validate_call
     def getNormalizationIndex(self, runId: str, useLiteMode: bool):
         return self.lookupService.normalizationIndexor(runId, useLiteMode).getIndex()
 
-    @validate_arguments
+    @validate_call
     def getNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         """
         If no version is passed, will use the latest version applicable to runId
         """
         return self.lookupService.readNormalizationRecord(runId, useLiteMode, version)
 
-    @validate_arguments
+    @validate_call
     def getNormalizationDataWorkspace(self, runId: str, useLiteMode: bool, version: int, name: str):
         path = self.getNormalizationDataPath(runId, useLiteMode, version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     ##### REDUCTION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def getReductionDataPath(self, runId: str, useLiteMode: bool, version: int) -> Path:
         return self.lookupService.reductionIndexor(runId, useLiteMode).versionPath(version)
 
-    @validate_arguments
+    @validate_call
     def getReductionRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
         """
         If no version is passed, will use the latest version applicable to runId
         """
         return self.lookupService.readReductionRecord(runId, useLiteMode, version)
 
-    @validate_arguments
+    @validate_call
     def getReductionData(self, runId: str, useLiteMode: bool, version: int) -> ReductionRecord:
         return self.lookupService.readReductionData(runId, useLiteMode, version)
 
-    @validate_arguments
+    @validate_call
     def getReductionState(self, runId: str, useLiteMode: bool) -> ReductionState:
-        reductionState: ReductionState
+        reductionState: ReductionState = None
 
         if runId in self.cache:
             reductionState = self.cache[runId]
-
         else:
             # lookup and package data
             reductionState = ReductionState(

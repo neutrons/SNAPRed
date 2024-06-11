@@ -1,13 +1,15 @@
+import json
 import unittest
 from typing import List
 from unittest import mock
 
+import pydantic
 import pytest
 from mantid.api import AlgorithmFactory, MatrixWorkspaceProperty, PythonAlgorithm
 from mantid.kernel import Direction
 from mantid.simpleapi import CloneWorkspace, CreateSingleValuedWorkspace
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
-from pydantic import BaseModel, parse_raw_as
+from pydantic import BaseModel
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.recipe.GenericRecipe import GenericRecipe
@@ -36,7 +38,10 @@ class TestGenericRecipe(unittest.TestCase):
         self.GenericRecipe.mantidSnapper.DummyAlgo.return_value = self.mockReturn
 
     def test_baseModelsToStrings(self):
-        pydanticObject = BaseModel(val="yes")
+        class PydanticObject(BaseModel):
+            val: str
+
+        pydanticObject = PydanticObject(val="yes")
         kwargs = {
             "string": "a string",
             "float": 0.0,
@@ -46,15 +51,15 @@ class TestGenericRecipe(unittest.TestCase):
         result = self.GenericRecipe._baseModelsToStrings(**kwargs)
         assert result["string"] == "a string"
         assert result["float"] == 0.0
-        assert result["baseModel"] == pydanticObject.json()
-        assert result["listOfBaseModels"] == f"[{pydanticObject.json()}]"
+        assert result["baseModel"] == pydanticObject.model_dump_json()
+        assert result["listOfBaseModels"] == f"{json.dumps([pydanticObject.dict()])}"
 
     def test_execute_successful(self):
         result = self.GenericRecipe.executeRecipe(Input=self.mock_reductionIngredients)
 
         assert result == "Mocked result"
         self.GenericRecipe.mantidSnapper.DummyAlgo.assert_called_once_with(
-            "", Input=self.mock_reductionIngredients.json()
+            "", Input=self.mock_reductionIngredients.model_dump_json()
         )
 
     def test_execute_unsuccessful(self):
@@ -69,7 +74,7 @@ class TestGenericRecipe(unittest.TestCase):
             pytest.fail("Test should have raised RuntimeError, but no error raised")
 
         self.GenericRecipe.mantidSnapper.DummyAlgo.assert_called_once_with(
-            "", Input=self.mock_reductionIngredients.json()
+            "", Input=self.mock_reductionIngredients.model_dump_json()
         )
 
 
@@ -116,15 +121,19 @@ class MatrixPropertyAlgo(PythonAlgorithm):
 
 
 class DAOPropertyAlgo(PythonAlgorithm):
+    class ScalarDAO(BaseModel):
+        name: str
+
     def PyInit(self):
         self.declareProperty("ScalarDAO", "", direction=Direction.Input)
         self.declareProperty("ListDAO", "", direction=Direction.Input)
-        self.declareProperty("EmptyDAO", "{}", direction=Direction.Input)
+        self.declareProperty("EmptyDAO", '{"name": "empty"}', direction=Direction.Input)
 
     def PyExec(self):
-        assert BaseModel.parse_raw(self.getPropertyValue("ScalarDAO"))
-        assert parse_raw_as(List[BaseModel], self.getPropertyValue("ListDAO"))
-        assert BaseModel.parse_raw(self.getPropertyValue("EmptyDAO"))
+        ScalarDAO_ = self.__class__.ScalarDAO
+        assert ScalarDAO_.model_validate_json(self.getPropertyValue("ScalarDAO"))
+        assert pydantic.TypeAdapter(List[ScalarDAO_]).validate_json(self.getPropertyValue("ListDAO"))
+        assert ScalarDAO_.model_validate_json(self.getPropertyValue("EmptyDAO"))
 
 
 class TestGenericRecipeInputsAndOutputs(unittest.TestCase):
@@ -182,6 +191,8 @@ class TestGenericRecipeInputsAndOutputs(unittest.TestCase):
         # assert res[2] == (2.,3.)
 
     def test_daos(self):
+        ScalarDAO_ = DAOPropertyAlgo.ScalarDAO
+
         # register the algorithm and define the recipe
         AlgorithmFactory.subscribe(DAOPropertyAlgo)
 
@@ -189,4 +200,4 @@ class TestGenericRecipeInputsAndOutputs(unittest.TestCase):
             pass
 
         # run the recipe and make sure correct result is given
-        TestDAOs().executeRecipe(ScalarDAO=BaseModel(), ListDAO=[BaseModel()])
+        TestDAOs().executeRecipe(ScalarDAO=ScalarDAO_(name="scalarDAO"), ListDAO=[ScalarDAO_(name="listDAO")])

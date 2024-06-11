@@ -9,9 +9,9 @@ class TestRequestScheduler(unittest.TestCase):
     def setUp(self):
         self.instance = RequestScheduler()
         # make payloads consistent
-        request1 = SNAPRequest(path="test", payload=1)
-        request2 = SNAPRequest(path="test", payload=2)
-        request3 = SNAPRequest(path="test", payload=3)
+        request1 = SNAPRequest(path="test", payload="1")
+        request2 = SNAPRequest(path="test", payload="2")
+        request3 = SNAPRequest(path="test", payload="3")
         self.requests = [request1, request2, request3]
 
     def test_request_scheduler(self):

@@ -11,4 +11,12 @@ class Normalization(Parameters):
 
     """
 
+    # inherits from Parameters
+    # - instrumentState: InstrumentState
+    # - seedRun: str
+    # - useLiteMode: bool
+    # - creationDate: datetime
+    # - name: str
+    # - version: Union[int, UNINITIALIZED]
+
     pass

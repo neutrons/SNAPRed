@@ -10,4 +10,4 @@ class GroupPeakList(BaseModel):
 
     peaks: List[DetectorPeak]
     groupID: int
-    maxfwhm: Optional[float]  # this is in d-spacing, not bins, != 5
+    maxfwhm: Optional[float] = None  # this is in d-spacing, not bins, != 5
