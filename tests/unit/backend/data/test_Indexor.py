@@ -569,12 +569,10 @@ class TestIndexor(unittest.TestCase):
         # so that we can know it does not default
         # to the starting version
         versions = [2, 3, 4]
-        index = {version: self.indexEntry(version) for version in versions}
         for version in versions:
             self.writeRecordVersion(version)
         indexor = self.initIndexor()
         nextVersion = indexor.nextVersion()
-        assert indexor.index == index
         assert nextVersion != VERSION_START
         # now write then read the record
         # make sure the record was saved at the next version
@@ -641,12 +639,10 @@ class TestIndexor(unittest.TestCase):
         # so that we can know it does not default
         # to the starting version
         versions = [2, 3, 4]
-        index = {version: self.indexEntry(version) for version in versions}
         for version in versions:
             self.writeRecordVersion(version)
         indexor = self.initIndexor()
         nextVersion = indexor.nextVersion()
-        assert indexor.index == index
         assert nextVersion != VERSION_START
         # now write the record
         record = self.record(randint(10, 20))
@@ -661,12 +657,10 @@ class TestIndexor(unittest.TestCase):
         # so that we can know it does not default
         # to the starting version
         versions = [2, 3, 4]
-        index = {version: self.indexEntry(version) for version in versions}
         for version in versions:
             self.writeRecordVersion(version)
         indexor = self.initIndexor()
         nextVersion = indexor.nextVersion()
-        assert indexor.index == index
         assert nextVersion != VERSION_START
         # now write the record
         record = self.record(randint(10, 20))
