@@ -49,7 +49,7 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
             xtal = ws.sample().getCrystalStructure()
             xtallography = Crystallography(cifPath, xtal)
         elif not self.getProperty("Crystallography").isDefault:
-            xtallography = Crystallography.parse_raw(self.getPropertyValue("Crystallography"))
+            xtallography = Crystallography.model_validate_json(self.getPropertyValue("Crystallography"))
             xtal = CrystalStructure(
                 xtallography.unitCellString,
                 xtallography.spaceGroupString,

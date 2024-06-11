@@ -43,10 +43,10 @@ class TestGeometry(unittest.TestCase):
         assert self.sphere.json() == json.dumps(ref)
 
     def test_isShapedLikeItself(self):
-        assert self.sphere == Geometry.parse_obj(self.sphere.dict())
-        assert self.sphere == Geometry.parse_raw(self.sphere.json())
-        assert self.cylinder == Geometry.parse_obj(self.cylinder.dict())
-        assert self.cylinder == Geometry.parse_raw(self.cylinder.json())
+        assert self.sphere == Geometry.model_validate(self.sphere.dict())
+        assert self.sphere == Geometry.model_validate_json(self.sphere.json())
+        assert self.cylinder == Geometry.model_validate(self.cylinder.dict())
+        assert self.cylinder == Geometry.model_validate_json(self.cylinder.json())
 
     def test_invalidSphere(self):
         with pytest.raises(Warning):

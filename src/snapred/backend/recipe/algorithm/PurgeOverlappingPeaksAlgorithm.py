@@ -1,9 +1,9 @@
 from typing import Dict, List
 
 import numpy as np
+import pydantic
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction
-from pydantic import parse_raw_as
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import PeakIngredients
@@ -111,8 +111,8 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         return [groupPeakList for groupPeakList in peakLists if len(groupPeakList.peaks) > 0]
 
     def PyExec(self):
-        predictedPeaks = parse_raw_as(List[GroupPeakList], self.getPropertyValue("DetectorPeaks"))
-        ingredients = PeakIngredients.parse_raw(self.getProperty("Ingredients").value)
+        predictedPeaks = pydantic.TypeAdapter(List[GroupPeakList]).validate_json(self.getPropertyValue("DetectorPeaks"))
+        ingredients = PeakIngredients.model_validate_json(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
 
         # build lists of non-overlapping peaks for each focus group. Combine them into the total list.

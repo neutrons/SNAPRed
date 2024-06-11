@@ -16,4 +16,4 @@ class CalibrationMetricsWorkspaceIngredients(BaseModel):
     """
 
     calibrationRecord: CalibrationRecord
-    timestamp: Optional[int]
+    timestamp: Optional[int] = None

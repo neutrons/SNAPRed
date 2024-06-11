@@ -7,12 +7,12 @@ class RunConfig(BaseModel):
     """Class to hold the instrument configuration."""
 
     runNumber: str = Field(description="The ID associated with the run data you wish to use")
-    IPTS: Optional[str]
-    useLiteMode: Optional[bool]
-    maskFileName: Optional[str]
-    maskFileDirectory: Optional[str]
-    gsasFileDirectory: Optional[str]
-    calibrationState: Optional[str]
+    IPTS: Optional[str] = None
+    useLiteMode: Optional[bool] = None
+    maskFileName: Optional[str] = None
+    maskFileDirectory: Optional[str] = None
+    gsasFileDirectory: Optional[str] = None
+    calibrationState: Optional[str] = None
 
     # if we need specific getter and setter methods, we can use the @property decorator
     # https://docs.python.org/3/library/functions.html#property

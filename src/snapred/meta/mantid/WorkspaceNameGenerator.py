@@ -1,6 +1,11 @@
 import re
+import sys
 from enum import Enum
 from typing import List, Literal, Optional, Union
+
+from pydantic import WithJsonSchema
+from pydantic.functional_validators import BeforeValidator
+from typing_extensions import Annotated
 
 from snapred.meta.Config import Config
 
@@ -10,6 +15,17 @@ Version = Union[int, Literal["*"]]
 class WorkspaceName(str):
     def __str__(self):
         return self
+
+
+### THIS IS A KLUGE: 'sphinx' does not like `typing.Annotated`
+if "sphinx" not in sys.modules:
+    _WorkspaceName = WorkspaceName
+    WorkspaceName = Annotated[
+        _WorkspaceName,
+        BeforeValidator(lambda v: _WorkspaceName(v) if isinstance(v, str) else v),
+        WithJsonSchema({"type": "string"}, mode="serialization"),
+        WithJsonSchema({"type": "string"}, mode="validation"),
+    ]
 
 
 class WorkspaceType(str, Enum):

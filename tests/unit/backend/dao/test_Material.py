@@ -35,19 +35,19 @@ class TestMaterial(unittest.TestCase):
         )
 
     def test_isShapedLikeItself(self):
-        assert self.vanadium == Material.parse_obj(self.vanadium.dict())
-        assert self.vanadium == Material.parse_raw(self.vanadium.json())
-        assert self.vanadiumMD == Material.parse_obj(self.vanadiumMD.dict())
-        assert self.vanadiumMD == Material.parse_raw(self.vanadiumMD.json())
-        assert self.vanadiumPF == Material.parse_obj(self.vanadiumPF.dict())
-        assert self.vanadiumPF == Material.parse_raw(self.vanadiumPF.json())
+        assert self.vanadium == Material.model_validate(self.vanadium.dict())
+        assert self.vanadium == Material.model_validate_json(self.vanadium.json())
+        assert self.vanadiumMD == Material.model_validate(self.vanadiumMD.dict())
+        assert self.vanadiumMD == Material.model_validate_json(self.vanadiumMD.json())
+        assert self.vanadiumPF == Material.model_validate(self.vanadiumPF.dict())
+        assert self.vanadiumPF == Material.model_validate_json(self.vanadiumPF.json())
         #
-        assert self.vanadiumBoron == Material.parse_obj(self.vanadiumBoron.dict())
-        assert self.vanadiumBoron == Material.parse_raw(self.vanadiumBoron.json())
-        assert self.vanadiumBoronDash == Material.parse_obj(self.vanadiumBoronDash.dict())
-        assert self.vanadiumBoronDash == Material.parse_raw(self.vanadiumBoronDash.json())
-        assert self.vanadiumBoronMD == Material.parse_obj(self.vanadiumBoronMD.dict())
-        assert self.vanadiumBoronMD == Material.parse_raw(self.vanadiumBoronMD.json())
+        assert self.vanadiumBoron == Material.model_validate(self.vanadiumBoron.dict())
+        assert self.vanadiumBoron == Material.model_validate_json(self.vanadiumBoron.json())
+        assert self.vanadiumBoronDash == Material.model_validate(self.vanadiumBoronDash.dict())
+        assert self.vanadiumBoronDash == Material.model_validate_json(self.vanadiumBoronDash.json())
+        assert self.vanadiumBoronMD == Material.model_validate(self.vanadiumBoronMD.dict())
+        assert self.vanadiumBoronMD == Material.model_validate_json(self.vanadiumBoronMD.json())
 
     def test_singleElementMaterial(self):
         # ensure that the material json object

@@ -2,7 +2,7 @@ import time
 from pathlib import Path
 from typing import Dict, List
 
-from pydantic import parse_raw_as
+import pydantic
 
 from snapred.backend.dao import Limit, RunConfig
 from snapred.backend.dao.calibration import (
@@ -237,10 +237,14 @@ class CalibrationService(Service):
         runId = request.runId
         return self.dataFactoryService.checkCalibrationStateExists(runId)
 
+    @staticmethod
+    def parseCalibrationMetricList(src: str) -> List[CalibrationMetric]:
+        # implemented as a separate method to facilitate testing
+        return pydantic.TypeAdapter(List[CalibrationMetric]).validate_json(src)
+
     # TODO make the inputs here actually work
     def _collectMetrics(self, focussedData, focusGroup, pixelGroup):
-        metric = parse_raw_as(
-            List[CalibrationMetric],
+        metric = self.parseCalibrationMetricList(
             CalibrationMetricExtractionRecipe().executeRecipe(
                 InputWorkspace=focussedData,
                 PixelGroup=pixelGroup.json(),

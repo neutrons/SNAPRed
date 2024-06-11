@@ -79,6 +79,20 @@ dict_of_None = {"one": {"one": None, "two": 2}, "two": {"three": 3, "four": None
 dict_of_None_inputs = (dict_of_None, dict_of_None)
 
 
+# terminal _opaque_ (but derived from str) are encoded as str:
+class StringDerived(str):
+    def __str__(self):
+        return self
+
+
+dict_of_StringDerived = {
+    "one": {"one": StringDerived("s_one"), "two": 2},
+    "two": {"three": 3, "four": StringDerived("s_four")},
+}
+dict_of_StringDerived_reconstruct = {"one": {"one": "s_one", "two": 2}, "two": {"three": 3, "four": "s_four"}}
+dict_of_StringDerived_inputs = (dict_of_StringDerived, dict_of_StringDerived_reconstruct)
+
+
 class tags(str, Enum):
     ONE = "one"
     TWO = "two"
@@ -154,6 +168,10 @@ def test_dict_of_dict():
 
 def test_dict_of_None():
     test_traversal(dict_of_None_inputs)
+
+
+def test_dict_of_StringDerived():
+    test_traversal(dict_of_StringDerived_inputs)
 
 
 def test_dict_of_branch_enum():

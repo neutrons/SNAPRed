@@ -72,8 +72,8 @@ class state_root_redirect:
     def __init__(self, dataService: LocalDataService, *, stateId: str = None):
         self.dataService = dataService
         self.stateId = stateId
-        self.oldself = dataService._constructCalibrationStateRoot
-        self.oldstateId = dataService._generateStateId
+        self.old_constructCalibrationStateRoot = dataService._constructCalibrationStateRoot
+        self.old_generateStateId = dataService._generateStateId
 
     def __enter__(self):
         self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
@@ -87,8 +87,8 @@ class state_root_redirect:
         return self
 
     def __exit__(self, *arg, **kwargs):
-        self.dataService._constructCalibrationStateRoot = self.oldself
-        self.dataService._generateStateId = self.oldstateId
+        self.dataService._constructCalibrationStateRoot = self.old_constructCalibrationStateRoot
+        self.dataService._generateStateId = self.old_generateStateId
         self.tmpdir.cleanup()
         assert not self.tmppath.exists()
         del self.tmpdir
@@ -120,8 +120,8 @@ class reduction_root_redirect:
     def __init__(self, dataService: LocalDataService, *, stateId: str = None):
         self.dataService = dataService
         self.stateId = stateId
-        self.oldself = dataService._constructReductionStateRoot
-        self.oldstateId = dataService._generateStateId
+        self.old_constructReductionStateRoot = dataService._constructReductionStateRoot
+        self.old_generateStateId = dataService._generateStateId
 
     def __enter__(self):
         self.tmpdir = TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
@@ -135,8 +135,8 @@ class reduction_root_redirect:
         return self
 
     def __exit__(self, *arg, **kwargs):
-        self.dataService._constructReductionStateRoot = self.oldself
-        self.dataService._generateStateId = self.oldstateId
+        self.dataService._constructReductionStateRoot = self.old_constructReductionStateRoot
+        self.dataService._generateStateId = self.old_generateStateId
         self.tmpdir.cleanup()
         assert not self.tmppath.exists()
         del self.tmpdir

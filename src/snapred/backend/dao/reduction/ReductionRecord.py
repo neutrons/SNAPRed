@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from pydantic import BaseModel, ValidationError, root_validator, validator
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -26,25 +26,31 @@ class ReductionRecord(BaseModel):
     stateId: ObjectSHA
     workspaceNames: List[WorkspaceName]
 
-    @validator("stateId", pre=True, allow_reuse=True)
+    @field_validator("stateId", mode="before")
+    @classmethod
     def str_to_ObjectSHA(cls, v: Any) -> Any:
         # ObjectSHA to be stored in JSON as _only_ a single hex string, for the hex digest itself
         if isinstance(v, str):
             return ObjectSHA(hex=v, decodedKey=None)
         return v
 
-    @root_validator(allow_reuse=True)
-    def checkStateId(cls, values):
-        cal = values.get("calibration")
-        norm = values.get("normalization")
-        redStateId = values.get("stateId")
+    @model_validator(mode="after")
+    def checkStateId(self):
+        cal = self.calibration
+        norm = self.normalization
+        redStateId = self.stateId
 
         calStateId = cal.calibrationFittingIngredients.instrumentState.id
         normStateId = norm.calibration.instrumentState.id
         if not (calStateId == normStateId == redStateId):
             raise ValidationError("Calibration, normalization, and reduction records are not from the same state.")
 
-        return values
+        return self
+
+    model_config = ConfigDict(
+        # required in order to use 'WorkspaceName'
+        arbitrary_types_allowed=True,
+    )
 
     """
     *Other details to include above*:

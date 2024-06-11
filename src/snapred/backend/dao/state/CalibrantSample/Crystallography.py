@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from mantid.geometry import CrystalStructure, SpaceGroupFactory
-from pydantic import BaseModel, validate_arguments, validator
+from pydantic import BaseModel, field_validator, validate_call
 
 from snapred.backend.dao.state.CalibrantSample.Atom import Atom
 from snapred.meta.Config import Config
@@ -25,7 +25,7 @@ class Crystallography(BaseModel):
     latticeParameters: Tuple[float, float, float, float, float, float]
     atoms: List[Atom]
 
-    @validate_arguments(config=dict(arbitrary_types_allowed=True))
+    @validate_call(config=dict(arbitrary_types_allowed=True))
     def __init__(self, *args: str | CrystalStructure, **kwargs):
         if args:
             cifFile: str = args[0]
@@ -52,7 +52,8 @@ class Crystallography(BaseModel):
     def spaceGroupString(self) -> str:
         return self.spaceGroup
 
-    @validator("cifFile", allow_reuse=True)
+    @field_validator("cifFile")
+    @classmethod
     def validate_cifFile(cls, v):
         filePath = Path(v)
         if not filePath.is_absolute():
@@ -66,7 +67,8 @@ class Crystallography(BaseModel):
             raise ValueError("'cifFile' must be a file with .cif extension")
         return v
 
-    @validator("spaceGroup", allow_reuse=True)
+    @field_validator("spaceGroup")
+    @classmethod
     def validate_spaceGroup(cls, v):
         if v not in SpaceGroupFactory.getAllSpaceGroupSymbols():
             raise ValueError("given space group does not exist")

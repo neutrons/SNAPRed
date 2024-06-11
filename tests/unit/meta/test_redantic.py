@@ -2,9 +2,11 @@ import os
 from typing import List
 from unittest import TestCase
 
+import pytest
 from pydantic import BaseModel
 from snapred.meta.Config import Resource
 from snapred.meta.redantic import (
+    list_from_raw,
     list_to_raw,
     list_to_raw_pretty,
     write_model,
@@ -42,6 +44,19 @@ class TestRedantic(TestCase):
 
     def test_to_raw_pretty(self):
         assert list_to_raw_pretty(self.modelList) == Resource.read("outputs/meta/redantic/pretty_list.json").strip()
+
+    def test_list_from_raw(self):
+        src = Resource.read("outputs/meta/redantic/list.json").strip()
+        expected = self.modelList
+        actual = list_from_raw(List[ModelTest], src)
+        assert actual == expected
+
+    def test_list_from_raw_bad_type(self):
+        src = Resource.read("outputs/meta/redantic/list.json").strip()
+        with pytest.raises(TypeError, match=r"target type must derive from \'List\[BaseModel\]\'"):
+            list_from_raw(List[int], src)
+        with pytest.raises(TypeError, match=r"target type must derive from \'List\[BaseModel\]\'"):
+            list_from_raw(BaseModel, src)
 
     def test_write_model(self):
         path = Resource.getPath("test.json")

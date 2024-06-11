@@ -27,7 +27,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         # self.fakeRunNumber = "555"
-        # fakeIngredients = ReductionIngredients.parse_raw(Resource.read("/inputs/reduction/fake_file.json"))
+        # fakeIngredients = ReductionIngredients.model_validate_json(Resource.read("/inputs/reduction/fake_file.json"))
 
         self.ingredients = SculleryBoy().prepNormalizationIngredients({})
         tof = self.ingredients.pixelGroup.timeOfFlight

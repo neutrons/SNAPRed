@@ -70,7 +70,6 @@ class ApiService(Service):
             service = self.serviceDirectory[path]
             subPaths = service.getPaths()
             subpathDict = {}
-            # import pdb; pdb.set_trace()
             for subPath, func in subPaths.items():
                 argMap = _parametersToDict(inspect.signature(func).parameters)
                 argMap = _convertToJsonSchema(argMap)

@@ -23,7 +23,7 @@ class ObjectSHA(BaseModel):
         description="16-character lowercase hex string", min_length=16, max_length=16, pattern=r"[0-9a-f]+"
     )
     # If we still have the decoded JSON, retain it for possible re-use (, but do not require it):
-    decodedKey: Optional[str]
+    decodedKey: Optional[str] = None
 
     def __eq__(self, other):
         if isinstance(other, str):

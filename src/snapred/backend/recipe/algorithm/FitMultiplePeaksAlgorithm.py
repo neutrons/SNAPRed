@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Dict, List
 
 import numpy as np
+import pydantic
 from mantid.api import (
     AlgorithmFactory,
     MatrixWorkspaceProperty,
@@ -13,7 +14,6 @@ from mantid.api import (
 )
 from mantid.kernel import Direction, StringListValidator
 from mantid.simpleapi import DeleteWorkspaces
-from pydantic import parse_raw_as
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.log.logger import snapredLogger
@@ -90,7 +90,9 @@ class FitMultiplePeaksAlgorithm(PythonAlgorithm):
 
     def PyExec(self):
         peakFunction = self.getPropertyValue("PeakFunction")
-        reducedPeakList = parse_raw_as(List[GroupPeakList], self.getPropertyValue("DetectorPeaks"))
+        reducedPeakList = pydantic.TypeAdapter(List[GroupPeakList]).validate_json(
+            self.getPropertyValue("DetectorPeaks")
+        )
         self.chopIngredients(reducedPeakList)
         self.unbagGroceries()
 
