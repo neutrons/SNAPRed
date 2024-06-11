@@ -30,18 +30,18 @@ requirements:
   host:
     - python
     - versioningit
-    - pydantic=1.10
+    - pydantic>=2.7.3,<3
 
   build:
     - setuptools
     - versioningit
-    - {{ pin_compatible("pydantic", min_pin="1.10", max_pin="2") }}
+    - {{ pin_compatible("pydantic", min_pin="2.7.3", max_pin="3") }}
     - mantidworkbench
     - qtpy
     - pytest
 
   run:
-    - {{ pin_compatible("pydantic", min_pin="1.10", max_pin="2") }}
+    - {{ pin_compatible("pydantic", min_pin="2.7.3", max_pin="3") }}
     - mantidworkbench
 
 about:

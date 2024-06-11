@@ -1,9 +1,9 @@
 from typing import List
 
 import matplotlib.pyplot as plt
+import pydantic
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
-from pydantic import parse_obj_as
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
     QHBoxLayout,
@@ -171,7 +171,7 @@ class NormalizationTweakPeakView(BackendRequestView):
         # get the updated workspaces and optimal graph grid
         focusedWorkspace = mtd[self.focusWorkspace]
         smoothedWorkspace = mtd[self.smoothedWorkspace]
-        peaks = parse_obj_as(List[GroupPeakList], peaks)
+        peaks = pydantic.TypeAdapter(List[GroupPeakList]).validate_python(peaks)
         numGraphs = focusedWorkspace.getNumberHistograms()
         nrows, ncols = self._optimizeRowsAndCols(numGraphs)
 

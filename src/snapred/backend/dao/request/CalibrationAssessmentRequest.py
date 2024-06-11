@@ -1,16 +1,16 @@
-from typing import Dict, List
+from typing import Any, Dict, List
 
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
-from snapred.meta.mantid.AllowedPeakTypes import ALLOWED_PEAK_TYPES
+from snapred.meta.mantid.AllowedPeakTypes import PeakFunctionEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationAssessmentRequest(BaseModel, extra=Extra.forbid):
+class CalibrationAssessmentRequest(BaseModel):
     """
 
     The CalibrationAssessmentRequest class is crafted to streamline the process of initiating
@@ -29,10 +29,26 @@ class CalibrationAssessmentRequest(BaseModel, extra=Extra.forbid):
     calibrantSamplePath: str
     workspaces: Dict[WorkspaceType, List[WorkspaceName]]
     # fiddly bits
-    peakFunction: ALLOWED_PEAK_TYPES
+    peakFunction: PeakFunctionEnum
     crystalDMin: float
     crystalDMax: float
     peakIntensityThreshold: float
     nBinsAcrossPeakWidth: int
-    fwhmMultipliers: Pair[float] = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
+    fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
     maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
+
+    @field_validator("fwhmMultipliers", mode="before")
+    @classmethod
+    def validate_fwhmMultipliers(cls, v: Any) -> Pair[float]:
+        if isinstance(v, dict):
+            v = Pair[float](**v)
+        if not isinstance(v, Pair[float]):
+            # Coerce Generic[T]-derived type
+            v = Pair[float](**v.dict())
+        return v
+
+    model_config = ConfigDict(
+        extra="forbid",
+        # required in order to use 'WorkspaceName'
+        arbitrary_types_allowed=True,
+    )

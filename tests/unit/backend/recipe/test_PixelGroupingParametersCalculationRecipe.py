@@ -59,14 +59,14 @@ def test_execute_unsuccessful():
     assert mockAlgo.call_count == 1
 
 
-@mock.patch("snapred.backend.recipe.PixelGroupingParametersCalculationRecipe.parse_raw_as")
 @mock.patch("snapred.backend.recipe.PixelGroupingParametersCalculationRecipe.BinnedValue")
-def test_resolve_callback(BinnedValue, parse_raw_as):
+def test_resolve_callback(BinnedValue):
     BinnedValue.return_value = "tof"
-    parse_raw_as.return_value = [mock.Mock(dRelativeResolution=1.0)]
+    parsePGPList = mock.Mock(return_value=[mock.Mock(dRelativeResolution=1.0)])
     mockAlgo = mock.Mock(return_value=mock.Mock(get=mock.Mock(return_value="done")))
 
     recipe = PixelGroupingParametersCalculationRecipe()
+    recipe.parsePGPList = parsePGPList
     recipe.mantidSnapper.PixelGroupingParametersCalculationAlgorithm = mockAlgo
     ingredients = mock.Mock(nBinsAcrossPeakWidth=10)
     groceries = {
@@ -76,5 +76,5 @@ def test_resolve_callback(BinnedValue, parse_raw_as):
     data = recipe.executeRecipe(ingredients, groceries)
     assert data["result"]
     assert data["tof"] == BinnedValue.return_value
-    assert data["parameters"] == parse_raw_as.return_value
-    assert parse_raw_as.called_once_with(List[PixelGroupingParameters], "done")
+    assert data["parameters"] == parsePGPList.return_value
+    assert parsePGPList.called_once_with(List[PixelGroupingParameters], "done")

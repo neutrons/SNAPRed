@@ -1,7 +1,8 @@
 import pytest
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
 from snapred.meta.mantid.AllowedPeakTypes import allowed_peak_type_list
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName as wngn
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 
 
@@ -11,7 +12,7 @@ def test_literal_bad():
     with pytest.raises(ValidationError) as e:
         CalibrationAssessmentRequest(
             run={"runNumber": "123"},
-            workspaces={wngt.DIFFCAL_OUTPUT: ["nope"]},
+            workspaces={wngt.DIFFCAL_OUTPUT: [wngn("nope")]},
             focusGroup={"name": "nope", "definition": "nope"},
             calibrantSamplePath="nope",
             useLiteMode=False,
@@ -29,7 +30,7 @@ def test_literal_good():
         try:
             CalibrationAssessmentRequest(
                 run={"runNumber": "123"},
-                workspaces={wngt.DIFFCAL_OUTPUT: ["nope"]},
+                workspaces={wngt.DIFFCAL_OUTPUT: [wngn("nope")]},
                 focusGroup={"name": "nope", "definition": "nope"},
                 calibrantSamplePath="nope",
                 useLiteMode=False,

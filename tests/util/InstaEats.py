@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Literal, Union
 from unittest import mock
 
 from mantid.simpleapi import LoadDetectorsGroupingFile, LoadEmptyInstrument, mtd
-from pydantic import validate_arguments
+from pydantic import validate_call
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.GroceryService import GroceryService
@@ -52,7 +52,7 @@ class InstaEats(GroceryService):
         ext = instr + ".extension"
         return self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext]
 
-    @validate_arguments
+    @validate_call
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
         if groupingScheme == "Lite":
             path = str(Config["instrument.lite.map.file"])

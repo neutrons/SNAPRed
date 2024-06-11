@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, List, Union
 
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -27,7 +27,8 @@ class GroupingMap(BaseModel):
 
     # Use the StateId hash to enforce filesystem-as-database integrity requirements:
     # * verify that this GroupingMap's file is at its expected location (e.g. it hasn't been moved or copied);
-    stateId: ObjectSHA
+    stateId: Union[ObjectSHA, str]  # Coerced to `ObjectSHA` at input =>
+    #   using 'Union' here suppresses pydantic serialization warning
 
     # Although the public interface to `GroupingMap` is a mapping, for ease of editing:
     # *  the JSON representation is written using a list format:
@@ -35,9 +36,9 @@ class GroupingMap(BaseModel):
     nativeFocusGroups: List[FocusGroup] = Field(default=None)
     liteFocusGroups: List[FocusGroup] = Field(default=None)
 
-    _isDirty: bool = False
-    _nativeMap: Dict[str, FocusGroup] = None
-    _liteMap: Dict[str, FocusGroup] = None
+    _isDirty: bool = PrivateAttr(default=False)
+    _nativeMap: Dict[str, FocusGroup] = PrivateAttr(default=None)
+    _liteMap: Dict[str, FocusGroup] = PrivateAttr(default=None)
 
     @property
     def lite(self) -> Dict[str, FocusGroup]:
@@ -68,22 +69,20 @@ class GroupingMap(BaseModel):
         self.stateId = stateId
         self.setDirty(True)
 
-    @validator("stateId", pre=True, allow_reuse=True)
-    def str_to_ObjectSHA(cls, v: Any) -> Any:
+    @field_validator("stateId", mode="before")
+    @classmethod
+    def str_to_ObjectSHA(cls, v: Any) -> ObjectSHA:
         # ObjectSHA stored in JSON as _only_ a single hex string, for the hex digest itself
         if isinstance(v, str):
-            return ObjectSHA(hex=v, decodedKey=None)
+            v = ObjectSHA(hex=v, decodedKey=None)
         return v
 
-    @root_validator(pre=False, allow_reuse=True)
-    def validate_GroupingMap(cls, v):
-        _native = {}
-        _lite = {}
+    @model_validator(mode="after")
+    def validate_GroupingMap(self):
         # Build `GroupingMap` from input lists:
-        if v.get("nativeFocusGroups"):
-            _native = {nfg.name: nfg for nfg in v["nativeFocusGroups"]}
-        if v.get("liteFocusGroups"):
-            _lite = {lfg.name: lfg for lfg in v["liteFocusGroups"]}
+        _native = {nfg.name: nfg for nfg in self.nativeFocusGroups}
+        _lite = {lfg.name: lfg for lfg in self.liteFocusGroups}
+
         groups = {"native": _native, "lite": _lite}
         supportedExtensions = tuple(Config["instrument.calibration.powder.grouping.extensions"])
         for mode in groups.copy():
@@ -93,7 +92,7 @@ class GroupingMap(BaseModel):
                 if not fp.is_absolute():
                     # Do _not_ change the path in the original `FocusGroup`,
                     #   otherwise the path will also change in the on-disk version.
-                    fp = cls._asAbsolutePath(fp)
+                    fp = self._asAbsolutePath(fp)
                     groups[mode][group] = FocusGroup(name=group, definition=str(fp))
                 if not fp.exists():
                     logger.warning("File: " + str(fp) + " not found")
@@ -109,17 +108,7 @@ class GroupingMap(BaseModel):
                     continue
             if groups[mode] == {}:
                 logger.warning("No valid FocusGroups were specified for mode: '" + mode + "'")
-
-        v["_nativeMap"] = groups["native"]
-        v["_liteMap"] = groups["lite"]
-        v["_isDirty"] = False
-        return v
-
-    class Config:
-        # All other forms of _exclusion_ do not seem to work in Pydantic 1.10,
-        # (for this `GroupingMap` class, specifically).
-        fields = {
-            "liteFocusGroups": {"include": True},
-            "nativeFocusGroups": {"include": True},
-            "stateId": {"include": True},
-        }
+        self._nativeMap = groups["native"]
+        self._liteMap = groups["lite"]
+        self._isDirty = False
+        return self

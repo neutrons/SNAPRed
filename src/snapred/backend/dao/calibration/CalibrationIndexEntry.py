@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 
 class CalibrationIndexEntry(BaseModel):
@@ -18,11 +18,11 @@ class CalibrationIndexEntry(BaseModel):
 
     runNumber: str
     useLiteMode: bool
-    version: Optional[int]
-    appliesTo: Optional[str]
+    version: Optional[int] = None
+    appliesTo: Optional[str] = None
     comments: str
     author: str
-    timestamp: Optional[int]
+    timestamp: Optional[int] = None
 
     def parseAppliesTo(appliesTo: str):
         symbols = [">=", "<=", "<", ">"]
@@ -32,7 +32,8 @@ class CalibrationIndexEntry(BaseModel):
         runNumber = appliesTo if symbol == "" else appliesTo.split(symbol)[-1]
         return symbol, runNumber
 
-    @validator("appliesTo", allow_reuse=True)
+    @field_validator("appliesTo")
+    @classmethod
     def appliesToFormatChecker(cls, v):
         """
         This validator ensures that if appliesTo is present,

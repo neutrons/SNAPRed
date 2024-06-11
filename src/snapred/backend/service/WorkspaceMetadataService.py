@@ -26,7 +26,7 @@ class WorkspaceMetadataService(Service):
         return self.writeMetadataTags(workspace, [logname], [logvalue])
 
     def writeMetadataTags(self, workspace: WorkspaceName, lognames: List[str], logvalues: List[str]) -> bool:
-        metadata = WorkspaceMetadata.parse_obj(dict(zip(lognames, logvalues)))
+        metadata = WorkspaceMetadata.model_validate(dict(zip(lognames, logvalues)))
         return self.writeWorkspaceMetadata(workspace, metadata)
 
     def readWorkspaceMetadata(self, workspace: WorkspaceName) -> WorkspaceMetadata:

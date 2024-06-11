@@ -92,7 +92,7 @@ class SyntheticData(object):
         crystalPeaks = SyntheticData.crystalInfo().peaks
 
         peakList = [
-            DetectorPeak.parse_obj(
+            DetectorPeak.model_validate(
                 {
                     "position": {
                         "value": p.centre,
@@ -138,7 +138,7 @@ class SyntheticData(object):
         crystalPeaks = SyntheticData.crystalInfo().peaks
 
         peakList = [
-            DetectorPeak.parse_obj(
+            DetectorPeak.model_validate(
                 {
                     "position": {
                         "value": p.centre,
@@ -340,4 +340,4 @@ class SyntheticData(object):
         createCompatibleMask(maskWS, rawWS, self.fakeInstrumentFilePath)
 
     def crystalInfo():
-        return CrystallographicInfo.parse_raw(Resource.read("outputs/crystalinfo/output.json"))
+        return CrystallographicInfo.model_validate_json(Resource.read("outputs/crystalinfo/output.json"))

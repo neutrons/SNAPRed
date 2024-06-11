@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from typing import Dict, List
 
+import pydantic
 import pytest
 from mantid.simpleapi import (
     DeleteWorkspace,
@@ -16,7 +17,6 @@ from mantid.simpleapi import (
     RenameWorkspace,
     mtd,
 )
-from pydantic import parse_file_as, parse_raw_as
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.state.InstrumentState import InstrumentState
@@ -43,8 +43,9 @@ IS_ON_ANALYSIS_MACHINE = REMOTE_OVERRIDE or socket.gethostname().startswith("ana
 class PixelGroupCalculation(unittest.TestCase):
     @classmethod
     def getInstrumentState(cls):
-        calibrationPath = Resource.getPath("inputs/pixel_grouping/CalibrationParameters.json")
-        return parse_file_as(Calibration, calibrationPath).instrumentState
+        return Calibration.model_validate_json(
+            Resource.read("inputs/pixel_grouping/CalibrationParameters.json")
+        ).instrumentState
 
     @classmethod
     def getInstrumentDefinitionFilePath(cls, isLiteInstrument):
@@ -97,7 +98,7 @@ class PixelGroupCalculation(unittest.TestCase):
         cls.unmasked, cls.westMasked, cls.eastMasked = (7, 8, 9)
 
         # state corresponding to local test instrument
-        cls.localInstrumentState = InstrumentState.parse_raw(
+        cls.localInstrumentState = InstrumentState.model_validate_json(
             Resource.read("inputs/calibration/sampleInstrumentState.json")
         )
         cls.localIngredients = PixelGroupingIngredients(
@@ -360,8 +361,7 @@ class PixelGroupCalculation(unittest.TestCase):
         assert pixelGroupingAlgo.execute()
 
         # parse the algorithm output and create a list of PixelGroupingParameters
-        pixelGroupingParams_calc = parse_raw_as(
-            List[PixelGroupingParameters],
+        pixelGroupingParams_calc = pydantic.TypeAdapter(List[PixelGroupingParameters]).validate_json(
             pixelGroupingAlgo.getProperty("OutputParameters").value,
         )
 
@@ -379,8 +379,7 @@ class PixelGroupCalculation(unittest.TestCase):
         if Path(referenceParametersFile).exists():
             # parse the reference file.
             with open(referenceParametersFile) as f:
-                expected: List[PixelGroupingParameters] = parse_raw_as(
-                    List[PixelGroupingParameters],
+                expected = pydantic.TypeAdapter(List[PixelGroupingParameters]).validate_json(
                     f.read(),
                 )
 

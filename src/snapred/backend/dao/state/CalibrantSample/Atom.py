@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from pydantic import BaseModel, StrictStr, validate_arguments, validator
+from pydantic import BaseModel, StrictStr, field_validator, validate_call
 
 
 class Atom(BaseModel):
@@ -22,7 +22,7 @@ class Atom(BaseModel):
     siteOccupationFactor: float
     adp: float = 0.1
 
-    @validate_arguments
+    @validate_call
     def __init__(self, *args: StrictStr, **kwargs):
         if args:
             scatter = args[0].split()
@@ -35,19 +35,22 @@ class Atom(BaseModel):
         else:
             super().__init__(**kwargs)
 
-    @validator("coordinates", allow_reuse=True)
+    @field_validator("coordinates")
+    @classmethod
     def validate_atom_coordinates(cls, v):
         if not all(-1 <= val <= 1 for val in v):
             raise ValueError("atom coordinates (x, y, z) must be all in range [-1, 1]")
         return v
 
-    @validator("siteOccupationFactor", allow_reuse=True)
+    @field_validator("siteOccupationFactor")
+    @classmethod
     def validate_site_occupation_factor(cls, v):
         if v < 0 or v > 1:
             raise ValueError("Site occupation factor must be a value in range [0, 1]")
         return v
 
-    @validator("adp", allow_reuse=True)
+    @field_validator("adp")
+    @classmethod
     def validate_adp(cls, v):
         if v < 0:
             raise ValueError("adp must be a positive value")

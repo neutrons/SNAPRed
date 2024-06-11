@@ -246,7 +246,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         self.log().notice("Execution of group diffraction calibration START!")
 
         # get the ingredients
-        ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
+        ingredients = Ingredients.model_validate_json(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
         self.unbagGroceries()
 

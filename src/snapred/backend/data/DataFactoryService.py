@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Dict, Optional
 
-from pydantic import validate_arguments
+from pydantic import validate_call
 
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.reduction import ReductionRecord
@@ -60,15 +60,67 @@ class DataFactoryService:
     def getGroupingMap(self, runId: str):
         return self.lookupService.readGroupingMap(runId)
 
+    ##### CALIBRATION METHODS #####
+
+    @validate_call
+    def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: int):
+        return self.lookupService._constructCalibrationDataPath(runId, useLiteMode, version)
+
+    def checkCalibrationStateExists(self, runId: str):
+        return self.lookupService.checkCalibrationFileExists(runId)
+
+    @validate_call
+    def getCalibrationState(self, runId: str, useLiteMode: bool):
+        return self.lookupService.readCalibrationState(runId, useLiteMode)
+
+    @validate_call
+    def getCalibrationIndex(self, runId: str, useLiteMode: bool):
+        return self.lookupService.readCalibrationIndex(runId, useLiteMode)
+
+    @validate_call
+    def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.readCalibrationRecord(runId, useLiteMode, version)
+
+    @validate_call
+    def getCalibrationDataWorkspace(self, runId: str, useLiteMode: bool, version: int, name: str):
+        path = self.getCalibrationDataPath(runId, useLiteMode, version)
+        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
+
+    ##### NORMALIZATION METHODS #####
+
+    @validate_call
+    def getNormalizationDataPath(self, runId: str, useLiteMode: bool, version: int):
+        return self.lookupService._constructNormalizationDataPath(runId, useLiteMode, version)
+
+    @validate_call
+    def getNormalizationState(self, runId: str, useLiteMode: bool):
+        return self.lookupService.readNormalizationState(runId, useLiteMode)
+
+    @validate_call
+    def getNormalizationIndex(self, runId: str, useLiteMode: bool):
+        return self.lookupService.readNormalizationIndex(runId, useLiteMode)
+
+    @validate_call
+    def getNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.readNormalizationRecord(runId, useLiteMode, version)
+
+    @validate_call
+    def getNormalizationDataWorkspace(self, runId: str, useLiteMode: bool, version: int, name: str):
+        path = self.getNormalizationDataPath(runId, useLiteMode, version)
+        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
+    
+    @validate_call
+    def getNormalizationVersion(self, runId: str, useLiteMode: bool):
+        return self.lookupService.getVersionFromNormalizationIndex(runId, useLiteMode)
+
     ##### REDUCTION METHODS #####
 
-    @validate_arguments
+    @validate_call
     def getReductionState(self, runId: str, useLiteMode: bool) -> ReductionState:
-        reductionState: ReductionState
+        reductionState: ReductionState = None
 
         if runId in self.cache:
             reductionState = self.cache[runId]
-
         else:
             # lookup and package data
             reductionState = ReductionState(
@@ -79,74 +131,17 @@ class DataFactoryService:
 
         return reductionState
 
-    ##### CALIBRATION METHODS #####
+    @validate_call
+    def getReductionDataPath(self, runId: str, useLiteMode: bool, version: str) -> Path:
+        return self.lookupService._constructReductionDataPath(runId, useLiteMode, version)
 
-    @validate_arguments
-    def getCalibrationDataPath(self, runId: str, useLiteMode: bool, version: int):
-        return self.lookupService._constructCalibrationDataPath(runId, useLiteMode, version)
+    @validate_call
+    def getReductionRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
+        return self.lookupService.readReductionRecord(runId, useLiteMode, version)
 
-    def checkCalibrationStateExists(self, runId: str):
-        return self.lookupService.checkCalibrationFileExists(runId)
-
-    @validate_arguments
-    def getCalibrationState(self, runId: str, useLiteMode: bool):
-        return self.lookupService.readCalibrationState(runId, useLiteMode)
-
-    @validate_arguments
-    def getCalibrationIndex(self, runId: str, useLiteMode: bool):
-        return self.lookupService.readCalibrationIndex(runId, useLiteMode)
-
-    @validate_arguments
-    def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        return self.lookupService.readCalibrationRecord(runId, useLiteMode, version)
-
-    @validate_arguments
-    def getCalibrationDataWorkspace(self, runId: str, useLiteMode: bool, version: str, name: str):
-        path = self.getCalibrationDataPath(runId, useLiteMode, version)
-        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
-
-    ##### NORMALIZATION METHODS #####
-
-    @validate_arguments
-    def getNormalizationDataPath(self, runId: str, useLiteMode: bool, version: int):
-        return self.lookupService._constructNormalizationDataPath(runId, useLiteMode, version)
-
-    @validate_arguments
-    def getNormalizationState(self, runId: str, useLiteMode: bool):
-        return self.lookupService.readNormalizationState(runId, useLiteMode)
-
-    @validate_arguments
-    def getNormalizationIndex(self, runId: str, useLiteMode: bool):
-        return self.lookupService.readNormalizationIndex(runId, useLiteMode)
-
-    @validate_arguments
-    def getNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        return self.lookupService.readNormalizationRecord(runId, useLiteMode, version)
-
-    @validate_arguments
-    def getNormalizationDataWorkspace(self, runId: str, useLiteMode: bool, version: str, name: str):
-        path = self.getNormalizationDataPath(runId, useLiteMode, version)
-        return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
-
-    @validate_arguments
-    def getNormalizationVersion(self, runId: str, useLiteMode: bool):
-        return self.lookupService.getVersionFromNormalizationIndex(runId, useLiteMode)
-
-    ##### REDUCTION METHODS #####
-
-    @validate_arguments
-    def getReductionDataPath(self, runId: str, useLiteMode: bool, grouping: str, version: str) -> Path:
-        return self.lookupService._constructReductionDataPath(runId, useLiteMode, grouping, version)
-
-    @validate_arguments
-    def getReductionRecord(
-        self, runId: str, useLiteMode: bool, grouping: str, version: Optional[int] = None
-    ) -> ReductionRecord:
-        return self.lookupService.readReductionRecord(runId, useLiteMode, grouping, version)
-
-    @validate_arguments
-    def getReductionData(self, runId: str, useLiteMode: bool, grouping: str, version: int) -> ReductionRecord:
-        return self.lookupService.readReductionData(runId, useLiteMode, grouping, version)
+    @validate_call
+    def getReductionData(self, runId: str, useLiteMode: bool, version: int) -> ReductionRecord:
+        return self.lookupService.readReductionData(runId, useLiteMode, version)
 
     ##### WORKSPACE METHODS #####
 

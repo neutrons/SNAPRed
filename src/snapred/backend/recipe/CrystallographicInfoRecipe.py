@@ -34,8 +34,8 @@ class CrystallographicInfoRecipe:
         )
         self.mantidSnapper.executeQueue()
         data["result"] = True
-        data["crystalInfo"] = CrystallographicInfo.parse_raw(xtalInfo.get())
-        data["crystalStructure"] = Crystallography.parse_raw(xtallography.get())
+        data["crystalInfo"] = CrystallographicInfo.model_validate_json(xtalInfo.get())
+        data["crystalStructure"] = Crystallography.model_validate_json(xtallography.get())
 
         logger.info("Finished ingesting crystal info: %s" % cifPath)
         return data

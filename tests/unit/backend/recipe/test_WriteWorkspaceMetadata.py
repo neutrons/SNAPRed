@@ -12,7 +12,7 @@ from mantid.simpleapi import (
     Power,
     mtd,
 )
-from pydantic import BaseModel, Extra, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 # the algorithm to test
 from snapred.backend.dao.WorkspaceMetadata import UNSET
@@ -28,11 +28,13 @@ TAG_PREFIX = Config["metadata.tagPrefix"]
 
 # this mocks out the original workspace metadata class
 # to ensure the algorithm is as generic as possible in case of later extension
-class WorkspaceMetadata(BaseModel, extra=Extra.forbid):
+class WorkspaceMetadata(BaseModel):
     fruit: Literal[UNSET, "apple", "pear", "orange"] = UNSET
     veggie: Literal[UNSET, "broccoli", "cauliflower"] = UNSET
     bread: Literal[UNSET, "sourdough", "pumpernickel"] = UNSET
     dairy: Literal[UNSET, "milk", "cheese", "yogurt", "butter"] = UNSET
+
+    model_config = ConfigDict(extra="forbid")
 
 
 # NOTE do NOT remove these patches
@@ -46,7 +48,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
     def setUp(self):
         self.basicValues = ["apple", "broccoli", "sourdough", "cheese"]
         self.altValues = ["pear", "cauliflower", "pumpernickel", "milk"]
-        self.metadata = WorkspaceMetadata.parse_obj(dict(zip(self.properties, self.basicValues)))
+        self.metadata = WorkspaceMetadata.model_validate(dict(zip(self.properties, self.basicValues)))
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -99,7 +101,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
             # create a metadata object missing one value
             reducedProperties = [self.properties[j] for j in range(NUM) if j != i]
             reducedValues = [self.basicValues[j] for j in range(NUM) if j != i]
-            ref = WorkspaceMetadata.parse_obj(dict(zip(reducedProperties, reducedValues)))
+            ref = WorkspaceMetadata.model_validate(dict(zip(reducedProperties, reducedValues)))
 
             # write the metadata
             assert WriteWorkspaceMetadata().cook(ref, groceries)
@@ -136,7 +138,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
             # create a metadata object missing that property
             reducedProperties = [self.properties[j] for j in range(NUM) if j != i]
             reducedValues = [self.basicValues[j] for j in range(NUM) if j != i]  # NOTE basicValues not altValues
-            ref = WorkspaceMetadata.parse_obj(dict(zip(reducedProperties, reducedValues)))
+            ref = WorkspaceMetadata.model_validate(dict(zip(reducedProperties, reducedValues)))
             assert getattr(ref, self.properties[i]) == UNSET
 
             # write the metadata
@@ -254,7 +256,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
         # DAO with invalid setting
         bad_metadata = {"fruit": "turnip"}
         with pytest.raises(ValidationError):
-            WorkspaceMetadata.parse_obj(bad_metadata)
+            WorkspaceMetadata.model_validate(bad_metadata)
 
         # now run with the invalid DAO
         with pytest.raises(ValidationError) as e:
@@ -264,7 +266,7 @@ class TestWriteWorkspaceMetadata(unittest.TestCase):
         # DAO with invalid property
         bad_metadata = {"pastry": "turnover"}
         with pytest.raises(ValidationError):
-            WorkspaceMetadata.parse_obj(bad_metadata)
+            WorkspaceMetadata.model_validate(bad_metadata)
 
         # now run the invalid DAO
         with pytest.raises(ValidationError) as e:
