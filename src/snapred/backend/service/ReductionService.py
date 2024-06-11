@@ -1,5 +1,5 @@
-from typing import Any, Dict, List
 import json
+from typing import Any, Dict, List
 
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
@@ -199,7 +199,7 @@ class ReductionService(Service):
 
     def hasState(self, runNumber: str):
         return self.dataFactoryService.checkCalibrationStateExists(runNumber)
-    
+
     def groupRequests(self, requests: List[SNAPRequest]):
         scheduler = RequestScheduler()
         return scheduler.handle(requests, [self._groupByStateId, self._groupByVanadiumVersion])
@@ -208,12 +208,12 @@ class ReductionService(Service):
         stateIDs = {}
         for request in requests:
             runNumber = str(json.loads(request.payload)["runNumber"])
-            stateID, _  = self.dataFactoryService.constructStateId(runNumber)
+            stateID, _ = self.dataFactoryService.constructStateId(runNumber)
             if stateIDs.get(stateID) is None:
                 stateIDs[stateID] = []
             stateIDs[stateID].append(request)
         return stateIDs
-    
+
     def _groupByVanadiumVersion(self, requests: List[SNAPRequest]):
         versions = {}
         for request in requests:
@@ -226,4 +226,3 @@ class ReductionService(Service):
                 versions[version] = []
             versions[version].append(request)
         return versions
-    

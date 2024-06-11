@@ -122,7 +122,7 @@ class TestReductionService(unittest.TestCase):
         payload = self.request.json()
         request = SNAPRequest(path="test", payload=payload)
         result = self.instance.groupRequests([request])
-        
+
         # outpus/2kfxjiqm is the state id defined in WhateversInTheFridge util
         # Verify the request is sorted by state id then normalization version
-        assert result['root']['outpus/2kfxjiqm']['normalization_0'][0] == request
+        assert result["root"]["outpus/2kfxjiqm"]["normalization_0"][0] == request
