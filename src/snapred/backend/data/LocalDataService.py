@@ -407,7 +407,7 @@ class LocalDataService:
             latestNormalization = relevantEntries[-1]
             version = latestNormalization.version
         return version
-    
+
     def getVersionFromNormalizationIndex(self, runId: str, useLiteMode: bool) -> int:
         return self._getVersionFromNormalizationIndex(runId, useLiteMode)
 
