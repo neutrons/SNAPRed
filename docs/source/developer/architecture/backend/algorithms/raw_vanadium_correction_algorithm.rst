@@ -3,9 +3,8 @@ Algorithm: `RawVanadiumCorrectionAlgorithm`
 
 Description:
 ------------
-This algorithm processes raw vanadium data, correcting it by subtracting background data,
-scaling, and applying absorption corrections based on the sample geometry. The result is
-a corrected dataset suitable for further analysis.
+This algorithm creates the raw vanadium data which is unfocused and
+is later used in the reduction process.
 
 Expected Inputs:
 ----------------
