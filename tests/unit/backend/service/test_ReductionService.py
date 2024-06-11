@@ -20,6 +20,7 @@ from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
 )
+from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.service.ReductionService import ReductionService
 from util.InstaEats import InstaEats
@@ -116,3 +117,12 @@ class TestReductionService(unittest.TestCase):
     def test_hasState(self):
         assert self.instance.hasState("123")
         assert not self.instance.hasState("not a state")
+
+    def test_groupRequests(self):
+        payload = self.request.json()
+        request = SNAPRequest(path="test", payload=payload)
+        result = self.instance.groupRequests([request])
+        
+        # outpus/2kfxjiqm is the state id defined in WhateversInTheFridge util
+        # Verify the request is sorted by state id then normalization version
+        assert result['root']['outpus/2kfxjiqm']['normalization_0'][0] == request

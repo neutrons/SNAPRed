@@ -1,11 +1,14 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
+import json
 
+from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
     ReductionExportRequest,
     ReductionRequest,
 )
+from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
@@ -196,3 +199,31 @@ class ReductionService(Service):
 
     def hasState(self, runNumber: str):
         return self.dataFactoryService.checkCalibrationStateExists(runNumber)
+    
+    def groupRequests(self, requests: List[SNAPRequest]):
+        scheduler = RequestScheduler()
+        return scheduler.handle(requests, [self._groupByStateId, self._groupByVanadiumVersion])
+
+    def _groupByStateId(self, requests: List[SNAPRequest]):
+        stateIDs = {}
+        for request in requests:
+            runNumber = str(json.loads(request.payload)["runNumber"])
+            stateID, _  = self.dataFactoryService.constructStateId(runNumber)
+            if stateIDs.get(stateID) is None:
+                stateIDs[stateID] = []
+            stateIDs[stateID].append(request)
+        return stateIDs
+    
+    def _groupByVanadiumVersion(self, requests: List[SNAPRequest]):
+        versions = {}
+        for request in requests:
+            runNumber = str(json.loads(request.payload)["runNumber"])
+            stateID, _ = self.dataFactoryService.constructStateId(runNumber)
+            useLiteMode = bool(json.loads(request.payload)["useLiteMode"])
+            normalVersion = self.dataFactoryService.getNormalizationVersion(str(stateID), useLiteMode)
+            version = "normalization_" + str(normalVersion)
+            if versions.get(version) is None:
+                versions[version] = []
+            versions[version].append(request)
+        return versions
+    
