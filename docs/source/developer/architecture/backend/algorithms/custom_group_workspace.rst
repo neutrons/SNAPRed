@@ -4,10 +4,7 @@ Algorithm: `CustomGroupWorkspace`
 Description:
 ------------
 This algorithm orchestrates loading grouping workspaces and then grouping them
-into a `GroupedWorkspace`. Although the loading behavior is no longer needed,
-the algorithm is retained to call Mantid's `GroupWorkspaces` for maintaining
-conformity with previous processes.
-
+into a `WorkspaceGroup`.
 Expected Inputs:
 ----------------
 1. **GroupingWorkspaces**:
