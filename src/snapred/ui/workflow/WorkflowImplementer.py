@@ -57,16 +57,17 @@ class WorkflowImplementer:
             self.workflow.widget,
         )
 
-    def request(self, path, payload=None):
-        request = SNAPRequest(path=path, payload=payload)
+    def _request(self, request: SNAPRequest):
         response = self.interfaceController.executeRequest(request)
         self._handleComplications(response)
+        return response
+
+    def request(self, path, payload=None):
+        request = SNAPRequest(path=path, payload=payload)
+        response = self._request(request)
         self.requests.append(request)
         self.responses.append(response)
         return response
-
-    def verifyForm(self, form):
-        return form.verify()
 
     def _handleComplications(self, result):
         if result.code == 400:

@@ -109,9 +109,8 @@ def test_recoverableExceptionKwargs():
         raise RecoverableException(RuntimeError(exceptionString), exceptionString, extraInfo="some extra info")
 
 
-@ExceptionHandler(ContinueWarning)
 def throwsContinueWarning():
-    raise RuntimeError("This is a warning.  Heed it.")
+    raise ContinueWarning("This is a warning.  Heed it.", ContinueWarning.Type.MISSING_DIFFRACTION_CALIBRATION)
 
 
 def test_continueWarningHandler():

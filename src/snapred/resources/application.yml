@@ -62,6 +62,10 @@ calibration:
   file:
     extension: .json
     prefix: SNAPcalibLog
+  normalization:
+    output:
+      ws:
+        extension: .nxs
   diffraction:
     output:
       extension: .tar

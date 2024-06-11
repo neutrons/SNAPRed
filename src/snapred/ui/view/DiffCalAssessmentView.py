@@ -7,7 +7,6 @@ from qtpy.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushBut
 from snapred.backend.dao.calibration import CalibrationIndexEntry
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentPresenter
-from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
@@ -28,9 +27,8 @@ class DiffCalAssessmentView(QWidget):
     signalRunNumberUpdate = Signal(str, bool)
     signalError = Signal(str)
 
-    def __init__(self, name, jsonSchemaMap, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self._jsonFormList = JsonFormList(name, jsonSchemaMap, parent=parent)
 
         self.presenter = CalibrationAssessmentPresenter(self)
 
