@@ -180,7 +180,7 @@ def test_state_root_redirect_no_stateid():
         # make sure a file can be added inside the directory
         tmpRoot.addFileAs(
             Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"),
-            localDataService.calibrationIndex("xyz", True).recordPath(1),
+            localDataService.calibrationIndexor("xyz", True).recordPath(1),
         )
         ans = localDataService.readCalibrationRecord("xyz", True, 1)
         assert ans == CalibrationRecord.parse_file(Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))

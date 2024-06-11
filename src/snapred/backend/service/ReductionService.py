@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
+from snapred.backend.dao.Record import Record
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
     ReductionExportRequest,
@@ -174,19 +175,27 @@ class ReductionService(Service):
         """
         # gather input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber).useLiteMode(
+        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, request.version).useLiteMode(
             request.useLiteMode
         ).add()
-        self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber).useLiteMode(
+        self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, request.version).useLiteMode(
             request.useLiteMode
         ).add()
         return self.groceryService.fetchGroceryDict(groceryDict=self.groceryClerk.buildDict())
 
     @FromString
     def saveReduction(self, request: ReductionExportRequest):
+        """
+        Will save a reduction record at the version attached to the request.
+        If no version attached, will save at next version following Indexor rules.
+        """
+        version = request.version
         record = request.reductionRecord
-        record = self.dataExportService.exportReductionRecord(record)
-        record = self.dataExportService.exportReductionData(record)
+        # NOTE the Indexor will handle correctly versioning
+        self.dataExportService.exportReductionRecord(record, version)
+        self.dataExportService.exportReductionData(record, version)
+        entry = Record.indexEntryFromRecord(record)
+        self.dataExportService.exportReductionIndexEntry(entry, version)
 
     def loadReduction(self):
         raise NotImplementedError("SNAPRed cannot load reductions")

@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from pydantic import parse_raw_as
 
@@ -16,6 +16,7 @@ from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
     GroceryListItem,
 )
+from snapred.backend.dao.Record import Nonrecord
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
@@ -196,29 +197,36 @@ class CalibrationService(Service):
 
     @FromString
     def save(self, request: CalibrationExportRequest):
+        """
+        If no version is attached to the request, this will save at next version number
+        """
+        version = request.version
         entry = request.calibrationIndexEntry
-        version = entry.version
-        calibrationRecord = request.calibrationRecord
-        if version is not None:
-            calibrationRecord.version = version
-        calibrationRecord = self.dataExportService.exportCalibrationRecord(calibrationRecord)
-        calibrationRecord = self.dataExportService.exportCalibrationWorkspaces(calibrationRecord)
-        entry.version = calibrationRecord.version
+        record = request.calibrationRecord
+        # TODO all the of workspace name standardization should occur HERE
+        # it should NOT occur in the LocalDataService
+        self.dataExportService.exportCalibrationRecord(record, version)
+        self.dataExportService.exportCalibrationWorkspaces(record, version)
         self.saveCalibrationToIndex(entry)
 
     @FromString
-    def load(self, run: RunConfig):
-        runId = run.runNumber
-        return self.dataFactoryService.getCalibrationRecord(runId, run.useLiteMode)
+    def load(self, run: RunConfig, version: Optional[int] = None):
+        """
+        If no version is given, will load the latest version applicable to the run number
+        """
+        return self.dataFactoryService.getCalibrationRecord(run.runNumber, run.useLiteMode, version)
 
     @FromString
-    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
+    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry, version: Optional[int] = None):
+        """
+        If no version given, will save at next version following Indexor rules
+        """
         if entry.appliesTo is None:
             entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
-        self.dataExportService.exportCalibrationIndexEntry(entry)
+        self.dataExportService.exportCalibrationIndexEntry(entry, version)
 
     @FromString
     def initializeState(self, request: InitializeStateRequest):
@@ -259,10 +267,9 @@ class CalibrationService(Service):
         runId = request.runId
         useLiteMode = request.useLiteMode
         version = request.version
-        useLiteMode = request.useLiteMode
 
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, version)
-        if calibrationRecord is None:
+        if calibrationRecord is Nonrecord:
             errorTxt = f"No calibration record found for run {runId}, version {version}."
             logger.error(errorTxt)
             raise ValueError(errorTxt)

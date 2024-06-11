@@ -2,7 +2,6 @@ import datetime
 import glob
 import json
 import os
-from copy import deepcopy
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
 from pathlib import Path
@@ -15,6 +14,7 @@ from pydantic import parse_file_as, validate_arguments
 
 from snapred.backend.dao import (
     GSASParameters,
+    IndexEntry,
     InstrumentConfig,
     ObjectSHA,
     ParticleBounds,
@@ -79,7 +79,7 @@ class LocalDataService:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
         self.instrumentConfig = self.readInstrumentConfig()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
-        self.indexor = {}
+        self._indexorCache = {}
 
     ##### MISCELLANEOUS METHODS #####
 
@@ -128,17 +128,17 @@ class LocalDataService:
             raise _createFileNotFoundError("Instrument configuration file", self.instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
-        previousDiffCalRecord: CalibrationRecord = self.readCalibrationRecord(runId, useLiteMode=useLiteMode)
+        previousDiffCalRecord: CalibrationRecord = self.readCalibrationRecord(runId, useLiteMode)
         if previousDiffCalRecord is Nonrecord:
             diffCalibration: Calibration = self.readCalibrationState(runId, useLiteMode)
         else:
             diffCalibration: Calibration = previousDiffCalRecord.calibrationFittingIngredients
 
-        stateId = diffCalibration.instrumentState.id
+        stateId = str(diffCalibration.instrumentState.id)
 
         # Read the grouping-schema map associated with this `StateConfig`.
         groupingMap = None
-        if self._groupingMapPath(str(stateId)).exists():
+        if self._groupingMapPath(stateId).exists():
             groupingMap = self._readGroupingMap(stateId)
         else:
             # If no `GroupingMap` JSON file is present at the <state root>,
@@ -265,77 +265,77 @@ class LocalDataService:
         stateId, _ = self._generateStateId(runNumber)
         fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
         fileName += Config["nexus.file.extension"]
-        filePath = self.reductionIndex(runNumber, useLiteMode).versionPath(version) / fileName
+        filePath = self.reductionIndexor(runNumber, useLiteMode).versionPath(version) / fileName
         return filePath
 
     ##### VERSIONING / INDEXING METHODS #####
 
     def _statePathForWorkflow(self, stateId: str, useLiteMode: bool, indexorType: IndexorType):
-        if indexorType == IndexorType.CALIBRATION:
-            path = self._constructCalibrationStatePath(stateId, useLiteMode)
-        elif indexorType == IndexorType.NORMALIZATION:
-            path = self._constructNormalizationStatePath(stateId, useLiteMode)
-        elif indexorType == IndexorType.REDUCTION:
-            # NOTE the "stateId" should actually be a runNumber for reduction
-            path = self._constructReductionDataRoot(stateId, useLiteMode)
-        else:
-            mode = "lite" if useLiteMode else "native"
-            path = self._constructCalibrationStateRoot(stateId) / mode
+        """
+        NOTE for reduction, use the runNumber in place of the stateId
+        """
+        match indexorType:
+            case IndexorType.CALIBRATION:
+                path = self._constructCalibrationStatePath(stateId, useLiteMode)
+            case IndexorType.NORMALIZATION:
+                path = self._constructNormalizationStatePath(stateId, useLiteMode)
+            case IndexorType.REDUCTION:
+                # NOTE the "stateId" should actually be a runNumber for reduction
+                path = self._constructReductionDataRoot(stateId, useLiteMode)
+            case _:
+                mode = "lite" if useLiteMode else "native"
+                path = self._constructCalibrationStateRoot(stateId) / mode
         return path
 
-    def index(self, runNumber: str, useLiteMode: bool, indexorType: IndexorType):
+    def indexor(self, runNumber: str, useLiteMode: bool, indexorType: IndexorType):
         # NOTE the reduction state path is determined by run number, not state id
         if indexorType is IndexorType.REDUCTION:
             stateId = runNumber
         else:
             stateId, _ = self._generateStateId(runNumber)
         key = (stateId, useLiteMode, indexorType)
-        if self.indexor.get(key) is None:
+        if self._indexorCache.get(key) is None:
             path = self._statePathForWorkflow(*key)
-            self.indexor[key] = Indexor(indexorType=indexorType, directory=path)
-        return self.indexor[(stateId, useLiteMode, indexorType)]
+            self._indexorCache[key] = Indexor(indexorType=indexorType, directory=path)
+        return self._indexorCache[key]
 
-    def calibrationIndex(self, runId: str, useLiteMode: bool):
-        return self.index(runId, useLiteMode, IndexorType.CALIBRATION)
+    def calibrationIndexor(self, runId: str, useLiteMode: bool):
+        return self.indexor(runId, useLiteMode, IndexorType.CALIBRATION)
 
-    def normalizationIndex(self, runId: str, useLiteMode: bool):
-        return self.index(runId, useLiteMode, IndexorType.NORMALIZATION)
+    def normalizationIndexor(self, runId: str, useLiteMode: bool):
+        return self.indexor(runId, useLiteMode, IndexorType.NORMALIZATION)
 
-    def reductionIndex(self, runId: str, useLiteMode: bool):
-        return self.index(runId, useLiteMode, IndexorType.REDUCTION)
+    def reductionIndexor(self, runId: str, useLiteMode: bool):
+        return self.indexor(runId, useLiteMode, IndexorType.REDUCTION)
 
     def readCalibrationIndex(self, runId: str, useLiteMode: bool):
-        return self.calibrationIndex(runId, useLiteMode).getIndex()
+        return self.calibrationIndexor(runId, useLiteMode).getIndex()
 
     def readNormalizationIndex(self, runId: str, useLiteMode: bool):
-        return self.normalizationIndex(runId, useLiteMode).getIndex()
+        return self.normalizationIndexor(runId, useLiteMode).getIndex()
 
-    def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
-        self.calibrationIndex(entry.runNumber, entry.useLiteMode).addIndexEntry(entry)
+    def readReductionIndex(self, runId: str, useLiteMode: bool):
+        # NOTE currently nothing in the code needs this, but it may as well exist
+        return self.reductionIndexor(runId, useLiteMode).getIndex()
 
-    def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
-        self.normalizationIndex(entry.runNumber, entry.useLiteMode).addIndexEntry(entry)
+    def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry, version: Optional[int] = None):
+        self.calibrationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, version)
 
-    # def _extractFileVersion(self, file: str) -> int:
-    #     if not isinstance(file, str):
-    #         return None
-    #     else:
-    #         for part in reversed(Path(file).parts):
-    #             if "v_" in part:
-    #                 return int(part.split("_")[-1])
-    #     return None
+    def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry, version: Optional[int] = None):
+        self.normalizationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, version)
 
-    def _getLatestReductionVersionNumber(self, runNumber: str, useLiteMode: bool) -> int:
-        """
-        Get the version number of the latest set of reduction data files.
-        """
-        return self.reductionIndex(runNumber, useLiteMode).currentVersion()
+    def writeReductionIndexEntry(self, entry: IndexEntry, version: Optional[int] = None):
+        self.reductionIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, version)
 
     ##### NORMALIZATION METHODS #####
 
     @validate_arguments
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        indexor = self.normalizationIndex(runId, useLiteMode)
+        """
+        Will return a normalization record for the given version.
+        If no version given, will choose the latest applicable version from the index.
+        """
+        indexor = self.normalizationIndexor(runId, useLiteMode)
         if version is None:
             version = indexor.latestApplicableVersion(runId)
         return indexor.readRecord(version)
@@ -347,7 +347,8 @@ class LocalDataService:
         Persists a `NormalizationRecord` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version numbers of incoming `NormalizationRecord` and its nested `Normalization`.
         """
-        indexor = self.normalizationIndex(record.runNumber, record.useLiteMode)
+
+        indexor = self.normalizationIndexor(record.runNumber, record.useLiteMode)
         if version is None:
             version = indexor.nextVersion()
         record.version = version
@@ -366,12 +367,16 @@ class LocalDataService:
         logger.info(f"wrote NormalizationRecord: version: {version}")
         return record
 
-    def writeNormalizationWorkspaces(self, record: NormalizationRecord) -> NormalizationRecord:
+    def writeNormalizationWorkspaces(
+        self, record: NormalizationRecord, version: Optional[int] = None
+    ) -> NormalizationRecord:
         """
         Writes the workspaces associated with a `NormalizationRecord` to disk:
         -- assumes that `writeNormalizationRecord` has already been called, and that the version folder exists
         """
-        indexor = self.normalizationIndex(record.runNumber, record.useLiteMode)
+        indexor = self.normalizationIndexor(record.runNumber, record.useLiteMode)
+        if version is None:
+            version = indexor.nextVersion()
         normalizationDataPath: Path = indexor.versionPath(record.version)
         for workspace in record.workspaceNames:
             filename = workspace + "_" + wnvf.formatVersion(record.version)
@@ -388,8 +393,13 @@ class LocalDataService:
 
     @validate_arguments
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        indexor = self.calibrationIndex(runId, useLiteMode)
+        """
+        Will return a calibration record for the given version.
+        If no version given, will choose the latest applicable version from the index.
+        """
+        indexor = self.calibrationIndexor(runId, useLiteMode)
         if version is None:
+            # NOTE Indexor.readRecord defaults to currentVersion
             version = indexor.latestApplicableVersion(runId)
         return indexor.readRecord(version)
 
@@ -398,7 +408,7 @@ class LocalDataService:
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
         -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
         """
-        indexor = self.calibrationIndex(record.runNumber, record.useLiteMode)
+        indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
         if version is None:
             version = indexor.nextVersion()
         record.version = version
@@ -412,6 +422,7 @@ class LocalDataService:
 
         # Update the to-be saved record's "workspaces" information
         #   to correspond to the filenames that will actually be saved to disk.
+        # TODO this should happen in the calibration service, not here
         savedWorkspaces = {}
         workspaces = record.workspaces.copy()
         wss = []
@@ -466,23 +477,26 @@ class LocalDataService:
             ws = wng.diffCalMask().runNumber(record.runNumber).version(record.version).build()
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_MASK] = wss
-        savedRecord = deepcopy(record)
-        savedRecord.workspaces = savedWorkspaces
+        # savedRecord = deepcopy(record)
+        # savedRecord.workspaces = savedWorkspaces
+        record.workspaces = savedWorkspaces
 
         # write record to file
-        indexor.writeRecord(savedRecord, version)
+        indexor.writeRecord(record, version)
         # write the calibration state to file
         indexor.writeParameters(record.calibrationFittingIngredients, version)
 
         logger.info(f"Wrote CalibrationRecord: version: {version}")
         return record
 
-    def writeCalibrationWorkspaces(self, record: CalibrationRecord):
+    def writeCalibrationWorkspaces(self, record: CalibrationRecord, version: Optional[int] = None):
         """
         Writes the workspaces associated with a `CalibrationRecord` to disk:
         -- assumes that `writeCalibrationRecord` has already been called, and that the version folder exists
         """
-        indexor = self.calibrationIndex(record.runNumber, record.useLiteMode)
+        indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
+        if version is None:
+            version = indexor.nextVersion()
         calibrationDataPath = indexor.versionPath(record.version)
 
         # Assumes all workspaces are of WNG-type:
@@ -507,7 +521,6 @@ class LocalDataService:
                 )
             self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
         for wsName in workspaces.pop(wngt.DIFFCAL_DIAG, []):
-            print(f"WORKSPACE {wsName}")
             ext = Config["calibration.diffraction.diagnostic.extension"]
             if wng.Units.DIAG.lower() in wsName:
                 filename = Path(
@@ -545,18 +558,23 @@ class LocalDataService:
 
     @validate_arguments
     def readReductionRecord(self, runNumber: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
-        indexor = self.reductionIndex(runNumber, useLiteMode)
+        """
+        Will return a reduction record for the given version.
+        If no version given, will choose the latest applicable version from the index.
+        """
+        indexor = self.reductionIndexor(runNumber, useLiteMode)
         if version is None:
-            version = indexor.currentVersion()
+            # NOTE Indexor.readRecord defaults to currentVersion
+            version = indexor.latestApplicableVersion(runNumber)
         return indexor.readRecord(version)
 
     def writeReductionRecord(self, record: ReductionRecord, version: Optional[int] = None) -> ReductionRecord:
         """
         Persists a `ReductionRecord` to either a new version folder, or overwrites a specific version.
         * side effect: updates version numbers of incoming `ReductionRecord`;
-        * must be called before any call to `writeReductionData`.
+        * side effect: creates the version directory if none exists
         """
-        indexor = self.reductionIndex(record.runNumber, record.useLiteMode)
+        indexor = self.reductionIndexor(record.runNumber, record.useLiteMode)
         if version is None:
             version = indexor.nextVersion()
         record.version = version
@@ -568,30 +586,31 @@ class LocalDataService:
     def writeReductionData(self, record: ReductionRecord, version: Optional[int] = None):
         """
         Persists the reduction data associated with a `ReductionRecord`
+        * side effect: updates version numbers of incoming `ReductionRecord`;
+        * side effect: creates the version directory is none exists
         """
-        indexor = self.reductionIndex(record.runNumber, record.useLiteMode)
+        indexor = self.reductionIndexor(record.runNumber, record.useLiteMode)
         if version is None:
             version = indexor.nextVersion()
-        record.version = Version
+        record.version = version
 
-        recordPath = indexor.recordPath(version)
-        if not recordPath.parent.exists():
-            recordPath.parent.mkdir(parents=True, exist_ok=True)
+        dataFilepath = self._constructReductionDataFilePath(record.runNumber, record.useLiteMode, version)
+        if not dataFilepath.parent.exists():
+            dataFilepath.parent.mkdir(parents=True, exist_ok=True)
 
         for ws in record.workspaceNames:
             # Append workspaces to hdf5 file, in order of the `workspaces` list
             ws_ = mtd[ws]
             if ws_.isRaggedWorkspace():
-                self.writeRaggedWorkspace(recordPath.parent, Path(recordPath.name), ws)
-                # raise RuntimeError("not implemented: append ragged workspace to reduction data file")
+                self.writeRaggedWorkspace(dataFilepath.parent, Path(dataFilepath.name), ws)
             else:
-                self.writeWorkspace(recordPath.parent, Path(recordPath.name), ws, append=True)
+                self.writeWorkspace(dataFilepath.parent, Path(dataFilepath.name), ws, append=True)
 
         # Append the "metadata" group, containing the `ReductionRecord` metadata
-        with h5py.File(recordPath, "a") as h5:
+        with h5py.File(dataFilepath, "a") as h5:
             n5m.insertMetadataGroup(h5, record.dict(), "/metadata")
 
-        logger.info(f"wrote reduction data to {recordPath}: version: {version}")
+        logger.info(f"wrote reduction data to {dataFilepath}: version: {version}")
 
     @validate_arguments
     def readReductionData(self, runNumber: str, useLiteMode: bool, version: int) -> ReductionRecord:
@@ -620,77 +639,24 @@ class LocalDataService:
         logger.info(f"loaded reduction data from {dataFilePath}: version: {version}")
         return record
 
-    ##### CALIBRANT SAMPLE METHODS #####
-
-    def readSampleFilePaths(self):
-        sampleFolder = Config["instrument.calibration.sample.home"]
-        extensions = Config["instrument.calibration.sample.extensions"]
-        # collect list of all json in folder
-        sampleFiles = set()
-        for extension in extensions:
-            sampleFiles.update(self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False))
-        if len(sampleFiles) < 1:
-            raise RuntimeError(f"No samples found in {sampleFolder} for extensions {extensions}")
-        sampleFiles = list(sampleFiles)
-        sampleFiles.sort()
-        return sampleFiles
-
-    def writeCalibrantSample(self, sample: CalibrantSamples):
-        samplePath: str = Config["samples.home"]
-        fileName: str = sample.name + "_" + sample.unique_id
-        filePath = os.path.join(samplePath, fileName) + ".json"
-        if os.path.exists(filePath):
-            raise ValueError(f"the file '{filePath}' already exists")
-        write_model_pretty(sample, filePath)
-
-    def readCalibrantSample(self, filePath: str):
-        if not os.path.exists(filePath):
-            raise ValueError(f"The file '{filePath}' does not exist")
-        with open(filePath, "r") as file:
-            sampleJson = json.load(file)
-            if "mass-density" in sampleJson and "packingFraction" in sampleJson:
-                warnings.warn(  # noqa: F821
-                    "Can't specify both mass-density and packing fraction for single-element materials"
-                )  # noqa: F821
-            del sampleJson["material"]["packingFraction"]
-            for atom in sampleJson["crystallography"]["atoms"]:
-                atom["symbol"] = atom.pop("atom_type")
-                atom["coordinates"] = atom.pop("atom_coordinates")
-                atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
-            sample = CalibrantSamples.parse_raw(json.dumps(sampleJson))
-            return sample
-
-    def readCifFilePath(self, sampleId: str):
-        samplePath: str = Config["samples.home"]
-        fileName: str = sampleId + ".json"
-        filePath = os.path.join(samplePath, fileName)
-        if not os.path.exists(filePath):
-            raise ValueError(f"the file '{filePath}' does not exist")
-        with open(filePath, "r") as f:
-            calibrantSampleDict = json.load(f)
-        filePath = Path(calibrantSampleDict["crystallography"]["cifFile"])
-        # Allow relative paths:
-        if not filePath.is_absolute():
-            filePath = Path(Config["samples.home"]).joinpath(filePath)
-        return str(filePath)
-
     ##### READ / WRITE STATE METHODS #####
 
     @validate_arguments
     @ExceptionHandler(RecoverableException, "'NoneType' object has no attribute 'instrumentState'")
     def readCalibrationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        indexor = self.calibrationIndex(runId, useLiteMode)
-        if version is None:
-            version = indexor.currentVersion()
+        indexor = self.calibrationIndexor(runId, useLiteMode)
+        # NOTE if we prefer latest version in index, uncomment below
+        # if version is None:
+        #     version = indexor.latestApplicableVersion(runId)
         parameters = indexor.readParameters(version)
         return Calibration.parse_obj(parameters)
 
     @validate_arguments
     def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
-        indexor = self.normalizationIndex(runId, useLiteMode)
-        if version is None:
-            version = indexor.currentVersion()
-            # version = indexor.latestApplicableVersion(runId)
+        indexor = self.normalizationIndexor(runId, useLiteMode)
+        # NOTE if we prefer latest version in index, uncomment below
+        # if version is None:
+        #     version = indexor.latestApplicableVersion(runId)
         parameters = indexor.readParameters(version)
         return Normalization.parse_obj(parameters)
 
@@ -699,7 +665,7 @@ class LocalDataService:
         Writes a `Calibration` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Calibration`.
         """
-        indexor = self.calibrationIndex(calibration.seedRun, calibration.useLiteMode)
+        indexor = self.calibrationIndexor(calibration.seedRun, calibration.useLiteMode)
         indexor.writeParameters(calibration, version)
 
     def writeNormalizationState(self, normalization: Normalization, version: Optional[Version] = None):  # noqa: F821
@@ -707,7 +673,7 @@ class LocalDataService:
         Writes a `Normalization` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Normalization`.
         """
-        indexor = self.normalizationIndex(normalization.seedRun, normalization.useLiteMode)
+        indexor = self.normalizationIndexor(normalization.seedRun, normalization.useLiteMode)
         indexor.writeParameters(normalization, version)
 
     def readDetectorState(self, runId: str) -> DetectorState:
@@ -729,12 +695,13 @@ class LocalDataService:
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
         from snapred.backend.data.GroceryService import GroceryService
 
-        version = self.VERSION_START
+        indexor = self.calibrationIndexor(runNumber, useLiteMode)
+        version = indexor.defaultVersion()
         grocer = GroceryService()
         filename = Path(grocer._createDiffcalTableWorkspaceName("default", useLiteMode, version) + ".h5")
         outWS = grocer.fetchDefaultDiffCalTable(runNumber, useLiteMode, version)
 
-        calibrationDataPath = self._constructCalibrationDataPath(runNumber, useLiteMode, version)
+        calibrationDataPath = indexor.versionPath(version)
         self.writeDiffCalWorkspaces(calibrationDataPath, filename, outWS)
 
     @validate_arguments
@@ -843,6 +810,60 @@ class LocalDataService:
             stateID, _ = self._generateStateId(runId)
             calibrationStatePath: Path = self._constructCalibrationStateRoot(stateID)
             return calibrationStatePath.exists()
+
+    ##### CALIBRANT SAMPLE METHODS #####
+
+    def readSampleFilePaths(self):
+        sampleFolder = Config["instrument.calibration.sample.home"]
+        extensions = Config["instrument.calibration.sample.extensions"]
+        # collect list of all json in folder
+        sampleFiles = set()
+        for extension in extensions:
+            sampleFiles.update(self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False))
+        if len(sampleFiles) < 1:
+            raise RuntimeError(f"No samples found in {sampleFolder} for extensions {extensions}")
+        sampleFiles = list(sampleFiles)
+        sampleFiles.sort()
+        return sampleFiles
+
+    def writeCalibrantSample(self, sample: CalibrantSamples):
+        samplePath: str = Config["samples.home"]
+        fileName: str = sample.name + "_" + sample.unique_id
+        filePath = os.path.join(samplePath, fileName) + ".json"
+        if os.path.exists(filePath):
+            raise ValueError(f"the file '{filePath}' already exists")
+        write_model_pretty(sample, filePath)
+
+    def readCalibrantSample(self, filePath: str):
+        if not os.path.exists(filePath):
+            raise ValueError(f"The file '{filePath}' does not exist")
+        with open(filePath, "r") as file:
+            sampleJson = json.load(file)
+            if "mass-density" in sampleJson and "packingFraction" in sampleJson:
+                warnings.warn(  # noqa: F821
+                    "Can't specify both mass-density and packing fraction for single-element materials"
+                )  # noqa: F821
+            del sampleJson["material"]["packingFraction"]
+            for atom in sampleJson["crystallography"]["atoms"]:
+                atom["symbol"] = atom.pop("atom_type")
+                atom["coordinates"] = atom.pop("atom_coordinates")
+                atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
+            sample = CalibrantSamples.parse_raw(json.dumps(sampleJson))
+            return sample
+
+    def readCifFilePath(self, sampleId: str):
+        samplePath: str = Config["samples.home"]
+        fileName: str = sampleId + ".json"
+        filePath = os.path.join(samplePath, fileName)
+        if not os.path.exists(filePath):
+            raise ValueError(f"the file '{filePath}' does not exist")
+        with open(filePath, "r") as f:
+            calibrantSampleDict = json.load(f)
+        filePath = Path(calibrantSampleDict["crystallography"]["cifFile"])
+        # Allow relative paths:
+        if not filePath.is_absolute():
+            filePath = Path(Config["samples.home"]).joinpath(filePath)
+        return str(filePath)
 
     ##### GROUPING MAP METHODS #####
 

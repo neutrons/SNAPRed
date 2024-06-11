@@ -1,8 +1,9 @@
 {
+    "useLiteMode": true,
+    "version": 1,
     "runNumbers": [
         "57514"
     ],
-    "useLiteMode": true,
     "calibration": {
         "runNumber": "57514",
         "crystalInfo": {
@@ -887,7 +888,6 @@
             }
         ]
     },
-    "version": 1,
     "stateId": {
         "hex": "ab8704b0bc2a2342",
         "decodedKey": null

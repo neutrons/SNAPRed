@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+from typing import Optional
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.ingredients import (
@@ -175,23 +176,27 @@ class NormalizationService(Service):
 
     @FromString
     def saveNormalization(self, request: NormalizationExportRequest):
+        """
+        If no version is attached to the request, this will save at next version number
+        """
+        version = request.version
         entry = request.normalizationIndexEntry
-        version = entry.version
-        normalizationRecord = request.normalizationRecord
-        if version is not None:
-            normalizationRecord.version = version
-        normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
-        normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
-        entry.version = normalizationRecord.version
-        self.saveNormalizationToIndex(entry)
+        record = request.normalizationRecord
+        # NOTE the Indexor will handle the version information for us
+        self.dataExportService.exportNormalizationRecord(record, version)
+        self.dataExportService.exportNormalizationWorkspaces(record, version)
+        self.saveNormalizationToIndex(entry, version)
 
-    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
+    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry, version: Optional[int] = None):
+        """
+        If no version given, will save at next version number
+        """
         if entry.appliesTo is None:
             entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * 1000))
         logger.info(f"Saving normalization index entry for Run Number {entry.runNumber}")
-        self.dataExportService.exportNormalizationIndexEntry(entry)
+        self.dataExportService.exportNormalizationIndexEntry(entry, version)
 
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)

@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import ValidationError, root_validator, validator
+from pydantic import Field, root_validator, validator
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -19,7 +19,7 @@ class ReductionRecord(Record):
     """
 
     # inherited from Record
-    runNumber: Optional[str] = None
+    runNumber: Optional[str] = Field(None, exclude=True)
     useLiteMode: bool
     version: int
 
@@ -32,21 +32,20 @@ class ReductionRecord(Record):
     stateId: ObjectSHA
     workspaceNames: List[WorkspaceName]
 
+    def __init__(self, **kwargs):
+        if kwargs.get("runNumber") is not None:
+            raise ValueError(
+                "runNumber (singular) cannot be set on Reduction records; set the runNumbers list instead."
+            )
+        kwargs["runNumber"] = kwargs["runNumbers"][0]
+        super().__init__(**kwargs)
+
     @validator("stateId", pre=True, allow_reuse=True)
     def str_to_ObjectSHA(cls, v: Any) -> Any:
         # ObjectSHA to be stored in JSON as _only_ a single hex string, for the hex digest itself
         if isinstance(v, str):
             return ObjectSHA(hex=v, decodedKey=None)
         return v
-
-    @root_validator(allow_reuse=True)
-    def setRunNumber(cls, values):
-        if values.get("runNumber") is not None:
-            raise ValidationError(
-                "runNumber (singular) cannot be set on Reduction records; \
-                    set the runNumbers list instead."
-            )
-        values["runNumber"] = values["runNumbers"][0]
 
     @root_validator(allow_reuse=True)
     def checkStateId(cls, values):
@@ -57,7 +56,7 @@ class ReductionRecord(Record):
         calStateId = cal.calibrationFittingIngredients.instrumentState.id
         normStateId = norm.calibration.instrumentState.id
         if not (calStateId == normStateId == redStateId):
-            raise ValidationError("Calibration, normalization, and reduction records are not from the same state.")
+            raise ValueError("Calibration, normalization, and reduction records are not from the same state.")
 
         return values
 

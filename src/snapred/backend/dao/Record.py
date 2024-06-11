@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Extra
 
-from snapred.backend.dao.IndexEntry import UNINITIALIZED, Version
+from snapred.backend.dao.IndexEntry import UNINITIALIZED, IndexEntry, Nonentry, Version
 
 
 class Record(BaseModel, extra=Extra.allow):
@@ -20,6 +20,20 @@ class Record(BaseModel, extra=Extra.allow):
     runNumber: str
     useLiteMode: bool
     version: Version = UNINITIALIZED
+
+    def indexEntryFromRecord(record) -> IndexEntry:
+        entry = Nonentry
+        if record is not Nonrecord:
+            entry = IndexEntry(
+                runNumber=record.runNumber,
+                useLiteMode=record.useLiteMode,
+                version=record.version,
+                appliesTo=f">={record.runNumber}",
+                author="SNAPRed Internal",
+                comments="This index entry was created from a record",
+                timestamp=0,
+            )
+        return entry
 
 
 Nonrecord = Record(

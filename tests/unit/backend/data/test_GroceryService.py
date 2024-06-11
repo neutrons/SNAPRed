@@ -119,6 +119,14 @@ class TestGroceryService(unittest.TestCase):
         # each test, ensure a random version is drawn
         self.version = randint(1, 120)
         self.instance.dataService.latestVersion = self.version
+        self.diffCalOutputName = (
+            wng.diffCalOutput()
+            .runNumber(self.runNumber1)
+            .unit(wng.Units.TOF)
+            .group(wng.Groups.UNFOC)
+            .version(self.version)
+            .build()
+        )
         return super().setUp()
 
     def clearoutWorkspaces(self) -> None:
@@ -1032,7 +1040,7 @@ class TestGroceryService(unittest.TestCase):
             groceryList = (
                 GroceryListItem.builder()
                 .native()
-                .diffcal_output(self.runNumber1)
+                .diffcal_output(self.runNumber1, self.version)
                 .unit(wng.Units.TOF)
                 .group(wng.Groups.UNFOC)
                 .buildList()
@@ -1052,13 +1060,18 @@ class TestGroceryService(unittest.TestCase):
         groceryList = (
             GroceryListItem.builder()
             .native()
-            .diffcal_output(self.runNumber1)
+            .diffcal_output(self.runNumber1, self.version)
             .unit(wng.Units.TOF)
             .group(wng.Groups.UNFOC)
             .buildList()
         )
         diffCalOutputName = (
-            wng.diffCalOutput().unit(wng.Units.TOF).group(wng.Groups.UNFOC).runNumber(self.runNumber1).build()
+            wng.diffCalOutput()
+            .unit(wng.Units.TOF)
+            .group(wng.Groups.UNFOC)
+            .runNumber(self.runNumber1)
+            .version(self.version)
+            .build()
         )
         CloneWorkspace(
             InputWorkspace=self.sampleWS,
@@ -1076,7 +1089,7 @@ class TestGroceryService(unittest.TestCase):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         with state_root_redirect(self.instance.dataService) as tmpRoot:
-            groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1).buildList()
+            groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()
             # independently construct the pathname, move file to there, assert exists
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
             diffCalTableFilename = self.instance._createDiffcalTableFilename(
@@ -1089,6 +1102,7 @@ class TestGroceryService(unittest.TestCase):
             # fetch the workspace
             assert not mtd.doesExist(diffCalTableName)
 
+            print(groceryList)
             items = self.instance.fetchGroceryList(groceryList)
             assert items[0] == diffCalTableName
             assert mtd.doesExist(diffCalTableName)
@@ -1096,7 +1110,7 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_list_diffcal_table_cached(self):
         # Test of workspace type "diffcal_table" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
-        groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1).buildList()
+        groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()
         diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
         diffCalTableName = f"{diffCalTableName}_{wnvf.formatVersion(self.version)}"
 
@@ -1117,7 +1131,7 @@ class TestGroceryService(unittest.TestCase):
         #   * corresponding mask workspace is also loaded from the hdf5-format file.
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         with state_root_redirect(self.instance.dataService) as tmpRoot:
-            groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1).buildList()
+            groceryList = GroceryListItem.builder().native().diffcal_table(self.runNumber1, self.version).buildList()
             diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
             diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
             diffCalTableFilename = self.instance._createDiffcalTableFilename(
@@ -1139,8 +1153,8 @@ class TestGroceryService(unittest.TestCase):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         with state_root_redirect(self.instance.dataService) as tmpRoot:
-            groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
-            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
+            groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1, self.version).buildList()
+            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
 
             # DiffCal filename is constructed from the table name
             diffCalTableFilename = self.instance._createDiffcalTableFilename(
@@ -1159,8 +1173,8 @@ class TestGroceryService(unittest.TestCase):
     def test_fetch_grocery_list_diffcal_mask_cached(self):
         # Test of workspace type "diffcal_mask" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
-        groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
-        diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
+        groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1, self.version).buildList()
+        diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
         CloneWorkspace(
             InputWorkspace=self.sampleMaskWS,
             OutputWorkspace=diffCalMaskName,
@@ -1170,7 +1184,7 @@ class TestGroceryService(unittest.TestCase):
         mtd[diffCalMaskName].setTitle(testTitle)
 
         # Reloading is triggered based on whether or not the corresponding table workspace is in the ADS.
-        diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
+        diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
         CloneWorkspace(
             InputWorkspace=self.sampleTableWS,
             OutputWorkspace=diffCalTableName,
@@ -1187,11 +1201,11 @@ class TestGroceryService(unittest.TestCase):
         #   * corresponding table workspace is also loaded from the hdf5-format file.
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         with state_root_redirect(self.instance.dataService) as tmpRoot:
-            groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1).buildList()
-            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).build()
+            groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber1, self.version).buildList()
+            diffCalMaskName = wng.diffCalMask().runNumber(self.runNumber1).version(self.version).build()
 
             # DiffCal filename is constructed from the table name
-            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).build()
+            diffCalTableName = wng.diffCalTable().runNumber(self.runNumber1).version(self.version).build()
             diffCalTableFilename = self.instance._createDiffcalTableFilename(
                 runNumber=groceryList[0].runNumber,
                 useLiteMode=groceryList[0].useLiteMode,
@@ -1211,7 +1225,7 @@ class TestGroceryService(unittest.TestCase):
         # Test of workspace type "normalization" as `Input` argument in the `GroceryList`
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
         with state_root_redirect(self.instance.dataService) as tmpRoot:
-            groceryList = GroceryListItem.builder().native().normalization(self.runNumber1).buildList()
+            groceryList = GroceryListItem.builder().native().normalization(self.runNumber1, self.version).buildList()
 
             # normalization filename is constructed
             normalizationWorkspaceName = wng.rawVanadium().runNumber(self.runNumber1).version(self.version).build()
@@ -1232,7 +1246,7 @@ class TestGroceryService(unittest.TestCase):
         # Test of workspace type "normalization" as `Input` argument in the `GroceryList`:
         #   workspace already in ADS
         self.instance.grocer = mock.Mock()
-        groceryList = GroceryListItem.builder().native().normalization(self.runNumber1).buildList()
+        groceryList = GroceryListItem.builder().native().normalization(self.runNumber1, self.version).buildList()
         normalizationWorkspaceName = wng.rawVanadium().runNumber(self.runNumber1).version(self.version).build()
         CloneWorkspace(
             InputWorkspace=self.sampleWS,
@@ -1249,7 +1263,7 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance.grocer.executeRecipe.call_count == 0
 
     def test_fetch_grocery_list_unknown_type(self):
-        groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber).buildList()
+        groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber, self.version).buildList()
         groceryList[0].workspaceType = "banana"
         with pytest.raises(
             RuntimeError,

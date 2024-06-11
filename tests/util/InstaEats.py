@@ -32,13 +32,9 @@ class InstaEats(GroceryService):
         self.testInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
         self.instrumentDonorWorkspace = mtd.unique_name(prefix="_instrument_donor")
         self.grocer.executeRecipe = mock.Mock(
-            side_effect=lambda filename,
-            workspace,
-            loader,
-            instrumentPropertySource=None,
-            instrumentSource="",
-            *,
-            loaderArgs="": {"result": True, "loader": loader, "workspace": workspace}
+            side_effect=lambda filename, workspace, loader, *args, **kwargs: (
+                {"result": True, "loader": loader, "workspace": workspace}
+            )
         )
 
     ## FILENAME METHODS
@@ -228,6 +224,12 @@ class InstaEats(GroceryService):
                         self._createDiffcalOutputWorkspaceFilename(item),
                         self._createDiffcalOutputWorkspaceName(item),
                         loader="ReheatLeftovers",
+                    )
+                case "diffcal_diagnostic":
+                    res = self.fetchWorkspace(
+                        self._createDiffcalDiagnosticWorkspaceFilename(item),
+                        self._createDiffcalOutputWorkspaceName(item),
+                        loader="LoadNexusProcessed",
                     )
                 case "diffcal_table":
                     res = self.fetchCalibrationWorkspaces(item)

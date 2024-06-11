@@ -1,23 +1,29 @@
 # ruff: noqa: E402
 
 import importlib
+import logging
 import tempfile
 import unittest
 from pathlib import Path
 from random import randint
 from typing import List
 
+import pytest
 from pydantic import parse_file_as
+from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.IndexEntry import IndexEntry, Nonentry
-from snapred.backend.dao.Record import Record
+from snapred.backend.dao.normalization.Normalization import Normalization
+from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.Record import Nonrecord, Record
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
+from snapred.backend.dao.state.StateParameters import StateParameters
 from snapred.backend.data.Indexor import Indexor, IndexorType
-from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import write_model_list_pretty, write_model_pretty
 
-LocalDataServiceModule = importlib.import_module(LocalDataService.__module__)
-ThisService = "snapred.backend.data.LocalDataService."
+IndexorModule = importlib.import_module(Indexor.__module__)
 
 VERSION_START = Config["version..start"]
 UNITIALIZED = Config["version.error"]
@@ -25,6 +31,11 @@ UNITIALIZED = Config["version.error"]
 
 class TestIndexor(unittest.TestCase):
     ## some helpers for the tests ##
+
+    @classmethod
+    def setUpClass(cls):
+        calibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        cls.instrumentState = calibration.instrumentState
 
     def setUp(self):
         self.tmpDir = tempfile.TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/")
@@ -53,6 +64,17 @@ class TestIndexor(unittest.TestCase):
         if runNumber is None:
             runNumber = randint(1000, 5000)
         return Record(runNumber=runNumber, useLiteMode=bool(randint(0, 1)), version=version)
+
+    def stateParameters(self, version):
+        # create state parameters with a specific version
+        return StateParameters(
+            instrumentState=self.instrumentState,
+            seedRun=randint(1000, 5000),
+            useLiteMode=bool(randint(0, 1)),
+            creationDate=0,
+            name="",
+            version=version,
+        )
 
     def recordFromIndexEntry(self, entry: IndexError) -> Record:
         # given an index entry, create a bare record corresponding
@@ -458,6 +480,10 @@ class TestIndexor(unittest.TestCase):
         ans = indexor.readIndex()
         assert ans == index
 
+    def test_readIndex_nothing(self):
+        indexor = self.initIndexor()
+        assert len(indexor.readIndex()) == 0
+
     def test_readWriteIndex(self):
         # test that an index can be read/written correctly
         versionList = [1, 2, 3, 4]
@@ -521,7 +547,7 @@ class TestIndexor(unittest.TestCase):
         assert indexor.index[7] is not entry7
 
     def test_indexEntryFromRecord(self):
-        record = self.record(107)
+        record = self.record(randint(1, 100))
         indexor = self.initIndexor()
         res = indexor.indexEntryFromRecord(record)
         assert type(res) is IndexEntry
@@ -529,27 +555,228 @@ class TestIndexor(unittest.TestCase):
         assert res.useLiteMode == record.useLiteMode
         assert res.version == record.version
 
+    def test_indexEntryFromRecord_none(self):
+        indexor = self.initIndexor()
+        res = indexor.indexEntryFromRecord(Nonrecord)
+        assert res is Nonentry
+
     ### TEST RECORD READ / WRITE METHODS ###
 
+    # read / write #
+
+    def test_readWriteRecord_no_version(self):
+        # make sure there exists another version
+        # so that we can know it does not default
+        # to the starting version
+        versions = [2, 3, 4]
+        index = {version: self.indexEntry(version) for version in versions}
+        for version in versions:
+            self.writeRecordVersion(version)
+        indexor = self.initIndexor()
+        nextVersion = indexor.nextVersion()
+        assert indexor.index == index
+        assert nextVersion != VERSION_START
+        # now write then read the record
+        # make sure the record was saved at the next version
+        # and the read / written records match
+        record = self.record(randint(6, 16))
+        indexor.writeRecord(record)
+        res = indexor.readRecord(nextVersion)
+        assert record.version == nextVersion
+        assert res == record
+
+    def test_readWriteRecord_with_version(self):
+        # write a record at some version number
+        record = self.record(randint(10, 20))
+        indexor = self.initIndexor()
+        version = randint(21, 30)
+        # write then read the record
+        # make sure the record version was updated
+        # and the read / written records match
+        indexor.writeRecord(record, version)
+        res = indexor.readRecord(version)
+        assert record.version == version
+        assert res == record
+
+    # read #
+
+    def test_readRecord_none(self):
+        version = randint(1, 11)
+        indexor = self.initIndexor()
+        assert not self.recordPath(version).exists()
+        res = indexor.readRecord(version)
+        assert res is Nonrecord
+
     def test_readRecord(self):
-        pass
+        record = self.record(randint(1, 100))
+        self.writeRecord(record)
+        indexor = self.initIndexor()
+        res = indexor.readRecord(record.version)
+        assert res == record
 
-    def test_writeRecord(self):
-        pass
+    def test_readRecord_no_version(self):
+        # NOTE this test assumes no validation is taking place
+        # if validation of the version is ever put in place
+        # this test can probably be safely deleted
+        record = self.record(randint(1, 100))
+        self.writeRecord(record)
+        indexor = self.initIndexor()
+        res = indexor.readRecord("*")
+        assert res == record
 
-    def test_readWriteRecord(self):
-        pass
+    # write #
+
+    def test_writeRecord_with_version(self):
+        record = self.record(randint(1, 10))
+        indexor = self.initIndexor()
+        version = randint(11, 20)
+        indexor.writeRecord(record, version)
+        assert record.version == version
+        assert self.recordPath(version).exists()
+        res = Record.parse_file(self.recordPath(version))
+        assert res == record
+
+    def test_writeRecord_no_version(self):
+        # make sure there exists other versions
+        # so that we can know it does not default
+        # to the starting version
+        versions = [2, 3, 4]
+        index = {version: self.indexEntry(version) for version in versions}
+        for version in versions:
+            self.writeRecordVersion(version)
+        indexor = self.initIndexor()
+        nextVersion = indexor.nextVersion()
+        assert indexor.index == index
+        assert nextVersion != VERSION_START
+        # now write the record
+        record = self.record(randint(10, 20))
+        indexor.writeRecord(record)
+        assert record.version == nextVersion
+        assert self.recordPath(nextVersion).exists()
+        res = Record.parse_file(self.recordPath(nextVersion))
+        assert res == record
+
+    def test_writeRecord_star(self):
+        # make sure there exists other versions
+        # so that we can know it does not default
+        # to the starting version
+        versions = [2, 3, 4]
+        index = {version: self.indexEntry(version) for version in versions}
+        for version in versions:
+            self.writeRecordVersion(version)
+        indexor = self.initIndexor()
+        nextVersion = indexor.nextVersion()
+        assert indexor.index == index
+        assert nextVersion != VERSION_START
+        # now write the record
+        record = self.record(randint(10, 20))
+        indexor.writeRecord(record, "*")
+        assert record.version == nextVersion
+        assert self.recordPath(nextVersion).exists()
+        res = Record.parse_file(self.recordPath(nextVersion))
+        assert res == record
+
+    # make sure the indexor can read/write specific record types #
 
     def test_readWriteRecord_calibration(self):
-        pass
+        # prepare the record
+        record = CalibrationRecord.parse_file(Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))
+        record.version = randint(2, 100)
+        # write then read in the record
+        indexor = self.initIndexor(IndexorType.CALIBRATION)
+        indexor.writeRecord(record)
+        res = indexor.readRecord(record.version)
+        assert type(res) is CalibrationRecord
+        assert res == record
 
     def test_readWriteRecord_normalization(self):
-        pass
+        # prepare the record
+        record = NormalizationRecord.parse_file(Resource.getPath("inputs/normalization/NormalizationRecord.json"))
+        record.version = randint(2, 100)
+        # write then read in the record
+        indexor = self.initIndexor(IndexorType.NORMALIZATION)
+        indexor.writeRecord(record)
+        res = indexor.readRecord(record.version)
+        assert type(res) is NormalizationRecord
+        assert res == record
 
     def test_readWriteRecord_reduction(self):
-        pass
+        # prepare the record
+        record = ReductionRecord.parse_file(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+        record.version = randint(2, 100)
+        # write then read in the record
+        indexor = self.initIndexor(IndexorType.REDUCTION)
+        indexor.writeRecord(record)
+        res = indexor.readRecord(record.version)
+        assert type(res) is ReductionRecord
+        assert res == record
 
     ### TEST STATE PARAMETER READ / WRITE METHODS ###
 
-    def test_readWriteParameters(self):
-        pass
+    def test_readParameters_nope(self):
+        indexor = self.initIndexor()
+        assert not indexor.parametersPath(1).exists()
+        with pytest.raises(FileNotFoundError):
+            indexor.readParameters(1)
+
+    def test_readWriteParameters_with_version(self):
+        version = randint(1, 10)
+        params = self.stateParameters(version)
+
+        indexor = self.initIndexor()
+        version = randint(11, 20)
+        indexor.writeParameters(params, version)
+        res = indexor.readParameters(version)
+        assert res.version == version
+        assert res == params
+
+    def test_readWriteParameters_no_version(self):
+        version = randint(1, 10)
+        params = self.stateParameters(version)
+
+        indexor = self.initIndexor()
+        indexor.index = {randint(11, 20): Nonentry}
+        nextVersion = indexor.nextVersion()
+        indexor.writeParameters(params)
+        res = indexor.readParameters()
+        assert res.version == nextVersion
+        assert res == params
+
+    def test_readWriteParameters_warn_overwrite(self):
+        version = randint(1, 100)
+
+        indexor = self.initIndexor()
+
+        # write some parameters at a version
+        params1 = self.stateParameters(version)
+        indexor.writeParameters(params1, version)
+        assert indexor.parametersPath(version).exists()
+
+        # now try to overwrite parameters at same version
+        # make sure a warning is logged
+        with self.assertLogs(logger=IndexorModule.logger, level=logging.WARNING) as cm:
+            params2 = self.stateParameters(version)
+            indexor.writeParameters(params2, version)
+        assert f"Overwriting  parameters at {indexor.parametersPath(version)}" in cm.output[0]
+
+    # make sure the indexor can read/write specific state parameter types #
+
+    def test_readWriteParameters_calibration(self):
+        params = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        indexor = self.initIndexor(IndexorType.CALIBRATION)
+        indexor.writeParameters(params)
+        res = indexor.readParameters()
+        assert type(res) is StateParameters
+        res = Calibration.parse_obj(res)
+        assert type(res) is Calibration
+        assert res == params
+
+    def test_readWriteParameters_normalization(self):
+        params = Normalization.parse_file(Resource.getPath("inputs/normalization/NormalizationParameters.json"))
+        indexor = self.initIndexor(IndexorType.NORMALIZATION)
+        indexor.writeParameters(params)
+        res = indexor.readParameters()
+        assert type(res) is StateParameters
+        res = Normalization.parse_obj(res)
+        assert type(res) is Normalization
+        assert res == params

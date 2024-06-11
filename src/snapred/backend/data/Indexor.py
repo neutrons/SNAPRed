@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from pydantic import parse_file_as
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-from snapred.backend.dao.IndexEntry import IndexEntry, Nonentry, Version
+from snapred.backend.dao.IndexEntry import IndexEntry, Version
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.Record import Nonrecord, Record
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -209,16 +209,15 @@ class Indexor:
     def getIndex(self) -> List[IndexEntry]:
         if self.index == {}:
             self.index = self.readIndex()
-        return [entry for entry in self.index.values()]
+        return list(self.index.values())
 
     def readIndex(self) -> Dict[Version, IndexEntry]:
         # create the index from the index file
         indexPath: Path = self.indexPath()
-        print(indexPath)
         indexList: List[IndexEntry] = []
         if indexPath.exists():
             indexList = parse_file_as(List[IndexEntry], indexPath)
-        return {index.version: index for index in indexList}
+        return {entry.version: entry for entry in indexList}
 
     def writeIndex(self):
         path = self.indexPath()
@@ -226,6 +225,9 @@ class Indexor:
         write_model_list_pretty(self.index.values(), path)
 
     def addIndexEntry(self, entry: IndexEntry, version: Optional[Version] = None):
+        """
+        If a verison is not passed, it will save at the next version.
+        """
         if not isinstance(version, int):
             version = self.nextVersion()
         entry.version = version
@@ -233,22 +235,14 @@ class Indexor:
         self.writeIndex()
 
     def indexEntryFromRecord(self, record: Record) -> IndexEntry:
-        entry = Nonentry
-        if record is not Nonrecord:
-            entry = IndexEntry.construct(
-                runNumber=record.runNumber,
-                useLiteMode=record.useLiteMode,
-                version=record.version,
-                appliesTo=f">={record.runNumber}",
-                author="SNAPRed Internal",
-                comments="This index entry was created from a record",
-                timestamp=0,
-            )
-        return entry
+        return Record.indexEntryFromRecord(record)
 
     ## RECORD READ / WRITE METHODS ##
 
-    def readRecord(self, version: int):
+    def readRecord(self, version: Optional[int] = None) -> Record:
+        """
+        If no version given, defaults to current version
+        """
         if not isinstance(version, int):
             version = self.currentVersion()
         filePath = self.recordPath(version)
@@ -266,7 +260,7 @@ class Indexor:
             record = Nonrecord
         return record
 
-    def writeRecord(self, record: Record, version: Optional[int]):
+    def writeRecord(self, record: Record, version: Optional[int] = None):
         if not isinstance(version, int):
             version = self.nextVersion()
         record.version = version
@@ -276,23 +270,26 @@ class Indexor:
 
     ## STATE PARAMETER READ / WRITE METHODS ##
 
-    def readParameters(self, version: Optional[int]):
+    def readParameters(self, version: Optional[int] = None) -> StateParameters:
+        """
+        If no version given, defaults to current version
+        """
         if not isinstance(version, int):
             version = self.currentVersion()
         latestFile = self.parametersPath(version)
+        if not latestFile.exists():
+            raise FileNotFoundError(f"No {self.indexorType} State found at {latestFile} for version {version}")
         state = StateParameters.parse_file(latestFile)
-        if state is None:
-            raise ValueError(f"No {self.indexorType} State found on filesystem")
         return state
 
-    def writeParameters(self, state: StateParameters, version: Optional[int]):
+    def writeParameters(self, state: StateParameters, version: Optional[int] = None):
         if not isinstance(version, int):
             version = self.nextVersion()
         state.version = version
 
         parametersPath = self.parametersPath(version)
         if parametersPath.exists():
-            logger.warning(f"Overwriting {self.indexorType} parameters at {parametersPath}")
+            logger.warn(f"Overwriting {self.indexorType} parameters at {parametersPath}")
         else:
             parametersPath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(state, parametersPath)

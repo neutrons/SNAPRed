@@ -8,6 +8,7 @@ from mantid.simpleapi import mtd
 from pydantic import validate_arguments
 
 from snapred.backend.dao.ingredients import GroceryListItem
+from snapred.backend.dao.Record import Nonrecord
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
@@ -282,7 +283,7 @@ class GroceryService:
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
-        version: str = Optional[int],
+        version: Optional[int],
     ) -> WorkspaceName:
         return wng.rawVanadium().runNumber(runNumber).version(version).build()
 
@@ -519,9 +520,9 @@ class GroceryService:
         :param runNumber: a run number, whose state will be looked up
         :type runNumber: str
         :param version: the calibration version to use in the lookup
-        :type version: str
+        :type version: int
         """
-        return self.dataService.calibrationIndex(runNumber, useLiteMode).versionPath(version)
+        return self.dataService.calibrationIndexor(runNumber, useLiteMode).versionPath(version)
 
     @validate_arguments
     def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
@@ -531,9 +532,9 @@ class GroceryService:
         :param runNumber: a run number, whose state will be looked up
         :type runNumber: str
         :param version: the normalization version to use in the lookup
-        :type version: str
+        :type version: int
         """
-        return self.dataService.normalizationIndex(runNumber, useLiteMode).versionPath(version)
+        return self.dataService.normalizationIndexor(runNumber, useLiteMode).versionPath(version)
 
     def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> Dict[str, Any]:
         """
@@ -758,7 +759,6 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
         tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
         maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
@@ -892,17 +892,17 @@ class GroceryService:
                         loader="LoadNexusProcessed",
                     )
                 case "diffcal_table":
-                    indexor = self.dataService.calibrationIndex(item.runNumber, item.useLiteMode)
+                    indexor = self.dataService.calibrationIndexor(item.runNumber, item.useLiteMode)
                     if not isinstance(item.version, int):
                         item.version = indexor.latestApplicableVersion(item.runNumber)
                     record = indexor.readRecord(item.version)
-                    if record is not None:
+                    if record is not Nonrecord:
                         item.runNumber = record.runNumber
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
                     # to that of the table workspace.  Because of possible confusion with
                     # the behavior of mask workspace, the workspace name is manually set here.
                     tableWorkspaceName = self._createDiffcalTableWorkspaceName(
-                        item.runNumber, item.useLiteMode, item.version
+                        str(item.runNumber), item.useLiteMode, item.version
                     )
                     res = self.fetchCalibrationWorkspaces(item)
                     res["workspace"] = tableWorkspaceName
@@ -916,11 +916,11 @@ class GroceryService:
                     res = self.fetchCalibrationWorkspaces(item)
                     res["workspace"] = maskWorkspaceName
                 case "normalization":
-                    indexor = self.dataService.normalizationIndex(item.runNumber, item.useLiteMode)
+                    indexor = self.dataService.normalizationIndexor(item.runNumber, item.useLiteMode)
                     if not isinstance(item.version, int):
                         item.version = indexor.latestApplicableVersion(item.runNumber)
                     record = indexor.readRecord(item.version)
-                    if record is not None:
+                    if record is not Nonrecord:
                         item.runNumber = record.runNumber
                     res = self.fetchNormalizationWorkspaces(item)
                 case _:

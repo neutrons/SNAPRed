@@ -1,6 +1,7 @@
 import unittest
 import unittest.mock as mock
 from pathlib import Path
+from random import randint
 
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
 from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry  # noqa: E402
@@ -17,6 +18,7 @@ class TestDataExportService(unittest.TestCase):
         cls.mockLookupService = mock.create_autospec(LocalDataService, spec_set=True, instance=True)
 
     def setUp(self):
+        self.version = randint(10, 120)
         self.instance = DataExportService(dataService=self.mockLookupService)
         # self.instance.lookupService = self.mockLookupService
         assert isinstance(self.instance, DataExportService)
@@ -37,28 +39,25 @@ class TestDataExportService(unittest.TestCase):
         self.instance.getFullLiteDataFilePath(mock.Mock())
         assert self.instance.dataService.getIPTS.called
 
-    ##### TEST REDUCTION METHODS #####
-
-    # NOTE will exist in future
-
     ##### TEST CALIBRATION METHODS #####
 
     def test_exportCalibrationIndexEntry(self):
         self.instance.exportCalibrationIndexEntry(
-            CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
+            CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author=""),
+            self.version,
         )
         assert self.instance.dataService.writeCalibrationIndexEntry.called
 
     def test_exportCalibrationRecord(self):
-        self.instance.exportCalibrationRecord(mock.Mock())
+        self.instance.exportCalibrationRecord(mock.Mock(), self.version)
         assert self.instance.dataService.writeCalibrationRecord.called
 
     def test_exportCalibrationWorkspaces(self):
-        self.instance.exportCalibrationWorkspaces(mock.Mock())
+        self.instance.exportCalibrationWorkspaces(mock.Mock(), self.version)
         assert self.instance.dataService.writeCalibrationWorkspaces.called
 
     def test_exportCalibrationState(self):
-        self.instance.exportCalibrationState(mock.Mock())
+        self.instance.exportCalibrationState(mock.Mock(), self.version)
         assert self.instance.dataService.writeCalibrationState.called
 
     def test_initializeState(self):
@@ -69,30 +68,31 @@ class TestDataExportService(unittest.TestCase):
 
     def test_exportNormalizationIndexEntry(self):
         self.instance.exportNormalizationIndexEntry(
-            NormalizationIndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2", comments="", author="")
+            NormalizationIndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2", comments="", author=""),
+            self.version,
         )
         assert self.instance.dataService.writeNormalizationIndexEntry.called
 
     def test_exportNormalizationRecord(self):
-        self.instance.exportNormalizationRecord(mock.Mock())
+        self.instance.exportNormalizationRecord(mock.Mock(), self.version)
         assert self.instance.dataService.writeNormalizationRecord.called
 
     def test_exportNormalizationState(self):
-        self.instance.exportNormalizationState(mock.Mock())
+        self.instance.exportNormalizationState(mock.Mock(), self.version)
         assert self.instance.dataService.writeNormalizationState.called
 
     def test_exportNormalizationWorkspaces(self):
-        self.instance.exportNormalizationWorkspaces(mock.Mock())
+        self.instance.exportNormalizationWorkspaces(mock.Mock(), self.version)
         assert self.instance.dataService.writeNormalizationWorkspaces.called
 
     ##### TEST REDUCTION METHODS #####
 
     def test_exportReductionRecord(self):
-        self.instance.exportReductionRecord(mock.Mock())
+        self.instance.exportReductionRecord(mock.Mock(), self.version)
         assert self.instance.dataService.writeReductionRecord.called
 
     def test_exportReductionData(self):
-        self.instance.exportReductionData(mock.Mock())
+        self.instance.exportReductionData(mock.Mock(), self.version)
         assert self.instance.dataService.writeReductionData.called
 
     ##### TEST WORKSPACE METHODS #####

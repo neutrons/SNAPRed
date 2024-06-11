@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
@@ -17,3 +19,4 @@ class CalibrationExportRequest(BaseModel):
 
     calibrationRecord: CalibrationRecord
     calibrationIndexEntry: CalibrationIndexEntry
+    version: Optional[int] = None
