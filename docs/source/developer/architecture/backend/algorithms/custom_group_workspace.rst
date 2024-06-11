@@ -5,6 +5,7 @@ Description:
 ------------
 This algorithm orchestrates loading grouping workspaces and then grouping them
 into a `WorkspaceGroup`.
+
 Expected Inputs:
 ----------------
 1. **GroupingWorkspaces**:
