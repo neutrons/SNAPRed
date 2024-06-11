@@ -1,12 +1,7 @@
-from snapred.backend.dao.state.StateParameters import StateParameters
-
-# NOTE: the __init__ loads CalibrationExportRequest, which imports Calibration, which causes
-#       a circular import situation.  In the future, need to remove the circualr import
-#       so that full set of ingredients can be preserved
-# from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+from snapred.backend.dao.indexing.Parameters import Parameters
 
 
-class Calibration(StateParameters):
+class Calibration(Parameters):
     """
 
     The Calibration class acts as a container for parameters primarily utilized in fitting processes within the context

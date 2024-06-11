@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
+from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
-from snapred.backend.dao.Record import Record
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
     ReductionExportRequest,

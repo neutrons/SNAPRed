@@ -1,23 +1,24 @@
 from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, Extra, validator
-
 from snapred.meta.Config import Config
 
 UNINITIALIZED = Config["version.error"]
-Version = Union[int, Literal["*", UNINITIALIZED]]
+Version = Union[int, Literal[UNINITIALIZED]]
 
 
 class IndexEntry(BaseModel, extra=Extra.ignore):
     """
 
-    The IndexEntry class is a Pydantic model designed to encapsulate the details of
-    index entries, including essential information like runNumber, version, and
-    comments, along with the author and a timestamp. It features a specialized method, parseAppliesTo,
-    to interpret the appliesTo field, which indicates the applicability of the entry,
-    supporting comparisons with symbols such as '>', '<', '>=', and '<='. Additionally, a validator,
-    appliesToFormatChecker, ensures the appliesTo field conforms to expected formats, either a simple
-    'runNumber' or a comparison format, enhancing data integrity by enforcing consistent entry formats.
+    This is the basic, bare-bones entry for workflow indices.
+    It records a run number, the resolution (native/lite), and a version.
+    The appliesTo field will indicate which runs the record applies to,
+    so that only applicable calibrations/normalizations can be loaded.
+
+    This is meant to coordinate with the Indexor service object.
+
+    The special Nonentry object should be used in instances where an entry is expected,
+    but none exists.  Use in place of None.
 
     """
 
@@ -60,6 +61,8 @@ class IndexEntry(BaseModel, extra=Extra.ignore):
 
 
 Nonentry = IndexEntry(
+    # NOTE use the Nonentry in instances where an entry is expected but none exists.
+    # Use this in preference to None.
     runNumber="none",
     useLiteMode=False,
     version=UNINITIALIZED,

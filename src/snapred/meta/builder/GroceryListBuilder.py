@@ -48,7 +48,6 @@ class GroceryListBuilder:
         return self
 
     def diffcal_table(self, runId: str, version: int):
-        print(f"VERSION {version}")
         self._tokens["workspaceType"] = "diffcal_table"
         self._tokens["runNumber"] = runId
         self._tokens["version"] = version

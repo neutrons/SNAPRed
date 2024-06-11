@@ -105,8 +105,8 @@ class TestReductionService(unittest.TestCase):
         assert res == ReductionRecipe.return_value.cook.return_value
 
     def test_saveReduction(self):
-        # this method only needs to call the methods in the data service
-        # the corresponding methods are setup to add themselves to the list of run numbers
+        # this test will ensure the three indicated files (record, data, index entry)
+        # are all saved into the appropriate directory when save is called.
         runNumber = "123"
         useLiteMode = True
         version = randint(2, 100)

@@ -140,6 +140,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def setUp(self):
         self.localDataService = LocalDataService()
         self.instance = CalibrationService()
+        # it is necessary to coordinate these to all point to the same data service for redirect to work
         self.instance.dataExportService.dataService = self.localDataService
         self.instance.dataFactoryService.lookupService = self.localDataService
         self.instance.groceryService.dataService = self.localDataService
@@ -394,21 +395,21 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_load_quality_assessment(self):
         inputFilepath = Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json")
         with state_root_redirect(self.localDataService) as tmpRoot:
-            record = CalibrationRecord.parse_file(inputFilepath)
+            calibrecord = CalibrationRecord.parse_file(inputFilepath)
             recordFilepath = self.localDataService.calibrationIndexor(
-                record.runNumber,
-                record.useLiteMode,
+                calibrecord.runNumber,
+                calibrecord.useLiteMode,
             ).recordPath(1)
             tmpRoot.addFileAs(inputFilepath, recordFilepath)
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
-            self.create_fake_diffcal_files(recordFilepath.parent, record.workspaces, record.version)
+            self.create_fake_diffcal_files(recordFilepath.parent, calibrecord.workspaces, calibrecord.version)
 
             # Call the method to test. Use a mocked run and a mocked version
             mockRequest = MagicMock(
-                runId=record.runNumber,
-                useLiteMode=record.useLiteMode,
-                version=record.version,
+                runId=calibrecord.runNumber,
+                useLiteMode=calibrecord.useLiteMode,
+                version=calibrecord.version,
                 checkExistent=False,
             )
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
@@ -419,15 +420,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 ws_name = (
                     wng.diffCalMetric()
                     .metricName(metric)
-                    .runNumber(record.runNumber)
-                    .version(record.version)
+                    .runNumber(calibrecord.runNumber)
+                    .version(calibrecord.version)
                     .metricName(metric)
                     .build()
                 )
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
             # Assert all "persistent" workspaces have been loaded
-            for wsNames in record.workspaces.values():
+            for wsNames in calibrecord.workspaces.values():
                 for wsName in wsNames:
                     assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 

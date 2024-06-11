@@ -1,4 +1,4 @@
-from snapred.backend.dao.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 
 
 class NormalizationIndexEntry(IndexEntry):
@@ -11,5 +11,14 @@ class NormalizationIndexEntry(IndexEntry):
     is present.
 
     """
+
+    # inherits from IndexEntry
+    # - runNumber: str
+    # - useLiteMode: bool
+    # - version: Union[int, UNINITIALIZED]
+    # - appliesTo: str
+    # - comments: str
+    # - author: str
+    # - timestamp: int
 
     backgroundRunNumber: str

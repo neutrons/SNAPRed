@@ -1,7 +1,7 @@
-from snapred.backend.dao.state.StateParameters import StateParameters
+from snapred.backend.dao.indexing.Parameters import Parameters
 
 
-class Normalization(StateParameters):
+class Normalization(Parameters):
     """
 
     This class represents a normalization opject with essential attributes to track its origin,

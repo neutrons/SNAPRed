@@ -12,12 +12,12 @@ import pytest
 from pydantic import parse_file_as
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-from snapred.backend.dao.IndexEntry import IndexEntry, Nonentry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry, Nonentry
+from snapred.backend.dao.indexing.Parameters import Parameters
+from snapred.backend.dao.indexing.Record import Nonrecord, Record
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
-from snapred.backend.dao.Record import Nonrecord, Record
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
-from snapred.backend.dao.state.StateParameters import StateParameters
 from snapred.backend.data.Indexor import Indexor, IndexorType
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -67,7 +67,7 @@ class TestIndexor(unittest.TestCase):
 
     def stateParameters(self, version):
         # create state parameters with a specific version
-        return StateParameters(
+        return Parameters(
             instrumentState=self.instrumentState,
             seedRun=randint(1000, 5000),
             useLiteMode=bool(randint(0, 1)),
@@ -760,7 +760,7 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor(IndexorType.CALIBRATION)
         indexor.writeParameters(params)
         res = indexor.readParameters()
-        assert type(res) is StateParameters
+        assert type(res) is Parameters
         res = Calibration.parse_obj(res)
         assert type(res) is Calibration
         assert res == params
@@ -770,7 +770,7 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor(IndexorType.NORMALIZATION)
         indexor.writeParameters(params)
         res = indexor.readParameters()
-        assert type(res) is StateParameters
+        assert type(res) is Parameters
         res = Normalization.parse_obj(res)
         assert type(res) is Normalization
         assert res == params

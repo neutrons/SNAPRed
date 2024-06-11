@@ -1,4 +1,4 @@
-from snapred.backend.dao.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 
 
 class CalibrationIndexEntry(IndexEntry):
@@ -13,5 +13,14 @@ class CalibrationIndexEntry(IndexEntry):
     'runNumber' or a comparison format, enhancing data integrity by enforcing consistent entry formats.
 
     """
+
+    # inherits from IndexEntry
+    # - runNumber: str
+    # - useLiteMode: bool
+    # - version: Union[int, UNINITIALIZED]
+    # - appliesTo: str
+    # - comments: str
+    # - author: str
+    # - timestamp: int
 
     pass

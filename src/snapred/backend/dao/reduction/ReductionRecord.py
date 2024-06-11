@@ -3,9 +3,9 @@ from typing import Any, Dict, List, Optional
 from pydantic import Field, root_validator, validator
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
-from snapred.backend.dao.Record import Record
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -18,10 +18,11 @@ class ReductionRecord(Record):
     calibration, normalization, and pixel grouping details.
     """
 
-    # inherited from Record
+    # inherits from Record
+    # - useLiteMode
+    # - version
+    # specially override this for the case of reduction
     runNumber: Optional[str] = Field(None, exclude=True)
-    useLiteMode: bool
-    version: int
 
     # specific to reduction records
     runNumbers: List[str]
@@ -33,6 +34,8 @@ class ReductionRecord(Record):
     workspaceNames: List[WorkspaceName]
 
     def __init__(self, **kwargs):
+        # this special init will set runNumber from the runNumber list,
+        # while ensuring users cannot set runNumber directly.
         if kwargs.get("runNumber") is not None:
             raise ValueError(
                 "runNumber (singular) cannot be set on Reduction records; set the runNumbers list instead."

@@ -11,12 +11,12 @@ from snapred.backend.dao.calibration import (
     CalibrationRecord,
     FocusGroupMetric,
 )
+from snapred.backend.dao.indexing.Record import Nonrecord
 from snapred.backend.dao.ingredients import (
     CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
     GroceryListItem,
 )
-from snapred.backend.dao.Record import Nonrecord
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,

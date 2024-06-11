@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
-from snapred.backend.dao.Record import Record
+from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
@@ -22,10 +22,10 @@ class CalibrationRecord(Record):
 
     """
 
-    # inherited from Record
-    runNumber: str
-    useLiteMode: bool
-    version: int
+    # inherits from Record
+    # - runNumber
+    # - useLiteMode
+    # - version
 
     # specific to calibration records
     crystalInfo: CrystallographicInfo

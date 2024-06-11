@@ -6,7 +6,7 @@ from pydantic import validate_arguments
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-from snapred.backend.dao.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -17,7 +17,7 @@ from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
-# TODO these are export methods, the should not return anything
+# TODO these are export methods, they should not return anything
 
 
 @Singleton

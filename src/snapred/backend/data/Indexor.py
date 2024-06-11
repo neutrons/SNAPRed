@@ -5,11 +5,11 @@ from typing import Dict, List, Optional
 from pydantic import parse_file_as
 
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-from snapred.backend.dao.IndexEntry import IndexEntry, Version
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry, Version
+from snapred.backend.dao.indexing.Parameters import Parameters
+from snapred.backend.dao.indexing.Record import Nonrecord, Record
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
-from snapred.backend.dao.Record import Nonrecord, Record
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
-from snapred.backend.dao.state.StateParameters import StateParameters
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import StrEnum
@@ -20,7 +20,22 @@ logger = snapredLogger.getLogger(__name__)
 
 
 """
-    Keeps track of versions for Calibration or Normalization records.
+    The Indexor will automatically track versions and
+    This is intended to have responsibility over one state/resolution/workflow combination,
+    (e.g state abcd123efg, lite mode, calibration), and for that combination will keep tabs on
+    the index and the directory tree to determine appropriate version numbers.
+
+    All saving or loading of indices, records, or calculation parameter files should be
+    handled through the appropriate Indexor.
+
+    Saving will automatically handle applying the corrct version number in all cases.
+    If a specific version is specified, all saving will be to that version; if None is passed
+    instead, then saving will be to the next version according to the Indexor.
+
+    When saving, the Indexor will overwrite and ignore any versions attached to an object.
+
+    The Indexor version list will only update when both a record and a corresponding inex entry
+    have been written.
 """
 
 
@@ -270,7 +285,7 @@ class Indexor:
 
     ## STATE PARAMETER READ / WRITE METHODS ##
 
-    def readParameters(self, version: Optional[int] = None) -> StateParameters:
+    def readParameters(self, version: Optional[int] = None) -> Parameters:
         """
         If no version given, defaults to current version
         """
@@ -279,17 +294,17 @@ class Indexor:
         latestFile = self.parametersPath(version)
         if not latestFile.exists():
             raise FileNotFoundError(f"No {self.indexorType} State found at {latestFile} for version {version}")
-        state = StateParameters.parse_file(latestFile)
-        return state
+        parameters = Parameters.parse_file(latestFile)
+        return parameters
 
-    def writeParameters(self, state: StateParameters, version: Optional[int] = None):
+    def writeParameters(self, parameters: Parameters, version: Optional[int] = None):
         if not isinstance(version, int):
             version = self.nextVersion()
-        state.version = version
+        parameters.version = version
 
         parametersPath = self.parametersPath(version)
         if parametersPath.exists():
             logger.warn(f"Overwriting {self.indexorType} parameters at {parametersPath}")
         else:
             parametersPath.parent.mkdir(parents=True, exist_ok=True)
-        write_model_pretty(state, parametersPath)
+        write_model_pretty(parameters, parametersPath)

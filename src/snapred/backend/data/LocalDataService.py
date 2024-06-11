@@ -14,7 +14,6 @@ from pydantic import parse_file_as, validate_arguments
 
 from snapred.backend.dao import (
     GSASParameters,
-    IndexEntry,
     InstrumentConfig,
     ObjectSHA,
     ParticleBounds,
@@ -23,9 +22,10 @@ from snapred.backend.dao import (
     StateId,
 )
 from snapred.backend.dao.calibration import Calibration, CalibrationIndexEntry, CalibrationRecord
+from snapred.backend.dao.indexing import IndexEntry
+from snapred.backend.dao.indexing.Record import Nonrecord
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.normalization import Normalization, NormalizationIndexEntry, NormalizationRecord
-from snapred.backend.dao.Record import Nonrecord
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.state import (
     DetectorState,

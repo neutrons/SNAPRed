@@ -1,7 +1,7 @@
 from typing import List
 
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.Record import Record
+from snapred.backend.dao.indexing.Record import Record
 
 
 class NormalizationRecord(Record):
@@ -14,10 +14,10 @@ class NormalizationRecord(Record):
 
     """
 
-    # inhereited from Record
-    runNumber: str
-    useLiteMode: bool
-    version: int
+    # inherits from Record
+    # - runNumber
+    # - useLiteMode
+    # - version
 
     # specific to normalization records
     backgroundRunNumber: str

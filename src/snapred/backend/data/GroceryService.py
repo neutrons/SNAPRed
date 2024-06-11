@@ -7,8 +7,8 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 from mantid.simpleapi import mtd
 from pydantic import validate_arguments
 
+from snapred.backend.dao.indexing.Record import Nonrecord
 from snapred.backend.dao.ingredients import GroceryListItem
-from snapred.backend.dao.Record import Nonrecord
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
