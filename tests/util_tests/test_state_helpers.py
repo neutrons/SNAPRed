@@ -114,10 +114,7 @@ def test_state_root_override_enter(
     stateName = "my happy state"
     useLiteMode = True
     with state_root_override(runNumber, stateName, useLiteMode) as stateRootPath:
-        try:
-            assert Path(stateRootPath) == Path(Config["instrument.calibration.powder.home"]) / stateId
-        except:
-            raise RuntimeError("config")
+        assert Path(stateRootPath) == Path(Config["instrument.calibration.powder.home"]) / stateId
         assert Path(stateRootPath).exists()
         assert Path(stateRootPath).joinpath("groupingMap.json").exists()
         versionString = wnvf.fileVersion(VERSION_DEFAULT)

@@ -764,7 +764,7 @@ class LocalDataService:
         """
         stateRootPath: Path = self._constructCalibrationStateRoot(stateId)
         if not stateRootPath.exists():
-            stateRootPath.mkdir()
+            stateRootPath.mkdir(parents=True, exist_ok=True)
 
         # If no `GroupingMap` JSON file is present at the <state root>,
         #   it is assumed that this is the first time that this state configuration has been initialized.
