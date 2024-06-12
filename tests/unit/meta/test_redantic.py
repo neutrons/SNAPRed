@@ -51,7 +51,13 @@ class TestRedantic(TestCase):
     def test_parse_obj_as(self):
         assert parse_obj_as(ModelTest, self.model.model_dump()) == self.model
 
+    def test_parse_obj_as_obj(self):
+        assert parse_obj_as(ModelTest, self.model) == self.model
+
     def test_parse_obj_as_list(self):
+        assert parse_obj_as(List[ModelTest], [model.model_dump() for model in self.modelList])
+
+    def test_parse_obj_as_list_obj(self):
         assert parse_obj_as(List[ModelTest], self.modelList) == self.modelList
 
     def test_parse_file_as(self):

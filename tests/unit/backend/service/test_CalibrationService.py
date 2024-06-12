@@ -1,4 +1,5 @@
 # ruff: noqa: E402, ARG002
+import json
 import tempfile
 import unittest
 import unittest.mock as mock
@@ -674,3 +675,14 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         self.instance.hasState(request)
         mockCheckCalibrationStateExists.assert_called_once_with(self.runNumber)
+
+    def test_parseCalibrationMetricList(self):
+        fakeMetrics = CalibrationMetric(
+            sigmaAverage=0.0,
+            sigmaStandardDeviation=0.0,
+            strainAverage=0.0,
+            strainStandardDeviation=0.0,
+            twoThetaAverage=0.0,
+        )
+        source = [fakeMetrics.model_dump()]
+        assert [fakeMetrics] == self.instance.parseCalibrationMetricList(json.dumps(source))
