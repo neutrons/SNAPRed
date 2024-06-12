@@ -29,7 +29,6 @@ from mantid.simpleapi import (
     RenameWorkspaces,
     mtd,
 )
-from pydantic import parse_raw_as
 from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
@@ -48,7 +47,7 @@ from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
-from snapred.meta.redantic import write_model_pretty
+from snapred.meta.redantic import parse_file_as, parse_raw_as, write_model_pretty
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 from util.state_helpers import reduction_root_redirect, state_root_redirect
 
@@ -553,7 +552,7 @@ def test__constructReductionDataFilePath():
     inputRecordFilePath = Path(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
     # Create the input data for this test:
     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
-    testRecord = ReductionRecord.parse_file(inputRecordFilePath)
+    testRecord = parse_file_as(ReductionRecord, inputRecordFilePath)
 
     # Temporarily use a single run number
     useLiteMode = testRecord.useLiteMode
@@ -833,29 +832,26 @@ def do_test_read_record_no_version(workflow):
         mockIndexor.readRecord.assert_called_with(latestVersion)
 
 
-def do_test_write_record_with_version(workflow, paramName):
+def do_test_write_record_with_version(workflow):
     # ensure it is calling the methods inside the indexor service
     mockIndexor = mock.Mock()
     localDataService = LocalDataService()
     localDataService.indexor = mock.Mock(return_value=mockIndexor)
     for useLiteMode in [True, False]:
-        record = globals()[f"{workflow}Record"].construct(
+        record = globals()[f"{workflow}Record"].model_construct(
             runNumber="xyz",
             useLiteMode=useLiteMode,
             workspaces={},
         )
-        setattr(record, paramName, mock.Mock())
+        record.calculationParameters = mock.Mock()
         version = randint(1, 120)
         getattr(localDataService, f"write{workflow}Record")(record, version)
-        assert record.version == version
-        assert getattr(record, paramName).version == version
         mockIndexor.writeRecord.assert_called_with(record, version)
-        mockIndexor.writeParameters.assert_called_with(getattr(record, paramName), version)
+        mockIndexor.writeParameters.assert_called_with(record.calculationParameters, version)
 
 
-def do_test_write_record_no_version(workflow, paramName):
+def do_test_write_record_no_version(workflow):
     # ensure it is calling the methods inside the indexor service
-    # if no version is specified, it should get the next version from the indexor
     nextVersion = randint(1, 120)
     mockIndexor = mock.Mock(nextVersion=mock.Mock(return_value=nextVersion))
     localDataService = LocalDataService()
@@ -866,13 +862,10 @@ def do_test_write_record_no_version(workflow, paramName):
             useLiteMode=useLiteMode,
             workspaces={},
         )
-        setattr(record, paramName, mock.Mock())
+        record.calculationParameters = mock.Mock()
         getattr(localDataService, f"write{workflow}Record")(record)  # NOTE no version
-        assert record.version == nextVersion
-        assert getattr(record, paramName).version == nextVersion
-        mockIndexor.nextVersion.assert_called()
-        mockIndexor.writeRecord.assert_called_with(record, nextVersion)
-        mockIndexor.writeParameters.assert_called_with(getattr(record, paramName), nextVersion)
+        mockIndexor.writeRecord.assert_called_with(record, None)
+        mockIndexor.writeParameters.assert_called_with(record.calculationParameters, None)
 
 
 ### TESTS OF NORMALIZATION METHODS ###
@@ -886,7 +879,7 @@ Keep tests in the same order as methods in the LocalDataService
 def test_readWriteNormalizationRecord():
     # ensure that reading and writing a normalization record
     # will correctly interact with the file system
-    record = NormalizationRecord.parse_raw(Resource.read("inputs/normalization/NormalizationRecord.json"))
+    record = parse_raw_as(NormalizationRecord, Resource.read("inputs/normalization/NormalizationRecord.json"))
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         record.useLiteMode = useLiteMode
@@ -910,13 +903,13 @@ def test_readNormalizationRecord_no_version():
 
 def test_writeNormalizationRecord_with_version():
     # ensure it is calling the methods inside the indexor service
-    do_test_write_record_with_version("Normalization", "calibration")
+    do_test_write_record_with_version("Normalization")
 
 
 def test_writeNormalizationRecord_no_version():
     # ensure it is calling the methods inside the indexor service
     # if no version is specified, it should get the next version from the indexor
-    do_test_write_record_no_version("Normalization", "calibration")
+    do_test_write_record_no_version("Normalization")
 
 
 def test_writeNormalizationWorkspaces():
@@ -984,13 +977,13 @@ def test_readCalibrationRecord_no_version():
 
 def test_writeCalibrationRecord_with_version():
     # ensure it is calling the methods inside the indexor service
-    do_test_write_record_with_version("Calibration", "calibrationFittingIngredients")
+    do_test_write_record_with_version("Calibration")
 
 
 def test_writeCalibrationRecord_no_version():
     # ensure it is calling the methods inside the indexor service
     # if no version is specified, it should get the next version from the indexor
-    do_test_write_record_no_version("Calibration", "calibrationFittingIngredients")
+    do_test_write_record_no_version("Calibration")
 
 
 def test_writeCalibrationWorkspaces():
@@ -1140,17 +1133,13 @@ def test_readWriteReductionRecord_specified_version():
         # write first version
         version1 = randint(3, 20)
         assert record_v0001.version != version1
-        actualRecord = localDataService.writeReductionRecord(record_v0001, version=version1)
-        # -- version should have been modified
-        assert actualRecord.version == version1
+        localDataService.writeReductionRecord(record_v0001, version=version1)
 
         # write second version
         version2 = randint(version1 + 1, 120)
         assert version1 != version2
         assert record_v0002.version != version2
-        actualRecord = localDataService.writeReductionRecord(record_v0002, version=version2)
-        # -- version should have been modified
-        assert actualRecord.version == version2
+        localDataService.writeReductionRecord(record_v0002, version=version2)
 
         actualRecord = localDataService.readReductionRecord(
             record_v0001.runNumbers[0],
@@ -1158,12 +1147,14 @@ def test_readWriteReductionRecord_specified_version():
             version=version1,
         )
         assert actualRecord.version == version1
+        assert actualRecord.calculationParameters.version == version1
         actualRecord = localDataService.readReductionRecord(
             record_v0002.runNumbers[0],
             record_v0002.useLiteMode,
             version=version2,
         )
         assert actualRecord.version == version2
+        assert actualRecord.calculationParameters.version == version2
 
 
 def test_readWriteReductionRecord_with_version():
@@ -1183,12 +1174,11 @@ def test_readWriteReductionRecord_with_version():
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService.instrumentConfig = mock.Mock()
 
-        actualRecord = localDataService.writeReductionRecord(testRecord, testVersion)
-        # -- version should have been modified to int(testVersion)
-        assert actualRecord.version == int(testVersion)
+        localDataService.writeReductionRecord(testRecord, testVersion)
 
         actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testVersion)
     assert actualRecord.version == int(testVersion)
+    assert actualRecord.calculationParameters.version == int(testVersion)
 
 
 def test_readWriteReductionRecord():
@@ -1302,8 +1292,7 @@ def test_writeReductionData_metadata(createReductionWorkspaces):
     # Create the input data for this test:
     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
 
-    with open(inputRecordFilePath, "r") as f:
-        testRecord = ReductionRecord.model_validate_json(f.read())
+    testRecord = parse_file_as(ReductionRecord, inputRecordFilePath)
     # Change the workspace names so that they will be unique to this test:
     # => enables parallel testing.
     testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
@@ -1383,6 +1372,7 @@ def test_readWriteReductionData(createReductionWorkspaces):
 
         actualRecord = localDataService.readReductionData(runNumber, useLiteMode, version)
         assert actualRecord == testRecord
+
         # workspaces should have been reloaded with their original names
         # Implementation note:
         #   * the workspaces must match _exactly_ here, so `CompareWorkspaces` must be used;
@@ -1476,16 +1466,16 @@ def test_readNormalizationState_no_version():
 def test_readWriteCalibrationState():
     # NOTE this test is already covered by tests of the Indexor
     # but it doesn't hurt to retain this test anyway
-    runNumber = 123
-    useLiteMode = True
+    runNumber = "123"
     localDataService = LocalDataService()
-    with state_root_redirect(localDataService):
-        calibration = Calibration.parse_file(Resource.getPath("/inputs/calibration/CalibrationParameters.json"))
-        calibration.seedRun = runNumber
-        calibration.useLiteMode = useLiteMode
-        localDataService.writeCalibrationState(calibration)
-        ans = localDataService.readCalibrationState(runNumber, useLiteMode)
-    assert ans == calibration
+    for useLiteMode in [True, False]:
+        with state_root_redirect(localDataService):
+            calibration = parse_file_as(Calibration, Resource.getPath("/inputs/calibration/CalibrationParameters.json"))
+            calibration.seedRun = runNumber
+            calibration.useLiteMode = useLiteMode
+            localDataService.writeCalibrationState(calibration)
+            ans = localDataService.readCalibrationState(runNumber, useLiteMode)
+        assert ans == calibration
 
 
 # NOTE if your merge tries to put any of the following tests here:
@@ -1504,16 +1494,18 @@ def test_readWriteCalibrationState():
 def test_readWriteNormalizationState():
     # NOTE this test is already covered by tests of the Indexor
     # but it doesn't hurt to retain this test anyway
-    runNumber = 123
-    useLiteMode = True
+    runNumber = "123"
     localDataService = LocalDataService()
-    with state_root_redirect(localDataService):
-        normalization = Normalization.parse_file(Resource.getPath("/inputs/normalization/NormalizationParameters.json"))
-        normalization.seedRun = runNumber
-        normalization.useLiteMode = useLiteMode
-        localDataService.writeCalibrationState(normalization)
-        ans = localDataService.readCalibrationState(runNumber, useLiteMode)
-    assert ans == normalization
+    for useLiteMode in [True, False]:
+        with state_root_redirect(localDataService):
+            normalization = Normalization.parse_file(
+                Resource.getPath("/inputs/normalization/NormalizationParameters.json")
+            )
+            normalization.seedRun = runNumber
+            normalization.useLiteMode = useLiteMode
+            localDataService.writeNormalizationState(normalization)
+            ans = localDataService.readNormalizationState(runNumber, useLiteMode)
+        assert ans == normalization
 
 
 def test_readDetectorState():
@@ -1913,33 +1905,30 @@ def test_readCifFilePath(mock1):  # noqa: ARG001
 ##### TESTS OF GROUPING MAP METHODS #####
 
 
-@mock.patch(ThisService + "parse_file_as")
-def test_readGroupingMap_no(parse_file_as):
-    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
-        localDataService = LocalDataService()
-        localDataService.checkCalibrationFileExists = mock.Mock(return_value=False)
-        localDataService._generateStateId = mock.Mock(side_effect=RuntimeError("YOU IDIOT!"))
-        localDataService._defaultGroupingMapPath = mock.Mock(return_value=Path(tmpDir))
+def test_readGroupingMap_no_calibration_file():
+    localDataService = LocalDataService()
+    localDataService.checkCalibrationFileExists = mock.Mock(return_value=False)
+    localDataService._generateStateId = mock.Mock(side_effect=RuntimeError("YOU IDIOT!"))
+    localDataService._readDefaultGroupingMap = mock.Mock()
+    localDataService._readGroupingMap = mock.Mock()
 
-        runNumber = "flan"
-        res = localDataService.readGroupingMap(runNumber)
-        assert res == parse_file_as.return_value
-        assert not localDataService._generateStateId.called
+    runNumber = "flan"
+    res = localDataService.readGroupingMap(runNumber)
+    assert res == localDataService._readDefaultGroupingMap.return_value
+    assert not localDataService._readGroupingMap.called
 
 
-@mock.patch(ThisService + "parse_file_as")
-def test_readGroupingMap_yes(parse_file_as):
-    with tempfile.TemporaryDirectory(prefix=Resource.getPath("outputs/")) as tmpDir:
-        localDataService = LocalDataService()
-        localDataService.checkCalibrationFileExists = mock.Mock(return_value=True)
-        localDataService._generateStateId = mock.Mock(return_value=(mock.Mock(), mock.Mock()))
-        localDataService._groupingMapPath = mock.Mock(return_value=Path(tmpDir))
-        localDataService._readDefaultGroupingMap = mock.Mock(side_effect=RuntimeError("YOU IDIOT!"))
+def test_readGroupingMap_yes_calibration_file():
+    localDataService = LocalDataService()
+    localDataService.checkCalibrationFileExists = mock.Mock(return_value=True)
+    localDataService._generateStateId = mock.Mock(return_value=(mock.Mock(), mock.Mock()))
+    localDataService._readGroupingMap = mock.Mock()
+    localDataService._readDefaultGroupingMap = mock.Mock(side_effect=RuntimeError("YOU IDIOT!"))
 
-        runNumber = "flan"
-        res = localDataService.readGroupingMap(runNumber)
-        assert res == parse_file_as.return_value
-        assert not localDataService._readDefaultGroupingMap.called
+    runNumber = "flan"
+    res = localDataService.readGroupingMap(runNumber)
+    assert res == localDataService._readGroupingMap.return_value
+    assert not localDataService._readDefaultGroupingMap.called
 
 
 def test_readDefaultGroupingMap():

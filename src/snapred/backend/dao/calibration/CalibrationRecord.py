@@ -26,10 +26,11 @@ class CalibrationRecord(Record):
     # - runNumber
     # - useLiteMode
     # - version
+    # override this to point at the correct daughter class
+    calculationParameters: Calibration
 
     # specific to calibration records
     crystalInfo: CrystallographicInfo
-    calibrationFittingIngredients: Calibration
     pixelGroups: Optional[List[PixelGroup]] = None  # TODO: really shouldn't be optional, will be when sns data fixed
     focusGroupCalibrationMetrics: FocusGroupMetric
     workspaces: Dict[WorkspaceType, List[WorkspaceName]]

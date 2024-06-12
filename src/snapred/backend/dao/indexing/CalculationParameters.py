@@ -11,7 +11,7 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 # from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 
 
-class Parameters(BaseModel, extra=Extra.allow):
+class CalculationParameters(BaseModel, extra=Extra.allow):
     """
 
     This is a base class to be used for the Calibration and Normalization objects,

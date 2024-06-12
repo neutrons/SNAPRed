@@ -9,11 +9,10 @@ from random import randint
 from typing import List
 
 import pytest
-from pydantic import parse_file_as
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry, Nonentry
-from snapred.backend.dao.indexing.Parameters import Parameters
 from snapred.backend.dao.indexing.Record import Nonrecord, Record
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -21,7 +20,7 @@ from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.data.Indexor import Indexor, IndexorType
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from snapred.meta.redantic import write_model_list_pretty, write_model_pretty
+from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
 
 IndexorModule = importlib.import_module(Indexor.__module__)
 
@@ -52,7 +51,7 @@ class TestIndexor(unittest.TestCase):
         # create an index entry with specific version
         # and random other information
         return IndexEntry(
-            runNumber=randint(1000, 5000),
+            runNumber=str(randint(1000, 5000)),
             useLiteMode=bool(randint(0, 1)),
             version=version,
         )
@@ -63,11 +62,17 @@ class TestIndexor(unittest.TestCase):
         # otherwise information is random
         if runNumber is None:
             runNumber = randint(1000, 5000)
-        return Record(runNumber=runNumber, useLiteMode=bool(randint(0, 1)), version=version)
+        calculationParameters = self.calculationParameters(version)
+        return Record(
+            runNumber=runNumber,
+            useLiteMode=bool(randint(0, 1)),
+            version=version,
+            calculationParameters=calculationParameters,
+        )
 
-    def stateParameters(self, version):
+    def calculationParameters(self, version):
         # create state parameters with a specific version
-        return Parameters(
+        return CalculationParameters(
             instrumentState=self.instrumentState,
             seedRun=randint(1000, 5000),
             useLiteMode=bool(randint(0, 1)),
@@ -82,6 +87,7 @@ class TestIndexor(unittest.TestCase):
             runNumber=entry.runNumber,
             useLiteMode=entry.useLiteMode,
             version=entry.version,
+            calculationParameters=self.calculationParameters(entry.version),
         )
 
     def indexPath(self):
@@ -96,6 +102,10 @@ class TestIndexor(unittest.TestCase):
         # a filepath where records should be written
         return self.versionPath(version) / "Record.json"
 
+    def parametersPath(self, version):
+        # a filepath where records should be written
+        return self.versionPath(version) / "Parameters.json"
+
     def makeVersionDir(self, version):
         self.versionPath(version).mkdir()
 
@@ -104,11 +114,12 @@ class TestIndexor(unittest.TestCase):
         # used to verify loading of previous records
         self.makeVersionDir(record.version)
         write_model_pretty(record, self.recordPath(record.version))
+        write_model_pretty(record.calculationParameters, self.parametersPath(record.version))
 
     def writeRecordVersion(self, version, *, runNumber=None):
         # create and write a record with a specific version and optional run number
-        self.makeVersionDir(version)
-        write_model_pretty(self.record(version, runNumber=runNumber), self.recordPath(version))
+        record = self.record(version, runNumber=runNumber)
+        self.writeRecord(record)
 
     ## TESTS OF INITIALIZER ##
 
@@ -625,19 +636,26 @@ class TestIndexor(unittest.TestCase):
     # write #
 
     def test_writeRecord_with_version(self):
+        # this test ensures a record can be written to the indicated version
+        # create a record and write it
         record = self.record(randint(1, 10))
         indexor = self.initIndexor()
         version = randint(11, 20)
         indexor.writeRecord(record, version)
         assert record.version == version
         assert self.recordPath(version).exists()
+        # read it back in and ensure it is the same (attach the calculationParameters)
         res = Record.parse_file(self.recordPath(version))
+        res.calculationParameters = CalculationParameters.parse_file(self.parametersPath(version))
         assert res == record
+        # ensure the version numbers were set
+        assert res.version == version
+        assert res.calculationParameters.version == version
 
     def test_writeRecord_no_version(self):
-        # make sure there exists other versions
-        # so that we can know it does not default
-        # to the starting version
+        # this test ensures no version defaults to next version
+
+        # make sure there exists other versions so that we can know it does not default to the starting version
         versions = [2, 3, 4]
         for version in versions:
             self.writeRecordVersion(version)
@@ -649,13 +667,17 @@ class TestIndexor(unittest.TestCase):
         indexor.writeRecord(record)
         assert record.version == nextVersion
         assert self.recordPath(nextVersion).exists()
-        res = Record.parse_file(self.recordPath(nextVersion))
+        res = parse_file_as(Record, self.recordPath(nextVersion))
+        res.calculationParameters = record.calculationParameters  # NOTE attach calculation parameters
         assert res == record
+        # ensure the version numbers were set
+        assert res.version == nextVersion
+        assert res.calculationParameters.version == nextVersion
 
     def test_writeRecord_star(self):
-        # make sure there exists other versions
-        # so that we can know it does not default
-        # to the starting version
+        # this test ensures that an invalid version defaults to next version
+
+        # make sure there exists other versions so that we can know it does not default o the starting version
         versions = [2, 3, 4]
         for version in versions:
             self.writeRecordVersion(version)
@@ -667,7 +689,8 @@ class TestIndexor(unittest.TestCase):
         indexor.writeRecord(record, "*")
         assert record.version == nextVersion
         assert self.recordPath(nextVersion).exists()
-        res = Record.parse_file(self.recordPath(nextVersion))
+        res = parse_file_as(Record, self.recordPath(nextVersion))
+        res.calculationParameters = record.calculationParameters  # NOTE attach calculation parameters
         assert res == record
 
     # make sure the indexor can read/write specific record types #
@@ -715,7 +738,7 @@ class TestIndexor(unittest.TestCase):
 
     def test_readWriteParameters_with_version(self):
         version = randint(1, 10)
-        params = self.stateParameters(version)
+        params = self.calculationParameters(version)
 
         indexor = self.initIndexor()
         version = randint(11, 20)
@@ -726,7 +749,7 @@ class TestIndexor(unittest.TestCase):
 
     def test_readWriteParameters_no_version(self):
         version = randint(1, 10)
-        params = self.stateParameters(version)
+        params = self.calculationParameters(version)
 
         indexor = self.initIndexor()
         indexor.index = {randint(11, 20): Nonentry}
@@ -742,14 +765,14 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor()
 
         # write some parameters at a version
-        params1 = self.stateParameters(version)
+        params1 = self.calculationParameters(version)
         indexor.writeParameters(params1, version)
         assert indexor.parametersPath(version).exists()
 
         # now try to overwrite parameters at same version
         # make sure a warning is logged
         with self.assertLogs(logger=IndexorModule.logger, level=logging.WARNING) as cm:
-            params2 = self.stateParameters(version)
+            params2 = self.calculationParameters(version)
             indexor.writeParameters(params2, version)
         assert f"Overwriting  parameters at {indexor.parametersPath(version)}" in cm.output[0]
 
@@ -760,8 +783,6 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor(IndexorType.CALIBRATION)
         indexor.writeParameters(params)
         res = indexor.readParameters()
-        assert type(res) is Parameters
-        res = Calibration.parse_obj(res)
         assert type(res) is Calibration
         assert res == params
 
@@ -770,7 +791,5 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor(IndexorType.NORMALIZATION)
         indexor.writeParameters(params)
         res = indexor.readParameters()
-        assert type(res) is Parameters
-        res = Normalization.parse_obj(res)
         assert type(res) is Normalization
         assert res == params

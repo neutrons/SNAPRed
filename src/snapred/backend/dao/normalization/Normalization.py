@@ -1,7 +1,7 @@
-from snapred.backend.dao.indexing.Parameters import Parameters
+from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 
 
-class Normalization(Parameters):
+class Normalization(CalculationParameters):
     """
 
     This class represents a normalization opject with essential attributes to track its origin,
@@ -11,7 +11,7 @@ class Normalization(Parameters):
 
     """
 
-    # inherits from Parameters
+    # inherits from CalculationParameters
     # - instrumentState: InstrumentState
     # - seedRun: str
     # - useLiteMode: bool

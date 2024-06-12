@@ -25,10 +25,10 @@ class IndexEntry(BaseModel, extra=Extra.ignore):
     runNumber: str
     useLiteMode: bool
     version: Version = UNINITIALIZED
-    appliesTo: Optional[str]
-    comments: Optional[str]
-    author: Optional[str]
-    timestamp: Optional[int]
+    appliesTo: Optional[str] = None
+    comments: Optional[str] = None
+    author: Optional[str] = None
+    timestamp: Optional[int] = None
 
     def parseAppliesTo(appliesTo: str):
         symbols = [">=", "<=", "<", ">"]

@@ -1,9 +1,9 @@
 from typing import Optional
 
-from snapred.backend.dao.indexing.Parameters import Parameters
+from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 
 
-class Calibration(Parameters):
+class Calibration(CalculationParameters):
     """
 
     The Calibration class acts as a container for parameters primarily utilized in fitting processes within the context
@@ -13,7 +13,7 @@ class Calibration(Parameters):
 
     """
 
-    # inherits from Parameters
+    # inherits from CalculationParameters
     # - instrumentState: InstrumentState
     # - seedRun: str
     # - useLiteMode: bool

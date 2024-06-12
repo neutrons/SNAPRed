@@ -4,7 +4,7 @@
     "backgroundRunNumber": 58813,
     "smoothingParameter": 0.5,
     "peakIntensityThreshold": 0.05,
-    "calibration":{
+    "calculationParameters":{
         "instrumentState": {
             "id": "ab8704b0bc2a2342",
             "peakTailCoefficient": 1.1,

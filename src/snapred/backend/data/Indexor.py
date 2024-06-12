@@ -2,19 +2,19 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from pydantic import parse_file_as
-
+from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry, Version
-from snapred.backend.dao.indexing.Parameters import Parameters
 from snapred.backend.dao.indexing.Record import Nonrecord, Record
+from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import StrEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from snapred.meta.redantic import write_model_list_pretty, write_model_pretty
+from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -271,6 +271,9 @@ class Indexor:
                     record = ReductionRecord.parse_file(filePath)
                 case IndexorType.DEFAULT:
                     record = Record.parse_file(filePath)
+            # NOTE the calculation parameters are absent from any saved records
+            # read the calculation parameters separately from their own file
+            record.calculationParameters = self.readParameters(version)
         else:
             record = Nonrecord
         return record
@@ -282,22 +285,36 @@ class Indexor:
         filePath = self.recordPath(version)
         filePath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(record, filePath)
+        # NOTE calculation parameters are excluded from serialization
+        # write the calculation parameters to a separate file
+        self.writeParameters(record.calculationParameters, version)
 
     ## STATE PARAMETER READ / WRITE METHODS ##
 
-    def readParameters(self, version: Optional[int] = None) -> Parameters:
+    def readParameters(self, version: Optional[int] = None) -> CalculationParameters:
         """
         If no version given, defaults to current version
         """
         if not isinstance(version, int):
             version = self.currentVersion()
-        latestFile = self.parametersPath(version)
-        if not latestFile.exists():
-            raise FileNotFoundError(f"No {self.indexorType} State found at {latestFile} for version {version}")
-        parameters = Parameters.parse_file(latestFile)
+        filePath = self.parametersPath(version)
+        if filePath.exists():
+            match self.indexorType:
+                case IndexorType.CALIBRATION:
+                    parameters = Calibration.parse_file(filePath)
+                case IndexorType.NORMALIZATION:
+                    parameters = Normalization.parse_file(filePath)
+                case IndexorType.REDUCTION:
+                    parameters = CalculationParameters.parse_file(filePath)
+                case IndexorType.DEFAULT:
+                    parameters = CalculationParameters.parse_file(filePath)
+        else:
+            raise FileNotFoundError(
+                f"No {self.indexorType} calculation parameters found at {filePath} for version {version}"
+            )
         return parameters
 
-    def writeParameters(self, parameters: Parameters, version: Optional[int] = None):
+    def writeParameters(self, parameters: CalculationParameters, version: Optional[int] = None):
         if not isinstance(version, int):
             version = self.nextVersion()
         parameters.version = version

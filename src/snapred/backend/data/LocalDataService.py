@@ -46,9 +46,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
-from snapred.meta.redantic import (
-    write_model_pretty,
-)
+from snapred.meta.redantic import write_model_pretty
 
 Version = Union[int, Literal["*"]]
 logger = snapredLogger.getLogger(__name__)
@@ -350,27 +348,16 @@ class LocalDataService:
         """
 
         indexor = self.normalizationIndexor(record.runNumber, record.useLiteMode)
-        if version is None:
-            version = indexor.nextVersion()
-        record.version = version
-
-        # There seems no need to write the _nested_ Normalization,
-        # because it's written to a separate file during 'writeNormalizationState'.
-        # However, if it is going to be _nested_, this marks it with the correct version.
-        # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
-        record.calibration.version = version
-
         # write the record to file
         indexor.writeRecord(record, version)
         # write the calibration to file
-        indexor.writeParameters(record.calibration, version)
+        # NOTE this is called from within writeRecord, but repeated here for clarity
+        indexor.writeParameters(record.calculationParameters, version)
 
         logger.info(f"wrote NormalizationRecord: version: {version}")
         return record
 
-    def writeNormalizationWorkspaces(
-        self, record: NormalizationRecord, version: Optional[int] = None
-    ) -> NormalizationRecord:
+    def writeNormalizationWorkspaces(self, record: NormalizationRecord, version: Optional[int] = None):
         """
         Writes the workspaces associated with a `NormalizationRecord` to disk:
         -- assumes that `writeNormalizationRecord` has already been called, and that the version folder exists
@@ -388,7 +375,6 @@ class LocalDataService:
             else:
                 filename = Path(filename + ".nxs")
                 self.writeWorkspace(normalizationDataPath, filename, workspace)
-        return record
 
     ##### CALIBRATION METHODS #####
 
@@ -409,21 +395,11 @@ class LocalDataService:
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
         -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
         """
-        indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
-        if version is None:
-            version = indexor.nextVersion()
-        record.version = version
-
-        # As above at 'writeNormalizationRecord':
-        # There seems no need to write the _nested_ Calibration,
-        # because it's written to a separate file during 'writeCalibrationState'.
-        # However, if it is going to be _nested_, this marks it with the correct version.
-        # (For example, use pydantic Field(exclude=True) to _stop_ nesting it.)
-        record.calibrationFittingIngredients.version = version
 
         # Update the to-be saved record's "workspaces" information
         #   to correspond to the filenames that will actually be saved to disk.
-        # TODO this should happen in the calibration service, not here
+        # TODO THIS SHOULD NOT BE THE JOB OF THE DATA SERVICE.
+        # All of this should be handled by the Calibration service.
         savedWorkspaces = {}
         workspaces = record.workspaces.copy()
         wss = []
@@ -482,13 +458,14 @@ class LocalDataService:
         # savedRecord.workspaces = savedWorkspaces
         record.workspaces = savedWorkspaces
 
+        indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
         # write record to file
         indexor.writeRecord(record, version)
-        # write the calibration state to file
-        indexor.writeParameters(record.calibrationFittingIngredients, version)
+        # write the calibration calculation parameters to file
+        # NOTE this is called from within writeRecord, but repeated here for clarity
+        indexor.writeParameters(record.calculationParameters, version)
 
         logger.info(f"Wrote CalibrationRecord: version: {version}")
-        return record
 
     def writeCalibrationWorkspaces(self, record: CalibrationRecord, version: Optional[int] = None):
         """
@@ -501,6 +478,8 @@ class LocalDataService:
         calibrationDataPath = indexor.versionPath(record.version)
 
         # Assumes all workspaces are of WNG-type:
+        # TODO THIS SHOULD NOT BE THE JOB OF THE DATA SERVICE
+        # Finalization of the workspace names should be the responsibility of the Calibration service
         workspaces = record.workspaces.copy()
         for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []):
             # Rebuild the filename to strip any "iteration" number:
@@ -569,20 +548,22 @@ class LocalDataService:
             version = indexor.latestApplicableVersion(runNumber)
         return indexor.readRecord(version)
 
-    def writeReductionRecord(self, record: ReductionRecord, version: Optional[int] = None) -> ReductionRecord:
+    def writeReductionRecord(self, record: ReductionRecord, version: Optional[int] = None):
         """
         Persists a `ReductionRecord` to either a new version folder, or overwrites a specific version.
         * side effect: updates version numbers of incoming `ReductionRecord`;
-        * side effect: creates the version directory if none exists
+        * side effect: updates version numbers of the `calculationParameters` on the record;
+        * side effect: creates the version directory if none exists;
         """
-        indexor = self.reductionIndexor(record.runNumber, record.useLiteMode)
-        if version is None:
-            version = indexor.nextVersion()
-        record.version = version
 
+        indexor = self.reductionIndexor(record.runNumber, record.useLiteMode)
+        # write the record
         indexor.writeRecord(record, version)
+        # write the calculation parameters
+        # NOTE this is called from within writeRecord, but repeated here for clarity
+        indexor.writeParameters(record.calculationParameters, version)
+
         logger.info(f"wrote ReductionRecord: version: {version}")
-        return record
 
     def writeReductionData(self, record: ReductionRecord, version: Optional[int] = None):
         """
@@ -593,11 +574,11 @@ class LocalDataService:
         indexor = self.reductionIndexor(record.runNumber, record.useLiteMode)
         if version is None:
             version = indexor.nextVersion()
-        record.version = version
 
         dataFilepath = self._constructReductionDataFilePath(record.runNumber, record.useLiteMode, version)
         if not dataFilepath.parent.exists():
-            dataFilepath.parent.mkdir(parents=True, exist_ok=True)
+            # write reduction record must be called first
+            self.writeReductionRecord(record, version)
 
         for ws in record.workspaceNames:
             # Append workspaces to hdf5 file, in order of the `workspaces` list
@@ -608,8 +589,11 @@ class LocalDataService:
                 self.writeWorkspace(dataFilepath.parent, Path(dataFilepath.name), ws, append=True)
 
         # Append the "metadata" group, containing the `ReductionRecord` metadata
+        # NOTE the calculation parameters must be separately attached
         with h5py.File(dataFilepath, "a") as h5:
-            n5m.insertMetadataGroup(h5, record.dict(), "/metadata")
+            outputRecord = record.dict()
+            outputRecord["calculationParameters"] = record.calculationParameters.dict()
+            n5m.insertMetadataGroup(h5, outputRecord, "/metadata")
 
         logger.info(f"wrote reduction data to {dataFilepath}: version: {version}")
 
@@ -649,8 +633,7 @@ class LocalDataService:
         # NOTE if we prefer latest version in index, uncomment below
         # if version is None:
         #     version = indexor.latestApplicableVersion(runId)
-        parameters = indexor.readParameters(version)
-        return Calibration.parse_obj(parameters)
+        return indexor.readParameters(version)
 
     @validate_call
     def readNormalizationState(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
@@ -658,8 +641,7 @@ class LocalDataService:
         # NOTE if we prefer latest version in index, uncomment below
         # if version is None:
         #     version = indexor.latestApplicableVersion(runId)
-        parameters = indexor.readParameters(version)
-        return Normalization.parse_obj(parameters)
+        return indexor.readParameters(version)
 
     def writeCalibrationState(self, calibration: Calibration, version: Optional[Version] = None):
         """

@@ -10,8 +10,8 @@ class ReductionRequest(BaseModel):
     runNumber: Union[str, List[str]]
     useLiteMode: bool
     focusGroup: Union[Optional[FocusGroup], List[FocusGroup]]
-    userSelectedMaskPath: Optional[str]
-    version: Optional[int]
+    userSelectedMaskPath: Optional[str] = None
+    version: Optional[int] = None
 
     # TODO: Move to SNAPRequest
     continueFlags: Optional[ContinueWarning.Type] = None

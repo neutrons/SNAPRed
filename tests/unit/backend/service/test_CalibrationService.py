@@ -364,13 +364,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_load_quality_assessment_check_existent_data(self):
         inputFilepath = Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json")
+        paramsFilepath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
         with state_root_redirect(self.localDataService) as tmpRoot:
             calibRecord = CalibrationRecord.parse_file(inputFilepath)
-            recordFilepath = self.localDataService.calibrationIndexor(
-                calibRecord.runNumber,
-                calibRecord.useLiteMode,
-            ).recordPath(1)
+            indexor = self.localDataService.calibrationIndexor(calibRecord.runNumber, calibRecord.useLiteMode)
+            recordFilepath = indexor.recordPath(1)
             tmpRoot.addFileAs(inputFilepath, recordFilepath)
+            tmpRoot.addFileAs(paramsFilepath, indexor.parametersPath(1))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.create_fake_diffcal_files(recordFilepath.parent, calibRecord.workspaces, calibRecord.version)
@@ -398,22 +398,22 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
     def test_load_quality_assessment(self):
         inputFilepath = Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json")
+        paramsFilepath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
         with state_root_redirect(self.localDataService) as tmpRoot:
-            calibrecord = CalibrationRecord.parse_file(inputFilepath)
-            recordFilepath = self.localDataService.calibrationIndexor(
-                calibrecord.runNumber,
-                calibrecord.useLiteMode,
-            ).recordPath(1)
+            calibRecord = CalibrationRecord.parse_file(inputFilepath)
+            indexor = self.localDataService.calibrationIndexor(calibRecord.runNumber, calibRecord.useLiteMode)
+            recordFilepath = indexor.recordPath(1)
             tmpRoot.addFileAs(inputFilepath, recordFilepath)
+            tmpRoot.addFileAs(paramsFilepath, indexor.parametersPath(1))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
-            self.create_fake_diffcal_files(recordFilepath.parent, calibrecord.workspaces, calibrecord.version)
+            self.create_fake_diffcal_files(recordFilepath.parent, calibRecord.workspaces, calibRecord.version)
 
             # Call the method to test. Use a mocked run and a mocked version
             mockRequest = MagicMock(
-                runId=calibrecord.runNumber,
-                useLiteMode=calibrecord.useLiteMode,
-                version=calibrecord.version,
+                runId=calibRecord.runNumber,
+                useLiteMode=calibRecord.useLiteMode,
+                version=calibRecord.version,
                 checkExistent=False,
             )
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
@@ -424,15 +424,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 ws_name = (
                     wng.diffCalMetric()
                     .metricName(metric)
-                    .runNumber(calibrecord.runNumber)
-                    .version(calibrecord.version)
+                    .runNumber(calibRecord.runNumber)
+                    .version(calibRecord.version)
                     .metricName(metric)
                     .build()
                 )
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
             # Assert all "persistent" workspaces have been loaded
-            for wsNames in calibrecord.workspaces.values():
+            for wsNames in calibRecord.workspaces.values():
                 for wsName in wsNames:
                     assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 

@@ -61,8 +61,8 @@ class ReductionRecord(Record):
         norm = self.normalization
         redStateId = self.stateId
 
-        calStateId = cal.calibrationFittingIngredients.instrumentState.id
-        normStateId = norm.calibration.instrumentState.id
+        calStateId = cal.calculationParameters.instrumentState.id
+        normStateId = norm.calculationParameters.instrumentState.id
         if not (calStateId == normStateId == redStateId):
             raise ValueError("Calibration, normalization, and reduction records are not from the same state.")
 

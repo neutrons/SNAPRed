@@ -7,12 +7,15 @@ from typing import Any, Dict, Literal, Optional, Tuple, Union
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from pydantic import validate_call
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.state import (
     GroupingMap,
 )
 from snapred.backend.dao.state.DetectorState import DetectorState
+from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
@@ -67,13 +70,24 @@ class WhateversInTheFridge(LocalDataService):
 
     ### CALIBRATION METHODS ###
 
+    def calculationParameters_with_stateId(self, stateId: str):
+        return CalculationParameters.model_construct(
+            instrumentState=InstrumentState.model_construct(
+                id=ObjectSHA.model_construct(
+                    hex=stateId,
+                    decodedKey="gibberish",
+                )
+            )
+        )
+
     @validate_call
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         version = version if version is not None else self.latestVersion
-        record = CalibrationRecord.construct(
+        record = CalibrationRecord.model_construct(
             runNumber=runId,
             useLiteMode=useLiteMode,
             version=version,
+            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef"),
         )
         return record
 
@@ -82,10 +96,11 @@ class WhateversInTheFridge(LocalDataService):
     @validate_call
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         version = version if version is not None else self.latestVersion
-        record = NormalizationRecord.construct(
+        record = NormalizationRecord.model_construct(
             runNumber=runId,
             useLiteMode=useLiteMode,
             version=version,
+            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef"),
         )
         return record
 
@@ -94,12 +109,16 @@ class WhateversInTheFridge(LocalDataService):
     def readReductionRecord(self, runNumber: str, useLiteMode: bool, version: int):
         wsname = mtd.unique_name(prefix=f"{runNumber}_{useLiteMode}_{version}_")
         CreateSingleValuedWorkspace(OutputWorkspace=wsname)
-        return ReductionRecord.construct(
+        return ReductionRecord.model_construct(
             runNumber=runNumber,
             runNumbers=[runNumber],
             useLiteMode=useLiteMode,
             version=version,
             workspaceNames=[wsname],
+            stateId="0xdeadbeef",
+            calibration=self.readCalibrationRecord(runNumber, useLiteMode, version),
+            normalization=self.readNormalizationRecord(runNumber, useLiteMode, version),
+            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef"),
         )
 
     ### READ / WRITE STATE METHODS ###
