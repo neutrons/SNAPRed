@@ -14,6 +14,7 @@ from mantid.simpleapi import (
 
 localMock = mock.Mock()
 
+from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
@@ -121,7 +122,8 @@ class TestReductionService(unittest.TestCase):
     def test_groupRequests(self):
         payload = self.request.json()
         request = SNAPRequest(path="test", payload=payload)
-        result = self.instance.groupRequests([request])
+        scheduler = RequestScheduler()
+        result = scheduler.handle([request], [self.instance._groupByStateId, self.instance._groupByVanadiumVersion])
 
         # outpus/2kfxjiqm is the state id defined in WhateversInTheFridge util
         # Verify the request is sorted by state id then normalization version
