@@ -94,7 +94,10 @@ def initPVFileMock() -> mock.Mock:
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_enter(
-    mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath, mockGenerateStateId
+    mockReadPVFile,
+    mockReadInstrumentConfig,
+    mockDefaultGroupingMapPath,
+    mockGenerateStateId,
 ):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
@@ -111,7 +114,10 @@ def test_state_root_override_enter(
     stateName = "my happy state"
     useLiteMode = True
     with state_root_override(runNumber, stateName, useLiteMode) as stateRootPath:
-        assert Path(stateRootPath) == Path(Config["instrument.calibration.powder.home"]) / stateId
+        try:
+            assert Path(stateRootPath) == Path(Config["instrument.calibration.powder.home"]) / stateId
+        except:
+            raise RuntimeError("config")
         assert Path(stateRootPath).exists()
         assert Path(stateRootPath).joinpath("groupingMap.json").exists()
         versionString = wnvf.fileVersion(VERSION_DEFAULT)

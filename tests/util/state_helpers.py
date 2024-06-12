@@ -29,7 +29,10 @@ def state_root_override(runNumber: str, name: str, useLiteMode: bool = False, de
 
     # __enter__
     dataService = LocalDataService()
-    stateId, _ = dataService._generateStateId(runNumber)
+    try:
+        stateId, _ = dataService._generateStateId(runNumber)
+    except:
+        raise RuntimeError("override")
     stateRoot = Path(dataService._constructCalibrationStateRoot(stateId))
     if stateRoot.exists():
         raise RuntimeError(f"state-root directory '{stateRoot}' already exists -- please move it out of the way!")
