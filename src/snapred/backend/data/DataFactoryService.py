@@ -115,6 +115,10 @@ class DataFactoryService:
         path = self.getNormalizationDataPath(runId, useLiteMode, version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
+    @validate_call
+    def getNormalizationVersion(self, runId: str, useLiteMode: bool):
+        return self.lookupService.getVersionFromNormalizationIndex(runId, useLiteMode)
+
     ##### REDUCTION METHODS #####
 
     @validate_call

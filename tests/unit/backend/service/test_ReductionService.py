@@ -15,12 +15,14 @@ from mantid.simpleapi import (
 
 localMock = mock.Mock()
 
+from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
 )
+from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.service.ReductionService import ReductionService
 from util.InstaEats import InstaEats
@@ -133,3 +135,13 @@ class TestReductionService(unittest.TestCase):
     def test_hasState(self):
         assert self.instance.hasState("123")
         assert not self.instance.hasState("not a state")
+
+    def test_groupRequests(self):
+        payload = self.request.json()
+        request = SNAPRequest(path="test", payload=payload)
+        scheduler = RequestScheduler()
+        result = scheduler.handle([request], [self.instance._groupByStateId, self.instance._groupByVanadiumVersion])
+
+        # outpus/2kfxjiqm is the state id defined in WhateversInTheFridge util
+        # Verify the request is sorted by state id then normalization version
+        assert result["root"]["outpus/2kfxjiqm"]["normalization_0"][0] == request
