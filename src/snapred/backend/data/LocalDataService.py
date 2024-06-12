@@ -408,6 +408,9 @@ class LocalDataService:
             version = latestNormalization.version
         return version
 
+    def getVersionFromNormalizationIndex(self, runId: str, useLiteMode: bool) -> int:
+        return self._getVersionFromNormalizationIndex(runId, useLiteMode)
+
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         stateId, _ = self._generateStateId(entry.runNumber)
         calibrationPath: Path = self._constructCalibrationStatePath(stateId, entry.useLiteMode)
