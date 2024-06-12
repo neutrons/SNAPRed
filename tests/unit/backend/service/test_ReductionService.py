@@ -140,8 +140,12 @@ class TestReductionService(unittest.TestCase):
         payload = self.request.json()
         request = SNAPRequest(path="test", payload=payload)
         scheduler = RequestScheduler()
-        result = scheduler.handle([request], [self.instance._groupByStateId, self.instance._groupByVanadiumVersion])
 
-        # outpus/2kfxjiqm is the state id defined in WhateversInTheFridge util
         # Verify the request is sorted by state id then normalization version
-        assert result["root"]["outpus/2kfxjiqm"]["normalization_0"][0] == request
+        lookupService = self.instance.dataFactoryService.lookupService
+        stateId, _ = lookupService._generateStateId(self.request.runNumber)
+        # need to add a normalization version to find
+        lookupService.normalizationIndexor(self.request.runNumber, self.request.useLiteMode).index = {1: mock.Mock()}
+        # now sort
+        result = scheduler.handle([request], [self.instance._groupByStateId, self.instance._groupByVanadiumVersion])
+        assert result["root"][stateId]["normalization_1"][0] == request

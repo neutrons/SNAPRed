@@ -116,8 +116,8 @@ class DataFactoryService:
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     @validate_call
-    def getNormalizationVersion(self, runId: str, useLiteMode: bool):
-        return self.lookupService.getVersionFromNormalizationIndex(runId, useLiteMode)
+    def getCurrentNormalizationVersion(self, runId: str, useLiteMode: bool):
+        return self.lookupService.normalizationIndexor(runId, useLiteMode).currentVersion()
 
     ##### REDUCTION METHODS #####
 

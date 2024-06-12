@@ -219,9 +219,8 @@ class ReductionService(Service):
         versions = {}
         for request in requests:
             runNumber = str(json.loads(request.payload)["runNumber"])
-            stateID, _ = self.dataFactoryService.constructStateId(runNumber)
             useLiteMode = bool(json.loads(request.payload)["useLiteMode"])
-            normalVersion = self.dataFactoryService.getNormalizationVersion(str(stateID), useLiteMode)
+            normalVersion = self.dataFactoryService.getCurrentNormalizationVersion(runNumber, useLiteMode)
             version = "normalization_" + str(normalVersion)
             if versions.get(version) is None:
                 versions[version] = []
