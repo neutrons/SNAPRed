@@ -206,8 +206,9 @@ class TestSousChef(unittest.TestCase):
         )
         # ensure the cache is preped
         self.instance._xtalCache[key] = mock.Mock()
+
         # make ingredients with no CIF path
-        incompleteIngredients = FarmFreshIngredients.parse_obj(self.ingredients)
+        incompleteIngredients = self.ingredients.model_copy()
         incompleteIngredients.cifPath = None
 
         # mock out the data factory
@@ -240,9 +241,8 @@ class TestSousChef(unittest.TestCase):
         assert res == PeakIngredients.return_value
 
     @mock.patch(thisService + "DetectorPeakPredictorRecipe")
-    @mock.patch(thisService + "parse_raw_as")
     @mock.patch(thisService + "GroupPeakList")
-    def test_prepDetectorPeaks_nocache_nopurge(self, GroupPeakList, parse_raw_as, DetectorPeakPredictorRecipe):  # noqa: ARG002
+    def test_prepDetectorPeaks_nocache_nopurge(self, GroupPeakList, DetectorPeakPredictorRecipe):  # noqa: ARG002
         key = (
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
@@ -258,7 +258,7 @@ class TestSousChef(unittest.TestCase):
         assert self.instance._peaksCache == {}
 
         self.instance.prepPeakIngredients = mock.Mock()
-        parse_raw_as.side_effect = lambda x, y: [y]  # noqa: ARG005
+        self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
 
         res = self.instance.prepDetectorPeaks(self.ingredients, False)
 
@@ -269,12 +269,10 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "PurgeOverlappingPeaksRecipe")
     @mock.patch(thisService + "DetectorPeakPredictorRecipe")
-    @mock.patch(thisService + "parse_raw_as")
     @mock.patch(thisService + "GroupPeakList")
     def test_prepDetectorPeaks_nocache_purge(
         self,
         GroupPeakList,  # noqa: ARG002
-        parse_raw_as,
         DetectorPeakPredictorRecipe,
         PurgeOverlappingPeaksRecipe,
     ):  # noqa: ARG002
@@ -293,7 +291,7 @@ class TestSousChef(unittest.TestCase):
         assert self.instance._peaksCache == {}
 
         self.instance.prepPeakIngredients = mock.Mock()
-        parse_raw_as.side_effect = lambda x, y: [y]  # noqa: ARG005
+        self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
 
         res = self.instance.prepDetectorPeaks(self.ingredients)
 

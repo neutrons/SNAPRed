@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from mantid.simpleapi import mtd
-from pydantic import validate_arguments
+from pydantic import validate_call
 
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
@@ -187,7 +187,7 @@ class GroceryService:
         ext = instr + ".extension"
         return self.getIPTS(runNumber) + Config[pre] + str(runNumber) + Config[ext]
 
-    @validate_arguments
+    @validate_call
     def _createGroupingFilename(self, runNumber: str, groupingScheme: str, useLiteMode: bool) -> str:
         if groupingScheme == "Lite":
             path = str(Config["instrument.lite.map.file"])
@@ -196,7 +196,7 @@ class GroceryService:
             path = groupingMap.getMap(useLiteMode)[groupingScheme].definition
         return str(path)
 
-    @validate_arguments
+    @validate_call
     def _createDiffcalOutputWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.output.extension"]
         return str(
@@ -204,7 +204,7 @@ class GroceryService:
             / (self._createDiffcalOutputWorkspaceName(item) + ext)
         )
 
-    @validate_arguments
+    @validate_call
     def _createDiffcalDiagnosticWorkspaceFilename(self, item: GroceryListItem) -> str:
         ext = Config["calibration.diffraction.diagnostic.extension"]
         return str(
@@ -212,14 +212,14 @@ class GroceryService:
             / (self._createDiffcalOutputWorkspaceName(item) + ext)
         )
 
-    @validate_arguments
+    @validate_call
     def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
             / (self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version) + ".h5")
         )
 
-    @validate_arguments
+    @validate_call
     def _createNormalizationWorkspaceFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
             Path(self._getNormalizationDataPath(runNumber, useLiteMode, version))
@@ -266,7 +266,7 @@ class GroceryService:
             .build()
         )
 
-    @validate_arguments
+    @validate_call
     def _createDiffcalTableWorkspaceName(
         self,
         runNumber: str,
@@ -275,7 +275,7 @@ class GroceryService:
     ) -> WorkspaceName:
         return wng.diffCalTable().runNumber(runNumber).version(version).build()
 
-    @validate_arguments
+    @validate_call
     def _createDiffcalMaskWorkspaceName(
         self,
         runNumber: str,
@@ -517,7 +517,7 @@ class GroceryService:
         # This method is provided to facilitate workspace loading with a _complete_ instrument state
         return self.dataService.readDetectorState(runNumber)
 
-    @validate_arguments
+    @validate_call
     def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
         """
         Get a path to the directory with the calibration data
@@ -529,7 +529,7 @@ class GroceryService:
         """
         return self.dataService._constructCalibrationDataPath(runNumber, useLiteMode, version)
 
-    @validate_arguments
+    @validate_call
     def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
         """
         Get a path to the directory with the normalization data
@@ -800,7 +800,7 @@ class GroceryService:
 
         return data
 
-    @validate_arguments
+    @validate_call
     def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: Version) -> WorkspaceName:
         tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", useLiteMode, version)
         self.mantidSnapper.CalculateDiffCalTable(
@@ -950,7 +950,7 @@ class GroceryService:
             if res["result"] is True:
                 groceries.append(res["workspace"])
             else:
-                raise RuntimeError(f"Error fetching item {item.json(indent=2)}")
+                raise RuntimeError(f"Error fetching item {item.model_dump_json(indent=2)}")
         return groceries
 
     def fetchGroceryDict(self, groceryDict: Dict[str, GroceryListItem], **kwargs) -> Dict[str, WorkspaceName]:

@@ -3,14 +3,15 @@ from typing import Dict
 
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
-from pydantic import BaseModel, Extra, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.backend.recipe.Recipe import Recipe
 from util.SculleryBoy import SculleryBoy
 
 
-class Ingredients(BaseModel, extra=Extra.forbid):
-    pass
+class Ingredients(BaseModel):
+    name: str
+    model_config = ConfigDict(extra="forbid")
 
 
 class DummyRecipe(Recipe[Ingredients]):
@@ -47,7 +48,7 @@ class RecipeTest(unittest.TestCase):
 
     def test_validate_inputs(self):
         groceries = self._make_groceries()
-        ingredients = BaseModel()
+        ingredients = Ingredients(name="validating")
         recipe = DummyRecipe()
         recipe.validateInputs(ingredients, groceries)
 
@@ -63,7 +64,7 @@ class RecipeTest(unittest.TestCase):
         mockSnapper = unittest.mock.Mock()
         untensils.mantidSnapper = mockSnapper
         recipe = DummyRecipe(utensils=untensils)
-        ingredients = BaseModel()
+        ingredients = Ingredients(name="cooking")
         groceries = self._make_groceries()
 
         assert recipe.cook(ingredients, groceries)
@@ -75,7 +76,7 @@ class RecipeTest(unittest.TestCase):
         mockSnapper = unittest.mock.Mock()
         untensils.mantidSnapper = mockSnapper
         recipe = DummyRecipe(utensils=untensils)
-        ingredients = BaseModel()
+        ingredients = Ingredients(name="catering")
         groceries = self._make_groceries()
 
         assert recipe.cater([(ingredients, groceries), (ingredients, groceries)])

@@ -5,9 +5,11 @@ import unittest
 import unittest.mock as mock
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, DeleteWorkspace, mtd
+from snapred.backend.dao.calibration import Calibration
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
 from snapred.backend.dao.ReductionState import ReductionState
 from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.dao.state import InstrumentState
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -34,13 +36,26 @@ class TestDataFactoryService(unittest.TestCase):
         ]
         for x in method_list:
             setattr(getattr(cls.mockLookupService, x), "side_effect", lambda *x: cls.expected(cls, *x))
+
+        mockStateId = "04bd2c53f6bf6754"
+        mockInstrumentState = InstrumentState.construct(id=mockStateId)
+        mockCalibration = Calibration.construct(instrumentState=mockInstrumentState)
+
         # these are treated specially as returning specific object types
         cls.mockLookupService.readInstrumentConfig.side_effect = None
         cls.mockLookupService.readRunConfig.side_effect = None
         cls.mockLookupService.readStateConfig.side_effect = None
-        cls.mockLookupService.readInstrumentConfig.return_value = InstrumentConfig.construct({})
-        cls.mockLookupService.readStateConfig.return_value = StateConfig.construct({})
-        cls.mockLookupService.readRunConfig.return_value = RunConfig.construct({})
+        cls.mockLookupService.readInstrumentConfig.return_value = InstrumentConfig.construct()
+
+        #
+        # ... allow the `StateConfig` to actually complete validation:
+        #   this is required because `getReductionState` is declared in the wrong place... :(
+        #
+        cls.mockLookupService.readStateConfig.return_value = StateConfig.construct(
+            stateId=mockStateId,
+            calibration=mockCalibration,
+        )
+        cls.mockLookupService.readRunConfig.return_value = RunConfig.construct()
 
     def setUp(self):
         self.instance = DataFactoryService()
@@ -164,16 +179,16 @@ class TestDataFactoryService(unittest.TestCase):
     ## TEST REDUCTION METHODS
 
     def test_getReductionDataPath(self):
-        actual = self.instance.getReductionDataPath("12345", True, "Column", "11")
-        assert actual == self.expected("12345", True, "Column", "11")
+        actual = self.instance.getReductionDataPath("12345", True, "11")
+        assert actual == self.expected("12345", True, "11")
 
     def test_getReductionRecord(self):
-        actual = self.instance.getReductionRecord("12345", True, "Column", 11)
-        assert actual == self.expected("12345", True, "Column", 11)
+        actual = self.instance.getReductionRecord("12345", True, 11)
+        assert actual == self.expected("12345", True, 11)
 
     def test_getReductionData(self):
-        actual = self.instance.getReductionData("12345", True, "Column", 11)
-        assert actual == self.expected("12345", True, "Column", 11)
+        actual = self.instance.getReductionData("12345", True, 11)
+        assert actual == self.expected("12345", True, 11)
 
     ##### TEST WORKSPACE METHODS ####
 

@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import Dict, List, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -71,7 +71,7 @@ class PixelGroup(BaseModel):
         elif isinstance(kwargs["pixelGroupingParameters"], list):
             pixelGroupingParametersList = kwargs["pixelGroupingParameters"]
             kwargs["pixelGroupingParameters"] = {
-                PixelGroupingParameters.parse_obj(p).groupID: p for p in pixelGroupingParametersList
+                PixelGroupingParameters.model_validate(p).groupID: p for p in pixelGroupingParametersList
             }
         return super().__init__(**kwargs)
 
@@ -105,3 +105,13 @@ class PixelGroup(BaseModel):
             self.binningMode * abs(self.pixelGroupingParameters[gid].dRelativeResolution) / Nbin
             for gid in self.groupIDs
         ]
+
+    @field_validator("timeOfFlight", mode="before")
+    @classmethod
+    def validate_TOF(cls, v):
+        if isinstance(v, dict):
+            v = BinnedValue[float](**v)
+        if not isinstance(v, BinnedValue[IntEnum]):
+            # Coerce the Generic[T]-derived type
+            v = BinnedValue[float](**v.dict())
+        return v

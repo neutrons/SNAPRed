@@ -105,7 +105,7 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
 
     def PyExec(self):
         # Load and pre-process vanadium and empty datasets
-        ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
+        ingredients = Ingredients.model_validate_json(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
         self.unbagGroceries()
 

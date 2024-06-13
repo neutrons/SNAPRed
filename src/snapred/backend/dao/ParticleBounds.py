@@ -10,5 +10,10 @@ class ParticleBounds(BaseModel):
     for each.
     """
 
+    """
+    # pydantic v2 has an issue with Generic-derived types.
     wavelength: Limit[float]  # lambda
     tof: Limit[float]
+    """
+    wavelength: Limit  # lambda
+    tof: Limit

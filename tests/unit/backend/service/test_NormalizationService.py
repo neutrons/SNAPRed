@@ -7,6 +7,7 @@ import pytest
 from mantid.simpleapi import (
     mtd,
 )
+from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
 
 thisService = "snapred.backend.service.NormalizationService"
 localMock = mock.Mock()
@@ -39,7 +40,7 @@ with mock.patch.dict(
 
     def readReductionIngredientsFromFile():
         with Resource.open("/inputs/normalization/ReductionIngredients.json", "r") as f:
-            return ReductionIngredients.parse_raw(f.read())
+            return ReductionIngredients.model_validate_json(f.read())
 
     def test_saveNormalization():
         normalizationService = NormalizationService()
@@ -257,12 +258,16 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         result = self.instance.normalization(self.request)
-        assert result == {
-            "correctedVanadium": "tof_unfoc_raw_van_corr_012345",
-            "focusedVanadium": f"tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
-            "smoothedVanadium": "dsp_apple_fitted_van_cor_012345",
-            "detectorPeaks": self.instance.sousChef.prepNormalizationIngredients(FarmFreshIngredients()).detectorPeaks,
-        }
+
+        assert (
+            result
+            == NormalizationResponse(
+                correctedVanadium="tof_unfoc_raw_van_corr_012345",
+                focusedVanadium=f"tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
+                smoothedVanadium="dsp_apple_fitted_van_cor_012345",
+                detectorPeaks=self.instance.sousChef.prepNormalizationIngredients(FarmFreshIngredients()).detectorPeaks,
+            ).dict()
+        )
 
     def test_nomaliztionStatesDontMatch(self):
         self.instance = NormalizationService()

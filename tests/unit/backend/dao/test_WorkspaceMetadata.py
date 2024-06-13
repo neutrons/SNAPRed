@@ -1,5 +1,5 @@
 import pytest
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 from snapred.backend.dao.WorkspaceMetadata import (
     UNSET,
     WorkspaceMetadata,

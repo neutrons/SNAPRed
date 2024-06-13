@@ -13,6 +13,6 @@ class CalibrationLoadAssessmentRequest(BaseModel):
     """
 
     runId: str
-    version: str
+    version: int
     useLiteMode: bool
     checkExistent: bool  # if true, do not generate assessment if it already exists

@@ -2,7 +2,7 @@
 from typing import List
 from pathlib import Path
 import json
-from pydantic import parse_raw_as
+import pydantic
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -197,7 +197,7 @@ def script(goldenData):
             crystalDMax = Config["constants.CrystallographicInfo.dMax"],
             peakIntensityThreshold = Config["calibration.diffraction.peakIntensityThreshold"],
             nBinsAcrossPeakWidth = Config["calibration.diffraction.nBinsAcrossPeakWidth"],
-            fwhmMultipliers = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
+            fwhmMultipliers = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
         )
         assessmentResponse = calibrationService.assessQuality(assessmentRequest)
         print(assessmentResponse.record.focusGroupCalibrationMetrics.json(indent=4))

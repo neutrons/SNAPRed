@@ -43,7 +43,7 @@ def FromString(func: callable):
         # for each string arg, import the class and create an instance
         for k, v in stringArgs.items():
             if isBaseModel(func_annotations[k]):
-                argMap[k] = func_annotations[k].parse_raw(v)
+                argMap[k] = func_annotations[k].model_validate_json(v)
             elif isListOfBaseModel(func_annotations[k]):
                 rawBaseModels = json.loads(v)
                 # if not a list, make it a list

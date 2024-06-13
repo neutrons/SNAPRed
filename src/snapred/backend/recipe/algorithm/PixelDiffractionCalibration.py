@@ -331,7 +331,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         if self._counts == 0:
             self.log().notice("Extraction of calibration constants START!")
             # get the ingredients
-            ingredients = Ingredients.parse_raw(self.getPropertyValue("Ingredients"))
+            ingredients = Ingredients.model_validate_json(self.getPropertyValue("Ingredients"))
             self.chopIngredients(ingredients)
             # load and process the input data for algorithm
             self.unbagGroceries(ingredients)

@@ -31,7 +31,7 @@ class TestGroupingMap:
     # warning messages will be logged.
     def test_GroupingMap_file_does_not_exist(self, caplog, groupingMapFactory):
         with caplog.at_level(logging.WARNING):
-            GroupingMap.GroupingMap.parse_obj(groupingMapFactory.badFilePath())
+            GroupingMap.GroupingMap.model_validate(groupingMapFactory.badFilePath())
         assert "not found" in caplog.text
 
     # Validator test: logging: grouping-files in the grouping-schema with invalid formats won't be included in the map;
@@ -39,14 +39,14 @@ class TestGroupingMap:
     def test_GroupingMap_file_incorrect_format(self, caplog, groupingMapFactory):
         with caplog.at_level(logging.WARNING):
             # JSON is not a valid format for grouping files.
-            GroupingMap.GroupingMap.parse_obj(groupingMapFactory.invalidFileFormat())
+            GroupingMap.GroupingMap.model_validate(groupingMapFactory.invalidFileFormat())
         assert "is not a valid grouping-schema map format" in caplog.text
 
     # Validator test: logging: if no grouping files are listed in the grouping-schema map JSON for any given mode;
     # warning messages will be loggged.
     def test_GroupingMap_empty_list(self, caplog, groupingMapFactory):
         with caplog.at_level(logging.WARNING):
-            mockGroupingMap = GroupingMap.GroupingMap.parse_obj(groupingMapFactory.emptyGroups())
+            mockGroupingMap = GroupingMap.GroupingMap.model_validate(groupingMapFactory.emptyGroups())
             assert len(mockGroupingMap.lite) == 0
             assert len(mockGroupingMap.native) == 0
         assert "No valid FocusGroups were specified for mode: 'lite'" in caplog.text
@@ -58,7 +58,7 @@ class TestGroupingMap:
             GroupingMap.GroupingMap, "calibrationGroupingHome", lambda: Path(Resource.getPath("inputs/pixel_grouping"))
         )
         with caplog.at_level(logging.WARNING):
-            GroupingMap.GroupingMap.parse_obj(
+            GroupingMap.GroupingMap.model_validate(
                 {
                     "stateId": "deadbeef00000004",
                     "liteFocusGroups": [{"name": "RelativePath", "definition": "SNAPFocGroup_Column.xml"}],
@@ -72,7 +72,7 @@ class TestGroupingMap:
         absPath0 = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.xml")
         absPath1 = Resource.getPath("inputs/pixel_grouping/SNAPFocGroup_Column.xml")
         with caplog.at_level(logging.WARNING):
-            GroupingMap.GroupingMap.parse_obj(
+            GroupingMap.GroupingMap.model_validate(
                 {
                     "stateId": "deadbeef00000004",
                     "liteFocusGroups": [{"name": "AbsPath", "definition": absPath0}],

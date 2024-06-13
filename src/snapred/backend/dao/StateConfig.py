@@ -1,6 +1,6 @@
-from typing import Any, Optional
+from typing import Optional
 
-from pydantic import BaseModel, Field, root_validator, validate_model, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from snapred.backend.dao.calibration import Calibration
 from snapred.backend.dao.ObjectSHA import ObjectSHA
@@ -19,9 +19,7 @@ class StateConfig(BaseModel):
 
     def _validate(self: BaseModel):
         # Manually trigger _root_validator_.
-        *_, validation_error = validate_model(self.__class__, self.__dict__)
-        if validation_error:
-            raise validation_error
+        self.model_validate(self.__dict__)
 
     def attachGroupingMap(self, groupingMap: GroupingMap, coerceStateId=False):
         # Attach a grouping map to the StateConfig:
@@ -34,28 +32,26 @@ class StateConfig(BaseModel):
         self.groupingMap = groupingMap
         self._validate()
 
-    @root_validator(allow_reuse=True)
-    def enforceStateId(cls, v):
+    @model_validator(mode="after")
+    def enforceStateId(self):
         # Enforce that subcomponent stateIds match _this_ object's stateId.
-        thisStateId = v.get("stateId")
-        calibration = v.get("calibration")
-        if not calibration.instrumentState.id == thisStateId:
+        if not self.calibration.instrumentState.id == self.stateId:
             raise RuntimeError(
                 "the state configuration's calibration must have the same 'stateId' as the configuration: "
-                + f'"{thisStateId}", not "{calibration.instrumentState.id}"'
+                + f'"{self.stateId}", not "{self.calibration.instrumentState.id}"'
             )
-        groupingMap = v.get("groupingMap")
-        if groupingMap:
-            if not groupingMap.stateId == thisStateId:
+        if self.groupingMap:
+            if not self.groupingMap.stateId == self.stateId:
                 raise RuntimeError(
                     "the state configuration's grouping map must have the same 'stateId' as the configuration: "
-                    + f'"{thisStateId}", not "{groupingMap.stateId}"'
+                    + f'"{self.stateId}", not "{self.groupingMap.stateId}"'
                 )
-        return v
+        return self
 
-    @validator("stateId", pre=True, allow_reuse=True)
-    def str_to_ObjectSHA(cls, v: Any) -> Any:
+    @field_validator("stateId", mode="before")
+    @classmethod
+    def str_to_ObjectSHA(cls, v: str) -> str:
         # ObjectSHA stored in JSON as _only_ a single hex string, for the hex digest itself
         if isinstance(v, str):
-            return ObjectSHA(hex=v)
+            v = ObjectSHA(hex=v, decodedKey=None)
         return v

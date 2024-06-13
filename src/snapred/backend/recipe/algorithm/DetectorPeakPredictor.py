@@ -75,7 +75,7 @@ class DetectorPeakPredictor(PythonAlgorithm):
         self.allGroupIDs = ingredients.pixelGroup.groupIDs
 
     def PyExec(self) -> None:
-        ingredients = PeakIngredients.parse_raw(self.getProperty("Ingredients").value)
+        ingredients = PeakIngredients.model_validate_json(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
 
         allFocusGroupsPeaks = []

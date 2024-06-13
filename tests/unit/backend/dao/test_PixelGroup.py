@@ -186,5 +186,5 @@ class TestPixelGroup(unittest.TestCase):
             assert self.reference.groupIDs != self.reference.pixelGroupingParameters[gid]
 
     def test_init(self):
-        p = PixelGroupingParameters.parse_obj(self.reference[2])
+        p = PixelGroupingParameters.model_validate(self.reference[2])
         assert p == self.reference[2]
