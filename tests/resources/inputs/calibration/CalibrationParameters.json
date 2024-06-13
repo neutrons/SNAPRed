@@ -48,11 +48,11 @@
     },
     "particleBounds": {
       "wavelength": {
-        "minimum": -0.3999999999999999,
+        "minimum": -0.3499999999999999,
         "maximum": 2.6
       },
       "tof": {
-        "minimum": -1567.226174506943,
+        "minimum": -1371.3229026935753,
         "maximum": 10186.970134295134
       }
     },
