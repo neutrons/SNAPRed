@@ -26,7 +26,7 @@ class ReadWorkspaceMetadata(Recipe[WorkspaceMetadata]):
         for prop in properties:
             propLogName = f"{self.TAG_PREFIX}{prop}"
             self.metadata[prop] = run.getLogData(propLogName).value if run.hasProperty(propLogName) else UNSET
-        self.metadata = WorkspaceMetadata.parse_obj(self.metadata)
+        self.metadata = WorkspaceMetadata.model_validate(self.metadata)
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
         self.workspace = groceries["workspace"]

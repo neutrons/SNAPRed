@@ -1,9 +1,9 @@
 from typing import Dict, List
 
 import numpy as np
+import pydantic
 from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
-from pydantic import parse_raw_as
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.log.logger import snapredLogger
@@ -35,7 +35,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         self.groupIDs = []
         self.predictedPeaks = {}
         for prediction in ingredients:
-            groupPeakList = GroupPeakList.parse_obj(prediction)
+            groupPeakList = GroupPeakList.model_validate(prediction)
             self.groupIDs.append(groupPeakList.groupID)
             self.predictedPeaks[groupPeakList.groupID] = groupPeakList.peaks
 
@@ -63,7 +63,9 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         return errors
 
     def PyExec(self):
-        predictedPeaksList = parse_raw_as(List[GroupPeakList], self.getPropertyValue("DetectorPeaks"))
+        predictedPeaksList = pydantic.TypeAdapter(List[GroupPeakList]).validate_json(
+            self.getPropertyValue("DetectorPeaks")
+        )
         self.chopIngredients(predictedPeaksList)
         self.unbagGroceries()
 

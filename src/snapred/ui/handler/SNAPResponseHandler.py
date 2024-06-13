@@ -76,7 +76,7 @@ class SNAPResponseHandler(QWidget):
                 messageBox.setDetailedText(f"{message}")
                 messageBox.exec()
         elif code == ResponseCode.CONTINUE_WARNING:
-            continueInfo = ContinueWarning.Model.parse_raw(message)
+            continueInfo = ContinueWarning.Model.model_validate_json(message)
             if SNAPResponseHandler._handleContinueWarning(continueInfo.message, view):
                 view.continueAnyway.emit(continueInfo)
         elif message:

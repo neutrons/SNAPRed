@@ -1,9 +1,9 @@
 from typing import List
 
 import matplotlib.pyplot as plt
+import pydantic
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
-from pydantic import parse_obj_as
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import (
     QHBoxLayout,
@@ -42,7 +42,7 @@ class DiffCalTweakPeakView(BackendRequestView):
     MIN_PEAKS = Config["calibration.diffraction.minimumPeaksPerGroup"]
     PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
-    FWHM = Pair.parse_obj(Config["calibration.parameters.default.FWHMMultiplier"])
+    FWHM = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
 
     signalRunNumberUpdate = Signal(str)
     signalPeakThresholdUpdate = Signal(float)
@@ -177,7 +177,7 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     def updateGraphs(self, workspace, peaks, diagnostic):
         # get the updated workspaces and optimal graph grid
-        self.peaks = parse_obj_as(List[GroupPeakList], peaks)
+        self.peaks = pydantic.TypeAdapter(List[GroupPeakList]).validate_python(peaks)
         numGraphs = len(peaks)
         self.goodPeaksCount = [0] * numGraphs
         self.badPeaks = [[]] * numGraphs

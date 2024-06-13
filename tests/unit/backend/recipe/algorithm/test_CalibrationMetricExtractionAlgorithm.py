@@ -4,10 +4,10 @@ from typing import List
 from unittest.mock import MagicMock
 
 import numpy as np
+import pydantic
 import pytest
 from mantid.api import WorkspaceGroup
 from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, mtd
-from pydantic import parse_raw_as
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.state import PixelGroup, PixelGroupingParameters
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import (
@@ -108,10 +108,14 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         algorithm.execute()
 
         # Get the output metrics property and parse it as a list of dictionaries
-        output_metrics = parse_raw_as(List[CalibrationMetric], algorithm.getProperty("OutputMetrics").value)
+        output_metrics = pydantic.TypeAdapter(List[CalibrationMetric]).validate_json(
+            algorithm.getProperty("OutputMetrics").value
+        )
 
         # Test data is currently not the greatest
-        expected = parse_raw_as(List[CalibrationMetric], Resource.read("outputs/calibration/metrics/expected.json"))
+        expected = pydantic.TypeAdapter(List[CalibrationMetric]).validate_json(
+            Resource.read("outputs/calibration/metrics/expected.json")
+        )
 
         # Assert the output metrics are as expected
         for metric in output_metrics[0].dict():

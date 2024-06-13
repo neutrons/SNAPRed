@@ -4,7 +4,7 @@
 from typing import List
 from unittest import mock
 
-from pydantic import parse_raw_as
+import pydantic
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
@@ -93,7 +93,7 @@ class SculleryBoy:
                 PurgeDuplicates=ingredients.get("purge", True),
             )
             print("yup!")
-            return parse_raw_as(List[GroupPeakList], peakList)
+            return pydantic.TypeAdapter(List[GroupPeakList]).validate_json(peakList)
         except TypeError:
             return [mock.Mock(spec_set=GroupPeakList)]
         except AttributeError:

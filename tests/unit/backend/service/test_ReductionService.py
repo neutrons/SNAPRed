@@ -3,23 +3,25 @@ import unittest
 import unittest.mock as mock
 from typing import List
 
+import pydantic
 import pytest
 from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
-from pydantic import parse_obj_as
 
 # Mock out of scope modules before importing DataExportService
 
 localMock = mock.Mock()
 
+from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
 )
+from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.service.ReductionService import ReductionService
 from util.InstaEats import InstaEats
@@ -68,8 +70,8 @@ class TestReductionService(unittest.TestCase):
 
     def test_loadAllGroupings(self):
         data = self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode)
-        assert parse_obj_as(List[FocusGroup], data["focusGroups"])
-        assert parse_obj_as(List[str], data["groupingWorkspaces"])
+        assert pydantic.TypeAdapter(List[FocusGroup]).validate_python(data["focusGroups"])
+        assert pydantic.TypeAdapter(List[str]).validate_python(data["groupingWorkspaces"])
 
     def test_fetchReductionGroupings(self):
         data = self.instance.fetchReductionGroupings(self.request)
@@ -80,7 +82,7 @@ class TestReductionService(unittest.TestCase):
         # Call the method with the provided parameters
         res = self.instance.prepReductionIngredients(self.request)
 
-        assert ReductionIngredients.parse_obj(res)
+        assert ReductionIngredients.model_validate(res)
         assert res == self.instance.sousChef.prepReductionIngredients(self.request)
 
     def test_fetchReductionGroceries(self):
@@ -104,7 +106,7 @@ class TestReductionService(unittest.TestCase):
         # this method only needs to call the methods in the data service
         # the corresponding methods are setup to add themselves to the list of run numbers
         record = ReductionRecord.construct(runNumbers=["test"])
-        request = ReductionExportRequest(reductionRecord=record)
+        request = ReductionExportRequest.construct(reductionRecord=record)
         self.instance.saveReduction(request)
         assert record.runNumbers == ["test", "writeReductionRecord", "writeReductionData"]
 
@@ -116,3 +118,13 @@ class TestReductionService(unittest.TestCase):
     def test_hasState(self):
         assert self.instance.hasState("123")
         assert not self.instance.hasState("not a state")
+
+    def test_groupRequests(self):
+        payload = self.request.json()
+        request = SNAPRequest(path="test", payload=payload)
+        scheduler = RequestScheduler()
+        result = scheduler.handle([request], [self.instance._groupByStateId, self.instance._groupByVanadiumVersion])
+
+        # outpus/2kfxjiqm is the state id defined in WhateversInTheFridge util
+        # Verify the request is sorted by state id then normalization version
+        assert result["root"]["outpus/2kfxjiqm"]["normalization_0"][0] == request

@@ -22,7 +22,7 @@ class WriteWorkspaceMetadata(Recipe[WorkspaceMetadata]):
 
         # if the input WorkspaceMetadata has unset values, set them from the logs
         self.properties = list(WorkspaceMetadata.schema()["properties"].keys())
-        metadata = WorkspaceMetadata.parse_obj(ingredients).dict()
+        metadata = WorkspaceMetadata.model_validate(ingredients).dict()
         for prop in self.properties:
             if metadata[prop] == UNSET:
                 metadata[prop] = getattr(prevMetadata, prop)
@@ -32,7 +32,7 @@ class WriteWorkspaceMetadata(Recipe[WorkspaceMetadata]):
         self.metadataValues = [metadata[prop] for prop in self.properties]
 
     def validateInputs(self, ingredients: WorkspaceMetadata, groceries: Dict[str, WorkspaceName]):
-        WorkspaceMetadata.parse_obj(ingredients)
+        WorkspaceMetadata.model_validate(ingredients)
         if not self.mantidSnapper.mtd.doesExist(groceries["workspace"]):
             raise RuntimeError(f"The indicated workspace {groceries['workspace']} not found in Mantid ADS.")
 

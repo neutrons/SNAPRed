@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 
@@ -19,13 +19,14 @@ class NormalizationIndexEntry(BaseModel):
     runNumber: str
     useLiteMode: bool
     backgroundRunNumber: str
-    version: Optional[int]
-    appliesTo: Optional[str]
-    comments: Optional[str]
-    author: Optional[str]
-    timestamp: Optional[int]
+    version: Optional[int] = None
+    appliesTo: Optional[str] = None
+    comments: Optional[str] = None
+    author: Optional[str] = None
+    timestamp: Optional[int] = None
 
-    @validator("appliesTo", allow_reuse=True)
+    @field_validator("appliesTo")
+    @classmethod
     def appliesToFormatChecker(cls, v):
         """
 

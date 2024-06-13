@@ -5,7 +5,6 @@
 from typing import List
 from pathlib import Path
 import json
-from pydantic import parse_raw_as
 import matplotlib.pyplot as plt
 import numpy as np
 

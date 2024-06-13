@@ -29,7 +29,7 @@ fakeRunConfig = RunConfig(runNumber=str(fakeRunNumber))
 TOFMin = 10
 TOFMax = 1000
 TOFBin = 0.001
-fakePixelGroup = PixelGroup.parse_raw(Resource.read("inputs/diffcal/fakePixelGroup.json"))
+fakePixelGroup = PixelGroup.model_validate_json(Resource.read("inputs/diffcal/fakePixelGroup.json"))
 fakePixelGroup.timeOfFlight.minimum = TOFMin
 fakePixelGroup.timeOfFlight.maximum = TOFMax
 fakePixelGroup.timeOfFlight.binWidth = TOFBin
@@ -38,7 +38,7 @@ fakePixelGroup.timeOfFlight.binningMode = -1 # LOG binning
 def makePeakList(values, mins, maxs):
     crystalPeak = {"hkl": (0,0,0), "dSpacing": 1.0, "fSquared": 1.0, "multiplicity": 1.0}
     return [
-        DetectorPeak.parse_obj({
+        DetectorPeak.model_validate({
             "position": {"value": value, "minimum": min, "maximum": max},
             "peak": crystalPeak,
         }) for value, min, max in zip(values, mins, maxs)

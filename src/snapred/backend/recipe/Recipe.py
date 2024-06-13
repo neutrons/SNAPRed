@@ -54,8 +54,8 @@ class Recipe(ABC, Generic[Ingredients]):
         """
         # cast the ingredients into the Ingredients type
         try:
-            # to run the same as Ingredients.parse_obj(ingredients)
-            get_args(self.__orig_bases__[0])[0].parse_obj(ingredients)
+            # to run the same as Ingredients.model_validate(ingredients)
+            get_args(self.__orig_bases__[0])[0].model_validate(ingredients)
         except ValidationError as e:
             raise e
         # ensure all of the given workspaces exist

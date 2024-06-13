@@ -3,7 +3,6 @@ from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-from pydantic import parse_raw_as
 from typing import List
 
 

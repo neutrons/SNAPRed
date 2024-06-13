@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-from pydantic import parse_raw_as
+import pydantic
 
 from snapred.backend.dao.ingredients import PixelGroupingIngredients
 from snapred.backend.dao.Limit import BinnedValue
@@ -21,6 +21,11 @@ class PixelGroupingParametersCalculationRecipe:
         utensils.PyInit()
         self.mantidSnapper = utensils.mantidSnapper
 
+    @staticmethod
+    def parsePGPList(src: str) -> List[PixelGroupingParameters]:
+        # Split out as a separate method, in order to facilitate testing
+        return pydantic.TypeAdapter(List[PixelGroupingParameters]).validate_json(src)
+
     def executeRecipe(
         self, ingredients: PixelGroupingIngredients, groceries: Dict[str, WorkspaceName]
     ) -> Dict[str, Any]:
@@ -39,7 +44,7 @@ class PixelGroupingParametersCalculationRecipe:
             res = res.get()
 
         data["result"] = True
-        pixelGroupingParams = parse_raw_as(List[PixelGroupingParameters], res)
+        pixelGroupingParams = self.parsePGPList(res)
         data["parameters"] = pixelGroupingParams
         data["tof"] = BinnedValue(
             minimum=ingredients.instrumentState.particleBounds.tof.minimum,
