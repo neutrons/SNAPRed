@@ -2,6 +2,7 @@
 import shutil
 import unittest.mock as mock
 from pathlib import Path
+from shutil import rmtree
 
 import pytest
 from snapred.backend.dao.calibration.Calibration import Calibration
@@ -10,7 +11,7 @@ from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
 
-VERSION_DEFAULT = Config["version.calibration.default"]
+VERSION_DEFAULT = Config["version.default"]
 
 
 @pytest.fixture(autouse=True)
@@ -89,6 +90,7 @@ def initPVFileMock() -> mock.Mock:
     return mock_
 
 
+@mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_generateStateId")
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
@@ -98,6 +100,7 @@ def test_state_root_override_enter(
     mockReadInstrumentConfig,
     mockDefaultGroupingMapPath,
     mockGenerateStateId,
+    mockWriteDiffCalTable,  # noqa ARG001
 ):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
@@ -108,23 +111,32 @@ def test_state_root_override_enter(
     mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
 
     stateId = "ab8704b0bc2a2342"
+    # NOTE delete the path first or the test can fail for confusing reasons
+    expectedStateRootPath = Path(Config["instrument.calibration.powder.home"]) / stateId
+    rmtree(expectedStateRootPath, ignore_errors=True)
     decodedKey = None
     mockGenerateStateId.return_value = (stateId, decodedKey)
     runNumber = "123456"
     stateName = "my happy state"
     useLiteMode = True
     with state_root_override(runNumber, stateName, useLiteMode) as stateRootPath:
-        assert Path(stateRootPath) == Path(Config["instrument.calibration.powder.home"]) / stateId
+        assert Path(stateRootPath) == expectedStateRootPath
         assert Path(stateRootPath).exists()
         assert Path(stateRootPath).joinpath("groupingMap.json").exists()
         versionString = wnvf.fileVersion(VERSION_DEFAULT)
         assert (Path(stateRootPath) / "lite" / "diffraction" / versionString / "CalibrationParameters.json").exists()
 
 
+@mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
-def test_state_root_override_exit(mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath):
+def test_state_root_override_exit(
+    mockReadPVFile,
+    mockReadInstrumentConfig,
+    mockDefaultGroupingMapPath,
+    mockWriteDefaultDiffCalTable,  # noqa ARG001
+):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
@@ -145,10 +157,16 @@ def test_state_root_override_exit(mockReadPVFile, mockReadInstrumentConfig, mock
     assert not Path(stateRootPath).exists()
 
 
+@mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
-def test_state_root_override_exit_no_delete(mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath):
+def test_state_root_override_exit_no_delete(
+    mockReadPVFile,
+    mockReadInstrumentConfig,
+    mockDefaultGroupingMapPath,
+    mockWriteDefaultDiffCalTable,  # noqa ARG001
+):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 

@@ -2,12 +2,13 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from mantid.simpleapi import mtd
 from pydantic import validate_call
 
 from snapred.backend.dao.indexing.Record import Nonrecord
+from snapred.backend.dao.indexing.Versioning import Version
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -21,8 +22,6 @@ from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceNam
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
-
-Version = Union[int, Literal["*"]]
 
 
 @Singleton
@@ -272,7 +271,7 @@ class GroceryService:
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
-        version: Optional[int],
+        version: Optional[Version],
     ) -> WorkspaceName:
         return wng.diffCalTable().runNumber(runNumber).version(version).build()
 
@@ -281,7 +280,7 @@ class GroceryService:
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
-        version: Optional[int],
+        version: Optional[Version],
     ) -> WorkspaceName:
         return wng.diffCalMask().runNumber(runNumber).version(version).build()
 
@@ -289,7 +288,7 @@ class GroceryService:
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
-        version: Optional[int],
+        version: Optional[Version],
     ) -> WorkspaceName:
         return wng.rawVanadium().runNumber(runNumber).version(version).build()
 

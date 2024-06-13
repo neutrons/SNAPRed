@@ -124,19 +124,30 @@ class CalibrationService(Service):
 
     @FromString
     def fetchDiffractionCalibrationGroceries(self, request: DiffractionCalibrationRequest) -> Dict[str, str]:
+        version = self.dataFactoryService.getNextCalibrationVersion(request.runNumber, request.useLiteMode)
         # groceries
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
         self.groceryClerk.name("groupingWorkspace").fromRun(request.runNumber).grouping(
             request.focusGroup.name
         ).useLiteMode(request.useLiteMode).add()
         diffcalOutputName = (
-            wng.diffCalOutput().unit(wng.Units.DSP).runNumber(request.runNumber).group(request.focusGroup.name).build()
+            wng.diffCalOutput()
+            .unit(wng.Units.DSP)
+            .runNumber(request.runNumber)
+            .version(version)
+            .group(request.focusGroup.name)
+            .build()
         )
         diagnosticWorkspaceName = (
-            wng.diffCalOutput().unit(wng.Units.DIAG).runNumber(request.runNumber).group(request.focusGroup.name).build()
+            wng.diffCalOutput()
+            .unit(wng.Units.DIAG)
+            .runNumber(request.runNumber)
+            .version(version)
+            .group(request.focusGroup.name)
+            .build()
         )
-        calibrationTableName = wng.diffCalTable().runNumber(request.runNumber).build()
-        calibrationMaskName = wng.diffCalMask().runNumber(request.runNumber).build()
+        calibrationTableName = wng.diffCalTable().runNumber(request.runNumber).version(version).build()
+        calibrationMaskName = wng.diffCalMask().runNumber(request.runNumber).version(version).build()
 
         return self.groceryService.fetchGroceryDict(
             self.groceryClerk.buildDict(),
@@ -207,7 +218,7 @@ class CalibrationService(Service):
         # it should NOT occur in the LocalDataService
         self.dataExportService.exportCalibrationRecord(record, version)
         self.dataExportService.exportCalibrationWorkspaces(record, version)
-        self.saveCalibrationToIndex(entry)
+        self.saveCalibrationToIndex(entry, version)
 
     @FromString
     def load(self, run: RunConfig, version: Optional[int] = None):
@@ -342,10 +353,6 @@ class CalibrationService(Service):
 
     @FromString
     def assessQuality(self, request: CalibrationAssessmentRequest):
-        # NOTE the previous structure of this method implied it was meant to loop over a list.
-        # However, its actual implementation did not actually loop over a list.
-        # I removed most of the parts that implied a loop or list.
-        # This can be easily refactored to a loop structure when needed
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.run.runNumber,
@@ -375,7 +382,7 @@ class CalibrationService(Service):
             runNumber=request.run.runNumber,
             useLiteMode=request.useLiteMode,
             crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
-            calibrationFittingIngredients=self.sousChef.prepCalibration(farmFresh),
+            calculationParameters=self.sousChef.prepCalibration(farmFresh),
             pixelGroups=[pixelGroup],
             focusGroupCalibrationMetrics=metrics,
             workspaces=request.workspaces,

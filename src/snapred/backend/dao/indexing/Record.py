@@ -1,11 +1,12 @@
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Extra, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
-from snapred.backend.dao.indexing.IndexEntry import UNINITIALIZED, IndexEntry, Nonentry, Version
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry, Nonentry
+from snapred.backend.dao.indexing.Versioning import UNINITIALIZED, Version
 
 
-class Record(BaseModel, extra=Extra.allow):
+class Record(BaseModel, extra="allow"):
     """
 
     This is the basic, bare-bones record of a workflow completion.

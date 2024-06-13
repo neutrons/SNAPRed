@@ -24,7 +24,8 @@ from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_
 
 IndexorModule = importlib.import_module(Indexor.__module__)
 
-VERSION_START = Config["version..start"]
+VERSION_START = Config["version.start"]
+VERSION_DEFAULT = Config["version.default"]
 UNITIALIZED = Config["version.error"]
 
 
@@ -47,19 +48,23 @@ class TestIndexor(unittest.TestCase):
         # create an indexor of specific type inside the temporrary directory
         return Indexor(indexorType=indexorType, directory=self.path)
 
-    def indexEntry(self, version):
+    def indexEntry(self, version=None):
         # create an index entry with specific version
         # and random other information
+        if version is None:
+            version = randint(2, 120)
         return IndexEntry(
             runNumber=str(randint(1000, 5000)),
             useLiteMode=bool(randint(0, 1)),
             version=version,
         )
 
-    def record(self, version, *, runNumber=None):
+    def record(self, version=None, *, runNumber=None):
         # create a record with specific version
         # runNumber may be optionally specified
         # otherwise information is random
+        if version is None:
+            version = randint(2, 120)
         if runNumber is None:
             runNumber = randint(1000, 5000)
         calculationParameters = self.calculationParameters(version)
@@ -231,19 +236,15 @@ class TestIndexor(unittest.TestCase):
 
     ### TEST VERSION GETTER METHODS ###
 
-    def test_defaultVersion_calibration(self):
-        indexor = self.initIndexor(indexorType=IndexorType.CALIBRATION)
-        assert indexor.defaultVersion() == Config["version.calibration.default"]
-
-    def test_defaultVersion_normalization(self):
-        # Normalization versions do not have a default.
-        indexor = self.initIndexor(indexorType=IndexorType.NORMALIZATION)
-        assert indexor.defaultVersion() == Config["version.error"]
+    def test_defaultVersion(self):
+        indexor = self.initIndexor()
+        assert indexor.defaultVersion() == VERSION_DEFAULT
 
     def test_currentVersion_none(self):
         # ensure the current version of an empty index is unitialized
         indexor = self.initIndexor()
         assert indexor.currentVersion() == UNITIALIZED
+        # the path should go to the starting version
         indexor.currentPath() == self.versionPath(VERSION_START)
 
     def test_currentVersion_add(self):
@@ -289,6 +290,24 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor()
         assert indexor.currentVersion() == max(dirVersions)
 
+    def test_thisOrCurrentVersion(self):
+        version = randint(20, 120)
+        indexor = self.initIndexor()
+        assert indexor.thisOrCurrentVersion(None) == indexor.currentVersion()
+        assert indexor.thisOrCurrentVersion("*") == indexor.currentVersion()
+        assert indexor.thisOrCurrentVersion(UNITIALIZED) == indexor.currentVersion()
+        assert indexor.thisOrCurrentVersion(VERSION_DEFAULT) == VERSION_DEFAULT
+        assert indexor.thisOrCurrentVersion(version) == version
+
+    def test_thisOrNextVersion(self):
+        version = randint(20, 120)
+        indexor = self.initIndexor()
+        assert indexor.thisOrNextVersion(None) == indexor.nextVersion()
+        assert indexor.thisOrNextVersion("*") == indexor.nextVersion()
+        assert indexor.thisOrNextVersion(UNITIALIZED) == indexor.nextVersion()
+        assert indexor.thisOrNextVersion(VERSION_DEFAULT) == VERSION_DEFAULT
+        assert indexor.thisOrNextVersion(version) == version
+
     def test_nextVersion(self):
         # check that the current version advances as expected as
         # both index entries and records are added to the index
@@ -309,7 +328,7 @@ class TestIndexor(unittest.TestCase):
         # add an entry to the calibration index
         here = VERSION_START
         # it should be added at the start
-        entry = self.indexEntry(3)
+        entry = self.indexEntry()
         indexor.addIndexEntry(entry)
         expectedIndex[here] = entry
         assert indexor.index == expectedIndex
@@ -324,7 +343,7 @@ class TestIndexor(unittest.TestCase):
 
         # now write the record
         record = self.recordFromIndexEntry(entry)
-        self.writeRecord(record)
+        indexor.writeRecord(record)
 
         # the current version hasn't moved
         assert indexor.currentVersion() == here
@@ -337,7 +356,7 @@ class TestIndexor(unittest.TestCase):
         # add another entry
         here = here + 1
         # ensure it is added at the next version
-        entry = self.indexEntry(3)
+        entry = self.indexEntry()
         indexor.addIndexEntry(entry)
         expectedIndex[here] = entry
         assert indexor.index == expectedIndex
@@ -345,7 +364,7 @@ class TestIndexor(unittest.TestCase):
         # the next version should be here
         assert indexor.nextVersion() == here
         # now write the record
-        self.writeRecord(self.recordFromIndexEntry(entry))
+        indexor.writeRecord(self.recordFromIndexEntry(entry))
         # ensure current still here
         assert indexor.currentVersion() == here
         # ensure next is after here
@@ -357,18 +376,21 @@ class TestIndexor(unittest.TestCase):
         # now write a record FIRST, at the next version
         here = here + 1
         record = self.record(here)
-        self.writeRecord(record)
+        indexor.writeRecord(record)
+        # the current version will point here
+        assert indexor.currentVersion() == here
+        assert indexor.currentVersion() == here
         # the next version will point here
         assert indexor.nextVersion() == here
         assert indexor.nextVersion() == here
 
-        # there is no index for this version
+        # there is no index entry for this version
         assert indexor.nextVersion() not in indexor.index
 
         # add the entry
         entry = indexor.indexEntryFromRecord(record)
-        expectedIndex[here] = entry
         indexor.addIndexEntry(entry)
+        expectedIndex[here] = entry
         assert indexor.index == expectedIndex
         # ensure current version points here, next points to next
         assert indexor.currentVersion() == here
@@ -379,19 +401,103 @@ class TestIndexor(unittest.TestCase):
         # write a record first, at a much future version
         # then add an index entry, and ensure it matches
         here = here + 23
-        record = self.record(here)
-        self.writeRecord(record)
+        record = self.record()
+        indexor.writeRecord(record, here)
         assert indexor.nextVersion() == here
         assert indexor.nextVersion() not in indexor.index
 
         # now add the entry
         entry = indexor.indexEntryFromRecord(record)
-        expectedIndex[here] = entry
         indexor.addIndexEntry(entry)
+        expectedIndex[here] = entry
         assert indexor.index == expectedIndex
         # enssure match
         assert indexor.currentVersion() == here
         assert indexor.nextVersion() == here + 1
+
+    def test_nextVersion_with_default_index_first(self):
+        # check that indexor handles the default version as expected
+
+        expectedIndex = {}
+        indexor = self.initIndexor()
+        assert indexor.index == expectedIndex
+
+        # there is no current version
+        assert indexor.currentVersion() == UNITIALIZED
+
+        # the first "next" version is the start
+        assert indexor.nextVersion() == VERSION_START
+
+        # add an entry at the default version
+        entry = self.indexEntry()
+        indexor.addIndexEntry(entry, VERSION_DEFAULT)
+        expectedIndex[VERSION_DEFAULT] = entry
+        assert indexor.index == expectedIndex
+        assert entry.version == VERSION_DEFAULT
+
+        # the current version is now the default version
+        assert indexor.currentVersion() == VERSION_DEFAULT
+        # the next version also should be the default version
+        # until a record is written to disk
+        assert indexor.nextVersion() == VERSION_DEFAULT
+
+        # now write the record -- it should write to default
+        record = self.recordFromIndexEntry(entry)
+        indexor.writeRecord(record)
+        assert self.recordPath(VERSION_DEFAULT).exists()
+
+        # the current version is still the default version
+        assert indexor.currentVersion() == VERSION_DEFAULT
+        # the next version will be the starting version
+        assert indexor.nextVersion() == VERSION_START
+
+        # add another entry -- now at the start
+        entry = self.indexEntry()
+        indexor.addIndexEntry(entry)
+        expectedIndex[VERSION_START] = entry
+        assert indexor.index == expectedIndex
+        assert indexor.currentVersion() == VERSION_START
+        # the next version should be the starting version
+        # until a record is written
+        assert indexor.nextVersion() == VERSION_START
+        # now write the record -- ensure it is written at the start
+        indexor.writeRecord(self.recordFromIndexEntry(entry))
+        assert self.recordPath(VERSION_START).exists()
+        # ensure current still here
+        assert indexor.currentVersion() == VERSION_START
+        # ensure next is after here
+        assert indexor.nextVersion() == VERSION_START + 1
+
+    def test_nextVersion_with_default_record_first(self):
+        # check default behaves correctly if a record is written first
+
+        indexor = self.initIndexor()
+        assert indexor.index == {}
+
+        # there is no current version
+        assert indexor.currentVersion() == UNITIALIZED
+
+        # the first "next" version is the start
+        assert indexor.nextVersion() == VERSION_START
+
+        # add a record at the default version
+        record = self.record()
+        indexor.writeRecord(record, VERSION_DEFAULT)
+
+        # the current version is now the default version
+        assert indexor.currentVersion() == VERSION_DEFAULT
+        # the next version also should be the default version
+        # until an entry is written to disk
+        assert indexor.nextVersion() == VERSION_DEFAULT
+
+        # now write the index entry -- it should write to default
+        entry = Record.indexEntryFromRecord(record)
+        indexor.addIndexEntry(entry)
+
+        # the current version is still the default version
+        assert indexor.currentVersion() == VERSION_DEFAULT
+        # the next version will be one past the starting version
+        assert indexor.nextVersion() == VERSION_START
 
     ### TESTS OF VERSION COMPARISON METHODS ###
 
@@ -449,7 +555,7 @@ class TestIndexor(unittest.TestCase):
         ans1 = indexor.versionPath(UNITIALIZED)
         assert ans1 == self.versionPath(VERSION_START)
 
-        # if version is "*" return current
+        # if version is a non-integer return current
         ans2 = indexor.versionPath("*")
         assert ans2 == self.versionPath(max(versionList))
 

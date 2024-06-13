@@ -5,7 +5,7 @@ import os
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import h5py
 from mantid.kernel import PhysicalConstants
@@ -22,8 +22,9 @@ from snapred.backend.dao import (
     StateId,
 )
 from snapred.backend.dao.calibration import Calibration, CalibrationIndexEntry, CalibrationRecord
-from snapred.backend.dao.indexing import IndexEntry
-from snapred.backend.dao.indexing.Record import Nonrecord
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Record import Record
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, Version
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.normalization import Normalization, NormalizationIndexEntry, NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
@@ -48,7 +49,6 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.meta.redantic import write_model_pretty
 
-Version = Union[int, Literal["*"]]
 logger = snapredLogger.getLogger(__name__)
 
 """
@@ -66,10 +66,8 @@ def _createFileNotFoundError(msg, filename):
 class LocalDataService:
     instrumentConfig: "InstrumentConfig"
     verifyPaths: bool = True
-    indexor: Dict[Tuple[str, bool, IndexorType], Indexor]
+    _rolodex: Dict[Tuple[str, bool, IndexorType], Indexor]
 
-    # starting version number -- the first run printed
-    VERSION_START = Config["version.calibration.default"]
     # conversion factor from microsecond/Angstrom to meters
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
@@ -77,7 +75,7 @@ class LocalDataService:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
         self.instrumentConfig = self.readInstrumentConfig()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
-        self._indexorCache = {}
+        self._rolodex = {}
 
     ##### MISCELLANEOUS METHODS #####
 
@@ -127,12 +125,7 @@ class LocalDataService:
             raise _createFileNotFoundError("Instrument configuration file", self.instrumentConfigPath) from e
 
     def readStateConfig(self, runId: str, useLiteMode: bool) -> StateConfig:
-        previousDiffCalRecord: CalibrationRecord = self.readCalibrationRecord(runId, useLiteMode)
-        if previousDiffCalRecord is Nonrecord:
-            diffCalibration: Calibration = self.readCalibrationState(runId, useLiteMode)
-        else:
-            diffCalibration: Calibration = previousDiffCalRecord.calibrationFittingIngredients
-
+        diffCalibration = self.calibrationIndexor(runId, useLiteMode).readParameters()
         stateId = str(diffCalibration.instrumentState.id)
 
         # Read the grouping-schema map associated with this `StateConfig`.
@@ -293,10 +286,10 @@ class LocalDataService:
         else:
             stateId, _ = self._generateStateId(runNumber)
         key = (stateId, useLiteMode, indexorType)
-        if self._indexorCache.get(key) is None:
+        if self._rolodex.get(key) is None:
             path = self._statePathForWorkflow(*key)
-            self._indexorCache[key] = Indexor(indexorType=indexorType, directory=path)
-        return self._indexorCache[key]
+            self._rolodex[key] = Indexor(indexorType=indexorType, directory=path)
+        return self._rolodex[key]
 
     def calibrationIndexor(self, runId: str, useLiteMode: bool):
         return self.indexor(runId, useLiteMode, IndexorType.CALIBRATION)
@@ -349,10 +342,8 @@ class LocalDataService:
 
         indexor = self.normalizationIndexor(record.runNumber, record.useLiteMode)
         # write the record to file
+        # NOTE this also writes the calculation parameters
         indexor.writeRecord(record, version)
-        # write the calibration to file
-        # NOTE this is called from within writeRecord, but repeated here for clarity
-        indexor.writeParameters(record.calculationParameters, version)
 
         logger.info(f"wrote NormalizationRecord: version: {version}")
         return record
@@ -363,11 +354,10 @@ class LocalDataService:
         -- assumes that `writeNormalizationRecord` has already been called, and that the version folder exists
         """
         indexor = self.normalizationIndexor(record.runNumber, record.useLiteMode)
-        if version is None:
-            version = indexor.nextVersion()
-        normalizationDataPath: Path = indexor.versionPath(record.version)
+        version = indexor.thisOrNextVersion(version)
+        normalizationDataPath: Path = indexor.versionPath(version)
         for workspace in record.workspaceNames:
-            filename = workspace + "_" + wnvf.formatVersion(record.version)
+            filename = workspace + "_" + wnvf.formatVersion(version)
             ws = mtd[workspace]
             if ws.isRaggedWorkspace():
                 filename = Path(filename + ".tar")
@@ -396,12 +386,14 @@ class LocalDataService:
         -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
         """
 
+        indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
         # Update the to-be saved record's "workspaces" information
         #   to correspond to the filenames that will actually be saved to disk.
         # TODO THIS SHOULD NOT BE THE JOB OF THE DATA SERVICE.
         # All of this should be handled by the Calibration service.
         savedWorkspaces = {}
         workspaces = record.workspaces.copy()
+        version = indexor.thisOrNextVersion(version)
         wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []):
             # Rebuild the workspace name to strip any "iteration" number:
@@ -411,7 +403,7 @@ class LocalDataService:
                     wng.diffCalOutput()
                     .unit(wng.Units.DSP)
                     .runNumber(record.runNumber)
-                    .version(record.version)
+                    .version(version)
                     .group(record.focusGroupCalibrationMetrics.focusGroupName)
                     .build()
                 )
@@ -430,7 +422,7 @@ class LocalDataService:
                     wng.diffCalOutput()
                     .unit(wng.Units.DIAG)
                     .runNumber(record.runNumber)
-                    .version(record.version)
+                    .version(version)
                     .group(record.focusGroupCalibrationMetrics.focusGroupName)
                     .build()
                 )
@@ -444,26 +436,24 @@ class LocalDataService:
         for wsName in workspaces.pop(wngt.DIFFCAL_TABLE, []):
             # Rebuild the workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple table workspaces.
-            ws = wng.diffCalTable().runNumber(record.runNumber).version(record.version).build()
+            ws = wng.diffCalTable().runNumber(record.runNumber).version(version).build()
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_TABLE] = wss
         wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_MASK, []):
             # Rebuild the workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple mask workspaces.
-            ws = wng.diffCalMask().runNumber(record.runNumber).version(record.version).build()
+            ws = wng.diffCalMask().runNumber(record.runNumber).version(version).build()
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_MASK] = wss
         # savedRecord = deepcopy(record)
         # savedRecord.workspaces = savedWorkspaces
+        # savedRecord.workspaces = savedWorkspaces
         record.workspaces = savedWorkspaces
 
-        indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
         # write record to file
+        # NOTE this also writes the calculation parameters
         indexor.writeRecord(record, version)
-        # write the calibration calculation parameters to file
-        # NOTE this is called from within writeRecord, but repeated here for clarity
-        indexor.writeParameters(record.calculationParameters, version)
 
         logger.info(f"Wrote CalibrationRecord: version: {version}")
 
@@ -473,9 +463,8 @@ class LocalDataService:
         -- assumes that `writeCalibrationRecord` has already been called, and that the version folder exists
         """
         indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
-        if version is None:
-            version = indexor.nextVersion()
-        calibrationDataPath = indexor.versionPath(record.version)
+        version = indexor.thisOrNextVersion(version)
+        calibrationDataPath = indexor.versionPath(version)
 
         # Assumes all workspaces are of WNG-type:
         # TODO THIS SHOULD NOT BE THE JOB OF THE DATA SERVICE
@@ -490,7 +479,7 @@ class LocalDataService:
                     wng.diffCalOutput()
                     .unit(wng.Units.DSP)
                     .runNumber(record.runNumber)
-                    .version(record.version)
+                    .version(version)
                     .group(record.focusGroupCalibrationMetrics.focusGroupName)
                     .build()
                     + ext
@@ -507,7 +496,7 @@ class LocalDataService:
                     wng.diffCalOutput()
                     .unit(wng.Units.DIAG)
                     .runNumber(record.runNumber)
-                    .version(record.version)
+                    .version(version)
                     .group(record.focusGroupCalibrationMetrics.focusGroupName)
                     .build()
                     + ext
@@ -521,9 +510,7 @@ class LocalDataService:
         ):
             # Rebuild the filename to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple table workspaces.
-            diffCalFilename = Path(
-                wng.diffCalTable().runNumber(record.runNumber).version(record.version).build() + ".h5"
-            )
+            diffCalFilename = Path(wng.diffCalTable().runNumber(record.runNumber).version(version).build() + ".h5")
             self.writeDiffCalWorkspaces(
                 calibrationDataPath,
                 diffCalFilename,
@@ -558,10 +545,8 @@ class LocalDataService:
 
         indexor = self.reductionIndexor(record.runNumber, record.useLiteMode)
         # write the record
+        # NOTE this also writes the calculation parameters
         indexor.writeRecord(record, version)
-        # write the calculation parameters
-        # NOTE this is called from within writeRecord, but repeated here for clarity
-        indexor.writeParameters(record.calculationParameters, version)
 
         logger.info(f"wrote ReductionRecord: version: {version}")
 
@@ -572,8 +557,7 @@ class LocalDataService:
         * side effect: creates the version directory is none exists
         """
         indexor = self.reductionIndexor(record.runNumber, record.useLiteMode)
-        if version is None:
-            version = indexor.nextVersion()
+        version = indexor.thisOrNextVersion(version)
 
         dataFilepath = self._constructReductionDataFilePath(record.runNumber, record.useLiteMode, version)
         if not dataFilepath.parent.exists():
@@ -689,9 +673,9 @@ class LocalDataService:
 
     @validate_call
     @ExceptionHandler(StateValidationException)
+    # NOTE if you are debugigng and got here, coment out the ExceptionHandler and try again
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         stateId, _ = self._generateStateId(runId)
-        version = self.VERSION_START
 
         # Read the detector state from the pv data file
         detectorState = self.readDetectorState(runId)
@@ -730,6 +714,7 @@ class LocalDataService:
 
         calibrationReturnValue = None
 
+        version = VERSION_DEFAULT
         for liteMode in [True, False]:
             # finally add seedRun, creation date, and a human readable name
             calibration = Calibration(
@@ -738,7 +723,21 @@ class LocalDataService:
                 seedRun=runId,
                 useLiteMode=liteMode,
                 creationDate=datetime.datetime.now(),
-                version=self.VERSION_START,
+                version=version,
+            )
+            record = Record(
+                runNumber="default",
+                useLiteMode=liteMode,
+                version=version,
+                calculationParameters=calibration,
+            )
+            entry = IndexEntry(
+                runNumber="default",
+                useLiteMode=liteMode,
+                version=version,
+                appliesTo=">=0",
+                author="SNAPRed Internal",
+                comments="The default condition for loading StateConfigs if none other found",
             )
 
             # Make sure that the state root directory has been initialized:
@@ -749,7 +748,10 @@ class LocalDataService:
                 self._prepareStateRoot(stateId)
 
             # write the calibration state
-            self.writeCalibrationState(calibration, version)
+            indexor = self.calibrationIndexor(runId, liteMode)
+            indexor.writeRecord(record, version)
+            indexor.addIndexEntry(entry, version)
+            # self.writeCalibrationState(calibration, version)
             # write the default diffcal table
             self._writeDefaultDiffCalTable(runId, liteMode)
 

@@ -137,16 +137,9 @@ samples:
   home: ${instrument.calibration.sample.home}
 
 version:
-  error: "uninitialized"
-  calibration:
-    start: 1
-    default: 0 # version for the default calibration state
-  normalization:
-    start: 1
-  reduction:
-    start: 1
-  "": # this is for the default indexor
-    start: 0
+  error: "uninitialized"  # alphanumeric
+  default: 0 # alphanumeric
+  start: 1   # MUST be integer
 
 cis_mode: false
 

@@ -1,13 +1,10 @@
-from typing import Literal, Optional, Union
+from typing import Optional
 
-from pydantic import BaseModel, Extra, validator
-from snapred.meta.Config import Config
-
-UNINITIALIZED = Config["version.error"]
-Version = Union[int, Literal[UNINITIALIZED]]
+from pydantic import BaseModel, field_validator
+from snapred.backend.dao.indexing.Versioning import UNINITIALIZED, Version
 
 
-class IndexEntry(BaseModel, extra=Extra.ignore):
+class IndexEntry(BaseModel, extra="ignore"):
     """
 
     This is the basic, bare-bones entry for workflow indices.
@@ -38,7 +35,7 @@ class IndexEntry(BaseModel, extra=Extra.ignore):
         runNumber = appliesTo if symbol == "" else appliesTo.split(symbol)[-1]
         return symbol, runNumber
 
-    @validator("appliesTo", allow_reuse=True)
+    @field_validator("appliesTo", mode="before")
     def appliesToFormatChecker(cls, v):
         """
         This validator ensures that if appliesTo is present,

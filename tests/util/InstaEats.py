@@ -1,6 +1,6 @@
 # ruff: noqa: F811 ARG005 ARG002
 import os
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List
 from unittest import mock
 
 from mantid.simpleapi import LoadDetectorsGroupingFile, LoadEmptyInstrument, mtd
@@ -12,8 +12,6 @@ from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from util.WhateversInTheFridge import WhateversInTheFridge
-
-Version = Union[int, Literal["*"]]
 
 
 @Singleton

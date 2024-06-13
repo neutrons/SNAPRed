@@ -17,6 +17,6 @@ class Normalization(CalculationParameters):
     # - useLiteMode: bool
     # - creationDate: datetime
     # - name: str
-    # - version: Union[int, UNINITIALIZED]
+    # - version: Union[int, DEFAULT, UNINITIALIZED]
 
     pass

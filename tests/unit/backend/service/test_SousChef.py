@@ -325,7 +325,7 @@ class TestSousChef(unittest.TestCase):
     def test_prepReductionIngredients(self, ReductionIngredients):
         record = mock.Mock(
             smoothingParamter=1.0,
-            calibrationFittingIngredients=mock.Mock(calibrantSamplePath="a/b.x"),
+            calculationParameters=mock.Mock(calibrantSamplePath="a/b.x"),
         )
         self.instance.prepRunConfig = mock.Mock()
         self.instance.prepManyPixelGroups = mock.Mock()

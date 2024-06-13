@@ -186,7 +186,7 @@ class SousChef(Service):
             ingredients.runNumber, ingredients.useLiteMode, version
         )
         # grab information from records
-        ingredients.calibrantSamplePath = calibrationRecord.calibrationFittingIngredients.calibrantSamplePath
+        ingredients.calibrantSamplePath = calibrationRecord.calculationParameters.calibrantSamplePath
         ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
         ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
         return ReductionIngredients(

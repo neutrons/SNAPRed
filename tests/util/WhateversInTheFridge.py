@@ -2,7 +2,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from pydantic import validate_call
@@ -11,9 +11,7 @@ from snapred.backend.dao.indexing.CalculationParameters import CalculationParame
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.reduction import ReductionRecord
-from snapred.backend.dao.state import (
-    GroupingMap,
-)
+from snapred.backend.dao.state import GroupingMap
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -24,7 +22,6 @@ from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
 
-Version = Union[int, Literal["*"]]
 logger = snapredLogger.getLogger(__name__)
 
 
@@ -45,8 +42,8 @@ class WhateversInTheFridge(LocalDataService):
         self.verifyPaths = False
         self.instrumentConfig = self.readInstrumentConfig()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
-        self.latestVersion = Config["version..start"]
-        self._indexorCache = {}
+        self.latestVersion = Config["version.start"]
+        self._rolodex = {}
 
     ### MISCELLANEOUS ###
 

@@ -89,6 +89,10 @@ class DataFactoryService:
         path = self.lookupService.calibrationIndexor(runId, useLiteMode).versionPath(version)
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
+    @validate_call
+    def getNextCalibrationVersion(self, runId: str, useLiteMode: bool):
+        return self.lookupService.calibrationIndexor(runId, useLiteMode).nextVersion()
+
     ##### NORMALIZATION METHODS #####
 
     @validate_call

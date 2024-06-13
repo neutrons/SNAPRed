@@ -7,6 +7,7 @@ from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
 from snapred.backend.dao.normalization import (
+    Normalization,
     NormalizationIndexEntry,
     NormalizationRecord,
 )
@@ -162,14 +163,14 @@ class NormalizationService(Service):
             fwhmMultipliers=request.fwhmMultipliers,
             peakIntensityThreshold=request.peakIntensityThreshold,
         )
-        calibration = self.sousChef.prepCalibration(farmFresh)
+        normalization = Normalization.model_validate(self.sousChef.prepCalibration(farmFresh).model_dump())
         record = NormalizationRecord(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             peakIntensityThreshold=request.peakIntensityThreshold,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
-            calibration=calibration,
+            calculationParameters=normalization,
             dMin=request.crystalDMin,
         )
         return record

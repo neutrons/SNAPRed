@@ -19,7 +19,7 @@ class Calibration(CalculationParameters):
     # - useLiteMode: bool
     # - creationDate: datetime
     # - name: str
-    # - version: Union[int, UNINITIALIZED]
+    # - version: Union[int, DEFAULT, UNINITIALIZED]
 
     # these are saved for later use in reduction
     calibrantSamplePath: Optional[str] = None

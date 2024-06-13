@@ -161,15 +161,8 @@ cis_mode: false
 
 version:
   error: "uninitialized"
-  calibration:
-    start: 1
-    default: 0 # version for the default calibration state
-  normalization:
-    start: 1
-  reduction:
-    start: 1
-  "": # this is for the default indexor
-    start: 0
+  default: "0xF"  # this tests alphanumeric defaults
+  start: 0
 
 constants:
   millisecondsPerSecond: 1000

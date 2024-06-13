@@ -206,10 +206,10 @@ class NormalizationWorkflow(WorkflowImplementer):
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
             appliesTo=view.fieldAppliesTo.get(),
-            version=version,
         )
 
         payload = NormalizationExportRequest(
+            version=version,
             normalizationRecord=normalizationRecord,
             normalizationIndexEntry=normalizationIndexEntry,
         )

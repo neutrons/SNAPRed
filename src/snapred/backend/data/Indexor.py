@@ -2,16 +2,18 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from pydantic import validate_call
+
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
-from snapred.backend.dao.indexing.IndexEntry import IndexEntry, Version
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Nonrecord, Record
+from snapred.backend.dao.indexing.Versioning import UNINITIALIZED, VERSION_DEFAULT, VERSION_START, Version
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.log.logger import snapredLogger
-from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import StrEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
@@ -53,19 +55,18 @@ class Indexor:
     indexorType: IndexorType
 
     # starting version numbers
-    VERSION_START = Config["version.error"]
-    VERSION_DEFAULT = Config["version.error"]
-    UNINITIALIZED = Config["version.error"]
+    VERSION_START = VERSION_START
+    VERSION_DEFAULT = VERSION_DEFAULT
+    UNINITIALIZED = UNINITIALIZED
 
     ## CONSTRUCTOR / DESTRUCTOR METHODS ##
 
-    def __init__(self, *, indexorType: str, directory: Path | str) -> None:
+    @validate_call
+    def __init__(self, *, indexorType: IndexorType, directory: Path | str) -> None:
         self.indexorType = indexorType
-        self.VERSION_START = Config[f"version.{self.indexorType.lower()}.start"]
-        if indexorType == IndexorType.CALIBRATION:
-            self.VERSION_DEFAULT = Config[f"version.{self.indexorType.lower()}.default"]
         self.rootDirectory = Path(directory)
         self.index = self.readIndex()
+        self.dirVersions = self.readDirectoryList()
         self.reconcileIndexToFiles()
 
     def __del__(self):
@@ -79,8 +80,14 @@ class Indexor:
         versions = set()
         for fname in self.rootDirectory.glob("v_*"):
             if os.path.isdir(fname):
-                version = int(str(fname).split("_")[-1])
+                version = str(fname).split("_")[-1]
+                if version != self.VERSION_DEFAULT:
+                    version = int(version)
+                elif isinstance(self.VERSION_DEFAULT, int):
+                    version = int(version)
                 versions.add(version)
+        if len(versions) > 1:
+            versions.discard(self.VERSION_DEFAULT)
         return versions
 
     def reconcileIndexToFiles(self):
@@ -109,12 +116,19 @@ class Indexor:
 
     def currentVersion(self) -> Version:
         """
-        The largest version in the index.
+        The largest version found by the Indexor.
         """
-        if len(self.index) == 0:
-            return self.UNINITIALIZED
+        currentVersion = self.UNINITIALIZED
+        overlap = set.union(set(self.index.keys()), self.dirVersions)
+        print(overlap)
+        if len(overlap) == 0:
+            currentVersion = self.UNINITIALIZED
+        elif len(overlap) == 1:
+            currentVersion = list(overlap)[0]
         else:
-            return max(self.index.keys())
+            versions = [version for version in overlap if isinstance(version, int)]
+            currentVersion = max(versions)
+        return currentVersion
 
     def latestApplicableVersion(self, runNumber: str) -> Version:
         """
@@ -138,25 +152,44 @@ class Indexor:
 
         version = self.UNINITIALIZED
 
-        # if nothing is in the index, the new version is starting version
-        if len(self.index) == 0:
-            return self.VERSION_START
-
-        # determine the next version by comparing index to directory tree
-        else:
-            dirVersions = self.readDirectoryList()
-            maxIndexVersion = max(self.index.keys(), default=self.VERSION_START - 1)
-            maxDirVersion = max(dirVersions, default=self.VERSION_START - 1)
-
-            # if indices and records are paired
-            # then the next version is the current + 1
-            if maxIndexVersion == maxDirVersion:
-                version = maxIndexVersion + 1
-
-            # otherwise, use the most updated version
+        # if the index and directories are in sync, the next version is one past them
+        if set(self.index.keys()) == self.dirVersions:
+            # filter out possible alphanumeric defaults
+            dirVersions = list(filter(lambda x: isinstance(x, int), self.dirVersions))
+            # if nothing is left, the next is the start
+            if len(dirVersions) == 0:
+                version = self.VERSION_START
+            # otherwise, the next is max version + 1
             else:
-                return max(maxIndexVersion, maxDirVersion)
+                version = max(dirVersions) + 1
+        # if the index and directory are out of sync, find the largest in both sets
+        else:
+            # get the elements particular to each set
+            indexSet = set(self.index.keys())
+            diffAB = indexSet.difference(self.dirVersions)
+            diffBA = self.dirVersions.difference(indexSet)
+            # if diffAB is nullset, diffBA has one more member -- that is next
+            if diffAB == set():
+                version = list(diffBA)[0]
+            # if diffBA is nullset, diffAB has one more member -- that is next
+            elif diffBA == set():
+                version = list(diffAB)[0]
+            # otherwise find the max of both differences and return that
+            else:
+                indexVersion = max(diffAB)
+                directoryVersion = max(diffBA)
+                version = max(indexVersion, directoryVersion)
 
+        return version
+
+    def thisOrCurrentVersion(self, version: Optional[Version]):
+        if version != self.VERSION_DEFAULT and not isinstance(version, int):
+            version = self.currentVersion()
+        return version
+
+    def thisOrNextVersion(self, version: Optional[Version]):
+        if version != self.VERSION_DEFAULT and not isinstance(version, int):
+            version = self.nextVersion()
         return version
 
     ## VERSION COMPARISON METHODS ##
@@ -190,23 +223,23 @@ class Indexor:
         """
         return self.rootDirectory / f"{self.indexorType}Index.json"
 
-    def recordPath(self, version: Version):
+    def recordPath(self, version: Optional[Version] = None):
         """
         Path to a specific version of a calculation record
         """
         return self.versionPath(version) / f"{self.indexorType}Record.json"
 
-    def parametersPath(self, version: Version):
+    def parametersPath(self, version: Optional[Version] = None):
         """
         Path to a specific version of calculation parameters
         """
         return self.versionPath(version) / f"{self.indexorType}Parameters.json"
 
-    def versionPath(self, version: Version) -> Path:
+    def versionPath(self, version: Optional[Version] = None) -> Path:
         if version is self.UNINITIALIZED:
             version = self.VERSION_START
-        elif version == "*":
-            version = max(self.index.keys(), default=self.VERSION_START)
+        else:
+            version = self.thisOrCurrentVersion(version)
         return self.rootDirectory / wnvf.fileVersion(version)
 
     def currentPath(self) -> Path:
@@ -224,7 +257,11 @@ class Indexor:
     def getIndex(self) -> List[IndexEntry]:
         if self.index == {}:
             self.index = self.readIndex()
-        return list(self.index.values())
+
+        # remove the default version, if it exists
+        res = self.index.copy()
+        res.pop(self.VERSION_DEFAULT, None)
+        return list(res.values())
 
     def readIndex(self) -> Dict[Version, IndexEntry]:
         # create the index from the index file
@@ -243,8 +280,7 @@ class Indexor:
         """
         If a verison is not passed, it will save at the next version.
         """
-        if not isinstance(version, int):
-            version = self.nextVersion()
+        version = self.thisOrNextVersion(version)
         entry.version = version
         self.index[entry.version] = entry
         self.writeIndex()
@@ -254,33 +290,30 @@ class Indexor:
 
     ## RECORD READ / WRITE METHODS ##
 
-    def readRecord(self, version: Optional[int] = None) -> Record:
+    def readRecord(self, version: Optional[Version] = None) -> Record:
         """
         If no version given, defaults to current version
         """
-        if not isinstance(version, int):
-            version = self.currentVersion()
+        version = self.thisOrCurrentVersion(version)
         filePath = self.recordPath(version)
+        record = Nonrecord
         if filePath.exists():
             match self.indexorType:
                 case IndexorType.CALIBRATION:
-                    record = CalibrationRecord.parse_file(filePath)
+                    record = parse_file_as(CalibrationRecord, filePath)
                 case IndexorType.NORMALIZATION:
-                    record = NormalizationRecord.parse_file(filePath)
+                    record = parse_file_as(NormalizationRecord, filePath)
                 case IndexorType.REDUCTION:
-                    record = ReductionRecord.parse_file(filePath)
+                    record = parse_file_as(ReductionRecord, filePath)
                 case IndexorType.DEFAULT:
-                    record = Record.parse_file(filePath)
+                    record = parse_file_as(Record, filePath)
             # NOTE the calculation parameters are absent from any saved records
             # read the calculation parameters separately from their own file
             record.calculationParameters = self.readParameters(version)
-        else:
-            record = Nonrecord
         return record
 
-    def writeRecord(self, record: Record, version: Optional[int] = None):
-        if not isinstance(version, int):
-            version = self.nextVersion()
+    def writeRecord(self, record: Record, version: Optional[Version] = None):
+        version = self.thisOrNextVersion(version)
         record.version = version
         filePath = self.recordPath(version)
         filePath.parent.mkdir(parents=True, exist_ok=True)
@@ -288,15 +321,15 @@ class Indexor:
         # NOTE calculation parameters are excluded from serialization
         # write the calculation parameters to a separate file
         self.writeParameters(record.calculationParameters, version)
+        self.dirVersions.add(version)
 
     ## STATE PARAMETER READ / WRITE METHODS ##
 
-    def readParameters(self, version: Optional[int] = None) -> CalculationParameters:
+    def readParameters(self, version: Optional[Version] = None) -> CalculationParameters:
         """
         If no version given, defaults to current version
         """
-        if not isinstance(version, int):
-            version = self.currentVersion()
+        version = self.thisOrCurrentVersion(version)
         filePath = self.parametersPath(version)
         if filePath.exists():
             match self.indexorType:
@@ -314,9 +347,8 @@ class Indexor:
             )
         return parameters
 
-    def writeParameters(self, parameters: CalculationParameters, version: Optional[int] = None):
-        if not isinstance(version, int):
-            version = self.nextVersion()
+    def writeParameters(self, parameters: CalculationParameters, version: Optional[Version] = None):
+        version = self.thisOrNextVersion(version)
         parameters.version = version
 
         parametersPath = self.parametersPath(version)

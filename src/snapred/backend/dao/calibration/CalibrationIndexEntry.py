@@ -17,7 +17,7 @@ class CalibrationIndexEntry(IndexEntry):
     # inherits from IndexEntry
     # - runNumber: str
     # - useLiteMode: bool
-    # - version: Union[int, UNINITIALIZED]
+    # - version: Union[int, DEFAULT, UNINITIALIZED]
     # - appliesTo: str
     # - comments: str
     # - author: str

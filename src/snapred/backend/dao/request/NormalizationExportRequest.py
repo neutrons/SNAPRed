@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
@@ -18,3 +20,4 @@ class NormalizationExportRequest(BaseModel):
 
     normalizationRecord: NormalizationRecord
     normalizationIndexEntry: NormalizationIndexEntry
+    version: Optional[int] = None

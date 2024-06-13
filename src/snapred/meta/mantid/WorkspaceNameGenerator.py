@@ -1,15 +1,14 @@
 import re
 import sys
 from enum import Enum
-from typing import List, Literal, Optional, Union
+from typing import List, Optional
 
 from pydantic import WithJsonSchema
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
 
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, Version
 from snapred.meta.Config import Config
-
-Version = Union[int, Literal["*"]]
 
 
 class WorkspaceName(str):
@@ -86,7 +85,9 @@ class ValueFormatter:
     def formatVersion(version: Optional[Version], use_v_prefix: vPrefix = vPrefix.WORKSPACE):
         if version is None:
             return ""
-        if not version == "*":
+        if version != VERSION_DEFAULT:
+            version = str(version).zfill(4)
+        elif isinstance(VERSION_DEFAULT, int):
             version = str(version).zfill(4)
         if use_v_prefix:
             version = "v" + version

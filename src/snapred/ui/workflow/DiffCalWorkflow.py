@@ -388,7 +388,6 @@ class DiffCalWorkflow(WorkflowImplementer):
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
             appliesTo=view.fieldAppliesTo.get(),
-            version=version,
         )
 
         # if this is not the first iteration, account for choice.
@@ -396,7 +395,9 @@ class DiffCalWorkflow(WorkflowImplementer):
             self.calibrationRecord.workspaces = self._getSaveSelection(self._saveView.iterationDropdown)
 
         payload = CalibrationExportRequest(
-            calibrationRecord=self.calibrationRecord, calibrationIndexEntry=calibrationIndexEntry
+            version=version,
+            calibrationRecord=self.calibrationRecord,
+            calibrationIndexEntry=calibrationIndexEntry,
         )
 
         response = self.request(path="calibration/save", payload=payload.json())
