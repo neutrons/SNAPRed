@@ -907,7 +907,7 @@ class GroceryService:
                     # to that of the table workspace.  Because of possible confusion with
                     # the behavior of mask workspace, the workspace name is manually set here.
                     tableWorkspaceName = self._createDiffcalTableWorkspaceName(
-                        str(item.runNumber), item.useLiteMode, item.version
+                        item.runNumber, item.useLiteMode, item.version
                     )
                     res = self.fetchCalibrationWorkspaces(item)
                     res["workspace"] = tableWorkspaceName

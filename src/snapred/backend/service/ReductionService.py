@@ -193,9 +193,10 @@ class ReductionService(Service):
         """
         version = request.version
         record = request.reductionRecord
-        # NOTE the Indexor will handle correctly versioning
+        # NOTE the Indexor will handle the version information for us
         self.dataExportService.exportReductionRecord(record, version)
         self.dataExportService.exportReductionData(record, version)
+        # must add an entry for reduction versions to progress
         entry = Record.indexEntryFromRecord(record)
         self.dataExportService.exportReductionIndexEntry(entry, version)
 

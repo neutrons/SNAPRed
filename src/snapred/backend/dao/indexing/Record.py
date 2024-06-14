@@ -1,6 +1,6 @@
-from typing import Any, Optional
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry, Nonentry
 from snapred.backend.dao.indexing.Versioning import UNINITIALIZED, Version
@@ -24,7 +24,7 @@ class Record(BaseModel, extra="allow"):
     runNumber: str
     useLiteMode: bool
     version: Version = UNINITIALIZED
-    calculationParameters: Optional[CalculationParameters] = Field(None, exclude=True)
+    calculationParameters: CalculationParameters | Literal["No calculation parameters"]
 
     @classmethod
     def indexEntryFromRecord(cls, record) -> IndexEntry:
@@ -60,4 +60,5 @@ Nonrecord = Record(
     runNumber="none",
     useLiteMode=False,
     version=UNINITIALIZED,
+    calculationParameters="No calculation parameters",
 )

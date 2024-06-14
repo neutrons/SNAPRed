@@ -25,6 +25,7 @@ class ReductionRecord(Record):
     # inherits from Record
     # - useLiteMode
     # - version
+    # - calculationParameters
     # specially override this for the case of reduction
     runNumber: Optional[str] = Field(None, exclude=True)
 

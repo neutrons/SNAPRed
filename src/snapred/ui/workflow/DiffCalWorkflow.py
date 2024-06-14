@@ -327,10 +327,10 @@ class DiffCalWorkflow(WorkflowImplementer):
             focusGroup=self.focusGroups[self.focusGroupPath],
             calibrantSamplePath=self.calibrantSamplePath,
             workspaces={
-                wngt.DIFFCAL_OUTPUT: [response.data["outputWorkspace"]],
-                wngt.DIFFCAL_DIAG: [response.data["diagnosticWorkspace"]],
-                wngt.DIFFCAL_TABLE: [response.data["calibrationTable"]],
-                wngt.DIFFCAL_MASK: [response.data["maskWorkspace"]],
+                wngt.DIFFCAL_OUTPUT: response.data["outputWorkspace"],
+                wngt.DIFFCAL_DIAG: response.data["diagnosticWorkspace"],
+                wngt.DIFFCAL_TABLE: response.data["calibrationTable"],
+                wngt.DIFFCAL_MASK: response.data["maskWorkspace"],
             },
             # fiddly bits
             peakFunction=self.peakFunction,
@@ -366,8 +366,8 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         iteration = int(selection)
         return {
-            wsKey: [self.renameTemplate.format(workspaceName=wsName, iteration=iteration) for wsName in wsNames]
-            for wsKey, wsNames in self.calibrationRecord.workspaces.items()
+            wsKey: self.renameTemplate.format(workspaceName=wsName, iteration=iteration)
+            for wsKey, wsName in self.calibrationRecord.workspaces.items()
         }
 
     def _saveCalibration(self, workflowPresenter):

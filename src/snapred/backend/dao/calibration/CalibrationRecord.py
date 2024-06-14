@@ -33,4 +33,4 @@ class CalibrationRecord(Record):
     crystalInfo: CrystallographicInfo
     pixelGroups: Optional[List[PixelGroup]] = None  # TODO: really shouldn't be optional, will be when sns data fixed
     focusGroupCalibrationMetrics: FocusGroupMetric
-    workspaces: Dict[WorkspaceType, List[WorkspaceName]]
+    workspaces: Dict[WorkspaceType, WorkspaceName]

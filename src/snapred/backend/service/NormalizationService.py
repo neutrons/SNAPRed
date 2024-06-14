@@ -35,6 +35,7 @@ from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.redantic import parse_obj_as
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -163,7 +164,7 @@ class NormalizationService(Service):
             fwhmMultipliers=request.fwhmMultipliers,
             peakIntensityThreshold=request.peakIntensityThreshold,
         )
-        normalization = Normalization.model_validate(self.sousChef.prepCalibration(farmFresh).model_dump())
+        normalization = parse_obj_as(Normalization, self.sousChef.prepCalibration(farmFresh))
         record = NormalizationRecord(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -183,7 +184,8 @@ class NormalizationService(Service):
         version = request.version
         entry = request.normalizationIndexEntry
         record = request.normalizationRecord
-        # NOTE the Indexor will handle the version information for us
+        # NOTE the Indexor will handle the version information for us,
+        # but the workspaces must be saved before both record and index are saved
         self.dataExportService.exportNormalizationRecord(record, version)
         self.dataExportService.exportNormalizationWorkspaces(record, version)
         self.saveNormalizationToIndex(entry, version)

@@ -12,6 +12,7 @@ import pytest
 from mantid.simpleapi import (
     CreateSingleValuedWorkspace,
     DeleteWorkspace,
+    GroupWorkspaces,
     LoadEmptyInstrument,
     mtd,
 )
@@ -78,14 +79,15 @@ with mock.patch.dict(
         assert savedEntry.timestamp is not None
 
     def test_save():
+        workspace = mtd.unique_name(prefix="_dsp_")
+        CreateSingleValuedWorkspace(OutputWorkspace=workspace)
+        workspaces = {wngt.DIFFCAL_OUTPUT: workspace}
         calibrationService = CalibrationService()
         calibrationService.dataExportService.exportCalibrationRecord = mock.Mock()
-        calibrationService.dataExportService.exportCalibrationRecord.return_value = MagicMock(version="1.0.0")
         calibrationService.dataExportService.exportCalibrationWorkspaces = mock.Mock()
-        calibrationService.dataExportService.exportCalibrationWorkspaces.return_value = MagicMock(version="1.0.0")
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
-        calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
-        calibrationService.save(mock.Mock())
+        calibrationService.dataFactoryService.getThisOrNextCalibrationVersion = mock.Mock(return_value=0)
+        calibrationService.save(mock.Mock(calibrationRecord=mock.Mock(workspaces=workspaces)))
         assert calibrationService.dataExportService.exportCalibrationRecord.called
         savedEntry = calibrationService.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
@@ -125,6 +127,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # create some sample data
         cls.sampleWS = "_sample_data"
+        cls.sampleDiagnosticWS = "_sample_diag_"
         cls.sampleTableWS = "_sample_diffcal_table"
         cls.sampleMaskWS = "_sample_diffcal_mask"
 
@@ -132,11 +135,20 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             Filename=cls.instrumentFilePath,
             OutputWorkspace=cls.sampleWS,
         )
+        ws = mtd.unique_name()
+        LoadEmptyInstrument(
+            Filename=cls.instrumentFilePath,
+            OutputWorkspace=ws,
+        )
+        GroupWorkspaces(
+            InputWorkspaces=[ws],
+            OutputWorkspace=cls.sampleDiagnosticWS,
+        )
         createCompatibleDiffCalTable(cls.sampleTableWS, cls.sampleWS)
         createCompatibleMask(cls.sampleMaskWS, cls.sampleWS, cls.instrumentFilePath)
 
         # cleanup at per-test teardown
-        cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS]
+        cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS, cls.sampleDiagnosticWS, ws]
 
     def setUp(self):
         self.localDataService = LocalDataService()
@@ -168,21 +180,20 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         maskWSName = None
         # Note: this form allows testing of partial-write behavior:
         #   e.g. no _mask_ or _table_ workspace in the 'workspaces' dict.
-        for key, wsNames in workspaces.items():
-            for wsName in wsNames:
-                match key:
-                    case wngt.DIFFCAL_TABLE:
-                        tableWSName = wsName
-                    case wngt.DIFFCAL_MASK:
-                        maskWSName = wsName
-                    case wngt.DIFFCAL_DIAG:
-                        filename = Path(wsName + ".nxs.h5")
-                        self.instance.dataExportService.exportWorkspace(path, filename, self.sampleWS)
-                    case _:
-                        filename = Path(wsName + ".tar")
-                        self.instance.dataExportService.exportRaggedWorkspace(path, filename, self.sampleWS)
+        for key, wsName in workspaces.items():
+            match key:
+                case wngt.DIFFCAL_TABLE:
+                    tableWSName = wsName
+                case wngt.DIFFCAL_MASK:
+                    maskWSName = wsName
+                case wngt.DIFFCAL_DIAG:
+                    filename = Path(wsName + ".nxs.h5")
+                    self.instance.dataExportService.exportWorkspace(path, filename, self.sampleDiagnosticWS)
+                case _:
+                    filename = Path(wsName + ".tar")
+                    self.instance.dataExportService.exportRaggedWorkspace(path, filename, self.sampleWS)
 
-        # For the moment, only one set of 'table' + 'mask' workspace is assumed
+        # Write the table and/or mask
         if tableWSName or maskWSName:
             filename = Path(tableWSName + ".h5")
             self.instance.dataExportService.dataService.writeDiffCalWorkspaces(
@@ -272,9 +283,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Call the method to test
         request = CalibrationAssessmentRequest(
             workspaces={
-                wngt.DIFFCAL_OUTPUT: [self.sampleWS],
-                wngt.DIFFCAL_TABLE: [self.sampleTableWS],
-                wngt.DIFFCAL_MASK: [self.sampleMaskWS],
+                wngt.DIFFCAL_OUTPUT: self.sampleWS,
+                wngt.DIFFCAL_TABLE: self.sampleTableWS,
+                wngt.DIFFCAL_MASK: self.sampleMaskWS,
             },
             run=RunConfig(runNumber=self.runNumber),
             useLiteMode=True,
@@ -353,10 +364,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.instance.loadQualityAssessment(mockRequest)
 
             # Delete any existing _data_ workspaces:
-            for wss in calibRecord.workspaces.values():
-                for ws in wss:
-                    if mtd.doesExist(ws):
-                        DeleteWorkspace(Workspace=ws)
+            for ws in calibRecord.workspaces.values():
+                if mtd.doesExist(ws):
+                    DeleteWorkspace(Workspace=ws)
 
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=True)
             with pytest.raises(RuntimeError) as excinfo:  # noqa: PT011
@@ -418,6 +428,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 checkExistent=False,
             )
             self.instance.groceryService._fetchInstrumentDonor = MagicMock(return_value=self.sampleWS)
+
             self.instance.loadQualityAssessment(mockRequest)
 
             # Assert the expected calibration metric workspaces have been generated
@@ -433,24 +444,19 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
             # Assert all "persistent" workspaces have been loaded
-            for wsNames in calibRecord.workspaces.values():
-                for wsName in wsNames:
-                    assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
+            for wsName in calibRecord.workspaces.values():
+                assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 
     def test_load_quality_assessment_no_units(self):
-        with pytest.raises(RuntimeError, match=r"without a units token in its name"):  # noqa: PT012
-            calibRecord = CalibrationRecord.model_validate_json(
-                Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-            )
-            calibRecord.workspaces = {
-                "diffCalOutput": ["_diffoc_057514"],
-                "diffCalTable": ["_diffract_consts_057514"],
-                "diffCalMask": ["_diffract_consts_mask_057514"],
-            }
-            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+        calibRecord = CalibrationRecord.model_validate_json(
+            Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+        )
+        calibRecord.workspaces[wngt.DIFFCAL_OUTPUT] = "_diffoc_057514_v0001"  # NOTE no unit token
+        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 
-            # Call the method to test. Use a mocked run and a mocked version
-            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+        # Call the method to test. Use a mocked run and a mocked version
+        mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+        with pytest.raises(RuntimeError, match=r"without a units token in its name"):
             self.instance.loadQualityAssessment(mockRequest)
 
     def test_load_quality_assessment_dsp_and_diag(self):
@@ -458,10 +464,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
         )
         calibRecord.workspaces = {
-            "diffCalOutput": ["_dsp_diffoc_057514"],
-            "diffCalDiagnostic": ["_diagnostic_diffoc_057514"],
-            "diffCalTable": ["_diffract_consts_057514"],
-            "diffCalMask": ["_diffract_consts_mask_057514"],
+            "diffCalOutput": "_dsp_diffoc_057514",
+            "diffCalDiagnostic": "_diagnostic_diffoc_057514",
+            "diffCalTable": "_diffract_consts_057514",
+            "diffCalMask": "_diffract_consts_mask_057514",
         }
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
 
@@ -476,20 +482,20 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         assert calledWithDict["diffCalDiagnostic_0000"].unit == wng.Units.DIAG
 
     def test_load_quality_assessment_unexpected_type(self):
-        with pytest.raises(RuntimeError, match=r"not implemented: unable to load unexpected"):  # noqa: PT012
-            calibRecord = CalibrationRecord.model_validate_json(
-                Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-            )
-            calibRecord.workspaces = {
-                "diffCalOutput": ["_dsp_diffoc_057514"],
-                "diffCalTable": ["_diffract_consts_057514"],
-                "diffCalMask": ["_diffract_consts_mask_057514"],
-                "rawVanadium": ["_unexpected_workspace_type"],
-            }
-            self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
+        calibRecord = CalibrationRecord.model_validate_json(
+            Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
+        )
+        calibRecord.workspaces = {
+            "diffCalOutput": "_dsp_diffoc_057514",
+            "diffCalTable": "_diffract_consts_057514",
+            "diffCalMask": "_diffract_consts_mask_057514",
+            "rawVanadium": "_unexpected_workspace_type",
+        }
+        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 
-            # Call the method to test. Use a mocked run and a mocked version
-            mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+        # Call the method to test. Use a mocked run and a mocked version
+        mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+        with pytest.raises(RuntimeError, match=r"not implemented: unable to load unexpected"):
             self.instance.loadQualityAssessment(mockRequest)
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
@@ -542,7 +548,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
 
         # Call the method with the provided parameters
-        request = mock.Mock(calibrantSamplePath="bundt/cake_egg.py")
+        request = mock.Mock(
+            runNumber="123",
+            useLiteMode=True,
+            calibrantSamplePath="bundt/cake_egg.py",
+        )
         res = self.instance.diffractionCalibration(request)
 
         # Perform assertions to check the result and method calls

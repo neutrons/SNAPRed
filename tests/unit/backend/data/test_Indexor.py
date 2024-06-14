@@ -750,9 +750,8 @@ class TestIndexor(unittest.TestCase):
         indexor.writeRecord(record, version)
         assert record.version == version
         assert self.recordPath(version).exists()
-        # read it back in and ensure it is the same (attach the calculationParameters)
+        # read it back in and ensure it is the same
         res = Record.parse_file(self.recordPath(version))
-        res.calculationParameters = CalculationParameters.parse_file(self.parametersPath(version))
         assert res == record
         # ensure the version numbers were set
         assert res.version == version
@@ -774,7 +773,6 @@ class TestIndexor(unittest.TestCase):
         assert record.version == nextVersion
         assert self.recordPath(nextVersion).exists()
         res = parse_file_as(Record, self.recordPath(nextVersion))
-        res.calculationParameters = record.calculationParameters  # NOTE attach calculation parameters
         assert res == record
         # ensure the version numbers were set
         assert res.version == nextVersion
@@ -796,8 +794,9 @@ class TestIndexor(unittest.TestCase):
         assert record.version == nextVersion
         assert self.recordPath(nextVersion).exists()
         res = parse_file_as(Record, self.recordPath(nextVersion))
-        res.calculationParameters = record.calculationParameters  # NOTE attach calculation parameters
         assert res == record
+        assert res.version == nextVersion
+        assert res.calculationParameters.version == nextVersion
 
     # make sure the indexor can read/write specific record types #
 

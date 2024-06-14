@@ -1014,10 +1014,10 @@ def test_writeCalibrationWorkspaces():
         workspaces = testCalibrationRecord.workspaces.copy()
         runNumber = testCalibrationRecord.runNumber
         version = testCalibrationRecord.version
-        outputWSName = workspaces.pop(wngt.DIFFCAL_OUTPUT)[0]
-        diagnosticWSName = workspaces.pop(wngt.DIFFCAL_DIAG)[0]
-        tableWSName = workspaces.pop(wngt.DIFFCAL_TABLE)[0]
-        maskWSName = workspaces.pop(wngt.DIFFCAL_MASK)[0]
+        outputWSName = workspaces.pop(wngt.DIFFCAL_OUTPUT)
+        diagnosticWSName = workspaces.pop(wngt.DIFFCAL_DIAG)
+        tableWSName = workspaces.pop(wngt.DIFFCAL_TABLE)
+        maskWSName = workspaces.pop(wngt.DIFFCAL_MASK)
         if workspaces:
             raise RuntimeError(f"unexpected workspace-types in record.workspaces: {workspaces}")
 
@@ -1043,27 +1043,6 @@ def test_writeCalibrationWorkspaces():
         for filename in [outputFilename, diagnosticFilename, diffCalFilename]:
             assert (basePath / filename).exists()
         mtd.clear()
-
-
-def test_writeCalibrationWorkspaces_no_units():
-    # test that diffraction-calibration output workspace names require units
-    localDataService = LocalDataService()
-    localDataService.writeWorkspace = mock.Mock()
-    localDataService.indexor = mock.Mock()
-    testCalibrationRecord = CalibrationRecord.parse_raw(
-        Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
-    )
-    testCalibrationRecord.workspaces = {
-        wngt.DIFFCAL_OUTPUT: ["_diffoc_057514_v0001"],
-        wngt.DIFFCAL_DIAG: ["_diagnostic_diffoc_057514_v0001"],
-        wngt.DIFFCAL_TABLE: ["_diffract_consts_057514_v0001"],
-        wngt.DIFFCAL_MASK: ["_diffract_consts_mask_057514_v0001"],
-    }
-    with pytest.raises(  # noqa: PT012
-        RuntimeError,
-        match=f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name",
-    ):
-        localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
 
 
 ### TESTS OF REDUCTION METHODS ###

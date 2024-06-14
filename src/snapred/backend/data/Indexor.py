@@ -307,20 +307,15 @@ class Indexor:
                     record = parse_file_as(ReductionRecord, filePath)
                 case IndexorType.DEFAULT:
                     record = parse_file_as(Record, filePath)
-            # NOTE the calculation parameters are absent from any saved records
-            # read the calculation parameters separately from their own file
-            record.calculationParameters = self.readParameters(version)
         return record
 
     def writeRecord(self, record: Record, version: Optional[Version] = None):
         version = self.thisOrNextVersion(version)
         record.version = version
+        record.calculationParameters.version = version
         filePath = self.recordPath(version)
         filePath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(record, filePath)
-        # NOTE calculation parameters are excluded from serialization
-        # write the calculation parameters to a separate file
-        self.writeParameters(record.calculationParameters, version)
         self.dirVersions.add(version)
 
     ## STATE PARAMETER READ / WRITE METHODS ##

@@ -90,8 +90,8 @@ class DataFactoryService:
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     @validate_call
-    def getNextCalibrationVersion(self, runId: str, useLiteMode: bool):
-        return self.lookupService.calibrationIndexor(runId, useLiteMode).nextVersion()
+    def getThisOrNextCalibrationVersion(self, runId: str, useLiteMode: bool, version: Optional[int]):
+        return self.lookupService.calibrationIndexor(runId, useLiteMode).thisOrNextVersion(version)
 
     ##### NORMALIZATION METHODS #####
 
