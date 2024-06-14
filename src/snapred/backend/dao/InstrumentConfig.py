@@ -27,3 +27,4 @@ class InstrumentConfig(BaseModel):
     delThWithGuide: float
     width: float
     frequency: float
+    lowWavelengthCrop: float = 0.05
