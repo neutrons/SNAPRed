@@ -2,6 +2,7 @@ import datetime
 import glob
 import json
 import os
+import time
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
 from pathlib import Path
@@ -646,6 +647,7 @@ class LocalDataService:
                 appliesTo=">=0",
                 author="SNAPRed Internal",
                 comments="The default condition for loading StateConfigs if none other found",
+                timestamp=round(time.time()),
             )
 
             # Make sure that the state root directory has been initialized:
@@ -692,7 +694,6 @@ class LocalDataService:
         # - it must be greater than some minimal run number
         if not runId.isdigit() or int(runId) < Config["instrument.startingRunNumber"]:
             return False
-
         # then make sure the run number has a valid IPTS
         try:
             self.getIPTS(runId)

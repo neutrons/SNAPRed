@@ -120,7 +120,6 @@ class Indexor:
         """
         currentVersion = self.UNINITIALIZED
         overlap = set.union(set(self.index.keys()), self.dirVersions)
-        print(overlap)
         if len(overlap) == 0:
             currentVersion = self.UNINITIALIZED
         elif len(overlap) == 1:
@@ -141,7 +140,11 @@ class Indexor:
         relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runNumber), entries))
         if len(relevantEntries) < 1:
             version = self.UNINITIALIZED
+        elif len(relevantEntries) == 1:
+            version = relevantEntries[0].version
         else:
+            if self.VERSION_DEFAULT in self.index:
+                relevantEntries.remove(self.index[self.VERSION_DEFAULT])
             version = relevantEntries[-1].version
         return version
 
