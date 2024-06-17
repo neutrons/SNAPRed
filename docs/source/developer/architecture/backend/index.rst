@@ -89,3 +89,29 @@ For a simplified breakdown of where you may want to implement parts of your code
    api/calibration/diffraction_calibration_request
    api/calibration/focus_group_metric
    api/calibration/generate_calibration_metrics_workspace_recipe
+   algorithms/calculate_diffcal_table
+   algorithms/calibration_metric_extraction_algorithm
+   algorithms/conjoin_table_workspaces
+   algorithms/crystallographic_info_algorithm
+   algorithms/custom_group_workspace
+   algorithms/detector_peak_predictor
+   algorithms/diffraction_spectrum_weight_calculator
+   algorithms/fetch_groceries_algorithm
+   algorithms/fit_mutliple_peaks_algorithm
+   algorithms/focus_spectra_algorithm
+   algorithms/generate_table_workspace_from_list_of_dict
+   algorithms/group_diffraction_calibration
+   algorithms/lite_data_creation_algo
+   algorithms/load_calibration_workspaces
+   algorithms/load_grouping_definition
+   algorithms/make_dirty_dish
+   algorithms/mask_detector_flags
+   algorithms/normalize_by_current_but_the_correct_way
+   algorithms/pixel_diffraction_calibration
+   algorithms/pixel_grouping_parameters_calculation_algorithm
+   algorithms/purge_overlapping_peaks_algorithm
+   algorithms/raw_vanadium_correction_algorithm
+   algorithms/save_grouping_definition
+   algorithms/smooth_data_excluding_peaks_algo
+   algorithms/utensils
+   algorithms/wash_dishes
