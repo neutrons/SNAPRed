@@ -3,9 +3,10 @@ Algorithm: `DetectorPeakPredictor`
 
 Description:
 ------------
-This algorithm predicts detector peaks based on the provided detector peak ingredients.
-It calculates the beta terms, full width at half maximum (FWHM), and generates a list
-of `DetectorPeak` objects for each group, optionally purging duplicates.
+This algorithm predicts locations based on crystallographic information, and predicts
+peak widths based on resolution estimates of the instrument. It calculates the beta
+terms, full width at half maximum (FWHM), and generates a list of `DetectorPeak`
+objects for each group, optionally purging duplicates.
 
 Expected Inputs:
 ----------------

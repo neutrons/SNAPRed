@@ -25,7 +25,8 @@ Expected Inputs:
    - **Type**: `ITableWorkspace`
    - **Direction**: `Input`
    - **Property Mode**: `Optional`
-   - **Description**: Table workspace with previous pixel-calibrated DIFC values; if none given, will be calculated.
+   - **Description**: Table workspace with previous pixel-calibrated DIFC values; if none given,
+   will be calculated using the instrument geometry.
 
 4. **Ingredients**:
    - **Type**: `String`

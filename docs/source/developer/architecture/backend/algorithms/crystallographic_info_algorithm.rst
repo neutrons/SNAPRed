@@ -3,10 +3,11 @@ Algorithm: `CrystallographicInfoAlgorithm`
 
 Description:
 ------------
-This algorithm ingests crystallographic information from a CIF file or a provided
-crystallography JSON string. It generates unique reflections within a specified
-d-spacing range, calculates the d-values and structure factors (F^2), and
-packages this information into a `CrystallographicInfo` object.
+This algorithm ingests `Crystallography` information from a CIF file or a provided
+crystallography JSON string. It generates unique reflections by parsing in a mantid
+`CrystalStructure` object. Then given a specified d-spacing range, it calculates
+the d-values and structure factors (F^2), and packages this information into a
+`CrystallographicInfo` object.
 
 Expected Inputs:
 ----------------
@@ -20,7 +21,7 @@ Expected Inputs:
    - **Type**: `String`
    - **Direction**: `InOut`
    - **Property Mode**: `Mandatory`
-   - **Description**: JSON string defining the crystallography data.
+   - **Description**: SNAPRed DAO pydantic object containing crystallographic information.
 
 3. **dMin**:
    - **Type**: `Float`
