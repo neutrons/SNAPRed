@@ -405,7 +405,7 @@ def test_calibrationFileExists(GetIPTS):  # noqa ARG002
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(localDataService, stateId=stateId) as tmpRoot:
         tmpRoot.path().mkdir()
-        runNumber = "654321"
+        runNumber = "12345"
         assert localDataService.checkCalibrationFileExists(runNumber)
 
 
