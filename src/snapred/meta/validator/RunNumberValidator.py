@@ -6,18 +6,13 @@ logger = snapredLogger.getLogger(__name__)
 
 class RunNumberValidator:
     @classmethod
-    def validateRunNumber(cls, runNumber: str):
+    def validateRunNumber(cls, runNumber: str) -> bool:
         if not runNumber.isdigit():
             logger.warning("Run number must be a positive integer")
             return False
         number = int(runNumber)
-        minRunNumber = Config["instrument.startingRunNumber"]
-        maxRunNumber = Config["instrument.maximumRunNumber"]
-        if number < minRunNumber:
+        minRunNumber = Config["instrument.minimumRunNumber"]
+        if number <= minRunNumber:
             logger.warning("Run number is below minimum value of " + str(minRunNumber))
             return False
-        if maxRunNumber != 0:
-            if number > maxRunNumber:
-                logger.warning("Run number exceeds max value of " + str(maxRunNumber))
-                return False
         return True

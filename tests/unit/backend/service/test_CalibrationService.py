@@ -651,8 +651,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         mockCheckCalibrationStateExists = mock.Mock(return_value=True)
         self.instance.dataFactoryService.checkCalibrationStateExists = mockCheckCalibrationStateExists
         request = HasStateRequest(
-            runId=self.runNumber,
+            runId="50000",
             useLiteMode=True,
         )
         self.instance.hasState(request)
-        mockCheckCalibrationStateExists.assert_called_once_with(self.runNumber)
+        mockCheckCalibrationStateExists.assert_called_once_with("50000")

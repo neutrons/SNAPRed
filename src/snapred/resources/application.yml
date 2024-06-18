@@ -42,7 +42,7 @@ instrument:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
   startingVersionNumber: 0
-  maximumRunNumber: 46342
+  minimumRunNumber: 46342
 
 nexus:
   lite:

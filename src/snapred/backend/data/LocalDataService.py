@@ -50,7 +50,6 @@ from snapred.meta.redantic import (
     write_model_list_pretty,
     write_model_pretty,
 )
-from snapred.meta.validator.RunNumberValidator import RunNumberValidator
 
 Version = Union[int, Literal["*"]]
 logger = snapredLogger.getLogger(__name__)
@@ -1123,7 +1122,7 @@ class LocalDataService:
         # first perform some basic validation of the run ID
         # - it must be a string of only digits
         # - it must be greater than some minimal run number
-        if not RunNumberValidator.validateRunNumber(runId):
+        if not runId.isdigit() or int(runId) < Config["instrument.startingRunNumber"]:
             return False
 
         # then make sure the run number has a valid IPTS
