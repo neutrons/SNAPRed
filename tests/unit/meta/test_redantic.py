@@ -9,6 +9,9 @@ from snapred.meta.redantic import (
     list_from_raw,
     list_to_raw,
     list_to_raw_pretty,
+    parse_file_as,
+    parse_obj_as,
+    parse_raw_as,
     write_model,
     write_model_list,
     write_model_list_pretty,
@@ -38,6 +41,27 @@ class TestRedantic(TestCase):
         for file in files:
             os.remove(file)
         cls.files = []
+
+    def test_parse_raw_as(self):
+        assert parse_raw_as(ModelTest, self.model.model_dump_json()) == self.model
+
+    def test_parse_raw_as_list(self):
+        assert parse_raw_as(List[ModelTest], list_to_raw(self.modelList)) == self.modelList
+
+    def test_parse_obj_as(self):
+        assert parse_obj_as(ModelTest, self.model.model_dump()) == self.model
+
+    def test_parse_obj_as_obj(self):
+        assert parse_obj_as(ModelTest, self.model) == self.model
+
+    def test_parse_obj_as_list(self):
+        assert parse_obj_as(List[ModelTest], [model.model_dump() for model in self.modelList])
+
+    def test_parse_obj_as_list_obj(self):
+        assert parse_obj_as(List[ModelTest], self.modelList) == self.modelList
+
+    def test_parse_file_as(self):
+        assert parse_file_as(List[ModelTest], Resource.getPath("outputs/meta/redantic/list.json")) == self.modelList
 
     def test_list_to_raw(self):
         assert list_to_raw(self.modelList) == Resource.read("outputs/meta/redantic/list.json").strip()

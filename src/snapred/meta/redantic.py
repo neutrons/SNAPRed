@@ -1,8 +1,26 @@
 import json
-from typing import Any, List
+from pathlib import Path
+from typing import Any, List, Type, TypeVar, Union
 
-import pydantic
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
+
+T = TypeVar("T")
+
+
+def parse_obj_as(type_: Type[T], obj: Any) -> T:
+    if isinstance(obj, BaseModel):
+        obj = obj.model_dump()
+    return TypeAdapter(type_).validate_python(obj)
+
+
+def parse_raw_as(type_: Type[T], b: Union[str, bytes]) -> T:
+    return TypeAdapter(type_).validate_json(b)
+
+
+def parse_file_as(type_: Type[T], path: Union[str, Path]) -> T:
+    with open(path, "r") as f:
+        obj = parse_raw_as(type_, f.read())
+    return obj
 
 
 def list_to_raw(baseModelList: List[BaseModel]):
@@ -21,7 +39,7 @@ def list_from_raw(type_: Any, src: str) -> List[BaseModel]:
         or not issubclass(type_.__args__[0], BaseModel)
     ):
         raise TypeError(f"target type must derive from 'List[BaseModel]' not {type_}")
-    return pydantic.TypeAdapter(type_).validate_json(src)
+    return TypeAdapter(type_).validate_json(src)
 
 
 def write_model(baseModel: BaseModel, path):
