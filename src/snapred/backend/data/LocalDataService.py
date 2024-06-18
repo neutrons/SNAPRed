@@ -800,7 +800,7 @@ class LocalDataService:
             write_model_pretty(groupingMap, groupingMapPath)
 
     def _defaultGroupingMapPath(self) -> Path:
-        return Path(GroupingMap.calibrationGroupingHome(), "defaultGroupingMap.json")
+        return GroupingMap.calibrationGroupingHome() / "defaultGroupingMap.json"
 
     def _groupingMapPath(self, stateId) -> Path:
         return self._constructCalibrationStateRoot(stateId) / "groupingMap.json"
