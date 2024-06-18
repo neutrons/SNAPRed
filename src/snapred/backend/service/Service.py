@@ -1,8 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Callable, Dict, List
 
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.meta.Config import Config
+
+# Type define which is a callable function with a List of SNAPRequests as input,
+# and a Dict of str keys and List of SNAPRequests values as expected output.
+GroupingLambda = Callable[[List[SNAPRequest]], Dict[str, List[SNAPRequest]]]
 
 
 class Service(ABC):
@@ -10,6 +14,7 @@ class Service(ABC):
 
     def __init__(self):
         self._paths: Dict[str, Any] = {}
+        self._lambdas: Dict[str, List[GroupingLambda]] = {}
 
     @abstractmethod
     def name(self):
@@ -36,3 +41,14 @@ class Service(ABC):
 
         retValue = route(request.payload) if request.payload is not None else route()
         return retValue
+
+    def registerGrouping(self, path: str, groupingLambda: GroupingLambda):
+        if self._paths[path] is not None:
+            if self._lambdas.get(path) is None:
+                self._lambdas[path] = []
+            self._lambdas[path].append(groupingLambda)
+        else:
+            raise ValueError("Given path does not exist")
+
+    def getGroupings(self, path: str):
+        return self._lambdas[path]

@@ -123,7 +123,10 @@ class TestReductionService(unittest.TestCase):
         payload = self.request.json()
         request = SNAPRequest(path="test", payload=payload)
         scheduler = RequestScheduler()
-        result = scheduler.handle([request], [self.instance._groupByStateId, self.instance._groupByVanadiumVersion])
+        self.instance.registerGrouping("", self.instance._groupByStateId)
+        self.instance.registerGrouping("", self.instance._groupByVanadiumVersion)
+        groupings = self.instance.getGroupings("")
+        result = scheduler.handle([request], groupings)
 
         # outpus/2kfxjiqm is the state id defined in WhateversInTheFridge util
         # Verify the request is sorted by state id then normalization version
