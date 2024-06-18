@@ -33,7 +33,6 @@ from snapred.backend.dao.state import (
     InstrumentState,
 )
 from snapred.backend.dao.state.CalibrantSample import CalibrantSamples
-from snapred.backend.dao.validator.RunNumberValidator import RunNumberValidator
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.backend.error.OutdatedDataSchemaError import OutdatedDataSchemaError
 from snapred.backend.error.RecoverableException import RecoverableException
@@ -51,6 +50,7 @@ from snapred.meta.redantic import (
     write_model_list_pretty,
     write_model_pretty,
 )
+from snapred.meta.validator.RunNumberValidator import RunNumberValidator
 
 Version = Union[int, Literal["*"]]
 logger = snapredLogger.getLogger(__name__)
@@ -1125,8 +1125,6 @@ class LocalDataService:
         # - it must be greater than some minimal run number
         if not RunNumberValidator.validateRunNumber(runId):
             return False
-        # if not runId.isdigit() or int(runId) < Config["instrument.startingRunNumber"]:
-        #     return False
 
         # then make sure the run number has a valid IPTS
         try:
