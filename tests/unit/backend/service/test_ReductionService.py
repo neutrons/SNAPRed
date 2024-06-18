@@ -140,6 +140,10 @@ class TestReductionService(unittest.TestCase):
         payload = self.request.json()
         request = SNAPRequest(path="test", payload=payload)
         scheduler = RequestScheduler()
+        self.instance.registerGrouping("", self.instance._groupByStateId)
+        self.instance.registerGrouping("", self.instance._groupByVanadiumVersion)
+        groupings = self.instance.getGroupings("")
+        result = scheduler.handle([request], groupings)
 
         # Verify the request is sorted by state id then normalization version
         lookupService = self.instance.dataFactoryService.lookupService
