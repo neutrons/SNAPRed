@@ -70,8 +70,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # connect signal to populate the grouping dropdown after run is selected
         self._requestView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
-        # self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
-        self._requestView.runNumberField.field.connectUpdate(self._populateGroupingDropdown)
+        self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
         self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
 
         self.prevFWHM = DiffCalTweakPeakView.FWHM
