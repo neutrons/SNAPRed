@@ -261,7 +261,17 @@ class LocalDataService:
         filePath = self.reductionIndexor(runNumber, useLiteMode).versionPath(version) / fileName
         return filePath
 
-    ##### VERSIONING / INDEXING METHODS #####
+    ##### INDEX / VERSION METHODS #####
+
+    def readCalibrationIndex(self, runId: str, useLiteMode: bool):
+        return self.calibrationIndexor(runId, useLiteMode).getIndex()
+
+    def readNormalizationIndex(self, runId: str, useLiteMode: bool):
+        return self.normalizationIndexor(runId, useLiteMode).getIndex()
+
+    def readReductionIndex(self, runId: str, useLiteMode: bool):
+        # NOTE currently nothing in the code needs this, but it may as well exist
+        return self.reductionIndexor(runId, useLiteMode).getIndex()
 
     def _statePathForWorkflow(self, stateId: str, useLiteMode: bool, indexorType: IndexorType):
         """
@@ -300,16 +310,6 @@ class LocalDataService:
 
     def reductionIndexor(self, runId: str, useLiteMode: bool):
         return self.indexor(runId, useLiteMode, IndexorType.REDUCTION)
-
-    def readCalibrationIndex(self, runId: str, useLiteMode: bool):
-        return self.calibrationIndexor(runId, useLiteMode).getIndex()
-
-    def readNormalizationIndex(self, runId: str, useLiteMode: bool):
-        return self.normalizationIndexor(runId, useLiteMode).getIndex()
-
-    def readReductionIndex(self, runId: str, useLiteMode: bool):
-        # NOTE currently nothing in the code needs this, but it may as well exist
-        return self.reductionIndexor(runId, useLiteMode).getIndex()
 
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry, version: Optional[int] = None):
         self.calibrationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, version)
@@ -517,6 +517,60 @@ class LocalDataService:
         logger.info(f"loaded reduction data from {dataFilePath}: version: {version}")
         return record
 
+    ##### CALIBRANT SAMPLE METHODS #####
+
+    def readSampleFilePaths(self):
+        sampleFolder = Config["instrument.calibration.sample.home"]
+        extensions = Config["instrument.calibration.sample.extensions"]
+        # collect list of all json in folder
+        sampleFiles = set()
+        for extension in extensions:
+            sampleFiles.update(self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False))
+        if len(sampleFiles) < 1:
+            raise RuntimeError(f"No samples found in {sampleFolder} for extensions {extensions}")
+        sampleFiles = list(sampleFiles)
+        sampleFiles.sort()
+        return sampleFiles
+
+    def writeCalibrantSample(self, sample: CalibrantSamples):
+        samplePath: str = Config["samples.home"]
+        fileName: str = sample.name + "_" + sample.unique_id
+        filePath = os.path.join(samplePath, fileName) + ".json"
+        if os.path.exists(filePath):
+            raise ValueError(f"the file '{filePath}' already exists")
+        write_model_pretty(sample, filePath)
+
+    def readCalibrantSample(self, filePath: str):
+        if not os.path.exists(filePath):
+            raise ValueError(f"The file '{filePath}' does not exist")
+        with open(filePath, "r") as file:
+            sampleJson = json.load(file)
+            if "mass-density" in sampleJson and "packingFraction" in sampleJson:
+                warnings.warn(  # noqa: F821
+                    "Can't specify both mass-density and packing fraction for single-element materials"
+                )  # noqa: F821
+            del sampleJson["material"]["packingFraction"]
+            for atom in sampleJson["crystallography"]["atoms"]:
+                atom["symbol"] = atom.pop("atom_type")
+                atom["coordinates"] = atom.pop("atom_coordinates")
+                atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
+            sample = CalibrantSamples.parse_raw(json.dumps(sampleJson))
+            return sample
+
+    def readCifFilePath(self, sampleId: str):
+        samplePath: str = Config["samples.home"]
+        fileName: str = sampleId + ".json"
+        filePath = os.path.join(samplePath, fileName)
+        if not os.path.exists(filePath):
+            raise ValueError(f"the file '{filePath}' does not exist")
+        with open(filePath, "r") as f:
+            calibrantSampleDict = json.load(f)
+        filePath = Path(calibrantSampleDict["crystallography"]["cifFile"])
+        # Allow relative paths:
+        if not filePath.is_absolute():
+            filePath = Path(Config["samples.home"]).joinpath(filePath)
+        return str(filePath)
+
     ##### READ / WRITE STATE METHODS #####
 
     @validate_call
@@ -705,60 +759,6 @@ class LocalDataService:
             stateID, _ = self._generateStateId(runId)
             calibrationStatePath: Path = self._constructCalibrationStateRoot(stateID)
             return calibrationStatePath.exists()
-
-    ##### CALIBRANT SAMPLE METHODS #####
-
-    def readSampleFilePaths(self):
-        sampleFolder = Config["instrument.calibration.sample.home"]
-        extensions = Config["instrument.calibration.sample.extensions"]
-        # collect list of all json in folder
-        sampleFiles = set()
-        for extension in extensions:
-            sampleFiles.update(self._findMatchingFileList(f"{sampleFolder}/*.{extension}", throws=False))
-        if len(sampleFiles) < 1:
-            raise RuntimeError(f"No samples found in {sampleFolder} for extensions {extensions}")
-        sampleFiles = list(sampleFiles)
-        sampleFiles.sort()
-        return sampleFiles
-
-    def writeCalibrantSample(self, sample: CalibrantSamples):
-        samplePath: str = Config["samples.home"]
-        fileName: str = sample.name + "_" + sample.unique_id
-        filePath = os.path.join(samplePath, fileName) + ".json"
-        if os.path.exists(filePath):
-            raise ValueError(f"the file '{filePath}' already exists")
-        write_model_pretty(sample, filePath)
-
-    def readCalibrantSample(self, filePath: str):
-        if not os.path.exists(filePath):
-            raise ValueError(f"The file '{filePath}' does not exist")
-        with open(filePath, "r") as file:
-            sampleJson = json.load(file)
-            if "mass-density" in sampleJson and "packingFraction" in sampleJson:
-                warnings.warn(  # noqa: F821
-                    "Can't specify both mass-density and packing fraction for single-element materials"
-                )  # noqa: F821
-            del sampleJson["material"]["packingFraction"]
-            for atom in sampleJson["crystallography"]["atoms"]:
-                atom["symbol"] = atom.pop("atom_type")
-                atom["coordinates"] = atom.pop("atom_coordinates")
-                atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
-            sample = CalibrantSamples.parse_raw(json.dumps(sampleJson))
-            return sample
-
-    def readCifFilePath(self, sampleId: str):
-        samplePath: str = Config["samples.home"]
-        fileName: str = sampleId + ".json"
-        filePath = os.path.join(samplePath, fileName)
-        if not os.path.exists(filePath):
-            raise ValueError(f"the file '{filePath}' does not exist")
-        with open(filePath, "r") as f:
-            calibrantSampleDict = json.load(f)
-        filePath = Path(calibrantSampleDict["crystallography"]["cifFile"])
-        # Allow relative paths:
-        if not filePath.is_absolute():
-            filePath = Path(Config["samples.home"]).joinpath(filePath)
-        return str(filePath)
 
     ##### GROUPING MAP METHODS #####
 
