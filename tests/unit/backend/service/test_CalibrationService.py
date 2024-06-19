@@ -656,3 +656,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         self.instance.hasState(request)
         mockCheckCalibrationStateExists.assert_called_once_with("50000")
+
+        badRequest = HasStateRequest(
+            runId="5",
+            useLiteMode=True,
+        )
+        assert not self.instance.hasState(badRequest)
