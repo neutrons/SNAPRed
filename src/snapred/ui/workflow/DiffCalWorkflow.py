@@ -348,7 +348,7 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         self.outputs.extend(assessmentResponse.metricWorkspaces)
         for calibrationWorkspaces in self.calibrationRecord.workspaces.values():
-            self.outputs.extend(calibrationWorkspaces)
+            self.outputs.append(calibrationWorkspaces)
         self._assessmentView.updateRunNumber(self.runNumber, self.useLiteMode)
         return response
 
