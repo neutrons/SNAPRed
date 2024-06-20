@@ -43,7 +43,6 @@ class WhateversInTheFridge(LocalDataService):
         self.instrumentConfig = self.readInstrumentConfig()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
         self.latestVersion = Config["version.start"]
-        self._rolodex = {}
 
     ### MISCELLANEOUS ###
 

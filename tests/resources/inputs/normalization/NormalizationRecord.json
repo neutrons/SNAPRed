@@ -1,6 +1,7 @@
 {
     "runNumber": 57514,
     "useLiteMode": true,
+    "version": 7,
     "backgroundRunNumber": 58813,
     "smoothingParameter": 0.5,
     "peakIntensityThreshold": 0.05,
@@ -80,6 +81,5 @@
         "fitted_strippedFocussedData_stripped_1",
         "fitted_strippedFocussedData_stripped_2"
       ],
-    "version": 7,
     "dMin": 0.4
 }

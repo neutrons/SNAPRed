@@ -9,7 +9,7 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Nonrecord, Record
-from snapred.backend.dao.indexing.Versioning import UNINITIALIZED, VERSION_DEFAULT, VERSION_START, Version
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME, VERSION_START
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -54,11 +54,6 @@ class Indexor:
 
     indexorType: IndexorType
 
-    # starting version numbers
-    VERSION_START = VERSION_START
-    VERSION_DEFAULT = VERSION_DEFAULT
-    UNINITIALIZED = UNINITIALIZED
-
     ## CONSTRUCTOR / DESTRUCTOR METHODS ##
 
     @validate_call
@@ -81,13 +76,12 @@ class Indexor:
         for fname in self.rootDirectory.glob("v_*"):
             if os.path.isdir(fname):
                 version = str(fname).split("_")[-1]
-                if version != self.VERSION_DEFAULT:
-                    version = int(version)
-                elif isinstance(self.VERSION_DEFAULT, int):
-                    version = int(version)
+                if version == VERSION_DEFAULT_NAME:
+                    version = VERSION_DEFAULT
+                version = int(version)
                 versions.add(version)
         if len(versions) > 1:
-            versions.discard(self.VERSION_DEFAULT)
+            versions.discard(VERSION_DEFAULT)
         return versions
 
     def reconcileIndexToFiles(self):
@@ -105,23 +99,23 @@ class Indexor:
 
     ## VERSION GETTERS ##
 
-    def allVersions(self) -> List[Version]:
+    def allVersions(self) -> List[int]:
         return list(self.index.keys())
 
-    def defaultVersion(self) -> Version:
+    def defaultVersion(self) -> int:
         """
         The version number to use for default states.
         """
-        return self.VERSION_DEFAULT
+        return VERSION_DEFAULT
 
-    def currentVersion(self) -> Version:
+    def currentVersion(self) -> int:
         """
         The largest version found by the Indexor.
         """
-        currentVersion = self.UNINITIALIZED
+        currentVersion = None
         overlap = set.union(set(self.index.keys()), self.dirVersions)
         if len(overlap) == 0:
-            currentVersion = self.UNINITIALIZED
+            currentVersion = None
         elif len(overlap) == 1:
             currentVersion = list(overlap)[0]
         else:
@@ -129,7 +123,7 @@ class Indexor:
             currentVersion = max(versions)
         return currentVersion
 
-    def latestApplicableVersion(self, runNumber: str) -> Version:
+    def latestApplicableVersion(self, runNumber: str) -> int:
         """
         The most recent version in time, which is applicable to the run number.
         """
@@ -139,21 +133,21 @@ class Indexor:
         # filter for latest applicable
         relevantEntries = list(filter(lambda x: self._isApplicableEntry(x, runNumber), entries))
         if len(relevantEntries) < 1:
-            version = self.UNINITIALIZED
+            version = None
         elif len(relevantEntries) == 1:
             version = relevantEntries[0].version
         else:
-            if self.VERSION_DEFAULT in self.index:
-                relevantEntries.remove(self.index[self.VERSION_DEFAULT])
+            if VERSION_DEFAULT in self.index:
+                relevantEntries.remove(self.index[VERSION_DEFAULT])
             version = relevantEntries[-1].version
         return version
 
-    def nextVersion(self) -> Version:
+    def nextVersion(self) -> int:
         """
         A new version number to use for saving calibration records.
         """
 
-        version = self.UNINITIALIZED
+        version = None
 
         # if the index and directories are in sync, the next version is one past them
         if set(self.index.keys()) == self.dirVersions:
@@ -161,7 +155,7 @@ class Indexor:
             dirVersions = list(filter(lambda x: isinstance(x, int), self.dirVersions))
             # if nothing is left, the next is the start
             if len(dirVersions) == 0:
-                version = self.VERSION_START
+                version = VERSION_START
             # otherwise, the next is max version + 1
             else:
                 version = max(dirVersions) + 1
@@ -185,13 +179,17 @@ class Indexor:
 
         return version
 
-    def thisOrCurrentVersion(self, version: Optional[Version]):
-        if version != self.VERSION_DEFAULT and not isinstance(version, int):
+    def thisOrCurrentVersion(self, version: Optional[int]):
+        if version == VERSION_DEFAULT:
+            pass
+        elif not isinstance(version, int) or version < 0:
             version = self.currentVersion()
         return version
 
-    def thisOrNextVersion(self, version: Optional[Version]):
-        if version != self.VERSION_DEFAULT and not isinstance(version, int):
+    def thisOrNextVersion(self, version: Optional[int]):
+        if version == VERSION_DEFAULT:
+            pass
+        elif not isinstance(version, int) or version < 0:
             version = self.nextVersion()
         return version
 
@@ -226,21 +224,22 @@ class Indexor:
         """
         return self.rootDirectory / f"{self.indexorType}Index.json"
 
-    def recordPath(self, version: Optional[Version] = None):
+    def recordPath(self, version: Optional[int] = None):
         """
         Path to a specific version of a calculation record
         """
         return self.versionPath(version) / f"{self.indexorType}Record.json"
 
-    def parametersPath(self, version: Optional[Version] = None):
+    def parametersPath(self, version: Optional[int] = None):
         """
         Path to a specific version of calculation parameters
         """
         return self.versionPath(version) / f"{self.indexorType}Parameters.json"
 
-    def versionPath(self, version: Optional[Version] = None) -> Path:
-        if version is self.UNINITIALIZED:
-            version = self.VERSION_START
+    @validate_call
+    def versionPath(self, version: Optional[int] = None) -> Path:
+        if version is None:
+            version = VERSION_START
         else:
             version = self.thisOrCurrentVersion(version)
         return self.rootDirectory / wnvf.fileVersion(version)
@@ -263,10 +262,10 @@ class Indexor:
 
         # remove the default version, if it exists
         res = self.index.copy()
-        res.pop(self.VERSION_DEFAULT, None)
+        res.pop(VERSION_DEFAULT, None)
         return list(res.values())
 
-    def readIndex(self) -> Dict[Version, IndexEntry]:
+    def readIndex(self) -> Dict[int, IndexEntry]:
         # create the index from the index file
         indexPath: Path = self.indexPath()
         indexList: List[IndexEntry] = []
@@ -279,7 +278,7 @@ class Indexor:
         path.parent.mkdir(parents=True, exist_ok=True)
         write_model_list_pretty(self.index.values(), path)
 
-    def addIndexEntry(self, entry: IndexEntry, version: Optional[Version] = None):
+    def addIndexEntry(self, entry: IndexEntry, version: Optional[int] = None):
         """
         If a verison is not passed, it will save at the next version.
         """
@@ -293,7 +292,7 @@ class Indexor:
 
     ## RECORD READ / WRITE METHODS ##
 
-    def readRecord(self, version: Optional[Version] = None) -> Record:
+    def readRecord(self, version: Optional[int] = None) -> Record:
         """
         If no version given, defaults to current version
         """
@@ -312,7 +311,7 @@ class Indexor:
                     record = parse_file_as(Record, filePath)
         return record
 
-    def writeRecord(self, record: Record, version: Optional[Version] = None):
+    def writeRecord(self, record: Record, version: Optional[int] = None):
         version = self.thisOrNextVersion(version)
         record.version = version
         record.calculationParameters.version = version
@@ -323,7 +322,7 @@ class Indexor:
 
     ## STATE PARAMETER READ / WRITE METHODS ##
 
-    def readParameters(self, version: Optional[Version] = None) -> CalculationParameters:
+    def readParameters(self, version: Optional[int] = None) -> CalculationParameters:
         """
         If no version given, defaults to current version
         """
@@ -345,7 +344,7 @@ class Indexor:
             )
         return parameters
 
-    def writeParameters(self, parameters: CalculationParameters, version: Optional[Version] = None):
+    def writeParameters(self, parameters: CalculationParameters, version: Optional[int] = None):
         version = self.thisOrNextVersion(version)
         parameters.version = version
 

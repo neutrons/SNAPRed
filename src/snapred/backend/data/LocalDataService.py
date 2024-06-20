@@ -338,12 +338,11 @@ class LocalDataService:
             version = indexor.latestApplicableVersion(runId)
         return indexor.readRecord(version)
 
-    def writeNormalizationRecord(
-        self, record: NormalizationRecord, version: Optional[int] = None
-    ) -> NormalizationRecord:  # noqa: F821
+    def writeNormalizationRecord(self, record: NormalizationRecord, version: Optional[int] = None):
         """
         Persists a `NormalizationRecord` to either a new version folder, or overwrites a specific version.
-        -- side effect: updates version numbers of incoming `NormalizationRecord` and its nested `Normalization`.
+        -- side effect: creates needed directories for save
+        -- side effect: if no version given, Indexor will assign version
         """
 
         indexor = self.normalizationIndexor(record.runNumber, record.useLiteMode)
@@ -353,7 +352,6 @@ class LocalDataService:
         indexor.writeParameters(record.calculationParameters, version)
 
         logger.info(f"wrote NormalizationRecord: version: {version}")
-        return record
 
     def writeNormalizationWorkspaces(self, record: NormalizationRecord, version: Optional[int] = None):
         """

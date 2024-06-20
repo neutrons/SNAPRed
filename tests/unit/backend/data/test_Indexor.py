@@ -14,19 +14,16 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry, Nonentry
 from snapred.backend.dao.indexing.Record import Nonrecord, Record
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_NONE, VERSION_START
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.data.Indexor import Indexor, IndexorType
-from snapred.meta.Config import Config, Resource
+from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.redantic import parse_file_as, write_model_list_pretty, write_model_pretty
 
 IndexorModule = importlib.import_module(Indexor.__module__)
-
-VERSION_START = Config["version.start"]
-VERSION_DEFAULT = Config["version.default"]
-UNITIALIZED = Config["version.error"]
 
 
 class TestIndexor(unittest.TestCase):
@@ -132,8 +129,7 @@ class TestIndexor(unittest.TestCase):
         # when initialized, the index is bare
         indexor = self.initIndexor()
         assert indexor.index == {}
-        assert indexor.currentVersion() == UNITIALIZED
-        assert indexor.VERSION_START != UNITIALIZED
+        assert indexor.currentVersion() is None
 
     def test_init_versions_exist(self):
         # when initialized, existing information is loaded
@@ -243,7 +239,7 @@ class TestIndexor(unittest.TestCase):
     def test_currentVersion_none(self):
         # ensure the current version of an empty index is unitialized
         indexor = self.initIndexor()
-        assert indexor.currentVersion() == UNITIALIZED
+        assert indexor.currentVersion() is None
         # the path should go to the starting version
         indexor.currentPath() == self.versionPath(VERSION_START)
 
@@ -295,7 +291,7 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor()
         assert indexor.thisOrCurrentVersion(None) == indexor.currentVersion()
         assert indexor.thisOrCurrentVersion("*") == indexor.currentVersion()
-        assert indexor.thisOrCurrentVersion(UNITIALIZED) == indexor.currentVersion()
+        assert indexor.thisOrCurrentVersion(VERSION_NONE) == indexor.currentVersion()
         assert indexor.thisOrCurrentVersion(VERSION_DEFAULT) == VERSION_DEFAULT
         assert indexor.thisOrCurrentVersion(version) == version
 
@@ -304,7 +300,7 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor()
         assert indexor.thisOrNextVersion(None) == indexor.nextVersion()
         assert indexor.thisOrNextVersion("*") == indexor.nextVersion()
-        assert indexor.thisOrNextVersion(UNITIALIZED) == indexor.nextVersion()
+        assert indexor.thisOrNextVersion(VERSION_NONE) == indexor.nextVersion()
         assert indexor.thisOrNextVersion(VERSION_DEFAULT) == VERSION_DEFAULT
         assert indexor.thisOrNextVersion(version) == version
 
@@ -318,8 +314,8 @@ class TestIndexor(unittest.TestCase):
         assert indexor.index == expectedIndex
 
         # there is no current version
-        assert indexor.currentVersion() == UNITIALIZED
-        assert indexor.currentVersion() == UNITIALIZED
+        assert indexor.currentVersion() is None
+        assert indexor.currentVersion() is None
 
         # the first "next" version is the start
         assert indexor.nextVersion() == VERSION_START
@@ -423,7 +419,7 @@ class TestIndexor(unittest.TestCase):
         assert indexor.index == expectedIndex
 
         # there is no current version
-        assert indexor.currentVersion() == UNITIALIZED
+        assert indexor.currentVersion() is None
 
         # the first "next" version is the start
         assert indexor.nextVersion() == VERSION_START
@@ -475,7 +471,7 @@ class TestIndexor(unittest.TestCase):
         assert indexor.index == {}
 
         # there is no current version
-        assert indexor.currentVersion() == UNITIALIZED
+        assert indexor.currentVersion() is None
 
         # the first "next" version is the start
         assert indexor.nextVersion() == VERSION_START
@@ -552,12 +548,8 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor()
 
         # if version path is unitialized, path points to version start
-        ans1 = indexor.versionPath(UNITIALIZED)
+        ans1 = indexor.versionPath(None)
         assert ans1 == self.versionPath(VERSION_START)
-
-        # if version is a non-integer return current
-        ans2 = indexor.versionPath("*")
-        assert ans2 == self.versionPath(max(versionList))
 
         # if version is specified, return that one
         for i in versionList:
@@ -615,9 +607,9 @@ class TestIndexor(unittest.TestCase):
         # adding an index entry to an empty index works
         indexor = self.initIndexor()
         assert indexor.index == {}
-        assert indexor.currentVersion() == UNITIALIZED
+        assert indexor.currentVersion() is None
         indexor.addIndexEntry(self.indexEntry(3))
-        assert indexor.currentVersion() != UNITIALIZED
+        assert indexor.currentVersion() is not None
         # add one more time to make sure no conflicts with things not existing
         indexor.addIndexEntry(self.indexEntry(4))
 

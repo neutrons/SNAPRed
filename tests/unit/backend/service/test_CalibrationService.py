@@ -446,11 +446,11 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         inputFilepath = Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json")
         paramsFilepath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
         with state_root_redirect(self.localDataService) as tmpRoot:
-            calibRecord = CalibrationRecord.parse_file(inputFilepath)
+            calibRecord = parse_file_as(CalibrationRecord, inputFilepath)
             indexor = self.localDataService.calibrationIndexor(calibRecord.runNumber, calibRecord.useLiteMode)
             recordFilepath = indexor.recordPath(1)
             tmpRoot.addFileAs(inputFilepath, recordFilepath)
-            tmpRoot.addFileAs(paramsFilepath, indexor.parametersPath(1))
+            tmpRoot.addFileAs(paramsFilepath, indexor.parametersPath(calibRecord.version))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.create_fake_diffcal_files(recordFilepath.parent, calibRecord.workspaces, calibRecord.version)

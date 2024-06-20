@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from pydantic import BaseModel, field_validator
-from snapred.backend.dao.indexing.Versioning import UNINITIALIZED, Version
+from pydantic import field_validator
+from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 
 # NOTE: the request __init__ loads CalibrationExportRequest, which imports Calibration,
@@ -11,7 +11,7 @@ from snapred.backend.dao.state.InstrumentState import InstrumentState
 # from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
 
 
-class CalculationParameters(BaseModel, extra="allow"):
+class CalculationParameters(VersionedObject, extra="allow"):
     """
 
     This is a base class to be used for the Calibration and Normalization objects,
@@ -23,12 +23,14 @@ class CalculationParameters(BaseModel, extra="allow"):
 
     """
 
+    # inherits from VersionedObject:
+    # - version: int
+
     instrumentState: InstrumentState
     seedRun: str
     useLiteMode: bool
     creationDate: datetime
     name: str
-    version: Version = UNINITIALIZED
 
     @field_validator("seedRun", mode="before")
     @classmethod

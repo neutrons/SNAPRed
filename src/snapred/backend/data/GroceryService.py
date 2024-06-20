@@ -8,7 +8,6 @@ from mantid.simpleapi import mtd
 from pydantic import validate_call
 
 from snapred.backend.dao.indexing.Record import Nonrecord
-from snapred.backend.dao.indexing.Versioning import Version
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -213,7 +212,7 @@ class GroceryService:
         )
 
     @validate_call
-    def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
+    def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
             / (self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version) + ".h5")
@@ -271,7 +270,7 @@ class GroceryService:
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
-        version: Optional[Version],
+        version: Optional[int],
     ) -> WorkspaceName:
         return wng.diffCalTable().runNumber(runNumber).version(version).build()
 
@@ -280,7 +279,7 @@ class GroceryService:
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
-        version: Optional[Version],
+        version: Optional[int],
     ) -> WorkspaceName:
         return wng.diffCalMask().runNumber(runNumber).version(version).build()
 
@@ -288,7 +287,7 @@ class GroceryService:
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
-        version: Optional[Version],
+        version: Optional[int],
     ) -> WorkspaceName:
         return wng.rawVanadium().runNumber(runNumber).version(version).build()
 
@@ -518,7 +517,7 @@ class GroceryService:
         return self.dataService.readDetectorState(runNumber)
 
     @validate_call
-    def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
+    def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         """
         Get a path to the directory with the calibration data
 
@@ -530,7 +529,7 @@ class GroceryService:
         return self.dataService.calibrationIndexor(runNumber, useLiteMode).versionPath(version)
 
     @validate_call
-    def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
+    def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         """
         Get a path to the directory with the normalization data
 
@@ -800,7 +799,7 @@ class GroceryService:
         return data
 
     @validate_call
-    def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: Version) -> WorkspaceName:
+    def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: int) -> WorkspaceName:
         tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", useLiteMode, version)
         self.mantidSnapper.CalculateDiffCalTable(
             "Generate the default diffcal table",

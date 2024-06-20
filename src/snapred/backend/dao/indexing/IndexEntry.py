@@ -1,10 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
-from snapred.backend.dao.indexing.Versioning import UNINITIALIZED, Version
+from pydantic import field_validator
+from snapred.backend.dao.indexing.Versioning import VersionedObject
 
 
-class IndexEntry(BaseModel, extra="ignore"):
+class IndexEntry(VersionedObject, extra="ignore"):
     """
 
     This is the basic, bare-bones entry for workflow indices.
@@ -19,9 +19,11 @@ class IndexEntry(BaseModel, extra="ignore"):
 
     """
 
+    # inherits from VersionedObject:
+    # - version: int
+
     runNumber: str
     useLiteMode: bool
-    version: Version = UNINITIALIZED
     appliesTo: Optional[str] = None
     comments: Optional[str] = None
     author: Optional[str] = None
@@ -62,7 +64,7 @@ Nonentry = IndexEntry(
     # Use this in preference to None.
     runNumber="none",
     useLiteMode=False,
-    version=UNINITIALIZED,
+    version=None,
     appliesTo="<0",
     comments="this is a non-entry - do not use",
     author="SNAPRed Internal",

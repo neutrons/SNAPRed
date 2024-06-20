@@ -33,6 +33,7 @@ from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
@@ -54,8 +55,6 @@ from util.state_helpers import reduction_root_redirect, state_root_redirect
 LocalDataServiceModule = importlib.import_module(LocalDataService.__module__)
 ThisService = "snapred.backend.data.LocalDataService."
 
-VERSION_START = Config["version.start"]
-VERSION_DEFAULT = Config["version.default"]
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
 
@@ -1100,6 +1099,9 @@ def test_writeCalibrationWorkspaces():
         mtd.clear()
 
 
+### TESTS OF NORMALIZATION METHODS ###
+
+
 def test_readNormalizationRecord_with_version():
     # ensure it is calling the functionality in the indexor
     do_test_read_record_with_version("Normalization")
@@ -1129,10 +1131,12 @@ def test_readWriteNormalizationRecord():
     for useLiteMode in [True, False]:
         record.useLiteMode = useLiteMode
         # NOTE redirect nested so assertion occurs outside of redirect
+        # failing assertions inside tempdirs can create unwanted files
         with state_root_redirect(localDataService):
             localDataService.writeNormalizationRecord(record)
             actualRecord = localDataService.readNormalizationRecord("57514", useLiteMode)
         assert actualRecord.version == record.version
+        assert actualRecord.calculationParameters.version == record.calculationParameters.version
         assert actualRecord == record
 
 

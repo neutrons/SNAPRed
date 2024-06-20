@@ -39,7 +39,7 @@ class TestDataFactoryService(unittest.TestCase):
         ]
         # these are treated specially for specific returns
         exceptions = ["readInstrumentConfig", "readStateConfig", "readRunConfig"]
-        needIndexor = ["calibrationIndexor", "normalizationIndexor", "reductionIndexor"]
+        needIndexor = ["calibrationIndexor", "normalizationIndexor"]
         method_list = [method for method in method_list if method not in exceptions and method not in needIndexor]
         for x in method_list:
             setattr(getattr(cls.mockLookupService, x), "side_effect", lambda *x: cls.expected(cls, *x))

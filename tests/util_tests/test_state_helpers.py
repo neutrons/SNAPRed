@@ -6,12 +6,11 @@ from shutil import rmtree
 
 import pytest
 from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
-
-VERSION_DEFAULT = Config["version.default"]
 
 
 @pytest.fixture(autouse=True)

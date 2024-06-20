@@ -1,9 +1,9 @@
 from typing import Any, List
 
-from pydantic import field_validator
+from pydantic import field_serializer, field_validator
 
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, Version
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME, VERSION_NONE
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -31,7 +31,7 @@ class NormalizationRecord(Record):
     peakIntensityThreshold: float
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     workspaceNames: List[WorkspaceName] = []
-    calibrationVersionUsed: Version = VERSION_DEFAULT
+    calibrationVersionUsed: int = VERSION_DEFAULT
 
     dMin: float
 
@@ -40,3 +40,24 @@ class NormalizationRecord(Record):
     @classmethod
     def validate_backgroundRunNumber(cls, v: Any) -> Any:
         return cls.validate_runNumber(v)
+
+    @field_validator("calibrationVersionUsed", mode="before")
+    @classmethod
+    def version_is_integer(cls, v: Any) -> Any:
+        if isinstance(v, int) and v >= 0:
+            return v
+        elif v == VERSION_DEFAULT:
+            return v
+        elif v == VERSION_DEFAULT_NAME:
+            return VERSION_DEFAULT
+        else:
+            raise ValueError(f"Attempted to set calibration version with invalid value {v}")
+
+    @field_serializer("calibrationVersionUsed", when_used="json")
+    def write_user_defaults(self, value: Any):  # noqa ARG002
+        if self.calibrationVersionUsed is None:
+            return VERSION_NONE
+        elif self.calibrationVersionUsed == VERSION_DEFAULT:
+            return VERSION_DEFAULT_NAME
+        else:
+            return self.calibrationVersionUsed
