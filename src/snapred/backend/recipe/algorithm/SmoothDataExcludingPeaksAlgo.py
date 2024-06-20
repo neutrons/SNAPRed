@@ -13,7 +13,14 @@ create new workspace with csaps data
 from datetime import datetime
 from typing import Dict
 
-from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
+from mantid.api import (
+    AlgorithmFactory,
+    IEventWorkspace,
+    MatrixWorkspaceProperty,
+    PropertyMode,
+    PythonAlgorithm,
+    WorkspaceUnitValidator,
+)
 from mantid.kernel import Direction
 from scipy.interpolate import make_smoothing_spline
 
@@ -30,11 +37,23 @@ class SmoothDataExcludingPeaksAlgo(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "InputWorkspace",
+                "",
+                Direction.Input,
+                PropertyMode.Mandatory,
+                validator=WorkspaceUnitValidator("dSpacing"),
+            ),
             doc="Workspace containing the peaks to be removed",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "OutputWorkspace",
+                "",
+                Direction.Output,
+                PropertyMode.Mandatory,
+                validator=WorkspaceUnitValidator("dSpacing"),
+            ),
             doc="Hitogram Workspace with removed peaks",
         )
         self.declareProperty("DetectorPeaks", defaultValue="", direction=Direction.Input)
