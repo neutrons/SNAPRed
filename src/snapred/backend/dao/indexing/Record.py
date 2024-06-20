@@ -59,10 +59,6 @@ class Record(VersionedObject, extra="allow"):
             raise ValueError("calculationParameters cannot be set to None")
         return v
 
-    def model_dump_json(self, **kwargs):
-        print(f"VERSION AT DUMP {self.version}: RECORD")
-        return super().model_dump_json(**kwargs)
-
     model_config = ConfigDict(
         # required in order to use 'WorkspaceName'
         arbitrary_types_allowed=True,

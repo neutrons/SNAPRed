@@ -151,8 +151,8 @@ class Indexor:
 
         # if the index and directories are in sync, the next version is one past them
         if set(self.index.keys()) == self.dirVersions:
-            # filter out possible alphanumeric defaults
-            dirVersions = list(filter(lambda x: isinstance(x, int), self.dirVersions))
+            # remove the default version
+            dirVersions = [x for x in self.dirVersions if x != VERSION_DEFAULT]
             # if nothing is left, the next is the start
             if len(dirVersions) == 0:
                 version = VERSION_START
@@ -161,7 +161,7 @@ class Indexor:
                 version = max(dirVersions) + 1
         # if the index and directory are out of sync, find the largest in both sets
         else:
-            # get the elements particular to each set
+            # get the elements particular to each set -- the max of these is the next version
             indexSet = set(self.index.keys())
             diffAB = indexSet.difference(self.dirVersions)
             diffBA = self.dirVersions.difference(indexSet)

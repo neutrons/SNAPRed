@@ -34,6 +34,12 @@ class VersionedObject(BaseModel):
         else:
             return self._version
 
+    # NOTE some serialization still using the dict() method
+    def dict(self, **kwargs):
+        res = super().dict(**kwargs)
+        res["version"] = self.write_user_defaults(res["version"])
+        return res
+
     @computed_field
     @property
     def version(self) -> int:
