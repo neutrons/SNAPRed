@@ -68,9 +68,6 @@ class TestDataFactoryService(unittest.TestCase):
             versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
             getIndex=mock.Mock(return_value=[cls.expected(cls, "Normalization")]),
         )
-        cls.mockLookupService.reductionIndexor.return_value = mock.Mock(
-            versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Reduction", *x)),
-        )
 
     def setUp(self):
         self.version = randint(2, 120)
@@ -204,7 +201,7 @@ class TestDataFactoryService(unittest.TestCase):
     def test_getReductionDataPath(self):
         for useLiteMode in [True, False]:
             actual = self.instance.getReductionDataPath("12345", useLiteMode, self.version)
-            assert actual == self.expected("Reduction", self.version)
+            assert actual == self.expected("12345", useLiteMode, self.version)
 
     def test_getReductionRecord(self):
         for useLiteMode in [True, False]:

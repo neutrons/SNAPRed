@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
+    CloneWorkspace,
     CreateSingleValuedWorkspace,
     DeleteWorkspace,
     GroupWorkspaces,
@@ -17,6 +18,7 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
@@ -24,6 +26,7 @@ from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
+from snapred.meta.redantic import parse_file_as
 from util.state_helpers import state_root_redirect
 
 # Mock out of scope modules before importing DataExportService
@@ -312,6 +315,38 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         for metric in ["sigma", "strain"]:
             wsName = wng.diffCalTimedMetric().runNumber("57514").timestamp("123").metricName(metric).build()
             assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
+
+    def test_save_respects_version(self):
+        record = parse_file_as(CalibrationRecord, Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))
+        record.calculationParameters.creationDate = "0"
+        record.workspaces = {
+            "diffCalOutput": "_dsp_diffoc_057514",
+            "diffCalDiagnostic": "_diagnostic_diffoc_057514",
+            "diffCalTable": "_diffract_consts_057514",
+            "diffCalMask": "_diffract_consts_mask_057514",
+        }
+        CloneWorkspace(InputWorkspace=self.sampleWS, OutputWorkspace=record.workspaces["diffCalOutput"])
+        CloneWorkspace(InputWorkspace=self.sampleWS, OutputWorkspace=record.workspaces["diffCalDiagnostic"])
+        CloneWorkspace(InputWorkspace=self.sampleTableWS, Outputworkspace=record.workspaces["diffCalTable"])
+        CloneWorkspace(InputWorkspace=self.sampleMaskWS, OutputWorkspace=record.workspaces["diffCalMask"])
+        self.instance
+        version = record.version
+        entry = Record.indexEntryFromRecord(record)
+        request = {
+            "version": version,
+            "calibrationIndexEntry": entry.model_dump(),
+            "calibrationRecord": record.model_dump(),
+        }
+        with state_root_redirect(self.localDataService) as tmpRoot:
+            self.instance.save(json.dumps(request))
+            for x in (tmpRoot.path() / "lite/diffraction").iterdir():
+                print(x)
+            savedRecord = parse_file_as(
+                CalibrationRecord, tmpRoot.path() / "lite/diffraction/v_0001/CalibrationRecord.json"
+            )
+        assert savedRecord.version == version
+        for workspace in savedRecord.workspaces.values():
+            assert "v0001" in workspace
 
     def test_load_quality_assessment_no_calibration_record_exception(self):
         with state_root_redirect(self.localDataService):

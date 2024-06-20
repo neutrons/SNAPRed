@@ -45,12 +45,13 @@ with mock.patch.dict(
     def test_saveNormalization():
         normalizationService = NormalizationService()
         normalizationService.dataExportService.exportNormalizationRecord = mock.Mock()
-        normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version="1.0.0")
+        normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version=1)
         normalizationService.dataExportService.exportNormalizationWorkspaces = mock.Mock()
-        normalizationService.dataExportService.exportNormalizationWorkspaces.return_value = MagicMock(version="1.0.0")
+        normalizationService.dataExportService.exportNormalizationWorkspaces.return_value = MagicMock(version=1)
         normalizationService.dataExportService.exportNormalizationIndexEntry = mock.Mock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = MagicMock("expected")
-        normalizationService.saveNormalization(mock.Mock())
+        normalizationService.dataFactoryService.getThisOrNextNormalizationVersion = mock.Mock(return_value=1)
+        normalizationService.saveNormalization(mock.Mock(normalizationRecord=mock.Mock(workspaceNames=[])))
         assert normalizationService.dataExportService.exportNormalizationRecord.called
         savedEntry = normalizationService.dataExportService.exportNormalizationRecord.call_args.args[0]
         assert savedEntry.parameters is not None

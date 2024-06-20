@@ -293,7 +293,7 @@ class LocalDataService:
         return path
 
     @lru_cache
-    def __indexor(self, stateId: str, useLiteMode: bool, indexorType: IndexorType):
+    def _indexor(self, stateId: str, useLiteMode: bool, indexorType: IndexorType):
         path = self._statePathForWorkflow(stateId, useLiteMode, indexorType)
         return Indexor(indexorType=indexorType, directory=path)
 
@@ -303,7 +303,7 @@ class LocalDataService:
             stateId = runNumber
         else:
             stateId, _ = self._generateStateId(runNumber)
-        return self.__indexor(stateId, useLiteMode, indexorType)
+        return self._indexor(stateId, useLiteMode, indexorType)
 
     def calibrationIndexor(self, runId: str, useLiteMode: bool):
         return self.indexor(runId, useLiteMode, IndexorType.CALIBRATION)
@@ -321,7 +321,7 @@ class LocalDataService:
     def _getLatestReductionVersionNumber(self, runNumber: str, useLiteMode: bool) -> int:
         dataRoot = self._constructReductionDataRoot(runNumber, useLiteMode)
         versions = []
-        for dire in reversed(dataRoot.glob("v_*")):
+        for dire in dataRoot.glob("v_*"):
             versions.append(int(str(dire).split("_")[-1]))
         return max(versions)
 
@@ -459,7 +459,7 @@ class LocalDataService:
 
         # TODO this will be replaced with a better timestamp method
         if version is None:
-            version = time.time()
+            version = int(time.time())
         filePath: Path = self._constructReductionRecordFilePath(runNumber, record.useLiteMode, version)
         record.version = version
         record.calculationParameters.version = version

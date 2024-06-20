@@ -856,10 +856,8 @@ def test_statePathForWorkflow_reduction():
     runNumber = "xyz"
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
-        with reduction_root_redirect(localDataService):
-            ans = localDataService._statePathForWorkflow(runNumber, useLiteMode, indexorType)
-            exp = localDataService._constructReductionDataRoot(runNumber, useLiteMode)
-        assert ans == exp
+        with pytest.raises(NotImplementedError):
+            localDataService._statePathForWorkflow(runNumber, useLiteMode, indexorType)
 
 
 def test_statePathForWorkflow_default():
@@ -891,7 +889,8 @@ def test_index_default(Indexor):
     localDataService = LocalDataService()
 
     # assert there are no indexors
-    assert localDataService._rolodex == {}
+    localDataService._indexor.cache_clear()
+    assert localDataService._indexor.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
 
     # make an indexor
     stateId = "abc"
@@ -928,7 +927,8 @@ def test_index_reduction(Indexor):
     localDataService = LocalDataService()
 
     # assert there are no indexors
-    assert localDataService._rolodex == {}
+    localDataService._indexor.cache_clear()
+    assert localDataService._indexor.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
 
     # make an indexor
     localDataService._generateStateId = mock.Mock()
@@ -962,10 +962,6 @@ def test_normalizationIndexor():
     do_test_workflow_indexor("Normalization")
 
 
-def test_reductionIndexor():
-    do_test_workflow_indexor("Reduction")
-
-
 def test_readCalibrationIndex():
     # verify that calls to read index call to the indexor
     do_test_read_index("Calibration")
@@ -974,11 +970,6 @@ def test_readCalibrationIndex():
 def test_readNormalizationIndex():
     # verify that calls to read index call to the indexor
     do_test_read_index("Normalization")
-
-
-def test_readReductionIndex():
-    # verify that calls to read index call to the indexor
-    do_test_read_index("Reduction")
 
 
 def test_readWriteCalibrationIndexEntry():
@@ -1020,32 +1011,12 @@ def test_readNormalizationIndexMissing():
     do_test_index_missing("Normalization")
 
 
-# def test_writeCalibrationIndexEntry():
-#     pass
-
-
-# def test_readCalibrationIndexExisting():
-#     pass
-
-
-# def test_readNormalizationIndexExisting():
-#     pass
-
-
 def readReductionIngredientsFromFile():
     with Resource.open("/inputs/calibration/ReductionIngredients.json", "r") as f:
         return ReductionIngredients.model_validate_json(f.read())
 
 
 ### TESTS OF CALIBRATION METHODS ###
-
-
-def test_readWriteCalibrationRecord_version_numbers():
-    pass
-
-
-def test_readWriteCalibrationRecord_specified_version():
-    pass
 
 
 def test_readCalibrationRecord_with_version():
@@ -1129,21 +1100,6 @@ def test_writeCalibrationWorkspaces():
         mtd.clear()
 
 
-# def test_writeCalibrationWorkspaces_no_units():
-#     pass
-
-
-### TESTS OF NORMALIZATION METHODS ###
-
-
-# def test_readWriteNormalizationRecord_version_numbers():
-#     pass
-
-
-# def test_readWriteNormalizationRecord_specified_version():
-#     pass
-
-
 def test_readNormalizationRecord_with_version():
     # ensure it is calling the functionality in the indexor
     do_test_read_record_with_version("Normalization")
@@ -1191,6 +1147,10 @@ def test_writeNormalizationWorkspaces():
         # Workspace names need to match the names that are used in the test record.
         runNumber = testNormalizationRecord.runNumber  # noqa: F841
         useLiteMode = testNormalizationRecord.useLiteMode
+        newWorkspaceNames = []
+        for ws in testNormalizationRecord.workspaceNames:
+            newWorkspaceNames.append(ws + "_" + wnvf.formatVersion(version))
+        testNormalizationRecord.workspaceNames = newWorkspaceNames
         testWS0, testWS1, testWS2 = testNormalizationRecord.workspaceNames
 
         basePath = localDataService.normalizationIndexor(runNumber, useLiteMode).versionPath(version)
@@ -1209,7 +1169,7 @@ def test_writeNormalizationWorkspaces():
         localDataService.writeNormalizationWorkspaces(testNormalizationRecord, version)
 
         for wsName in testNormalizationRecord.workspaceNames:
-            filename = Path(wsName + "_" + wnvf.formatVersion(version) + ".nxs")
+            filename = Path(wsName + ".nxs")
             assert (basePath / filename).exists()
     mtd.clear()
 
@@ -1249,7 +1209,7 @@ def _writeSyntheticReductionRecord(filePath: Path, version: str):
     write_model_pretty(testRecord, filePath)
 
 
-def test_readWriteReductionRecord_version_numbers():
+def test_readWriteReductionRecord_no_version():
     inputRecordFilePath = Resource.getPath("inputs/reduction/ReductionRecord_v0001.json")
     # Create the input data for this test:
     # _writeSyntheticReductionRecord(inputRecordFilePath, "1")
@@ -1261,20 +1221,16 @@ def test_readWriteReductionRecord_version_numbers():
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService):
         # WARNING: 'writeReductionRecord' modifies <incoming record>.version,
-        indexor = localDataService.reductionIndexor(record_v0001.runNumbers[0], record_v0001.useLiteMode)
 
-        # write: version == START
+        # write: version will be set to a time
         localDataService.writeReductionRecord(record_v0001)
-        indexor.reconcileIndexToFiles()  # manually advance index
         actualRecord1 = localDataService.readReductionRecord(record_v0001.runNumbers[0], record_v0001.useLiteMode)
 
-        # write: version == START + 1
+        # write: version wille be set to a time
         localDataService.writeReductionRecord(record_v0002)
-        indexor.reconcileIndexToFiles()  # manually advance index
         actualRecord2 = localDataService.readReductionRecord(record_v0002.runNumbers[0], record_v0002.useLiteMode)
 
-    assert actualRecord1.version == VERSION_START
-    assert actualRecord2.version == VERSION_START + 1
+    assert actualRecord1.version <= actualRecord2.version
 
 
 def test_readWriteReductionRecord_specified_version():
@@ -1435,16 +1391,12 @@ def test_writeReductionData(createReductionWorkspaces):
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService, stateId=stateId):
         # Important to this test: use a path that doesn't already exist
-        reductionFilePath = localDataService._constructReductionDataFilePath(runNumber, useLiteMode, version)
+        reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
         assert not reductionFilePath.exists()
 
         localDataService.writeReductionData(testRecord, version)
 
         assert reductionFilePath.exists()
-
-
-# def test_writeReductionData_no_directories():
-#     pass
 
 
 def test_writeReductionData_metadata(createReductionWorkspaces):
@@ -1473,7 +1425,7 @@ def test_writeReductionData_metadata(createReductionWorkspaces):
         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
 
         # Important to this test: use a path that doesn't already exist
-        reductionRecordFilePath = localDataService._constructReductionDataFilePath(runNumber, useLiteMode, version)
+        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
         assert not reductionRecordFilePath.exists()
 
         # `writeReductionRecord` must be called first
@@ -1515,7 +1467,7 @@ def test_readWriteReductionData(createReductionWorkspaces):
         localDataService._getLatestReductionVersionNumber = mock.Mock(return_value=0)
 
         # Important to this test: use a path that doesn't already exist
-        reductionRecordFilePath = localDataService._constructReductionDataFilePath(runNumber, useLiteMode, version)
+        reductionRecordFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
         assert not reductionRecordFilePath.exists()
 
         # `writeReductionRecord` needs to be called first
@@ -1581,101 +1533,21 @@ def test__constructReductionDataFilePath():
     assert actualFilePath == expectedFilePath
 
 
-# define these here to help the git diff not get confused
-# most of these tests are for deleted methods
-
-
-# def test_getCalibrationRecordFilePath():
-#     pass
-
-
-# def test_getNormalizationRecordFilePath():
-#     pass
-
-
-# def test_getReductionRecordFilePath():
-#     pass
-
-
-# def extractFileVersion():
-#     pass
-
-
-# def test_getLatestThing():
-#     pass
-
-
-# def test__getfileOfVersion():
-#     pass
-
-
-# def test__getLatestFile():
-#     pass
-
-
-# def test__isApplicableEntry_equals():
-#     pass
-
-
-# def test__isApplicableEntry_greaterThan():
-#     pass
-
-
-# def test__isApplicableEntry_lessThan():
-#     pass
-
-
-# def test_isApplicableEntry_lessThanEquals():
-#     pass
-
-
-# def test_isApplicableEntry_greaterThanEquals():
-#     pass
-
-
-# def test__getVersionFromCalibrationIndex():
-#     pass
-
-
-# def test__getVersionFromCalibrationIndex_nuffink():
-#     pass
-
-
-# def test__getVersionFromNormalizationIndex():
-#     pass
-
-
-# def test__getVersionFromNormalizationIndex_nuffink():
-#     pass
-
-
-# def test__constructCalibrationParametersFilePath():
-#     pass
-
-
-# new interlude -- missplaced record method tests #
-
-
-# def test__getCurrentCalibrationRecord():
-#     pass
-
-
-# def test__getCurrentNormalizationRecord():
-#     pass
-
-
-# def test__constructCalibrationParametersFilePath():
-#     pass
+def test_getReductionRecordFilePath():
+    testVersion = randint(1, 20)
+    localDataService = LocalDataService()
+    localDataService._generateStateId = mock.Mock()
+    localDataService._generateStateId.return_value = ("123", "456")
+    localDataService._constructReductionDataRoot = mock.Mock()
+    localDataService._constructReductionDataRoot.return_value = Path(Resource.getPath("outputs"))
+    actualPath = localDataService._constructReductionRecordFilePath("57514", True, testVersion)
+    assert actualPath == Path(Resource.getPath("outputs")) / wnvf.fileVersion(testVersion) / "ReductionRecord.json"
 
 
 # end interlude #
 
 
 ### TESTS OF READ / WRITE STATE METHODS ###
-
-
-# def test_readCalibrationState():
-#     pass
 
 
 def test_readCalibrationState_with_version():

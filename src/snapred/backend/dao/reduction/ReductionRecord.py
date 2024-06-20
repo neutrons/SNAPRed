@@ -27,7 +27,7 @@ class ReductionRecord(Record):
     # - version
     # - calculationParameters
     # specially override this for the case of reduction
-    runNumber: NoneType
+    runNumber: NoneType = None
 
     # specific to reduction records
     runNumbers: List[str]

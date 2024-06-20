@@ -17,7 +17,6 @@ localMock = mock.Mock()
 
 from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
-from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.request import (
     ReductionExportRequest,
     ReductionRequest,
@@ -113,19 +112,14 @@ class TestReductionService(unittest.TestCase):
         useLiteMode = True
         version = randint(2, 100)
         record = self.localDataService.readReductionRecord(runNumber, useLiteMode, version)
-        entry = ReductionRecord.indexEntryFromRecord(record)
         request = ReductionExportRequest(reductionRecord=record, version=version)
         with reduction_root_redirect(self.localDataService):
             # save the files
-            self.instance.saveReduction(request, version)
+            self.instance.saveReduction(request)
 
             # now ensure the files exist
-            indexor = self.localDataService.reductionIndexor(runNumber, useLiteMode)
-            assert indexor.recordPath(version).exists()
+            assert self.localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version).exists()
             assert self.localDataService._constructReductionDataFilePath(runNumber, useLiteMode, version).exists()
-            assert indexor.indexPath().exists()
-            assert indexor.getIndex() == [entry]
-            assert indexor.nextVersion() == version + 1
 
     def test_loadReduction(self):
         ## this makes codecov happy
