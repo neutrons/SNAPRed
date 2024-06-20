@@ -90,7 +90,11 @@ class DataFactoryService:
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     @validate_call
-    def getThisOrNextCalibrationVersion(self, runId: str, useLiteMode: bool, version: Optional[int]):
+    def getThisOrCurrentCalibrationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.calibrationIndexor(runId, useLiteMode).thisOrCurrentVersion(version)
+
+    @validate_call
+    def getThisOrNextCalibrationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         return self.lookupService.calibrationIndexor(runId, useLiteMode).thisOrNextVersion(version)
 
     ##### NORMALIZATION METHODS #####
@@ -120,14 +124,18 @@ class DataFactoryService:
         return self.groceryService.fetchWorkspace(os.path.join(path, name) + ".nxs", name)
 
     @validate_call
-    def getCurrentNormalizationVersion(self, runId: str, useLiteMode: bool):
-        return self.lookupService.normalizationIndexor(runId, useLiteMode).currentVersion()
+    def getThisOrCurrentNormalizationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.normalizationIndexor(runId, useLiteMode).thisOrCurrentVersion(version)
+
+    @validate_call
+    def getThisOrNextNormalizationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.normalizationIndexor(runId, useLiteMode).thisOrNextVersion(version)
 
     ##### REDUCTION METHODS #####
 
     @validate_call
     def getReductionDataPath(self, runId: str, useLiteMode: bool, version: int) -> Path:
-        return self.lookupService.reductionIndexor(runId, useLiteMode).versionPath(version)
+        return self.lookupService._constructReductionDataPath(runId, useLiteMode, version)
 
     @validate_call
     def getReductionRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:

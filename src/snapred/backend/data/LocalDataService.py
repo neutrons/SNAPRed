@@ -24,8 +24,8 @@ from snapred.backend.dao import (
 )
 from snapred.backend.dao.calibration import Calibration, CalibrationIndexEntry, CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, Version
+from snapred.backend.dao.indexing.Record import Nonrecord, Record
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.normalization import Normalization, NormalizationIndexEntry, NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
@@ -48,7 +48,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
-from snapred.meta.redantic import write_model_pretty
+from snapred.meta.redantic import parse_file_as, write_model_pretty
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -67,7 +67,6 @@ def _createFileNotFoundError(msg, filename):
 class LocalDataService:
     instrumentConfig: "InstrumentConfig"
     verifyPaths: bool = True
-    _rolodex: Dict[Tuple[str, bool, IndexorType], Indexor]
 
     # conversion factor from microsecond/Angstrom to meters
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
@@ -76,7 +75,6 @@ class LocalDataService:
         self.verifyPaths = Config["localdataservice.config.verifypaths"]
         self.instrumentConfig = self.readInstrumentConfig()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
-        self._rolodex = {}
 
     ##### MISCELLANEOUS METHODS #####
 
@@ -254,11 +252,20 @@ class LocalDataService:
         return reductionStateRoot / mode / runNumber
 
     @validate_call
-    def _constructReductionDataFilePath(self, runNumber: str, useLiteMode: bool, version: Version) -> Path:
+    def _constructReductionDataPath(self, runNumber: str, useLiteMode: bool, version: int) -> Path:
+        return self._constructReductionDataRoot(runNumber, useLiteMode) / wnvf.fileVersion(version)
+
+    @validate_call
+    def _constructReductionRecordFilePath(self, runNumber: str, useLiteMode: bool, version: int) -> Path:
+        recordPath = self._constructReductionDataPath(runNumber, useLiteMode, version) / "ReductionRecord.json"
+        return recordPath
+
+    @validate_call
+    def _constructReductionDataFilePath(self, runNumber: str, useLiteMode: bool, version: int) -> Path:
         stateId, _ = self._generateStateId(runNumber)
         fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
         fileName += Config["nexus.file.extension"]
-        filePath = self.reductionIndexor(runNumber, useLiteMode).versionPath(version) / fileName
+        filePath = self._constructReductionDataPath(runNumber, useLiteMode, version) / fileName
         return filePath
 
     ##### INDEX / VERSION METHODS #####
@@ -268,10 +275,6 @@ class LocalDataService:
 
     def readNormalizationIndex(self, runId: str, useLiteMode: bool):
         return self.normalizationIndexor(runId, useLiteMode).getIndex()
-
-    def readReductionIndex(self, runId: str, useLiteMode: bool):
-        # NOTE currently nothing in the code needs this, but it may as well exist
-        return self.reductionIndexor(runId, useLiteMode).getIndex()
 
     def _statePathForWorkflow(self, stateId: str, useLiteMode: bool, indexorType: IndexorType):
         """
@@ -283,12 +286,16 @@ class LocalDataService:
             case IndexorType.NORMALIZATION:
                 path = self._constructNormalizationStatePath(stateId, useLiteMode)
             case IndexorType.REDUCTION:
-                # NOTE the "stateId" should actually be a runNumber for reduction
-                path = self._constructReductionDataRoot(stateId, useLiteMode)
+                raise NotImplementedError("Do not use Indexors for Reduction")
             case _:
                 mode = "lite" if useLiteMode else "native"
                 path = self._constructCalibrationStateRoot(stateId) / mode
         return path
+
+    @lru_cache
+    def __indexor(self, stateId: str, useLiteMode: bool, indexorType: IndexorType):
+        path = self._statePathForWorkflow(stateId, useLiteMode, indexorType)
+        return Indexor(indexorType=indexorType, directory=path)
 
     def indexor(self, runNumber: str, useLiteMode: bool, indexorType: IndexorType):
         # NOTE the reduction state path is determined by run number, not state id
@@ -296,11 +303,7 @@ class LocalDataService:
             stateId = runNumber
         else:
             stateId, _ = self._generateStateId(runNumber)
-        key = (stateId, useLiteMode, indexorType)
-        if self._rolodex.get(key) is None:
-            path = self._statePathForWorkflow(*key)
-            self._rolodex[key] = Indexor(indexorType=indexorType, directory=path)
-        return self._rolodex[key]
+        return self.__indexor(stateId, useLiteMode, indexorType)
 
     def calibrationIndexor(self, runId: str, useLiteMode: bool):
         return self.indexor(runId, useLiteMode, IndexorType.CALIBRATION)
@@ -308,17 +311,19 @@ class LocalDataService:
     def normalizationIndexor(self, runId: str, useLiteMode: bool):
         return self.indexor(runId, useLiteMode, IndexorType.NORMALIZATION)
 
-    def reductionIndexor(self, runId: str, useLiteMode: bool):
-        return self.indexor(runId, useLiteMode, IndexorType.REDUCTION)
-
     def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry, version: Optional[int] = None):
         self.calibrationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, version)
 
     def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry, version: Optional[int] = None):
         self.normalizationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, version)
 
-    def writeReductionIndexEntry(self, entry: IndexEntry, version: Optional[int] = None):
-        self.reductionIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, version)
+    # TODO delete this and replace with something else.
+    def _getLatestReductionVersionNumber(self, runNumber: str, useLiteMode: bool) -> int:
+        dataRoot = self._constructReductionDataRoot(runNumber, useLiteMode)
+        versions = []
+        for dire in reversed(dataRoot.glob("v_*")):
+            versions.append(int(str(dire).split("_")[-1]))
+        return max(versions)
 
     ##### NORMALIZATION METHODS #####
 
@@ -359,13 +364,12 @@ class LocalDataService:
         version = indexor.thisOrNextVersion(version)
         normalizationDataPath: Path = indexor.versionPath(version)
         for workspace in record.workspaceNames:
-            filename = workspace + "_" + wnvf.formatVersion(version)
             ws = mtd[workspace]
             if ws.isRaggedWorkspace():
-                filename = Path(filename + ".tar")
+                filename = Path(workspace + ".tar")
                 self.writeRaggedWorkspace(normalizationDataPath, filename, workspace)
             else:
-                filename = Path(filename + ".nxs")
+                filename = Path(workspace + ".nxs")
                 self.writeWorkspace(normalizationDataPath, filename, workspace)
 
     ##### CALIBRATION METHODS #####
@@ -435,43 +439,51 @@ class LocalDataService:
     def readReductionRecord(self, runNumber: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
         """
         Will return a reduction record for the given version.
-        If no version given, will choose the latest applicable version from the index.
+        If no version given, will choose the most recent version.
         """
-        indexor = self.reductionIndexor(runNumber, useLiteMode)
         if version is None:
-            # NOTE Indexor.readRecord defaults to currentVersion
-            version = indexor.latestApplicableVersion(runNumber)
-        return indexor.readRecord(version)
+            version = self._getLatestReductionVersionNumber(runNumber, useLiteMode)
+        record = Nonrecord
+        if version is not None:
+            filePath: Path = self._constructReductionRecordFilePath(runNumber, useLiteMode, version)
+            record = parse_file_as(ReductionRecord, filePath)
+        return record
 
     def writeReductionRecord(self, record: ReductionRecord, version: Optional[int] = None):
         """
         Persists a `ReductionRecord` to either a new version folder, or overwrites a specific version.
-        * side effect: updates version numbers of incoming `ReductionRecord`;
-        * side effect: updates version numbers of the `calculationParameters` on the record;
         * side effect: creates the version directory if none exists;
         """
+        # For the moment, a single run number is assumed:
+        runNumber = record.runNumbers[0]
 
-        indexor = self.reductionIndexor(record.runNumber, record.useLiteMode)
-        # write the record
-        indexor.writeRecord(record, version)
-        # separately write the calculation parameters
-        indexor.writeParameters(record.calculationParameters, version)
+        # TODO this will be replaced with a better timestamp method
+        if version is None:
+            version = time.time()
+        filePath: Path = self._constructReductionRecordFilePath(runNumber, record.useLiteMode, version)
+        record.version = version
+        record.calculationParameters.version = version
 
+        if not filePath.parent.exists():
+            filePath.parent.mkdir(parents=True, exist_ok=True)
+        write_model_pretty(record, filePath)
         logger.info(f"wrote ReductionRecord: version: {version}")
+        return record
 
     def writeReductionData(self, record: ReductionRecord, version: Optional[int] = None):
         """
         Persists the reduction data associated with a `ReductionRecord`
-        * side effect: updates version numbers of incoming `ReductionRecord`;
-        * side effect: creates the version directory is none exists
+        * side effect: creates the version directory if none exists
         """
-        indexor = self.reductionIndexor(record.runNumber, record.useLiteMode)
-        version = indexor.thisOrNextVersion(version)
 
-        dataFilepath = self._constructReductionDataFilePath(record.runNumber, record.useLiteMode, version)
+        # For the moment, a single run number is assumed:
+        runNumber = record.runNumbers[0]
+        version = record.version
+
+        dataFilepath = self._constructReductionDataFilePath(runNumber, record.useLiteMode, version)
         if not dataFilepath.parent.exists():
             # write reduction record must be called first
-            self.writeReductionRecord(record, version)
+            record = self.writeReductionRecord(record, version)
 
         for ws in record.workspaceNames:
             # Append workspaces to hdf5 file, in order of the `workspaces` list
@@ -482,13 +494,11 @@ class LocalDataService:
                 self.writeWorkspace(dataFilepath.parent, Path(dataFilepath.name), ws, append=True)
 
         # Append the "metadata" group, containing the `ReductionRecord` metadata
-        # NOTE the calculation parameters must be separately attached
         with h5py.File(dataFilepath, "a") as h5:
-            outputRecord = record.dict()
-            outputRecord["calculationParameters"] = record.calculationParameters.dict()
-            n5m.insertMetadataGroup(h5, outputRecord, "/metadata")
+            n5m.insertMetadataGroup(h5, record.dict(), "/metadata")
 
         logger.info(f"wrote reduction data to {dataFilepath}: version: {version}")
+        return record
 
     @validate_call
     def readReductionData(self, runNumber: str, useLiteMode: bool, version: int) -> ReductionRecord:
@@ -590,7 +600,7 @@ class LocalDataService:
         #     version = indexor.latestApplicableVersion(runId)
         return indexor.readParameters(version)
 
-    def writeCalibrationState(self, calibration: Calibration, version: Optional[Version] = None):
+    def writeCalibrationState(self, calibration: Calibration, version: Optional[int] = None):
         """
         Writes a `Calibration` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Calibration`.
@@ -598,7 +608,7 @@ class LocalDataService:
         indexor = self.calibrationIndexor(calibration.seedRun, calibration.useLiteMode)
         indexor.writeParameters(calibration, version)
 
-    def writeNormalizationState(self, normalization: Normalization, version: Optional[Version] = None):  # noqa: F821
+    def writeNormalizationState(self, normalization: Normalization, version: Optional[int] = None):  # noqa: F821
         """
         Writes a `Normalization` to either a new version folder, or overwrites a specific version.
         -- side effect: updates version number of incoming `Normalization`.

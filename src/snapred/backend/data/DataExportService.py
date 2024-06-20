@@ -6,7 +6,6 @@ from pydantic import validate_call
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
-from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -102,23 +101,17 @@ class DataExportService:
 
     ##### REDUCTION METHODS #####
 
-    def exportReductionIndexEntry(self, entry: IndexEntry, version: Optional[int] = None):
-        """
-        If no version given, will follow Indexor rules to save at next version
-        """
-        self.dataService.writeReductionIndexEntry(entry, version)
-
     def exportReductionRecord(self, record: ReductionRecord, version: Optional[int] = None):
         """
-        If no version given, will follow Indexor rules to save at next version
+        If no version given, will save at current time
         """
-        self.dataService.writeReductionRecord(record, version)
+        return self.dataService.writeReductionRecord(record, version)
 
     def exportReductionData(self, record: ReductionRecord, version: Optional[int] = None):
         """
-        If no version given, will follow Indexor rules to save at next version
+        If no version given, will save at current time
         """
-        self.dataService.writeReductionData(record, version)
+        return self.dataService.writeReductionData(record, version)
 
     ##### WORKSPACE METHODS #####
 

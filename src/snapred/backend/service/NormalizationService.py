@@ -34,6 +34,7 @@ from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import parse_obj_as
 
@@ -181,11 +182,27 @@ class NormalizationService(Service):
         """
         If no version is attached to the request, this will save at next version number
         """
-        version = request.version
         entry = request.normalizationIndexEntry
         record = request.normalizationRecord
-        # NOTE the Indexor will handle the version information for us,
-        # but the workspaces must be saved before both record and index are saved
+        version = self.dataFactoryService.getThisOrNextNormalizationVersion(
+            record.runNumber,
+            record.useLiteMode,
+            request.version,
+        )
+        # set the version on the objects to be saved
+        entry.version = version
+        record.version = version
+        record.calculationParameters.version = version
+
+        # rename the workspaces to include version number
+        savedWorkspaces = []
+        for workspace in record.workspaceNames:
+            newName = workspace + "_" + wnvf.formatVersion(version)
+            self.groceryService.renameWorkspace(workspace, newName)
+            savedWorkspaces.append(newName)
+        record.workspaceNames = savedWorkspaces
+
+        # save the objects at the indicated version
         self.dataExportService.exportNormalizationRecord(record, version)
         self.dataExportService.exportNormalizationWorkspaces(record, version)
         self.saveNormalizationToIndex(entry, version)

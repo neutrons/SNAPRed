@@ -1,7 +1,7 @@
-from typing import Any, Dict, List, Optional
+from types import NoneType
+from typing import Any, Dict, List
 
 from pydantic import (
-    Field,
     field_validator,
     model_validator,
 )
@@ -27,7 +27,7 @@ class ReductionRecord(Record):
     # - version
     # - calculationParameters
     # specially override this for the case of reduction
-    runNumber: Optional[str] = Field(None, exclude=True)
+    runNumber: NoneType
 
     # specific to reduction records
     runNumbers: List[str]
@@ -37,16 +37,6 @@ class ReductionRecord(Record):
 
     stateId: ObjectSHA
     workspaceNames: List[WorkspaceName]
-
-    def __init__(self, **kwargs):
-        # this special init will set runNumber from the runNumber list,
-        # while ensuring users cannot set runNumber directly.
-        if kwargs.get("runNumber") is not None:
-            raise ValueError(
-                "runNumber (singular) cannot be set on Reduction records; set the runNumbers list instead."
-            )
-        kwargs["runNumber"] = kwargs["runNumbers"][0]
-        super().__init__(**kwargs)
 
     @field_validator("stateId", mode="before")
     @classmethod

@@ -139,7 +139,7 @@ samples:
 version:
   error: "uninitialized"  # alphanumeric
   default: 0 # alphanumeric
-  start: 1   # MUST be integer
+  start: 1   # MUST be nonnegative integer
 
 cis_mode: false
 

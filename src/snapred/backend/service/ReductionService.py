@@ -1,7 +1,7 @@
 import json
+import time
 from typing import Any, Dict, List
 
-from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
 from snapred.backend.dao.request import (
     FarmFreshIngredients,
@@ -187,18 +187,12 @@ class ReductionService(Service):
 
     @FromString
     def saveReduction(self, request: ReductionExportRequest):
-        """
-        Will save a reduction record at the version attached to the request.
-        If no version attached, will save at next version following Indexor rules.
-        """
-        version = request.version
+        version = time.time()
         record = request.reductionRecord
-        # NOTE the Indexor will handle the version information for us
-        self.dataExportService.exportReductionRecord(record, version)
-        self.dataExportService.exportReductionData(record, version)
-        # must add an entry for reduction versions to progress
-        entry = Record.indexEntryFromRecord(record)
-        self.dataExportService.exportReductionIndexEntry(entry, version)
+        record.version = version
+        record.calculationParameters.version = version
+        record = self.dataExportService.exportReductionRecord(record, version)
+        record = self.dataExportService.exportReductionData(record, version)
 
     def loadReduction(self):
         raise NotImplementedError("SNAPRed cannot load reductions")
@@ -221,7 +215,7 @@ class ReductionService(Service):
         for request in requests:
             runNumber = str(json.loads(request.payload)["runNumber"])
             useLiteMode = bool(json.loads(request.payload)["useLiteMode"])
-            normalVersion = self.dataFactoryService.getCurrentNormalizationVersion(runNumber, useLiteMode)
+            normalVersion = self.dataFactoryService.getThisOrCurrentNormalizationVersion(runNumber, useLiteMode)
             version = "normalization_" + str(normalVersion)
             if versions.get(version) is None:
                 versions[version] = []

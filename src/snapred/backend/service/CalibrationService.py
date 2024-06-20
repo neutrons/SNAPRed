@@ -207,6 +207,10 @@ class CalibrationService(Service):
             record.useLiteMode,
             request.version,
         )
+        # set the correct versions on the objects to be saved
+        entry.version = version
+        record.version = version
+        record.calculationParameters.version = version
 
         # Rebuild the workspace names to strip any "iteration" number:
         savedWorkspaces = {}
@@ -249,8 +253,7 @@ class CalibrationService(Service):
 
         record.workspaces = savedWorkspaces
 
-        # NOTE the Indexor will handle the version information for us,
-        # but the workspaces must be saved before both record and index are saved
+        # save the objects at the indicated version
         self.dataExportService.exportCalibrationRecord(record, version)
         self.dataExportService.exportCalibrationWorkspaces(record, version)
         self.saveCalibrationToIndex(entry, version)

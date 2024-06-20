@@ -3,6 +3,7 @@ from typing import Any, List
 from pydantic import field_validator
 
 from snapred.backend.dao.indexing.Record import Record
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, Version
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -30,6 +31,7 @@ class NormalizationRecord(Record):
     peakIntensityThreshold: float
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     workspaceNames: List[WorkspaceName] = []
+    calibrationVersionUsed: Version = VERSION_DEFAULT
 
     dMin: float
 
