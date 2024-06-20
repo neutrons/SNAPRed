@@ -14,7 +14,7 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry, Nonentry
 from snapred.backend.dao.indexing.Record import Nonrecord, Record
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_NONE, VERSION_START
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_NONE_NAME, VERSION_START
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -291,7 +291,7 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor()
         assert indexor.thisOrCurrentVersion(None) == indexor.currentVersion()
         assert indexor.thisOrCurrentVersion("*") == indexor.currentVersion()
-        assert indexor.thisOrCurrentVersion(VERSION_NONE) == indexor.currentVersion()
+        assert indexor.thisOrCurrentVersion(VERSION_NONE_NAME) == indexor.currentVersion()
         assert indexor.thisOrCurrentVersion(VERSION_DEFAULT) == VERSION_DEFAULT
         assert indexor.thisOrCurrentVersion(version) == version
 
@@ -300,7 +300,7 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor()
         assert indexor.thisOrNextVersion(None) == indexor.nextVersion()
         assert indexor.thisOrNextVersion("*") == indexor.nextVersion()
-        assert indexor.thisOrNextVersion(VERSION_NONE) == indexor.nextVersion()
+        assert indexor.thisOrNextVersion(VERSION_NONE_NAME) == indexor.nextVersion()
         assert indexor.thisOrNextVersion(VERSION_DEFAULT) == VERSION_DEFAULT
         assert indexor.thisOrNextVersion(version) == version
 

@@ -1,14 +1,12 @@
-from typing import Any, Literal, Optional, Union
+from typing import Any, Optional
 
 from pydantic import BaseModel, computed_field, field_serializer
 from snapred.meta.Config import Config
 
 VERSION_START = Config["version.start"]
-VERSION_NONE = Config["version.error"]
+VERSION_NONE_NAME = Config["version.error"]
 VERSION_DEFAULT_NAME = Config["version.default"]
 VERSION_DEFAULT = -1  # SNAPRed Internal flag for default version
-
-Version = Union[int, Literal[VERSION_NONE, VERSION_DEFAULT_NAME]]
 
 
 class VersionedObject(BaseModel):
@@ -16,7 +14,7 @@ class VersionedObject(BaseModel):
 
     def __init__(self, **kwargs):
         version = kwargs.pop("version", None)
-        if version == VERSION_NONE:
+        if version == VERSION_NONE_NAME:
             version = None
         elif version == VERSION_DEFAULT_NAME:
             version = VERSION_DEFAULT
@@ -28,7 +26,7 @@ class VersionedObject(BaseModel):
     @field_serializer("version", check_fields=False, when_used="json")
     def write_user_defaults(self, value: Any):  # noqa ARG002
         if self._version is None:
-            return VERSION_NONE
+            return VERSION_NONE_NAME
         elif self._version == VERSION_DEFAULT:
             return VERSION_DEFAULT_NAME
         else:

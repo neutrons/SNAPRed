@@ -3,7 +3,7 @@ from typing import Any, List
 from pydantic import field_serializer, field_validator
 
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME, VERSION_NONE
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME, VERSION_NONE_NAME
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -56,7 +56,7 @@ class NormalizationRecord(Record):
     @field_serializer("calibrationVersionUsed", when_used="json")
     def write_user_defaults(self, value: Any):  # noqa ARG002
         if self.calibrationVersionUsed is None:
-            return VERSION_NONE
+            return VERSION_NONE_NAME
         elif self.calibrationVersionUsed == VERSION_DEFAULT:
             return VERSION_DEFAULT_NAME
         else:

@@ -7,7 +7,7 @@ from pydantic import WithJsonSchema
 from pydantic.functional_validators import BeforeValidator
 from typing_extensions import Annotated
 
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME, VERSION_NONE
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME
 from snapred.meta.Config import Config
 
 
@@ -86,7 +86,7 @@ class ValueFormatter:
         # handle two special cases of unassigned or default version
         # in these cases, change the value to a user-specified string
         if version is None:
-            version = VERSION_NONE
+            version = ""
         elif version == VERSION_DEFAULT:
             version = VERSION_DEFAULT_NAME
 
@@ -105,7 +105,7 @@ class ValueFormatter:
         return version
 
     @staticmethod
-    def fileVersion(version: Optional[int]):
+    def fileVersion(version: int):
         return "v_" + ValueFormatter.formatVersion(version, use_v_prefix=False)
 
     @staticmethod
