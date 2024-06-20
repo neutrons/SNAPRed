@@ -127,8 +127,9 @@ class TestReductionService(unittest.TestCase):
             self.instance.loadReduction()
 
     def test_hasState(self):
-        assert self.instance.hasState("123")
+        assert self.instance.hasState("123456")
         assert not self.instance.hasState("not a state")
+        assert not self.instance.hasState("1")
 
     def test_groupRequests(self):
         payload = self.request.json()
