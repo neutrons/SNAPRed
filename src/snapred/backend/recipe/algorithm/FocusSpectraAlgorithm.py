@@ -14,6 +14,14 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 class FocusSpectraAlgorithm(PythonAlgorithm):
+    """
+    This algorithm performs diffraction focusing on TOF data. It converts the
+    input workspace from time-of-flight (TOF) to d-spacing and applies
+    diffraction focusing using a grouping workspace. Optionally, it rebins
+    the output to ensure uniform binning.
+
+    """
+
     def category(self):
         return "SNAPRed Data Processing"
 

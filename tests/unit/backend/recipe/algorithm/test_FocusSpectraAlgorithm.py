@@ -181,7 +181,6 @@ class TestFocusSpectra(unittest.TestCase):
 
     def test_failedValidation_inputGroupingIdsMismatch(self):
         from mantid.simpleapi import (
-            ConvertUnits,
             CreateSampleWorkspace,
         )
 
@@ -202,13 +201,10 @@ class TestFocusSpectra(unittest.TestCase):
             Xmin=overallDMin,
             Xmax=overallDMax,
             BinWidth=abs(dBin),
-            XUnit="dSpacing",
+            XUnit="TOF",
             NumBanks=5,  # must wrong for test
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
         )
-
-        # Convert the workspace to TOF units
-        ConvertUnits(InputWorkspace=self.fakeRawData, OutputWorkspace=self.fakeRawData, Target="TOF")
 
         algo = ThisAlgo()
         algo.initialize()
