@@ -12,8 +12,8 @@ import pytest
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
-from snapred.backend.dao.indexing.IndexEntry import IndexEntry, Nonentry
-from snapred.backend.dao.indexing.Record import Nonrecord, Record
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_NONE_NAME, VERSION_START
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -739,7 +739,7 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor()
         assert 3 not in indexor.index
         indexor.addIndexEntry(self.indexEntry(3), 3)
-        assert indexor.index[3] is not Nonentry
+        assert indexor.index[3] is not None
 
     def test_addEntry_at_version_overwrite(self):
         versionList = [2, 7, 11]
@@ -763,8 +763,8 @@ class TestIndexor(unittest.TestCase):
 
     def test_indexEntryFromRecord_none(self):
         indexor = self.initIndexor()
-        res = indexor.indexEntryFromRecord(Nonrecord)
-        assert res is Nonentry
+        res = indexor.indexEntryFromRecord(None)
+        assert res is None
 
     ### TEST RECORD READ / WRITE METHODS ###
 
@@ -809,7 +809,7 @@ class TestIndexor(unittest.TestCase):
         indexor = self.initIndexor()
         assert not self.recordPath(version).exists()
         res = indexor.readRecord(version)
-        assert res is Nonrecord
+        assert res is None
 
     def test_readRecord(self):
         record = self.record(randint(1, 100))
@@ -946,7 +946,7 @@ class TestIndexor(unittest.TestCase):
         params = self.calculationParameters(version)
 
         indexor = self.initIndexor()
-        indexor.index = {randint(11, 20): Nonentry}
+        indexor.index = {randint(11, 20): None}
         nextVersion = indexor.nextVersion()
         indexor.writeParameters(params)
         res = indexor.readParameters()

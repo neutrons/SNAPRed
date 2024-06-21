@@ -24,7 +24,7 @@ from snapred.backend.dao import (
 )
 from snapred.backend.dao.calibration import Calibration, CalibrationIndexEntry, CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Record import Nonrecord, Record
+from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.normalization import Normalization, NormalizationIndexEntry, NormalizationRecord
@@ -441,7 +441,7 @@ class LocalDataService:
         """
         if version is None:
             version = self._getLatestReductionVersionNumber(runNumber, useLiteMode)
-        record = Nonrecord
+        record = None
         if version is not None:
             filePath: Path = self._constructReductionRecordFilePath(runNumber, useLiteMode, version)
             record = parse_file_as(ReductionRecord, filePath)

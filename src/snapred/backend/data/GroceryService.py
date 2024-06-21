@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from mantid.simpleapi import mtd
 from pydantic import validate_call
 
-from snapred.backend.dao.indexing.Record import Nonrecord
 from snapred.backend.dao.ingredients import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.data.LocalDataService import LocalDataService
@@ -900,7 +899,7 @@ class GroceryService:
                     if not isinstance(item.version, int):
                         item.version = indexor.latestApplicableVersion(item.runNumber)
                     record = indexor.readRecord(item.version)
-                    if record is not Nonrecord:
+                    if record is not None:
                         item.runNumber = record.runNumber
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
                     # to that of the table workspace.  Because of possible confusion with
@@ -930,7 +929,7 @@ class GroceryService:
                             )
                         logger.info(f"Found version {item.version} for run {item.runNumber}")
                     record = indexor.readRecord(item.version)
-                    if record is not Nonrecord:
+                    if record is not None:
                         item.runNumber = record.runNumber
                     logger.info(f"Fetching normalization workspace for run {item.runNumber}, version {item.version}")
                     res = self.fetchNormalizationWorkspaces(item)

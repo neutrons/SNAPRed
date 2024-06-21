@@ -8,7 +8,7 @@ from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
-from snapred.backend.dao.indexing.Record import Nonrecord, Record
+from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME, VERSION_START
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
@@ -296,7 +296,7 @@ class Indexor:
         """
         version = self.thisOrCurrentVersion(version)
         filePath = self.recordPath(version)
-        record = Nonrecord
+        record = None
         if filePath.exists():
             match self.indexorType:
                 case IndexorType.CALIBRATION:

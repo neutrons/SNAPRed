@@ -11,7 +11,6 @@ from snapred.backend.dao.calibration import (
     CalibrationRecord,
     FocusGroupMetric,
 )
-from snapred.backend.dao.indexing.Record import Nonrecord
 from snapred.backend.dao.ingredients import (
     CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
@@ -326,7 +325,7 @@ class CalibrationService(Service):
         version = request.version
 
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(runId, useLiteMode, version)
-        if calibrationRecord is Nonrecord:
+        if calibrationRecord is None:
             errorTxt = f"No calibration record found for run {runId}, version {version}."
             logger.error(errorTxt)
             raise ValueError(errorTxt)
