@@ -181,6 +181,7 @@ class TestFocusSpectra(unittest.TestCase):
 
     def test_failedValidation_inputGroupingIdsMismatch(self):
         from mantid.simpleapi import (
+            ConvertUnits,
             CreateSampleWorkspace,
         )
 
