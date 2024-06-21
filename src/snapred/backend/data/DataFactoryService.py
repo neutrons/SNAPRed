@@ -134,21 +134,6 @@ class DataFactoryService:
     ##### REDUCTION METHODS #####
 
     @validate_call
-    def getReductionDataPath(self, runId: str, useLiteMode: bool, version: int) -> Path:
-        return self.lookupService._constructReductionDataPath(runId, useLiteMode, version)
-
-    @validate_call
-    def getReductionRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
-        """
-        If no version is passed, will use the latest version applicable to runId
-        """
-        return self.lookupService.readReductionRecord(runId, useLiteMode, version)
-
-    @validate_call
-    def getReductionData(self, runId: str, useLiteMode: bool, version: int) -> ReductionRecord:
-        return self.lookupService.readReductionData(runId, useLiteMode, version)
-
-    @validate_call
     def getReductionState(self, runId: str, useLiteMode: bool) -> ReductionState:
         reductionState: ReductionState = None
 
@@ -163,6 +148,21 @@ class DataFactoryService:
             self.cache[runId] = reductionState
 
         return reductionState
+
+    @validate_call
+    def getReductionDataPath(self, runId: str, useLiteMode: bool, version: int) -> Path:
+        return self.lookupService._constructReductionDataPath(runId, useLiteMode, version)
+
+    @validate_call
+    def getReductionRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
+        """
+        If no version is passed, will use the latest version applicable to runId
+        """
+        return self.lookupService.readReductionRecord(runId, useLiteMode, version)
+
+    @validate_call
+    def getReductionData(self, runId: str, useLiteMode: bool, version: int) -> ReductionRecord:
+        return self.lookupService.readReductionData(runId, useLiteMode, version)
 
     ##### WORKSPACE METHODS #####
 

@@ -474,8 +474,8 @@ class LocalDataService:
         runNumber = record.runNumbers[0]
         version = record.version
 
-        dataFilepath = self._constructReductionDataFilePath(runNumber, record.useLiteMode, version)
-        if not dataFilepath.parent.exists():
+        dataFilePath = self._constructReductionDataFilePath(runNumber, record.useLiteMode, version)
+        if not dataFilePath.parent.exists():
             # write reduction record must be called first
             record = self.writeReductionRecord(record, version)
 
@@ -483,15 +483,15 @@ class LocalDataService:
             # Append workspaces to hdf5 file, in order of the `workspaces` list
             ws_ = mtd[ws]
             if ws_.isRaggedWorkspace():
-                self.writeRaggedWorkspace(dataFilepath.parent, Path(dataFilepath.name), ws)
+                self.writeRaggedWorkspace(dataFilePath.parent, Path(dataFilePath.name), ws)
             else:
-                self.writeWorkspace(dataFilepath.parent, Path(dataFilepath.name), ws, append=True)
+                self.writeWorkspace(dataFilePath.parent, Path(dataFilePath.name), ws, append=True)
 
         # Append the "metadata" group, containing the `ReductionRecord` metadata
-        with h5py.File(dataFilepath, "a") as h5:
+        with h5py.File(dataFilePath, "a") as h5:
             n5m.insertMetadataGroup(h5, record.dict(), "/metadata")
 
-        logger.info(f"wrote reduction data to {dataFilepath}: version: {version}")
+        logger.info(f"wrote reduction data to {dataFilePath}: version: {version}")
         return record
 
     @validate_call
@@ -558,7 +558,7 @@ class LocalDataService:
                 atom["symbol"] = atom.pop("atom_type")
                 atom["coordinates"] = atom.pop("atom_coordinates")
                 atom["siteOccupationFactor"] = atom.pop("site_occupation_factor")
-            sample = CalibrantSamples.parse_raw(json.dumps(sampleJson))
+            sample = CalibrantSamples.model_validate_json(json.dumps(sampleJson))
             return sample
 
     def readCifFilePath(self, sampleId: str):
