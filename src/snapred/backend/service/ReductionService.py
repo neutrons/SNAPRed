@@ -17,6 +17,7 @@ from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.validator.RunNumberValidator import RunNumberValidator
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -197,6 +198,9 @@ class ReductionService(Service):
         raise NotImplementedError("SNAPRed cannot load reductions")
 
     def hasState(self, runNumber: str):
+        if not RunNumberValidator.validateRunNumber(runNumber):
+            logger.error(f"Invalid run number: {runNumber}")
+            return False
         return self.dataFactoryService.checkCalibrationStateExists(runNumber)
 
     def _groupByStateId(self, requests: List[SNAPRequest]):
