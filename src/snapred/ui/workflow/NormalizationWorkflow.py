@@ -126,8 +126,8 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
         self.samplePath = view.sampleDropdown.currentText()
         self.focusGroupPath = view.groupingFileDropdown.currentText()
-        self.prevDMin = float(self._tweakPeakView.fielddMin.field.text())
-        self.prevDMax = float(self._tweakPeakView.fielddMax.field.text())
+        self.prevDMin = float(self._tweakPeakView.fieldXtalDMin.field.text())
+        self.prevDMax = float(self._tweakPeakView.fieldXtalDMax.field.text())
         self.prevThreshold = float(self._tweakPeakView.fieldThreshold.field.text())
 
         # init the payload
@@ -137,7 +137,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=self.focusGroups[self.focusGroupPath],
-            crystalDMin=self.prevDMin,
+            crystalDBounds={"minimum": self.prevDMin, "maximum": self.prevDMax},
         )
         # take the default smoothing param from the default payload value
         self.prevSmoothingParameter = payload.smoothingParameter
@@ -173,8 +173,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=list(self.focusGroups.items())[self.prevGroupingIndex][1],
             smoothingParameter=self.prevSmoothingParameter,
-            crystalDMin=self.prevDMin,
-            crystalDMax=self.prevDMax,
+            crystalDBounds={"minimum": self.prevDMin, "maximum": self.prevDMax},
             peakIntensityThreshold=self.prevThreshold,
         )
         response = self.request(path="normalization/assessment", payload=payload.json())
@@ -225,8 +224,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
             smoothingParameter=smoothingParameter,
-            crystalDMin=dMin,
-            crystalDMax=dMax,
+            crystalDBounds={"minimum": dMin, "maximum": dMax},
             peakIntensityThreshold=peakThreshold,
         )
         self.request(path="normalization", payload=payload.json())

@@ -9,11 +9,9 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class CrystallographicInfoService(Service):
-    D_MIN = Config["constants.CrystallographicInfo.dMin"]
-    D_MAX = Config["constants.CrystallographicInfo.dMax"]
+    D_MIN = Config["constants.CrystallographicInfo.crystalDMin"]
+    D_MAX = Config["constants.CrystallographicInfo.crystalDMax"]
 
-    # register the service in ServiceFactory please!
-    # NEVER!
     def __init__(self):
         super().__init__()
         self.registerPath("", self.ingest)
@@ -24,11 +22,13 @@ class CrystallographicInfoService(Service):
         return "ingestion"
 
     @FromString
-    def ingest(self, cifPath: str, dMin: float = D_MIN, dMax: float = D_MAX) -> Dict[Any, Any]:
+    def ingest(self, cifPath: str, crystalDMin: float = D_MIN, crystalDMax: float = D_MAX) -> Dict[Any, Any]:
         data: Dict[Any, Any] = {}
         # TODO: collect runs by state then by calibration of state, execute sets of runs by calibration of thier state
         try:
-            data = CrystallographicInfoRecipe().executeRecipe(cifPath=cifPath, dMin=dMin, dMax=dMax)
+            data = CrystallographicInfoRecipe().executeRecipe(
+                cifPath=cifPath, crystalDMin=crystalDMin, crystalDMax=crystalDMax
+            )
         except:
             raise
         return data

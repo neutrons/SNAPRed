@@ -769,7 +769,7 @@
             "fitted_strippedFocussedData_stripped_2"
         ],
         "version": 7,
-        "dMin": 0.4
+        "crystalDBounds": {"minimum": 0.4, "maximum": 100.0}
     },
     "pixelGroupingParameters": {
         "Column": [

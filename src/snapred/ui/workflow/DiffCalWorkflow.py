@@ -33,8 +33,8 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     """
 
-    DEFAULT_DMIN = Config["constants.CrystallographicInfo.dMin"]
-    DEFAULT_DMAX = Config["constants.CrystallographicInfo.dMax"]
+    DEFAULT_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
+    DEFAULT_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
     DEFAULT_NBINS = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     DEFAULT_CONV = Config["calibration.diffraction.convergenceThreshold"]
     DEFAULT_PEAK_THRESHOLD = Config["calibration.diffraction.peakIntensityThreshold"]

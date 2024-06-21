@@ -82,7 +82,7 @@ class TestNormalizationService(unittest.TestCase):
             calibrantSamplePath="path/to/sample",
             focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
             smoothingParameter=0.5,
-            dMin=0.4,
+            crystalDBounds={"minimum": 0.4, "maximum": 100.0},
         )
 
     def clearoutWorkspaces(self) -> None:

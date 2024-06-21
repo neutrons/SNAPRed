@@ -37,8 +37,8 @@ class NormalizationTweakPeakView(BackendRequestView):
 
     """
 
-    DMIN = Config["constants.CrystallographicInfo.dMin"]
-    DMAX = Config["constants.CrystallographicInfo.dMax"]
+    XTAL_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
+    XTAL_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
     PEAK_THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
 
     signalRunNumberUpdate = Signal(str)
@@ -73,13 +73,13 @@ class NormalizationTweakPeakView(BackendRequestView):
 
         # create the adjustment controls
         self.smoothingSlider = self._labeledField("Smoothing", SmoothingSlider())
-        self.fielddMin = self._labeledField("dMin", QLineEdit(str(self.DMIN)))
-        self.fielddMax = self._labeledField("dMax", QLineEdit(str(self.DMAX)))
+        self.fieldXtalDMin = self._labeledField("xtal dMin", QLineEdit(str(self.XTAL_DMIN)))
+        self.fieldXtalDMax = self._labeledField("xtal dMax", QLineEdit(str(self.XTAL_DMAX)))
         self.fieldThreshold = self._labeledField("intensity threshold", QLineEdit(str(self.PEAK_THRESHOLD)))
         peakControlLayout = QHBoxLayout()
         peakControlLayout.addWidget(self.smoothingSlider, 2)
-        peakControlLayout.addWidget(self.fielddMin)
-        peakControlLayout.addWidget(self.fielddMax)
+        peakControlLayout.addWidget(self.fieldXtalDMin)
+        peakControlLayout.addWidget(self.fieldXtalDMax)
         peakControlLayout.addWidget(self.fieldThreshold)
 
         # a big ol recalculate button
@@ -130,19 +130,19 @@ class NormalizationTweakPeakView(BackendRequestView):
         try:
             index = self.groupingFileDropdown.currentIndex()
             smoothingValue = self.smoothingSlider.field.value()
-            dMin = float(self.fielddMin.field.text())
-            dMax = float(self.fielddMax.field.text())
+            xtalDMin = float(self.fieldXtalDMin.field.text())
+            xtalDMax = float(self.fieldXtalDMax.field.text())
             peakThreshold = float(self.fieldThreshold.text())
         except ValueError as e:
             QMessageBox.warning(
                 self,
                 "Invalid Peak Parameters",
-                f"One of dMin, dMax, smoothing, or peak threshold is invalid: {str(e)}",
+                f"One of xtal dMin, xtal dMax, smoothing, or peak threshold is invalid: {str(e)}",
                 QMessageBox.Ok,
             )
             return
         # perform some checks on dMin, dMax values
-        if dMin < 0.1:
+        if xtalDMin < 0.1:
             response = QMessageBox.warning(
                 self,
                 "Warning!!!",
@@ -151,15 +151,15 @@ class NormalizationTweakPeakView(BackendRequestView):
             )
             if response == QMessageBox.No:
                 return
-        elif dMin > dMax:
+        elif xtalDMin > xtalDMax:
             QMessageBox.warning(
                 self,
                 "Warning!!!",
-                f"The dMin value exceeds the allowed maximum dMax value ({dMax}). Please enter a smaller value.",
+                f"The minimum crystal d-spacing exceeds the maximum ({xtalDMax}). Please enter a smaller value.",
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(index, smoothingValue, dMin, dMax, peakThreshold)
+        self.signalValueChanged.emit(index, smoothingValue, xtalDMin, xtalDMax, peakThreshold)
 
     def updateWorkspaces(self, focusWorkspace, smoothedWorkspace, peaks):
         self.focusWorkspace = focusWorkspace
@@ -191,8 +191,8 @@ class NormalizationTweakPeakView(BackendRequestView):
                 under_peaks = [(peak.minimum < xx and xx < peak.maximum) for xx in x]
                 ax.fill_between(x, y, where=under_peaks, color="blue", alpha=0.5)
             # plot the min value for peaks
-            ax.axvline(x=max(min(x), float(self.fielddMin.field.text())), label="dMin", color="red")
-            ax.axvline(x=min(max(x), float(self.fielddMax.field.text())), label="dMax", color="red")
+            ax.axvline(x=max(min(x), float(self.fieldXtalDMin.field.text())), label="xtal $d_{min}$", color="red")
+            ax.axvline(x=min(max(x), float(self.fieldXtalDMax.field.text())), label="xtal $d_{max}$", color="red")
 
         # resize window and redraw
         self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))

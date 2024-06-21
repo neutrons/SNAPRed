@@ -9,7 +9,7 @@ from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
-class DiffractionCalibrationRequest(BaseModel):
+class DiffractionCalibrationRequest(BaseModel, extra="forbid"):
     """
 
     The DiffractionCalibrationRequest class is designed to kick-start the calibration process
@@ -26,8 +26,8 @@ class DiffractionCalibrationRequest(BaseModel):
     calibrantSamplePath: str
     focusGroup: FocusGroup
     useLiteMode: bool
-    crystalDMin: float = Config["constants.CrystallographicInfo.dMin"]
-    crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
+    crystalDMin: float = Config["constants.CrystallographicInfo.crystalDMin"]
+    crystalDMax: float = Config["constants.CrystallographicInfo.crystalDMax"]
     peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]
     peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
