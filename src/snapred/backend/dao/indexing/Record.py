@@ -28,6 +28,9 @@ class Record(VersionedObject, extra="allow"):
     useLiteMode: bool
     # NOTE calculationParameters is NOT optional, and is enforced by a validator
     # the "None" case is restricted to a single case for the Nonrecord
+    # NOTE calculationParameters is a VERSIONED object.
+    # the version on the calculation parameters MUST match the version on this record.
+    # a future validator should enforce this condition
     calculationParameters: CalculationParameters | None
 
     @classmethod

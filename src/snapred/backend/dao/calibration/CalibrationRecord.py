@@ -27,6 +27,8 @@ class CalibrationRecord(Record):
     # - useLiteMode
     # - version
     # override this to point at the correct daughter class
+    # NOTE the version on the calculationParameters MUST match the version on the record
+    # this should be enforced by a validator
     calculationParameters: Calibration
 
     # specific to calibration records
