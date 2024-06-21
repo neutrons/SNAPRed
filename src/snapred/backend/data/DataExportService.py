@@ -49,55 +49,55 @@ class DataExportService:
     def initializeState(self, runId: str, useLiteMode: bool, name: str):
         return self.dataService.initializeState(runId, useLiteMode, name)
 
-    def exportCalibrationIndexEntry(self, entry: CalibrationIndexEntry, version: Optional[int]):
+    def exportCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
         """
-        If no version given, will follow Indexor rules to save at next version
+        Entry must have correct version set.
         """
-        self.dataService.writeCalibrationIndexEntry(entry, version)
+        self.dataService.writeCalibrationIndexEntry(entry)
 
-    def exportCalibrationRecord(self, record: CalibrationRecord, version: Optional[int] = None):
+    def exportCalibrationRecord(self, record: CalibrationRecord):
         """
-        If no version given, will follow Indexor rules to save at next version
+        Record must have correct version set.
         """
-        self.dataService.writeCalibrationRecord(record, version)
+        self.dataService.writeCalibrationRecord(record)
 
-    def exportCalibrationWorkspaces(self, record: CalibrationRecord, version: Optional[int] = None):
+    def exportCalibrationWorkspaces(self, record: CalibrationRecord):
         """
-        If no version given, will follow Indexor rules to save at next version
+        Record must have correct version set and workspace names finalized.
         """
-        self.dataService.writeCalibrationWorkspaces(record, version)
+        self.dataService.writeCalibrationWorkspaces(record)
 
-    def exportCalibrationState(self, calibration: Calibration, version: Optional[int] = None):
+    def exportCalibrationState(self, calibration: Calibration):
         """
-        If no version given, will follow Indexor rules to save at next version
+        Calibration must have correct version set.
         """
-        self.dataService.writeCalibrationState(calibration, version)
+        self.dataService.writeCalibrationState(calibration)
 
     ##### NORMALIZATION METHODS #####
 
-    def exportNormalizationIndexEntry(self, entry: NormalizationIndexEntry, version: Optional[int] = None):
+    def exportNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
         """
-        If no version given, will follow Indexor rules to save at next version
+        Entry must have correct version set.
         """
-        self.dataService.writeNormalizationIndexEntry(entry, version)
+        self.dataService.writeNormalizationIndexEntry(entry)
 
-    def exportNormalizationRecord(self, record: NormalizationRecord, version: Optional[int] = None):
+    def exportNormalizationRecord(self, record: NormalizationRecord):
         """
-        If no version given, will follow Indexor rules to save at next version
+        Record must have correct version set.
         """
-        self.dataService.writeNormalizationRecord(record, version)
+        self.dataService.writeNormalizationRecord(record)
 
-    def exportNormalizationWorkspaces(self, record: NormalizationRecord, version: Optional[int] = None):
+    def exportNormalizationWorkspaces(self, record: NormalizationRecord):
         """
-        If no version given, will follow Indexor rules to save at next version
+        Record must have correct version set and workspace names finalized.
         """
-        self.dataService.writeNormalizationWorkspaces(record, version)
+        self.dataService.writeNormalizationWorkspaces(record)
 
-    def exportNormalizationState(self, normalization: Normalization, version: Optional[int] = None):
+    def exportNormalizationState(self, normalization: Normalization):
         """
-        If no version given, will follow Indexor rules to save at next version
+        Normalization must have correct version set.
         """
-        self.dataService.writeNormalizationState(normalization, version)
+        self.dataService.writeNormalizationState(normalization)
 
     ##### REDUCTION METHODS #####
 

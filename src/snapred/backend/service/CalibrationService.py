@@ -255,9 +255,9 @@ class CalibrationService(Service):
         record.workspaces = savedWorkspaces
 
         # save the objects at the indicated version
-        self.dataExportService.exportCalibrationRecord(record, version)
-        self.dataExportService.exportCalibrationWorkspaces(record, version)
-        self.saveCalibrationToIndex(entry, version)
+        self.dataExportService.exportCalibrationRecord(record)
+        self.dataExportService.exportCalibrationWorkspaces(record)
+        self.saveCalibrationToIndex(entry)
 
     @FromString
     def load(self, run: RunConfig, version: Optional[int] = None):
@@ -267,16 +267,16 @@ class CalibrationService(Service):
         return self.dataFactoryService.getCalibrationRecord(run.runNumber, run.useLiteMode, version)
 
     @FromString
-    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry, version: Optional[int] = None):
+    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
         """
-        If no version given, will save at next version following Indexor rules
+        The entry must have the version set.
         """
         if entry.appliesTo is None:
             entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
-        self.dataExportService.exportCalibrationIndexEntry(entry, version)
+        self.dataExportService.exportCalibrationIndexEntry(entry)
 
     @FromString
     def initializeState(self, request: InitializeStateRequest):

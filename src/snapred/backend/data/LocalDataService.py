@@ -277,19 +277,13 @@ class LocalDataService:
         return self.normalizationIndexor(runId, useLiteMode).getIndex()
 
     def _statePathForWorkflow(self, stateId: str, useLiteMode: bool, indexorType: IndexorType):
-        """
-        NOTE for reduction, use the runNumber in place of the stateId
-        """
         match indexorType:
             case IndexorType.CALIBRATION:
                 path = self._constructCalibrationStatePath(stateId, useLiteMode)
             case IndexorType.NORMALIZATION:
                 path = self._constructNormalizationStatePath(stateId, useLiteMode)
-            case IndexorType.REDUCTION:
-                raise NotImplementedError("Do not use Indexors for Reduction")
             case _:
-                mode = "lite" if useLiteMode else "native"
-                path = self._constructCalibrationStateRoot(stateId) / mode
+                raise NotImplementedError(f"Indexor of type {indexorType} is not supported by the LocalDataService")
         return path
 
     @lru_cache
@@ -298,11 +292,7 @@ class LocalDataService:
         return Indexor(indexorType=indexorType, directory=path)
 
     def indexor(self, runNumber: str, useLiteMode: bool, indexorType: IndexorType):
-        # NOTE the reduction state path is determined by run number, not state id
-        if indexorType is IndexorType.REDUCTION:
-            stateId = runNumber
-        else:
-            stateId, _ = self._generateStateId(runNumber)
+        stateId, _ = self._generateStateId(runNumber)
         return self._indexor(stateId, useLiteMode, indexorType)
 
     def calibrationIndexor(self, runId: str, useLiteMode: bool):
@@ -311,11 +301,17 @@ class LocalDataService:
     def normalizationIndexor(self, runId: str, useLiteMode: bool):
         return self.indexor(runId, useLiteMode, IndexorType.NORMALIZATION)
 
-    def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry, version: Optional[int] = None):
-        self.calibrationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, version)
+    def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
+        """
+        The entry must have correct version.
+        """
+        self.calibrationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, entry.version)
 
-    def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry, version: Optional[int] = None):
-        self.normalizationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, version)
+    def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
+        """
+        The entry must have correct version.
+        """
+        self.normalizationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, entry.version)
 
     # TODO delete this and replace with something else.
     def _getLatestReductionVersionNumber(self, runNumber: str, useLiteMode: bool) -> int:
@@ -338,29 +334,29 @@ class LocalDataService:
             version = indexor.latestApplicableVersion(runId)
         return indexor.readRecord(version)
 
-    def writeNormalizationRecord(self, record: NormalizationRecord, version: Optional[int] = None):
+    def writeNormalizationRecord(self, record: NormalizationRecord):
         """
         Persists a `NormalizationRecord` to either a new version folder, or overwrites a specific version.
+        Record must be set with correct version.
         -- side effect: creates needed directories for save
-        -- side effect: if no version given, Indexor will assign version
         """
 
         indexor = self.normalizationIndexor(record.runNumber, record.useLiteMode)
         # write the record to file
-        indexor.writeRecord(record, version)
+        indexor.writeRecord(record, record.version)
         # separately write the normalization state
-        indexor.writeParameters(record.calculationParameters, version)
+        indexor.writeParameters(record.calculationParameters, record.version)
 
-        logger.info(f"wrote NormalizationRecord: version: {version}")
+        logger.info(f"wrote NormalizationRecord: version: {record.version}")
 
-    def writeNormalizationWorkspaces(self, record: NormalizationRecord, version: Optional[int] = None):
+    def writeNormalizationWorkspaces(self, record: NormalizationRecord):
         """
         Writes the workspaces associated with a `NormalizationRecord` to disk:
+        Record must be set with correct version and workspace names finalized.
         -- assumes that `writeNormalizationRecord` has already been called, and that the version folder exists
         """
         indexor = self.normalizationIndexor(record.runNumber, record.useLiteMode)
-        version = indexor.thisOrNextVersion(version)
-        normalizationDataPath: Path = indexor.versionPath(version)
+        normalizationDataPath: Path = indexor.versionPath(record.version)
         for workspace in record.workspaceNames:
             ws = mtd[workspace]
             if ws.isRaggedWorkspace():
@@ -384,28 +380,28 @@ class LocalDataService:
             version = indexor.latestApplicableVersion(runId)
         return indexor.readRecord(version)
 
-    def writeCalibrationRecord(self, record: CalibrationRecord, version: Optional[int] = None):
+    def writeCalibrationRecord(self, record: CalibrationRecord):
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
-        -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
+        Record must be set with correct version.
         """
 
         indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
         # write record to file
-        indexor.writeRecord(record, version)
+        indexor.writeRecord(record, record.version)
         # separately write the calibration state
-        indexor.writeParameters(record.calculationParameters, version)
+        indexor.writeParameters(record.calculationParameters, record.version)
 
-        logger.info(f"Wrote CalibrationRecord: version: {version}")
+        logger.info(f"Wrote CalibrationRecord: version: {record.version}")
 
-    def writeCalibrationWorkspaces(self, record: CalibrationRecord, version: Optional[int] = None):
+    def writeCalibrationWorkspaces(self, record: CalibrationRecord):
         """
         Writes the workspaces associated with a `CalibrationRecord` to disk:
+        Record must be set with correct version and workspace names finalized.
         -- assumes that `writeCalibrationRecord` has already been called, and that the version folder exists
         """
         indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
-        version = indexor.thisOrNextVersion(version)
-        calibrationDataPath = indexor.versionPath(version)
+        calibrationDataPath = indexor.versionPath(record.version)
 
         # write the output d-spacing calibrated data
         wsName = record.workspaces[wngt.DIFFCAL_OUTPUT]

@@ -43,21 +43,20 @@ class TestDataExportService(unittest.TestCase):
 
     def test_exportCalibrationIndexEntry(self):
         self.instance.exportCalibrationIndexEntry(
-            CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author=""),
-            self.version,
+            CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="", version=1),
         )
         assert self.instance.dataService.writeCalibrationIndexEntry.called
 
     def test_exportCalibrationRecord(self):
-        self.instance.exportCalibrationRecord(mock.Mock(), self.version)
+        self.instance.exportCalibrationRecord(mock.Mock(version=self.version))
         assert self.instance.dataService.writeCalibrationRecord.called
 
     def test_exportCalibrationWorkspaces(self):
-        self.instance.exportCalibrationWorkspaces(mock.Mock(), self.version)
+        self.instance.exportCalibrationWorkspaces(mock.Mock(version=self.version))
         assert self.instance.dataService.writeCalibrationWorkspaces.called
 
     def test_exportCalibrationState(self):
-        self.instance.exportCalibrationState(mock.Mock(), self.version)
+        self.instance.exportCalibrationState(mock.Mock(version=self.version))
         assert self.instance.dataService.writeCalibrationState.called
 
     def test_initializeState(self):
@@ -68,21 +67,27 @@ class TestDataExportService(unittest.TestCase):
 
     def test_exportNormalizationIndexEntry(self):
         self.instance.exportNormalizationIndexEntry(
-            NormalizationIndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2", comments="", author=""),
-            self.version,
+            NormalizationIndexEntry(
+                runNumber="1",
+                useLiteMode=True,
+                backgroundRunNumber="2",
+                comments="",
+                author="",
+                version=1,
+            )
         )
         assert self.instance.dataService.writeNormalizationIndexEntry.called
 
     def test_exportNormalizationRecord(self):
-        self.instance.exportNormalizationRecord(mock.Mock(), self.version)
+        self.instance.exportNormalizationRecord(mock.Mock(version=self.version))
         assert self.instance.dataService.writeNormalizationRecord.called
 
     def test_exportNormalizationState(self):
-        self.instance.exportNormalizationState(mock.Mock(), self.version)
+        self.instance.exportNormalizationState(mock.Mock(version=self.version))
         assert self.instance.dataService.writeNormalizationState.called
 
     def test_exportNormalizationWorkspaces(self):
-        self.instance.exportNormalizationWorkspaces(mock.Mock(), self.version)
+        self.instance.exportNormalizationWorkspaces(mock.Mock(version=self.version))
         assert self.instance.dataService.writeNormalizationWorkspaces.called
 
     ##### TEST REDUCTION METHODS #####

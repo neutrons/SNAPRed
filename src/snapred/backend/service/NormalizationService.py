@@ -1,6 +1,5 @@
 import time
 from pathlib import Path
-from typing import Optional
 
 from snapred.backend.dao import Limit
 from snapred.backend.dao.ingredients import (
@@ -203,20 +202,20 @@ class NormalizationService(Service):
         record.workspaceNames = savedWorkspaces
 
         # save the objects at the indicated version
-        self.dataExportService.exportNormalizationRecord(record, version)
-        self.dataExportService.exportNormalizationWorkspaces(record, version)
-        self.saveNormalizationToIndex(entry, version)
+        self.dataExportService.exportNormalizationRecord(record)
+        self.dataExportService.exportNormalizationWorkspaces(record)
+        self.saveNormalizationToIndex(entry)
 
-    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry, version: Optional[int] = None):
+    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
         """
-        If no version given, will save at next version number
+        Corrct version must be attached to the entry.
         """
         if entry.appliesTo is None:
             entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * 1000))
         logger.info(f"Saving normalization index entry for Run Number {entry.runNumber}")
-        self.dataExportService.exportNormalizationIndexEntry(entry, version)
+        self.dataExportService.exportNormalizationIndexEntry(entry)
 
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
         cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
