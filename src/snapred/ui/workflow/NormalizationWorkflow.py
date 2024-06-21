@@ -126,8 +126,8 @@ class NormalizationWorkflow(WorkflowImplementer):
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
         self.samplePath = view.sampleDropdown.currentText()
         self.focusGroupPath = view.groupingFileDropdown.currentText()
-        self.prevDMin = float(self._tweakPeakView.fieldXtalDMin.field.text())
-        self.prevDMax = float(self._tweakPeakView.fieldXtalDMax.field.text())
+        self.prevXtalDMin = float(self._tweakPeakView.fieldXtalDMin.field.text())
+        self.prevXtalDMax = float(self._tweakPeakView.fieldXtalDMax.field.text())
         self.prevThreshold = float(self._tweakPeakView.fieldThreshold.field.text())
 
         # init the payload
@@ -137,7 +137,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=self.focusGroups[self.focusGroupPath],
-            crystalDBounds={"minimum": self.prevDMin, "maximum": self.prevDMax},
+            crystalDBounds={"minimum": self.prevXtalDMin, "maximum": self.prevXtalDMax},
         )
         # take the default smoothing param from the default payload value
         self.prevSmoothingParameter = payload.smoothingParameter
@@ -173,7 +173,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=list(self.focusGroups.items())[self.prevGroupingIndex][1],
             smoothingParameter=self.prevSmoothingParameter,
-            crystalDBounds={"minimum": self.prevDMin, "maximum": self.prevDMax},
+            crystalDBounds={"minimum": self.prevXtalDMin, "maximum": self.prevXtalDMax},
             peakIntensityThreshold=self.prevThreshold,
         )
         response = self.request(path="normalization/assessment", payload=payload.json())
@@ -216,7 +216,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         return response
 
     @EntryExitLogger(logger=logger)
-    def callNormalization(self, index, smoothingParameter, dMin, dMax, peakThreshold):
+    def callNormalization(self, index, smoothingParameter, xtalDMin, xtalDMax, peakThreshold):
         payload = NormalizationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
@@ -224,7 +224,7 @@ class NormalizationWorkflow(WorkflowImplementer):
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
             smoothingParameter=smoothingParameter,
-            crystalDBounds={"minimum": dMin, "maximum": dMax},
+            crystalDBounds={"minimum": xtalDMin, "maximum": xtalDMax},
             peakIntensityThreshold=peakThreshold,
         )
         self.request(path="normalization", payload=payload.json())
@@ -235,7 +235,7 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
     @EntryExitLogger(logger=logger)
-    def applySmoothingUpdate(self, index, smoothingValue, dMin, dMax, peakThreshold):
+    def applySmoothingUpdate(self, index, smoothingValue, xtalDMin, xtalDMax, peakThreshold):
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
 
@@ -247,8 +247,8 @@ class NormalizationWorkflow(WorkflowImplementer):
             focusGroup=list(self.focusGroups.items())[index][1],
             runNumber=self.runNumber,
             smoothingParameter=smoothingValue,
-            crystalDMin=dMin,
-            crystalDMax=dMax,
+            crystalDMin=xtalDMin,
+            crystalDMax=xtalDMax,
             peakIntensityThreshold=peakThreshold,
         )
         response = self.request(path="normalization/smooth", payload=payload.json())
@@ -258,7 +258,7 @@ class NormalizationWorkflow(WorkflowImplementer):
 
     @EntryExitLogger(logger=logger)
     @ExceptionToErrLog
-    def onNormalizationValueChange(self, index, smoothingValue, dMin, dMax, peakThreshold):  # noqa: ARG002
+    def onNormalizationValueChange(self, index, smoothingValue, xtalDMin, xtalDMax, peakThreshold):  # noqa: ARG002
         if not self.initializationComplete:
             return
         # disable recalculate button
@@ -272,16 +272,18 @@ class NormalizationWorkflow(WorkflowImplementer):
             groupingFileChanged = index != self.prevGroupingIndex
             # if peaks will change, redo only the smoothing
             smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
-            dMinValueChanged = dMin != self.prevDMin
-            dMaxValueChanged = dMax != self.prevDMax
+            xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
+            xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
             thresholdChanged = peakThreshold != self.prevThreshold
-            peakListWillChange = smoothingValueChanged or dMinValueChanged or dMaxValueChanged or thresholdChanged
+            peakListWillChange = (
+                smoothingValueChanged or xtalDMinValueChanged or xtalDMaxValueChanged or thresholdChanged
+            )
 
             # check the case, apply correct update
             if groupingFileChanged:
-                self.callNormalization(index, smoothingValue, dMin, dMax, peakThreshold)
+                self.callNormalization(index, smoothingValue, xtalDMin, xtalDMax, peakThreshold)
             elif peakListWillChange:
-                self.applySmoothingUpdate(index, smoothingValue, dMin, dMax, peakThreshold)
+                self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax, peakThreshold)
             elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
                 # if nothing changed but this function was called anyway... just replot stuff with old values
                 focusWorkspace = self.responses[-1].data["focusedVanadium"]
@@ -294,8 +296,8 @@ class NormalizationWorkflow(WorkflowImplementer):
             # update the values for next call to this method
             self.prevGroupingIndex = index
             self.prevSmoothingParameter = smoothingValue
-            self.prevDMin = dMin
-            self.prevDMax = dMax
+            self.prevXtalDMin = xtalDMin
+            self.prevXtalDMax = xtalDMax
             self.prevThreshold = peakThreshold
         except Exception as e:  # noqa BLE001
             print(e)
