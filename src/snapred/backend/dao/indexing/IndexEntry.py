@@ -14,9 +14,6 @@ class IndexEntry(VersionedObject, extra="ignore"):
 
     This is meant to coordinate with the Indexor service object.
 
-    The special Nonentry object should be used in instances where an entry is expected,
-    but none exists.  Use in place of None.
-
     """
 
     # inherits from VersionedObject:
@@ -57,16 +54,3 @@ class IndexEntry(VersionedObject, extra="ignore"):
                 )
 
         return v
-
-
-Nonentry = IndexEntry(
-    # NOTE use the Nonentry in instances where an entry is expected but none exists.
-    # Use this in preference to None.
-    runNumber="none",
-    useLiteMode=False,
-    version=None,
-    appliesTo="<0",
-    comments="this is a non-entry - do not use",
-    author="SNAPRed Internal",
-    timestamp=0,
-)
