@@ -6,6 +6,7 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceUnitValidator,
 )
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction, StringMandatoryValidator
@@ -35,7 +36,13 @@ class GroupDiffractionCalibration(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "InputWorkspace",
+                "",
+                Direction.Input,
+                PropertyMode.Mandatory,
+                validator=WorkspaceUnitValidator("TOF"),
+            ),
             doc="Workspace containing TOF neutron data.",
         )
         self.declareProperty(
@@ -47,7 +54,13 @@ class GroupDiffractionCalibration(PythonAlgorithm):
             doc="Table workspace with previous pixel-calibrated DIFC values; if none given, will be calculated.",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Optional),
+            MatrixWorkspaceProperty(
+                "OutputWorkspace",
+                "",
+                Direction.Output,
+                PropertyMode.Optional,
+                validator=WorkspaceUnitValidator("dSpacing"),
+            ),
             doc="A diffraction-focused workspace in dSpacing, after calibration constants have been adjusted.",
         )
         self.declareProperty(
