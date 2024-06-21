@@ -594,21 +594,19 @@ class LocalDataService:
         #     version = indexor.latestApplicableVersion(runId)
         return indexor.readParameters(version)
 
-    def writeCalibrationState(self, calibration: Calibration, version: Optional[int] = None):
+    def writeCalibrationState(self, calibration: Calibration):
         """
-        Writes a `Calibration` to either a new version folder, or overwrites a specific version.
-        -- side effect: updates version number of incoming `Calibration`.
+        Calibration state must have version set.
         """
         indexor = self.calibrationIndexor(calibration.seedRun, calibration.useLiteMode)
-        indexor.writeParameters(calibration, version)
+        indexor.writeParameters(calibration, calibration.version)
 
-    def writeNormalizationState(self, normalization: Normalization, version: Optional[int] = None):  # noqa: F821
+    def writeNormalizationState(self, normalization: Normalization):
         """
-        Writes a `Normalization` to either a new version folder, or overwrites a specific version.
-        -- side effect: updates version number of incoming `Normalization`.
+        Normalization state must have version set.
         """
         indexor = self.normalizationIndexor(normalization.seedRun, normalization.useLiteMode)
-        indexor.writeParameters(normalization, version)
+        indexor.writeParameters(normalization, normalization.version)
 
     def readDetectorState(self, runId: str) -> DetectorState:
         detectorState = None
@@ -716,11 +714,9 @@ class LocalDataService:
                 self._prepareStateRoot(stateId)
 
             # write the calibration state
-            indexor = self.calibrationIndexor(runId, liteMode)
-            indexor.writeRecord(record, version)
-            indexor.writeParameters(record.calculationParameters, version)
-            indexor.addIndexEntry(entry, version)
-            # self.writeCalibrationState(calibration, version)
+            self.writeCalibrationRecord(record)
+            self.writeCalibrationState(record.calculationParameters)
+            self.writeCalibrationIndexEntry(entry)
             # write the default diffcal table
             self._writeDefaultDiffCalTable(runId, liteMode)
 
