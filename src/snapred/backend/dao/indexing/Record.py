@@ -50,13 +50,6 @@ class Record(VersionedObject, extra="allow"):
             v = str(v)
         return v
 
-    @field_validator("calculationParameters", mode="before")
-    @classmethod
-    def validate_calculationParameters(cls, v: Any) -> Any:
-        if v is None:
-            raise ValueError("calculationParameters cannot be set to None")
-        return v
-
     model_config = ConfigDict(
         # required in order to use 'WorkspaceName'
         arbitrary_types_allowed=True,
