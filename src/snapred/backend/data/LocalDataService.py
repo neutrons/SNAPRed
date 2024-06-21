@@ -691,13 +691,13 @@ class LocalDataService:
                 version=version,
             )
             record = Record(
-                runNumber="default",
+                runNumber=runId,
                 useLiteMode=liteMode,
                 version=version,
                 calculationParameters=calibration,
             )
             entry = IndexEntry(
-                runNumber="default",
+                runNumber=runId,
                 useLiteMode=liteMode,
                 version=version,
                 appliesTo=">=0",
