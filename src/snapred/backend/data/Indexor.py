@@ -80,8 +80,6 @@ class Indexor:
                     version = VERSION_DEFAULT
                 version = int(version)
                 versions.add(version)
-        if len(versions) > 1:
-            versions.discard(VERSION_DEFAULT)
         return versions
 
     def reconcileIndexToFiles(self):

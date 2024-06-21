@@ -232,6 +232,17 @@ class TestIndexor(unittest.TestCase):
 
     ### TEST VERSION GETTER METHODS ###
 
+    def test_allVersions_empty(self):
+        indexor = self.initIndexor()
+        assert indexor.allVersions() == []
+
+    def test_allVersions_some(self):
+        versions = [1, 2, 3, 4, 5]
+        index = {version: self.indexEntry(version) for version in versions}
+        indexor = self.initIndexor()
+        indexor.index = index
+        assert indexor.allVersions() == versions
+
     def test_defaultVersion(self):
         indexor = self.initIndexor()
         assert indexor.defaultVersion() == VERSION_DEFAULT
@@ -285,6 +296,92 @@ class TestIndexor(unittest.TestCase):
 
         indexor = self.initIndexor()
         assert indexor.currentVersion() == max(dirVersions)
+
+    def test_latestApplicableVersion_none(self):
+        # ensure latest applicable version is none if no versions apply
+        runNumber = "123"
+        versionList = [3, 4, 5]
+        for version in versionList:
+            self.writeRecordVersion(version)
+        indexor = self.initIndexor()
+        # there is no applivcable version
+        latest = indexor.latestApplicableVersion(runNumber)
+        assert latest is None
+
+    def test_latestApplicableVersion_one(self):
+        # ensure latest applicable versiom is the one if one applies
+        runNumber = "123"
+        versionList = [3, 4, 5]
+        for version in versionList:
+            self.writeRecordVersion(version)
+        indexor = self.initIndexor()
+        # make one entry applicable
+        version = 4
+        indexor.index[version].appliesTo = f">={runNumber}"
+        # get latest apllicable
+        latest = indexor.latestApplicableVersion(runNumber)
+        assert version == latest
+
+    def test_latestApplicableVersion_some(self):
+        # ensure latest applicable version will sort several applicable versions
+        runNumber = "123"
+        versionList = [3, 4, 5, 6, 7]
+        for version in versionList:
+            self.writeRecordVersion(version)
+        indexor = self.initIndexor()
+        # make some entries applicable
+        applicableVersions = [4, 6]
+        for version in applicableVersions:
+            indexor.index[version].appliesTo = f">={runNumber}"
+        # get latest apllicable
+        latest = indexor.latestApplicableVersion(runNumber)
+        assert latest == applicableVersions[-1]
+
+    def test_latestApplicableVersion_sorts_in_time(self):
+        # ensure latest applicable version will sort several applicable versions
+        runNumber = "123"
+        versionList = [3, 4, 5, 6, 7]
+        for version in versionList:
+            self.writeRecordVersion(version)
+        indexor = self.initIndexor()
+        # make some entries applicable and set their timestamps in reverse
+        applicableVersions = [6, 4]
+        for i, version in enumerate(applicableVersions):
+            indexor.index[version].appliesTo = f">={runNumber}"
+            indexor.index[version].timestamp = i + 1
+        # get latest apllicable
+        latest = indexor.latestApplicableVersion(runNumber)
+        assert latest == applicableVersions[-1]
+        assert latest != max(applicableVersions)
+
+    def test_latestApplicableVersion_returns_default(self):
+        # ensure latest applicable version will be default if it is the only one
+        runNumber = "123"
+        versionList = [VERSION_DEFAULT]
+        for version in versionList:
+            self.writeRecordVersion(version)
+        indexor = self.initIndexor()
+        # make it applicable
+        indexor.index[VERSION_DEFAULT].appliesTo = f">={runNumber}"
+        # get latest apllicable
+        latest = indexor.latestApplicableVersion(runNumber)
+        assert latest == VERSION_DEFAULT
+
+    def test_latestApplicableVersion_excludes_default(self):
+        # ensure latest applicable version will remove default if other runs exist
+        runNumber = "123"
+        versionList = [VERSION_DEFAULT, 4, 5]
+        for version in versionList:
+            self.writeRecordVersion(version)
+        indexor = self.initIndexor()
+        # make some entries applicable
+        applicableVersions = [VERSION_DEFAULT, 4]
+        print(indexor.index)
+        for version in applicableVersions:
+            indexor.index[version].appliesTo = f">={runNumber}"
+        # get latest apllicable
+        latest = indexor.latestApplicableVersion(runNumber)
+        assert latest == applicableVersions[-1]
 
     def test_thisOrCurrentVersion(self):
         version = randint(20, 120)
@@ -889,4 +986,12 @@ class TestIndexor(unittest.TestCase):
         indexor.writeParameters(params)
         res = indexor.readParameters()
         assert type(res) is Normalization
+        assert res == params
+
+    def test_readWriteParameters_reduction(self):
+        params = CalculationParameters.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        indexor = self.initIndexor(IndexorType.REDUCTION)
+        indexor.writeParameters(params)
+        res = indexor.readParameters()
+        assert type(res) is CalculationParameters
         assert res == params

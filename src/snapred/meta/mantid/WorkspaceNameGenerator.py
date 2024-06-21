@@ -89,6 +89,10 @@ class ValueFormatter:
             version = ""
         elif version == VERSION_DEFAULT:
             version = VERSION_DEFAULT_NAME
+        elif str(version).isdigit():
+            version = int(version)
+        else:
+            version = ""
 
         # convert the version to an integer, if possible
         if str(version).isdigit():

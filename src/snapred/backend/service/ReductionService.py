@@ -189,7 +189,7 @@ class ReductionService(Service):
     @FromString
     def saveReduction(self, request: ReductionExportRequest):
         version = request.version
-        if request is None:
+        if version is None:
             version = int(time.time())
         record = request.reductionRecord
         record.version = version

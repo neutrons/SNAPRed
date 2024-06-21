@@ -121,6 +121,19 @@ class TestReductionService(unittest.TestCase):
             assert self.localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version).exists()
             assert self.localDataService._constructReductionDataFilePath(runNumber, useLiteMode, version).exists()
 
+    def test_saveReduction_no_version(self):
+        # this test will ensure a timestamp is added at save time if none in request
+        runNumber = "123"
+        useLiteMode = True
+        version = randint(2, 100)
+        record = self.localDataService.readReductionRecord(runNumber, useLiteMode, version)
+        request = ReductionExportRequest(reductionRecord=record, version=None)
+        with reduction_root_redirect(self.localDataService):
+            # save the files
+            self.instance.saveReduction(request)
+        # ensure the time was set
+        assert record.version != version
+
     def test_loadReduction(self):
         ## this makes codecov happy
         with pytest.raises(NotImplementedError):
