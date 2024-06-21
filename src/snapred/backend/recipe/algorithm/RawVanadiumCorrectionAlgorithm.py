@@ -3,6 +3,7 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceUnitValidator,
 )
 from mantid.kernel import Direction, StringMandatoryValidator
 
@@ -17,15 +18,25 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "InputWorkspace", "", Direction.Input, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+            ),
             doc="Workspace containing the raw vanadium data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("BackgroundWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "BackgroundWorkspace",
+                "",
+                Direction.Input,
+                PropertyMode.Mandatory,
+                validator=WorkspaceUnitValidator("TOF"),
+            ),
             doc="Workspace containing the raw vanadium background data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+            ),
             doc="Workspace containing corrected data; if none given, the InputWorkspace will be overwritten",
         )
         self.declareProperty(
