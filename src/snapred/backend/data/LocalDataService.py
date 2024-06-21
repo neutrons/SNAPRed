@@ -357,6 +357,8 @@ class LocalDataService:
         """
         indexor = self.normalizationIndexor(record.runNumber, record.useLiteMode)
         normalizationDataPath: Path = indexor.versionPath(record.version)
+        if not normalizationDataPath.exists():
+            normalizationDataPath.mkdir(parents=True, exist_ok=True)
         for workspace in record.workspaceNames:
             ws = mtd[workspace]
             if ws.isRaggedWorkspace():
@@ -402,6 +404,8 @@ class LocalDataService:
         """
         indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
         calibrationDataPath = indexor.versionPath(record.version)
+        if not calibrationDataPath.exists():
+            calibrationDataPath.mkdir(parents=True, exist_ok=True)
 
         # write the output d-spacing calibrated data
         wsName = record.workspaces[wngt.DIFFCAL_OUTPUT]
