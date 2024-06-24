@@ -36,8 +36,8 @@ class DiffCalTweakPeakView(BackendRequestView):
 
     """
 
-    DMIN = Config["constants.CrystallographicInfo.dMin"]
-    DMAX = Config["constants.CrystallographicInfo.dMax"]
+    XTAL_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
+    XTAL_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
     THRESHOLD = Config["constants.PeakIntensityFractionThreshold"]
     MIN_PEAKS = Config["calibration.diffraction.minimumPeaksPerGroup"]
     PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
@@ -76,14 +76,14 @@ class DiffCalTweakPeakView(BackendRequestView):
             x.setEnabled(False)
 
         # create the peak adjustment controls
-        self.fielddMin = self._labeledField("dMin", QLineEdit(str(self.DMIN)))
-        self.fielddMax = self._labeledField("dMax", QLineEdit(str(self.DMAX)))
+        self.fieldXtalDMin = self._labeledField("xtal dMin", QLineEdit(str(self.XTAL_DMIN)))
+        self.fieldXtalDMax = self._labeledField("xtal dMax", QLineEdit(str(self.XTAL_DMAX)))
         self.fieldFWHMleft = self._labeledField("FWHM left", QLineEdit(str(self.FWHM.left)))
         self.fieldFWHMright = self._labeledField("FWHM right", QLineEdit(str(self.FWHM.right)))
         self.fieldThreshold = self._labeledField("intensity threshold", QLineEdit(str(self.THRESHOLD)))
         peakControlLayout = QHBoxLayout()
-        peakControlLayout.addWidget(self.fielddMin)
-        peakControlLayout.addWidget(self.fielddMax)
+        peakControlLayout.addWidget(self.fieldXtalDMin)
+        peakControlLayout.addWidget(self.fieldXtalDMax)
         peakControlLayout.addWidget(self.fieldFWHMleft)
         peakControlLayout.addWidget(self.fieldFWHMright)
         peakControlLayout.addWidget(self.fieldThreshold)
@@ -138,8 +138,8 @@ class DiffCalTweakPeakView(BackendRequestView):
         # verify the fields before recalculation
         try:
             groupingIndex = self.groupingFileDropdown.currentIndex()
-            dMin = float(self.fielddMin.field.text())
-            dMax = float(self.fielddMax.field.text())
+            xtalDMin = float(self.fieldXtalDMin.field.text())
+            xtalDMax = float(self.fieldXtalDMax.field.text())
             peakThreshold = float(self.fieldThreshold.text())
             peakFunction = SymmetricPeakEnum(self.peakFunctionDropdown.currentText())
             fwhm = Pair(
@@ -151,12 +151,12 @@ class DiffCalTweakPeakView(BackendRequestView):
             QMessageBox.warning(
                 self,
                 "Invalid Peak Parameters",
-                f"One of dMin, dMax, peak threshold, or max chi sq is invalid: {str(e)}",
+                f"One of xtal dMin, xtal dMax, peak threshold, or max chi sq is invalid: {str(e)}",
                 QMessageBox.Ok,
             )
             return
         # perform some checks on dMin, dMax values
-        if dMin < 0.1:
+        if xtalDMin < 0.1:
             response = QMessageBox.warning(
                 self,
                 "Warning!!!",
@@ -165,15 +165,15 @@ class DiffCalTweakPeakView(BackendRequestView):
             )
             if response == QMessageBox.No:
                 return
-        elif dMin > dMax:
+        elif xtalDMin > xtalDMax:
             QMessageBox.warning(
                 self,
                 "Warning!!!",
-                f"The dMin value exceeds the allowed maximum dMax value ({dMax}). Please enter a smaller value.",
+                f"The minimum crystal d-spacing exceeds the maximum ({xtalDMax}). Please adjust values.",
                 QMessageBox.Ok,
             )
             return
-        self.signalValueChanged.emit(groupingIndex, dMin, dMax, peakThreshold, peakFunction, fwhm, maxChiSq)
+        self.signalValueChanged.emit(groupingIndex, xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq)
 
     def updateGraphs(self, workspace, peaks, diagnostic):
         # get the updated workspaces and optimal graph grid
@@ -216,8 +216,8 @@ class DiffCalTweakPeakView(BackendRequestView):
                 # now shade
                 ax.fill_between(x, y, where=under_peaks, color=color, alpha=alpha)
             # plot the min and max value for peaks
-            ax.axvline(x=max(min(x), float(self.fielddMin.field.text())), label="dMin", color="red")
-            ax.axvline(x=min(max(x), float(self.fielddMax.field.text())), label="dMax", color="red")
+            ax.axvline(x=max(min(x), float(self.fieldXtalDMin.field.text())), label="xtal $d_{min}$", color="red")
+            ax.axvline(x=min(max(x), float(self.fieldXtalDMax.field.text())), label="xtal $d_{max}$", color="red")
         # resize window and redraw
         self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))
         self.canvas.draw()
@@ -255,14 +255,14 @@ class DiffCalTweakPeakView(BackendRequestView):
             msg = f"Proper calibration requires at least {self.MIN_PEAKS} well-fit peaks per group.\n"
             for empty in empties:
                 msg = msg + f"\tgroup {empty.groupID} has \t {len(empty.peaks)} peaks\n"
-            msg = msg + "Adjust grouping, dMin, dMax, and peak intensity threshold to include more peaks."
+            msg = msg + "Adjust grouping, xtal dMin, xtal dMax, and peak intensity threshold to include more peaks."
             raise ValueError(msg)
         totalBadPeaks = sum([len(badPeaks) for badPeaks in self.badPeaks])
         if totalBadPeaks > 0:
             msg = "Peaks in the following groups have chi-squared values exceeding the maximum allowed value.\n"
             for groupID, badPeak in enumerate(self.badPeaks):
                 msg = msg + f"\tgroup {groupID + 1} has bad peaks at {[peak.value for peak in badPeak]}\n"
-            msg = msg + "Adjust FWHM, dMin, dMax, peak intensity threshold, etc. to better fit more peaks."
+            msg = msg + "Adjust FWHM, xtal dMin, xtal dMax, peak intensity threshold, etc. to better fit more peaks."
             raise ValueError(msg)
 
     def _testContinueAnywayStates(self):

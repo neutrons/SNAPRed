@@ -148,8 +148,8 @@ class SousChef(Service):
             ingredients.peakIntensityThreshold,
             purgePeaks,
         )
-        dMin = ingredients.crystalDBounds.minimum
-        dMax = ingredients.crystalDBounds.maximum
+        crystalDMin = ingredients.crystalDBounds.minimum
+        crystalDMax = ingredients.crystalDBounds.maximum
         if key not in self._peaksCache:
             ingredients = self.prepPeakIngredients(ingredients)
             res = DetectorPeakPredictorRecipe().executeRecipe(
@@ -159,8 +159,8 @@ class SousChef(Service):
                 res = PurgeOverlappingPeaksRecipe().executeRecipe(
                     Ingredients=ingredients,
                     DetectorPeaks=res,
-                    dMin=dMin,
-                    dMax=dMax,
+                    crystalDMin=crystalDMin,
+                    crystalDMax=crystalDMax,
                 )
             self._peaksCache[key] = self.parseGroupPeakList(res)
 

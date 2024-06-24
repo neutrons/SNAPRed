@@ -3,6 +3,7 @@ from typing import Any, List
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.Limit import Limit
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
@@ -26,7 +27,7 @@ class NormalizationRecord(BaseModel):
     calibration: Calibration
     workspaceNames: List[WorkspaceName] = []
     version: int = Config["instrument.startingVersionNumber"]
-    dMin: float
+    crystalDBounds: Limit[float]
 
     @field_validator("runNumber", "backgroundRunNumber", mode="before")
     @classmethod

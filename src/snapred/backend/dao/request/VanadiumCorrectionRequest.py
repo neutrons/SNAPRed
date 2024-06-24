@@ -15,5 +15,5 @@ class VanadiumCorrectionRequest(BaseModel):
     backgroundWorkspace: str
     outputWorkspace: str
 
-    crystalDMin: float = Config["constants.CrystallographicInfo.dMin"]
-    crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
+    crystalDMin: float = Config["constants.CrystallographicInfo.crystalDMin"]
+    crystalDMax: float = Config["constants.CrystallographicInfo.crystalDMax"]
