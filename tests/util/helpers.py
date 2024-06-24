@@ -20,7 +20,6 @@ from mantid.simpleapi import (
     WorkspaceFactory,
     mtd,
 )
-from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 
 
 def createCompatibleDiffCalTable(tableWSName: str, templateWSName: str) -> ITableWorkspace:
@@ -192,18 +191,15 @@ def workspacesEqual(Workspace1: str, Workspace2: str, **other_options):
     Returns: if the workspaces are equal, will return True
     Otherwise, will raise an assertion error containing the result of CompareWorkspaces in description
     """
-    equal = False
-    if other_options == {}:
-        assert_wksp_almost_equal(Workspace1, Workspace2)
-        equal = True
-    else:
-        equal, message = CompareWorkspaces(
-            Workspace1=Workspace1,
-            Workspace2=Workspace2,
-            **other_options,
-        )
-        if not equal:
-            raise AssertionError(message.column("Message"))
+    # NOTE this can be re-worked to call `assert_wksp_almost_equal` when that
+    # has been fixed to allow exact comparisons.
+    equal, message = CompareWorkspaces(
+        Workspace1=Workspace1,
+        Workspace2=Workspace2,
+        **other_options,
+    )
+    if not equal:
+        raise AssertionError(message.column("Message"))
     return equal
 
 

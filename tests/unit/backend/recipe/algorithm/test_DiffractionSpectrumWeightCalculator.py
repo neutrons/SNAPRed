@@ -51,6 +51,15 @@ with mock.patch.dict(
     @pytest.mark.xfail(reason="To be fixed in EWM5043", strict=True)
     def test_with_predicted_peaks():
         """Test the weight calculator given predicted peaks"""
+
+        # NOTE for EWM 5043
+        # This needs to run on all 6 spectra, not just group 0.
+        # We need to inspect parameters to figure out why the peaks are not being occluded.
+        # Uncomment the save below, and load these three workspaces in workbench to view
+        # The output is not occluding any of the peaks
+        # The expectation is that a handful of the larger peaks are occluded.
+        # Also, the output is only being processed on spectrum 1, and not any of the others.
+
         inputWorkspaceFile = "/inputs/strip_peaks/DSP_58882_cal_CC_Column_spectra.nxs"
         referenceWeightFile = "/outputs/weight_spectra/weights.nxs"
 
@@ -73,6 +82,12 @@ with mock.patch.dict(
         weightCalculatorAlgo.setProperty("WeightWorkspace", weight_ws_name)
 
         assert weightCalculatorAlgo.execute()
+
+        # NOTE for diagnosis in EWM 5043
+        # SaveNexus(
+        #     InputWorkspace=weight_ws_name,
+        #     Filename=Resource.getPath("outputs/weight_spectra/out.nxs")
+        # )
 
         # match results with reference
         # weight_ws = mtd[weight_ws_name]
