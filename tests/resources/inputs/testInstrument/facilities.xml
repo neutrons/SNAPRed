@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<facilities>
- <facility name="TestSNAP" delimiter="_" zeropadding="8" FileExtensions=".nxs,.n*">
-  <timezone>UTC</timezone>
-
-  <instrument name="fakeSNAP.xml" shortName="fakeSNAP"/>
-
- </facility>
-</facilities>

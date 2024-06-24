@@ -4,7 +4,7 @@ import unittest.mock as mock
 from typing import Dict
 
 import pytest
-from mantid.kernel import amend_config
+from mantid.kernel import ConfigService, amend_config
 from mantid.simpleapi import (
     DeleteWorkspace,
     LoadDetectorsGroupingFile,
@@ -23,7 +23,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # file location for instrument definition
-        cls.localInstrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.localInstrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
 
         # names for instrument donor workspaces
         cls.localIDFWorkspace = "test_local_idf"
@@ -265,6 +265,8 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         # a facilities.xml file.  For some reason, it just isn't working.
         outputWorkspace = "test_ext"
         with amend_config(**{"instrumentDefinition.directory": Resource.getPath("inputs/testInstrument/")}):
+            ConfigService.updateFacilities("inputs/testInstrument/Facilities.xml")
+            ConfigService.setFacility("TestSNAP")
             loadingAlgo = LoadingAlgo()
             loadingAlgo.initialize()
             loadingAlgo.mantidSnapper.cleanup = mock.Mock()
@@ -272,6 +274,8 @@ class TestLoadGroupingDefinition(unittest.TestCase):
             loadingAlgo.setProperty("InstrumentName", "fakeSNAP")
             loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
             assert loadingAlgo.execute()
+        ConfigService.updateFacilities("")
+        ConfigService.reset()
         assert mtd.doesExist(outputWorkspace)
         assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace)
         # check the function calls made
@@ -308,8 +312,6 @@ class TestLoadGroupingDefinition(unittest.TestCase):
     def test_load_from_xml_file_with_instrument_file(self):
         self.do_test_load_with_instrument_file("xml")
 
-    # TODO THIS IS BAD -- EWM 5043
-    @pytest.mark.xfail(reason="Cannot load test instrument from name", strict=True)
     def test_load_from_xml_file_with_instrument_name(self):
         self.do_test_load_with_instrument_name("xml")
 
@@ -321,8 +323,6 @@ class TestLoadGroupingDefinition(unittest.TestCase):
     def test_load_from_hdf_file_with_instrument_file(self):
         self.do_test_load_with_instrument_file("hdf")
 
-    # TODO THIS IS BAD -- EWM 5043
-    @pytest.mark.xfail(reason="Cannot load test instrument from name", strict=True)
     def test_load_from_hdf_file_with_instrument_name(self):
         self.do_test_load_with_instrument_name("hdf")
 
