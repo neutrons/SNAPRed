@@ -259,10 +259,6 @@ class TestLoadGroupingDefinition(unittest.TestCase):
             assert call in calls
 
     def do_test_load_with_instrument_name(self, ext: str):
-        # NOTE must get mantid to find the test instrument by its name
-        # documentation on mantid suggests this should be as easy as using the amend_config
-        # context manager to point into the directory with the test instrument, after adding
-        # a facilities.xml file.  For some reason, it just isn't working.
         outputWorkspace = "test_ext"
         with amend_config(**{"instrumentDefinition.directory": Resource.getPath("inputs/testInstrument/")}):
             ConfigService.updateFacilities("inputs/testInstrument/Facilities.xml")
