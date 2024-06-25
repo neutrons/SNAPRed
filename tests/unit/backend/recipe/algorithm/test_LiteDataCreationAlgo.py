@@ -43,7 +43,7 @@ def test_fakeInstrument():
     liteInstrumentWS = "_test_lite_algo_lite"
     focusWS = "_test_lite_data_map"
 
-    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
 
@@ -126,7 +126,7 @@ def test_fail_with_no_output():
     fullInstrumentWS = "_test_lite_algo_native"
     focusWS = "_test_lite_data_map"
 
-    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
 
@@ -183,7 +183,7 @@ def test_fail_to_validate():
     liteInstrumentWS: str = "_test_lite_algo_lite"
     focusWS = "_test_lite_data_map"
 
-    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
 
@@ -259,7 +259,7 @@ def test_no_run_twice():
     outputWorkspace: str = "_test_lite_algo_output"
     focusWS = "_test_lite_data_map"
 
-    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
 

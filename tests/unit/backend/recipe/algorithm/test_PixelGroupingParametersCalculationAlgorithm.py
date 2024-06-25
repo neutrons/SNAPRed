@@ -106,7 +106,7 @@ class PixelGroupCalculation(unittest.TestCase):
         )
 
         # the local test instrument file
-        cls.localInstrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.localInstrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         # local grouping definition files
         cls.localGroupingFilename: Dict[int, str] = {
             cls.column: Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Column.xml"),
