@@ -4,6 +4,7 @@ import unittest.mock as mock
 from typing import Dict
 
 import pytest
+from mantid.kernel import ConfigService, amend_config
 from mantid.simpleapi import (
     DeleteWorkspace,
     LoadDetectorsGroupingFile,
@@ -13,6 +14,7 @@ from mantid.simpleapi import (
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition as LoadingAlgo
 from snapred.meta.Config import Resource
+from util.helpers import workspacesEqual
 
 IS_ON_ANALYSIS_MACHINE = socket.gethostname().startswith("analysis")
 
@@ -21,7 +23,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # file location for instrument definition
-        cls.localInstrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.localInstrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
 
         # names for instrument donor workspaces
         cls.localIDFWorkspace = "test_local_idf"
@@ -249,25 +251,29 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
-        assert_wksp_almost_equal(outputWorkspace, self.localReferenceWorkspace)
+        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace)
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
         for call in self.callsForExtension[ext]:
             assert call in calls
 
-    # NOTE LOADING FROM NAME IS VERY SLOW
     def do_test_load_with_instrument_name(self, ext: str):
         outputWorkspace = "test_ext"
-        loadingAlgo = LoadingAlgo()
-        loadingAlgo.initialize()
-        loadingAlgo.mantidSnapper.cleanup = mock.Mock()
-        loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile[ext])
-        loadingAlgo.setProperty("InstrumentName", "SNAP")
-        loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
-        assert loadingAlgo.execute()
+        with amend_config(**{"instrumentDefinition.directory": Resource.getPath("inputs/testInstrument/")}):
+            ConfigService.updateFacilities("inputs/testInstrument/Facilities.xml")
+            ConfigService.setFacility("TestSNAP")
+            loadingAlgo = LoadingAlgo()
+            loadingAlgo.initialize()
+            loadingAlgo.mantidSnapper.cleanup = mock.Mock()
+            loadingAlgo.setProperty("GroupingFilename", self.localGroupingFile[ext])
+            loadingAlgo.setProperty("InstrumentName", "fakeSNAP")
+            loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
+            assert loadingAlgo.execute()
+        ConfigService.updateFacilities("")
+        ConfigService.reset()
         assert mtd.doesExist(outputWorkspace)
-        assert_wksp_almost_equal(outputWorkspace, self.localReferenceWorkspace)
+        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace)
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
@@ -284,7 +290,7 @@ class TestLoadGroupingDefinition(unittest.TestCase):
         loadingAlgo.setProperty("OutputWorkspace", outputWorkspace)
         assert loadingAlgo.execute()
         assert mtd.doesExist(outputWorkspace)
-        assert_wksp_almost_equal(outputWorkspace, self.localReferenceWorkspace)
+        assert workspacesEqual(outputWorkspace, self.localReferenceWorkspace)
         # check the function calls made
         calls = [call[0] for call in loadingAlgo.mantidSnapper._algorithmQueue]
         # check used correct cals
@@ -302,35 +308,31 @@ class TestLoadGroupingDefinition(unittest.TestCase):
     def test_load_from_xml_file_with_instrument_file(self):
         self.do_test_load_with_instrument_file("xml")
 
-    # NOTE commented out because slow
-    # def test_load_from_xml_file_with_instrument_name(self):
-    #     self.do_test_load_with_instrument_name("xml")
+    def test_load_from_xml_file_with_instrument_name(self):
+        self.do_test_load_with_instrument_name("xml")
 
     # test hdf
-    # TODO THIS IS BAD -- EWM 5043
-    @pytest.mark.xfail(reason="To be fixed in EWM5043", strict=True)
+
     def test_load_from_hdf_file_with_instrument_donor(self):
         self.do_test_load_with_instrument_donor("hdf")
 
-    # TODO THIS IS BAD -- EWM 5043
-    @pytest.mark.xfail(reason="To be fixed in EWM5043", strict=True)
     def test_load_from_hdf_file_with_instrument_file(self):
         self.do_test_load_with_instrument_file("hdf")
 
-    # NOTE commented out because slow
-    # def test_load_from_hdf_file_with_instrument_name(self):
-    #     self.do_test_load_with_instrument_name("hdf")
+    def test_load_from_hdf_file_with_instrument_name(self):
+        self.do_test_load_with_instrument_name("hdf")
 
     # test nxs
+
     def test_load_from_nxs_file_with_instrument_donor(self):
         self.do_test_load_with_instrument_donor("nxs")
 
     def test_load_from_nxs_file_with_instrument_file(self):
         self.do_test_load_with_instrument_file("nxs")
 
-    # NOTE commented out because slow
-    # def test_load_from_nxs_file_with_instrument_name(self):
-    #     self.do_test_load_with_instrument_name("nxs")
+    # NOTE this one passes because nexus uses the workspace's instrument
+    def test_load_from_nxs_file_with_instrument_name(self):
+        self.do_test_load_with_instrument_name("nxs")
 
     ### BEGIN ANALYSIS TESTS
 

@@ -5,8 +5,9 @@ NOTE Mantid expects the instrument definition file to be <instrument name>_Defin
 This was unknown when the test instrument and multiple tests were setup, so the test instrument
 definition file is just fakeSNAP.xml.
 As soon as convenient, all instances of "fakeSNAP.xml" should be removed, and the file deleted.
-At that point, delete the note in the other instrument definition.
+At that point, delete this comment.
 -->
+
 
 <!-- For help on the notation used to specify an Instrument Definition File
      see http://www.mantidproject.org/IDF -->
