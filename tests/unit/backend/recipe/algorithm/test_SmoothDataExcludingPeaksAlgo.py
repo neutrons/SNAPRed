@@ -61,7 +61,7 @@ class TestSmoothDataAlgo(unittest.TestCase):
         )
 
         # populate ingredients
-        peaks = SculleryBoy().prepDetectorPeaks({})
+        peaks = SculleryBoy().prepDetectorPeaks({"good": "yes"})
 
         # initialize and run smoothdata algo
         smoothDataAlgo = Algo()
