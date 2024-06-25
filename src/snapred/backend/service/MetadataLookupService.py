@@ -29,16 +29,13 @@ class MetadataLookupService(Service):
     @FromString
     def verifyMultipleRuns(self, runs: str):
         maxRuns = Config["instrument.maxNumberOfRuns"]
-        try:
-            allRuns = IntArrayProperty(name="RunList", values=runs).value
-        except Exception as e:
-            raise e
+        allRuns = IntArrayProperty(name="RunList", values=runs).value
         validRuns = []
         for run in allRuns:
             if RunNumberValidator.validateRunNumber(str(run)):
                 validRuns.append(run)
         if len(validRuns) > maxRuns:
-            logger.warning(f"Maximum vale of {maxRuns} run numbers exceeded")
+            logger.warning(f"Maximum value of {maxRuns} run numbers exceeded")
             validRuns = []
 
         return validRuns
