@@ -34,7 +34,6 @@ class NormalizationRecord(Record):
     calibrationVersionUsed: int = VERSION_DEFAULT
     crystalDBounds: Limit[float]
 
-
     # must also parse integers as background run numbers
     @field_validator("backgroundRunNumber", mode="before")
     @classmethod
