@@ -1,3 +1,4 @@
+import json
 from typing import Dict, List
 
 import numpy as np
@@ -60,6 +61,15 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
+        ws = self.getProperty("InputWorkspace").value
+        ingredients = json.loads(self.getPropertyValue("DetectorPeaks"))
+        if ws.getNumberHistograms() != len(ingredients):
+            msg = f"""
+            Number of histograms {ws.getNumberHistograms()}
+            incompatible with groups in DetectorPeaks {len(ingredients)}
+            """
+            errors["InputWorkspace"] = msg
+            errors["DetectorPeaks"] = msg
         return errors
 
     def PyExec(self):
