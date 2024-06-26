@@ -10,7 +10,7 @@ VERSION_DEFAULT = -1  # SNAPRed Internal flag for default version
 
 
 class VersionedObject(BaseModel):
-    _version: Optional[int] = None
+    __version: Optional[int] = None
 
     def __init__(self, **kwargs):
         version = kwargs.pop("version", None)
@@ -18,19 +18,21 @@ class VersionedObject(BaseModel):
             version = None
         elif version == VERSION_DEFAULT_NAME:
             version = VERSION_DEFAULT
-        else:
-            version
+        elif version == VERSION_DEFAULT or version is None:
+            pass
+        elif not isinstance(version, int) or version < 0:
+            raise ValueError(f"Cannot initialize version as {version}")
         super().__init__(**kwargs)
-        self._version = version
+        self.__version = version
 
     @field_serializer("version", check_fields=False, when_used="json")
     def write_user_defaults(self, value: Any):  # noqa ARG002
-        if self._version is None:
+        if self.__version is None:
             return VERSION_NONE_NAME
-        elif self._version == VERSION_DEFAULT:
+        elif self.__version == VERSION_DEFAULT:
             return VERSION_DEFAULT_NAME
         else:
-            return self._version
+            return self.__version
 
     # NOTE some serialization still using the dict() method
     def dict(self, **kwargs):
@@ -41,16 +43,15 @@ class VersionedObject(BaseModel):
     @computed_field
     @property
     def version(self) -> int:
-        return self._version
+        return self.__version
 
     @version.setter
     def version(self, v):
-        self._version = None
         if v == VERSION_DEFAULT_NAME:
-            self._version = VERSION_DEFAULT
+            self.__version = VERSION_DEFAULT
         elif v == VERSION_DEFAULT:
-            self._version = v
+            self.__version = v
         elif isinstance(v, int) and v >= 0:
-            self._version = v
+            self.__version = v
         else:
             raise ValueError(f"Attempted to set version with invalid value {v}")
