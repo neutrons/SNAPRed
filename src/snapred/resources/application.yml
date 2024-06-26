@@ -43,6 +43,7 @@ instrument:
   startingRunNumber: 10000
   startingVersionNumber: 0
   minimumRunNumber: 46342
+  maxNumberOfRuns: 10
 
 nexus:
   lite:
