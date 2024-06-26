@@ -4,6 +4,7 @@ from pydantic import field_serializer, field_validator
 
 from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME, VERSION_NONE_NAME
+from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
