@@ -72,13 +72,12 @@ class ReductionWorkflow(WorkflowImplementer):
 
         for runNumber in runNumbers:
             payload = ReductionRequest(
-                runNumber=runNumber,
+                runNumber=str(runNumber),
                 useLiteMode=self._reductionView.liteModeToggle.field.getState(),
                 continueFlags=self.continueAnywayFlags,
             )
             # TODO: Handle Continue Anyway
             self.request(path="reduction/", payload=payload.json())
-            self._reductionView.removeRunNumber(runNumber)
 
         return self.responses[-1]
 
