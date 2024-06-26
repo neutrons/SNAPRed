@@ -1,4 +1,4 @@
-# ruff: noqa: E402
+# ruff: noqa: E402, ARG005
 
 import importlib
 import logging
@@ -266,7 +266,7 @@ class TestIndexor(unittest.TestCase):
         assert list(indexor.readDirectoryList()) == versions
         # now check that the current version advances when an entry is added
         assert indexor.currentVersion() == max(versions)
-        indexor.addIndexEntry(self.indexEntry(randint(1, 5)))
+        indexor.addIndexEntry(self.indexEntry(indexor.nextVersion()))
         assert indexor.currentVersion() == max(versions) + 1
 
     def test_currentVersion_dirHigher(self):
@@ -401,6 +401,19 @@ class TestIndexor(unittest.TestCase):
         assert indexor.thisOrNextVersion(VERSION_DEFAULT) == VERSION_DEFAULT
         assert indexor.thisOrNextVersion(version) == version
 
+    def test_isValidVersion(self):
+        indexor = self.initIndexor()
+        # the good
+        for i in range(10):
+            assert indexor.isValidVersion(randint(2, 120))
+        assert indexor.isValidVersion(VERSION_DEFAULT)
+        # the bad
+        assert not indexor.isValidVersion("bad")
+        assert not indexor.isValidVersion("*")
+        assert not indexor.isValidVersion(None)
+        assert not indexor.isValidVersion(-2)
+        assert not indexor.isValidVersion(1.2)
+
     def test_nextVersion(self):
         # check that the current version advances as expected as
         # both index entries and records are added to the index
@@ -421,7 +434,7 @@ class TestIndexor(unittest.TestCase):
         # add an entry to the calibration index
         here = VERSION_START
         # it should be added at the start
-        entry = self.indexEntry()
+        entry = self.indexEntry(indexor.nextVersion())
         indexor.addIndexEntry(entry)
         expectedIndex[here] = entry
         assert indexor.index == expectedIndex
@@ -449,7 +462,7 @@ class TestIndexor(unittest.TestCase):
         # add another entry
         here = here + 1
         # ensure it is added at the next version
-        entry = self.indexEntry()
+        entry = self.indexEntry(indexor.nextVersion())
         indexor.addIndexEntry(entry)
         expectedIndex[here] = entry
         assert indexor.index == expectedIndex
@@ -494,8 +507,8 @@ class TestIndexor(unittest.TestCase):
         # write a record first, at a much future version
         # then add an index entry, and ensure it matches
         here = here + 23
-        record = self.record()
-        indexor.writeRecord(record, here)
+        record = self.record(here)
+        indexor.writeRecord(record)
         assert indexor.nextVersion() == here
         assert indexor.nextVersion() not in indexor.index
 
@@ -522,8 +535,8 @@ class TestIndexor(unittest.TestCase):
         assert indexor.nextVersion() == VERSION_START
 
         # add an entry at the default version
-        entry = self.indexEntry()
-        indexor.addIndexEntry(entry, VERSION_DEFAULT)
+        entry = self.indexEntry(VERSION_DEFAULT)
+        indexor.addIndexEntry(entry)
         expectedIndex[VERSION_DEFAULT] = entry
         assert indexor.index == expectedIndex
         assert entry.version == VERSION_DEFAULT
@@ -545,7 +558,7 @@ class TestIndexor(unittest.TestCase):
         assert indexor.nextVersion() == VERSION_START
 
         # add another entry -- now at the start
-        entry = self.indexEntry()
+        entry = self.indexEntry(indexor.nextVersion())
         indexor.addIndexEntry(entry)
         expectedIndex[VERSION_START] = entry
         assert indexor.index == expectedIndex
@@ -574,8 +587,8 @@ class TestIndexor(unittest.TestCase):
         assert indexor.nextVersion() == VERSION_START
 
         # add a record at the default version
-        record = self.record()
-        indexor.writeRecord(record, VERSION_DEFAULT)
+        record = self.record(VERSION_DEFAULT)
+        indexor.writeRecord(record)
 
         # the current version is now the default version
         assert indexor.currentVersion() == VERSION_DEFAULT
@@ -718,6 +731,20 @@ class TestIndexor(unittest.TestCase):
             readIndex = parse_file_as(List[IndexEntry], indexor.indexPath())
             assert readIndex == list(indexor.index.values())
 
+    def test_addEntry_fails(self):
+        # adding an entry with a bad version will fail
+        indexor = self.initIndexor()
+        indexor.isValidVersion = lambda x: False  # now it will always return false
+        entry = self.indexEntry()
+        with pytest.raises(RuntimeError):
+            indexor.addIndexEntry(entry)
+
+    def test_addEntry_default(self):
+        indexor = self.initIndexor()
+        entry = self.indexEntry(VERSION_DEFAULT)
+        indexor.addIndexEntry(entry)
+        assert VERSION_DEFAULT in indexor.index
+
     def test_addEntry_advances(self):
         # adding an index entry advances the current version
         versionList = [2, 7, 11]
@@ -727,10 +754,11 @@ class TestIndexor(unittest.TestCase):
             self.writeRecordVersion(version)
         indexor = self.initIndexor()
         assert indexor.currentVersion() == max(versionList)
-        indexor.addIndexEntry(self.indexEntry(3))
+        indexor.addIndexEntry(self.indexEntry(indexor.nextVersion()))
         assert indexor.currentVersion() == max(versionList) + 1
 
     def test_addEntry_at_version_new(self):
+        # an index entry can be added at any version number, not only next
         versionList = [2, 7, 11]
         index = {version: self.indexEntry(version) for version in versionList}
         write_model_list_pretty(index.values(), self.indexPath())
@@ -738,7 +766,7 @@ class TestIndexor(unittest.TestCase):
             self.writeRecordVersion(version)
         indexor = self.initIndexor()
         assert 3 not in indexor.index
-        indexor.addIndexEntry(self.indexEntry(3), 3)
+        indexor.addIndexEntry(self.indexEntry(3))
         assert indexor.index[3] is not None
 
     def test_addEntry_at_version_overwrite(self):
@@ -749,7 +777,7 @@ class TestIndexor(unittest.TestCase):
             self.writeRecordVersion(version)
         indexor = self.initIndexor()
         entry7 = indexor.index[7]
-        indexor.addIndexEntry(self.indexEntry(3), 7)
+        indexor.addIndexEntry(self.indexEntry(7))
         assert indexor.index[7] is not entry7
 
     def test_indexEntryFromRecord(self):
@@ -770,7 +798,7 @@ class TestIndexor(unittest.TestCase):
 
     # read / write #
 
-    def test_readWriteRecord_no_version(self):
+    def test_readWriteRecord_next_version(self):
         # make sure there exists another version
         # so that we can know it does not default
         # to the starting version
@@ -783,21 +811,21 @@ class TestIndexor(unittest.TestCase):
         # now write then read the record
         # make sure the record was saved at the next version
         # and the read / written records match
-        record = self.record(randint(6, 16))
+        record = self.record(nextVersion)
         indexor.writeRecord(record)
         res = indexor.readRecord(nextVersion)
         assert record.version == nextVersion
         assert res == record
 
-    def test_readWriteRecord_with_version(self):
+    def test_readWriteRecord_any_version(self):
         # write a record at some version number
-        record = self.record(randint(10, 20))
+        version = randint(10, 20)
+        record = self.record(version)
         indexor = self.initIndexor()
-        version = randint(21, 30)
         # write then read the record
         # make sure the record version was updated
         # and the read / written records match
-        indexor.writeRecord(record, version)
+        indexor.writeRecord(record)
         res = indexor.readRecord(version)
         assert record.version == version
         assert res == record
@@ -818,10 +846,11 @@ class TestIndexor(unittest.TestCase):
         res = indexor.readRecord(record.version)
         assert res == record
 
-    def test_readRecord_no_version(self):
-        # NOTE this test assumes no validation is taking place
-        # if validation of the version is ever put in place
-        # this test can probably be safely deleted
+    def test_readRecord_invalid_version(self):
+        # if an invalid version is attempted to be read, just give the current record
+
+        # NOTE this test assumes no validation is taking place on the arguments to readRecord
+        # if validation of the version is ever put in place this test can probably be safely deleted
         record = self.record(randint(1, 100))
         self.writeRecord(record)
         indexor = self.initIndexor()
@@ -830,13 +859,20 @@ class TestIndexor(unittest.TestCase):
 
     # write #
 
+    def test_writeRecord_fails(self):
+        record = self.record()
+        indexor = self.initIndexor()
+        indexor.isValidVersion = lambda x: False
+        with pytest.raises(RuntimeError):
+            indexor.writeRecord(record)
+
     def test_writeRecord_with_version(self):
         # this test ensures a record can be written to the indicated version
         # create a record and write it
-        record = self.record(randint(1, 10))
+        version = randint(2, 120)
+        record = self.record(version)
         indexor = self.initIndexor()
-        version = randint(11, 20)
-        indexor.writeRecord(record, version)
+        indexor.writeRecord(record)
         assert record.version == version
         assert self.recordPath(version).exists()
         # read it back in and ensure it is the same
@@ -846,8 +882,8 @@ class TestIndexor(unittest.TestCase):
         assert res.version == version
         assert res.calculationParameters.version == version
 
-    def test_writeRecord_no_version(self):
-        # this test ensures no version defaults to next version
+    def test_writeRecord_next_version(self):
+        # this test we can save to next version
 
         # make sure there exists other versions so that we can know it does not default to the starting version
         versions = [2, 3, 4]
@@ -857,33 +893,13 @@ class TestIndexor(unittest.TestCase):
         nextVersion = indexor.nextVersion()
         assert nextVersion != VERSION_START
         # now write the record
-        record = self.record(randint(10, 20))
+        record = self.record(nextVersion)
         indexor.writeRecord(record)
         assert record.version == nextVersion
         assert self.recordPath(nextVersion).exists()
         res = parse_file_as(Record, self.recordPath(nextVersion))
         assert res == record
         # ensure the version numbers were set
-        assert res.version == nextVersion
-        assert res.calculationParameters.version == nextVersion
-
-    def test_writeRecord_star(self):
-        # this test ensures that an invalid version defaults to next version
-
-        # make sure there exists other versions so that we can know it does not default o the starting version
-        versions = [2, 3, 4]
-        for version in versions:
-            self.writeRecordVersion(version)
-        indexor = self.initIndexor()
-        nextVersion = indexor.nextVersion()
-        assert nextVersion != VERSION_START
-        # now write the record
-        record = self.record(randint(10, 20))
-        indexor.writeRecord(record, "*")
-        assert record.version == nextVersion
-        assert self.recordPath(nextVersion).exists()
-        res = parse_file_as(Record, self.recordPath(nextVersion))
-        assert res == record
         assert res.version == nextVersion
         assert res.calculationParameters.version == nextVersion
 
@@ -930,27 +946,21 @@ class TestIndexor(unittest.TestCase):
         with pytest.raises(FileNotFoundError):
             indexor.readParameters(1)
 
-    def test_readWriteParameters_with_version(self):
+    def test_writeParameters_fails(self):
+        params = self.calculationParameters(randint(2, 10))
+        indexor = self.initIndexor()
+        indexor.isValidVersion = lambda x: False
+        with pytest.raises(RuntimeError):
+            indexor.writeParameters(params)
+
+    def test_readWriteParameters(self):
         version = randint(1, 10)
         params = self.calculationParameters(version)
 
         indexor = self.initIndexor()
-        version = randint(11, 20)
-        indexor.writeParameters(params, version)
+        indexor.writeParameters(params)
         res = indexor.readParameters(version)
         assert res.version == version
-        assert res == params
-
-    def test_readWriteParameters_no_version(self):
-        version = randint(1, 10)
-        params = self.calculationParameters(version)
-
-        indexor = self.initIndexor()
-        indexor.index = {randint(11, 20): None}
-        nextVersion = indexor.nextVersion()
-        indexor.writeParameters(params)
-        res = indexor.readParameters()
-        assert res.version == nextVersion
         assert res == params
 
     def test_readWriteParameters_warn_overwrite(self):
@@ -960,14 +970,14 @@ class TestIndexor(unittest.TestCase):
 
         # write some parameters at a version
         params1 = self.calculationParameters(version)
-        indexor.writeParameters(params1, version)
+        indexor.writeParameters(params1)
         assert indexor.parametersPath(version).exists()
 
         # now try to overwrite parameters at same version
         # make sure a warning is logged
         with self.assertLogs(logger=IndexorModule.logger, level=logging.WARNING) as cm:
             params2 = self.calculationParameters(version)
-            indexor.writeParameters(params2, version)
+            indexor.writeParameters(params2)
         assert f"Overwriting  parameters at {indexor.parametersPath(version)}" in cm.output[0]
 
     # make sure the indexor can read/write specific state parameter types #

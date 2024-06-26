@@ -305,13 +305,13 @@ class LocalDataService:
         """
         The entry must have correct version.
         """
-        self.calibrationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, entry.version)
+        self.calibrationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry)
 
     def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
         """
         The entry must have correct version.
         """
-        self.normalizationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry, entry.version)
+        self.normalizationIndexor(entry.runNumber, entry.useLiteMode).addIndexEntry(entry)
 
     # TODO delete this and replace with something else.
     def _getLatestReductionVersionNumber(self, runNumber: str, useLiteMode: bool) -> int:
@@ -343,9 +343,9 @@ class LocalDataService:
 
         indexor = self.normalizationIndexor(record.runNumber, record.useLiteMode)
         # write the record to file
-        indexor.writeRecord(record, record.version)
+        indexor.writeRecord(record)
         # separately write the normalization state
-        indexor.writeParameters(record.calculationParameters, record.version)
+        indexor.writeParameters(record.calculationParameters)
 
         logger.info(f"wrote NormalizationRecord: version: {record.version}")
 
@@ -390,9 +390,9 @@ class LocalDataService:
 
         indexor = self.calibrationIndexor(record.runNumber, record.useLiteMode)
         # write record to file
-        indexor.writeRecord(record, record.version)
+        indexor.writeRecord(record)
         # separately write the calibration state
-        indexor.writeParameters(record.calculationParameters, record.version)
+        indexor.writeParameters(record.calculationParameters)
 
         logger.info(f"Wrote CalibrationRecord: version: {record.version}")
 
@@ -603,14 +603,14 @@ class LocalDataService:
         Calibration state must have version set.
         """
         indexor = self.calibrationIndexor(calibration.seedRun, calibration.useLiteMode)
-        indexor.writeParameters(calibration, calibration.version)
+        indexor.writeParameters(calibration)
 
     def writeNormalizationState(self, normalization: Normalization):
         """
         Normalization state must have version set.
         """
         indexor = self.normalizationIndexor(normalization.seedRun, normalization.useLiteMode)
-        indexor.writeParameters(normalization, normalization.version)
+        indexor.writeParameters(normalization)
 
     def readDetectorState(self, runId: str) -> DetectorState:
         detectorState = None

@@ -141,10 +141,11 @@ def do_test_write_record_with_version(workflow: Literal["Calibration", "Normaliz
             useLiteMode=useLiteMode,
             workspaces={},
             version=randint(1, 120),
+            calculationParameters=mock.Mock(),
         )
-        record.calculationParameters = mock.Mock()
         getattr(localDataService, f"write{workflow}Record")(record)
-        mockIndexor.writeRecord.assert_called_with(record, record.version)
+        mockIndexor.writeRecord.assert_called_with(record)
+        mockIndexor.writeParameters.assert_called_with(record.calculationParameters)
 
 
 def do_test_read_state_with_version(workflow: Literal["Calibration", "Normalization", "Reduction"]):
@@ -936,6 +937,7 @@ def test_readWriteCalibrationIndexEntry():
         useLiteMode=True,
         comments="test comment",
         author="test author",
+        version=randint(2, 120),
     )
     localDataService = LocalDataService()
     with state_root_redirect(localDataService):
@@ -952,6 +954,7 @@ def test_readWriteNormalizationIndexEntry():
         useLiteMode=True,
         comments="test comment",
         author="test author",
+        version=randint(2, 120),
     )
     localDataService = LocalDataService()
     with state_root_redirect(localDataService):

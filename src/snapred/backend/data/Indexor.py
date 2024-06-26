@@ -22,7 +22,7 @@ logger = snapredLogger.getLogger(__name__)
 
 
 """
-    The Indexor will automatically track versions and
+    The Indexor will automatically track versions and produce the next and current versions.
     This is intended to have responsibility over one state/resolution/workflow combination,
     (e.g state abcd123efg, lite mode, calibration), and for that combination will keep tabs on
     the index and the directory tree to determine appropriate version numbers.
@@ -30,11 +30,8 @@ logger = snapredLogger.getLogger(__name__)
     All saving or loading of indices, records, or calculation parameter files should be
     handled through the appropriate Indexor.
 
-    Saving will automatically handle applying the corrct version number in all cases.
-    If a specific version is specified, all saving will be to that version; if None is passed
-    instead, then saving will be to the next version according to the Indexor.
-
-    When saving, the Indexor will overwrite and ignore any versions attached to an object.
+    When saving, the Indexor will always save at the version attached to the object.
+    If this version is invalid, it will throw an error and not save.
 
     The Indexor version list will only update when both a record and a corresponding inex entry
     have been written.
@@ -178,18 +175,24 @@ class Indexor:
         return version
 
     def thisOrCurrentVersion(self, version: Optional[int]):
-        if version == VERSION_DEFAULT:
-            pass
-        elif not isinstance(version, int) or version < 0:
-            version = self.currentVersion()
-        return version
+        if self.isValidVersion(version):
+            return version
+        else:
+            return self.currentVersion()
 
     def thisOrNextVersion(self, version: Optional[int]):
+        if self.isValidVersion(version):
+            return version
+        else:
+            return self.nextVersion()
+
+    def isValidVersion(self, version):
         if version == VERSION_DEFAULT:
-            pass
-        elif not isinstance(version, int) or version < 0:
-            version = self.nextVersion()
-        return version
+            return True
+        elif isinstance(version, int) and version >= VERSION_START:
+            return True
+        else:
+            return False
 
     ## VERSION COMPARISON METHODS ##
 
@@ -276,12 +279,14 @@ class Indexor:
         path.parent.mkdir(parents=True, exist_ok=True)
         write_model_list_pretty(self.index.values(), path)
 
-    def addIndexEntry(self, entry: IndexEntry, version: Optional[int] = None):
+    def addIndexEntry(self, entry: IndexEntry):
         """
-        If a verison is not passed, it will save at the next version.
+        Will save at the version on the index entry.
+        If the version is invalid, will throw an error and refuse to save.
         """
-        version = self.thisOrNextVersion(version)
-        entry.version = version
+        if not self.isValidVersion(entry.version):
+            raise RuntimeError(f"Invalid version {entry.version} on index entry.  Save failed.")
+
         self.index[entry.version] = entry
         self.writeIndex()
 
@@ -309,14 +314,18 @@ class Indexor:
                     record = parse_file_as(Record, filePath)
         return record
 
-    def writeRecord(self, record: Record, version: Optional[int] = None):
-        version = self.thisOrNextVersion(version)
-        record.version = version
-        record.calculationParameters.version = version
-        filePath = self.recordPath(version)
+    def writeRecord(self, record: Record):
+        """
+        Will save at the version on the record.
+        If the version is invalid, will throw an error and refuse to save.
+        """
+        if not self.isValidVersion(record.version):
+            raise RuntimeError(f"Invalid version {record.version} on record.  Save failed.")
+
+        filePath = self.recordPath(record.version)
         filePath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(record, filePath)
-        self.dirVersions.add(version)
+        self.dirVersions.add(record.version)
 
     ## STATE PARAMETER READ / WRITE METHODS ##
 
@@ -342,11 +351,15 @@ class Indexor:
             )
         return parameters
 
-    def writeParameters(self, parameters: CalculationParameters, version: Optional[int] = None):
-        version = self.thisOrNextVersion(version)
-        parameters.version = version
+    def writeParameters(self, parameters: CalculationParameters):
+        """
+        Will save at the version on the calculation parameters.
+        If the version is invalid, will throw an error and refuse to save.
+        """
+        if not self.isValidVersion(parameters.version):
+            raise RuntimeError(f"Invalid version {parameters.version} on calculation parameters.  Save failed.")
 
-        parametersPath = self.parametersPath(version)
+        parametersPath = self.parametersPath(parameters.version)
         if parametersPath.exists():
             logger.warn(f"Overwriting {self.indexorType} parameters at {parametersPath}")
         else:
