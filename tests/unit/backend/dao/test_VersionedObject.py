@@ -96,6 +96,39 @@ def test_cannot_set_invalid():
         vo.version = -2
 
 
+def test_shaped_liked_itself():
+    """
+    Make a versioned object.  Serialize it.  Then parse it back as itself.
+    It should validate and create an identical object.
+    """
+    # version is None
+    vo_old = VersionedObject(version=None)
+    vo_new = VersionedObject.model_validate(vo_old.model_dump())
+    assert vo_old == vo_new
+    vo_new = VersionedObject.model_validate(vo_old.dict())
+    assert vo_old == vo_new
+    vo_new = VersionedObject.model_validate_json(vo_old.model_dump_json())
+    assert vo_old == vo_new
+
+    # version is default
+    vo_old = VersionedObject(version=VERSION_DEFAULT)
+    vo_new = VersionedObject.model_validate(vo_old.model_dump())
+    assert vo_old == vo_new
+    vo_new = VersionedObject.model_validate(vo_old.dict())
+    assert vo_old == vo_new
+    vo_new = VersionedObject.model_validate_json(vo_old.model_dump_json())
+    assert vo_old == vo_new
+
+    # version is integer
+    vo_old = VersionedObject(version=randint(0, 120))
+    vo_new = VersionedObject.model_validate(vo_old.model_dump())
+    assert vo_old == vo_new
+    vo_new = VersionedObject.model_validate(vo_old.dict())
+    assert vo_old == vo_new
+    vo_new = VersionedObject.model_validate_json(vo_old.model_dump_json())
+    assert vo_old == vo_new
+
+
 ### TESTS OF INDEX ENTRIES AS VERSIONED OBJECTS ###
 
 
