@@ -42,6 +42,7 @@ instrument:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
   minimumRunNumber: 46342
+  maxNumberOfRuns: 10
 
 nexus:
   lite:
@@ -150,8 +151,8 @@ constants:
   m2cm: 10000.0 # conversion factor for m^2 to cm^2
 
   CrystallographicInfo:
-    dMin: 0.4
-    dMax: 100.0
+    crystalDMin: 0.4
+    crystalDMax: 100.0
 
   CalibrationReduction:
     tofMin: 2000
@@ -166,6 +167,9 @@ constants:
 
   ResampleX:
     NumberBins: 1500
+
+  CropFactors:
+    lowWavelengthCrop: 0.05
 
 docs:
   user:

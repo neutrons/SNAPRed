@@ -71,7 +71,7 @@ class TestFocusSpectra(unittest.TestCase):
         )
         LoadInstrument(
             Workspace=rawWsName,
-            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml"),
             RewriteSpectraMap=True,
         )
         # also load the focus grouping workspace
@@ -201,10 +201,11 @@ class TestFocusSpectra(unittest.TestCase):
             Xmin=overallDMin,
             Xmax=overallDMax,
             BinWidth=abs(dBin),
-            XUnit="dSpacing",
+            XUnit="TOF",
             NumBanks=5,  # must wrong for test
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
         )
+
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)

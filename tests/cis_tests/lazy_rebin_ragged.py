@@ -92,7 +92,7 @@ CreateSampleWorkspace(
 )
 LoadInstrument(
     Workspace=inputWStof,
-    Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+    Filename=Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml"),
     RewriteSpectraMap=True,
 )
 Rebin(

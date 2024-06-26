@@ -27,7 +27,7 @@ class InstaEats(GroceryService):
         super().__init__(dataService=WhateversInTheFridge)
         self.dataService = WhateversInTheFridge()
         self.groupingMap = self.dataService._readDefaultGroupingMap()
-        self.testInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        self.testInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         self.instrumentDonorWorkspace = mtd.unique_name(prefix="_instrument_donor")
         self.grocer.executeRecipe = mock.Mock(
             side_effect=lambda filename, workspace, loader, *args, **kwargs: (

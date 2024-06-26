@@ -5,6 +5,7 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceUnitValidator,
 )
 from mantid.kernel import Direction, StringMandatoryValidator
 
@@ -13,13 +14,23 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 class FocusSpectraAlgorithm(PythonAlgorithm):
+    """
+    This algorithm performs diffraction focusing on TOF data. It converts the
+    input workspace from time-of-flight (TOF) to d-spacing and applies
+    diffraction focusing using a grouping workspace. Optionally, it rebins
+    the output to ensure uniform binning.
+
+    """
+
     def category(self):
         return "SNAPRed Data Processing"
 
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "InputWorkspace", "", Direction.Input, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+            ),
             doc="Workspace containing values at each pixel",
         )
         self.declareProperty(
@@ -27,7 +38,13 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             doc="Workspace defining the grouping for diffraction focusing",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "OutputWorkspace",
+                "",
+                Direction.Output,
+                PropertyMode.Mandatory,
+                validator=WorkspaceUnitValidator("dSpacing"),
+            ),
             doc="The diffraction-focused data",
         )
         self.declareProperty(

@@ -21,6 +21,6 @@ class SmoothDataExcludingPeaksRequest(BaseModel):
     inputWorkspace: str
     outputWorkspace: str
     smoothingParameter: float = Config["calibration.parameters.default.smoothing"]
-    crystalDMin: float = Config["constants.CrystallographicInfo.dMin"]
-    crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
+    crystalDMin: float = Config["constants.CrystallographicInfo.crystalDMin"]
+    crystalDMax: float = Config["constants.CrystallographicInfo.crystalDMax"]
     peakIntensityThreshold: float = Config["constants.PeakIntensityFractionThreshold"]

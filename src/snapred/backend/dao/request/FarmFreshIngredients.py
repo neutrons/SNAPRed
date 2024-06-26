@@ -8,7 +8,7 @@ from snapred.meta.Config import Config
 from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
-class FarmFreshIngredients(BaseModel):
+class FarmFreshIngredients(BaseModel, extra="forbid"):
     """
     from these, the Sous Chef can make everything
     """
@@ -33,9 +33,9 @@ class FarmFreshIngredients(BaseModel):
     peakIntensityThreshold: float = Config["calibration.diffraction.peakIntensityThreshold"]
     peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
-    crystalDBounds: Limit[float] = Limit[float](
-        minimum=Config["constants.CrystallographicInfo.dMin"],
-        maximum=Config["constants.CrystallographicInfo.dMax"],
+    crystalDBounds: Limit[float] = Limit(
+        minimum=Config["constants.CrystallographicInfo.crystalDMin"],
+        maximum=Config["constants.CrystallographicInfo.crystalDMax"],
     )
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
     maxChiSq: Optional[float] = Config["constants.GroupDiffractionCalibration.MaxChiSq"]

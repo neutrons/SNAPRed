@@ -193,8 +193,8 @@ def script(goldenData):
             calibrantSamplePath = calibrantSamplePath,
             workspaces = {wngt.DIFFCAL_OUTPUT: calibrationResult["outputDSPWorkspace"]},
             peakFunction = "Gaussian",
-            crystalDMin = Config["constants.CrystallographicInfo.dMin"],
-            crystalDMax = Config["constants.CrystallographicInfo.dMax"],
+            crystalDMin = Config["constants.CrystallographicInfo.crystalDMin"],
+            crystalDMax = Config["constants.CrystallographicInfo.crystalDMax"],
             peakIntensityThreshold = Config["calibration.diffraction.peakIntensityThreshold"],
             nBinsAcrossPeakWidth = Config["calibration.diffraction.nBinsAcrossPeakWidth"],
             fwhmMultipliers = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])

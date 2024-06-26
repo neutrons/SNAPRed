@@ -1,3 +1,5 @@
+# ruff: noqa: ARG002
+
 # TODO this needs to be setup to better handle inputs
 
 
@@ -86,7 +88,7 @@ class SculleryBoy:
             path = Resource.getPath("/inputs/predict_peaks/input_fake_ingredients.json")
         return PeakIngredients.parse_file(path)
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[GroupPeakList]:
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:
         try:
             peakList = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=self.prepPeakIngredients(ingredients),

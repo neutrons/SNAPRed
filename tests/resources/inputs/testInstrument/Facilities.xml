@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+Note that all comments on this file must go at the bottom.
+This is meant to enable loading the test instrument by its name, rather than a file or donor.
+This file MUST be named Facilities.xml, with initial cap.
+The instrument defined above MUST have a technique on it, or this will not parse.
+The instrument definition file MUST be called <instrument name>_Definition.xml
+ -->
+
+<facilities>
+ <facility name="TestSNAP" delimiter="_" zeropadding="8" FileExtensions=".nxs,.n*">
+  <timezone>UTC</timezone>
+
+  <instrument name="fakeSNAP">
+  <technique>testing</technique>
+  </instrument>
+
+ </facility>
+</facilities>

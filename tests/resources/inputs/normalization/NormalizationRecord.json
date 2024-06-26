@@ -81,5 +81,5 @@
         "fitted_strippedFocussedData_stripped_1",
         "fitted_strippedFocussedData_stripped_2"
       ],
-    "dMin": 0.4
+    "crystalDBounds": {"minimum": 0.4, "maximum": 100.0}
 }

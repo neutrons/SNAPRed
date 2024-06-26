@@ -12,8 +12,8 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class CrystallographicInfoRecipe:
-    D_MIN = Config["constants.CrystallographicInfo.dMin"]
-    D_MAX = Config["constants.CrystallographicInfo.dMax"]
+    D_MIN = Config["constants.CrystallographicInfo.crystalDMin"]
+    D_MAX = Config["constants.CrystallographicInfo.crystalDMax"]
 
     def __init__(self):
         # NOTE: workaround, we just add an empty host algorithm.
@@ -21,15 +21,15 @@ class CrystallographicInfoRecipe:
         utensils.PyInit()
         self.mantidSnapper = utensils.mantidSnapper
 
-    def executeRecipe(self, cifPath: str, dMin: float = D_MIN, dMax: float = D_MAX) -> Dict[str, Any]:
+    def executeRecipe(self, cifPath: str, crystalDMin: float = D_MIN, crystalDMax: float = D_MAX) -> Dict[str, Any]:
         logger.info("Ingesting crystal info: %s" % cifPath)
         data: Dict[str, Any] = {}
 
         xtalInfo, xtallography = self.mantidSnapper.CrystallographicInfoAlgorithm(
             f"Ingesting crystal info: {cifPath}",
             cifPath=cifPath,
-            dMin=dMin,
-            dMax=dMax,
+            crystalDMin=crystalDMin,
+            crystalDMax=crystalDMax,
             Crystallography="",  # NOTE must declare to get this as return
         )
         self.mantidSnapper.executeQueue()

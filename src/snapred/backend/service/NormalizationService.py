@@ -83,7 +83,7 @@ class NormalizationService(Service):
             focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
-            crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
+            crystalDBounds=request.crystalDBounds,
             peakIntensityThreshold=request.peakIntensityThreshold,
         )
         ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
@@ -163,6 +163,7 @@ class NormalizationService(Service):
             calibrantSamplePath=request.calibrantSamplePath,
             fwhmMultipliers=request.fwhmMultipliers,
             peakIntensityThreshold=request.peakIntensityThreshold,
+            crystalDBounds=request.crystalDBounds,
         )
         normalization = parse_obj_as(Normalization, self.sousChef.prepCalibration(farmFresh))
         record = NormalizationRecord(
@@ -172,7 +173,7 @@ class NormalizationService(Service):
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
             calculationParameters=normalization,
-            dMin=request.crystalDMin,
+            crystalDBounds=request.crystalDBounds,
         )
         return record
 
@@ -261,7 +262,7 @@ class NormalizationService(Service):
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
             peakIntensityThreshold=request.peakIntensityThreshold,
         )
-        peaks = self.sousChef.prepDetectorPeaks(farmFresh)
+        peaks = self.sousChef.prepDetectorPeaks(farmFresh, purgePeaks=False)
 
         # execute recipe -- the output will be set by the algorithm
         SmoothDataExcludingPeaksRecipe().executeRecipe(

@@ -54,7 +54,7 @@ class TestGroceryService(unittest.TestCase):
         cls.sampleWSFilePath = Resource.getPath(f"inputs/test_{cls.runNumber}_groceryservice.nxs")
         cls.sampleTarWsFilePath = Resource.getPath(f"inputs/{cls.diffCalOutputName}.tar")
 
-        cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         Config["instrument"]["native"]["definition"]["file"] = cls.instrumentFilePath
 
         cls.instrumentLiteFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
@@ -1509,7 +1509,7 @@ class TestGroceryService(unittest.TestCase):
         ## Create the default diffcal table
         idfWS = mtd.unique_name(prefix="_idf_")
         LoadEmptyInstrument(
-            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml"),
             OutputWorkspace=idfWS,
         )
         self.instance._fetchInstrumentDonor = mock.Mock(return_value=idfWS)

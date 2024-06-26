@@ -121,7 +121,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         cls.version = "1"
 
         cls.SNAPInstrumentFilePath = Config["instrument"]["native"]["definition"]["file"]
-        cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         Config["instrument"]["native"]["definition"]["file"] = cls.instrumentFilePath
 
         cls.SNAPLiteInstrumentFilePath = Config["instrument"]["lite"]["definition"]["file"]

@@ -32,8 +32,8 @@ class NormalizationRecord(Record):
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
     workspaceNames: List[WorkspaceName] = []
     calibrationVersionUsed: int = VERSION_DEFAULT
+    crystalDBounds: Limit[float]
 
-    dMin: float
 
     # must also parse integers as background run numbers
     @field_validator("backgroundRunNumber", mode="before")

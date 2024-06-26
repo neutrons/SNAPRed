@@ -48,7 +48,7 @@ class SyntheticData(object):
     RANDOM_SEED = 311379324803478887040360489933500222827
 
     # MOCK instruments and configuration files:
-    fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+    fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     fakeGroupingFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
     fakeInstrumentStatePath = Resource.getPath("inputs/diffcal/fakeInstrumentState.json")
     fakeFocusGroupPath = Resource.getPath("inputs/diffcal/fakeFocusGroup.json")

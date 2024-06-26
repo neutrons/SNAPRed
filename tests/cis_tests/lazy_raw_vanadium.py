@@ -77,7 +77,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         # load an instrument into sample data
         LoadInstrument(
             Workspace=self.backgroundWS,
-            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml"),
             InstrumentName="fakeSNAP",
             RewriteSpectraMap=False,
         )

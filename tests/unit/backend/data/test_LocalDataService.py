@@ -68,7 +68,7 @@ def _capture_logging(monkeypatch):
     monkeypatch.setattr(LocalDataServiceModule, "logger", defaultLogger)
 
 
-fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
 reductionIngredients = ReductionIngredients.model_validate_json(
     Resource.read("inputs/calibration/ReductionIngredients.json")
 )
@@ -1543,7 +1543,7 @@ def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorksp
     # mock the grocery service to return the fake instrument to use for geometry
     idfWS = mtd.unique_name(prefix="_idf_")
     LoadEmptyInstrument(
-        Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+        Filename=Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml"),
         OutputWorkspace=idfWS,
     )
     fetchInstrumentDonor.return_value = idfWS

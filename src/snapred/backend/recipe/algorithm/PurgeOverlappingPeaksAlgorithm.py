@@ -16,8 +16,8 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
-    D_MIN = Config["constants.CrystallographicInfo.dMin"]
-    D_MAX = Config["constants.CrystallographicInfo.dMax"]
+    D_MIN = Config["constants.CrystallographicInfo.crystalDMin"]
+    D_MAX = Config["constants.CrystallographicInfo.crystalDMax"]
 
     def category(self):
         return "SNAPRed Data Processing"
@@ -42,8 +42,8 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             direction=Direction.Output,
             doc="The resulting, non-overlapping list of peaks",
         )
-        self.declareProperty("dMin", defaultValue=self.D_MIN, direction=Direction.Input)
-        self.declareProperty("dMax", defaultValue=self.D_MAX, direction=Direction.Input)
+        self.declareProperty("crystalDMin", defaultValue=self.D_MIN, direction=Direction.Input)
+        self.declareProperty("crystalDMax", defaultValue=self.D_MAX, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -60,8 +60,8 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
         crystalInfo = ingredients.crystalInfo
         A = self.calcA(crystalInfo.peaks)
         self.thresholdA = np.max(A) * ingredients.peakIntensityThreshold
-        self.dMin = float(self.getPropertyValue("dMin"))
-        self.dMax = float(self.getPropertyValue("dMax"))
+        self.crystalDMin = float(self.getPropertyValue("crystalDMin"))
+        self.crystalDMax = float(self.getPropertyValue("crystalDMax"))
 
     def unbagGroceries(self):
         # NOTE there are no input workspaces
@@ -97,7 +97,7 @@ class PurgeOverlappingPeaksAlgorithm(PythonAlgorithm):
             groupPeakList.peaks = [
                 detectorPeak
                 for detectorPeak in detectorPeaks
-                if detectorPeak.peak.dSpacing >= self.dMin and detectorPeak.peak.dSpacing <= self.dMax
+                if detectorPeak.peak.dSpacing >= self.crystalDMin and detectorPeak.peak.dSpacing <= self.crystalDMax
             ]
             self.log().notice(
                 (

@@ -1,11 +1,11 @@
 from pydantic import BaseModel
 
-from snapred.backend.dao.Limit import Pair
+from snapred.backend.dao.Limit import Limit, Pair
 from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.meta.Config import Config
 
 
-class NormalizationRequest(BaseModel):
+class NormalizationRequest(BaseModel, extra="forbid"):
     """
 
     This class encapsulates all the necessary parameters to request a normalization process,
@@ -21,8 +21,10 @@ class NormalizationRequest(BaseModel):
     focusGroup: FocusGroup
     calibrantSamplePath: str
     smoothingParameter: float = Config["calibration.parameters.default.smoothing"]
-    crystalDMin: float = Config["constants.CrystallographicInfo.dMin"]
-    crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
+    crystalDBounds: Limit[float] = Limit(
+        minimum=Config["constants.CrystallographicInfo.crystalDMin"],
+        maximum=Config["constants.CrystallographicInfo.crystalDMax"],
+    )
     peakIntensityThreshold: float = Config["constants.PeakIntensityFractionThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     fwhmMultipliers: Pair[float] = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])

@@ -13,8 +13,8 @@ from snapred.meta.Config import Config
 
 
 class CrystallographicInfoAlgorithm(PythonAlgorithm):
-    D_MIN = Config["constants.CrystallographicInfo.dMin"]
-    D_MAX = Config["constants.CrystallographicInfo.dMax"]
+    D_MIN = Config["constants.CrystallographicInfo.crystalDMin"]
+    D_MAX = Config["constants.CrystallographicInfo.crystalDMax"]
 
     def category(self):
         return "SNAPRed Sample Data"
@@ -24,8 +24,8 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
         self.declareProperty("CifPath", defaultValue="", direction=Direction.Input)
         self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Output)
         self.declareProperty("Crystallography", defaultValue="", direction=Direction.InOut)
-        self.declareProperty("dMin", defaultValue=self.D_MIN, direction=Direction.Input)
-        self.declareProperty("dMax", defaultValue=self.D_MAX, direction=Direction.Input)
+        self.declareProperty("crystalDMin", defaultValue=self.D_MIN, direction=Direction.Input)
+        self.declareProperty("crystalDMax", defaultValue=self.D_MAX, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
@@ -63,9 +63,9 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
         generator = ReflectionGenerator(xtal)
 
         # Create list of unique reflections between 0.1 and 100.0 Angstrom
-        dMin = self.D_MIN
-        dMax = self.D_MAX
-        hkls = generator.getUniqueHKLsUsingFilter(dMin, dMax, ReflectionConditionFilter.StructureFactor)
+        crystalDMin = self.getProperty("crystalDMin").value
+        crystalDMax = self.getProperty("crystalDMax").value
+        hkls = generator.getUniqueHKLsUsingFilter(crystalDMin, crystalDMax, ReflectionConditionFilter.StructureFactor)
 
         # Calculate d and F^2
         dValues = generator.getDValues(hkls)
