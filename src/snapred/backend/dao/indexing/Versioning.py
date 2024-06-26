@@ -1,5 +1,6 @@
 from typing import Any, Optional
 
+from numpy import integer
 from pydantic import BaseModel, computed_field, field_serializer
 from snapred.meta.Config import Config
 
@@ -14,13 +15,16 @@ class VersionedObject(BaseModel):
 
     def __init__(self, **kwargs):
         version = kwargs.pop("version", None)
+
         if version == VERSION_NONE_NAME:
             version = None
         elif version == VERSION_DEFAULT_NAME:
             version = VERSION_DEFAULT
         elif version == VERSION_DEFAULT or version is None:
             pass
-        elif not isinstance(version, int) or version < 0:
+        elif isinstance(version, integer):
+            version = int(version)
+        elif not isinstance(version, int) or version < VERSION_START:
             raise ValueError(f"Cannot initialize version as {version}")
         super().__init__(**kwargs)
         self.__version = version
@@ -51,7 +55,7 @@ class VersionedObject(BaseModel):
             self.__version = VERSION_DEFAULT
         elif v == VERSION_DEFAULT:
             self.__version = v
-        elif isinstance(v, int) and v >= 0:
+        elif isinstance(v, int) and v >= VERSION_START:
             self.__version = v
         else:
             raise ValueError(f"Attempted to set version with invalid value {v}")

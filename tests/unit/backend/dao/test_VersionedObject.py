@@ -3,6 +3,7 @@
 from random import randint
 
 import pytest
+from numpy import int64
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
@@ -19,6 +20,8 @@ def test_init_bad():
         VersionedObject(version="bad")
     with pytest.raises(ValueError):
         VersionedObject(version=-2)
+    with pytest.raises(ValueError):
+        VersionedObject(version=1.2)
 
 
 def test_init_name_none():
@@ -44,6 +47,18 @@ def test_init_default():
 def test_init_int():
     for i in range(10):
         version = randint(0, 1000)
+        vo = VersionedObject(version=version)
+        assert vo.version == version
+
+
+def test_init_int64():
+    """
+    The NexusHDF5Metadata service reads in integers as numpy.int64
+    Make sure this can vbe validly interpretted as an integer.
+    """
+    for i in range(10):
+        version = int64(randint(0, 1000))
+        assert not isinstance(version, int)
         vo = VersionedObject(version=version)
         assert vo.version == version
 
@@ -143,6 +158,10 @@ def indexEntryWithVersion(version):
 def test_init_bad_index_entry():
     with pytest.raises(ValueError):
         indexEntryWithVersion("bad")
+    with pytest.raises(ValueError):
+        indexEntryWithVersion(-2)
+    with pytest.raises(ValueError):
+        indexEntryWithVersion(1.2)
 
 
 def test_init_index_entry():
@@ -225,6 +244,10 @@ def recordWithVersion(version):
 def test_init_bad_record():
     with pytest.raises(ValueError):
         recordWithVersion("bad")
+    with pytest.raises(ValueError):
+        recordWithVersion(-2)
+    with pytest.raises(ValueError):
+        recordWithVersion(1.2)
 
 
 def test_init_record():
