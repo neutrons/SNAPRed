@@ -185,5 +185,8 @@ constants:
   ResampleX:
     NumberBins: 1500
 
+  CropFactors:
+    lowWavelengthCrop: 0.05
+
 metadata:
   tagPrefix: testSNAPfuntime_

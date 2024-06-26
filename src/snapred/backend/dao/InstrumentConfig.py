@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from snapred.meta.Config import Config
+
 
 class InstrumentConfig(BaseModel):
     """Class to hold the instrument parameters."""
@@ -27,4 +29,4 @@ class InstrumentConfig(BaseModel):
     delThWithGuide: float
     width: float
     frequency: float
-    lowWavelengthCrop: float = 0.05
+    lowWavelengthCrop: float = Config["constants.CropFactors.lowWavelengthCrop"]
