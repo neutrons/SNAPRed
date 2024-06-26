@@ -29,7 +29,7 @@ class TestSaveGroupingDefinition(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # file location for instrument definition
-        cls.localInstrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.localInstrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.localGroupingFilename = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
 
         # names for instrument donor workspaces

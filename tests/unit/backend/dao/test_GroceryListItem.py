@@ -19,7 +19,7 @@ class TestGroceryListItem(unittest.TestCase):
         cls.runNumber = "555"
         cls.IPTS = Resource.getPath("inputs")
 
-        cls.instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.instrumentDonor = "_test_grocerylistitem_instrument"
         LoadEmptyInstrument(
             OutputWorkspace=cls.instrumentDonor,

@@ -31,7 +31,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         """
         cls.runNumber = "555"
         cls.filepath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesrx.nxs")
-        cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.fetchedWSname = "_fetched_grocery"
         cls.groupingScheme = "Native"
         # create some sample data

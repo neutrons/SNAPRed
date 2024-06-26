@@ -37,7 +37,7 @@ class TestFetchGroceriesAlgorithm(unittest.TestCase):
             IPTS=Resource.getPath("inputs/"),
         )
         cls.filepath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesalgo.nxs")
-        cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.fetchedWS = f"_{cls.runNumber}_fetched"
         # create some sample data
         cls.sampleWS = f"_{cls.runNumber}_grocery_to_fetch"

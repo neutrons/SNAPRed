@@ -71,7 +71,7 @@ class TestFocusSpectra(unittest.TestCase):
         )
         LoadInstrument(
             Workspace=rawWsName,
-            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml"),
             RewriteSpectraMap=True,
         )
         # also load the focus grouping workspace

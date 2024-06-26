@@ -21,7 +21,7 @@ logger = snapredLogger.getLogger(__name__)
 class TestMaskDetectorFlags:
     @classmethod
     def setup_class(cls):
-        instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         groupingFilename = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Column.xml")
         cls.instrumentWS = "test_instrument_workspace"
         cls.maskWS = "test_mask"
