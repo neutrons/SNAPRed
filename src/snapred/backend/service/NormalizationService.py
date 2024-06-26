@@ -238,7 +238,7 @@ class NormalizationService(Service):
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
             peakIntensityThreshold=request.peakIntensityThreshold,
         )
-        peaks = self.sousChef.prepDetectorPeaks(farmFresh)
+        peaks = self.sousChef.prepDetectorPeaks(farmFresh, purgePeaks=False)
 
         # execute recipe -- the output will be set by the algorithm
         SmoothDataExcludingPeaksRecipe().executeRecipe(
