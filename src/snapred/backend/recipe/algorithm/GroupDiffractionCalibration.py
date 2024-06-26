@@ -412,6 +412,19 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # Execute queued Mantid algorithms
         self.mantidSnapper.executeQueue()
 
+    def bufferMissingColumns(self, workspace1, workspace2):
+        # buffer the missing columns
+        self.mantidSnapper.BufferMissingColumnsAlgo(
+            "Buffer missing columns",
+            Workspace1=workspace1,
+            Workspace2=workspace2,
+        )
+        self.mantidSnapper.BufferMissingColumnsAlgo(
+            "Buffer missing columns x2",
+            Workspace1=workspace2,
+            Workspace2=workspace1,
+        )
+
     def conjoinDiagnosticWorkspaces(self, index, diagnosticWS, diagnosticWStmp):  # noqa: ARG002
         # on first index, clone the diagnostic workspace group
         self.mantidSnapper.UnGroupWorkspace(
@@ -452,6 +465,9 @@ class GroupDiffractionCalibration(PythonAlgorithm):
                 )
             # combine the table workspaces
             for x in [FitOutputEnum.Parameters.value, FitOutputEnum.PeakPosition.value]:
+                self.bufferMissingColumns(
+                    f"{diagnosticWS}{self.diagnosticSuffix[x]}", f"{diagnosticWStmp}{self.diagnosticSuffix[x]}"
+                )
                 self.mantidSnapper.ConjoinTableWorkspaces(
                     "Conjoin peak fit parameter workspaces",
                     InputWorkspace1=f"{diagnosticWS}{self.diagnosticSuffix[x]}",
