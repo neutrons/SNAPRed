@@ -1036,9 +1036,8 @@ class GroceryService:
         workspacesToClear = workspacesToClear - set(exclude)
         # properly handle workspace groups -- also exclude deleting their constituents
         for ws in exclude:
-            if mtd[ws].isGroup():
+            if ws in workspacesToClear and mtd[ws].isGroup():
                 workspacesToClear = workspacesToClear - set(mtd[ws].getNames())
-
         # filter caches
         if not cache:
             workspaceCache = self.getCachedWorkspaces()
