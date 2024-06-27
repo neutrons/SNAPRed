@@ -149,5 +149,8 @@ class WorkflowPresenter(object):
     def continueAnyway(self, continueInfo: ContinueWarning.Model):
         if self.model.continueAnywayHandler:
             self.model.continueAnywayHandler(continueInfo)
-        self.model.nextModel.continueAction(self)
-        self.advanceWorkflow()
+
+        self.worker = self.worker_pool.createWorker(target=self.model.nextModel.continueAction, args=self)
+        self.worker.success.connect(lambda success: self.advanceWorkflow() if success else None)
+
+        self.worker_pool.submitWorker(self.worker)

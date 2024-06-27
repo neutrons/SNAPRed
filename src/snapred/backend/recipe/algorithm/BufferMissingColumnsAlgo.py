@@ -42,8 +42,9 @@ class BufferMissingColumnsAlgo(PythonAlgorithm):
         for col, t in columns:
             tempTable.addColumn(type=t, name=col)
 
-        for i in range(workspace.rowCount()):
-            row = workspace.row(i)
+        # Copy rows from workspace to new tempTable
+        # which now has the correct columns
+        for row in workspace:
             tempTable.addRow(row)
 
         # in order to maintain any grouped workspace the original workspace was a part of
@@ -52,8 +53,8 @@ class BufferMissingColumnsAlgo(PythonAlgorithm):
             workspace.removeColumn(col)
         for col in columns:
             workspace.addColumn(type=col[1], name=col[0])
-        for i in range(tempTable.rowCount()):
-            row = tempTable.row(i)
+        workspace.setRowCount(0)
+        for row in tempTable:
             workspace.addRow(row)
 
         self.mantidSnapper.DeleteWorkspace("Deleting temp workspace", Workspace=tempTable)
