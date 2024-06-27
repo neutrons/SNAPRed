@@ -1033,14 +1033,14 @@ class GroceryService:
         """  # noqa E501
         workspacesToClear = set(mtd.getObjectNames())
         # filter exclude
-        workspacesToClear = workspacesToClear - set(exclude)
+        workspacesToClear = workspacesToClear.difference(exclude)
         # properly handle workspace groups -- also exclude deleting their constituents
         for ws in exclude:
             if self.workspaceDoesExist(ws) and mtd[ws].isGroup():
-                workspacesToClear = workspacesToClear - set(mtd[ws].getNames())
+                workspacesToClear = workspacesToClear.difference(mtd[ws].getNames())
         # filter caches
         if not cache:
-            workspacesToClear = workspacesToClear - set(self.getCachedWorkspaces())
+            workspacesToClear = workspacesToClear.difference(self.getCachedWorkspaces())
         # clear the workspaces
         for workspace in workspacesToClear:
             self.deleteWorkspaceUnconditional(workspace)
