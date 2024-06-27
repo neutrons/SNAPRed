@@ -1031,9 +1031,14 @@ class GroceryService:
         :param cache: whether or not to clear cached workspaces (True = yes, clear the cache), optional (defaults to False)
         :type cache: bool
         """  # noqa E501
-        workspacesToClear = mtd.getObjectNames()
+        workspacesToClear = set(mtd.getObjectNames())
         # filter exclude
-        workspacesToClear = [w for w in workspacesToClear if w not in exclude]
+        workspacesToClear = workspacesToClear - set(exclude)
+        # properly handle workspace groups -- also exclude deleting their constituents
+        for ws in exclude:
+            if mtd[ws].isGroup():
+                workspacesToClear = workspacesToClear - set(mtd[ws].getNames())
+
         # filter caches
         if not cache:
             workspaceCache = self.getCachedWorkspaces()
