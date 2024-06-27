@@ -1,5 +1,7 @@
 import json
+from typing import List
 
+from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
 from snapred.backend.dao.SNAPResponse import ResponseCode
@@ -64,3 +66,22 @@ class InterfaceController:
 
         self.logger.debug(response.json())
         return response
+
+    def executeBatchRequests(self, requests: List[SNAPRequest]) -> List[SNAPResponse]:
+        # verify all requests have same path
+        for request in requests:
+            if not requests[0].path == request.path:
+                self.logger.exception("Mismatch of paths in list of requests")
+
+        # reorder the list of requests
+        service = self.serviceFactory.getService(requests[0].path)
+        scheduler = RequestScheduler()
+        groupings = service.getGroupings("")
+        orderedRequests = scheduler.handle(requests, groupings)
+
+        # execute the ordered list of requests
+        responses = []
+        for request in orderedRequests:
+            responses.append(self.executeRequest(request))
+
+        return responses
