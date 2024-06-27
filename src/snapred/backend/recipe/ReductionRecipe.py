@@ -83,6 +83,8 @@ class ReductionRecipe(Recipe[Ingredients]):
         # For now we are just appending it to the end, probably preferable
         # as it keeps the output colocated.
         self.ingredients.pixelGroup = self.ingredients.pixelGroups[index]
+        if self.ingredients.detectorPeaksMany is not None:
+            self.ingredients.detectorPeaks = self.ingredients.detectorPeaksMany[index]
         self.ingredients.detectorPeaks = self.ingredients.detectorPeaksMany[index]
         groupName = self.ingredients.pixelGroup.focusGroup.name
         sampleClone = self._cloneWorkspace(self.sampleWs, f"output_{self.sampleWs}_{groupName}")
