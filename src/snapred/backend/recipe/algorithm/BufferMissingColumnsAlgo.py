@@ -1,3 +1,5 @@
+import time
+
 from mantid.api import AlgorithmFactory, ITableWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
 
@@ -6,7 +8,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 class BufferMissingColumnsAlgo(PythonAlgorithm):
     """
-    Record a workspace in a state for the CIS to view later
+    Buffer missing columns from one tableworkspace to another, then sort.
     """
 
     def category(self):
@@ -30,11 +32,12 @@ class BufferMissingColumnsAlgo(PythonAlgorithm):
 
         # create a whole new table workspace, because we can't obviously change the order
         # of columns in an existing one for whatever reason
+        tempTableName = f"{time.time()}_bufferMissingColumns_tempTable"
         tempTable = self.mantidSnapper.CreateEmptyTableWorkspace(
-            "Make temp workspace to copy to", OutputWorkspace="_tempTable"
+            "Make temp workspace to copy to", OutputWorkspace=tempTableName
         )
         self.mantidSnapper.executeQueue()
-        tempTable = self.mantidSnapper.mtd["_tempTable"]
+        tempTable = self.mantidSnapper.mtd[tempTableName]
         # init table
         for col, t in columns:
             tempTable.addColumn(type=t, name=col)
