@@ -133,7 +133,7 @@ class CalibrationService(Service):
             wng.diffCalOutput().unit(wng.Units.DSP).runNumber(request.runNumber).group(request.focusGroup.name).build()
         )
         diagnosticWorkspaceName = (
-            wng.diffCalOutput().unit(wng.Units.DIAG).runNumber(request.runNumber).group(request.focusGroup.name).build()
+            wng.diffCalDiagnostic().runNumber(request.runNumber).group(request.focusGroup.name).build()
         )
         calibrationTableName = wng.diffCalTable().runNumber(request.runNumber).build()
         calibrationMaskName = wng.diffCalMask().runNumber(request.runNumber).build()
@@ -318,10 +318,9 @@ class CalibrationService(Service):
                 )
         for n, wsName in enumerate(workspaces.pop(wngt.DIFFCAL_DIAG, [])):
             self.groceryClerk.name(wngt.DIFFCAL_DIAG + "_" + str(n).zfill(4))
-            if wng.Units.DIAG.lower() in wsName:
-                self.groceryClerk.diffcal_diagnostic(runId, version).unit(wng.Units.DIAG).group(
-                    calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
-                ).add()
+            self.groceryClerk.diffcal_diagnostic(runId, version).group(
+                calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
+            ).add()
         for n, (tableWSName, maskWSName) in enumerate(
             zip(
                 workspaces.pop(wngt.DIFFCAL_TABLE, []),

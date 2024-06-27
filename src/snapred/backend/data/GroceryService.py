@@ -209,7 +209,7 @@ class GroceryService:
         ext = Config["calibration.diffraction.diagnostic.extension"]
         return str(
             Path(self._getCalibrationDataPath(item.runNumber, item.useLiteMode, item.version))
-            / (self._createDiffcalOutputWorkspaceName(item) + ext)
+            / (self._createDiffcalDiagnosticWorkspaceName(item) + ext)
         )
 
     @validate_call
@@ -256,6 +256,15 @@ class GroceryService:
     def _createDiffcalInputWorkspaceName(self, runNumber: str) -> WorkspaceName:
         return wng.diffCalInput().runNumber(runNumber).build()
 
+    def _createDiffcalDiagnosticWorkspaceName(self, item: GroceryListItem) -> WorkspaceName:
+        return (
+            wng.diffCalDiagnostic()
+            .runNumber(item.runNumber)
+            .version(item.version)
+            .group(item.groupingScheme)
+            .build()
+        )
+
     def _createDiffcalOutputWorkspaceName(self, item: GroceryListItem) -> WorkspaceName:
         return (
             wng.diffCalOutput()
@@ -265,7 +274,7 @@ class GroceryService:
             .group(item.groupingScheme)
             .build()
         )
-
+        
     @validate_call
     def _createDiffcalTableWorkspaceName(
         self,
@@ -894,7 +903,7 @@ class GroceryService:
                 case "diffcal_diagnostic":
                     self.fetchWorkspace(
                         self._createDiffcalDiagnosticWorkspaceFilename(item),
-                        self._createDiffcalOutputWorkspaceName(item),
+                        self._createDiffcalDiagnosticWorkspaceName(item),
                         loader="LoadNexusProcessed",
                     )
                 case "diffcal_table":

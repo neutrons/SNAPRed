@@ -34,6 +34,13 @@ def testDiffCalOutputName():
         == wng.diffCalOutput().runNumber(runNumber).unit(wng.Units.TOF).version(version).build()
     )
 
+def testDiffCalDiagnosticName():
+    assert f"_diagnostic_unfoc_{fRunNumber}" == wng.diffCalDiagnostic().runNumber(runNumber).build()
+    assert (
+        f"_diagnostic_unfoc_{fRunNumber}_{fVersion}"
+        == wng.diffCalDiagnostic().runNumber(runNumber).version(version).build()
+    )
+
 
 def testDiffCalTableName():
     assert f"_diffract_consts_{fRunNumber}" == wng.diffCalTable().runNumber(runNumber).build()

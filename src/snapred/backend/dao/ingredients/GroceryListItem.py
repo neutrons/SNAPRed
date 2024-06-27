@@ -7,7 +7,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as
 
 logger = snapredLogger.getLogger(__name__)
 
-KnownUnits = Literal[wng.Units.TOF, wng.Units.DSP, wng.Units.DIAG]
+KnownUnits = Literal[wng.Units.TOF, wng.Units.DSP]
 known_units = list(get_args(KnownUnits))
 
 

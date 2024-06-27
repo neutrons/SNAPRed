@@ -113,6 +113,7 @@ mantid:
           diffCal:
             input: "_{unit},{runNumber},raw"
             table: "_diffract_consts,{runNumber},{version}"
+            diagnostic: "_diagnostic,{group},{runNumber},{version}"
             output: "_{unit},{group},{runNumber},{version}"
             mask: "_diffract_consts,mask,{runNumber},{version}"
             metric: "_calib_metrics,{metricName},{runNumber},{version}"
@@ -127,7 +128,6 @@ mantid:
         units:
           dSpacing: dsp
           timeOfFlight: tof
-          diagnostic: diagnostic
         groups:
           unfocussed: unfoc
           all: all

@@ -163,7 +163,6 @@ class _WorkspaceNameGenerator:
         _templateRoot = "mantid.workspace.nameTemplate.units"
         DSP = Config[f"{_templateRoot}.dSpacing"]
         TOF = Config[f"{_templateRoot}.timeOfFlight"]
-        DIAG = Config[f"{_templateRoot}.diagnostic"]
 
     class Groups:
         _templateRoot = "mantid.workspace.nameTemplate.groups"
@@ -205,6 +204,15 @@ class _WorkspaceNameGenerator:
             version="",
         )
 
+    def diffCalDiagnostic(self):
+        return NameBuilder(
+            self._diffCalDiagnosticTemplate,
+            self._diffCalDiagnosticTemplateKeys,
+            self._delimiter,
+            group=self.Groups.UNFOC,
+            version="",
+        )
+        
     def diffCalOutput(self):
         return NameBuilder(
             self._diffCalOutputTemplate,

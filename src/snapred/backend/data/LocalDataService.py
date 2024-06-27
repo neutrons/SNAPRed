@@ -606,8 +606,9 @@ class LocalDataService:
 
     def writeCalibrationRecord(self, record: CalibrationRecord, version: Optional[int] = None):
         """
-        Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
-        -- side effect: updates version numbers of incoming `CalibrationRecord` and its nested `Calibration`.
+        Persists a `CalibrationRecord` to either a new version folder, or overwrites a specific version.
+        -- side effects:
+          (1) updates version numbers of the incoming `CalibrationRecord` and its nested `Calibration`;
         """
         runNumber = record.runNumber
         stateId, _ = self._generateStateId(runNumber)
@@ -633,6 +634,7 @@ class LocalDataService:
         #   to correspond to the filenames that will actually be saved to disk.
         savedWorkspaces = {}
         workspaces = record.workspaces.copy()
+        
         wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []):
             # Rebuild the workspace name to strip any "iteration" number:
@@ -641,6 +643,17 @@ class LocalDataService:
                 ws = (
                     wng.diffCalOutput()
                     .unit(wng.Units.DSP)
+                    .runNumber(record.runNumber)
+                    .version(record.version)
+                    .group(record.focusGroupCalibrationMetrics.focusGroupName)
+                    .build()
+                )
+            elif wng.Units.TOF.lower() in wsName:
+                # We only use 'DSP' units at this time,
+                #   but there's no reason to prematurely simplify the code
+                ws = (
+                    wng.diffCalOutput()
+                    .unit(wng.Units.TOF)
                     .runNumber(record.runNumber)
                     .version(record.version)
                     .group(record.focusGroupCalibrationMetrics.focusGroupName)
@@ -652,25 +665,21 @@ class LocalDataService:
                 )
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_OUTPUT] = wss
+        
         wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_DIAG, []):
             # Rebuild the workspace name to strip any "iteration" number:
-            #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
-            if wng.Units.DIAG.lower() in wsName:
-                ws = (
-                    wng.diffCalOutput()
-                    .unit(wng.Units.DIAG)
-                    .runNumber(record.runNumber)
-                    .version(record.version)
-                    .group(record.focusGroupCalibrationMetrics.focusGroupName)
-                    .build()
-                )
-            else:
-                raise RuntimeError(
-                    f"cannot save a workspace-type: {wngt.DIFFCAL_DIAG} without a units token in its name {wsName}"
-                )
+            #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each type.
+            ws = (
+                wng.diffCalDiagnostic()
+                .runNumber(record.runNumber)
+                .version(record.version)
+                .group(record.focusGroupCalibrationMetrics.focusGroupName)
+                .build()
+            )
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_DIAG] = wss
+        
         wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_TABLE, []):
             # Rebuild the workspace name to strip any "iteration" number:
@@ -678,6 +687,7 @@ class LocalDataService:
             ws = wng.diffCalTable().runNumber(record.runNumber).version(record.version).build()
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_TABLE] = wss
+        
         wss = []
         for wsName in workspaces.pop(wngt.DIFFCAL_MASK, []):
             # Rebuild the workspace name to strip any "iteration" number:
@@ -685,70 +695,97 @@ class LocalDataService:
             ws = wng.diffCalMask().runNumber(record.runNumber).version(record.version).build()
             wss.append(ws)
         savedWorkspaces[wngt.DIFFCAL_MASK] = wss
-        savedRecord = deepcopy(record)
+        
+        savedRecord = record.copy()
         savedRecord.workspaces = savedWorkspaces
+        
         # write record to file
         write_model_pretty(savedRecord, recordPath)
-
-        self.writeCalibrationState(record.calibrationFittingIngredients, version)
+        self.writeCalibrationState(savedRecord.calibrationFittingIngredients, version)
 
         logger.info(f"Wrote CalibrationRecord: version: {version}")
+        # WARNING: do _not_ return 'savedRecord' here:
+        # * `writeCalibrationWorkspaces` needs the _original_ workspace names.
         return record
 
     def writeCalibrationWorkspaces(self, record: CalibrationRecord):
         """
         Writes the workspaces associated with a `CalibrationRecord` to disk:
-        -- assumes that `writeCalibrationRecord` has already been called, and that the version folder exists
+        * assumes that `writeCalibrationRecord` has already been called and that the version folder exists;
+        * the input record's workspace list should consist of the workspace names as they are presenly in the in the ADS
+          NOT the workspace names corrected to remove the <iteration number> and to add the <version>.
+        """
+        """
+        Implementation notes:
+        This implementation has been a bit difficult for people to understand.
+          * The incoming `record.version` must be the final one;
+          * The incoming `record.workspaces` must include the name of the workspaces as present in the ADS,
+            NOT the to-be written names without the <iteration number> and with the added <version>;
+          * Although it was considered, these workspaces cannot easily be renamed in `writeCalibrationRecord`,
+            because that method needs to be callable without any assumption of ADS state;
+          * For this reason, _both_ of these methods presently parse through the workspace list, and regenerate
+            the final to-be written workspace names;
+          * All of this will be tremendously simplified when "lazy versioning" is no longer used, and the
+            `record.version` is no longer a mutable attribute.
         """
         calibrationDataPath = self._constructCalibrationDataPath(record.runNumber, record.useLiteMode, record.version)
 
         # Assumes all workspaces are of WNG-type:
         workspaces = record.workspaces.copy()
         for wsName in workspaces.pop(wngt.DIFFCAL_OUTPUT, []):
-            # Rebuild the filename to strip any "iteration" number:
+            # Rebuild the workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each "unit" type.
-            ext = Config["calibration.diffraction.output.extension"]
+            ws = None
             if wng.Units.DSP.lower() in wsName:
-                filename = Path(
+                ws = (
                     wng.diffCalOutput()
                     .unit(wng.Units.DSP)
                     .runNumber(record.runNumber)
                     .version(record.version)
                     .group(record.focusGroupCalibrationMetrics.focusGroupName)
                     .build()
-                    + ext
                 )
-            else:
-                raise RuntimeError(
-                    f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
-                )
-            self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
-        for wsName in workspaces.pop(wngt.DIFFCAL_DIAG, []):
-            print(f"WORKSPACE {wsName}")
-            ext = Config["calibration.diffraction.diagnostic.extension"]
-            if wng.Units.DIAG.lower() in wsName:
-                filename = Path(
+            elif wng.Units.TOF.lower() in wsName:
+                # We only use 'DSP' units at this time,
+                #   but there's no reason to prematurely simplify the code
+                ws = (
                     wng.diffCalOutput()
-                    .unit(wng.Units.DIAG)
+                    .unit(wng.Units.TOF)
                     .runNumber(record.runNumber)
                     .version(record.version)
                     .group(record.focusGroupCalibrationMetrics.focusGroupName)
                     .build()
-                    + ext
                 )
             else:
-                raise RuntimeError(f"Cannot save workspace-type {wngt.DIFFCAL_DIAG} without diagnostic in its name")
+                raise RuntimeError(
+                    f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
+                )        
+            ext = Config["calibration.diffraction.output.extension"]
+            filename = Path(ws + ext)
+            self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
+        for wsName in workspaces.pop(wngt.DIFFCAL_DIAG, []):
+            # Rebuild the workspace name to strip any "iteration" number:
+            #   * WARNING: this workaround does not work correctly if there are multiple workspaces of each type.
+            ws = (
+                wng.diffCalDiagnostic()
+                .runNumber(record.runNumber)
+                .version(record.version)
+                .group(record.focusGroupCalibrationMetrics.focusGroupName)
+                .build()
+            )                
+            ext = Config["calibration.diffraction.diagnostic.extension"]
+            filename = Path(ws + ext)
             self.writeWorkspace(calibrationDataPath, filename, wsName)
-            assert (calibrationDataPath / filename).exists()
+            
         for tableWSName, maskWSName in zip(
             workspaces.pop(wngt.DIFFCAL_TABLE, []),
             workspaces.pop(wngt.DIFFCAL_MASK, []),
         ):
-            # Rebuild the filename to strip any "iteration" number:
+            # Rebuild the table workspace name to strip any "iteration" number:
             #   * WARNING: this workaround does not work correctly if there are multiple table workspaces.
-            diffCalFilename = Path(
-                wng.diffCalTable().runNumber(record.runNumber).version(record.version).build() + ".h5"
-            )
+            tableWSName_ = wng.diffCalTable().runNumber(record.runNumber).version(record.version).build()        
+            diffCalFilename = Path(tableWSName_ + ".h5")
+            
             self.writeDiffCalWorkspaces(
                 calibrationDataPath,
                 diffCalFilename,

@@ -451,10 +451,13 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Call the method to test. Use a mocked run and a mocked version
         mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
+        
         self.instance.loadQualityAssessment(mockRequest)
         calledWithDict = mockFetchGroceryDict.call_args[0][0]
         assert calledWithDict["diffCalOutput_0000"].unit == wng.Units.DSP
-        assert calledWithDict["diffCalDiagnostic_0000"].unit == wng.Units.DIAG
+        assert calledWithDict["diffCalOutput_0000"].workspaceType == "diffcal_output"
+        assert calledWithDict["diffCalDiagnostic_0000"].unit is None
+        assert calledWithDict["diffCalDiagnostic_0000"].workspaceType == "diffcal_diagnostic"
 
     def test_load_quality_assessment_unexpected_type(self):
         with pytest.raises(RuntimeError, match=r"not implemented: unable to load unexpected"):  # noqa: PT012
