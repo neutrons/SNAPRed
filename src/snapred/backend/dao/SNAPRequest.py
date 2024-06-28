@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -13,4 +13,4 @@ class SNAPRequest(BaseModel):
     """
 
     path: str
-    payload: Optional[str] = None
+    payload: Optional[Any] = None

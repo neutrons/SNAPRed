@@ -51,7 +51,7 @@ class TestReductionService(unittest.TestCase):
         self.request = ReductionRequest(
             runNumber="123",
             useLiteMode=False,
-            focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
+            focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
         )
         ## Mock out the assistant services
         self.instance.sousChef = self.sculleryBoy
@@ -75,7 +75,6 @@ class TestReductionService(unittest.TestCase):
 
     def test_fetchReductionGroupings(self):
         data = self.instance.fetchReductionGroupings(self.request)
-        assert self.request.focusGroup == data["focusGroups"]
         assert data == self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode)
 
     def test_prepReductionIngredients(self):

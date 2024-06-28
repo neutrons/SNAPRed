@@ -1,10 +1,11 @@
 from typing import Any, Dict, List, Tuple
 
-from snapred.backend.dao.state.PixelGroup import PixelGroup as Ingredients
+from snapred.backend.dao.ingredients import ReductionGroupProcessingIngredients as Ingredients
 from snapred.backend.error.AlgorithmException import AlgorithmException
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
+from snapred.backend.recipe.Recipe import Recipe
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class ReductionGroupProcessingRecipe(Recipe[Ingredients]):
 
     def queueAlgos(self):
         """
-        Queues up the procesing algorithms for the recipe.
+        Queues up the processing algorithms for the recipe.
         Requires: unbagged groceries.
         """
         # TODO: This is all subject to change based on EWM 4798
