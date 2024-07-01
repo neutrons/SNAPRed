@@ -71,7 +71,8 @@ class InterfaceController:
         # verify all requests have same path
         for request in requests:
             if not requests[0].path == request.path:
-                self.logger.exception("Mismatch of paths in list of requests")
+                self.logger.error("Mismatch of paths in list of requests")
+                return None
 
         # reorder the list of requests
         service = self.serviceFactory.getService(requests[0].path)
