@@ -9,7 +9,12 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME, VERSION_START
+from snapred.backend.dao.indexing.Versioning import (
+    VERSION_DEFAULT,
+    VERSION_DEFAULT_NAME,
+    VERSION_START,
+    VersionedObject,
+)
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -187,11 +192,10 @@ class Indexor:
             return self.nextVersion()
 
     def isValidVersion(self, version):
-        if version == VERSION_DEFAULT:
+        try:
+            VersionedObject.parseVersion(version, exclude_none=True)
             return True
-        elif isinstance(version, int) and version >= VERSION_START:
-            return True
-        else:
+        except ValueError:
             return False
 
     ## VERSION COMPARISON METHODS ##
