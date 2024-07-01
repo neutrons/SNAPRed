@@ -39,8 +39,8 @@ class TestDataFactoryService(unittest.TestCase):
         ]
         # these are treated specially for specific returns
         exceptions = ["readInstrumentConfig", "readStateConfig", "readRunConfig"]
-        needIndexor = ["calibrationIndexor", "normalizationIndexor"]
-        method_list = [method for method in method_list if method not in exceptions and method not in needIndexor]
+        needIndexer = ["calibrationIndexer", "normalizationIndexer"]
+        method_list = [method for method in method_list if method not in exceptions and method not in needIndexer]
         for x in method_list:
             setattr(getattr(cls.mockLookupService, x), "side_effect", lambda *x: cls.expected(cls, *x))
 
@@ -59,14 +59,14 @@ class TestDataFactoryService(unittest.TestCase):
             calibration=mockCalibration,
         )
         cls.mockLookupService.readRunConfig.return_value = RunConfig.construct({})
-        # these are treated specially to give the return of a mocked indexor
-        cls.mockLookupService.calibrationIndexor.return_value = mock.Mock(
+        # these are treated specially to give the return of a mocked indexer
+        cls.mockLookupService.calibrationIndexer.return_value = mock.Mock(
             versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
             getIndex=mock.Mock(return_value=[cls.expected(cls, "Calibration")]),
             thisOrNextVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
             thisOrCurrentVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
         )
-        cls.mockLookupService.normalizationIndexor.return_value = mock.Mock(
+        cls.mockLookupService.normalizationIndexer.return_value = mock.Mock(
             versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
             getIndex=mock.Mock(return_value=[cls.expected(cls, "Normalization")]),
             thisOrNextVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
@@ -143,7 +143,7 @@ class TestDataFactoryService(unittest.TestCase):
         run = "123"
         for useLiteMode in [True, False]:
             actual = self.instance.getCalibrationDataPath(run, useLiteMode, self.version)
-            assert actual == self.expected("Calibration", self.version)  # NOTE mock indexor called only with version
+            assert actual == self.expected("Calibration", self.version)  # NOTE mock indexer called only with version
 
     def test_checkCalibrationStateExists(self):
         actual = self.instance.checkCalibrationStateExists("123")
@@ -175,19 +175,19 @@ class TestDataFactoryService(unittest.TestCase):
     def test_getThisOrCurrentCalibrationVersion(self):
         for useLiteMode in [True, False]:
             actual = self.instance.getThisOrCurrentCalibrationVersion("123", useLiteMode, self.version)
-            assert actual == self.expected("Calibration", self.version)  # NOTE mock indexor called only with version
+            assert actual == self.expected("Calibration", self.version)  # NOTE mock indexer called only with version
 
     def test_getThisOrNextCalibrationVersion(self):
         for useLiteMode in [True, False]:
             actual = self.instance.getThisOrNextCalibrationVersion("123", useLiteMode, self.version)
-            assert actual == self.expected("Calibration", self.version)  # NOTE mock indexor called only with version
+            assert actual == self.expected("Calibration", self.version)  # NOTE mock indexer called only with version
 
     ## TEST NORMALIZATION METHODS
 
     def test_getNormalizationDataPath(self):
         for useLiteMode in [True, False]:
             actual = self.instance.getNormalizationDataPath("123", useLiteMode, self.version)
-            assert actual == self.expected("Normalization", self.version)  # NOTE mock indexor called only with version
+            assert actual == self.expected("Normalization", self.version)  # NOTE mock indexer called only with version
 
     def test_getNormalizationState(self):
         for useLiteMode in [True, False]:
@@ -213,12 +213,12 @@ class TestDataFactoryService(unittest.TestCase):
     def test_getThisOrCurrentNormalizationVersion(self):
         for useLiteMode in [True, False]:
             actual = self.instance.getThisOrCurrentNormalizationVersion("123", useLiteMode, self.version)
-            assert actual == self.expected("Normalization", self.version)  # NOTE mock indexor called only with version
+            assert actual == self.expected("Normalization", self.version)  # NOTE mock indexer called only with version
 
     def test_getThisOrNextNormalizationVersion(self):
         for useLiteMode in [True, False]:
             actual = self.instance.getThisOrNextNormalizationVersion("123", useLiteMode, self.version)
-            assert actual == self.expected("Normalization", self.version)  # NOTE mock indexor called only with version
+            assert actual == self.expected("Normalization", self.version)  # NOTE mock indexer called only with version
 
     ## TEST REDUCTION METHODS
 

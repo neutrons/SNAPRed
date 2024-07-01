@@ -525,7 +525,7 @@ class GroceryService:
         :param version: the calibration version to use in the lookup
         :type version: int
         """
-        return self.dataService.calibrationIndexor(runNumber, useLiteMode).versionPath(version)
+        return self.dataService.calibrationIndexer(runNumber, useLiteMode).versionPath(version)
 
     @validate_call
     def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
@@ -537,7 +537,7 @@ class GroceryService:
         :param version: the normalization version to use in the lookup
         :type version: int
         """
-        return self.dataService.normalizationIndexor(runNumber, useLiteMode).versionPath(version)
+        return self.dataService.normalizationIndexer(runNumber, useLiteMode).versionPath(version)
 
     def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> Dict[str, Any]:
         """
@@ -895,10 +895,10 @@ class GroceryService:
                         loader="LoadNexusProcessed",
                     )
                 case "diffcal_table":
-                    indexor = self.dataService.calibrationIndexor(item.runNumber, item.useLiteMode)
+                    indexer = self.dataService.calibrationIndexer(item.runNumber, item.useLiteMode)
                     if not isinstance(item.version, int):
-                        item.version = indexor.latestApplicableVersion(item.runNumber)
-                    record = indexor.readRecord(item.version)
+                        item.version = indexer.latestApplicableVersion(item.runNumber)
+                    record = indexer.readRecord(item.version)
                     if record is not None:
                         item.runNumber = record.runNumber
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
@@ -919,16 +919,16 @@ class GroceryService:
                     res = self.fetchCalibrationWorkspaces(item)
                     res["workspace"] = maskWorkspaceName
                 case "normalization":
-                    indexor = self.dataService.normalizationIndexor(item.runNumber, item.useLiteMode)
+                    indexer = self.dataService.normalizationIndexer(item.runNumber, item.useLiteMode)
                     if not isinstance(item.version, int):
                         logger.info(f"Version not detected for run {item.runNumber}, fetching from index.")
-                        item.version = indexor.latestApplicableVersion(item.runNumber)
+                        item.version = indexer.latestApplicableVersion(item.runNumber)
                         if not isinstance(item.version, int):
                             raise RuntimeError(
                                 f"Could not find any Normalizations associated with run {item.runNumber}"
                             )
                         logger.info(f"Found version {item.version} for run {item.runNumber}")
-                    record = indexor.readRecord(item.version)
+                    record = indexer.readRecord(item.version)
                     if record is not None:
                         item.runNumber = record.runNumber
                     logger.info(f"Fetching normalization workspace for run {item.runNumber}, version {item.version}")

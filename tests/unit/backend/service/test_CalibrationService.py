@@ -413,10 +413,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         paramsFilepath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
         with state_root_redirect(self.localDataService) as tmpRoot:
             calibRecord = CalibrationRecord.parse_file(inputFilepath)
-            indexor = self.localDataService.calibrationIndexor(calibRecord.runNumber, calibRecord.useLiteMode)
-            recordFilepath = indexor.recordPath(1)
+            indexer = self.localDataService.calibrationIndexer(calibRecord.runNumber, calibRecord.useLiteMode)
+            recordFilepath = indexer.recordPath(1)
             tmpRoot.addFileAs(inputFilepath, recordFilepath)
-            tmpRoot.addFileAs(paramsFilepath, indexor.parametersPath(1))
+            tmpRoot.addFileAs(paramsFilepath, indexer.parametersPath(1))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.create_fake_diffcal_files(recordFilepath.parent, calibRecord.workspaces, calibRecord.version)
@@ -447,10 +447,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         paramsFilepath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
         with state_root_redirect(self.localDataService) as tmpRoot:
             calibRecord = parse_file_as(CalibrationRecord, inputFilepath)
-            indexor = self.localDataService.calibrationIndexor(calibRecord.runNumber, calibRecord.useLiteMode)
-            recordFilepath = indexor.recordPath(1)
+            indexer = self.localDataService.calibrationIndexer(calibRecord.runNumber, calibRecord.useLiteMode)
+            recordFilepath = indexer.recordPath(1)
             tmpRoot.addFileAs(inputFilepath, recordFilepath)
-            tmpRoot.addFileAs(paramsFilepath, indexor.parametersPath(calibRecord.version))
+            tmpRoot.addFileAs(paramsFilepath, indexer.parametersPath(calibRecord.version))
 
             # Under a mocked calibration data path, create fake "persistent" workspace files
             self.create_fake_diffcal_files(recordFilepath.parent, calibRecord.workspaces, calibRecord.version)

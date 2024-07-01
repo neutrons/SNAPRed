@@ -157,7 +157,7 @@ class TestReductionService(unittest.TestCase):
         lookupService = self.instance.dataFactoryService.lookupService
         stateId, _ = lookupService._generateStateId(self.request.runNumber)
         # need to add a normalization version to find
-        lookupService.normalizationIndexor(self.request.runNumber, self.request.useLiteMode).index = {1: mock.Mock()}
+        lookupService.normalizationIndexer(self.request.runNumber, self.request.useLiteMode).index = {1: mock.Mock()}
         # now sort
         result = scheduler.handle([request], [self.instance._groupByStateId, self.instance._groupByVanadiumVersion])
         assert result["root"][stateId]["normalization_1"][0] == request

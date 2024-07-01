@@ -12,7 +12,7 @@ class IndexEntry(VersionedObject, extra="ignore"):
     The appliesTo field will indicate which runs the record applies to,
     so that only applicable calibrations/normalizations can be loaded.
 
-    This is meant to coordinate with the Indexor service object.
+    This is meant to coordinate with the Indexer service object.
 
     """
 

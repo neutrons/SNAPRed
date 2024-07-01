@@ -12,7 +12,7 @@ class Record(VersionedObject, extra="allow"):
     This is the basic, bare-bones record of a workflow completion.
     It contains only the run number, the resolution (native/lite), and a version.
 
-    This is meant to coordinate with the Indexor service object.
+    This is meant to coordinate with the Indexer service object.
 
     The class method `indexFromRecord` will create a compatible index entry from a record.
 

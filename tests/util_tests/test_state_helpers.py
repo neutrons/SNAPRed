@@ -198,8 +198,8 @@ def test_state_root_redirect_no_stateid():
         assert localDataService._generateStateId()[0] == tmpRoot.path().parts[-1]
         # make sure a file can be added inside the directory -- can be any file
         # verify it can be found by data services and equals the value written
-        indexor = localDataService.calibrationIndexor("xyz", True)
-        tmpRoot.addFileAs(Resource.getPath("inputs/calibration/CalibrationParameters.json"), indexor.parametersPath(1))
+        indexer = localDataService.calibrationIndexer("xyz", True)
+        tmpRoot.addFileAs(Resource.getPath("inputs/calibration/CalibrationParameters.json"), indexer.parametersPath(1))
         ans = localDataService.readCalibrationState("xyz", True, 1)
         assert ans == Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
         # make sure files can only be added inside the directory

@@ -4,8 +4,8 @@ from typing import Dict, List, Optional
 
 from pydantic import validate_call
 
-from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.calibration.Calibration import Calibration  # noqa: F401
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: F401
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
@@ -15,9 +15,9 @@ from snapred.backend.dao.indexing.Versioning import (
     VERSION_START,
     VersionedObject,
 )
-from snapred.backend.dao.normalization.Normalization import Normalization
-from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
-from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
+from snapred.backend.dao.normalization.Normalization import Normalization  # noqa: F401
+from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord  # noqa: F401
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord  # noqa: F401
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.mantid.AllowedPeakTypes import StrEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -27,40 +27,49 @@ logger = snapredLogger.getLogger(__name__)
 
 
 """
-    The Indexor will automatically track versions and produce the next and current versions.
+    The Indexer will automatically track versions and produce the next and current versions.
     This is intended to have responsibility over one state/resolution/workflow combination,
     (e.g state abcd123efg, lite mode, calibration), and for that combination will keep tabs on
     the index and the directory tree to determine appropriate version numbers.
 
     All saving or loading of indices, records, or calculation parameter files should be
-    handled through the appropriate Indexor.
+    handled through the appropriate Indexer.
 
-    When saving, the Indexor will always save at the version attached to the object.
+    When saving, the Indexer will always save at the version attached to the object.
     If this version is invalid, it will throw an error and not save.
 
-    The Indexor version list will only update when both a record and a corresponding inex entry
+    The Indexer version list will only update when both a record and a corresponding inex entry
     have been written.
 """
 
 
-class IndexorType(StrEnum):
+class IndexerType(StrEnum):
     DEFAULT = ""
     CALIBRATION = "Calibration"
     NORMALIZATION = "Normalization"
     REDUCTION = "Reduction"
 
 
-class Indexor:
+# the record type for each indexer type
+RECORD_TYPE = {it: globals()[f"{it.value}Record"] for it in IndexerType}
+
+# the params type for each indexer type
+# either has a special object with same name as indexer type, or used default CalculationParameters
+__special = [IndexerType.CALIBRATION, IndexerType.NORMALIZATION]
+PARAMS_TYPE = {it: globals()[it.value] if it in __special else CalculationParameters for it in IndexerType}
+
+
+class Indexer:
     rootDirectory: Path
     index: Dict[int, IndexEntry]
 
-    indexorType: IndexorType
+    indexerType: IndexerType
 
     ## CONSTRUCTOR / DESTRUCTOR METHODS ##
 
     @validate_call
-    def __init__(self, *, indexorType: IndexorType, directory: Path | str) -> None:
-        self.indexorType = indexorType
+    def __init__(self, *, indexerType: IndexerType, directory: Path | str) -> None:
+        self.indexerType = indexerType
         self.rootDirectory = Path(directory)
         self.index = self.readIndex()
         self.dirVersions = self.readDirectoryList()
@@ -110,7 +119,7 @@ class Indexor:
 
     def currentVersion(self) -> int:
         """
-        The largest version found by the Indexor.
+        The largest version found by the Indexer.
         """
         currentVersion = None
         overlap = set.union(set(self.index.keys()), self.dirVersions)
@@ -227,19 +236,19 @@ class Indexor:
         """
         Path to the index
         """
-        return self.rootDirectory / f"{self.indexorType}Index.json"
+        return self.rootDirectory / f"{self.indexerType}Index.json"
 
     def recordPath(self, version: Optional[int] = None):
         """
         Path to a specific version of a calculation record
         """
-        return self.versionPath(version) / f"{self.indexorType}Record.json"
+        return self.versionPath(version) / f"{self.indexerType}Record.json"
 
     def parametersPath(self, version: Optional[int] = None):
         """
         Path to a specific version of calculation parameters
         """
-        return self.versionPath(version) / f"{self.indexorType}Parameters.json"
+        return self.versionPath(version) / f"{self.indexerType}Parameters.json"
 
     @validate_call
     def versionPath(self, version: Optional[int] = None) -> Path:
@@ -307,15 +316,7 @@ class Indexor:
         filePath = self.recordPath(version)
         record = None
         if filePath.exists():
-            match self.indexorType:
-                case IndexorType.CALIBRATION:
-                    record = parse_file_as(CalibrationRecord, filePath)
-                case IndexorType.NORMALIZATION:
-                    record = parse_file_as(NormalizationRecord, filePath)
-                case IndexorType.REDUCTION:
-                    record = parse_file_as(ReductionRecord, filePath)
-                case IndexorType.DEFAULT:
-                    record = parse_file_as(Record, filePath)
+            record = parse_file_as(RECORD_TYPE[self.indexerType], filePath)
         return record
 
     def writeRecord(self, record: Record):
@@ -339,19 +340,12 @@ class Indexor:
         """
         version = self.thisOrCurrentVersion(version)
         filePath = self.parametersPath(version)
+        parameters = None
         if filePath.exists():
-            match self.indexorType:
-                case IndexorType.CALIBRATION:
-                    parameters = Calibration.parse_file(filePath)
-                case IndexorType.NORMALIZATION:
-                    parameters = Normalization.parse_file(filePath)
-                case IndexorType.REDUCTION:
-                    parameters = CalculationParameters.parse_file(filePath)
-                case IndexorType.DEFAULT:
-                    parameters = CalculationParameters.parse_file(filePath)
+            parameters = parse_file_as(PARAMS_TYPE[self.indexerType], filePath)
         else:
             raise FileNotFoundError(
-                f"No {self.indexorType} calculation parameters found at {filePath} for version {version}"
+                f"No {self.indexerType} calculation parameters found at {filePath} for version {version}"
             )
         return parameters
 
@@ -365,7 +359,7 @@ class Indexor:
 
         parametersPath = self.parametersPath(parameters.version)
         if parametersPath.exists():
-            logger.warn(f"Overwriting {self.indexorType} parameters at {parametersPath}")
+            logger.warn(f"Overwriting {self.indexerType} parameters at {parametersPath}")
         else:
             parametersPath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(parameters, parametersPath)

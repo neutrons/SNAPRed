@@ -41,7 +41,7 @@ from snapred.backend.dao.normalization.NormalizationRecord import NormalizationR
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.state.GroupingMap import GroupingMap
-from snapred.backend.data.Indexor import IndexorType
+from snapred.backend.data.Indexer import IndexerType
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.data.NexusHDF5Metadata import NexusHDF5Metadata as n5m
 from snapred.meta.Config import Config, Resource
@@ -77,64 +77,64 @@ reductionIngredients = ReductionIngredients.model_validate_json(
 
 
 def do_test_index_missing(workflow):
-    # NOTE this is already covered by Indexor tests,
+    # NOTE this is already covered by Indexer tests,
     # but it existed and didn't hurt to retain
     localDataService = LocalDataService()
     with state_root_redirect(localDataService):
         assert len(getattr(localDataService, f"read{workflow}Index")("123", True)) == 0
 
 
-def do_test_workflow_indexor(workflow):
-    # verify the correct indexor is being returned
+def do_test_workflow_indexer(workflow):
+    # verify the correct indexer is being returned
     localDataService = LocalDataService()
-    localDataService.indexor = mock.Mock()
+    localDataService.indexer = mock.Mock()
     for useLiteMode in [True, False]:
-        getattr(localDataService, f"{workflow.lower()}Indexor")("xyz", useLiteMode)
-        assert localDataService.indexor.called_once_with("xyz", useLiteMode, workflow.upper())
+        getattr(localDataService, f"{workflow.lower()}Indexer")("xyz", useLiteMode)
+        assert localDataService.indexer.called_once_with("xyz", useLiteMode, workflow.upper())
 
 
 def do_test_read_index(workflow):
-    # verify that calls to read index call out to the indexor
+    # verify that calls to read index call out to the indexer
     mockIndex = ["nope"]
-    mockIndexor = mock.Mock(getIndex=mock.Mock(return_value=mockIndex))
+    mockIndexer = mock.Mock(getIndex=mock.Mock(return_value=mockIndex))
     localDataService = LocalDataService()
-    localDataService.indexor = mock.Mock(return_value=mockIndexor)
+    localDataService.indexer = mock.Mock(return_value=mockIndexer)
     for useLiteMode in [True, False]:
         ans = getattr(localDataService, f"read{workflow}Index")("xyz", useLiteMode)
         assert ans == mockIndex
 
 
 def do_test_read_record_with_version(workflow: Literal["Calibration", "Normalization", "Reduction"]):
-    # ensure it is calling the functionality in the indexor
-    mockIndexor = mock.Mock()
+    # ensure it is calling the functionality in the indexer
+    mockIndexer = mock.Mock()
     localDataService = LocalDataService()
-    localDataService.indexor = mock.Mock(return_value=mockIndexor)
+    localDataService.indexer = mock.Mock(return_value=mockIndexer)
     for useLiteMode in [True, False]:
         version = randint(1, 20)
         res = getattr(localDataService, f"read{workflow}Record")("xyz", useLiteMode, version)
-        assert res == mockIndexor.readRecord.return_value
-        mockIndexor.readRecord.assert_called_with(version)
+        assert res == mockIndexer.readRecord.return_value
+        mockIndexer.readRecord.assert_called_with(version)
 
 
 def do_test_read_record_no_version(workflow: Literal["Calibration", "Normalization", "Reduction"]):
-    # ensure it is calling the functionality in the indexor
+    # ensure it is calling the functionality in the indexer
     # if no version is given, it should get latest applicable version
     latestVersion = randint(20, 120)
-    mockIndexor = mock.Mock(latestApplicableVersion=mock.Mock(return_value=latestVersion))
+    mockIndexer = mock.Mock(latestApplicableVersion=mock.Mock(return_value=latestVersion))
     localDataService = LocalDataService()
-    localDataService.indexor = mock.Mock(return_value=mockIndexor)
+    localDataService.indexer = mock.Mock(return_value=mockIndexer)
     for useLiteMode in [True, False]:
         res = getattr(localDataService, f"read{workflow}Record")("xyz", useLiteMode)  # NOTE no version
-        mockIndexor.latestApplicableVersion.assert_called_with("xyz")
-        mockIndexor.readRecord.assert_called_with(latestVersion)
-        assert res == mockIndexor.readRecord.return_value
+        mockIndexer.latestApplicableVersion.assert_called_with("xyz")
+        mockIndexer.readRecord.assert_called_with(latestVersion)
+        assert res == mockIndexer.readRecord.return_value
 
 
 def do_test_write_record_with_version(workflow: Literal["Calibration", "Normalization", "Reduction"]):
-    # ensure it is calling the methods inside the indexor service
-    mockIndexor = mock.Mock()
+    # ensure it is calling the methods inside the indexer service
+    mockIndexer = mock.Mock()
     localDataService = LocalDataService()
-    localDataService.indexor = mock.Mock(return_value=mockIndexor)
+    localDataService.indexer = mock.Mock(return_value=mockIndexer)
     for useLiteMode in [True, False]:
         record = globals()[f"{workflow}Record"].model_construct(
             runNumber="xyz",
@@ -144,8 +144,8 @@ def do_test_write_record_with_version(workflow: Literal["Calibration", "Normaliz
             calculationParameters=mock.Mock(),
         )
         getattr(localDataService, f"write{workflow}Record")(record)
-        mockIndexor.writeRecord.assert_called_with(record)
-        mockIndexor.writeParameters.assert_called_with(record.calculationParameters)
+        mockIndexer.writeRecord.assert_called_with(record)
+        mockIndexer.writeParameters.assert_called_with(record.calculationParameters)
 
 
 def do_test_read_state_with_version(workflow: Literal["Calibration", "Normalization", "Reduction"]):
@@ -156,9 +156,9 @@ def do_test_read_state_with_version(workflow: Literal["Calibration", "Normalizat
     for version in versions:
         for useLiteMode in [True, False]:
             with state_root_redirect(localDataService) as tmpRoot:
-                indexor = localDataService.indexor("xyz", useLiteMode, workflow)
-                tmpRoot.addFileAs(inputPath, indexor.parametersPath(version))
-                assert indexor.parametersPath(version).exists()
+                indexer = localDataService.indexer("xyz", useLiteMode, workflow)
+                tmpRoot.addFileAs(inputPath, indexer.parametersPath(version))
+                assert indexer.parametersPath(version).exists()
                 actualState = getattr(localDataService, f"read{workflow}State")("xyz", useLiteMode, version)
             expectedState = globals()[workflow].parse_file(inputPath)
             assert actualState == expectedState
@@ -170,9 +170,9 @@ def do_test_read_state_no_version(workflow: Literal["Calibration", "Normalizatio
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         with state_root_redirect(localDataService) as tmpRoot:
-            indexor = localDataService.indexor("xyz", useLiteMode, workflow)
-            tmpRoot.addFileAs(inputPath, indexor.parametersPath(currentVersion))
-            indexor.reconcileIndexToFiles()  # make index point at the added version
+            indexer = localDataService.indexer("xyz", useLiteMode, workflow)
+            tmpRoot.addFileAs(inputPath, indexer.parametersPath(currentVersion))
+            indexer.reconcileIndexToFiles()  # make index point at the added version
             actualState = getattr(localDataService, f"read{workflow}State")("xyz", useLiteMode)  # NOTE no version
         expectedState = globals()[workflow].parse_file(inputPath)
         assert actualState == expectedState
@@ -242,10 +242,10 @@ def test_readStateConfig_default():
     parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
-        indexor = localDataService.calibrationIndexor("57514", True)
+        indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        tmpRoot.addFileAs(parametersPath, indexor.parametersPath(VERSION_DEFAULT))
-        indexor.reconcileIndexToFiles()  # NOTE manually update the Indexor
+        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(VERSION_DEFAULT))
+        indexer.reconcileIndexToFiles()  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
     assert actual.stateId == "ab8704b0bc2a2342"
@@ -257,10 +257,10 @@ def test_readStateConfig_previous():
     parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
-        indexor = localDataService.calibrationIndexor("57514", True)
+        indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        tmpRoot.addFileAs(parametersPath, indexor.parametersPath(randint(2, 10)))
-        indexor.reconcileIndexToFiles()  # NOTE manually update the Indexor
+        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(randint(2, 10)))
+        indexer.reconcileIndexToFiles()  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
     assert actual.stateId == "ab8704b0bc2a2342"
@@ -272,10 +272,10 @@ def test_readStateConfig_attaches_grouping_map():
     parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
-        indexor = localDataService.calibrationIndexor("57514", True)
+        indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        tmpRoot.addFileAs(parametersPath, indexor.parametersPath(1))
-        indexor.reconcileIndexToFiles()  # NOTE manually update the Indexor
+        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(1))
+        indexer.reconcileIndexToFiles()  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     expectedMap = GroupingMap.parse_file(groupingMapPath)
     assert actual.groupingMap == expectedMap
@@ -288,10 +288,10 @@ def test_readStateConfig_invalid_grouping_map():
     parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
-        indexor = localDataService.calibrationIndexor("57514", True)
+        indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        tmpRoot.addFileAs(parametersPath, indexor.parametersPath(1))
-        indexor.reconcileIndexToFiles()  # NOTE manually update the Indexor
+        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(1))
+        indexer.reconcileIndexToFiles()  # NOTE manually update the Indexer
         # 'GroupingMap.defaultStateId' is _not_ a valid grouping-map 'stateId' for an existing `StateConfig`.
         with pytest.raises(  # noqa: PT012
             RuntimeError,
@@ -307,9 +307,9 @@ def test_readStateConfig_calls_prepareStateRoot():
     expected = Calibration.parse_file(parametersPath)
     localDataService = LocalDataService()
     with state_root_redirect(localDataService, stateId=expected.instrumentState.id.hex) as tmpRoot:
-        indexor = localDataService.calibrationIndexor("57514", True)
-        tmpRoot.addFileAs(parametersPath, indexor.parametersPath(1))
-        indexor.reconcileIndexToFiles()  # NOTE manually update the Indexor
+        indexer = localDataService.calibrationIndexer("57514", True)
+        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(1))
+        indexer.reconcileIndexToFiles()  # NOTE manually update the Indexer
         assert not localDataService._groupingMapPath(tmpRoot.stateId).exists()
         localDataService._prepareStateRoot = mock.Mock(
             side_effect=lambda x: tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(x))
@@ -613,12 +613,12 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
     localDataService = LocalDataService()
     with state_root_redirect(localDataService) as tmpRoot:
         # move the calculation parameters and grouping map into correct folder
-        indexor = localDataService.calibrationIndexor("57514", True)
+        indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.addFileAs(
             Resource.getPath("inputs/calibration/CalibrationParameters.json"),
-            indexor.parametersPath(VERSION_DEFAULT),
+            indexer.parametersPath(VERSION_DEFAULT),
         )
-        indexor.reconcileIndexToFiles()
+        indexer.reconcileIndexToFiles()
         tmpRoot.addFileAs(
             Resource.getPath("inputs/pixel_grouping/groupingMap.json"),
             localDataService._groupingMapPath(tmpRoot.stateId),
@@ -815,119 +815,119 @@ def test_constructReductionDataRoot():
 
 
 def test_statePathForWorkflow_calibration():
-    indexorType = IndexorType.CALIBRATION
+    indexerType = IndexerType.CALIBRATION
     fakeStateId = "boogersoup"
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
-        ans = localDataService._statePathForWorkflow(fakeStateId, useLiteMode, indexorType)
+        ans = localDataService._statePathForWorkflow(fakeStateId, useLiteMode, indexerType)
         exp = localDataService._constructCalibrationStatePath(fakeStateId, useLiteMode)
         assert ans == exp
 
 
 def test_statePathForWorkflow_normalization():
-    indexorType = IndexorType.NORMALIZATION
+    indexerType = IndexerType.NORMALIZATION
     fakeStateId = "boogersoup"
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
-        ans = localDataService._statePathForWorkflow(fakeStateId, useLiteMode, indexorType)
+        ans = localDataService._statePathForWorkflow(fakeStateId, useLiteMode, indexerType)
         exp = localDataService._constructNormalizationStatePath(fakeStateId, useLiteMode)
         assert ans == exp
 
 
 def test_statePathForWorkflow_reduction():
-    indexorType = IndexorType.REDUCTION
+    indexerType = IndexerType.REDUCTION
     runNumber = "xyz"
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         with pytest.raises(NotImplementedError):
-            localDataService._statePathForWorkflow(runNumber, useLiteMode, indexorType)
+            localDataService._statePathForWorkflow(runNumber, useLiteMode, indexerType)
 
 
 def test_statePathForWorkflow_default():
-    indexorType = IndexorType.DEFAULT
+    indexerType = IndexerType.DEFAULT
     fakeStateId = "boogersoup"
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         with pytest.raises(NotImplementedError):
-            localDataService._statePathForWorkflow(fakeStateId, useLiteMode, indexorType)
+            localDataService._statePathForWorkflow(fakeStateId, useLiteMode, indexerType)
 
 
 def test_statePathForWorkflow_nonsense():
-    indexorType = "chumbawumba"
+    indexerType = "chumbawumba"
     fakeStateId = "boogersoup"
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         with pytest.raises(NotImplementedError):
-            localDataService._statePathForWorkflow(fakeStateId, useLiteMode, indexorType)
+            localDataService._statePathForWorkflow(fakeStateId, useLiteMode, indexerType)
 
 
-@mock.patch("snapred.backend.data.LocalDataService.Indexor")
-def test_index_default(Indexor):
-    indexor = Indexor.construct()
-    Indexor.return_value = indexor
+@mock.patch("snapred.backend.data.LocalDataService.Indexer")
+def test_index_default(Indexer):
+    indexer = Indexer.construct()
+    Indexer.return_value = indexer
     localDataService = LocalDataService()
 
-    # assert there are no indexors
-    localDataService._indexor.cache_clear()
-    assert localDataService._indexor.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
+    # assert there are no indexers
+    localDataService._indexer.cache_clear()
+    assert localDataService._indexer.cache_info() == functools._CacheInfo(hits=0, misses=0, maxsize=128, currsize=0)
 
-    # make an indexor
+    # make an indexer
     stateId = "abc"
     localDataService._generateStateId = mock.Mock(return_value=(stateId, "gibberish"))
     localDataService._statePathForWorkflow = mock.Mock(return_value="/not/real/path")
-    indexorType = IndexorType.DEFAULT
+    indexerType = IndexerType.DEFAULT
     for useLiteMode in [True, False]:
-        res = localDataService.indexor("xyz", useLiteMode, indexorType)
-        assert res == indexor
+        res = localDataService.indexer("xyz", useLiteMode, indexerType)
+        assert res == indexer
         assert localDataService._generateStateId.called
         assert localDataService._statePathForWorkflow.called
-        assert Indexor.called
+        assert Indexer.called
 
         # reset call counts for next check
-        Indexor.reset_mock()
+        Indexer.reset_mock()
         localDataService._generateStateId.reset_mock()
         localDataService._statePathForWorkflow.reset_mock()
 
         # call again and make sure cached version in returned
-        res = localDataService.indexor("xyz", useLiteMode, indexorType)
-        assert res == indexor
+        res = localDataService.indexer("xyz", useLiteMode, indexerType)
+        assert res == indexer
         assert localDataService._generateStateId.called
         assert not localDataService._statePathForWorkflow.called
-        assert not Indexor.called
+        assert not Indexer.called
 
 
-@mock.patch("snapred.backend.data.LocalDataService.Indexor")
-def test_index_reduction(Indexor):
-    # Reduction Indexors are not supported by LocalDataService
-    indexor = Indexor.construct()
-    Indexor.return_value = indexor
-    # TODO check the indexor points inside correct file
+@mock.patch("snapred.backend.data.LocalDataService.Indexer")
+def test_index_reduction(Indexer):
+    # Reduction Indexers are not supported by LocalDataService
+    indexer = Indexer.construct()
+    Indexer.return_value = indexer
+    # TODO check the indexer points inside correct file
     localDataService = LocalDataService()
 
-    # make an indexor
+    # make an indexer
     localDataService._generateStateId = mock.Mock(return_value=("xyz", "123"))
 
-    indexorType = IndexorType.REDUCTION
+    indexerType = IndexerType.REDUCTION
     for useLiteMode in [True, False]:
         with pytest.raises(NotImplementedError):
-            localDataService.indexor("xyz", useLiteMode, indexorType)
+            localDataService.indexer("xyz", useLiteMode, indexerType)
 
 
-def test_calibrationIndexor():
-    do_test_workflow_indexor("Calibration")
+def test_calibrationIndexer():
+    do_test_workflow_indexer("Calibration")
 
 
-def test_normalizationIndexor():
-    do_test_workflow_indexor("Normalization")
+def test_normalizationIndexer():
+    do_test_workflow_indexer("Normalization")
 
 
 def test_readCalibrationIndex():
-    # verify that calls to read index call to the indexor
+    # verify that calls to read index call to the indexer
     do_test_read_index("Calibration")
 
 
 def test_readNormalizationIndex():
-    # verify that calls to read index call to the indexor
+    # verify that calls to read index call to the indexer
     do_test_read_index("Normalization")
 
 
@@ -981,24 +981,24 @@ def readReductionIngredientsFromFile():
 
 
 def test_readCalibrationRecord_with_version():
-    # ensure it is calling the functionality in the indexor
+    # ensure it is calling the functionality in the indexer
     do_test_read_record_with_version("Calibration")
 
 
 def test_readCalibrationRecord_no_version():
-    # ensure it is calling the functionality in the indexor
+    # ensure it is calling the functionality in the indexer
     # if no version is given, it should get latest applicable version
     do_test_read_record_no_version("Calibration")
 
 
 def test_writeCalibrationRecord_with_version():
-    # ensure it is calling the methods inside the indexor service
+    # ensure it is calling the methods inside the indexer service
     do_test_write_record_with_version("Calibration")
 
 
 def test_readWriteCalibrationRecord():
     # ensure that reading and writing a calibration record will correctly interact with the file system
-    # NOTE a similar test is done of the indexor, but this pre-existed and doesn't hurt to retain
+    # NOTE a similar test is done of the indexer, but this pre-existed and doesn't hurt to retain
     record = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
@@ -1018,7 +1018,7 @@ def test_writeCalibrationWorkspaces():
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
     )
     with state_root_redirect(localDataService, stateId=stateId):
-        basePath = localDataService.calibrationIndexor(testCalibrationRecord.runNumber, True).versionPath(1)
+        basePath = localDataService.calibrationIndexer(testCalibrationRecord.runNumber, True).versionPath(1)
 
         # Workspace names need to match the names that are used in the test record.
         workspaces = testCalibrationRecord.workspaces.copy()
@@ -1059,18 +1059,18 @@ def test_writeCalibrationWorkspaces():
 
 
 def test_readNormalizationRecord_with_version():
-    # ensure it is calling the functionality in the indexor
+    # ensure it is calling the functionality in the indexer
     do_test_read_record_with_version("Normalization")
 
 
 def test_readNormalizationRecord_no_version():
-    # ensure it is calling the functionality in the indexor
+    # ensure it is calling the functionality in the indexer
     # if no version is given, it should get latest applicable version
     do_test_read_record_no_version("Normalization")
 
 
 def test_writeNormalizationRecord_with_version():
-    # ensure it is calling the methods inside the indexor service
+    # ensure it is calling the methods inside the indexer service
     do_test_write_record_with_version("Normalization")
 
 
@@ -1108,7 +1108,7 @@ def test_writeNormalizationWorkspaces():
         testNormalizationRecord.workspaceNames = newWorkspaceNames
         testWS0, testWS1, testWS2 = testNormalizationRecord.workspaceNames
 
-        basePath = localDataService.normalizationIndexor(runNumber, useLiteMode).versionPath(version)
+        basePath = localDataService.normalizationIndexer(runNumber, useLiteMode).versionPath(version)
 
         # Create sample workspaces.
         LoadEmptyInstrument(
@@ -1522,7 +1522,7 @@ def test_readNormalizationState_no_version():
 
 
 def test_readWriteCalibrationState():
-    # NOTE this test is already covered by tests of the Indexor
+    # NOTE this test is already covered by tests of the Indexer
     # but it doesn't hurt to retain this test anyway
     runNumber = "123"
     localDataService = LocalDataService()
@@ -1557,13 +1557,13 @@ def test_writeDefaultDiffCalTable(fetchInstrumentDonor, createDiffCalTableWorksp
     localDataService = LocalDataService()
     with state_root_redirect(localDataService):
         localDataService._writeDefaultDiffCalTable(runNumber, useLiteMode)
-        file = localDataService.calibrationIndexor(runNumber, useLiteMode).versionPath(version) / wsName
+        file = localDataService.calibrationIndexer(runNumber, useLiteMode).versionPath(version) / wsName
         file = file.with_suffix(".h5")
         assert file.exists()
 
 
 def test_readWriteNormalizationState():
-    # NOTE this test is already covered by tests of the Indexor
+    # NOTE this test is already covered by tests of the Indexer
     # but it doesn't hurt to retain this test anyway
     runNumber = "123"
     localDataService = LocalDataService()
