@@ -4,8 +4,8 @@ from typing import Dict, List, Optional
 
 from pydantic import validate_call
 
-from snapred.backend.dao.calibration.Calibration import Calibration  # noqa: F401
-from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord  # noqa: F401
+from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
@@ -15,9 +15,9 @@ from snapred.backend.dao.indexing.Versioning import (
     VERSION_START,
     VersionedObject,
 )
-from snapred.backend.dao.normalization.Normalization import Normalization  # noqa: F401
-from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord  # noqa: F401
-from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord  # noqa: F401
+from snapred.backend.dao.normalization.Normalization import Normalization
+from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.mantid.AllowedPeakTypes import StrEnum
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -51,12 +51,20 @@ class IndexerType(StrEnum):
 
 
 # the record type for each indexer type
-RECORD_TYPE = {it: globals()[f"{it.value}Record"] for it in IndexerType}
+RECORD_TYPE = {
+    IndexerType.CALIBRATION: CalibrationRecord,
+    IndexerType.NORMALIZATION: NormalizationRecord,
+    IndexerType.REDUCTION: ReductionRecord,
+    IndexerType.DEFAULT: Record,
+}
 
 # the params type for each indexer type
-# either has a special object with same name as indexer type, or used default CalculationParameters
-__special = [IndexerType.CALIBRATION, IndexerType.NORMALIZATION]
-PARAMS_TYPE = {it: globals()[it.value] if it in __special else CalculationParameters for it in IndexerType}
+PARAMS_TYPE = {
+    IndexerType.CALIBRATION: Calibration,
+    IndexerType.NORMALIZATION: Normalization,
+    IndexerType.REDUCTION: CalculationParameters,
+    IndexerType.DEFAULT: CalculationParameters,
+}
 
 
 class Indexer:
