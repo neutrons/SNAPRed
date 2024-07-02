@@ -1,6 +1,7 @@
 import json
 import unittest.mock as mock
 
+from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao.SNAPResponse import ResponseCode
 from snapred.backend.error.RecoverableException import RecoverableException
 
@@ -74,3 +75,27 @@ with mock.patch.dict(
         assert response.code == ResponseCode.ERROR
         assert response.message is not None
         assert response.data is None
+
+    @mock.patch.object(RequestScheduler, "handle")
+    def test_executeBatchRequests_successful(mockRequestScheduler):
+        """Test executeBatchRequest with good requests"""
+        interfaceController = mockedSuccessfulInterfaceController()
+        reductionRequest = mock.Mock()
+        reductionRequest.path = "Test Service"
+        mockRequestScheduler.return_value = [reductionRequest, reductionRequest]
+        responses = interfaceController.executeBatchRequests([reductionRequest, reductionRequest])
+        assert responses[0].code == ResponseCode.OK
+        assert responses[0].message is None
+        assert responses[0].data["result"] == "Success!"
+        assert len(responses) == 2
+
+    def test_executeBatchRequests_unsuccessful():
+        """Test executeBatchRequest with bad requests"""
+        interfaceController = mockedSuccessfulInterfaceController()
+        reductionRequest = mock.Mock()
+        reductionRequest.path = "Test Service"
+        # executeBatchRequest fails due to path mismatch
+        badRequest = mock.Mock()
+        badRequest.path = "Not same Path"
+        responses = interfaceController.executeBatchRequests([reductionRequest, badRequest])
+        assert responses is None
