@@ -8,7 +8,6 @@ from snapred.backend.dao.request import (
     ReductionRequest,
 )
 from snapred.backend.dao.SNAPRequest import SNAPRequest
-from snapred.backend.dao.state import FocusGroup
 from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.GroceryService import GroceryService
@@ -77,8 +76,9 @@ class ReductionService(Service):
         groupResults = self.fetchReductionGroupings(request)
         focusGroups = groupResults["focusGroups"]
         groupingWorkspaces = groupResults["groupingWorkspaces"]
+        request.focusGroup = focusGroups
 
-        ingredients = self.prepReductionIngredients(request, focusGroups)
+        ingredients = self.prepReductionIngredients(request)
 
         groceries = self.fetchReductionGroceries(request)
         # attach the list of grouping workspaces to the grocery dictionary
@@ -103,6 +103,7 @@ class ReductionService(Service):
         """
         # fetch all valid groups for this run state
         res = self.loadAllGroupings(request.runNumber, request.useLiteMode)
+        request.focusGroup = res["focusGroups"]
         return res
 
     @FromString
@@ -133,9 +134,7 @@ class ReductionService(Service):
         }
 
     @FromString
-    def prepReductionIngredients(
-        self, request: ReductionRequest, focusGroups: List[FocusGroup]
-    ) -> ReductionIngredients:
+    def prepReductionIngredients(self, request: ReductionRequest) -> ReductionIngredients:
         """
         Prepare the needed ingredients for calculating reduction.
         Requires:
@@ -155,7 +154,7 @@ class ReductionService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=focusGroups,
+            focusGroup=request.focusGroup,
         )
         return self.sousChef.prepReductionIngredients(farmFresh)
 
