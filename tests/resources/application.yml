@@ -162,8 +162,9 @@ test:
 cis_mode: false
 
 version:
-  error: "uninitialized"
-  default: "0xF"  # this tests alphanumeric defaults
+  friendlyName:
+    error: "uninitialized"
+    default: "0xF"  # this tests alphanumeric defaults
   start: 0
 
 constants:

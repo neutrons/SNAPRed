@@ -139,8 +139,9 @@ samples:
   home: ${instrument.calibration.sample.home}
 
 version:
-  error: "uninitialized"  # alphanumeric
-  default: 0 # alphanumeric
+  friendlyName:
+    error: "uninitialized"  # alphanumeric
+    default: 0 # alphanumeric
   start: 1   # MUST be nonnegative integer
 
 cis_mode: false

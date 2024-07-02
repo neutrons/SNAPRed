@@ -5,8 +5,8 @@ from pydantic import BaseModel, computed_field, field_serializer
 from snapred.meta.Config import Config
 
 VERSION_START = Config["version.start"]
-VERSION_NONE_NAME = Config["version.error"]
-VERSION_DEFAULT_NAME = Config["version.default"]
+VERSION_NONE_NAME = Config["version.friendlyName.error"]
+VERSION_DEFAULT_NAME = Config["version.friendlyName.default"]
 VERSION_DEFAULT = -1  # SNAPRed Internal flag for default version
 
 
