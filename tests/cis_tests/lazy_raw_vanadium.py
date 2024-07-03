@@ -34,10 +34,46 @@ sys.path.insert(0, str(Path(SNAPRed_module_root).parent / 'tests'))
 from util.SculleryBoy import SculleryBoy
 
 from snapred.meta.Config import Config, Resource
-Config._config['cis_mode'] = True
+Config._config['cis_mode'] = False
 Resource._resourcesPath = os.path.expanduser("~/SNAPRed/tests/resources/")
 
 class TestRawVanadiumCorrection(unittest.TestCase):
+    
+    def make_ws_with_peak_at(self, ws, peak):
+        CreateSampleWorkspace(
+            OutputWorkspace=ws,
+            # WorkspaceType="Histogram",
+            Function="User Defined",
+            UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={peak},Sigma=1",
+            Xmin=self.tof.minimum,
+            Xmax=self.tof.maximum,
+            BinWidth=1,
+            XUnit="TOF",
+            NumBanks=4,  # must produce same number of pixels as fake instrument
+            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
+            Random=False,
+        )
+        # load an instrument into sample data
+        LoadInstrument(
+            Workspace=ws,
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml"),
+            InstrumentName="fakeSNAP",
+            RewriteSpectraMap=True,
+        )
+        AddSampleLog(
+            Workspace=ws,
+            LogName="proton_charge",
+            LogText=f"{self.sample_proton_charge}",
+            LogType="Number Series",
+        )
+        Rebin(
+            InputWorkspace=ws,
+            Params=self.tof.params,
+            PreserveEvents=False,
+            OutputWorkspace=ws,
+            BinningMode="Logarithmic",
+        )
+    
     def setUp(self):
         """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
         self.ingredients = SculleryBoy().prepNormalizationIngredients({})
@@ -45,7 +81,7 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         self.ingredients.pixelGroup.timeOfFlight.minimum = TOFBinParams[0]
         self.ingredients.pixelGroup.timeOfFlight.binWidth = TOFBinParams[1]
         self.ingredients.pixelGroup.timeOfFlight.maximum = TOFBinParams[2]
-        tof = self.ingredients.pixelGroup.timeOfFlight
+        self.tof = self.ingredients.pixelGroup.timeOfFlight
 
         self.sample_proton_charge = 10.0
 
@@ -54,70 +90,14 @@ class TestRawVanadiumCorrection(unittest.TestCase):
         self.sampleWS = "_lazy_data_raw_vanadium"
         self.outputWS = "_lazy_raw_vanadium_final_output"
         self.signalWS = "_lazy_raw_vanadium_signal"
-        CreateSampleWorkspace(
-            OutputWorkspace=self.backgroundWS,
-            # WorkspaceType="Histogram",
-            Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=tof.minimum,
-            Xmax=tof.maximum,
-            BinWidth=1,
-            XUnit="TOF",
-            NumBanks=4,  # must produce same number of pixels as fake instrument
-            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=False,
-        )
-        # add proton charge for current normalization
-        AddSampleLog(
-            Workspace=self.backgroundWS,
-            LogName="gd_prtn_chrg",
-            LogText=f"{self.sample_proton_charge}",
-            LogType="Number",
-        )
-        # load an instrument into sample data
-        LoadInstrument(
-            Workspace=self.backgroundWS,
-            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml"),
-            InstrumentName="fakeSNAP",
-            RewriteSpectraMap=False,
-        )
+        
+        self.make_ws_with_peak_at(self.signalWS, 70)
+        self.make_ws_with_peak_at(self.backgroundWS, 30)
 
-        CloneWorkspace(
-            InputWorkspace=self.backgroundWS,
-            OutputWorkspace=self.sampleWS,
-        )
-        CreateSampleWorkspace(
-            OutputWorkspace=self.signalWS,
-            # WorkspaceType="Histogram",
-            Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=70,Sigma=1",
-            Xmin=tof.minimum,
-            Xmax=tof.maximum,
-            BinWidth=1,
-            XUnit="TOF",
-            NumBanks=4,  # must produce same number of pixels as fake instrument
-            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=False,
-        )
         Plus(
             LHSWorkspace=self.signalWS, 
-            RHSWorkspace=self.sampleWS, 
+            RHSWorkspace=self.backgroundWS, 
             OutputWorkspace=self.sampleWS,
-        )
-
-        Rebin(
-            InputWorkspace=self.sampleWS,
-            Params=tof.params,
-            PreserveEvents=False,
-            OutputWorkspace=self.sampleWS,
-            BinningMode="Logarithmic",
-        )
-        Rebin(
-            InputWorkspace=self.backgroundWS,
-            Params=tof.params,
-            PreserveEvents=False,
-            OutputWorkspace=self.backgroundWS,
-            BinningMode="Logarithmic",
         )
 
     def test_execute(self):
