@@ -1,20 +1,22 @@
 from qtpy.QtCore import Signal
-from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
+from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Resettable import Resettable
-from snapred.ui.widget.LabeledCheckBox import LabeledCheckBox
-from snapred.ui.widget.LabeledField import LabeledField
-from snapred.ui.widget.SampleDropDown import SampleDropDown
+from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
+
+logger = snapredLogger.getLogger(__name__)
 
 
 @Resettable
-class ReductionView(QWidget):
+class ReductionView(BackendRequestView):
     signalRemoveRunNumber = Signal(int)
 
     def __init__(self, pixelMasks=[], parent=None):
-        super().__init__(parent)
+        super(ReductionView, self).__init__(parent=parent)
 
         self.runNumbers = []
+        self.pixelMaskDropdown = self._multiSelectDropDown("Select Pixel Mask(s)", pixelMasks)
 
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
@@ -36,9 +38,8 @@ class ReductionView(QWidget):
         self.runNumberDisplay.setReadOnly(True)
 
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
-        self.liteModeToggle = LabeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.retainUnfocusedDataCheckbox = LabeledCheckBox("Retain Unfocussed Data")
-        self.pixelMaskDropdown = SampleDropDown("Pixel Masks", pixelMasks)
+        self.liteModeToggle = self._labeledLineEdit("Lite Mode", Toggle(parent=self, state=True))
+        self.retainUnfocusedDataCheckbox = self._labeledCheckBox("Retain Unfocussed Data")
 
         # Set field properties
         self.liteModeToggle.setEnabled(False)
@@ -66,6 +67,8 @@ class ReductionView(QWidget):
             self.runNumberInput.clear()
 
     def parseInputRunNumbers(self):
+        # Warning: run numbers are strings.
+        #   For now, it's OK to parse them as integer, but they should not be passed around that way.
         runNumberString = self.runNumberInput.text().strip()
         if runNumberString:
             try:
@@ -105,6 +108,9 @@ class ReductionView(QWidget):
 
     def getRunNumbers(self):
         return self.runNumbers
+
+    def getPixelMasks(self):
+        return self.pixelMaskDropdown.checkedItems()
 
     # Placeholder for checkBox logic
     """
