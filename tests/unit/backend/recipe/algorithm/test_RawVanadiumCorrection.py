@@ -4,7 +4,6 @@ import unittest
 
 from mantid.simpleapi import (
     AddSampleLog,
-    CloneWorkspace,
     CreateSampleWorkspace,
     CreateWorkspace,
     DeleteWorkspace,
@@ -13,6 +12,7 @@ from mantid.simpleapi import (
     Rebin,
     mtd,
 )
+from numpy import argmax
 
 # needed to make mocked ingredients
 # the algorithm to test
@@ -24,85 +24,72 @@ from util.SculleryBoy import SculleryBoy
 
 
 class TestRawVanadiumCorrection(unittest.TestCase):
-    def setUp(self):
-        """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
-        # self.fakeRunNumber = "555"
-        # fakeIngredients = ReductionIngredients.model_validate_json(Resource.read("/inputs/reduction/fake_file.json"))
-
-        self.ingredients = SculleryBoy().prepNormalizationIngredients({})
-        tof = self.ingredients.pixelGroup.timeOfFlight
-
-        self.sample_proton_charge = 10.0
-
-        # create some sample data
-        self.backgroundWS = "_test_data_raw_vanadium_background"
-        self.sampleWS = "_test_data_raw_vanadium"
+    def make_workspace_with_peak_at(self, ws, peak):
+        # prepare the "background" data
         CreateSampleWorkspace(
-            OutputWorkspace=self.backgroundWS,
-            WorkspaceType="Event",
+            OutputWorkspace=ws,
             Function="User Defined",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=30,Sigma=1",
-            Xmin=tof.minimum,
-            Xmax=tof.maximum,
+            UserDefinedFunction=f"name=Gaussian,Height=10,PeakCentre={peak},Sigma=1",
+            Xmin=self.tof.minimum,
+            Xmax=self.tof.maximum,
             BinWidth=1,
             XUnit="TOF",
             NumBanks=4,  # must produce same number of pixels as fake instrument
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=True,
+            Random=False,
         )
-
-        # add proton charge for current normalization
-        AddSampleLog(
-            Workspace=self.backgroundWS,
-            LogName="gd_prtn_chrg",
-            LogText=f"{self.sample_proton_charge}",
-            LogType="Number",
-        )
-
         # load an instrument into sample data
         LoadInstrument(
-            Workspace=self.backgroundWS,
+            Workspace=ws,
             Filename=Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml"),
             InstrumentName="fakeSNAPLite",
-            RewriteSpectraMap=False,
+            RewriteSpectraMap=True,
+        )
+        AddSampleLog(
+            Workspace=ws,
+            LogName="proton_charge",
+            LogText=f"{self.sample_proton_charge}",
+            LogType="Number Series",
+        )
+        # rebin!
+        Rebin(
+            InputWorkspace=ws,
+            Params=self.tof.params,
+            PreserveEvents=False,
+            OutputWorkspace=ws,
+            BinningMode="Logarithmic",
         )
 
-        CloneWorkspace(
-            InputWorkspace=self.backgroundWS,
-            OutputWorkspace=self.sampleWS,
-        )
-        CreateSampleWorkspace(
-            OutputWorkspace="_tmp_raw_vanadium",
-            WorkspaceType="Event",
-            UserDefinedFunction="name=Gaussian,Height=10,PeakCentre=70,Sigma=1",
-            Xmin=tof.minimum,
-            Xmax=tof.maximum,
-            BinWidth=1,
-            XUnit="TOF",
-            NumBanks=4,  # must produce same number of pixels as fake instrument
-            BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
-            Random=True,
-        )
+    def setUp(self):
+        """Create a set of mocked ingredients for calculating DIFC corrected by offsets"""
+
+        # Prepare the initial signal.
+        # Add a "background" to it.
+        # Run through the algo.
+        # Output should be the "raw data", but scaled by proton charge
+        self.signalWS = mtd.unique_name(prefix="_signal_")
+        self.backgroundWS = mtd.unique_name(prefix="_bkgr_")
+        self.sampleWS = mtd.unique_name(prefix="_sample_")
+
+        self.ingredients = SculleryBoy().prepNormalizationIngredients({})
+        TOFBinParams = (1, 0.01, 100)
+        self.ingredients.pixelGroup.timeOfFlight.minimum = TOFBinParams[0]
+        self.ingredients.pixelGroup.timeOfFlight.binWidth = TOFBinParams[1]
+        self.ingredients.pixelGroup.timeOfFlight.maximum = TOFBinParams[2]
+        self.tof = self.ingredients.pixelGroup.timeOfFlight
+        self.sample_proton_charge = 10.0
+
+        # prepare the "signal" data
+        self.make_workspace_with_peak_at(self.signalWS, 70)
+
+        # prepare the "background" data
+        self.make_workspace_with_peak_at(self.backgroundWS, 30)
+
+        # prepare the "sample" data, by combining both
         Plus(
-            LHSWorkspace="_tmp_raw_vanadium",
-            RHSWorkspace=self.sampleWS,
+            LHSWorkspace=self.signalWS,
+            RHSWorkspace=self.backgroundWS,
             OutputWorkspace=self.sampleWS,
-        )
-        DeleteWorkspace("_tmp_raw_vanadium")
-
-        Rebin(
-            InputWorkspace=self.sampleWS,
-            Params=tof.params,
-            PreserveEvents=True,
-            OutputWorkspace=self.sampleWS,
-            BinningMode="Logarithmic",
-        )
-        Rebin(
-            InputWorkspace=self.backgroundWS,
-            Params=tof.params,
-            PreserveEvents=True,
-            OutputWorkspace=self.backgroundWS,
-            BinningMode="Logarithmic",
         )
 
     def tearDown(self) -> None:
@@ -186,13 +173,27 @@ class TestRawVanadiumCorrection(unittest.TestCase):
 
     def test_execute(self):
         """Test that the algorithm executes"""
+
+        outputWS = mtd.unique_name(prefix="_raw_out_")
         algo = Algo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.sampleWS)
         algo.setProperty("BackgroundWorkspace", self.backgroundWS)
         algo.setProperty("Ingredients", self.ingredients.json())
-        algo.setProperty("OutputWorkspace", "_test_workspace_raw_vanadium")
+        algo.setProperty("OutputWorkspace", outputWS)
         assert algo.execute()
+
+        # the output workspace cannot be negative
+        ws = mtd[outputWS]
+        for n in range(ws.getNumberHistograms()):
+            for y in ws.readY(n):
+                assert y >= 0.0
+
+        # the peak of the output is in same spot as signal
+        for n in range(ws.getNumberHistograms()):
+            signal = argmax(mtd[self.signalWS].readY(n))
+            output = argmax(ws.readY(n))
+            assert signal == output
 
 
 # # old test from VanadiumFocussedReductionAlgorithm
