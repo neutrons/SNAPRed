@@ -99,7 +99,7 @@ def test_resource_not_packageMode(caplog):
     assert "Not in package mode" in caplog.text
 
 
-def test_resource_packageMode_exists(caplog):
+def test_resource_packageMode_exists():
     # Test that the "exists" method in package mode implements <exists in the package> functionality.
     
     ROOT_MODULE = Path(sys.modules["snapred"].__file__).parent
