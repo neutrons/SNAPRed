@@ -1,17 +1,14 @@
-from contextlib import contextmanager
-import importlib
-from pathlib import Path
 import logging
 import os
 import shutil
 import sys
+from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
+import pytest
 import snapred.meta.Config as Config_module
 from snapred.meta.Config import Config, Resource, _find_root_dir
-
-from unittest import mock
-import pytest
 
 
 def test_environment():
@@ -52,32 +49,33 @@ def test_instrument_home():
 
 def test_resource_packageMode(caplog):
     # Test that "package mode" is recognized appropriately.
-    
+
     # TODO: At present, 'Config' has a _redundant_ '@Singleton' =>  It is also initialized
     #   explicitly as a singleton.  This needs to be fixed!
-    
+
     ROOT_MODULE = Path(sys.modules["snapred"].__file__).parent
     ymlPath = ROOT_MODULE / "resources" / "application.yml"
-    
+
     # In the below, we need to trigger a fresh import for the 'Config' module.
-    # AND, we need an absolute path for an "application.yml" which is _outside_ of "snapred/resources". 
+    # AND, we need an absolute path for an "application.yml" which is _outside_ of "snapred/resources".
     with (
         mock.patch.dict(os.environ),
         mock.patch.dict(sys.modules),
         TemporaryDirectory() as tmpdir,
-        ):
+    ):
         # An absolute path for "application.yml" _outside_ of "snapred/resources".
         nonModuleEnvPath = Path(tmpdir) / "application.yml"
         shutil.copy2(ymlPath, nonModuleEnvPath)
         os.environ["env"] = str(nonModuleEnvPath)
-        
+
         # Trigger a fresh import for the "Config" module.
         del sys.modules["snapred.meta.Config"]
         from snapred.meta.Config import _Resource
+
         with (
             mock.patch.object(_Resource, "_existsInPackage") as mockExistsInPackage,
             caplog.at_level(logging.DEBUG, logger="snapred.meta.Config.Resource"),
-            ):
+        ):
             # This mock bypasses the fact that "application.yml" actually does exist
             #   under "snapred/resources".  Probably there's a better way to do this!
             mockExistsInPackage.return_value = False
@@ -89,11 +87,12 @@ def test_resource_packageMode(caplog):
 def test_resource_not_packageMode(caplog):
     # Test that a test env is recognized as non-"package mode".
 
-    with (mock.patch.dict(sys.modules)):        
+    with mock.patch.dict(sys.modules):
         # Trigger a fresh import for the "Config" module.
         del sys.modules["snapred.meta.Config"]
-        with (caplog.at_level(logging.DEBUG, logger="snapred.meta.Config.Resource")):
+        with caplog.at_level(logging.DEBUG, logger="snapred.meta.Config.Resource"):
             from snapred.meta.Config import _Resource
+
             rs = _Resource()
             assert not rs._packageMode
     assert "Not in package mode" in caplog.text
@@ -101,28 +100,29 @@ def test_resource_not_packageMode(caplog):
 
 def test_resource_packageMode_exists():
     # Test that the "exists" method in package mode implements <exists in the package> functionality.
-    
+
     ROOT_MODULE = Path(sys.modules["snapred"].__file__).parent
     ymlPath = ROOT_MODULE / "resources" / "application.yml"
-    
+
     # In the below, we need to trigger a fresh import for the 'Config' module.
-    # AND, we need an absolute path for an "application.yml" which is _outside_ of "snapred/resources". 
+    # AND, we need an absolute path for an "application.yml" which is _outside_ of "snapred/resources".
     with (
         mock.patch.dict(os.environ),
         mock.patch.dict(sys.modules),
         TemporaryDirectory() as tmpdir,
-        ):
+    ):
         # An absolute path for "application.yml" _outside_ of "snapred/resources".
         nonModuleEnvPath = Path(tmpdir) / "application.yml"
         shutil.copy2(ymlPath, nonModuleEnvPath)
         os.environ["env"] = str(nonModuleEnvPath)
-        
+
         # Trigger a fresh import for the "Config" module.
         del sys.modules["snapred.meta.Config"]
         from snapred.meta.Config import _Resource
+
         with (
             mock.patch.object(_Resource, "_existsInPackage") as mockExistsInPackage,
-            ):
+        ):
             # This mock bypasses the fact that "application.yml" actually does exist
             #   under "snapred/resources".  Probably there's a better way to do this!
             mockExistsInPackage.return_value = False
@@ -160,7 +160,7 @@ def test_resource_packageMode_open():
     with (
         mock.patch.object(Config_module.resources, "path") as mockResourcesPath,
         mock.patch.object(Resource, "_packageMode") as mockPackageMode,
-        ):
+    ):
         mockResourcesPath.return_value = mock.Mock(
             __enter__=mock.Mock(return_value=actual_path),
             __exit__=mock.Mock(),
