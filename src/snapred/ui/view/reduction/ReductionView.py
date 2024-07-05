@@ -1,4 +1,4 @@
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.widget.LabeledCheckBox import LabeledCheckBox
@@ -58,10 +58,13 @@ class ReductionView(QWidget):
 
         self.signalRemoveRunNumber.connect(self._removeRunNumber)
 
+    @Slot()
     def addRunNumber(self):
         runNumberList = self.parseInputRunNumbers()
         if runNumberList is not None:
-            self.runNumbers.extend(runNumberList)
+            noDuplicates = set(self.runNumbers)
+            noDuplicates.update(runNumberList)
+            self.runNumbers = list(noDuplicates)
             self.updateRunNumberList()
             self.runNumberInput.clear()
 
@@ -69,16 +72,18 @@ class ReductionView(QWidget):
         runNumberString = self.runNumberInput.text().strip()
         if runNumberString:
             try:
-                runNumberList = [int(num.strip()) for num in runNumberString.split(",") if num.strip().isdigit()]
+                runNumberList = [num.strip() for num in runNumberString.split(",") if num.strip().isdigit()]
                 return runNumberList
             except ValueError:
                 raise ValueError(
                     "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
                 )
 
+    @Slot()
     def removeRunNumber(self, runNumber):
         self.signalRemoveRunNumber.emit(runNumber)
 
+    @Slot()
     def _removeRunNumber(self, runNumber):
         self.runNumbers.remove(runNumber)
         self.updateRunNumberList()

@@ -51,7 +51,7 @@ class TestReductionService(unittest.TestCase):
         self.request = ReductionRequest(
             runNumber="123",
             useLiteMode=False,
-            focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
+            focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
         )
         ## Mock out the assistant services
         self.instance.sousChef = self.sculleryBoy
@@ -75,7 +75,6 @@ class TestReductionService(unittest.TestCase):
 
     def test_fetchReductionGroupings(self):
         data = self.instance.fetchReductionGroupings(self.request)
-        assert self.request.focusGroup == data["focusGroups"]
         assert data == self.instance.loadAllGroupings(self.request.runNumber, self.request.useLiteMode)
 
     def test_prepReductionIngredients(self):
@@ -92,15 +91,22 @@ class TestReductionService(unittest.TestCase):
         assert "normalizationWorkspace" in res
 
     @mock.patch(thisService + "ReductionRecipe")
-    def test_reduction(self, ReductionRecipe):
-        res = self.instance.reduction(self.request)
+    def test_reduction(self, mockReductionRecipe):
+        mockReductionRecipe.return_value = mock.Mock()
+        mockResult = {
+            "result": True,
+            "outputs": ["one", "two", "three"],
+        }
+        mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
+
+        result = self.instance.reduction(self.request)
         groupings = self.instance.fetchReductionGroupings(self.request)
         ingredients = self.instance.prepReductionIngredients(self.request)
         groceries = self.instance.fetchReductionGroceries(self.request)
         groceries["groupingWorkspaces"] = groupings["groupingWorkspaces"]
-        assert ReductionRecipe.called
-        assert ReductionRecipe.return_value.cook.called_once_with(ingredients, groceries)
-        assert res == ReductionRecipe.return_value.cook.return_value
+        assert mockReductionRecipe.called
+        assert mockReductionRecipe.return_value.cook.called_once_with(ingredients, groceries)
+        assert result.workspaces == mockReductionRecipe.return_value.cook.return_value["outputs"]
 
     def test_saveReduction(self):
         # this method only needs to call the methods in the data service

@@ -90,12 +90,17 @@ def initPVFileMock() -> mock.Mock:
     return mock_
 
 
+@mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_generateStateId")
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
 def test_state_root_override_enter(
-    mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath, mockGenerateStateId
+    mockReadPVFile,
+    mockReadInstrumentConfig,
+    mockDefaultGroupingMapPath,
+    mockGenerateStateId,
+    mockWriteDefaultDiffCalTable,  # noqa ARG001
 ):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
@@ -119,10 +124,16 @@ def test_state_root_override_enter(
         assert (Path(stateRootPath) / "lite" / "diffraction" / versionString / "CalibrationParameters.json").exists()
 
 
+@mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
-def test_state_root_override_exit(mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath):
+def test_state_root_override_exit(
+    mockReadPVFile,
+    mockReadInstrumentConfig,
+    mockDefaultGroupingMapPath,
+    mockWriteDefaultDiffCalTable,  # noqa ARG001
+):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
@@ -143,10 +154,16 @@ def test_state_root_override_exit(mockReadPVFile, mockReadInstrumentConfig, mock
     assert not Path(stateRootPath).exists()
 
 
+@mock.patch.object(LocalDataService, "_writeDefaultDiffCalTable")
 @mock.patch.object(LocalDataService, "_defaultGroupingMapPath")
 @mock.patch.object(LocalDataService, "readInstrumentConfig")
 @mock.patch.object(LocalDataService, "_readPVFile")
-def test_state_root_override_exit_no_delete(mockReadPVFile, mockReadInstrumentConfig, mockDefaultGroupingMapPath):
+def test_state_root_override_exit_no_delete(
+    mockReadPVFile,
+    mockReadInstrumentConfig,
+    mockDefaultGroupingMapPath,
+    mockWriteDefaultDiffCalTable,  # noqa ARG001
+):
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 

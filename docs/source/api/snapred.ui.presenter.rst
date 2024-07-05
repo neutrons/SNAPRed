@@ -61,20 +61,13 @@ snapred.ui.presenter.ToolBarPresenter module
    :undoc-members:
    :show-inheritance:
 
-snapred.ui.presenter.WorkflowNodePresenter module
--------------------------------------------------
-
-.. automodule:: snapred.ui.presenter.WorkflowNodePresenter
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.ui.presenter.WorkflowPresenter module
 ---------------------------------------------
 
 .. automodule:: snapred.ui.presenter.WorkflowPresenter
    :members:
    :undoc-members:
+   :exclude-members: actionCompleted, disableOtherWorkflows, enableAllWorkflows
    :show-inheritance:
 
 Module contents

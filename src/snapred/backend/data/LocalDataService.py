@@ -724,7 +724,7 @@ class LocalDataService:
                 )
             self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
         for wsName in workspaces.pop(wngt.DIFFCAL_DIAG, []):
-            print(f"WORKSPACE {wsName}")
+            logger.debug(f"... writing WORKSPACE '{wsName}'")
             ext = Config["calibration.diffraction.diagnostic.extension"]
             if wng.Units.DIAG.lower() in wsName:
                 filename = Path(

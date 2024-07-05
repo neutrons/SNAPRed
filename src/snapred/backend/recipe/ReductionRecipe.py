@@ -72,19 +72,18 @@ class ReductionRecipe(Recipe[Ingredients]):
         )
         self.mantidSnapper.executeQueue()
 
-    def _applyRecipe(self, recipe: Type[Recipe], inputWorkspace: str):
-        if inputWorkspace:
-            self.groceries["inputWorkspace"] = inputWorkspace
-            recipe().cook(self.ingredients, self.groceries)
+    def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
+        if "inputWorkspace" in kwargs:
+            self.groceries.update(kwargs)
+            recipe().cook(ingredients_, self.groceries)
 
-    def _prepGroupWorkspaces(self, index: int):
+    def _prepGroupWorkspaces(self, groupingIndex: int):
         # TODO:  We need the wng to be able to deconstruct the workspace name
         # so that we can appropriately name the cloned workspaces
         # For now we are just appending it to the end, probably preferable
         # as it keeps the output colocated.
-        self.ingredients.pixelGroup = self.ingredients.pixelGroups[index]
-        self.ingredients.detectorPeaks = self.ingredients.detectorPeaksMany[index]
-        groupName = self.ingredients.pixelGroup.focusGroup.name
+
+        groupName = self.ingredients.pixelGroups[groupingIndex].focusGroup.name
         sampleClone = self._cloneWorkspace(self.sampleWs, f"output_{self.sampleWs}_{groupName}")
         self.groceries["inputWorkspace"] = sampleClone
         normalizationClone = None
@@ -101,41 +100,67 @@ class ReductionRecipe(Recipe[Ingredients]):
     def queueAlgos(self):
         pass
 
-    def _applyNormalization(self, sampleWorkspace: str, normalizationWorkspace: str):
-        self.groceries["inputWorkspace"] = sampleWorkspace
-        self.groceries["normalizationWorkspace"] = normalizationWorkspace
-        ApplyNormalizationRecipe().cook(self.ingredients, self.groceries)
-
     def execute(self):
+        data: Dict[str, Any] = {"result": False}
         # 1. PreprocessReductionRecipe
         outputs = []
-        self._applyRecipe(PreprocessReductionRecipe, self.sampleWs)
+        self._applyRecipe(
+            PreprocessReductionRecipe,
+            self.ingredients.preprocess(),
+            inputWorkspace=self.sampleWs,
+        )
         self._cloneIntermediateWorkspace(self.sampleWs, "sample_preprocessed")
-        self._applyRecipe(PreprocessReductionRecipe, self.normalizationWs)
+        self._applyRecipe(
+            PreprocessReductionRecipe,
+            self.ingredients.preprocess(),
+            inputWorkspace=self.normalizationWs,
+        )
         self._cloneIntermediateWorkspace(self.normalizationWs, "normalization_preprocessed")
-        for i, groupWs in enumerate(self.groupWorkspaces):
+
+        for groupingIndex, groupWs in enumerate(self.groupWorkspaces):
             self.groceries["groupingWorkspace"] = groupWs
 
             # Clone
-            sampleClone, normalizationClone = self._prepGroupWorkspaces(i)
+            sampleClone, normalizationClone = self._prepGroupWorkspaces(groupingIndex)
             # TODO: Set pixel group specific stuff
 
-            # Apply Calculations
-            self._applyRecipe(ReductionGroupProcessingRecipe, sampleClone)
-            self._cloneIntermediateWorkspace(sampleClone, f"sample_GroupProcessing_{i}")
-            self._applyRecipe(ReductionGroupProcessingRecipe, normalizationClone)
-            self._cloneIntermediateWorkspace(normalizationClone, f"normalization_GroupProcessing_{i}")
+            # 2. ReductionGroupProcessingRecipe
+            self._applyRecipe(
+                ReductionGroupProcessingRecipe,
+                self.ingredients.groupProcessing(groupingIndex),
+                inputWorkspace=sampleClone,
+            )
+            self._cloneIntermediateWorkspace(sampleClone, f"sample_GroupProcessing_{groupingIndex}")
+            self._applyRecipe(
+                ReductionGroupProcessingRecipe,
+                self.ingredients.groupProcessing(groupingIndex),
+                inputWorkspace=normalizationClone,
+            )
+            self._cloneIntermediateWorkspace(normalizationClone, f"normalization_GroupProcessing_{groupingIndex}")
 
-            self._applyRecipe(GenerateFocussedVanadiumRecipe, normalizationClone)
-            self._cloneIntermediateWorkspace(normalizationClone, f"normalization_FoocussedVanadium_{i}")
+            # 3. GenerateFocussedVanadiumRecipe
+            self._applyRecipe(
+                GenerateFocussedVanadiumRecipe,
+                self.ingredients.generateFocussedVanadium(groupingIndex),
+                inputWorkspace=normalizationClone,
+            )
+            self._cloneIntermediateWorkspace(normalizationClone, f"normalization_FoocussedVanadium_{groupingIndex}")
 
-            self._applyNormalization(sampleClone, normalizationClone)
-            self._cloneIntermediateWorkspace(sampleClone, f"sample_ApplyNormalization_{i}")
+            # 4. ApplyNormalizationRecipe
+            self._applyRecipe(
+                ApplyNormalizationRecipe,
+                self.ingredients.applyNormalization(groupingIndex),
+                inputWorkspace=sampleClone,
+                normalizationWorkspace=normalizationClone,
+            )
+            self._cloneIntermediateWorkspace(sampleClone, f"sample_ApplyNormalization_{groupingIndex}")
 
             # Cleanup
             outputs.append(sampleClone)
             self._deleteWorkspace(normalizationClone)
-        return outputs
+        data["result"] = True
+        data["outputs"] = outputs
+        return data
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:
         """

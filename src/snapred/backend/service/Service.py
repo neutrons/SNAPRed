@@ -23,7 +23,7 @@ class Service(ABC):
     def getPaths(self):
         return self._paths
 
-    def registerPath(self, path, route):
+    def registerPath(self, path, route: Callable):
         self._paths[path] = route
 
     def parsePath(self, path):

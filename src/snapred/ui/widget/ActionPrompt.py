@@ -14,3 +14,8 @@ class ActionPrompt:
     @property
     def widget(self):
         return self.view
+
+    # A static "factory" method to facilitate testing.
+    @staticmethod
+    def prompt(title, message, action, parent=None):
+        ActionPrompt(title, message, action, parent)

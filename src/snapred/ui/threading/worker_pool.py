@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from qtpy.QtCore import QObject, QThread, Signal
+from qtpy.QtCore import QObject, QThread, Signal, Slot
 
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
@@ -21,6 +21,7 @@ class Worker(QObject):
         self.target = target
         self.args = args
 
+    @Slot()
     def run(self):
         """Long-running task."""
         try:
@@ -67,9 +68,11 @@ class InfiniteWorker(QObject):
         self.target = target
         self.args = args
 
+    @Slot()
     def stop(self):
         self._kill = True
 
+    @Slot()
     def run(self):
         """inf running task."""
         while not self._kill:
@@ -101,7 +104,7 @@ class WorkerPool:
         else:
             # spawn thread and deligate
             thread = QThread()
-            # WARN: maybe the worker shouldnt be a key, not sure how equivelence is solved
+            # WARN: maybe the worker shouldn't be a key, not sure how equivelence is solved
             self.threads[worker] = thread
             worker.moveToThread(thread)
             # Step 5: Connect signals and slots

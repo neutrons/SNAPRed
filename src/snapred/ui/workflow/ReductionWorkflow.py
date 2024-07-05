@@ -1,5 +1,5 @@
 from snapred.backend.dao.request import ReductionRequest
-from snapred.backend.dao.SNAPResponse import SNAPResponse
+from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
@@ -24,7 +24,12 @@ class ReductionWorkflow(WorkflowImplementer):
         # completes and erases the data
 
         self.workflow = (
-            WorkflowBuilder(cancelLambda=self.resetWithPermission, parent=parent)
+            WorkflowBuilder(
+                startLambda=self.start,
+                # Retain reduction-output workspaces.
+                resetLambda=lambda: self.reset(True),
+                parent=parent,
+            )
             .addNode(
                 self._triggerReduction,
                 self._reductionView,
@@ -34,7 +39,6 @@ class ReductionWorkflow(WorkflowImplementer):
             .addNode(self._nothing, ReductionSaveView(parent=parent), "Save")
             .build()
         )
-        self.workflow.presenter.setResetLambda(self.reset)
 
     def _nothing(self, workflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)
@@ -72,12 +76,17 @@ class ReductionWorkflow(WorkflowImplementer):
 
         for runNumber in runNumbers:
             payload = ReductionRequest(
-                runNumber=str(runNumber),
+                runNumber=runNumber,
                 useLiteMode=self._reductionView.liteModeToggle.field.getState(),
                 continueFlags=self.continueAnywayFlags,
             )
             # TODO: Handle Continue Anyway
-            self.request(path="reduction/", payload=payload.json())
+            response = self.request(path="reduction/", payload=payload.json())
+            if response.code == ResponseCode.OK:
+                self.outputs.extend(response.data.workspaces)
+
+            # Note that the run number is deliberately not deleted from the run numbers list.
+            # Almost certainly it should be moved to a "completed run numbers" list.
 
         return self.responses[-1]
 

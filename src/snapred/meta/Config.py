@@ -20,7 +20,7 @@ def _find_root_dir():
     env = os.environ.get("env")
     if env and "test" in env and "conftest" in sys.modules:
         ROOT_MODULE = sys.modules["conftest"].__file__
-    else:
+    elif "snapred" in sys.modules:
         ROOT_MODULE = sys.modules["snapred"].__file__
 
     if ROOT_MODULE is None:
