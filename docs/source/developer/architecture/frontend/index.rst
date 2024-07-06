@@ -13,7 +13,7 @@ TODO
    normalization/normalization_tweak_peak_view
    normalization/normalization_workflow
    normalization/smoothing_slider
-   success_dialog
+   success_prompt
    calibration/calibration_assessment_presenter
    calibration/diffcal_assessment_view
    calibration/diffcal_request_view

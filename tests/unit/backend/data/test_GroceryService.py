@@ -1,6 +1,7 @@
 # ruff: noqa: E722, PT011, PT012, F811
 import json
 import os
+import sys
 import shutil
 import time
 import unittest
@@ -1693,27 +1694,24 @@ class TestGroceryService(unittest.TestCase):
         self.instance._loadedRuns = {(0, "a"): rawWsName}
         self.instance._loadedGroupings = {(1, "c"): "d"}
 
-        rebuildCache = self.instance.rebuildCache
-        self.instance.rebuildCache = mock.Mock()
+        with mock.patch.object(self.instance, "rebuildCache") as mockRebuildCache:
+            self.create_dumb_workspace(rawWsName) # in the cache
+            self.create_dumb_workspace("b")       # not in the cache
+            self.instance.clearADS(exclude=self.exclude) # default => don't clear cache
+            assert not mtd.doesExist("b")
+            assert mtd.doesExist(rawWsName)
 
-        self.create_dumb_workspace("b")
-        self.instance.clearADS(exclude=self.exclude)
-
-        assert mtd.doesExist(rawWsName) is False
-        self.create_dumb_workspace(rawWsName)
-        assert mtd.doesExist(rawWsName) is True
-
-        self.instance.clearADS(exclude=self.exclude, cache=False)
-
-        assert mtd.doesExist(rawWsName) is True
-        self.instance.rebuildCache.assert_called()
-        self.instance.rebuildCache = rebuildCache
+            assert mtd.doesExist(rawWsName)
+            self.instance.clearADS(exclude=self.exclude, clearCache=True)
+            assert not mtd.doesExist(rawWsName)
+            mockRebuildCache.assert_called()
 
     def test_clearADS_group(self):
         # create a workspace that will be removed
         dumbws = mtd.unique_name(prefix="_dumb_")
         self.create_dumb_workspace(dumbws)
         assert mtd.doesExist(dumbws)
+        
         # create a workspace group
         groupws = mtd.unique_name(prefix="_groupws_")
         subws1 = mtd.unique_name(prefix="a")
@@ -1746,3 +1744,24 @@ class TestGroceryService(unittest.TestCase):
 
         # delete these specially
         mtd.remove(groupws)
+
+    def test_getResidentWorkspaces(self):
+        with (
+            mock.patch.object(self.instance, "getCachedWorkspaces") as mockGetCachedWorkspaces
+            ):
+            expected = list(set(mtd.getObjectNames())) # note: re-ordering is required
+            assert len(expected)
+            
+            actual = self.instance.getResidentWorkspaces(excludeCache=False)
+            assert mockGetCachedWorkspaces.not_called
+            assert actual == expected
+
+    def test_getResidentWorkspaces_exclude_cache(self):
+        rawWsName = self.instance._createRawNeutronWorkspaceName(0, "a")
+        self.instance._loadedRuns = {(0, "a"): rawWsName}
+        expected = list(set(mtd.getObjectNames()).difference([rawWsName]))
+        assert len(expected)
+        
+        actual = self.instance.getResidentWorkspaces(excludeCache=True)
+        assert actual == expected
+    

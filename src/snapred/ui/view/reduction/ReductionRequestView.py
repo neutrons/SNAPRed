@@ -1,7 +1,8 @@
 from typing import Callable, List, Optional
 
-from qtpy.QtCore import Signal
-from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
+from qtpy.QtCore import Signal, Slot
+from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
+
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
@@ -64,6 +65,7 @@ class ReductionRequestView(BackendRequestView):
 
         self.signalRemoveRunNumber.connect(self._removeRunNumber)
 
+    @Slot()
     def addRunNumber(self):
         runNumberList = self.parseInputRunNumbers()
         if runNumberList is not None:
@@ -89,9 +91,11 @@ class ReductionRequestView(BackendRequestView):
                     "Please enter a valid run number or list of run numbers. (e.g. 46680, 46685, 46686, etc...)"
                 )
 
+    @Slot()
     def removeRunNumber(self, runNumber):
         self.signalRemoveRunNumber.emit(runNumber)
 
+    @Slot()
     def _removeRunNumber(self, runNumber):
         if runNumber not in self.runNumbers:
             logger.warning(
@@ -130,11 +134,3 @@ class ReductionRequestView(BackendRequestView):
     def getPixelMasks(self):
         return self.pixelMaskDropdown.checkedItems()
 
-    # Placeholder for checkBox logic
-    """
-    def onCheckBoxChecked(self, checked):
-        if checked:
-
-        else:
-            pass
-    """

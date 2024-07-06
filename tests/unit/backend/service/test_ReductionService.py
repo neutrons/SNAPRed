@@ -1,11 +1,13 @@
 import time
-import unittest
-import unittest.mock as mock
 from typing import List
 
 import numpy as np
 import pydantic
+
+import unittest
+import unittest.mock as mock
 import pytest
+
 from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
@@ -99,17 +101,24 @@ class TestReductionService(unittest.TestCase):
         assert "normalizationWorkspace" in res
 
     @mock.patch(thisService + "ReductionRecipe")
-    def test_reduction(self, ReductionRecipe):
+    def test_reduction(self, mockReductionRecipe):
+        mockReductionRecipe.return_value = mock.Mock()
+        mockResult = {
+            "result": True,
+            "outputs": ["one", "two", "three"],
+        }
+        mockReductionRecipe.return_value.cook = mock.Mock(return_value=mockResult)
         self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
         self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
-        res = self.instance.reduction(self.request)
+        
+        result = self.instance.reduction(self.request)
         groupings = self.instance.fetchReductionGroupings(self.request)
         ingredients = self.instance.prepReductionIngredients(self.request)
         groceries = self.instance.fetchReductionGroceries(self.request)
         groceries["groupingWorkspaces"] = groupings["groupingWorkspaces"]
-        assert ReductionRecipe.called
-        assert ReductionRecipe.return_value.cook.called_once_with(ingredients, groceries)
-        assert res == ReductionRecipe.return_value.cook.return_value
+        assert mockReductionRecipe.called
+        assert mockReductionRecipe.return_value.cook.called_once_with(ingredients, groceries)
+        assert result.workspaces == mockReductionRecipe.return_value.cook.return_value["outputs"]
 
     def test_saveReduction(self):
         # this test will ensure the two indicated files (record, data)

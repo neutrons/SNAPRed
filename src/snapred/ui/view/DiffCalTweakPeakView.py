@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pydantic
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
@@ -43,6 +43,8 @@ class DiffCalTweakPeakView(BackendRequestView):
     PREF_PEAKS = Config["calibration.diffraction.preferredPeaksPerGroup"]
     MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
     FWHM = Pair.model_validate(Config["calibration.parameters.default.FWHMMultiplier"])
+
+    FIGURE_MARGIN = 0.5  # top + bottom: inches
 
     signalRunNumberUpdate = Signal(str)
     signalPeakThresholdUpdate = Signal(float)
@@ -111,19 +113,22 @@ class DiffCalTweakPeakView(BackendRequestView):
 
         self.signalUpdateRecalculationButton.connect(self.setEnableRecalculateButton)
 
+    @Slot(str)
     def _updateRunNumber(self, runNumber):
         self.runNumberField.setText(runNumber)
 
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
 
-    def _updatePeakThreshold(self, peakThreshold):
+    @Slot(float)
+    def _updatePeakThreshold(self, peakThreshold: float):
         self.fieldThreshold.setText(str(peakThreshold))
 
     def updatePeakThreshold(self, peakThreshold):
         self.signalPeakThresholdUpdate.emit(float(peakThreshold))
 
-    def _updateMaxChiSq(self, maxChiSq):
+    @Slot(float)
+    def _updateMaxChiSq(self, maxChiSq: float):
         self.maxChiSqField.setText(str(maxChiSq))
 
     def updateMaxChiSq(self, maxChiSq):
@@ -134,6 +139,7 @@ class DiffCalTweakPeakView(BackendRequestView):
         self.groupingFileDropdown.setCurrentIndex(groupingIndex)
         self.peakFunctionDropdown.setCurrentIndex(peakIndex)
 
+    @Slot()
     def emitValueChange(self):
         # verify the fields before recalculation
         try:
@@ -219,7 +225,9 @@ class DiffCalTweakPeakView(BackendRequestView):
             ax.axvline(x=max(min(x), float(self.fieldXtalDMin.field.text())), label="xtal $d_{min}$", color="red")
             ax.axvline(x=min(max(x), float(self.fieldXtalDMax.field.text())), label="xtal $d_{max}$", color="red")
         # resize window and redraw
-        self.setMinimumHeight(self.initialLayoutHeight + int(self.figure.get_size_inches()[1] * self.figure.dpi))
+        self.setMinimumHeight(
+            self.initialLayoutHeight + int((self.figure.get_size_inches()[1] + self.FIGURE_MARGIN) * self.figure.dpi)
+        )
         self.canvas.draw()
 
     def _optimizeRowsAndCols(self, numGraphs):
@@ -236,6 +244,7 @@ class DiffCalTweakPeakView(BackendRequestView):
             colSize = sqrtSize + 1
         return rowSize, colSize
 
+    @Slot(bool)
     def setEnableRecalculateButton(self, enable):
         self.recalculationButton.setEnabled(enable)
 

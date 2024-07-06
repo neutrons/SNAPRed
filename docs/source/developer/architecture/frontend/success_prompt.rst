@@ -1,7 +1,7 @@
-SuccessDialog Class Documentation
+SuccessPrompt Class Documentation
 =================================
 
-SuccessDialog is a qt dialog constructed to deliver succinct and clear feedback to users following successful operations, such as the completion
+SuccessPrompt is a qt dialog constructed to deliver succinct and clear feedback to users following successful operations, such as the completion
 of a setup process or state initialization. It adheres to GUI design principles emphasizing straightforward communication, offering a minimalistic
 yet effective interface for conveying success messages. This approach serves to enhance the user experience within applications by affirmatively
 acknowledging positive action outcomes in a clear and uncomplicated manner.
@@ -31,6 +31,6 @@ Layout and Content:
   functionality streamlines the user's task progression, emphasizing efficiency and ease of use.
 
 
-SuccessDialog exemplifies an effective method of delivering essential feedback to users in GUI applications, by focusing on delivering key
+SuccessPrompt exemplifies an effective method of delivering essential feedback to users in GUI applications, by focusing on delivering key
 information without unnecessary complexity. Through its well-considered design and functionality, it significantly contributes to a positive and
 streamlined user experience, affirming the successful completion of actions within the application.
