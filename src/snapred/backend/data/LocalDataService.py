@@ -340,11 +340,13 @@ class LocalDataService:
     @validate_call
     def _constructReductionStateRoot(self, runNumber: str) -> Path:
         stateId, _ = self.generateStateId(runNumber)
-        IPTS = Path(self.getIPTS(runNumber))
-        # Substitute the last component of the IPTS-directory for the '{IPTS}' tag,
-        #   but only if the '{IPTS}' tag exists in the format string
-        fmt = Config["instrument.reduction.home"]
-        reductionHome = Path(fmt.format(IPTS=IPTS.name)) if "{IPTS}" in fmt else Path(fmt)
+        pathFmt = Config["instrument.reduction.home"]
+        if "{IPTS}" in pathFmt:
+            IPTS = Path(self.getIPTS(runNumber))
+            # substitute the last component of the IPTS-directory for the '{IPTS}' tag
+            reductionHome = Path(pathFmt.format(IPTS=IPTS.name))
+        else:
+            reductionHome = Path(pathFmt)
         return reductionHome / stateId
 
     @validate_call
@@ -488,7 +490,7 @@ class LocalDataService:
         """
         Persists a `NormalizationRecord` to either a new version folder, or overwrites a specific version.
         Record must be set with correct version.
-        -- side effect: creates needed directories for save
+        -- side effect: creates any directories needed for save
         """
 
         indexer = self.normalizationIndexer(record.runNumber, record.useLiteMode)
@@ -502,7 +504,7 @@ class LocalDataService:
     def writeNormalizationWorkspaces(self, record: NormalizationRecord):
         """
         Writes the workspaces associated with a `NormalizationRecord` to disk:
-        Record must be set with correct version and workspace names finalized.
+        Record must be set with correct version and workspace names must be finalized.
         -- assumes that `writeNormalizationRecord` has already been called, and that the version folder exists
         """
         indexer = self.normalizationIndexer(record.runNumber, record.useLiteMode)
@@ -548,6 +550,7 @@ class LocalDataService:
         """
         Persists a `CalibrationRecord` to either a new version folder, or overwrite a specific version.
         Record must be set with correct version.
+        -- side effect: creates any directories needed for save
         """
 
         indexer = self.calibrationIndexer(record.runNumber, record.useLiteMode)
@@ -561,7 +564,7 @@ class LocalDataService:
     def writeCalibrationWorkspaces(self, record: CalibrationRecord):
         """
         Writes the workspaces associated with a `CalibrationRecord` to disk:
-        Record must be set with correct version and workspace names finalized.
+        Record must be set with correct version and workspace names must be finalized.
         -- assumes that `writeCalibrationRecord` has already been called, and that the version folder exists
         """
         indexer = self.calibrationIndexer(record.runNumber, record.useLiteMode)
@@ -583,7 +586,7 @@ class LocalDataService:
             filename = Path(wsName + ext)
             self.writeWorkspace(calibrationDataPath, filename, wsName)
 
-        # write the diffcal table and attached mask
+        # write the diffcal table and mask
         tableWSNames = record.workspaces.get(wngt.DIFFCAL_TABLE, [])
         maskWSNames = record.workspaces.get(wngt.DIFFCAL_MASK, [])
         ext = ".h5"
@@ -615,7 +618,7 @@ class LocalDataService:
         Persists a `ReductionRecord` to either a new timestamp folder, or overwrites a specific timestamp.
         * timestamp must be set and output-workspaces list finalized.
         * must be called before any call to `writeReductionData`.
-        * side effect: creates the output directories when required.
+        * -- side effect: creates the output directories when required.
         """
 
         runNumber, useLiteMode, timestamp = record.runNumber, record.useLiteMode, record.timestamp
@@ -632,7 +635,7 @@ class LocalDataService:
     def writeReductionData(self, record: ReductionRecord):
         """
         Persists the reduction data associated with a `ReductionRecord`
-        * `writeReductionRecord` must have been called prior to this method.
+        -- `writeReductionRecord` must have been called prior to this method.
         """
 
         runNumber, useLiteMode, timestamp = record.runNumber, record.useLiteMode, record.timestamp
@@ -668,7 +671,7 @@ class LocalDataService:
     def readReductionData(self, runNumber: str, useLiteMode: bool, timestamp: float) -> ReductionRecord:
         """
         This method is complementary to `writeReductionData`:
-        * it is provided primarily for diagnostic purposes, and is not yet connected to any workflow
+        -- it is provided primarily for diagnostic purposes, and is not yet connected to any workflow
         """
         filePath = self._constructReductionDataFilePath(runNumber, useLiteMode, timestamp)
         if not filePath.exists():
@@ -983,20 +986,20 @@ class LocalDataService:
 
     ##### GROUPING MAP METHODS #####
 
-    def _readGroupingMap(self, stateId: str) -> GroupingMap:
-        path: Path = self._groupingMapPath(stateId)
-        if not path.exists():
-            raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
-        return parse_file_as(GroupingMap, path)
-
     def readGroupingMap(self, runNumber: str):
-        # if the state exists then lookup its grouping map
+        # if the state exists then look up its grouping map
         if self.checkCalibrationFileExists(runNumber):
             stateId, _ = self.generateStateId(runNumber)
             return self._readGroupingMap(stateId)
         # otherwise return the default map
         else:
             return self._readDefaultGroupingMap()
+
+    def _readGroupingMap(self, stateId: str) -> GroupingMap:
+        path: Path = self._groupingMapPath(stateId)
+        if not path.exists():
+            raise FileNotFoundError(f'required grouping-schema map for state "{stateId}" at "{path}" does not exist')
+        return parse_file_as(GroupingMap, path)
 
     def readDefaultGroupingMap(self):
         return self._readDefaultGroupingMap()

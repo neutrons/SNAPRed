@@ -1,8 +1,5 @@
 import hashlib
-import os.path
-import tempfile
-import unittest
-import unittest.mock as mock
+from pathlib import Path
 from random import randint
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, DeleteWorkspace, mtd
@@ -14,6 +11,10 @@ from snapred.backend.dao.state import InstrumentState
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.data.LocalDataService import LocalDataService
+
+import unittest
+import unittest.mock as mock
+import pytest
 
 
 class TestDataFactoryService(unittest.TestCase):
@@ -60,6 +61,8 @@ class TestDataFactoryService(unittest.TestCase):
         )
         cls.mockLookupService.readRunConfig.return_value = RunConfig.construct({})
 
+        cls.mockLookupService.fileExists.return_value = lambda filePath: Path(filePath).exists()
+
         # these are treated specially to give the return of a mocked indexer
         cls.mockLookupService.calibrationIndexer.return_value = mock.Mock(
             versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
@@ -88,17 +91,10 @@ class TestDataFactoryService(unittest.TestCase):
         del self.instance
         return super().tearDown()
 
-    def test_fileExists_yes(self):
-        # create a temp file that exists, and verify it exists
-        with tempfile.NamedTemporaryFile(suffix=".biscuit") as existent:
-            assert DataFactoryService().fileExists(existent.name)
-
-    def test_fileExists_no(self):
-        # assert that a file that does not exist, does not exist
-        with tempfile.TemporaryDirectory() as tmpdir:
-            nonexistent = tmpdir + "/0x0f.biscuit"
-            assert not os.path.isfile(nonexistent)
-            assert not DataFactoryService().fileExists(nonexistent)
+    def test_fileExists(self):
+        arg = mock.Mock()
+        actual = self.instance.fileExists(arg)
+        assert actual == self.expected(arg)
 
     def test_getRunConfig(self):
         actual = self.instance.getRunConfig(mock.Mock())

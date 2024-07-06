@@ -220,17 +220,15 @@ class TestNormalizationService(unittest.TestCase):
     @patch(thisService + "RawVanadiumCorrectionRecipe")
     @patch(thisService + "FocusSpectraRecipe")
     @patch(thisService + "SmoothDataExcludingPeaksRecipe")
-    @patch(thisService + "GroceryService")
     def test_normalization(
         self,
-        mockGroceryService,
         mockSmoothDataExcludingPeaks,
         mockFocusSpectra,
         mockVanadiumCorrection,
         FarmFreshIngredients,
     ):
         FarmFreshIngredients.return_value = {"purge": True}
-        mockGroceryService = mockGroceryService.return_value
+        mockGroceryService = mock.Mock()
         mockGroceryService.fetchGroceryDict.return_value = {
             "backgroundWorkspace": "bg_ws",
             "inputWorkspace": "input_ws",
@@ -243,8 +241,9 @@ class TestNormalizationService(unittest.TestCase):
         mockSmoothDataExcludingPeaks.executeRecipe.return_value = "smoothed_output_ws"
 
         self.instance = NormalizationService()
-        self.instance._sameStates = MagicMock(return_value=True)
+        self.instance._sameStates = mock.Mock(return_value=True)
         self.instance.sousChef = SculleryBoy()
+        self.instance.groceryService = mockGroceryService
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
@@ -304,14 +303,14 @@ class TestNormalizationService(unittest.TestCase):
             self.instance.validateWritePermissions(permissionsRequest)
 
     @patch(thisService + "FarmFreshIngredients")
-    @patch(thisService + "GroceryService")
-    def test_cachedNormalization(self, mockGroceryService, mockFarmFreshIngredients):
+    def test_cachedNormalization(self, mockFarmFreshIngredients):
         mockFarmFreshIngredients.return_value = {"purge": True}
-        mockGroceryService.workSpaceDoesExist = mock.Mock(return_value=True)
         self.instance = NormalizationService()
-        self.instance._sameStates = MagicMock(return_value=True)
+        self.instance._sameStates = mock.Mock(return_value=True)
         self.instance.sousChef = SculleryBoy()
-        self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
+        self.instance.groceryService = mock.Mock()
+        self.instance.groceryService.workSpaceDoesExist = mock.Mock(return_value=True)
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock(return_value="path/to/cif")
         self.instance.dataExportService.getCalibrationStateRoot = mock.Mock(return_value="lah/dee/dah")
         self.instance.dataExportService.checkWritePermissions = mock.Mock(return_value=True)
         result = self.instance.normalization(self.request)

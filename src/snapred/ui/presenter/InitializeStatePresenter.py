@@ -22,8 +22,12 @@ class InitializeStatePresenter(QObject):
 
     def __init__(self, view):
         super().__init__()
-        self.view = view
+
+        # 'InterfaceController' is a singleton: declaring it as an instance attribute,
+        #   rather than a class attribute, allows singleton reset during testing.
         self.interfaceController = InterfaceController()
+
+        self.view = view
 
     def handleButtonClicked(self):
         runNumber = self.view.getRunNumber()

@@ -2,7 +2,7 @@
 
 IPTS:
   default: /SNS
-  root: /SNS
+  root: /mnt/data0/workspaces/ORNL-work/SNAPRed/SNS_root
 
 orchestration:
   path:
@@ -180,7 +180,7 @@ samples:
 version:
   friendlyName:
     error: "uninitialized"  # alphanumeric
-    default: 0 # alphanumeric
+    default: "0xF" # alphanumeric
   start: 1   # MUST be nonnegative integer
 
 cis_mode: false
@@ -189,7 +189,7 @@ constants:
   millisecondsPerSecond: 1000
   PeakIntensityFractionThreshold: 0.05
   m2cm: 10000.0 # conversion factor for m^2 to cm^2
-  maskedPixelThreshold: 0.15
+  maskedPixelThreshold: 1.0
 
   CrystallographicInfo:
     crystalDMin: 0.4

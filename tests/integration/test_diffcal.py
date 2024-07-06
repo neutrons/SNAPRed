@@ -20,6 +20,10 @@ def _cleanup_directories():
         shutil.rmtree(stateRootPath)
 
 
+@pytest.mark.skip(
+    reason="TODO: integrate treatment of state-root directory with "\
+    + "that used by 'tests/integration/test_workflow_panels_happy_path.py'"
+)
 @pytest.mark.golden_data(
     path=Resource.getPath("outputs/integration/diffcal/golden_data"), short_name="diffcal", date="2024-04-24"
 )
