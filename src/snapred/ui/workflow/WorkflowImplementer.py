@@ -23,7 +23,12 @@ class WorkflowImplementer(QObject):
     def __init__(self, parent=None):
         super().__init__()
         self.parent = parent
+
+        # 'InterfaceController' is a singleton:
+        #   declaring it as an instance attribute, instead of a class attribute,
+        #   allows singleton reset during testing.
         self.interfaceController = InterfaceController()
+
         self.responseHandler = SNAPResponseHandler(parent)
         self.workflow: Workflow = None
 

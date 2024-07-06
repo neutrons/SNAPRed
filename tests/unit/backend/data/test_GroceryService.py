@@ -141,7 +141,8 @@ class TestGroceryService(unittest.TestCase):
             .source(InstrumentDonor=self.sampleWS)
             .build()
         )
-        # each test, ensure a random version is drawn
+
+        # For each test, ensure a random version is used.
         self.version = randint(1, 120)
         self.instance.dataService.latestVersion = self.version
         self.diffCalOutputName = (

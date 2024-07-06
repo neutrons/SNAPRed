@@ -17,7 +17,7 @@ instrument:
     home: ${instrument.home}/shared/Calibration
     sample:
       # "instrument.calibration.sample.home" is overridden in "test.yml":
-      home: ${instrument.calibration.home}/CalibrantSample
+      home: ${instrument.calibration.home}/CalibrantSamples
       extensions:
         - json
 
@@ -38,12 +38,12 @@ instrument:
     pixelResolution: 1179648
     # "instrument.native.definition" is overridden in "test.yml":
     definition:
-      file: ${module.root}/resources/SNAP_Definition.xml
+      file: ${module.root}/resources/inputs/pixel_grouping/SNAP_Definition.xml
   lite:
     pixelResolution: 18432
     # "instrument.lite.definition" is overridden in "test.yml":
     definition:
-      file: ${module.root}/resources/SNAPLite_Definition.xml
+      file: ${module.root}/resources/inputs/pixel_grouping/SNAPLite_Definition.xml
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000

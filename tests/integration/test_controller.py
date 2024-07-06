@@ -7,17 +7,18 @@ def test_executeRequest_noop():
     # import must be here or it will put things in a funny state and break other tests
     from snapred.backend.api.InterfaceController import InterfaceController
 
-    expected_keys = [  # TODO: reduction was removed, re-add this later
-        "config",
-        "stateId",
-        "calibration",
-        "ingestion",
-        "calibrant_sample",
+    expected_keys = [
         "api",
+        "calibrant_sample",
+        "calibration",
+        "config",
+        "ingestion",
+        "metadata",
         "normalization",
         "reduceLiteData",
+        "reduction",
+        "stateId",
         "workspace",
-        "metadata",
     ]
     expected_keys.sort()
 

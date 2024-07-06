@@ -24,11 +24,15 @@ class CalibrationAssessmentPresenter(QObject):
 
     """
 
-    worker_pool = WorkerPool()
-    interfaceController = InterfaceController()
-
     def __init__(self, view):
         super().__init__()
+
+        # `InterfaceController` and `WorkerPool` are singletons:
+        #   declaring them as instance attributes, rather than class attributes,
+        #   allows singleton reset during testing.
+        self.interfaceController = InterfaceController()
+        self.worker_pool = WorkerPool()
+
         self.view = view
 
     @Slot()
