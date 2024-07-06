@@ -1,3 +1,4 @@
+from qtpy.QtCore import Slot
 from qtpy.QtWidgets import QDesktopWidget, QGridLayout, QLabel, QMainWindow, QPushButton, QWidget
 
 
@@ -37,6 +38,7 @@ class ActionPromptView(QMainWindow):
         self.move(qtRectangle.topLeft())
 
     def onContinueButtonClicked(self, slot):
+        @Slot()
         def slotAndClose():
             slot()
             self.close()

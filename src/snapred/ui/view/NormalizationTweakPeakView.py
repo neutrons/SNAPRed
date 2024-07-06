@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pydantic
 from mantid.plots.datafunctions import get_spectrum
 from mantid.simpleapi import mtd
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
@@ -105,18 +105,21 @@ class NormalizationTweakPeakView(BackendRequestView):
         self.signalUpdateFields.connect(self._updateFields)
         self.signalPopulateGroupingDropdown.connect(self._populateGroupingDropdown)
 
+    @Slot(str)
     def _updateRunNumber(self, runNumber):
         self.fieldRunNumber.setText(runNumber)
 
     def updateRunNumber(self, runNumber):
         self.signalRunNumberUpdate.emit(runNumber)
 
+    @Slot(str)
     def _updateBackgroundRunNumber(self, backgroundRunNumber):
         self.fieldBackgroundRunNumber.setText(backgroundRunNumber)
 
     def updateBackgroundRunNumber(self, backgroundRunNumber):
         self.signalBackgroundRunNumberUpdate.emit(backgroundRunNumber)
 
+    @Slot(int, int, float)
     def _updateFields(self, sampleIndex, groupingIndex, smoothingParameter):
         self.sampleDropdown.setCurrentIndex(sampleIndex)
         self.groupingFileDropdown.setCurrentIndex(groupingIndex)
@@ -125,6 +128,7 @@ class NormalizationTweakPeakView(BackendRequestView):
     def updateFields(self, sampleIndex, groupingIndex, smoothingParameter):
         self.signalUpdateFields.emit(sampleIndex, groupingIndex, smoothingParameter)
 
+    @Slot()
     def emitValueChange(self):
         # verify the fields before recalculation
         try:
@@ -212,6 +216,7 @@ class NormalizationTweakPeakView(BackendRequestView):
             colSize = sqrtSize + 1
         return rowSize, colSize
 
+    @Slot(bool)
     def setEnableRecalculateButton(self, enable):
         self.recalculationButton.setEnabled(enable)
 
@@ -221,6 +226,7 @@ class NormalizationTweakPeakView(BackendRequestView):
     def enableRecalculateButton(self):
         self.signalUpdateRecalculationButton.emit(True)
 
+    @Slot(list)
     def _populateGroupingDropdown(self, groups=["Enter a Run Number"]):
         self.groupingFileDropdown.setItems(groups)
         self.groupingFileDropdown.setEnabled(True)

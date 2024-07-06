@@ -6,7 +6,7 @@ from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRe
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
 from snapred.ui.widget.LoadingCursor import LoadingCursor
-from snapred.ui.widget.SuccessDialog import SuccessDialog
+from snapred.ui.widget.SuccessPrompt import SuccessPrompt
 
 
 class InitializeStatePresenter(QObject):
@@ -53,5 +53,4 @@ class InitializeStatePresenter(QObject):
         else:
             self.stateInitialized.emit(response)
             self.loadingCursor.close()
-            successDialog = SuccessDialog(self.view)
-            successDialog.exec_()
+            SuccessPrompt.prompt(self.view)

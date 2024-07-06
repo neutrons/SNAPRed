@@ -1,4 +1,4 @@
-from qtpy.QtCore import Signal
+from qtpy.QtCore import Signal, Slot
 from qtpy.QtWidgets import QLabel
 
 from snapred.meta.decorators.Resettable import Resettable
@@ -56,16 +56,18 @@ class NormalizationSaveView(BackendRequestView):
         self.layout.addWidget(self.fieldComments)
         self.layout.addWidget(self.fieldAuthor)
 
-    def _updateRunNumber(self, runNumber):
+    @Slot(str)
+    def _updateRunNumber(self, runNumber: str):
         self.fieldRunNumber.setText(runNumber)
 
-    def updateRunNumber(self, runNumber):
+    def updateRunNumber(self, runNumber: str):
         self.signalRunNumberUpdate.emit(runNumber)
 
-    def _updateBackgroundRunNumber(self, backgroundRunNumber):
+    @Slot(str)
+    def _updateBackgroundRunNumber(self, backgroundRunNumber: str):
         self.fieldBackgroundRunNumber.setText(backgroundRunNumber)
 
-    def updateBackgroundRunNumber(self, backgroundRunNumber):
+    def updateBackgroundRunNumber(self, backgroundRunNumber: str):
         self.signalBackgroundRunNumberUpdate.emit(backgroundRunNumber)
 
     def verify(self):

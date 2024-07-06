@@ -58,10 +58,10 @@ def test__initializeState(setup_view_and_workflow):
     mock_response = SNAPResponse(code=ResponseCode.OK)
 
     with patch.object(workflow.interfaceController, "executeRequest", return_value=mock_response), patch(
-        "snapred.ui.widget.SuccessDialog.SuccessDialog.exec_"
-    ) as mock_dialog_exec_:
+        "snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt"
+    ) as mock_dialog_showSuccess:
         workflow._initializeState("12345", "Test State", True)
-        mock_dialog_exec_.assert_called_once()
+        mock_dialog_showSuccess.assert_called_once()
 
 
 def test__handleResponse_error(setup_view_and_workflow):
@@ -83,6 +83,6 @@ def test__handleResponse_success(setup_view_and_workflow):
     # Initialize loadingCursor
     workflow.loadingCursor = LoadingCursor(view)
 
-    with patch("snapred.ui.widget.SuccessDialog.SuccessDialog.exec_") as mock_dialog_exec:
+    with patch("snapred.ui.widget.SuccessPrompt.SuccessPrompt.prompt") as mock_dialog_showSuccess:
         workflow._handleResponse(success_response)
-        mock_dialog_exec.assert_called_once()
+        mock_dialog_showSuccess.assert_called_once()
