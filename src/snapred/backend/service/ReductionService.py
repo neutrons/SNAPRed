@@ -76,7 +76,7 @@ class ReductionService(Service):
         groupResults = self.fetchReductionGroupings(request)
         focusGroups = groupResults["focusGroups"]
         groupingWorkspaces = groupResults["groupingWorkspaces"]
-        request.focusGroup = focusGroups
+        request.focusGroups = focusGroups
 
         ingredients = self.prepReductionIngredients(request)
 
@@ -90,7 +90,6 @@ class ReductionService(Service):
     def fetchReductionGroupings(self, request: ReductionRequest) -> Dict[str, Any]:
         """
         Load all groupings that are valid for a specific state using a ReductionRequest.
-        Will attach the focus group list to the request.
 
         :param request: a reduction request with at minimum a run number and lite mode flag
         :type request: ReductionRequest
@@ -103,7 +102,6 @@ class ReductionService(Service):
         """
         # fetch all valid groups for this run state
         res = self.loadAllGroupings(request.runNumber, request.useLiteMode)
-        request.focusGroup = res["focusGroups"]
         return res
 
     @FromString
@@ -154,7 +152,7 @@ class ReductionService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroup,
+            focusGroup=request.focusGroups,
         )
         return self.sousChef.prepReductionIngredients(farmFresh)
 

@@ -109,6 +109,8 @@ class ReductionWorkflow(WorkflowImplementer):
             self.request(path="reduction/", payload=payload.json())
             self._reductionView.removeRunNumber(runNumber)
 
+            # Note: the run number is deliberately not deleted from the run numbers list.
+
         return self.responses[-1]
 
     @property

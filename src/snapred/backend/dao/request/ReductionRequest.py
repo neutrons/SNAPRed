@@ -9,7 +9,7 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 class ReductionRequest(BaseModel):
     runNumber: Union[str, List[str]]
     useLiteMode: bool
-    focusGroup: Union[Optional[FocusGroup], List[FocusGroup]]
+    focusGroups: List[FocusGroup] = []
     userSelectedMaskPath: Optional[str] = None
     version: Union[int, Literal["*"]] = "*"
 

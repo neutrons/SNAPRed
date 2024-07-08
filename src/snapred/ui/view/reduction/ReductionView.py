@@ -62,7 +62,9 @@ class ReductionView(BackendRequestView):
     def addRunNumber(self):
         runNumberList = self.parseInputRunNumbers()
         if runNumberList is not None:
-            self.runNumbers.extend(runNumberList)
+            noDuplicates = set(self.runNumbers)
+            noDuplicates.update(runNumberList)
+            self.runNumbers = list(noDuplicates)
             self.updateRunNumberList()
             self.runNumberInput.clear()
 
@@ -72,7 +74,7 @@ class ReductionView(BackendRequestView):
         runNumberString = self.runNumberInput.text().strip()
         if runNumberString:
             try:
-                runNumberList = [int(num.strip()) for num in runNumberString.split(",") if num.strip().isdigit()]
+                runNumberList = [num.strip() for num in runNumberString.split(",") if num.strip().isdigit()]
                 return runNumberList
             except ValueError:
                 raise ValueError(
