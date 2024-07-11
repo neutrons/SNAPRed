@@ -18,7 +18,8 @@ except ImportError:
 import unittest.mock as mock
 
 from mantid.api import PythonAlgorithm
-from qtpy.QtCore import Property, QThread, Signal
+from qtpy.QtCore import Property, Signal
+from qtpy.QtCore import QThread  # type: ignore
 
 # Store original __import__
 orig_import = __import__
@@ -43,7 +44,8 @@ def import_mock(name, *args):
 
 with mock.patch("builtins.__import__", side_effect=import_mock):
     from mantid.api import PythonAlgorithm  # noqa: F811
-    from qtpy.QtCore import Property, QThread, Signal  # noqa: F811
+    from qtpy.QtCore import Property, Signal
+    from qtpy.QtCore import QThread  # type: ignore
 
     autodoc_mock_imports = [
         "mantid",
