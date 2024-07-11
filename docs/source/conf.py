@@ -18,7 +18,7 @@ except ImportError:
 import unittest.mock as mock
 
 from mantid.api import PythonAlgorithm
-from qtpy.QtCore import (Property, QThread, Signal)  # type: ignore
+from qtpy.QtCore import Property, QThread, Signal  # type: ignore
 
 # Store original __import__
 orig_import = __import__
