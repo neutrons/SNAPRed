@@ -37,7 +37,7 @@ class ReductionView(QWidget):
 
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
         self.liteModeToggle = LabeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.retainUnfocusedDataCheckbox = LabeledCheckBox("Retain Unfocussed Data")
+        self.retainUnfocusedDataCheckbox = LabeledCheckBox("Retain Unfocused Data")
         self.pixelMaskDropdown = SampleDropDown("Pixel Masks", pixelMasks)
         self.convertUnitsDropdown = SampleDropDown(
             "Convert Units", ["TOF", "dSpacing", "Wavelength", "MomentumTransfer"]
