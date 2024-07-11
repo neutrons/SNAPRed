@@ -196,6 +196,8 @@ class SousChef(Service):
             calibrantSamplePath=ingredients.calibrantSamplePath,
             peakIntensityThreshold=ingredients.peakIntensityThreshold,
             detectorPeaksMany=self.prepManyDetectorPeaks(ingredients),
+            keepUnfocused=ingredients.keepUnfocused,
+            convertUnitsTo=ingredients.convertUnitsTo,
         )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:

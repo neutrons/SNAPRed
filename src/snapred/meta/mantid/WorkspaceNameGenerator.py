@@ -163,6 +163,8 @@ class _WorkspaceNameGenerator:
         _templateRoot = "mantid.workspace.nameTemplate.units"
         DSP = Config[f"{_templateRoot}.dSpacing"]
         TOF = Config[f"{_templateRoot}.timeOfFlight"]
+        QSP = Config[f"{_templateRoot}.momentumTransfer"]
+        LAM = Config[f"{_templateRoot}.wavelength"]
         DIAG = Config[f"{_templateRoot}.diagnostic"]
 
     class Groups:

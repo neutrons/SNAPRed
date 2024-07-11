@@ -162,6 +162,7 @@ class ReductionRecipeTest(TestCase):
         recipe.sampleWs = "sample"
         recipe.normalizationWs = "norm"
         recipe.groupWorkspaces = ["group1", "group2"]
+        recipe.keepUnfocused = False
 
         output = recipe.execute()
 
