@@ -57,10 +57,10 @@ plugins = [
 ]
 ignore_missing_imports = true # gets around mantid imports
 exclude = [
-"tests/.*",
-"src/snapred/backend/.*",
-"src/snapred/meta/.*",
-"src/snapred/ui/.*"
+"tests/",
+"src/snapred/backend/",
+"src/snapred/meta/",
+"src/snapred/ui/"
 ]
 
 [tool.pydantic-mypy]
