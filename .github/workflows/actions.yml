@@ -27,7 +27,9 @@ jobs:
         cache-environment-key: ${{ runner.os }}-env-${{ hashFiles('**/environment.yml') }}
         cache-downloads-key: ${{ runner.os }}-downloads-${{ hashFiles('**/environment.yml') }}
     - name: mypy checks
-      run: mypy .
+      shell: bash -l {0}
+      run: |
+        python -m mypy --config-file $(pwd)/pyproject.toml $(pwd)
     - name: Apt install deps
       run: |
         sudo apt update
