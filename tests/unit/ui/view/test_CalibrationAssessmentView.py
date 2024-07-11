@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 
 
@@ -13,7 +13,7 @@ def test_calibration_record_dropdown(qtbot):
     useLiteMode = False
     version = 1
     calibrationIndexEntries = [
-        CalibrationIndexEntry(runNumber=runNumber, useLiteMode=useLiteMode, version=version, comments="", author="")
+        IndexEntry(runNumber=runNumber, useLiteMode=useLiteMode, version=version, comments="", author="")
     ]
     view.updateCalibrationRecordList(calibrationIndexEntries)
     assert view.getCalibrationRecordCount() == 1

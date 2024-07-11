@@ -18,7 +18,6 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
@@ -42,10 +41,10 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
-    from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
     from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
     from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
     from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
+    from snapred.backend.dao.indexing.IndexEntry import IndexEntry
     from snapred.backend.dao.ingredients.ReductionIngredients import ReductionIngredients
     from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
     from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
@@ -74,7 +73,7 @@ with mock.patch.dict(
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry.return_value = "expected"
         calibrationService.saveCalibrationToIndex(
-            CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author=""),
+            IndexEntry(runNumber="1", useLiteMode=True, comments="", author=""),
         )
         assert calibrationService.dataExportService.exportCalibrationIndexEntry.called
         savedEntry = calibrationService.dataExportService.exportCalibrationIndexEntry.call_args.args[0]
@@ -84,13 +83,16 @@ with mock.patch.dict(
     def test_save():
         workspace = mtd.unique_name(prefix="_dsp_")
         CreateSingleValuedWorkspace(OutputWorkspace=workspace)
-        workspaces = {wngt.DIFFCAL_OUTPUT: workspace}
+        workspaces = {wngt.DIFFCAL_OUTPUT: [workspace]}
         calibrationService = CalibrationService()
         calibrationService.dataExportService.exportCalibrationRecord = mock.Mock()
         calibrationService.dataExportService.exportCalibrationWorkspaces = mock.Mock()
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
-        calibrationService.dataFactoryService.getThisOrNextCalibrationVersion = mock.Mock(return_value=0)
-        calibrationService.save(mock.Mock(calibrationRecord=mock.Mock(workspaces=workspaces)))
+        calibrationService.dataFactoryService.createCalibrationIndexEntry = mock.Mock()
+        calibrationService.dataFactoryService.createCalibrationRecord = mock.Mock(
+            return_value=mock.Mock(workspaces=workspaces)
+        )
+        calibrationService.save(mock.Mock())
         assert calibrationService.dataExportService.exportCalibrationRecord.called
         savedEntry = calibrationService.dataExportService.exportCalibrationRecord.call_args.args[0]
         assert savedEntry.parameters is not None
@@ -104,7 +106,7 @@ with mock.patch.dict(
     def test_getCalibrationIndex():
         calibrationService = CalibrationService()
         calibrationService.dataFactoryService.getCalibrationIndex = mock.Mock(
-            return_value=CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
+            return_value=IndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
         )
         calibrationService.getCalibrationIndex(MagicMock(run=MagicMock(runNumber="123")))
         assert calibrationService.dataFactoryService.getCalibrationIndex.called
@@ -183,18 +185,19 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         maskWSName = None
         # Note: this form allows testing of partial-write behavior:
         #   e.g. no _mask_ or _table_ workspace in the 'workspaces' dict.
-        for key, wsName in workspaces.items():
-            match key:
-                case wngt.DIFFCAL_TABLE:
-                    tableWSName = wsName
-                case wngt.DIFFCAL_MASK:
-                    maskWSName = wsName
-                case wngt.DIFFCAL_DIAG:
-                    filename = Path(wsName + ".nxs.h5")
-                    self.instance.dataExportService.exportWorkspace(path, filename, self.sampleDiagnosticWS)
-                case _:
-                    filename = Path(wsName + ".tar")
-                    self.instance.dataExportService.exportRaggedWorkspace(path, filename, self.sampleWS)
+        for key, wsNames in workspaces.items():
+            for wsName in wsNames:
+                match key:
+                    case wngt.DIFFCAL_TABLE:
+                        tableWSName = wsName
+                    case wngt.DIFFCAL_MASK:
+                        maskWSName = wsName
+                    case wngt.DIFFCAL_DIAG:
+                        filename = Path(wsName + ".nxs.h5")
+                        self.instance.dataExportService.exportWorkspace(path, filename, self.sampleDiagnosticWS)
+                    case _:
+                        filename = Path(wsName + ".tar")
+                        self.instance.dataExportService.exportRaggedWorkspace(path, filename, self.sampleWS)
 
         # Write the table and/or mask
         if tableWSName or maskWSName:
@@ -245,7 +248,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         thisService + "CalibrationAssessmentResponse",
         return_value=MagicMock(mockId="mock_calibration_assessment_response"),
     )
-    @patch(thisService + "CalibrationRecord", return_value=MagicMock(mockId="mock_calibration_record"))
+    @patch(thisService + "CreateCalibrationRecordRequest")
     @patch(thisService + "FitMultiplePeaksRecipe")
     @patch(thisService + "FarmFreshIngredients")
     @patch(
@@ -262,7 +265,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         CalibrationMetricsWorkspaceIngredients,
         FarmFreshIngredients,
         FitMultiplePeaksRecipe,
-        CalibrationRecord,
+        CreateCalibrationRecordRequest,
         CalibrationAssessmentResponse,
     ):
         # Mock input data
@@ -279,6 +282,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Mock the necessary method calls
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="good/cif/path")
+        self.instance.dataFactoryService.createCalibrationRecord = MagicMock()
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
 
         FarmFreshIngredients.return_value.get.return_value = True
@@ -286,9 +290,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         # Call the method to test
         request = CalibrationAssessmentRequest(
             workspaces={
-                wngt.DIFFCAL_OUTPUT: self.sampleWS,
-                wngt.DIFFCAL_TABLE: self.sampleTableWS,
-                wngt.DIFFCAL_MASK: self.sampleMaskWS,
+                wngt.DIFFCAL_OUTPUT: [self.sampleWS],
+                wngt.DIFFCAL_TABLE: [self.sampleTableWS],
+                wngt.DIFFCAL_MASK: [self.sampleMaskWS],
             },
             run=RunConfig(runNumber=self.runNumber),
             useLiteMode=True,
@@ -320,22 +324,27 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         record = parse_file_as(CalibrationRecord, Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))
         record.calculationParameters.creationDate = "0"
         record.workspaces = {
-            "diffCalOutput": "_dsp_diffoc_057514",
-            "diffCalDiagnostic": "_diagnostic_diffoc_057514",
-            "diffCalTable": "_diffract_consts_057514",
-            "diffCalMask": "_diffract_consts_mask_057514",
+            "diffCalOutput": ["_dsp_diffoc_057514"],
+            "diffCalDiagnostic": ["_diagnostic_diffoc_057514"],
+            "diffCalTable": ["_diffract_consts_057514"],
+            "diffCalMask": ["_diffract_consts_mask_057514"],
         }
-        CloneWorkspace(InputWorkspace=self.sampleWS, OutputWorkspace=record.workspaces["diffCalOutput"])
-        CloneWorkspace(InputWorkspace=self.sampleWS, OutputWorkspace=record.workspaces["diffCalDiagnostic"])
-        CloneWorkspace(InputWorkspace=self.sampleTableWS, Outputworkspace=record.workspaces["diffCalTable"])
-        CloneWorkspace(InputWorkspace=self.sampleMaskWS, OutputWorkspace=record.workspaces["diffCalMask"])
-        self.instance
+        CloneWorkspace(InputWorkspace=self.sampleWS, OutputWorkspace=record.workspaces["diffCalOutput"][0])
+        CloneWorkspace(InputWorkspace=self.sampleWS, OutputWorkspace=record.workspaces["diffCalDiagnostic"][0])
+        CloneWorkspace(InputWorkspace=self.sampleTableWS, Outputworkspace=record.workspaces["diffCalTable"][0])
+        CloneWorkspace(InputWorkspace=self.sampleMaskWS, OutputWorkspace=record.workspaces["diffCalMask"][0])
         version = record.version
-        entry = Record.indexEntryFromRecord(record)
         request = {
-            "version": version,
-            "calibrationIndexEntry": entry.model_dump(),
-            "calibrationRecord": record.model_dump(),
+            "createIndexEntryRequest": {
+                "runNumber": record.runNumber,
+                "useLiteMode": record.useLiteMode,
+                "version": record.version,
+                "appliesTo": f">={record.runNumber}",
+                "author": "",
+                "comments": "",
+                "timestamp": 0,
+            },
+            "createRecordRequest": record.model_dump(),
         }
         with state_root_redirect(self.localDataService) as tmpRoot:
             self.instance.save(json.dumps(request))
@@ -345,8 +354,9 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 CalibrationRecord, tmpRoot.path() / "lite/diffraction/v_0001/CalibrationRecord.json"
             )
         assert savedRecord.version == version
-        for workspace in savedRecord.workspaces.values():
-            assert "v0001" in workspace
+        for wss in savedRecord.workspaces.values():
+            for ws in wss:
+                assert "v0001" in ws
 
     def test_load_quality_assessment_no_calibration_record_exception(self):
         with state_root_redirect(self.localDataService):
@@ -399,9 +409,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             self.instance.loadQualityAssessment(mockRequest)
 
             # Delete any existing _data_ workspaces:
-            for ws in calibRecord.workspaces.values():
-                if mtd.doesExist(ws):
-                    DeleteWorkspace(Workspace=ws)
+            for wss in calibRecord.workspaces.values():
+                for ws in wss:
+                    if mtd.doesExist(ws):
+                        DeleteWorkspace(Workspace=ws)
 
             mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=True)
             with pytest.raises(RuntimeError) as excinfo:  # noqa: PT011
@@ -479,14 +490,15 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
             # Assert all "persistent" workspaces have been loaded
-            for wsName in calibRecord.workspaces.values():
-                assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
+            for wss in calibRecord.workspaces.values():
+                for wsName in wss:
+                    assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 
     def test_load_quality_assessment_no_units(self):
         calibRecord = CalibrationRecord.model_validate_json(
             Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
         )
-        calibRecord.workspaces[wngt.DIFFCAL_OUTPUT] = "_diffoc_057514_v0001"  # NOTE no unit token
+        calibRecord.workspaces[wngt.DIFFCAL_OUTPUT] = ["_diffoc_057514_v0001"]  # NOTE no unit token
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 
         # Call the method to test. Use a mocked run and a mocked version
@@ -499,10 +511,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
         )
         calibRecord.workspaces = {
-            "diffCalOutput": "_dsp_diffoc_057514",
-            "diffCalDiagnostic": "_diagnostic_diffoc_057514",
-            "diffCalTable": "_diffract_consts_057514",
-            "diffCalMask": "_diffract_consts_mask_057514",
+            "diffCalOutput": ["_dsp_diffoc_057514"],
+            "diffCalDiagnostic": ["_diagnostic_diffoc_057514"],
+            "diffCalTable": ["_diffract_consts_057514"],
+            "diffCalMask": ["_diffract_consts_mask_057514"],
         }
         self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibRecord)
 
@@ -521,10 +533,10 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
         )
         calibRecord.workspaces = {
-            "diffCalOutput": "_dsp_diffoc_057514",
-            "diffCalTable": "_diffract_consts_057514",
-            "diffCalMask": "_diffract_consts_mask_057514",
-            "rawVanadium": "_unexpected_workspace_type",
+            "diffCalOutput": ["_dsp_diffoc_057514"],
+            "diffCalTable": ["_diffract_consts_057514"],
+            "diffCalMask": ["_diffract_consts_mask_057514"],
+            "rawVanadium": ["_unexpected_workspace_type"],
         }
         self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
 

@@ -102,17 +102,23 @@ class Indexer:
         return versions
 
     def reconcileIndexToFiles(self):
-        # if a directory has no entry in the index, create one for it
-        versions = self.readDirectoryList()
-        for version in versions:
-            if version not in self.index:
-                record = self.readRecord(version)
-                self.index[version] = self.indexEntryFromRecord(record)
-        # if a version exists in the index with no corresponding directory, delete it
-        it_is_truly_necessary_to_make_this_list = list(self.index.keys())
-        for version in it_is_truly_necessary_to_make_this_list:
-            if version not in versions:
-                del self.index[version]
+        self.dirVersions = self.readDirectoryList()
+        indexVersions = set(self.index.keys())
+
+        # if a directory has no entry in the index, warn
+        missingEntries = self.dirVersions.difference(indexVersions)
+        if len(missingEntries) > 0:
+            logger.warn(f"The following versions are expected, but missing from the index: {missingEntries}")
+        # if an entry in the index has no directory, throw error
+        missingRecords = indexVersions.difference(self.dirVersions)
+        if len(missingRecords) > 0:
+            indexVersions = indexVersions - missingRecords
+            raise FileNotFoundError(f"The following records were expected, but not available on disk: {missingRecords}")
+
+        # take the set of versions common to both
+        commonVersions = self.dirVersions & indexVersions
+        self.dirVersions = commonVersions
+        self.index = {version: self.index[version] for version in commonVersions}
 
     ## VERSION GETTERS ##
 
@@ -196,12 +202,14 @@ class Indexer:
 
         return version
 
+    @validate_call
     def thisOrCurrentVersion(self, version: Optional[int]):
         if self.isValidVersion(version):
             return version
         else:
             return self.currentVersion()
 
+    @validate_call
     def thisOrNextVersion(self, version: Optional[int]):
         if self.isValidVersion(version):
             return version
@@ -278,6 +286,12 @@ class Indexer:
 
     ## INDEX MANIPULATION METHODS ##
 
+    def createIndexEntry(self, *, version, **other_arguments):
+        return IndexEntry(
+            version=self.thisOrNextVersion(version),
+            **other_arguments,
+        )
+
     def getIndex(self) -> List[IndexEntry]:
         if self.index == {}:
             self.index = self.readIndex()
@@ -311,10 +325,15 @@ class Indexer:
         self.index[entry.version] = entry
         self.writeIndex()
 
-    def indexEntryFromRecord(self, record: Record) -> IndexEntry:
-        return Record.indexEntryFromRecord(record)
-
     ## RECORD READ / WRITE METHODS ##
+
+    def createRecord(self, *, version, **other_arguments):
+        record = RECORD_TYPE[self.indexerType](
+            version=self.thisOrNextVersion(version),
+            **other_arguments,
+        )
+        record.calculationParameters.version = record.version
+        return record
 
     def readRecord(self, version: Optional[int] = None) -> Record:
         """
@@ -341,6 +360,12 @@ class Indexer:
         self.dirVersions.add(record.version)
 
     ## STATE PARAMETER READ / WRITE METHODS ##
+
+    def createParameters(self, *, version, **other_arguments) -> CalculationParameters:
+        return PARAMS_TYPE[self.indexerType](
+            version=self.thisOrNextVersion(version),
+            **other_arguments,
+        )
 
     def readParameters(self, version: Optional[int] = None) -> CalculationParameters:
         """

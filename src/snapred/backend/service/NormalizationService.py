@@ -2,15 +2,15 @@ import time
 from pathlib import Path
 
 from snapred.backend.dao import Limit
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
 from snapred.backend.dao.normalization import (
     Normalization,
-    NormalizationIndexEntry,
-    NormalizationRecord,
 )
 from snapred.backend.dao.request import (
+    CreateNormalizationRecordRequest,
     FarmFreshIngredients,
     FocusSpectraRequest,
     NormalizationExportRequest,
@@ -166,7 +166,8 @@ class NormalizationService(Service):
             crystalDBounds=request.crystalDBounds,
         )
         normalization = parse_obj_as(Normalization, self.sousChef.prepCalibration(farmFresh))
-        record = NormalizationRecord(
+
+        createRecordRequest = CreateNormalizationRecordRequest(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             peakIntensityThreshold=request.peakIntensityThreshold,
@@ -175,24 +176,16 @@ class NormalizationService(Service):
             calculationParameters=normalization,
             crystalDBounds=request.crystalDBounds,
         )
-        return record
+        return self.dataFactoryService.createNormalizationRecord(createRecordRequest)
 
     @FromString
     def saveNormalization(self, request: NormalizationExportRequest):
         """
         If no version is attached to the request, this will save at next version number
         """
-        entry = request.normalizationIndexEntry
-        record = request.normalizationRecord
-        version = self.dataFactoryService.getThisOrNextNormalizationVersion(
-            record.runNumber,
-            record.useLiteMode,
-            request.version,
-        )
-        # set the version on the objects to be saved
-        entry.version = version
-        record.version = version
-        record.calculationParameters.version = version
+        entry = self.dataFactoryService.createNormalizationIndexEntry(request.createIndexEntryRequest)
+        record = self.dataFactoryService.createNormalizationRecord(request.createRecordRequest)
+        version = entry.version
 
         # rename the workspaces to include version number
         savedWorkspaces = []
@@ -207,9 +200,9 @@ class NormalizationService(Service):
         self.dataExportService.exportNormalizationWorkspaces(record)
         self.saveNormalizationToIndex(entry)
 
-    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
+    def saveNormalizationToIndex(self, entry: IndexEntry):
         """
-        Corrct version must be attached to the entry.
+        Correct version must be attached to the entry.
         """
         if entry.appliesTo is None:
             entry.appliesTo = ">=" + entry.runNumber

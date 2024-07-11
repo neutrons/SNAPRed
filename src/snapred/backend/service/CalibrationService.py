@@ -6,11 +6,10 @@ import pydantic
 
 from snapred.backend.dao import Limit, RunConfig
 from snapred.backend.dao.calibration import (
-    CalibrationIndexEntry,
     CalibrationMetric,
-    CalibrationRecord,
     FocusGroupMetric,
 )
+from snapred.backend.dao.indexing import IndexEntry
 from snapred.backend.dao.ingredients import (
     CalibrationMetricsWorkspaceIngredients,
     DiffractionCalibrationIngredients,
@@ -21,6 +20,7 @@ from snapred.backend.dao.request import (
     CalibrationExportRequest,
     CalibrationIndexRequest,
     CalibrationLoadAssessmentRequest,
+    CreateCalibrationRecordRequest,
     DiffractionCalibrationRequest,
     FarmFreshIngredients,
     FitMultiplePeaksRequest,
@@ -200,56 +200,57 @@ class CalibrationService(Service):
         """
         If no version is attached to the request, this will save at next version number
         """
-        entry = request.calibrationIndexEntry
-        record = request.calibrationRecord
-        version = self.dataFactoryService.getThisOrNextCalibrationVersion(
-            record.runNumber,
-            record.useLiteMode,
-            request.version,
-        )
-        # set the correct versions on the objects to be saved
-        entry.version = version
-        record.version = version
-        record.calculationParameters.version = version
+        entry = self.dataFactoryService.createCalibrationIndexEntry(request.createIndexEntryRequest)
+        record = self.dataFactoryService.createCalibrationRecord(request.createRecordRequest)
+        version = entry.version
 
         # Rebuild the workspace names to strip any "iteration" number:
         savedWorkspaces = {}
-        for key, wsName in record.workspaces.items():
+        for key, wsNames in record.workspaces.items():
+            savedWorkspaces[key] = []
             match key:
                 case wngt.DIFFCAL_OUTPUT:
-                    if wng.Units.DSP.lower() in wsName:
-                        savedWorkspaces[key] = (
+                    for wsName in wsNames:
+                        if wng.Units.DSP.lower() in wsName:
+                            savedWorkspaces[key].append(
+                                wng.diffCalOutput()
+                                .unit(wng.Units.DSP)
+                                .runNumber(record.runNumber)
+                                .version(version)
+                                .group(record.focusGroupCalibrationMetrics.focusGroupName)
+                                .build()
+                            )
+                        else:
+                            raise RuntimeError(
+                                f"""
+                                cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT}
+                                without a units token in its name {wsName}
+                                """
+                            )
+                case wngt.DIFFCAL_DIAG:
+                    for wsName in wsNames:
+                        savedWorkspaces[key].append(
                             wng.diffCalOutput()
-                            .unit(wng.Units.DSP)
+                            .unit(wng.Units.DIAG)
                             .runNumber(record.runNumber)
                             .version(version)
                             .group(record.focusGroupCalibrationMetrics.focusGroupName)
                             .build()
                         )
-                    else:
-                        raise RuntimeError(
-                            f"""
-                            cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT}
-                            without a units token in its name {wsName}
-                            """
-                        )
-                case wngt.DIFFCAL_DIAG:
-                    savedWorkspaces[key] = (
-                        wng.diffCalOutput()
-                        .unit(wng.Units.DIAG)
-                        .runNumber(record.runNumber)
-                        .version(version)
-                        .group(record.focusGroupCalibrationMetrics.focusGroupName)
-                        .build()
-                    )
                 case wngt.DIFFCAL_MASK:
-                    savedWorkspaces[key] = wng.diffCalMask().runNumber(record.runNumber).version(version).build()
+                    for wsName in wsNames:
+                        savedWorkspaces[key].append(
+                            wng.diffCalMask().runNumber(record.runNumber).version(version).build()
+                        )
                 case wngt.DIFFCAL_TABLE:
-                    savedWorkspaces[key] = wng.diffCalTable().runNumber(record.runNumber).version(version).build()
+                    for wsName in wsNames:
+                        savedWorkspaces[key].append(
+                            wng.diffCalTable().runNumber(record.runNumber).version(version).build()
+                        )
                 case _:
                     raise RuntimeError(f"Unexpected output type {key} for {wsName}")
-
-            self.groceryService.renameWorkspace(wsName, savedWorkspaces[key])
+            for oldName, newName in zip(wsNames, savedWorkspaces[key]):
+                self.groceryService.renameWorkspace(oldName, newName)
 
         record.workspaces = savedWorkspaces
 
@@ -266,7 +267,7 @@ class CalibrationService(Service):
         return self.dataFactoryService.getCalibrationRecord(run.runNumber, run.useLiteMode, version)
 
     @FromString
-    def saveCalibrationToIndex(self, entry: CalibrationIndexEntry):
+    def saveCalibrationToIndex(self, entry: IndexEntry):
         """
         The entry must have the version set.
         """
@@ -340,10 +341,11 @@ class CalibrationService(Service):
                     wkspaceExists = True
                     break
             if not wkspaceExists:
-                for wsName in calibrationRecord.workspaces.values():
-                    if self.dataFactoryService.workspaceDoesExist(wsName):
-                        wkspaceExists = True
-                        break
+                for wss in calibrationRecord.workspaces.values():
+                    for wsName in wss:
+                        if self.dataFactoryService.workspaceDoesExist(wsName):
+                            wkspaceExists = True
+                            break
             if wkspaceExists:
                 errorTxt = (
                     f"Calibration assessment for Run {runId} Version {version} "
@@ -361,29 +363,33 @@ class CalibrationService(Service):
         # NOTE the name properties are not important and are only to avoid collisions
 
         workspaces = calibrationRecord.workspaces.copy()
-        # load the output
-        wsName = workspaces.pop(wngt.DIFFCAL_OUTPUT, None)
-        if wng.Units.DSP.lower() in wsName:
-            self.groceryClerk.name(wngt.DIFFCAL_OUTPUT + "_" + str(0).zfill(4))
-            self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.DSP).group(
-                calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
-            ).add()
-        else:
-            raise RuntimeError(
-                f"cannot save a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
+        for n, wsName in enumerate(workspaces.pop(wngt.DIFFCAL_OUTPUT, [])):
+            # The specific property name used here will not be used later, but there must be no collisions.
+            self.groceryClerk.name(wngt.DIFFCAL_OUTPUT + "_" + str(n).zfill(4))
+            if wng.Units.DSP.lower() in wsName:
+                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.DSP).group(
+                    calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
+                ).add()
+            else:
+                raise RuntimeError(
+                    f"cannot load a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
+                )
+        for n, wsName in enumerate(workspaces.pop(wngt.DIFFCAL_DIAG, [])):
+            self.groceryClerk.name(wngt.DIFFCAL_DIAG + "_" + str(n).zfill(4))
+            if wng.Units.DIAG.lower() in wsName:
+                self.groceryClerk.diffcal_diagnostic(runId, version).unit(wng.Units.DIAG).group(
+                    calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
+                ).add()
+        for n, (tableWSName, maskWSName) in enumerate(
+            zip(
+                workspaces.pop(wngt.DIFFCAL_TABLE, []),
+                workspaces.pop(wngt.DIFFCAL_MASK, []),
             )
-        # load the diagnostic workspace
-        workspaces.pop(wngt.DIFFCAL_DIAG, None)
-        self.groceryClerk.name(wngt.DIFFCAL_DIAG + "_" + str(0).zfill(4))
-        self.groceryClerk.diffcal_diagnostic(runId, version).unit(wng.Units.DIAG).group(
-            calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
-        ).add()
-        # Diffraction calibration requires a complete pair 'table' + 'mask':
-        #   as above, the specific property name used here is not important.
-        workspaces.pop(wngt.DIFFCAL_MASK, None)
-        workspaces.pop(wngt.DIFFCAL_TABLE, None)
-        self.groceryClerk.name(wngt.DIFFCAL_TABLE + "_" + str(0).zfill(4)).diffcal_table(runId, version).add()
-        self.groceryClerk.name(wngt.DIFFCAL_MASK + "_" + str(0).zfill(4)).diffcal_mask(runId, version).add()
+        ):
+            # Diffraction calibration requires a complete pair 'table' + 'mask':
+            #   as above, the specific property name used here is not important.
+            self.groceryClerk.name(wngt.DIFFCAL_TABLE + "_" + str(n).zfill(4)).diffcal_table(runId, version).add()
+            self.groceryClerk.name(wngt.DIFFCAL_MASK + "_" + str(n).zfill(4)).diffcal_mask(runId, version).add()
 
         if workspaces:
             raise RuntimeError(f"not implemented: unable to load unexpected workspace types: {workspaces}")
@@ -412,12 +418,12 @@ class CalibrationService(Service):
 
         # TODO: We Need to Fit the Data
         fitResults = FitMultiplePeaksRecipe().executeRecipe(
-            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT],
+            InputWorkspace=request.workspaces[wngt.DIFFCAL_OUTPUT][0],
             DetectorPeaks=detectorPeaks,
         )
         metrics = self._collectMetrics(fitResults, request.focusGroup, pixelGroup)
 
-        record = CalibrationRecord(
+        createRecordRequest = CreateCalibrationRecordRequest(
             runNumber=request.run.runNumber,
             useLiteMode=request.useLiteMode,
             crystalInfo=self.sousChef.prepCrystallographicInfo(farmFresh),
@@ -426,6 +432,7 @@ class CalibrationService(Service):
             focusGroupCalibrationMetrics=metrics,
             workspaces=request.workspaces,
         )
+        record = self.dataFactoryService.createCalibrationRecord(createRecordRequest)
 
         timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
         metricWorkspaces = GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(

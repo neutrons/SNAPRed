@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -27,7 +27,7 @@ class CalibrationAssessmentRequest(BaseModel, extra="forbid"):
     useLiteMode: bool
     focusGroup: FocusGroup
     calibrantSamplePath: str
-    workspaces: Dict[WorkspaceType, WorkspaceName]
+    workspaces: Dict[WorkspaceType, List[WorkspaceName]]
     # fiddly bits
     peakFunction: PeakFunctionEnum
     crystalDMin: float

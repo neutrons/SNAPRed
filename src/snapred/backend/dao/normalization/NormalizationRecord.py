@@ -9,7 +9,7 @@ from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
-class NormalizationRecord(Record):
+class NormalizationRecord(Record, extra="ignore"):
     """
 
     This class is crucial for tracking the specifics of each normalization step, facilitating

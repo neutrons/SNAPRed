@@ -94,11 +94,8 @@ class SculleryBoy:
                 Ingredients=self.prepPeakIngredients(ingredients),
                 PurgeDuplicates=ingredients.get("purge", True),
             )
-            print("yup!")
             return pydantic.TypeAdapter(List[GroupPeakList]).validate_json(peakList)
-        except TypeError:
-            return [mock.Mock(spec_set=GroupPeakList)]
-        except AttributeError:
+        except (TypeError, AttributeError):
             return [mock.Mock(spec_set=GroupPeakList)]
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients):  # noqa ARG002

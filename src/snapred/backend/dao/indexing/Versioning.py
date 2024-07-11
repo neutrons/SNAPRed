@@ -14,12 +14,12 @@ class VersionedObject(BaseModel):
     __version: Optional[int] = None
 
     @classmethod
-    def parseVersion(cls, version, *, exclude_none: bool = False) -> int | None:
+    def parseVersion(cls, version, *, exclude_none: bool = False, exclude_default: bool = False) -> int | None:
         v: int | None
         # handle two special cases
         if (not exclude_none) and (version is None or version == VERSION_NONE_NAME):
             v = None
-        elif version == VERSION_DEFAULT_NAME or version == VERSION_DEFAULT:
+        elif (not exclude_default) and (version == VERSION_DEFAULT_NAME or version == VERSION_DEFAULT):
             v = VERSION_DEFAULT
         # parse integers
         elif isinstance(version, int | integer):

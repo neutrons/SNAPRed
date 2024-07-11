@@ -4,10 +4,9 @@ from typing import Optional
 from pydantic import validate_call
 
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.normalization.Normalization import Normalization
-from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -49,7 +48,7 @@ class DataExportService:
     def initializeState(self, runId: str, useLiteMode: bool, name: str):
         return self.dataService.initializeState(runId, useLiteMode, name)
 
-    def exportCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
+    def exportCalibrationIndexEntry(self, entry: IndexEntry):
         """
         Entry must have correct version set.
         """
@@ -75,7 +74,7 @@ class DataExportService:
 
     ##### NORMALIZATION METHODS #####
 
-    def exportNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
+    def exportNormalizationIndexEntry(self, entry: IndexEntry):
         """
         Entry must have correct version set.
         """

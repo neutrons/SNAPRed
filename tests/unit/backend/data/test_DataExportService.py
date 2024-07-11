@@ -3,8 +3,7 @@ import unittest.mock as mock
 from pathlib import Path
 from random import randint
 
-from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
-from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry  # noqa: E402
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.data.DataExportService import DataExportService  # noqa: E402
 from snapred.backend.data.LocalDataService import LocalDataService
 
@@ -43,7 +42,7 @@ class TestDataExportService(unittest.TestCase):
 
     def test_exportCalibrationIndexEntry(self):
         self.instance.exportCalibrationIndexEntry(
-            CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="", version=1),
+            IndexEntry(runNumber="1", useLiteMode=True, comments="", author="", version=1)
         )
         assert self.instance.dataService.writeCalibrationIndexEntry.called
 
@@ -67,14 +66,7 @@ class TestDataExportService(unittest.TestCase):
 
     def test_exportNormalizationIndexEntry(self):
         self.instance.exportNormalizationIndexEntry(
-            NormalizationIndexEntry(
-                runNumber="1",
-                useLiteMode=True,
-                backgroundRunNumber="2",
-                comments="",
-                author="",
-                version=1,
-            )
+            IndexEntry(runNumber="1", useLiteMode=True, comments="", author="", version=1)
         )
         assert self.instance.dataService.writeNormalizationIndexEntry.called
 

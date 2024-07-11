@@ -1,9 +1,7 @@
-from typing import Optional
+from pydantic import BaseModel, model_validator
 
-from pydantic import BaseModel
-
-from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
-from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntryRequest
+from snapred.backend.dao.request.CreateNormalizationRecordRequest import CreateNormalizationRecordRequest
 
 
 class NormalizationExportRequest(BaseModel):
@@ -18,6 +16,14 @@ class NormalizationExportRequest(BaseModel):
 
     """
 
-    normalizationRecord: NormalizationRecord
-    normalizationIndexEntry: NormalizationIndexEntry
-    version: Optional[int] = None
+    createIndexEntryRequest: CreateIndexEntryRequest
+    createRecordRequest: CreateNormalizationRecordRequest
+
+    @model_validator(mode="after")
+    def same_version(self):
+        if self.createIndexEntryRequest.version != self.createRecordRequest.version:
+            raise ValueError(
+                f"Version {self.createIndexEntryRequest.version} does not match {self.createRecordRequest.version}"
+            )
+        else:
+            return self

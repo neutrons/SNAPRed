@@ -656,10 +656,10 @@
     ]
   },
   "workspaces": {
-    "diffCalOutput": "_dsp_column_057514_v0002",
-    "diffCalDiagnostic": "_diagnostic_column_057514_v0002",
-    "diffCalTable": "_diffract_consts_057514_v0002",
-    "diffCalMask": "_diffract_consts_mask_057514_v0002"
+    "diffCalOutput": ["_dsp_column_057514_v0002"],
+    "diffCalDiagnostic": ["_diagnostic_column_057514_v0002"],
+    "diffCalTable": ["_diffract_consts_057514_v0002"],
+    "diffCalMask": ["_diffract_consts_mask_057514_v0002"]
   },
   "version": 2
 }

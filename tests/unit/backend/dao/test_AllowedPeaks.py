@@ -12,7 +12,7 @@ def test_literal_bad():
     with pytest.raises(ValidationError) as e:
         CalibrationAssessmentRequest(
             run={"runNumber": "123"},
-            workspaces={wngt.DIFFCAL_OUTPUT: wngn("nope")},
+            workspaces={wngt.DIFFCAL_OUTPUT: [wngn("nope")]},
             focusGroup={"name": "nope", "definition": "nope"},
             calibrantSamplePath="nope",
             useLiteMode=False,
@@ -30,7 +30,7 @@ def test_literal_good():
         try:
             CalibrationAssessmentRequest(
                 run={"runNumber": "123"},
-                workspaces={wngt.DIFFCAL_OUTPUT: wngn("yup")},
+                workspaces={wngt.DIFFCAL_OUTPUT: [wngn("yup")]},
                 focusGroup={"name": "yup", "definition": "yup"},
                 calibrantSamplePath="yup",
                 useLiteMode=False,

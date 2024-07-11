@@ -1,12 +1,17 @@
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from pydantic import validate_call
 
+from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
+from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
 from snapred.backend.dao.ReductionState import ReductionState
+from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
+from snapred.backend.dao.request.NormalizationExportRequest import NormalizationExportRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
 from snapred.backend.data.GroceryService import GroceryService
@@ -69,16 +74,22 @@ class DataFactoryService:
     def checkCalibrationStateExists(self, runId: str):
         return self.lookupService.checkCalibrationFileExists(runId)
 
+    def createCalibrationIndexEntry(self, request: CalibrationExportRequest) -> IndexEntry:
+        return self.lookupService.createCalibrationIndexEntry(request)
+
+    def createCalibrationRecord(self, request: CalibrationExportRequest) -> CalibrationRecord:
+        return self.lookupService.createCalibrationRecord(request)
+
     @validate_call
     def getCalibrationState(self, runId: str, useLiteMode: bool):
         return self.lookupService.readCalibrationState(runId, useLiteMode)
 
     @validate_call
-    def getCalibrationIndex(self, runId: str, useLiteMode: bool):
+    def getCalibrationIndex(self, runId: str, useLiteMode: bool) -> List[IndexEntry]:
         return self.lookupService.calibrationIndexer(runId, useLiteMode).getIndex()
 
     @validate_call
-    def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+    def getCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None) -> CalibrationRecord:
         """
         If no version is passed, will use the latest version applicable to runId
         """
@@ -103,12 +114,18 @@ class DataFactoryService:
     def getNormalizationDataPath(self, runId: str, useLiteMode: bool, version: int):
         return self.lookupService.normalizationIndexer(runId, useLiteMode).versionPath(version)
 
+    def createNormalizationIndexEntry(self, request: NormalizationExportRequest) -> IndexEntry:
+        return self.lookupService.createNormalizationIndexEntry(request)
+
+    def createNormalizationRecord(self, request: NormalizationExportRequest) -> NormalizationRecord:
+        return self.lookupService.createNormalizationRecord(request)
+
     @validate_call
     def getNormalizationState(self, runId: str, useLiteMode: bool):
         return self.lookupService.readNormalizationState(runId, useLiteMode)
 
     @validate_call
-    def getNormalizationIndex(self, runId: str, useLiteMode: bool):
+    def getNormalizationIndex(self, runId: str, useLiteMode: bool) -> List[IndexEntry]:
         return self.lookupService.normalizationIndexer(runId, useLiteMode).getIndex()
 
     @validate_call

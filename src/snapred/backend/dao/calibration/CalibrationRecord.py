@@ -8,7 +8,7 @@ from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationRecord(Record):
+class CalibrationRecord(Record, extra="ignore"):
     """
 
     The CalibrationRecord class, serves as a comprehensive log of the inputs and parameters employed
@@ -35,4 +35,4 @@ class CalibrationRecord(Record):
     crystalInfo: CrystallographicInfo
     pixelGroups: Optional[List[PixelGroup]] = None  # TODO: really shouldn't be optional, will be when sns data fixed
     focusGroupCalibrationMetrics: FocusGroupMetric
-    workspaces: Dict[WorkspaceType, WorkspaceName]
+    workspaces: Dict[WorkspaceType, List[WorkspaceName]]

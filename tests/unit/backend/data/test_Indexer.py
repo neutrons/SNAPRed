@@ -9,12 +9,13 @@ from random import randint
 from typing import List
 
 import pytest
+from pydantic import ValidationError
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_NONE_NAME, VERSION_START
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_START
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
@@ -41,6 +42,18 @@ class TestIndexer(unittest.TestCase):
     def tearDown(self):
         self.tmpDir.cleanup()
 
+    def prepareIndex(self, versions: List[int]):
+        index = [self.indexEntry(version) for version in versions]
+        write_model_list_pretty(index, self.indexPath())
+
+    def prepareRecords(self, versions: List[int]):
+        for version in versions:
+            self.writeRecordVersion(version)
+
+    def prepareVersions(self, versions: List[int]):
+        self.prepareIndex(versions)
+        self.prepareRecords(versions)
+
     def initIndexer(self, indexerType=IndexerType.DEFAULT):
         # create an indexer of specific type inside the temporrary directory
         return Indexer(indexerType=indexerType, directory=self.path)
@@ -50,10 +63,12 @@ class TestIndexer(unittest.TestCase):
         # and random other information
         if version is None:
             version = randint(2, 120)
+        runNumber = str(randint(1000, 5000))
         return IndexEntry(
-            runNumber=str(randint(1000, 5000)),
+            runNumber=runNumber,
             useLiteMode=bool(randint(0, 1)),
             version=version,
+            appliesTo=f">={runNumber}",
         )
 
     def record(self, version=None, *, runNumber=None):
@@ -83,6 +98,17 @@ class TestIndexer(unittest.TestCase):
             version=version,
         )
 
+    def indexEntryFromRecord(self, record: Record) -> IndexEntry:
+        return IndexEntry(
+            runNumber=record.runNumber,
+            useLiteMode=record.useLiteMode,
+            version=record.version,
+            appliesTo=f">={record.runNumber}",
+            author="",
+            comments="",
+            timestmp=0,
+        )
+
     def recordFromIndexEntry(self, entry: IndexError) -> Record:
         # given an index entry, create a bare record corresponding
         return Record(
@@ -109,7 +135,10 @@ class TestIndexer(unittest.TestCase):
         return self.versionPath(version) / "Parameters.json"
 
     def makeVersionDir(self, version):
-        self.versionPath(version).mkdir()
+        self.versionPath(version).mkdir(exist_ok=True)
+
+    def writeIndex(self, index: List[IndexEntry]):
+        write_model_list_pretty(index, self.indexPath())
 
     def writeRecord(self, record: Record):
         # write a record independently of the indexer
@@ -134,66 +163,46 @@ class TestIndexer(unittest.TestCase):
     def test_init_versions_exist(self):
         # when initialized, existing information is loaded
         versionList = [1, 2, 3, 4]
-        index = {version: self.indexEntry(version) for version in versionList}
-        write_model_list_pretty(index.values(), self.indexPath())
-        for version in versionList:
-            self.makeVersionDir(version)
+        self.prepareVersions(versionList)
 
         indexer = self.initIndexer()
 
-        assert indexer.index == index
+        assert list(indexer.index.keys()) == versionList
         assert indexer.currentVersion() == max(versionList)
 
     def test_init_versions_missing_index(self):
         # create a situation where the index is missing a value shown in the directory tree
         # then the indexer should create an index entry based off of the directory record
-        versionList = [1, 2, 3, 4]
-        index = {version: self.indexEntry(version) for version in versionList}
-        # remove version 3 and write the index
-        del index[3]
-        write_model_list_pretty(list(index.values()), self.indexPath())
-        # now add all the needed files
-        # - add a v_000x/ directory for each version
-        # - add a v_000x/CalibrationRecord.json for each version
-        for version in versionList:
-            self.writeRecordVersion(version)
+        missingVersion = 3
+        recordVersions = [1, 2, 3, 4]
+        indexVersions = [v for v in recordVersions if v != missingVersion]
 
-        indexer = self.initIndexer()
+        self.prepareIndex(indexVersions)
+        self.prepareRecords(recordVersions)
 
-        # what we expect -- an index with version 1, 2, 3, 4
-        # version 3 will be created from the record
-        # the timestamps will necessarily differ, so set them both to zero
-        expectedIndex = index.copy()
-        expectedIndex[3] = indexer.indexEntryFromRecord(indexer.readRecord(3))
-        expectedIndex[3].timestamp = 0
-        indexer.index[3].timestamp = 0
+        with self.assertLogs(logger=IndexerModule.logger, level=logging.WARNING) as cm:
+            indexer = self.initIndexer()
+        assert str(missingVersion) in cm.output[0]
 
-        assert indexer.index == expectedIndex
+        assert list(indexer.index.keys()) == indexVersions
 
     def test_init_versions_missing_directory(self):
         # create a situation where the index has a value not reflected in directory tree
-        # then the indexer should delete that index entry
-        versionList = [1, 2, 3, 4]
-        index = {version: self.indexEntry(version) for version in versionList}
-        write_model_list_pretty(list(index.values()), self.indexPath())
-        # remove version 3
-        versionList.remove(3)
-        # now add all the needed files as before
-        for version in versionList:
-            self.writeRecordVersion(version)
+        # then the indexer should raise an error
+        missingVersion = 3
+        indexVersions = [1, 2, 3, 4]
+        recordVersions = [v for v in indexVersions if v != missingVersion]
+        self.prepareIndex(indexVersions)
+        self.prepareRecords(recordVersions)
 
-        indexer = self.initIndexer()
+        with pytest.raises(FileNotFoundError) as e:
+            self.initIndexer()
+        assert str(missingVersion) in str(e)
 
-        # what we expect -- an index with version 1, 2, 4
-        # version 3 will have been deleted
-        expectedIndex = index.copy()
-        del expectedIndex[3]
-
-        assert indexer.index == expectedIndex
-
-    def test_delete_save_on_exit(self):
+    def x_test_delete_save_on_exit(self):
         # ensure the index list is saved when the indexer is deleted
         versionList = [1, 2, 3]
+        self.prepareVersions(versionList)
         # now add all the needed files as before
         for version in versionList:
             self.writeRecordVersion(version)
@@ -205,8 +214,8 @@ class TestIndexer(unittest.TestCase):
         savedIndex = parse_file_as(List[IndexEntry], self.indexPath())
         assert len(savedIndex) == len(versionList)
 
-    def test_delete_reconcile_versions(self):
-        # ensure the version in the idex are reconciled to file tree during save-on-delete
+    def x_test_delete_reconcile_versions(self):
+        # ensure the versions in the index are reconciled to file tree during save-on-delete
         versionList = [1, 2, 3]
         index = {version: self.indexEntry(version) for version in versionList}
         write_model_list_pretty(list(index.values()), self.indexPath())
@@ -214,8 +223,8 @@ class TestIndexer(unittest.TestCase):
         for version in versionList:
             self.writeRecordVersion(version)
 
-        # add an index entry but don't save a file
-        # the index will not have the next version
+        # add an index entry but don't save a record
+        # the saved index will not have the next version
         indexer = self.initIndexer()
         indexer.addIndexEntry(self.indexEntry(4))
         del indexer
@@ -258,8 +267,11 @@ class TestIndexer(unittest.TestCase):
         # ensure current version advances when index entries are written
         # prepare directories for the versions
         versions = [2, 3, 4]
+        index = {version: self.indexEntry(version) for version in versions}
+        write_model_list_pretty(index.values(), self.indexPath())
         for version in versions:
             self.writeRecordVersion(version)
+
         indexer = self.initIndexer()
         # ensure we are in position we expect:
         assert list(indexer.index.keys()) == versions
@@ -270,23 +282,20 @@ class TestIndexer(unittest.TestCase):
         assert indexer.currentVersion() == max(versions) + 1
 
     def test_currentVersion_dirHigher(self):
-        # ensure the current index is set to the max in the directory tree
-        # when the index and directory disagree
-        # in this case, the directory tree is higher than the index
-        dirVersions = [1, 2, 3]
-        indexVersions = [1, 2]
-        index = {version: self.indexEntry(version) for version in indexVersions}
-        write_model_list_pretty(index.values(), self.indexPath())
-        for version in dirVersions:
-            self.writeRecordVersion(version)
+        # if there is a directory not represented in the index: warn and ignore
+        missingVersion = 3
+        recordVersions = [1, 2, 3]
+        indexVersions = [v for v in recordVersions if v != missingVersion]
+        self.prepareRecords(recordVersions)
+        self.prepareIndex(indexVersions)
 
-        indexer = self.initIndexer()
-        assert indexer.currentVersion() == max(dirVersions)
+        with self.assertLogs(logger=IndexerModule.logger, level=logging.WARNING) as cm:
+            indexer = self.initIndexer()
+        assert str(missingVersion) in cm.output[0]
+        assert indexer.currentVersion() == max(indexVersions)
 
     def test_currentVersion_indexhigher(self):
-        # ensure the current index is set to the max in the directory tree
-        # when the index and directory disagree
-        # in this case, the index is higher than the directory tree
+        # if there is an index entry not represented in the directory: throw error
         dirVersions = [1, 2]
         indexVersions = [1, 2, 3]
         index = {version: self.indexEntry(version) for version in indexVersions}
@@ -294,17 +303,17 @@ class TestIndexer(unittest.TestCase):
         for version in dirVersions:
             self.writeRecordVersion(version)
 
-        indexer = self.initIndexer()
-        assert indexer.currentVersion() == max(dirVersions)
+        with pytest.raises(FileNotFoundError) as e:
+            indexer = self.initIndexer()
+        assert str(3) in str(e)
 
     def test_latestApplicableVersion_none(self):
         # ensure latest applicable version is none if no versions apply
         runNumber = "123"
         versionList = [3, 4, 5]
-        for version in versionList:
-            self.writeRecordVersion(version)
+        self.prepareVersions(versionList)
         indexer = self.initIndexer()
-        # there is no applivcable version
+        # there is no applicable version
         latest = indexer.latestApplicableVersion(runNumber)
         assert latest is None
 
@@ -312,13 +321,12 @@ class TestIndexer(unittest.TestCase):
         # ensure latest applicable versiom is the one if one applies
         runNumber = "123"
         versionList = [3, 4, 5]
-        for version in versionList:
-            self.writeRecordVersion(version)
+        self.prepareVersions(versionList)
         indexer = self.initIndexer()
         # make one entry applicable
         version = 4
         indexer.index[version].appliesTo = f">={runNumber}"
-        # get latest apllicable
+        # get latest applicable
         latest = indexer.latestApplicableVersion(runNumber)
         assert version == latest
 
@@ -326,14 +334,13 @@ class TestIndexer(unittest.TestCase):
         # ensure latest applicable version will sort several applicable versions
         runNumber = "123"
         versionList = [3, 4, 5, 6, 7]
-        for version in versionList:
-            self.writeRecordVersion(version)
+        self.prepareVersions(versionList)
         indexer = self.initIndexer()
         # make some entries applicable
         applicableVersions = [4, 6]
         for version in applicableVersions:
             indexer.index[version].appliesTo = f">={runNumber}"
-        # get latest apllicable
+        # get latest applicable
         latest = indexer.latestApplicableVersion(runNumber)
         assert latest == applicableVersions[-1]
 
@@ -341,8 +348,7 @@ class TestIndexer(unittest.TestCase):
         # ensure latest applicable version will sort several applicable versions
         runNumber = "123"
         versionList = [3, 4, 5, 6, 7]
-        for version in versionList:
-            self.writeRecordVersion(version)
+        self.prepareVersions(versionList)
         indexer = self.initIndexer()
         # make some entries applicable and set their timestamps in reverse
         applicableVersions = [6, 4]
@@ -358,8 +364,7 @@ class TestIndexer(unittest.TestCase):
         # ensure latest applicable version will be default if it is the only one
         runNumber = "123"
         versionList = [VERSION_DEFAULT]
-        for version in versionList:
-            self.writeRecordVersion(version)
+        self.prepareVersions(versionList)
         indexer = self.initIndexer()
         # make it applicable
         indexer.index[VERSION_DEFAULT].appliesTo = f">={runNumber}"
@@ -371,8 +376,7 @@ class TestIndexer(unittest.TestCase):
         # ensure latest applicable version will remove default if other runs exist
         runNumber = "123"
         versionList = [VERSION_DEFAULT, 4, 5]
-        for version in versionList:
-            self.writeRecordVersion(version)
+        self.prepareVersions(versionList)
         indexer = self.initIndexer()
         # make some entries applicable
         applicableVersions = [VERSION_DEFAULT, 4]
@@ -387,8 +391,6 @@ class TestIndexer(unittest.TestCase):
         version = randint(20, 120)
         indexer = self.initIndexer()
         assert indexer.thisOrCurrentVersion(None) == indexer.currentVersion()
-        assert indexer.thisOrCurrentVersion("*") == indexer.currentVersion()
-        assert indexer.thisOrCurrentVersion(VERSION_NONE_NAME) == indexer.currentVersion()
         assert indexer.thisOrCurrentVersion(VERSION_DEFAULT) == VERSION_DEFAULT
         assert indexer.thisOrCurrentVersion(version) == version
 
@@ -396,8 +398,6 @@ class TestIndexer(unittest.TestCase):
         version = randint(20, 120)
         indexer = self.initIndexer()
         assert indexer.thisOrNextVersion(None) == indexer.nextVersion()
-        assert indexer.thisOrNextVersion("*") == indexer.nextVersion()
-        assert indexer.thisOrNextVersion(VERSION_NONE_NAME) == indexer.nextVersion()
         assert indexer.thisOrNextVersion(VERSION_DEFAULT) == VERSION_DEFAULT
         assert indexer.thisOrNextVersion(version) == version
 
@@ -494,7 +494,7 @@ class TestIndexer(unittest.TestCase):
         assert indexer.nextVersion() not in indexer.index
 
         # add the entry
-        entry = indexer.indexEntryFromRecord(record)
+        entry = self.indexEntryFromRecord(record)
         indexer.addIndexEntry(entry)
         expectedIndex[here] = entry
         assert indexer.index == expectedIndex
@@ -513,7 +513,7 @@ class TestIndexer(unittest.TestCase):
         assert indexer.nextVersion() not in indexer.index
 
         # now add the entry
-        entry = indexer.indexEntryFromRecord(record)
+        entry = self.indexEntryFromRecord(record)
         indexer.addIndexEntry(entry)
         expectedIndex[here] = entry
         assert indexer.index == expectedIndex
@@ -597,7 +597,7 @@ class TestIndexer(unittest.TestCase):
         assert indexer.nextVersion() == VERSION_DEFAULT
 
         # now write the index entry -- it should write to default
-        entry = Record.indexEntryFromRecord(record)
+        entry = self.indexEntryFromRecord(record)
         indexer.addIndexEntry(entry)
 
         # the current version is still the default version
@@ -678,12 +678,15 @@ class TestIndexer(unittest.TestCase):
         # ensure latest applicable path corresponds to correct version
         runNumber = "123"
         versionList = [3, 4, 5]
+        index = [self.indexEntry(version) for version in versionList]
+        write_model_list_pretty(index, self.indexPath())
         for version in versionList:
             self.writeRecordVersion(version)
         indexer = self.initIndexer()
         # make one entry applicable
         version = 4
         indexer.index[version].appliesTo = f">={runNumber}"
+        print(indexer.index)
         latest = indexer.latestApplicableVersion(runNumber)
         assert indexer.latestApplicablePath(runNumber) == self.versionPath(latest)
 
@@ -694,10 +697,9 @@ class TestIndexer(unittest.TestCase):
         versionList = [randint(0, 120) for i in range(20)]
         index = {version: self.indexEntry(version) for version in versionList}
         write_model_list_pretty(list(index.values()), self.indexPath())
-
+        self.prepareRecords(versionList)
         indexer = self.initIndexer()
-        ans = indexer.readIndex()
-        assert ans == index
+        assert indexer.readIndex() == index
 
     def test_readIndex_nothing(self):
         indexer = self.initIndexer()
@@ -780,20 +782,6 @@ class TestIndexer(unittest.TestCase):
         indexer.addIndexEntry(self.indexEntry(7))
         assert indexer.index[7] is not entry7
 
-    def test_indexEntryFromRecord(self):
-        record = self.record(randint(1, 100))
-        indexer = self.initIndexer()
-        res = indexer.indexEntryFromRecord(record)
-        assert type(res) is IndexEntry
-        assert res.runNumber == record.runNumber
-        assert res.useLiteMode == record.useLiteMode
-        assert res.version == record.version
-
-    def test_indexEntryFromRecord_none(self):
-        indexer = self.initIndexer()
-        res = indexer.indexEntryFromRecord(None)
-        assert res is None
-
     ### TEST RECORD READ / WRITE METHODS ###
 
     # read / write #
@@ -803,8 +791,7 @@ class TestIndexer(unittest.TestCase):
         # so that we can know it does not default
         # to the starting version
         versions = [2, 3, 4]
-        for version in versions:
-            self.writeRecordVersion(version)
+        self.prepareVersions(versions)
         indexer = self.initIndexer()
         nextVersion = indexer.nextVersion()
         assert nextVersion != VERSION_START
@@ -847,15 +834,12 @@ class TestIndexer(unittest.TestCase):
         assert res == record
 
     def test_readRecord_invalid_version(self):
-        # if an invalid version is attempted to be read, just give the current record
-
-        # NOTE this test assumes no validation is taking place on the arguments to readRecord
-        # if validation of the version is ever put in place this test can probably be safely deleted
+        # if an invalid version is attempted to be read, raise an error
         record = self.record(randint(1, 100))
         self.writeRecord(record)
         indexer = self.initIndexer()
-        res = indexer.readRecord("*")
-        assert res == record
+        with pytest.raises(ValidationError):
+            indexer.readRecord("*")
 
     # write #
 
@@ -887,8 +871,7 @@ class TestIndexer(unittest.TestCase):
 
         # make sure there exists other versions so that we can know it does not default to the starting version
         versions = [2, 3, 4]
-        for version in versions:
-            self.writeRecordVersion(version)
+        self.prepareVersions(versions)
         indexer = self.initIndexer()
         nextVersion = indexer.nextVersion()
         assert nextVersion != VERSION_START

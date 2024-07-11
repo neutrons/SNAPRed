@@ -31,12 +31,11 @@ from mantid.simpleapi import (
 )
 from snapred.backend.dao import StateConfig
 from snapred.backend.dao.calibration.Calibration import Calibration
-from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.normalization.Normalization import Normalization
-from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
@@ -932,7 +931,7 @@ def test_readNormalizationIndex():
 
 
 def test_readWriteCalibrationIndexEntry():
-    entry = CalibrationIndexEntry(
+    entry = IndexEntry(
         runNumber="57514",
         useLiteMode=True,
         comments="test comment",
@@ -948,9 +947,8 @@ def test_readWriteCalibrationIndexEntry():
 
 
 def test_readWriteNormalizationIndexEntry():
-    entry = NormalizationIndexEntry(
+    entry = IndexEntry(
         runNumber="57514",
-        backgroundRunNumber="58813",
         useLiteMode=True,
         comments="test comment",
         author="test author",

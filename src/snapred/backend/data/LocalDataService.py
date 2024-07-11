@@ -22,13 +22,18 @@ from snapred.backend.dao import (
     StateConfig,
     StateId,
 )
-from snapred.backend.dao.calibration import Calibration, CalibrationIndexEntry, CalibrationRecord
+from snapred.backend.dao.calibration import Calibration, CalibrationRecord
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.dao.Limit import Limit, Pair
-from snapred.backend.dao.normalization import Normalization, NormalizationIndexEntry, NormalizationRecord
+from snapred.backend.dao.normalization import Normalization, NormalizationRecord
 from snapred.backend.dao.reduction import ReductionRecord
+from snapred.backend.dao.request import (
+    CreateCalibrationRecordRequest,
+    CreateIndexEntryRequest,
+    CreateNormalizationRecordRequest,
+)
 from snapred.backend.dao.state import (
     DetectorState,
     GroupingMap,
@@ -301,13 +306,13 @@ class LocalDataService:
     def normalizationIndexer(self, runId: str, useLiteMode: bool):
         return self.indexer(runId, useLiteMode, IndexerType.NORMALIZATION)
 
-    def writeCalibrationIndexEntry(self, entry: CalibrationIndexEntry):
+    def writeCalibrationIndexEntry(self, entry: IndexEntry):
         """
         The entry must have correct version.
         """
         self.calibrationIndexer(entry.runNumber, entry.useLiteMode).addIndexEntry(entry)
 
-    def writeNormalizationIndexEntry(self, entry: NormalizationIndexEntry):
+    def writeNormalizationIndexEntry(self, entry: IndexEntry):
         """
         The entry must have correct version.
         """
@@ -322,6 +327,14 @@ class LocalDataService:
         return max(versions)
 
     ##### NORMALIZATION METHODS #####
+
+    def createNormalizationIndexEntry(self, request: CreateIndexEntryRequest) -> IndexEntry:
+        indexer = self.normalizationIndexer(request.runNumber, request.useLiteMode)
+        return indexer.createIndexEntry(**request.model_dump())
+
+    def createNormalizationRecord(self, request: CreateNormalizationRecordRequest) -> NormalizationRecord:
+        indexer = self.normalizationIndexer(request.runNumber, request.useLiteMode)
+        return indexer.createRecord(**request.model_dump())
 
     @validate_call
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
@@ -370,6 +383,14 @@ class LocalDataService:
 
     ##### CALIBRATION METHODS #####
 
+    def createCalibrationIndexEntry(self, request: CreateIndexEntryRequest) -> IndexEntry:
+        indexer = self.calibrationIndexer(request.runNumber, request.useLiteMode)
+        return indexer.createIndexEntry(**request.model_dump())
+
+    def createCalibrationRecord(self, request: CreateCalibrationRecordRequest) -> CalibrationRecord:
+        indexer = self.calibrationIndexer(request.runNumber, request.useLiteMode)
+        return indexer.createRecord(**request.model_dump())
+
     @validate_call
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         """
@@ -408,20 +429,20 @@ class LocalDataService:
             calibrationDataPath.mkdir(parents=True, exist_ok=True)
 
         # write the output d-spacing calibrated data
-        wsName = record.workspaces[wngt.DIFFCAL_OUTPUT]
+        wsName = record.workspaces[wngt.DIFFCAL_OUTPUT][0]
         ext = Config["calibration.diffraction.output.extension"]
         filename = Path(wsName + ext)
         self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
 
         # write the diagnostic output
-        wsName = record.workspaces[wngt.DIFFCAL_DIAG]
+        wsName = record.workspaces[wngt.DIFFCAL_DIAG][0]
         ext = Config["calibration.diffraction.diagnostic.extension"]
         filename = Path(wsName + ext)
         self.writeWorkspace(calibrationDataPath, filename, wsName)
 
         # write the diffcal table and attached masl
-        tableWSName = record.workspaces[wngt.DIFFCAL_TABLE]
-        maskWSName = record.workspaces[wngt.DIFFCAL_MASK]
+        tableWSName = record.workspaces[wngt.DIFFCAL_TABLE][0]
+        maskWSName = record.workspaces[wngt.DIFFCAL_MASK][0]
         ext = ".h5"
         diffCalFilename = Path(tableWSName + ext)
         self.writeDiffCalWorkspaces(
@@ -554,7 +575,7 @@ class LocalDataService:
         with open(filePath, "r") as file:
             sampleJson = json.load(file)
             if "mass-density" in sampleJson and "packingFraction" in sampleJson:
-                warnings.warn(  # noqa: F821
+                logger.warn(  # noqa: F821
                     "Can't specify both mass-density and packing fraction for single-element materials"
                 )  # noqa: F821
             del sampleJson["material"]["packingFraction"]
@@ -683,10 +704,18 @@ class LocalDataService:
 
         calibrationReturnValue = None
 
+        # Make sure that the state root directory has been initialized:
+        stateRootPath: Path = self._constructCalibrationStateRoot(stateId)
+        if not stateRootPath.exists():
+            # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
+            #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
+            self._prepareStateRoot(stateId)
+
+        # now save default versions of files in both lite and native resolution directories
         version = VERSION_DEFAULT
         for liteMode in [True, False]:
-            # finally add seedRun, creation date, and a human readable name
-            calibration = Calibration(
+            indexer = self.calibrationIndexer(runId, liteMode)
+            calibration = indexer.createParameters(
                 instrumentState=instrumentState,
                 name=name,
                 seedRun=runId,
@@ -694,33 +723,25 @@ class LocalDataService:
                 creationDate=datetime.datetime.now(),
                 version=version,
             )
+            # NOTE a bare record without other CalibrationRecord data
             record = Record(
                 runNumber=runId,
                 useLiteMode=liteMode,
                 version=version,
                 calculationParameters=calibration,
             )
-            entry = IndexEntry(
+            entry = indexer.createIndexEntry(
                 runNumber=runId,
                 useLiteMode=liteMode,
                 version=version,
                 appliesTo=">=0",
                 author="SNAPRed Internal",
                 comments="The default condition for loading StateConfigs if none other found",
-                timestamp=round(time.time()),
             )
-
-            # Make sure that the state root directory has been initialized:
-            stateRootPath: Path = self._constructCalibrationStateRoot(stateId)
-            if not stateRootPath.exists():
-                # WARNING: `_prepareStateRoot` is also called at `readStateConfig`; this allows
-                #   some order independence of initialization if the back-end is run separately (e.g. in unit tests).
-                self._prepareStateRoot(stateId)
-
             # write the calibration state
-            self.writeCalibrationRecord(record)
-            self.writeCalibrationState(record.calculationParameters)
-            self.writeCalibrationIndexEntry(entry)
+            indexer.writeRecord(record)
+            indexer.writeParameters(record.calculationParameters)
+            indexer.addIndexEntry(entry)
             # write the default diffcal table
             self._writeDefaultDiffCalTable(runId, liteMode)
 

@@ -1,6 +1,7 @@
+import time
 from typing import Optional
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from snapred.backend.dao.indexing.Versioning import VersionedObject
 
 
@@ -24,7 +25,7 @@ class IndexEntry(VersionedObject, extra="ignore"):
     appliesTo: Optional[str] = None
     comments: Optional[str] = None
     author: Optional[str] = None
-    timestamp: Optional[int] = None
+    timestamp: Optional[int] = Field(default_factory=lambda: int(time.time()))
 
     def parseAppliesTo(appliesTo: str):
         symbols = [">=", "<=", "<", ">"]
