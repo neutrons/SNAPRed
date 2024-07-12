@@ -149,6 +149,16 @@ class TestDataFactoryService(unittest.TestCase):
         actual = self.instance.checkCalibrationStateExists("123")
         assert actual == self.expected("123")
 
+    def test_createCalibrationIndexEntry(self):
+        request = mock.Mock()
+        actual = self.instance.createCalibrationIndexEntry(request)
+        assert actual == self.expected(request)
+
+    def test_createCalibrationRecord(self):
+        request = mock.Mock()
+        actual = self.instance.createCalibrationRecord(request)
+        assert actual == self.expected(request)
+
     def test_getCalibrationState(self):
         for useLiteMode in [True, False]:
             actual = self.instance.getCalibrationState("123", useLiteMode)
@@ -188,6 +198,16 @@ class TestDataFactoryService(unittest.TestCase):
         for useLiteMode in [True, False]:
             actual = self.instance.getNormalizationDataPath("123", useLiteMode, self.version)
             assert actual == self.expected("Normalization", self.version)  # NOTE mock indexer called only with version
+
+    def test_createNormalizationIndexEntry(self):
+        request = mock.Mock()
+        actual = self.instance.createNormalizationIndexEntry(request)
+        assert actual == self.expected(request)
+
+    def test_createNormalizationRecord(self):
+        request = mock.Mock()
+        actual = self.instance.createNormalizationRecord(request)
+        assert actual == self.expected(request)
 
     def test_getNormalizationState(self):
         for useLiteMode in [True, False]:
