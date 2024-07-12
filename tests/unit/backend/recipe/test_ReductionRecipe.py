@@ -78,6 +78,12 @@ class ReductionRecipeTest(TestCase):
         workspace = "input_tof"
         units = "dSpacing"
         recipe._convertWorkspace(workspace, units)
+        units = "TOF"
+        recipe._convertWorkspace(workspace, units)
+        units = "MomentumTransfer"
+        recipe._convertWorkspace(workspace, units)
+        units = "Wavelength"
+        recipe._convertWorkspace(workspace, units)
 
         assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace)
         assert recipe.mantidSnapper.executeQueue.called
