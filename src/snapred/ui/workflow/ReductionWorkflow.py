@@ -40,6 +40,12 @@ class ReductionWorkflow(WorkflowImplementer):
             .build()
         )
 
+        self._reductionView.retainUnfocusedDataCheckbox.checkedChanged.connect(self._enableConvertToUnits)
+
+    def _enableConvertToUnits(self):
+        state = self._reductionView.retainUnfocusedDataCheckbox.isChecked()
+        self._reductionView.convertUnitsDropdown.setEnabled(state)
+
     def _nothing(self, workflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)
 
@@ -59,6 +65,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         self._reductionView.liteModeToggle.setEnabled(False)
         self._reductionView.pixelMaskDropdown.setEnabled(False)
+        self._reductionView.retainUnfocusedDataCheckbox.setEnabled(False)
 
         for runNumber in runNumbers:
             try:
@@ -68,6 +75,8 @@ class ReductionWorkflow(WorkflowImplementer):
 
         self._reductionView.liteModeToggle.setEnabled(True)
         self._reductionView.pixelMaskDropdown.setEnabled(True)
+        self._reductionView.retainUnfocusedDataCheckbox.setEnabled(True)
+        # self._reductionView.convertUnitsDropdown.setEnabled(True)
 
     def _triggerReduction(self, workflowPresenter):
         view = workflowPresenter.widget.tabView  # noqa: F841
@@ -79,6 +88,8 @@ class ReductionWorkflow(WorkflowImplementer):
                 runNumber=runNumber,
                 useLiteMode=self._reductionView.liteModeToggle.field.getState(),
                 continueFlags=self.continueAnywayFlags,
+                keepUnfocused=self._reductionView.retainUnfocusedDataCheckbox.isChecked(),
+                convertUnitsTo=self._reductionView.convertUnitsDropdown.currentText(),
             )
             # TODO: Handle Continue Anyway
             response = self.request(path="reduction/", payload=payload.json())

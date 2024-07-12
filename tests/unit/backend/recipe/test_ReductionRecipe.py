@@ -72,6 +72,22 @@ class ReductionRecipeTest(TestCase):
         assert recipe.mantidSnapper.DeleteWorkspace.called_once_with(mock.ANY, Workspace=workspace)
         assert recipe.mantidSnapper.executeQueue.called
 
+    def test_convertWorkspace(self):
+        recipe = ReductionRecipe()
+        recipe.mantidSnapper = mock.Mock()
+        workspace = "input_tof"
+        units = "dSpacing"
+        recipe._convertWorkspace(workspace, units)
+        units = "TOF"
+        recipe._convertWorkspace(workspace, units)
+        units = "MomentumTransfer"
+        recipe._convertWorkspace(workspace, units)
+        units = "Wavelength"
+        recipe._convertWorkspace(workspace, units)
+
+        assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace)
+        assert recipe.mantidSnapper.executeQueue.called
+
     def test_applyRecipe(self):
         recipe = ReductionRecipe()
         recipe.groceries = {}
@@ -157,11 +173,14 @@ class ReductionRecipeTest(TestCase):
         recipe._applyRecipe = mock.Mock()
         recipe._cloneIntermediateWorkspace = mock.Mock()
         recipe._deleteWorkspace = mock.Mock()
+        recipe._convertWorkspace = mock.Mock()
         recipe._prepGroupWorkspaces = mock.Mock()
         recipe._prepGroupWorkspaces.return_value = ("sample_grouped", "norm_grouped")
         recipe.sampleWs = "sample"
         recipe.normalizationWs = "norm"
         recipe.groupWorkspaces = ["group1", "group2"]
+        recipe.keepUnfocused = True
+        recipe.convertUnitsTo = "dSpacing"
 
         result = recipe.execute()
 

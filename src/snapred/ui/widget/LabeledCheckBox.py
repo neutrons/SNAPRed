@@ -23,7 +23,7 @@ class LabeledCheckBox(QWidget):
 
     @Slot()
     def emitCheckedState(self, state):
-        self.checkedChanged.emit(state == QCheckBox.Checked)
+        self.checkedChanged.emit(state == QCheckBox.isChecked)
 
     @property
     def checkBox(self):
