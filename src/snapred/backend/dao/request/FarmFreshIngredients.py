@@ -27,6 +27,10 @@ class FarmFreshIngredients(BaseModel, extra="forbid"):
     ## needs to be mandatory for normcal
     calibrantSamplePath: Optional[str] = None
 
+    ## needs to be mandatory for reduction
+    keepUnfocused: Optional[bool] = None
+    convertUnitsTo: Optional[str] = None
+
     ## the below are not-so-fresh, being fiddly optional parameters with defaults
     convergenceThreshold: float = Config["calibration.diffraction.convergenceThreshold"]
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]

@@ -12,6 +12,8 @@ class ReductionRequest(BaseModel):
     focusGroups: List[FocusGroup] = []
     userSelectedMaskPath: Optional[str] = None
     version: Union[int, Literal["*"]] = "*"
+    keepUnfocused: bool = False
+    convertUnitsTo: str = None
 
     # TODO: Move to SNAPRequest
     continueFlags: Optional[ContinueWarning.Type] = None
