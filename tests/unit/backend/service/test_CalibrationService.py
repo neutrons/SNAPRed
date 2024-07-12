@@ -348,8 +348,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         }
         with state_root_redirect(self.localDataService) as tmpRoot:
             self.instance.save(json.dumps(request))
-            for x in (tmpRoot.path() / "lite/diffraction").iterdir():
-                print(x)
             savedRecord = parse_file_as(
                 CalibrationRecord, tmpRoot.path() / "lite/diffraction/v_0001/CalibrationRecord.json"
             )

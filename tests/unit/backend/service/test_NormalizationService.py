@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
+    CreateSingleValuedWorkspace,
     mtd,
 )
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
@@ -96,6 +97,23 @@ class TestNormalizationService(unittest.TestCase):
     def tearDown(self) -> None:
         self.clearoutWorkspaces()
         return super().tearDown()
+
+    def test_saveNormalization_workspaces_renamed(self):
+        version = 10
+        wsname = "test"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        self.instance.dataFactoryService.createNormalizationIndexEntry = mock.Mock(
+            return_value=mock.Mock(version=version)
+        )
+        self.instance.dataFactoryService.createNormalizationRecord = mock.Mock(
+            return_value=mock.Mock(version=version, workspaceNames=[wsname])
+        )
+        self.instance.dataExportService.exportNormalizationRecord = mock.Mock()
+        self.instance.dataExportService.exportNormalizationWorkspaces = mock.Mock()
+        self.instance.dataExportService.exportNormalizationIndexEntry = mock.Mock()
+        self.instance.saveNormalization(mock.Mock())
+        savedRecord = self.instance.dataExportService.exportNormalizationRecord.call_args[0]
+        assert savedRecord[0].workspaceNames == [f"{wsname}_v0010"]
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "FocusSpectraRecipe")
