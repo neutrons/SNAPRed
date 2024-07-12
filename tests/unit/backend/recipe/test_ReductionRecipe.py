@@ -72,6 +72,16 @@ class ReductionRecipeTest(TestCase):
         assert recipe.mantidSnapper.DeleteWorkspace.called_once_with(mock.ANY, Workspace=workspace)
         assert recipe.mantidSnapper.executeQueue.called
 
+    def test_convertWorkspace(self):
+        recipe = ReductionRecipe()
+        recipe.mantidSnapper = mock.Mock()
+        workspace = "input_tof"
+        units = "dSpacing"
+        recipe._convertWorkspace(workspace, units)
+
+        assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace)
+        assert recipe.mantidSnapper.executeQueue.called
+
     def test_applyRecipe(self):
         recipe = ReductionRecipe()
         recipe.groceries = {}
