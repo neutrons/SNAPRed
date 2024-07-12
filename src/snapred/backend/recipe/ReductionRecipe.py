@@ -86,7 +86,6 @@ class ReductionRecipe(Recipe[Ingredients]):
         elif units == "dSpacing":
             unitsAbrev = wng.Units.DSP
         outWS = workspace.replace("tof", unitsAbrev.lower())
-        print(outWS)
         self.mantidSnapper.ConvertUnits(
             "Convert the clone of the final output back to TOFl",
             InputWorkspace=workspace,

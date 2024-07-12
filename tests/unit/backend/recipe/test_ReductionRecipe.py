@@ -157,12 +157,14 @@ class ReductionRecipeTest(TestCase):
         recipe._applyRecipe = mock.Mock()
         recipe._cloneIntermediateWorkspace = mock.Mock()
         recipe._deleteWorkspace = mock.Mock()
+        recipe._convertWorkspace = mock.Mock()
         recipe._prepGroupWorkspaces = mock.Mock()
         recipe._prepGroupWorkspaces.return_value = ("sample_grouped", "norm_grouped")
         recipe.sampleWs = "sample"
         recipe.normalizationWs = "norm"
         recipe.groupWorkspaces = ["group1", "group2"]
-        recipe.keepUnfocused = False
+        recipe.keepUnfocused = True
+        recipe.convertUnitsTo = "dSpacing"
 
         output = recipe.execute()
 
