@@ -53,7 +53,7 @@ class TestReductionService(unittest.TestCase):
         self.request = ReductionRequest(
             runNumber="123",
             useLiteMode=False,
-            focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
+            focusGroups=[FocusGroup(name="apple", definition="path/to/grouping")],
             version=1,
         )
         ## Mock out the assistant services

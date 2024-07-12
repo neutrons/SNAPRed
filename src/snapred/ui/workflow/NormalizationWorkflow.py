@@ -1,6 +1,8 @@
 from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.request import (
+    CreateIndexEntryRequest,
+    CreateNormalizationRecordRequest,
     HasStateRequest,
     NormalizationExportRequest,
     NormalizationRequest,
