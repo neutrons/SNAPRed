@@ -21,6 +21,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.redantic import parse_file_as
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -155,7 +156,7 @@ class WhateversInTheFridge(LocalDataService):
         return thismap
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
-        thismap = GroupingMap.parse_file(self._groupingMapPath("fakeStateID"))
+        thismap = parse_file_as(GroupingMap, self._groupingMapPath("fakeStateID"))
         thismap = GroupingMap.construct(
             stateId=thismap.stateId,
             nativeFocusGroups=thismap.nativeFocusGroups,

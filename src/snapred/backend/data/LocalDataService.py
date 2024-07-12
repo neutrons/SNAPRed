@@ -2,7 +2,6 @@ import datetime
 import glob
 import json
 import os
-import time
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
 from pathlib import Path
@@ -429,28 +428,31 @@ class LocalDataService:
             calibrationDataPath.mkdir(parents=True, exist_ok=True)
 
         # write the output d-spacing calibrated data
-        wsName = record.workspaces[wngt.DIFFCAL_OUTPUT][0]
+        wsNames = record.workspaces.get(wngt.DIFFCAL_OUTPUT, [])
         ext = Config["calibration.diffraction.output.extension"]
-        filename = Path(wsName + ext)
-        self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
+        for wsName in wsNames:
+            filename = Path(wsName + ext)
+            self.writeRaggedWorkspace(calibrationDataPath, filename, wsName)
 
         # write the diagnostic output
-        wsName = record.workspaces[wngt.DIFFCAL_DIAG][0]
+        wsNames = record.workspaces.get(wngt.DIFFCAL_DIAG, [])
         ext = Config["calibration.diffraction.diagnostic.extension"]
-        filename = Path(wsName + ext)
-        self.writeWorkspace(calibrationDataPath, filename, wsName)
+        for wsName in wsNames:
+            filename = Path(wsName + ext)
+            self.writeWorkspace(calibrationDataPath, filename, wsName)
 
-        # write the diffcal table and attached masl
-        tableWSName = record.workspaces[wngt.DIFFCAL_TABLE][0]
-        maskWSName = record.workspaces[wngt.DIFFCAL_MASK][0]
+        # write the diffcal table and attached mask
+        tableWSNames = record.workspaces.get(wngt.DIFFCAL_TABLE, [])
+        maskWSNames = record.workspaces.get(wngt.DIFFCAL_MASK, [])
         ext = ".h5"
-        diffCalFilename = Path(tableWSName + ext)
-        self.writeDiffCalWorkspaces(
-            calibrationDataPath,
-            diffCalFilename,
-            tableWorkspaceName=tableWSName,
-            maskWorkspaceName=maskWSName,
-        )
+        for tableWSName, maskWSName in zip(tableWSNames, maskWSNames):
+            diffCalFilename = Path(tableWSName + ext)
+            self.writeDiffCalWorkspaces(
+                calibrationDataPath,
+                diffCalFilename,
+                tableWorkspaceName=tableWSName,
+                maskWorkspaceName=maskWSName,
+            )
 
     ##### REDUCTION METHODS #####
 
@@ -468,28 +470,22 @@ class LocalDataService:
             record = parse_file_as(ReductionRecord, filePath)
         return record
 
-    def writeReductionRecord(self, record: ReductionRecord, version: Optional[int] = None):
+    def writeReductionRecord(self, record: ReductionRecord):
         """
         Persists a `ReductionRecord` to either a new version folder, or overwrites a specific version.
         * side effect: creates the version directory if none exists;
         """
         # For the moment, a single run number is assumed:
         runNumber = record.runNumbers[0]
+        version = record.version
 
-        # TODO this will be replaced with a better timestamp method
-        if version is None:
-            version = int(time.time())
         filePath: Path = self._constructReductionRecordFilePath(runNumber, record.useLiteMode, version)
-        record.version = version
-        record.calculationParameters.version = version
-
         if not filePath.parent.exists():
             filePath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(record, filePath)
         logger.info(f"wrote ReductionRecord: version: {version}")
-        return record
 
-    def writeReductionData(self, record: ReductionRecord, version: Optional[int] = None):
+    def writeReductionData(self, record: ReductionRecord):
         """
         Persists the reduction data associated with a `ReductionRecord`
         * side effect: creates the version directory if none exists
@@ -502,7 +498,7 @@ class LocalDataService:
         dataFilePath = self._constructReductionDataFilePath(runNumber, record.useLiteMode, version)
         if not dataFilePath.parent.exists():
             # write reduction record must be called first
-            record = self.writeReductionRecord(record, version)
+            self.writeReductionRecord(record)
 
         for ws in record.workspaceNames:
             # Append workspaces to hdf5 file, in order of the `workspaces` list
@@ -517,7 +513,6 @@ class LocalDataService:
             n5m.insertMetadataGroup(h5, record.dict(), "/metadata")
 
         logger.info(f"wrote reduction data to {dataFilePath}: version: {version}")
-        return record
 
     @validate_call
     def readReductionData(self, runNumber: str, useLiteMode: bool, version: int) -> ReductionRecord:

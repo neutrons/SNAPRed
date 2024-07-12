@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from pydantic import validate_call
 
@@ -100,17 +99,17 @@ class DataExportService:
 
     ##### REDUCTION METHODS #####
 
-    def exportReductionRecord(self, record: ReductionRecord, version: Optional[int] = None):
+    def exportReductionRecord(self, record: ReductionRecord):
         """
         If no version given, will save at current time
         """
-        return self.dataService.writeReductionRecord(record, version)
+        self.dataService.writeReductionRecord(record)
 
-    def exportReductionData(self, record: ReductionRecord, version: Optional[int] = None):
+    def exportReductionData(self, record: ReductionRecord):
         """
         If no version given, will save at current time
         """
-        return self.dataService.writeReductionData(record, version)
+        self.dataService.writeReductionData(record)
 
     ##### WORKSPACE METHODS #####
 

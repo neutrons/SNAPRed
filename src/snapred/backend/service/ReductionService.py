@@ -194,8 +194,8 @@ class ReductionService(Service):
         record = request.reductionRecord
         record.version = version
         record.calculationParameters.version = version
-        record = self.dataExportService.exportReductionRecord(record, version)
-        record = self.dataExportService.exportReductionData(record, version)
+        self.dataExportService.exportReductionRecord(record)
+        self.dataExportService.exportReductionData(record)
 
     def loadReduction(self):
         raise NotImplementedError("SNAPRed cannot load reductions")

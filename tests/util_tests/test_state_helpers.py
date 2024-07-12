@@ -10,6 +10,7 @@ from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
+from snapred.meta.redantic import parse_file_as
 from util.state_helpers import reduction_root_redirect, state_root_override, state_root_redirect
 
 
@@ -104,7 +105,7 @@ def test_state_root_override_enter(
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
-    testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+    testCalibrationData = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
     mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
 
     mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
@@ -139,7 +140,7 @@ def test_state_root_override_exit(
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
-    testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+    testCalibrationData = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
     mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
 
     mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
@@ -169,7 +170,7 @@ def test_state_root_override_exit_no_delete(
     # see `test_LocalDataService::test_initializeState`
     mockReadPVFile.return_value = initPVFileMock()
 
-    testCalibrationData = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+    testCalibrationData = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
     mockReadInstrumentConfig.return_value = testCalibrationData.instrumentState.instrumentConfig
 
     mockDefaultGroupingMapPath.return_value = Path(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
@@ -201,7 +202,7 @@ def test_state_root_redirect_no_stateid():
         indexer = localDataService.calibrationIndexer("xyz", True)
         tmpRoot.addFileAs(Resource.getPath("inputs/calibration/CalibrationParameters.json"), indexer.parametersPath(1))
         ans = localDataService.readCalibrationState("xyz", True, 1)
-        assert ans == Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        assert ans == parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
         # make sure files can only be added inside the directory
         with pytest.raises(AssertionError):
             tmpRoot.addFileAs(

@@ -86,7 +86,7 @@ class SculleryBoy:
             path = Resource.getPath("/inputs/predict_peaks/input_good_ingredients.json")
         else:
             path = Resource.getPath("/inputs/predict_peaks/input_fake_ingredients.json")
-        return PeakIngredients.parse_file(path)
+        return parse_file_as(PeakIngredients, path)
 
     def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:
         try:
@@ -100,7 +100,7 @@ class SculleryBoy:
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         path = Resource.getPath("/inputs/calibration/ReductionIngredients.json")
-        return ReductionIngredients.parse_file(path)
+        return parse_file_as(ReductionIngredients, path)
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
         return NormalizationIngredients(

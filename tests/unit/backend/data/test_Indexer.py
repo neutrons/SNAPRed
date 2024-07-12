@@ -32,7 +32,7 @@ class TestIndexer(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        calibration = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        calibration = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
         cls.instrumentState = calibration.instrumentState
 
     def setUp(self):
@@ -304,7 +304,7 @@ class TestIndexer(unittest.TestCase):
             self.writeRecordVersion(version)
 
         with pytest.raises(FileNotFoundError) as e:
-            indexer = self.initIndexer()
+            self.initIndexer()
         assert str(3) in str(e)
 
     def test_latestApplicableVersion_none(self):
@@ -860,7 +860,7 @@ class TestIndexer(unittest.TestCase):
         assert record.version == version
         assert self.recordPath(version).exists()
         # read it back in and ensure it is the same
-        res = Record.parse_file(self.recordPath(version))
+        res = parse_file_as(Record, self.recordPath(version))
         assert res == record
         # ensure the version numbers were set
         assert res.version == version
@@ -890,7 +890,7 @@ class TestIndexer(unittest.TestCase):
 
     def test_readWriteRecord_calibration(self):
         # prepare the record
-        record = CalibrationRecord.parse_file(Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))
+        record = parse_file_as(CalibrationRecord, Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))
         record.version = randint(2, 100)
         # write then read in the record
         indexer = self.initIndexer(IndexerType.CALIBRATION)
@@ -901,7 +901,7 @@ class TestIndexer(unittest.TestCase):
 
     def test_readWriteRecord_normalization(self):
         # prepare the record
-        record = NormalizationRecord.parse_file(Resource.getPath("inputs/normalization/NormalizationRecord.json"))
+        record = parse_file_as(NormalizationRecord, Resource.getPath("inputs/normalization/NormalizationRecord.json"))
         record.version = randint(2, 100)
         # write then read in the record
         indexer = self.initIndexer(IndexerType.NORMALIZATION)
@@ -912,7 +912,7 @@ class TestIndexer(unittest.TestCase):
 
     def test_readWriteRecord_reduction(self):
         # prepare the record
-        record = ReductionRecord.parse_file(Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
+        record = parse_file_as(ReductionRecord, Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
         record.version = randint(2, 100)
         # write then read in the record
         indexer = self.initIndexer(IndexerType.REDUCTION)
@@ -966,7 +966,7 @@ class TestIndexer(unittest.TestCase):
     # make sure the indexer can read/write specific state parameter types #
 
     def test_readWriteParameters_calibration(self):
-        params = Calibration.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        params = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
         indexer = self.initIndexer(IndexerType.CALIBRATION)
         indexer.writeParameters(params)
         res = indexer.readParameters()
@@ -974,7 +974,7 @@ class TestIndexer(unittest.TestCase):
         assert res == params
 
     def test_readWriteParameters_normalization(self):
-        params = Normalization.parse_file(Resource.getPath("inputs/normalization/NormalizationParameters.json"))
+        params = parse_file_as(Normalization, Resource.getPath("inputs/normalization/NormalizationParameters.json"))
         indexer = self.initIndexer(IndexerType.NORMALIZATION)
         indexer.writeParameters(params)
         res = indexer.readParameters()
@@ -982,7 +982,7 @@ class TestIndexer(unittest.TestCase):
         assert res == params
 
     def test_readWriteParameters_reduction(self):
-        params = CalculationParameters.parse_file(Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        params = parse_file_as(CalculationParameters, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
         indexer = self.initIndexer(IndexerType.REDUCTION)
         indexer.writeParameters(params)
         res = indexer.readParameters()

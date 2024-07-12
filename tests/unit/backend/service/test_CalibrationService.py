@@ -423,7 +423,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         inputFilepath = Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json")
         paramsFilepath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
         with state_root_redirect(self.localDataService) as tmpRoot:
-            calibRecord = CalibrationRecord.parse_file(inputFilepath)
+            calibRecord = parse_file_as(CalibrationRecord, inputFilepath)
             indexer = self.localDataService.calibrationIndexer(calibRecord.runNumber, calibRecord.useLiteMode)
             recordFilepath = indexer.recordPath(1)
             tmpRoot.addFileAs(inputFilepath, recordFilepath)
@@ -490,8 +490,8 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 assert self.instance.dataFactoryService.workspaceDoesExist(ws_name)
 
             # Assert all "persistent" workspaces have been loaded
-            for wss in calibRecord.workspaces.values():
-                for wsName in wss:
+            for wsNames in calibRecord.workspaces.values():
+                for wsName in wsNames:
                     assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 
     def test_load_quality_assessment_no_units(self):

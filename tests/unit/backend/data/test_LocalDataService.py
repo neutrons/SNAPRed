@@ -159,7 +159,7 @@ def do_test_read_state_with_version(workflow: Literal["Calibration", "Normalizat
                 tmpRoot.addFileAs(inputPath, indexer.parametersPath(version))
                 assert indexer.parametersPath(version).exists()
                 actualState = getattr(localDataService, f"read{workflow}State")("xyz", useLiteMode, version)
-            expectedState = globals()[workflow].parse_file(inputPath)
+            expectedState = parse_file_as(globals()[workflow], inputPath)
             assert actualState == expectedState
 
 
@@ -171,9 +171,9 @@ def do_test_read_state_no_version(workflow: Literal["Calibration", "Normalizatio
         with state_root_redirect(localDataService) as tmpRoot:
             indexer = localDataService.indexer("xyz", useLiteMode, workflow)
             tmpRoot.addFileAs(inputPath, indexer.parametersPath(currentVersion))
-            indexer.reconcileIndexToFiles()  # make index point at the added version
+            indexer.index = {currentVersion: mock.Mock()}  # make index point at the added version
             actualState = getattr(localDataService, f"read{workflow}State")("xyz", useLiteMode)  # NOTE no version
-        expectedState = globals()[workflow].parse_file(inputPath)
+        expectedState = parse_file_as(globals()[workflow], inputPath)
         assert actualState == expectedState
 
 
@@ -244,7 +244,7 @@ def test_readStateConfig_default():
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
         tmpRoot.addFileAs(parametersPath, indexer.parametersPath(VERSION_DEFAULT))
-        indexer.reconcileIndexToFiles()  # NOTE manually update the Indexer
+        indexer.index = {VERSION_DEFAULT: mock.Mock()}  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
     assert actual.stateId == "ab8704b0bc2a2342"
@@ -258,8 +258,9 @@ def test_readStateConfig_previous():
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(randint(2, 10)))
-        indexer.reconcileIndexToFiles()  # NOTE manually update the Indexer
+        version = randint(2, 10)
+        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(version))
+        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
     assert actual.stateId == "ab8704b0bc2a2342"
@@ -273,10 +274,11 @@ def test_readStateConfig_attaches_grouping_map():
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(1))
-        indexer.reconcileIndexToFiles()  # NOTE manually update the Indexer
+        version = randint(2, 10)
+        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(version))
+        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
-    expectedMap = GroupingMap.parse_file(groupingMapPath)
+    expectedMap = parse_file_as(GroupingMap, groupingMapPath)
     assert actual.groupingMap == expectedMap
 
 
@@ -289,8 +291,9 @@ def test_readStateConfig_invalid_grouping_map():
     with state_root_redirect(localDataService) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
         tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(tmpRoot.stateId))
-        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(1))
-        indexer.reconcileIndexToFiles()  # NOTE manually update the Indexer
+        version = randint(2, 10)
+        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(version))
+        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
         # 'GroupingMap.defaultStateId' is _not_ a valid grouping-map 'stateId' for an existing `StateConfig`.
         with pytest.raises(  # noqa: PT012
             RuntimeError,
@@ -303,12 +306,13 @@ def test_readStateConfig_calls_prepareStateRoot():
     # test that `readStateConfig` reads the `GroupingMap` from its separate JSON file.
     groupingMapPath = Resource.getPath("inputs/pixel_grouping/groupingMap.json")
     parametersPath = Resource.getPath("inputs/calibration/CalibrationParameters.json")
-    expected = Calibration.parse_file(parametersPath)
+    expected = parse_file_as(Calibration, parametersPath)
     localDataService = LocalDataService()
     with state_root_redirect(localDataService, stateId=expected.instrumentState.id.hex) as tmpRoot:
         indexer = localDataService.calibrationIndexer("57514", True)
-        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(1))
-        indexer.reconcileIndexToFiles()  # NOTE manually update the Indexer
+        version = randint(2, 10)
+        tmpRoot.addFileAs(parametersPath, indexer.parametersPath(version))
+        indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
         assert not localDataService._groupingMapPath(tmpRoot.stateId).exists()
         localDataService._prepareStateRoot = mock.Mock(
             side_effect=lambda x: tmpRoot.addFileAs(groupingMapPath, localDataService._groupingMapPath(x))
@@ -325,7 +329,9 @@ def test_prepareStateRoot_creates_state_root_directory():
     localDataService = LocalDataService()
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(localDataService, stateId=stateId):
-        defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+        defaultGroupingMap = parse_file_as(
+            GroupingMap, Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
+        )
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
 
         assert not localDataService._constructCalibrationStateRoot().exists()
@@ -339,7 +345,9 @@ def test_prepareStateRoot_existing_state_root():
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(localDataService, stateId=stateId):
         localDataService._constructCalibrationStateRoot().mkdir()
-        defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+        defaultGroupingMap = parse_file_as(
+            GroupingMap, Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
+        )
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
         assert localDataService._constructCalibrationStateRoot().exists()
         localDataService._prepareStateRoot(stateId)
@@ -351,7 +359,9 @@ def test_prepareStateRoot_writes_grouping_map():
     localDataService = LocalDataService()
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(localDataService, stateId=stateId):
-        defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+        defaultGroupingMap = parse_file_as(
+            GroupingMap, Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
+        )
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
 
         assert not localDataService._groupingMapPath(stateId).exists()
@@ -365,12 +375,14 @@ def test_prepareStateRoot_sets_grouping_map_stateid():
     localDataService = LocalDataService()
     stateId = "ab8704b0bc2a2342"
     with state_root_redirect(localDataService, stateId=stateId):
-        defaultGroupingMap = GroupingMap.parse_file(Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json"))
+        defaultGroupingMap = parse_file_as(
+            GroupingMap, Resource.getPath("inputs/pixel_grouping/defaultGroupingMap.json")
+        )
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
 
         localDataService._prepareStateRoot(stateId)
 
-        groupingMap = GroupingMap.parse_file(localDataService._groupingMapPath(stateId))
+        groupingMap = parse_file_as(GroupingMap, localDataService._groupingMapPath(stateId))
     assert groupingMap.stateId == stateId
 
 
@@ -401,16 +413,16 @@ def test_prepareStateRoot_does_not_overwrite_grouping_map():
 
         # Write a 'groupingMap.json' file to the <state root>, but with a different stateId;
         #   note that the _value_ of the stateId field is _not_ validated at this stage, except for its format.
-        groupingMap = GroupingMap.parse_file(defaultGroupingMapFilePath)
+        groupingMap = parse_file_as(GroupingMap, defaultGroupingMapFilePath)
         otherStateId = "bbbbaaaabbbbeeee"
         groupingMap.coerceStateId(otherStateId)
         write_model_pretty(groupingMap, localDataService._groupingMapPath(stateId))
 
-        defaultGroupingMap = GroupingMap.parse_file(defaultGroupingMapFilePath)
+        defaultGroupingMap = parse_file_as(GroupingMap, defaultGroupingMapFilePath)
         localDataService._readDefaultGroupingMap = mock.Mock(return_value=defaultGroupingMap)
         localDataService._prepareStateRoot(stateId)
 
-        groupingMap = GroupingMap.parse_file(localDataService._groupingMapPath(stateId))
+        groupingMap = parse_file_as(GroupingMap, localDataService._groupingMapPath(stateId))
     assert groupingMap.stateId == otherStateId
 
 
@@ -434,14 +446,13 @@ def test_writeGroupingMap_relative_paths():
 
             # Write a 'groupingMap.json' file to the <state root>, with the _correct_ stateId;
             #   note that the _value_ of the stateId field is _not_ validated at this stage, except for its format.
-            with open(defaultGroupingMapFilePath, "r") as file:
-                groupingMap = parse_raw_as(GroupingMap, file.read())
+            groupingMap = parse_file_as(GroupingMap, defaultGroupingMapFilePath)
             groupingMap.coerceStateId(stateId)
             localDataService._writeGroupingMap(stateId, groupingMap)
 
             # read it back
-            groupingMap = GroupingMap.parse_file(groupingMapFilePath)
-            defaultGroupingMap = GroupingMap.parse_file(defaultGroupingMapFilePath)
+            groupingMap = parse_file_as(GroupingMap, groupingMapFilePath)
+            defaultGroupingMap = parse_file_as(GroupingMap, defaultGroupingMapFilePath)
 
         # test that relative paths are preserved
         relativePathCount = 0
@@ -617,7 +628,7 @@ def test_write_model_pretty_StateConfig_excludes_grouping_map():
             Resource.getPath("inputs/calibration/CalibrationParameters.json"),
             indexer.parametersPath(VERSION_DEFAULT),
         )
-        indexer.reconcileIndexToFiles()
+        indexer.index = {VERSION_DEFAULT: mock.Mock()}
         tmpRoot.addFileAs(
             Resource.getPath("inputs/pixel_grouping/groupingMap.json"),
             localDataService._groupingMapPath(tmpRoot.stateId),
@@ -997,7 +1008,7 @@ def test_writeCalibrationRecord_with_version():
 def test_readWriteCalibrationRecord():
     # ensure that reading and writing a calibration record will correctly interact with the file system
     # NOTE a similar test is done of the indexer, but this pre-existed and doesn't hurt to retain
-    record = CalibrationRecord.parse_raw(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+    record = CalibrationRecord.model_validate_json(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         record.useLiteMode = useLiteMode
@@ -1012,7 +1023,7 @@ def test_writeCalibrationWorkspaces():
     version = randint(2, 120)
     localDataService = LocalDataService()
     stateId = "ab8704b0bc2a2342"
-    testCalibrationRecord = CalibrationRecord.parse_raw(
+    testCalibrationRecord = CalibrationRecord.model_validate_json(
         Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
     )
     with state_root_redirect(localDataService, stateId=stateId):
@@ -1022,10 +1033,10 @@ def test_writeCalibrationWorkspaces():
         workspaces = testCalibrationRecord.workspaces.copy()
         runNumber = testCalibrationRecord.runNumber
         version = testCalibrationRecord.version
-        outputWSName = workspaces.pop(wngt.DIFFCAL_OUTPUT)
-        diagnosticWSName = workspaces.pop(wngt.DIFFCAL_DIAG)
-        tableWSName = workspaces.pop(wngt.DIFFCAL_TABLE)
-        maskWSName = workspaces.pop(wngt.DIFFCAL_MASK)
+        outputWSName = workspaces.pop(wngt.DIFFCAL_OUTPUT)[0]
+        diagnosticWSName = workspaces.pop(wngt.DIFFCAL_DIAG)[0]
+        tableWSName = workspaces.pop(wngt.DIFFCAL_TABLE)[0]
+        maskWSName = workspaces.pop(wngt.DIFFCAL_MASK)[0]
         if workspaces:
             raise RuntimeError(f"unexpected workspace-types in record.workspaces: {workspaces}")
 
@@ -1045,8 +1056,8 @@ def test_writeCalibrationWorkspaces():
 
         localDataService.writeCalibrationWorkspaces(testCalibrationRecord)
 
-        outputFilename = Path(outputWSName + ".tar")
-        diagnosticFilename = Path(diagnosticWSName + ".nxs.h5")
+        outputFilename = Path(outputWSName + Config["calibration.diffraction.output.extension"])
+        diagnosticFilename = Path(diagnosticWSName + Config["calibration.diffraction.diagnostic.extension"])
         diffCalFilename = Path(wng.diffCalTable().runNumber(runNumber).version(version).build() + ".h5")
         for filename in [outputFilename, diagnosticFilename, diffCalFilename]:
             assert (basePath / filename).exists()
@@ -1167,9 +1178,9 @@ def test_readWriteReductionRecord_no_version():
     # Create the input data for this test:
     # _writeSyntheticReductionRecord(inputRecordFilePath, "1")
 
-    record_v0001 = ReductionRecord.parse_file(inputRecordFilePath)
+    record_v0001 = parse_file_as(ReductionRecord, inputRecordFilePath)
     # Get a second copy (version still set to `1`)
-    record_v0002 = ReductionRecord.parse_file(inputRecordFilePath)
+    record_v0002 = parse_file_as(ReductionRecord, inputRecordFilePath)
 
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService):
@@ -1191,9 +1202,9 @@ def test_readWriteReductionRecord_specified_version():
     # Create the input data for this test:
     # _writeSyntheticReductionRecord(inputRecordFilePath, "1")
 
-    record_v0001 = ReductionRecord.parse_file(inputRecordFilePath)
+    record_v0001 = parse_file_as(ReductionRecord, inputRecordFilePath)
     # Get a second copy (version still set to `1`)
-    record_v0002 = ReductionRecord.parse_file(inputRecordFilePath)
+    record_v0002 = parse_file_as(ReductionRecord, inputRecordFilePath)
 
     localDataService = LocalDataService()
     with reduction_root_redirect(localDataService):
@@ -1203,29 +1214,27 @@ def test_readWriteReductionRecord_specified_version():
 
         # write first version
         version1 = randint(3, 20)
-        assert record_v0001.version != version1
-        localDataService.writeReductionRecord(record_v0001, version=version1)
+        record_v0001.version = version1
+        localDataService.writeReductionRecord(record_v0001)
 
         # write second version
         version2 = randint(version1 + 1, 120)
         assert version1 != version2
-        assert record_v0002.version != version2
-        localDataService.writeReductionRecord(record_v0002, version=version2)
+        record_v0002.version = version2
+        localDataService.writeReductionRecord(record_v0002)
 
         actualRecord = localDataService.readReductionRecord(
             record_v0001.runNumbers[0],
             record_v0001.useLiteMode,
-            version=version1,
+            version1,
         )
         assert actualRecord.version == version1
-        assert actualRecord.calculationParameters.version == version1
         actualRecord = localDataService.readReductionRecord(
             record_v0002.runNumbers[0],
             record_v0002.useLiteMode,
-            version=version2,
+            version2,
         )
         assert actualRecord.version == version2
-        assert actualRecord.calculationParameters.version == version2
 
 
 def test_readWriteReductionRecord_with_version():
@@ -1233,10 +1242,10 @@ def test_readWriteReductionRecord_with_version():
     # Create the input data for this test:
     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
 
-    with open(inputRecordFilePath, "r") as f:
-        testRecord = ReductionRecord.model_validate_json(f.read())
+    testRecord = parse_file_as(ReductionRecord, inputRecordFilePath)
     # Important: version != 1: should not depend on any existing directory structure.
     testVersion = 10
+    testRecord.version = testVersion
 
     # Temporarily use a single run number
     runNumber = testRecord.runNumbers[0]
@@ -1245,11 +1254,10 @@ def test_readWriteReductionRecord_with_version():
     with reduction_root_redirect(localDataService, stateId=stateId):
         localDataService.instrumentConfig = mock.Mock()
 
-        localDataService.writeReductionRecord(testRecord, testVersion)
+        localDataService.writeReductionRecord(testRecord)
 
         actualRecord = localDataService.readReductionRecord(runNumber, testRecord.useLiteMode, testVersion)
     assert actualRecord.version == int(testVersion)
-    assert actualRecord.calculationParameters.version == int(testVersion)
 
 
 def test_readWriteReductionRecord():
@@ -1326,8 +1334,7 @@ def test_writeReductionData(createReductionWorkspaces):
     # Create the input data for this test:
     # _writeSyntheticReductionRecord("1", inputRecordFilePath)
 
-    with open(inputRecordFilePath, "r") as f:
-        testRecord = ReductionRecord.model_validate_json(f.read())
+    testRecord = parse_file_as(ReductionRecord, inputRecordFilePath)
     # Change the workspace names so that they will be unique to this test:
     # => enables parallel testing.
     testRecord.workspaceNames = [_uniquePrefix + ws for ws in testRecord.workspaceNames]
@@ -1347,7 +1354,7 @@ def test_writeReductionData(createReductionWorkspaces):
         reductionFilePath = localDataService._constructReductionRecordFilePath(runNumber, useLiteMode, version)
         assert not reductionFilePath.exists()
 
-        localDataService.writeReductionData(testRecord, version)
+        localDataService.writeReductionData(testRecord)
 
         assert reductionFilePath.exists()
 
@@ -1382,8 +1389,8 @@ def test_writeReductionData_metadata(createReductionWorkspaces):
         assert not reductionRecordFilePath.exists()
 
         # `writeReductionRecord` must be called first
-        localDataService.writeReductionRecord(testRecord, version)
-        localDataService.writeReductionData(testRecord, version)
+        localDataService.writeReductionRecord(testRecord)
+        localDataService.writeReductionData(testRecord)
 
         filePath = reductionRecordFilePath.parent / fileName
         assert filePath.exists()
@@ -1424,8 +1431,8 @@ def test_readWriteReductionData(createReductionWorkspaces):
         assert not reductionRecordFilePath.exists()
 
         # `writeReductionRecord` needs to be called first
-        localDataService.writeReductionRecord(testRecord, version)
-        localDataService.writeReductionData(testRecord, version)
+        localDataService.writeReductionRecord(testRecord)
+        localDataService.writeReductionData(testRecord)
 
         filePath = reductionRecordFilePath.parent / fileName
         assert filePath.exists()
@@ -1567,8 +1574,9 @@ def test_readWriteNormalizationState():
     localDataService = LocalDataService()
     for useLiteMode in [True, False]:
         with state_root_redirect(localDataService):
-            normalization = Normalization.parse_file(
-                Resource.getPath("/inputs/normalization/NormalizationParameters.json")
+            normalization = parse_file_as(
+                Normalization,
+                Resource.getPath("/inputs/normalization/NormalizationParameters.json"),
             )
             normalization.seedRun = runNumber
             normalization.useLiteMode = useLiteMode
