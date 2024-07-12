@@ -95,9 +95,10 @@ class Indexer:
         for fname in self.rootDirectory.glob("v_*"):
             if os.path.isdir(fname):
                 version = str(fname).split("_")[-1]
+                if version.isdigit():
+                    version = int(version)
                 if version == VERSION_DEFAULT_NAME:
                     version = VERSION_DEFAULT
-                version = int(version)
                 versions.add(version)
         return versions
 
