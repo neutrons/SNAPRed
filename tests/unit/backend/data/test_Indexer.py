@@ -401,6 +401,23 @@ class TestIndexer(unittest.TestCase):
         assert indexer.thisOrNextVersion(VERSION_DEFAULT) == VERSION_DEFAULT
         assert indexer.thisOrNextVersion(version) == version
 
+    def test_thisOrLatestApplicableVersion(self):
+        # make one applicable entry
+        version1 = randint(1, 10)
+        entry1 = self.indexEntry(version1)
+        entry1.appliesTo = "123"
+        # make a non-applicable entry
+        version2 = randint(11, 20)
+        entry2 = self.indexEntry(version2)
+        entry2.appliesTo = ">123"
+        # add both entries to index
+        indexer = self.initIndexer()
+        indexer.index = {version1: entry1, version2: entry2}
+        # only the applicable entry is returned
+        assert indexer.thisOrLatestApplicableVersion("123", None) == version1
+        assert indexer.thisOrLatestApplicableVersion("123", version1) == version1
+        assert indexer.thisOrLatestApplicableVersion("123", version2) == version1
+
     def test_isValidVersion(self):
         indexer = self.initIndexer()
         # the good

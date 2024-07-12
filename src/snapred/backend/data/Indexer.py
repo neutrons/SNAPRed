@@ -216,6 +216,13 @@ class Indexer:
         else:
             return self.nextVersion()
 
+    @validate_call
+    def thisOrLatestApplicableVersion(self, runNumber: str, version: Optional[int]):
+        if self.isValidVersion(version) and self._isApplicableEntry(self.index[version], runNumber):
+            return version
+        else:
+            return self.latestApplicableVersion(runNumber)
+
     def isValidVersion(self, version):
         try:
             VersionedObject.parseVersion(version, exclude_none=True)

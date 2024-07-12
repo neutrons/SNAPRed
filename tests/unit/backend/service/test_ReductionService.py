@@ -88,6 +88,8 @@ class TestReductionService(unittest.TestCase):
         assert res == self.instance.sousChef.prepReductionIngredients(self.request)
 
     def test_fetchReductionGroceries(self):
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
         res = self.instance.fetchReductionGroceries(self.request)
         assert "inputWorkspace" in res
         assert "diffcalWorkspace" in res
@@ -95,6 +97,8 @@ class TestReductionService(unittest.TestCase):
 
     @mock.patch(thisService + "ReductionRecipe")
     def test_reduction(self, ReductionRecipe):
+        self.instance.dataFactoryService.getThisOrLatestCalibrationVersion = mock.Mock(return_value=1)
+        self.instance.dataFactoryService.getThisOrLatestNormalizationVersion = mock.Mock(return_value=1)
         res = self.instance.reduction(self.request)
         groupings = self.instance.fetchReductionGroupings(self.request)
         ingredients = self.instance.prepReductionIngredients(self.request)

@@ -178,10 +178,14 @@ class ReductionService(Service):
         """
         # gather input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, request.version).useLiteMode(
+        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
+        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
             request.useLiteMode
         ).add()
-        self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, request.version).useLiteMode(
+        normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
+            request.runNumber, request.useLiteMode
+        )
+        self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
             request.useLiteMode
         ).add()
         return self.groceryService.fetchGroceryDict(groceryDict=self.groceryClerk.buildDict())

@@ -65,12 +65,14 @@ class TestDataFactoryService(unittest.TestCase):
             getIndex=mock.Mock(return_value=[cls.expected(cls, "Calibration")]),
             thisOrNextVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
             thisOrCurrentVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
+            thisOrLatestApplicableVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
         )
         cls.mockLookupService.normalizationIndexer.return_value = mock.Mock(
             versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
             getIndex=mock.Mock(return_value=[cls.expected(cls, "Normalization")]),
             thisOrNextVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
             thisOrCurrentVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
+            thisOrLatestApplicableVersion=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Normalization", *x)),
         )
 
     def setUp(self):
@@ -192,6 +194,11 @@ class TestDataFactoryService(unittest.TestCase):
             actual = self.instance.getThisOrNextCalibrationVersion("123", useLiteMode, self.version)
             assert actual == self.expected("Calibration", self.version)  # NOTE mock indexer called only with version
 
+    def test_getThisOrLatestCalibrationVersion(self):
+        for useLiteMode in [True, False]:
+            actual = self.instance.getThisOrLatestCalibrationVersion("123", useLiteMode, self.version)
+            assert actual == self.expected("Calibration", "123", self.version)
+
     ## TEST NORMALIZATION METHODS
 
     def test_getNormalizationDataPath(self):
@@ -239,6 +246,11 @@ class TestDataFactoryService(unittest.TestCase):
         for useLiteMode in [True, False]:
             actual = self.instance.getThisOrNextNormalizationVersion("123", useLiteMode, self.version)
             assert actual == self.expected("Normalization", self.version)  # NOTE mock indexer called only with version
+
+    def test_getThisOrLatestNormalizationVersion(self):
+        for useLiteMode in [True, False]:
+            actual = self.instance.getThisOrLatestNormalizationVersion("123", useLiteMode, self.version)
+            assert actual == self.expected("Normalization", "123", self.version)
 
     ## TEST REDUCTION METHODS
 

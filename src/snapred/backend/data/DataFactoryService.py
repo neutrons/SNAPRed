@@ -108,6 +108,10 @@ class DataFactoryService:
     def getThisOrNextCalibrationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         return self.lookupService.calibrationIndexer(runId, useLiteMode).thisOrNextVersion(version)
 
+    @validate_call
+    def getThisOrLatestCalibrationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.calibrationIndexer(runId, useLiteMode).thisOrLatestApplicableVersion(runId, version)
+
     ##### NORMALIZATION METHODS #####
 
     @validate_call
@@ -147,6 +151,10 @@ class DataFactoryService:
     @validate_call
     def getThisOrNextNormalizationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         return self.lookupService.normalizationIndexer(runId, useLiteMode).thisOrNextVersion(version)
+
+    @validate_call
+    def getThisOrLatestNormalizationVersion(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
+        return self.lookupService.normalizationIndexer(runId, useLiteMode).thisOrLatestApplicableVersion(runId, version)
 
     ##### REDUCTION METHODS #####
 

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import pydantic
 
@@ -175,15 +175,15 @@ class SousChef(Service):
         ingredients.focusGroup = focusGroups
         return detectorPeaks
 
-    def prepReductionIngredients(
-        self, ingredients: FarmFreshIngredients, version: Optional[int] = None
-    ) -> ReductionIngredients:
+    def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
         # some of the reduction ingredients MUST match those used in the calibration/normalization processes
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(
-            ingredients.runNumber, ingredients.useLiteMode, version
+            ingredients.runNumber,
+            ingredients.useLiteMode,
         )
         normalizationRecord = self.dataFactoryService.getNormalizationRecord(
-            ingredients.runNumber, ingredients.useLiteMode, version
+            ingredients.runNumber,
+            ingredients.useLiteMode,
         )
         # grab information from records
         ingredients.calibrantSamplePath = calibrationRecord.calculationParameters.calibrantSamplePath
