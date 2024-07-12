@@ -2,7 +2,7 @@ NormalizationService Class Documentation
 ========================================
 
 The Normalization Service orchestrates the normalization of scientific data, including tasks such as calibration, focusing, and smoothing. It employs
-various Data Components, including Normalization, NormalizationIndexEntry, and NormalizationRecord, to manage normalization specifics. Additionally,
+various Data Components, including Normalization and NormalizationRecord, to manage normalization specifics. Additionally,
 it integrates specialized Services like CalibrationService and DataExportService for calibration and data persistence, aiming to enhance the
 normalization workflow's efficiency and accuracy.
 

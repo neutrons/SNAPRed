@@ -12,14 +12,6 @@ snapred.backend.dao.calibration.Calibration module
    :undoc-members:
    :show-inheritance:
 
-snapred.backend.dao.calibration.CalibrationIndexEntry module
-------------------------------------------------------------
-
-.. automodule:: snapred.backend.dao.calibration.CalibrationIndexEntry
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 snapred.backend.dao.calibration.CalibrationMetric module
 --------------------------------------------------------
 
