@@ -38,6 +38,11 @@ from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
+from snapred.backend.dao.request import (
+    CreateCalibrationRecordRequest,
+    CreateIndexEntryRequest,
+    CreateNormalizationRecordRequest,
+)
 from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
 from snapred.backend.dao.state.GroupingMap import GroupingMap
 from snapred.backend.data.Indexer import IndexerType
@@ -989,6 +994,46 @@ def readReductionIngredientsFromFile():
 ### TESTS OF CALIBRATION METHODS ###
 
 
+def test_createCalibrationIndexEntry():
+    request = CreateIndexEntryRequest(
+        runNumber="123",
+        useLiteMode=True,
+        version=2,
+        comments="",
+        author="",
+        appliesTo=">=123",
+    )
+    localDataService = LocalDataService()
+    with state_root_redirect(localDataService):
+        ans = localDataService.createCalibrationIndexEntry(request)
+        assert isinstance(ans, IndexEntry)
+        assert ans.runNumber == request.runNumber
+        assert ans.useLiteMode == request.useLiteMode
+        assert ans.version == request.version
+
+        request.version = None
+        indexer = localDataService.calibrationIndexer(request.runNumber, request.useLiteMode)
+        ans = localDataService.createCalibrationIndexEntry(request)
+        assert ans.version == indexer.nextVersion()
+
+
+def test_createCalibrationRecord():
+    record = CalibrationRecord.model_validate_json(Resource.read("inputs/calibration/CalibrationRecord_v0001.json"))
+    request = CreateCalibrationRecordRequest(**record.model_dump())
+    localDataService = LocalDataService()
+    with state_root_redirect(localDataService):
+        ans = localDataService.createCalibrationRecord(request)
+        assert isinstance(ans, CalibrationRecord)
+        assert ans.runNumber == request.runNumber
+        assert ans.useLiteMode == request.useLiteMode
+        assert ans.version == request.version
+
+        request.version = None
+        indexer = localDataService.calibrationIndexer(request.runNumber, request.useLiteMode)
+        ans = localDataService.createCalibrationRecord(request)
+        assert ans.version == indexer.nextVersion()
+
+
 def test_readCalibrationRecord_with_version():
     # ensure it is calling the functionality in the indexer
     do_test_read_record_with_version("Calibration")
@@ -1065,6 +1110,46 @@ def test_writeCalibrationWorkspaces():
 
 
 ### TESTS OF NORMALIZATION METHODS ###
+
+
+def test_createNormalizationIndexEntry():
+    request = CreateIndexEntryRequest(
+        runNumber="123",
+        useLiteMode=True,
+        version=2,
+        comments="",
+        author="",
+        appliesTo=">=123",
+    )
+    localDataService = LocalDataService()
+    with state_root_redirect(localDataService):
+        ans = localDataService.createNormalizationIndexEntry(request)
+        assert isinstance(ans, IndexEntry)
+        assert ans.runNumber == request.runNumber
+        assert ans.useLiteMode == request.useLiteMode
+        assert ans.version == request.version
+
+        request.version = None
+        indexer = localDataService.normalizationIndexer(request.runNumber, request.useLiteMode)
+        ans = localDataService.createNormalizationIndexEntry(request)
+        assert ans.version == indexer.nextVersion()
+
+
+def test_createNormalizationRecord():
+    record = NormalizationRecord.model_validate_json(Resource.read("inputs/normalization/NormalizationRecord.json"))
+    request = CreateNormalizationRecordRequest(**record.model_dump())
+    localDataService = LocalDataService()
+    with state_root_redirect(localDataService):
+        ans = localDataService.createNormalizationRecord(request)
+        assert isinstance(ans, NormalizationRecord)
+        assert ans.runNumber == request.runNumber
+        assert ans.useLiteMode == request.useLiteMode
+        assert ans.version == request.version
+
+        request.version = None
+        indexer = localDataService.normalizationIndexer(request.runNumber, request.useLiteMode)
+        ans = localDataService.createNormalizationRecord(request)
+        assert ans.version == indexer.nextVersion()
 
 
 def test_readNormalizationRecord_with_version():
