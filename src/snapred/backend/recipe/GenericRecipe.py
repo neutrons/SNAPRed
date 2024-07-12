@@ -5,6 +5,7 @@ from mantid.simpleapi import ConvertTableToMatrixWorkspace
 from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.BufferMissingColumnsAlgo import BufferMissingColumnsAlgo
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
@@ -98,4 +99,8 @@ class FocusSpectraRecipe(GenericRecipe[FocusSpectraAlgorithm]):
 
 
 class ConvertTableToMatrixWorkspaceRecipe(GenericRecipe[ConvertTableToMatrixWorkspace]):
+    pass
+
+
+class BufferMissingColumnsRecipe(GenericRecipe[BufferMissingColumnsAlgo]):
     pass

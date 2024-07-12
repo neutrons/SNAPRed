@@ -16,6 +16,7 @@ from mantid.simpleapi import (
     CreateWorkspace,
     DeleteWorkspace,
     GenerateTableWorkspaceFromListOfDict,
+    GroupWorkspaces,
     LoadEmptyInstrument,
     SaveDiffCal,
     SaveNexusProcessed,
@@ -1589,3 +1590,41 @@ class TestGroceryService(unittest.TestCase):
         assert mtd.doesExist(rawWsName) is True
         self.instance.rebuildCache.assert_called()
         self.instance.rebuildCache = rebuildCache
+
+    def test_clearADS_group(self):
+        # create a workspace that will be removed
+        dumbws = mtd.unique_name(prefix="_dumb_")
+        self.create_dumb_workspace(dumbws)
+        assert mtd.doesExist(dumbws)
+        # create a workspace group
+        groupws = mtd.unique_name(prefix="_groupws_")
+        subws1 = mtd.unique_name(prefix="a")
+        subws2 = mtd.unique_name(prefix="b")
+        self.create_dumb_workspace(subws1)
+        self.create_dumb_workspace(subws2)
+        GroupWorkspaces(
+            OutputWorkspace=groupws,
+            InputWorkspaces=[subws1, subws2],
+        )
+        assert mtd.doesExist(groupws)
+        assert mtd.doesExist(subws1)
+        assert mtd.doesExist(subws2)
+        assert mtd[groupws].isGroup()
+        assert set(mtd[groupws].getNames()) == {subws1, subws2}
+
+        # exclude the group from clearing
+        exclude = self.exclude.copy()
+        exclude.append(groupws)
+
+        # clear the ADS with this excluded
+        self.instance.clearADS(exclude=exclude)
+
+        # ensure the workspace group and its sub still exist
+        assert mtd.doesExist(groupws)
+        assert mtd.doesExist(subws1)
+        assert mtd.doesExist(subws2)
+        # assert the workspace not in the exclude is removed
+        assert not mtd.doesExist(dumbws)
+
+        # delete these specially
+        mtd.remove(groupws)

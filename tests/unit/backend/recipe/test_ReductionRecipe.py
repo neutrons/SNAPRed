@@ -3,6 +3,7 @@ from unittest import TestCase, mock
 import pytest
 from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from snapred.backend.recipe.ReductionRecipe import (
+    ApplyNormalizationRecipe,
     GenerateFocussedVanadiumRecipe,
     PreprocessReductionRecipe,
     ReductionGroupProcessingRecipe,
@@ -71,6 +72,22 @@ class ReductionRecipeTest(TestCase):
         assert recipe.mantidSnapper.DeleteWorkspace.called_once_with(mock.ANY, Workspace=workspace)
         assert recipe.mantidSnapper.executeQueue.called
 
+    def test_convertWorkspace(self):
+        recipe = ReductionRecipe()
+        recipe.mantidSnapper = mock.Mock()
+        workspace = "input_tof"
+        units = "dSpacing"
+        recipe._convertWorkspace(workspace, units)
+        units = "TOF"
+        recipe._convertWorkspace(workspace, units)
+        units = "MomentumTransfer"
+        recipe._convertWorkspace(workspace, units)
+        units = "Wavelength"
+        recipe._convertWorkspace(workspace, units)
+
+        assert recipe.mantidSnapper.ConvertUnits.called_once_with(mock.ANY, Workspace=workspace)
+        assert recipe.mantidSnapper.executeQueue.called
+
     def test_applyRecipe(self):
         recipe = ReductionRecipe()
         recipe.groceries = {}
@@ -78,7 +95,7 @@ class ReductionRecipeTest(TestCase):
 
         mockRecipe = mock.Mock()
         inputWS = "input"
-        recipe._applyRecipe(mockRecipe, inputWS)
+        recipe._applyRecipe(mockRecipe, recipe.ingredients, inputWorkspace=inputWS)
 
         assert recipe.groceries["inputWorkspace"] == inputWS
         assert mockRecipe.cook.called_once_with(recipe.ingredients, recipe.groceries)
@@ -101,8 +118,6 @@ class ReductionRecipeTest(TestCase):
 
         assert recipe.groceries["inputWorkspace"] == "cloned"
         assert recipe.groceries["normalizationWorkspace"] == "cloned"
-        assert recipe.ingredients.pixelGroup == recipe.ingredients.pixelGroups[0]
-        assert recipe.ingredients.detectorPeaks == ["peaks"]
         assert sampleClone == "cloned"
         assert normClone == "cloned"
 
@@ -116,10 +131,16 @@ class ReductionRecipeTest(TestCase):
         recipe = ReductionRecipe()
         recipe.groceries = {}
         recipe.ingredients = mock.Mock()
-        recipe.ingredients.pixelGroup = "group"
-        recipe.ingredients.detectorPeaks = ["peaks"]
+        recipe.ingredients.pixelGroups = ["group"]
+        recipe.ingredients.detectorPeaksMany = [["peaks"]]
 
-        recipe._applyNormalization("sample", "norm")
+        groupingIndex = 0
+        recipe._applyRecipe(
+            mockApplyNormalizationRecipe,
+            recipe.ingredients.applyNormalization(groupingIndex),
+            inputWorkspace="sample",
+            normalizationWorkspace="norm",
+        )
 
         assert mockApplyNormalizationRecipe.cook.called_once_with(recipe.ingredients, recipe.groceries)
         assert recipe.groceries["inputWorkspace"] == "sample"
@@ -137,27 +158,56 @@ class ReductionRecipeTest(TestCase):
     def test_execute(self):
         recipe = ReductionRecipe()
         recipe.groceries = {}
+
+        recipe.ingredients = mock.Mock()
+        recipe.ingredients.groupProcessing = mock.Mock(
+            return_value=lambda groupingIndex: f"groupProcessing_{groupingIndex}"
+        )
+        recipe.ingredients.generateFocussedVanadium = mock.Mock(
+            return_value=lambda groupingIndex: f"generateFocussedVanadium_{groupingIndex}"
+        )
+        recipe.ingredients.applyNormalization = mock.Mock(
+            return_value=lambda groupingIndex: f"applyNormalization_{groupingIndex}"
+        )
+
         recipe._applyRecipe = mock.Mock()
         recipe._cloneIntermediateWorkspace = mock.Mock()
-        recipe._applyNormalization = mock.Mock()
         recipe._deleteWorkspace = mock.Mock()
+        recipe._convertWorkspace = mock.Mock()
         recipe._prepGroupWorkspaces = mock.Mock()
         recipe._prepGroupWorkspaces.return_value = ("sample_grouped", "norm_grouped")
         recipe.sampleWs = "sample"
         recipe.normalizationWs = "norm"
         recipe.groupWorkspaces = ["group1", "group2"]
+        recipe.keepUnfocused = True
+        recipe.convertUnitsTo = "dSpacing"
 
         output = recipe.execute()
 
+        ingredients = recipe.ingredients()
         assert recipe._applyRecipe.called_once_with(PreprocessReductionRecipe, recipe.sampleWs)
         assert recipe._applyRecipe.called_once_with(PreprocessReductionRecipe, recipe.normalizationWs)
 
-        assert recipe._applyRecipe.called_once_with(ReductionGroupProcessingRecipe, "sample_grouped")
-        assert recipe._applyRecipe.called_once_with(ReductionGroupProcessingRecipe, "norm_grouped")
+        assert recipe._applyRecipe.called_once_with(
+            ReductionGroupProcessingRecipe, ingredients.groupProcessing(0), "sample_grouped"
+        )
+        assert recipe._applyRecipe.called_once_with(
+            ReductionGroupProcessingRecipe, ingredients.groupProcessing(1), "norm_grouped"
+        )
 
-        assert recipe._applyRecipe.called_once_with(GenerateFocussedVanadiumRecipe, "norm_grouped")
+        assert recipe._applyRecipe.called_once_with(
+            GenerateFocussedVanadiumRecipe, ingredients.generateFocussedVanadium(0), "norm_grouped"
+        )
+        assert recipe._applyRecipe.called_once_with(
+            GenerateFocussedVanadiumRecipe, ingredients.generateFocussedVanadium(1), "norm_grouped"
+        )
 
-        assert recipe._applyNormalization.called_once_with("sample_grouped", "norm_grouped")
+        assert recipe._applyRecipe.called_once_with(
+            ApplyNormalizationRecipe, ingredients.applyNormalization(0), "sample_grouped", "norm_grouped"
+        )
+        assert recipe._applyRecipe.called_once_with(
+            ApplyNormalizationRecipe, ingredients.applyNormalization(1), "sample_grouped", "norm_grouped"
+        )
 
         assert recipe._deleteWorkspace.called_once_with("norm_grouped")
 

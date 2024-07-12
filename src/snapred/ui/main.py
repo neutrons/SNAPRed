@@ -18,7 +18,12 @@ from snapred.meta.Config import Resource
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
-from snapred.ui.widget.UserDocsButton import UserDocsButton
+
+# Conditionally import UserDocsButton (temporary)
+try:
+    from snapred.ui.widget.UserDocsButton import UserDocsButton
+except ImportError:
+    UserDocsButton = None
 
 
 class SNAPRedGUI(QMainWindow):
@@ -67,8 +72,11 @@ class SNAPRedGUI(QMainWindow):
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
 
-        self.userDocButton = UserDocsButton(self)
-        splitter.addWidget(self.userDocButton)
+        if UserDocsButton:
+            self.userDocButton = UserDocsButton(self)
+            splitter.addWidget(self.userDocButton)
+        else:
+            print("UserDocsButton is not available. Skipping its initialization.")
 
     def openNewWindow(self):
         try:

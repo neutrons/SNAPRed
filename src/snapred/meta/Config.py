@@ -5,10 +5,9 @@ import re
 import sys
 from glob import glob
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TypeVar
 
 import yaml
-from pydantic.utils import deep_update
 
 from snapred.meta.decorators.Singleton import Singleton
 
@@ -21,7 +20,7 @@ def _find_root_dir():
     env = os.environ.get("env")
     if env and "test" in env and "conftest" in sys.modules:
         ROOT_MODULE = sys.modules["conftest"].__file__
-    else:
+    elif "snapred" in sys.modules:
         ROOT_MODULE = sys.modules["snapred"].__file__
 
     if ROOT_MODULE is None:
@@ -75,6 +74,19 @@ class _Resource:
 
 
 Resource = _Resource()
+
+KeyType = TypeVar("KeyType")
+
+
+def deep_update(mapping: Dict[KeyType, Any], *updating_mappings: Dict[KeyType, Any]) -> Dict[KeyType, Any]:
+    updated_mapping = mapping.copy()
+    for updating_mapping in updating_mappings:
+        for k, v in updating_mapping.items():
+            if k in updated_mapping and isinstance(updated_mapping[k], dict) and isinstance(v, dict):
+                updated_mapping[k] = deep_update(updated_mapping[k], v)
+            else:
+                updated_mapping[k] = v
+    return updated_mapping
 
 
 @Singleton

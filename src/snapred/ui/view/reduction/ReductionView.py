@@ -37,13 +37,17 @@ class ReductionView(QWidget):
 
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
         self.liteModeToggle = LabeledField("Lite Mode", Toggle(parent=self, state=True))
-        self.retainUnfocusedDataCheckbox = LabeledCheckBox("Retain Unfocussed Data")
+        self.retainUnfocusedDataCheckbox = LabeledCheckBox("Retain Unfocused Data")
         self.pixelMaskDropdown = SampleDropDown("Pixel Masks", pixelMasks)
+        self.convertUnitsDropdown = SampleDropDown(
+            "Convert Units", ["TOF", "dSpacing", "Wavelength", "MomentumTransfer"]
+        )
 
         # Set field properties
         self.liteModeToggle.setEnabled(False)
         self.retainUnfocusedDataCheckbox.setEnabled(False)
         self.pixelMaskDropdown.setEnabled(False)
+        self.convertUnitsDropdown.setEnabled(False)
 
         # Add widgets to layout
         self.layout.addLayout(self.runNumberLayout)
@@ -51,6 +55,7 @@ class ReductionView(QWidget):
         self.layout.addWidget(self.liteModeToggle)
         self.layout.addWidget(self.pixelMaskDropdown)
         self.layout.addWidget(self.retainUnfocusedDataCheckbox)
+        self.layout.addWidget(self.convertUnitsDropdown)
 
         # Connect buttons to methods
         self.enterRunNumberButton.clicked.connect(self.addRunNumber)
@@ -61,7 +66,9 @@ class ReductionView(QWidget):
     def addRunNumber(self):
         runNumberList = self.parseInputRunNumbers()
         if runNumberList is not None:
-            self.runNumbers.extend(runNumberList)
+            noDuplicates = set(self.runNumbers)
+            noDuplicates.update(runNumberList)
+            self.runNumbers = list(noDuplicates)
             self.updateRunNumberList()
             self.runNumberInput.clear()
 
@@ -69,7 +76,7 @@ class ReductionView(QWidget):
         runNumberString = self.runNumberInput.text().strip()
         if runNumberString:
             try:
-                runNumberList = [int(num.strip()) for num in runNumberString.split(",") if num.strip().isdigit()]
+                runNumberList = [num.strip() for num in runNumberString.split(",") if num.strip().isdigit()]
                 return runNumberList
             except ValueError:
                 raise ValueError(
@@ -101,16 +108,10 @@ class ReductionView(QWidget):
         # They dont need to select a pixel mask
         # if self.pixelMaskDropdown.currentIndex() < 0:
         #     raise ValueError("Please select a pixel mask.")
+        if self.retainUnfocusedDataCheckbox.isChecked():
+            if self.convertUnitsDropdown.currentIndex() < 0:
+                raise ValueError("Please select units to convert to")
         return True
 
     def getRunNumbers(self):
         return self.runNumbers
-
-    # Placeholder for checkBox logic
-    """
-    def onCheckBoxChecked(self, checked):
-        if checked:
-
-        else:
-            pass
-    """

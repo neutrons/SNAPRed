@@ -135,13 +135,6 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             Factor=protonCharge,
         )
 
-        self.mantidSnapper.Minus(
-            "Subtract off empty background",
-            LHSWorkspace=self.outputVanadiumWS,
-            RHSWorkspace=self.outputBackgroundWS,
-            OutputWorkspace=self.outputVanadiumWS,
-        )
-
         # take difference
         self.mantidSnapper.Minus(
             "Subtract off empty background",

@@ -119,6 +119,8 @@ mantid:
       units:
         dSpacing: DSP
         timeOfFlight: TOF
+        momentumTransfer: QSP
+        wavelength: LAM
         diagnostic: diagnostic
       groups:
         unfocussed: Unfoc

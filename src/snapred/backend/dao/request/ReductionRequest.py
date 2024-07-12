@@ -9,9 +9,11 @@ from snapred.backend.error.ContinueWarning import ContinueWarning
 class ReductionRequest(BaseModel):
     runNumber: Union[str, List[str]]
     useLiteMode: bool
-    focusGroup: Union[Optional[FocusGroup], List[FocusGroup]]
+    focusGroups: List[FocusGroup] = []
     userSelectedMaskPath: Optional[str] = None
     version: Optional[int] = None
+    keepUnfocused: bool = False
+    convertUnitsTo: str = None
 
     # TODO: Move to SNAPRequest
     continueFlags: Optional[ContinueWarning.Type] = None
