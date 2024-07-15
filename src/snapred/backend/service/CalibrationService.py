@@ -367,9 +367,13 @@ class CalibrationService(Service):
             # The specific property name used here will not be used later, but there must be no collisions.
             self.groceryClerk.name(wngt.DIFFCAL_OUTPUT + "_" + str(n).zfill(4))
             if wng.Units.DSP.lower() in wsName:
-                self.groceryClerk.diffcal_output(runId, version).unit(wng.Units.DSP).group(
-                    calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
-                ).add()
+                (
+                    self.groceryClerk.diffcal_output(runId, version)
+                    .useLiteMode(useLiteMode)
+                    .unit(wng.Units.DSP)
+                    .group(calibrationRecord.focusGroupCalibrationMetrics.focusGroupName)
+                    .add()
+                )
             else:
                 raise RuntimeError(
                     f"cannot load a workspace-type: {wngt.DIFFCAL_OUTPUT} without a units token in its name {wsName}"
@@ -377,9 +381,13 @@ class CalibrationService(Service):
         for n, wsName in enumerate(workspaces.pop(wngt.DIFFCAL_DIAG, [])):
             self.groceryClerk.name(wngt.DIFFCAL_DIAG + "_" + str(n).zfill(4))
             if wng.Units.DIAG.lower() in wsName:
-                self.groceryClerk.diffcal_diagnostic(runId, version).unit(wng.Units.DIAG).group(
-                    calibrationRecord.focusGroupCalibrationMetrics.focusGroupName
-                ).add()
+                (
+                    self.groceryClerk.diffcal_diagnostic(runId, version)
+                    .useLiteMode(useLiteMode)
+                    .unit(wng.Units.DIAG)
+                    .group(calibrationRecord.focusGroupCalibrationMetrics.focusGroupName)
+                    .add()
+                )
         for n, (tableWSName, maskWSName) in enumerate(
             zip(
                 workspaces.pop(wngt.DIFFCAL_TABLE, []),
@@ -388,8 +396,12 @@ class CalibrationService(Service):
         ):
             # Diffraction calibration requires a complete pair 'table' + 'mask':
             #   as above, the specific property name used here is not important.
-            self.groceryClerk.name(wngt.DIFFCAL_TABLE + "_" + str(n).zfill(4)).diffcal_table(runId, version).add()
-            self.groceryClerk.name(wngt.DIFFCAL_MASK + "_" + str(n).zfill(4)).diffcal_mask(runId, version).add()
+            self.groceryClerk.name(wngt.DIFFCAL_TABLE + "_" + str(n).zfill(4)).diffcal_table(
+                runId, version
+            ).useLiteMode(useLiteMode).add()
+            self.groceryClerk.name(wngt.DIFFCAL_MASK + "_" + str(n).zfill(4)).diffcal_mask(runId, version).useLiteMode(
+                useLiteMode
+            ).add()
 
         if workspaces:
             raise RuntimeError(f"not implemented: unable to load unexpected workspace types: {workspaces}")
