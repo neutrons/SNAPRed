@@ -153,6 +153,8 @@ class ReductionService(Service):
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroups,
+            keepUnfocused=request.keepUnfocused,
+            convertUnitsTo=request.convertUnitsTo,
         )
         return self.sousChef.prepReductionIngredients(farmFresh)
 

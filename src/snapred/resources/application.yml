@@ -120,6 +120,8 @@ mantid:
       units:
         dSpacing: DSP
         timeOfFlight: TOF
+        momentumTransfer: QSP
+        wavelength: LAM
         diagnostic: diagnostic
       groups:
         unfocussed: Unfoc
@@ -170,7 +172,6 @@ constants:
 compressionParameters:
   LiteDataCreationParameters:
     DeltaTOF: 13.3 # units in µs
-
 docs:
   user:
     path: /SNS/SNAP/shared/Malcolm/SNAPUserDocs/_build/html/index.html

@@ -26,6 +26,9 @@ class ReductionIngredients(BaseModel):
     calibrantSamplePath: str
     peakIntensityThreshold: float
 
+    keepUnfocused: bool
+    convertUnitsTo: str
+
     #
     # FACTORY methods to create sub-recipe ingredients:
     #
