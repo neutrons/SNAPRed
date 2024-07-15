@@ -167,6 +167,10 @@ constants:
   CropFactors:
     lowWavelengthCrop: 0.05
 
+compressionParameters:
+  LiteDataCreationParameters:
+    DeltaTOF: 13.3 # units in µs
+
 docs:
   user:
     path: /SNS/SNAP/shared/Malcolm/SNAPUserDocs/_build/html/index.html
