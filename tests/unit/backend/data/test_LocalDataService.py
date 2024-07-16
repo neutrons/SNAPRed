@@ -1996,7 +1996,7 @@ def test_readCalibrantSample(mock1):  # noqa: ARG001
     result = localDataService.readCalibrantSample(
         Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
     )
-    assert type(result) == CalibrantSamples
+    assert type(result) is CalibrantSamples
     assert result.name == "Silicon_NIST_640D"
 
 
