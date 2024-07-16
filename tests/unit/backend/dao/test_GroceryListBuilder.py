@@ -139,7 +139,7 @@ class TestGroceryListBuilder(unittest.TestCase):
 
     def test_diffcal_output_with_instrument(self):
         with pytest.raises(ValueError) as e:
-            GroceryListBuilder().diffcal_output(self.runNumber).native().source(InstrumentName="SNAP").build()
+            GroceryListBuilder().diffcal_output(self.runNumber, 1).native().source(InstrumentName="SNAP").build()
         assert "should not specify an instrument" in str(e.value)
 
     def test_nexus_clean_and_dirty(self):

@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from mantid.kernel import amend_config
 
@@ -30,7 +30,7 @@ def _bool_to_mtd_str(arg: bool) -> str:
     return "1" if arg else "0"
 
 
-def _prepend_datasearch_directories() -> List[str]:
+def _prepend_datasearch_directories() -> Optional[List[str]]:
     """data-search directories to prepend to
     mantid.kernel.ConfigService 'datasearch.directories'
     """

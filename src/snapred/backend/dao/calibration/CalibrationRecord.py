@@ -1,16 +1,14 @@
-from typing import Any, Dict, List, Optional
-
-from pydantic import BaseModel, ConfigDict, field_validator
+from typing import Dict, List, Optional
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.calibration.FocusGroupMetric import FocusGroupMetric
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
+from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName, WorkspaceType
 
 
-class CalibrationRecord(BaseModel):
+class CalibrationRecord(Record, extra="ignore"):
     """
 
     The CalibrationRecord class, serves as a comprehensive log of the inputs and parameters employed
@@ -24,23 +22,17 @@ class CalibrationRecord(BaseModel):
 
     """
 
-    runNumber: str
+    # inherits from Record
+    # - runNumber
+    # - useLiteMode
+    # - version
+    # override this to point at the correct daughter class
+    # NOTE the version on the calculationParameters MUST match the version on the record
+    # this should be enforced by a validator
+    calculationParameters: Calibration
+
+    # specific to calibration records
     crystalInfo: CrystallographicInfo
-    useLiteMode: bool
-    calibrationFittingIngredients: Calibration
     pixelGroups: Optional[List[PixelGroup]] = None  # TODO: really shouldn't be optional, will be when sns data fixed
     focusGroupCalibrationMetrics: FocusGroupMetric
     workspaces: Dict[WorkspaceType, List[WorkspaceName]]
-    version: int = Config["instrument.startingVersionNumber"]
-
-    @field_validator("runNumber", mode="before")
-    @classmethod
-    def validate_runNumber(cls, v: Any) -> Any:
-        if isinstance(v, int):
-            v = str(v)
-        return v
-
-    model_config = ConfigDict(
-        # required in order to use 'WorkspaceName'
-        arbitrary_types_allowed=True,
-    )

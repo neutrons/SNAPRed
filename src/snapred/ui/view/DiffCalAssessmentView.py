@@ -4,7 +4,7 @@ from typing import List
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushButton, QWidget
 
-from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentPresenter
 from snapred.ui.widget.LabeledField import LabeledField
@@ -60,7 +60,7 @@ class DiffCalAssessmentView(QWidget):
 
         self.signalRunNumberUpdate.connect(self.presenter.loadCalibrationIndex)
 
-    def updateCalibrationRecordList(self, calibrationIndex: List[CalibrationIndexEntry]):
+    def updateCalibrationRecordList(self, calibrationIndex: List[IndexEntry]):
         # reset the combo-box by removing all items except for the first, which is a label
         for item in range(1, self.calibrationRecordDropdown.count()):
             self.calibrationRecordDropdown.removeItem(item)

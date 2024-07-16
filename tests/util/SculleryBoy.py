@@ -7,6 +7,7 @@ from typing import List
 from unittest import mock
 
 import pydantic
+from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
@@ -27,6 +28,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictorRecipe
 from snapred.meta.Config import Resource
+from snapred.meta.redantic import parse_file_as
 
 
 class SculleryBoy:
@@ -41,12 +43,10 @@ class SculleryBoy:
         pass
 
     def prepCalibration(self, ingredients: FarmFreshIngredients):  # noqa ARG002
-        return {
-            "instumentState": mock.Mock(),
-            "seedRun": mock.Mock(),
-            "creationDate": mock.Mock(),
-            "name": "mocked calibration",
-        }
+        calibration = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        calibration.seedRun = ingredients.runNumber
+        calibration.useLiteMode = ingredients.useLiteMode
+        return calibration
 
     def prepInstrumentState(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         return mock.Mock()
@@ -86,7 +86,7 @@ class SculleryBoy:
             path = Resource.getPath("/inputs/predict_peaks/input_good_ingredients.json")
         else:
             path = Resource.getPath("/inputs/predict_peaks/input_fake_ingredients.json")
-        return PeakIngredients.parse_file(path)
+        return parse_file_as(PeakIngredients, path)
 
     def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:
         try:
@@ -95,14 +95,12 @@ class SculleryBoy:
                 PurgeDuplicates=ingredients.get("purge", True),
             )
             return pydantic.TypeAdapter(List[GroupPeakList]).validate_json(peakList)
-        except TypeError:
-            return [mock.Mock(spec_set=GroupPeakList)]
-        except AttributeError:
+        except (TypeError, AttributeError):
             return [mock.Mock(spec_set=GroupPeakList)]
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         path = Resource.getPath("/inputs/calibration/ReductionIngredients.json")
-        return ReductionIngredients.parse_file(path)
+        return parse_file_as(ReductionIngredients, path)
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
         return NormalizationIngredients(

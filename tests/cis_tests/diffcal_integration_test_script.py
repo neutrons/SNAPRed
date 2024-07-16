@@ -191,7 +191,7 @@ def script(goldenData):
             useLiteMode = isLite,
             focusGroup = {"name": groupingScheme, "definition": ""},
             calibrantSamplePath = calibrantSamplePath,
-            workspaces = {wngt.DIFFCAL_OUTPUT: [calibrationResult["outputDSPWorkspace"]]},
+            workspaces = {wngt.DIFFCAL_OUTPUT: calibrationResult["outputDSPWorkspace"]},
             peakFunction = "Gaussian",
             crystalDMin = Config["constants.CrystallographicInfo.crystalDMin"],
             crystalDMax = Config["constants.CrystallographicInfo.crystalDMax"],

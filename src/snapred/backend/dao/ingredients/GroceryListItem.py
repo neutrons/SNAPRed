@@ -130,16 +130,22 @@ class GroceryListItem(BaseModel):
                         raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
                     if v.get("instrumentPropertySource") is not None:
                         raise ValueError("Loading diffcal-output data should not specify an instrument")
-                    if not v.get("useLiteMode"):
-                        v["useLiteMode"] = True  # don't care
+                    if v.get("useLiteMode") is None:
+                        raise ValueError("Loading diffcal output requires resolution (lite/native)")
+                    if v.get("version") is None:
+                        raise ValueError("diffcal output can only be loaded with a version number")
                 case "diffcal_table" | "diffcal_mask":
                     if v.get("runNumber") is None:
                         raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
-                    if not v.get("useLiteMode"):
-                        v["useLiteMode"] = True  # don't care
+                    if v.get("useLiteMode") is None:
+                        raise ValueError("Loading diffcal table requires resolution (lite/native)")
+                    if v.get("version") is None:
+                        raise ValueError("diffcal tables can only be loaded with a version number")
                 case "normalization":
                     if v.get("runNumber") is None:
                         raise ValueError(f"normalization {v['workspaceType']} requires run number")
+                    if v.get("version") is None:
+                        raise ValueError("normalization output can only be loaded with a version number")
                 case _:
                     raise ValueError(f"unrecognized 'workspaceType': '{v['workspaceType']}'")
         return v

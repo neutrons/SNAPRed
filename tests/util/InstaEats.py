@@ -1,6 +1,6 @@
 # ruff: noqa: F811 ARG005 ARG002
 import os
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List
 from unittest import mock
 
 from mantid.simpleapi import LoadDetectorsGroupingFile, LoadEmptyInstrument, mtd
@@ -12,8 +12,6 @@ from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from util.WhateversInTheFridge import WhateversInTheFridge
-
-Version = Union[int, Literal["*"]]
 
 
 @Singleton
@@ -32,13 +30,9 @@ class InstaEats(GroceryService):
         self.testInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         self.instrumentDonorWorkspace = mtd.unique_name(prefix="_instrument_donor")
         self.grocer.executeRecipe = mock.Mock(
-            side_effect=lambda filename,
-            workspace,
-            loader,
-            instrumentPropertySource=None,
-            instrumentSource="",
-            *,
-            loaderArgs="": {"result": True, "loader": loader, "workspace": workspace}
+            side_effect=lambda filename, workspace, loader, *args, **kwargs: (
+                {"result": True, "loader": loader, "workspace": workspace}
+            )
         )
 
     ## FILENAME METHODS
@@ -228,6 +222,12 @@ class InstaEats(GroceryService):
                         self._createDiffcalOutputWorkspaceFilename(item),
                         self._createDiffcalOutputWorkspaceName(item),
                         loader="ReheatLeftovers",
+                    )
+                case "diffcal_diagnostic":
+                    res = self.fetchWorkspace(
+                        self._createDiffcalDiagnosticWorkspaceFilename(item),
+                        self._createDiffcalOutputWorkspaceName(item),
+                        loader="LoadNexusProcessed",
                     )
                 case "diffcal_table":
                     res = self.fetchCalibrationWorkspaces(item)
