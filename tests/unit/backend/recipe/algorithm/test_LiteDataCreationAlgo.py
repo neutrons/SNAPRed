@@ -3,6 +3,7 @@ import unittest.mock as mock
 
 import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
+from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.meta.Config import Resource
 
@@ -46,6 +47,9 @@ def test_fakeInstrument():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+    instrumentState = Calibration.model_validate_json(
+        Resource.read("inputs/pixel_grouping/CalibrationParameters.json")
+    ).instrumentState
 
     fullResolution: int = 16
     liteResolution: int = 4
@@ -81,6 +85,7 @@ def test_fakeInstrument():
     liteDataCreationAlgo.setPropertyValue("OutputWorkspace", liteInstrumentWS)
     liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
     liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
+    liteDataCreationAlgo.setPropertyValue("Ingredients", instrumentState.model_dump_json())
     liteDataCreationAlgo.execute()
 
     # check that the lite data is correct
@@ -262,6 +267,9 @@ def test_no_run_twice():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+    instrumentState = Calibration.model_validate_json(
+        Resource.read("inputs/pixel_grouping/CalibrationParameters.json")
+    ).instrumentState
 
     # load the instrument, and load the grouping file
     LoadEmptyInstrument(
@@ -283,6 +291,7 @@ def test_no_run_twice():
     liteDataCreationAlgo.setPropertyValue("OutputWorkspace", outputWorkspace)
     liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
     liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
+    liteDataCreationAlgo.setPropertyValue("Ingredients", instrumentState.model_dump_json())
 
     # try reducing native resolution, then running again with the Lite output
     CreateWorkspace(
