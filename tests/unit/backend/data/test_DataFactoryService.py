@@ -82,7 +82,7 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getReductionState(self):
         actual = self.instance.getReductionState("123", False)
-        assert type(actual) == ReductionState
+        assert type(actual) is ReductionState
 
     def test_getReductionState_cache(self):
         previous = ReductionState.construct()
@@ -92,11 +92,11 @@ class TestDataFactoryService(unittest.TestCase):
 
     def test_getRunConfig(self):
         actual = self.instance.getRunConfig(mock.Mock())
-        assert type(actual) == RunConfig
+        assert type(actual) is RunConfig
 
     def test_getStateConfig(self):
         actual = self.instance.getStateConfig(mock.Mock(), mock.Mock())
-        assert type(actual) == StateConfig
+        assert type(actual) is StateConfig
 
     def test_constructStateId(self):
         arg = mock.Mock()
