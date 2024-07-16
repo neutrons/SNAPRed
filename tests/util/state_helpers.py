@@ -97,7 +97,7 @@ class state_root_redirect:
         return self.tmppath
 
     def addFileAs(self, source: str, target: str):
-        assert self.tmppath in list(Path(target).parents)
+        assert Path(self.tmpdir.name) in Path(target).parents
         Path(target).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
         assert Path(target).exists()

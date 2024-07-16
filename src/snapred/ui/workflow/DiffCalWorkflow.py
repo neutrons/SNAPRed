@@ -1,8 +1,11 @@
 from snapred.backend.dao import RunConfig
-from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
+    CreateCalibrationRecordRequest,
+    CreateIndexEntryRequest,
     DiffractionCalibrationRequest,
     FitMultiplePeaksRequest,
     FocusSpectraRequest,
@@ -372,31 +375,39 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
+        runNumber = view.fieldRunNumber.get()
         version = view.fieldVersion.get(None)
+        appliesTo = view.fieldAppliesTo.get(f">={runNumber}")
         # validate the version number
-        version = view.fieldVersion.get(None)
-        if version is not None:
-            try:
-                version = int(version)
-                assert version >= 0
-            except (AssertionError, ValueError, TypeError):
-                raise TypeError("Version must be a nonnegative integer")
-        # pull fields from view for calibration save
-        calibrationIndexEntry = CalibrationIndexEntry(
-            runNumber=view.fieldRunNumber.get(),
-            useLiteMode=self.useLiteMode,
-            comments=view.fieldComments.get(),
-            author=view.fieldAuthor.get(),
-            appliesTo=view.fieldAppliesTo.get(),
-            version=version,
-        )
+        version = VersionedObject.parseVersion(version, exclude_default=True)
+        # validate appliesTo field
+        appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
 
         # if this is not the first iteration, account for choice.
         if workflowPresenter.iteration > 1:
             self.calibrationRecord.workspaces = self._getSaveSelection(self._saveView.iterationDropdown)
 
+        createIndexEntryRequest = CreateIndexEntryRequest(
+            runNumber=runNumber,
+            useLiteMode=self.useLiteMode,
+            version=version,
+            appliesTo=appliesTo,
+            comments=view.fieldComments.get(),
+            author=view.fieldAuthor.get(),
+        )
+        createRecordRequest = CreateCalibrationRecordRequest(
+            runNumber=runNumber,
+            useLiteMode=self.useLiteMode,
+            version=version,
+            calculationParameters=self.calibrationRecord.calculationParameters,
+            crystalInfo=self.calibrationRecord.crystalInfo,
+            pixelGroups=self.calibrationRecord.pixelGroups,
+            focusGroupCalibrationMetrics=self.calibrationRecord.focusGroupCalibrationMetrics,
+            workspaces=self.calibrationRecord.workspaces,
+        )
         payload = CalibrationExportRequest(
-            calibrationRecord=self.calibrationRecord, calibrationIndexEntry=calibrationIndexEntry
+            createIndexEntryRequest=createIndexEntryRequest,
+            createRecordRequest=createRecordRequest,
         )
 
         response = self.request(path="calibration/save", payload=payload.json())

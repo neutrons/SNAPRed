@@ -2,16 +2,18 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple
 
-from mantid.simpleapi import mtd
+from mantid.simpleapi import CreateSingleValuedWorkspace, mtd
 from pydantic import validate_call
 from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
+from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.reduction import ReductionRecord
-from snapred.backend.dao.state import (
-    GroupingMap,
-)
+from snapred.backend.dao.state import GroupingMap
+from snapred.backend.dao.state.DetectorState import DetectorState
+from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.error.StateValidationException import StateValidationException
 from snapred.backend.log.logger import snapredLogger
@@ -19,19 +21,20 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.redantic import parse_file_as
 
-Version = Union[int, Literal["*"]]
 logger = snapredLogger.getLogger(__name__)
 
 
 @Singleton
 class WhateversInTheFridge(LocalDataService):
     """
-    Yeah, it'd be nice to use the LocalDataService and get all this...
+    Yeah, it'd be nice to go to the LocalDataService to get all this...
     But that's really complicated, and we don't have time.
     Just grab whatever's in the fridge.
 
-    Can mock out the LocalDataService for testing
+    Can mock out the LocalDataService for testing.
+    Only mocks out the factory methods; for export methods, use state_root_redirect
     """
 
     iptsCache: Dict[Tuple[str, str], Any] = {}
@@ -40,24 +43,9 @@ class WhateversInTheFridge(LocalDataService):
         self.verifyPaths = False
         self.instrumentConfig = self.readInstrumentConfig()
         self.mantidSnapper = MantidSnapper(None, "Utensils")
-        self.latestVersion = Config["instrument.startingVersionNumber"]
+        self.latestVersion = Config["version.start"]
 
     ### MISCELLANEOUS ###
-    def readCifFilePath(self, sampleId: str):
-        samplePath: str = Resource.getPath("inputs/calibrantSamples/")
-        fileName: str = Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
-        filePath = os.path.join(samplePath, fileName)
-        if not os.path.exists(filePath):
-            raise ValueError(f"the file '{filePath}' does not exist")
-        with open(filePath, "r") as f:
-            calibrantSampleDict = json.load(f)
-        filePath = Path(calibrantSampleDict["crystallography"]["cifFile"])
-        # Allow relative paths:
-        if not filePath.is_absolute():
-            filePath = Path(Config["samples.home"]).joinpath(filePath)
-        return str(filePath)
-
-    ### FILE METHODS ###
 
     def fileExists(self, filepath):
         if filepath == "does/not/exist":
@@ -77,66 +65,90 @@ class WhateversInTheFridge(LocalDataService):
     def _generateStateId(self, runId: str) -> Tuple[str, str]:
         return "outpus/2kfxjiqm", "some gibberish"
 
-    def checkCalibrationFileExists(self, runId: str):
-        if runId.isdigit():
-            return True
-        else:
-            return False
-
     ### CALIBRATION METHODS ###
+
+    def calculationParameters_with_stateId(self, stateId: str):
+        return CalculationParameters.model_construct(
+            instrumentState=InstrumentState.model_construct(
+                id=ObjectSHA.model_construct(
+                    hex=stateId,
+                    decodedKey="gibberish",
+                )
+            )
+        )
 
     @validate_call
     def readCalibrationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         version = version if version is not None else self.latestVersion
-        record = CalibrationRecord.construct(
+        record = CalibrationRecord.model_construct(
             runNumber=runId,
             useLiteMode=useLiteMode,
             version=version,
+            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef"),
         )
         return record
-
-    @validate_call
-    def _getVersionFromCalibrationIndex(self, runId: str, useLiteMode: bool) -> int:
-        return self.latestVersion
-
-    @validate_call
-    def _getLatestCalibrationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
-        return self.latestVersion
 
     ### NORMALIZATION METHODS ###
 
     @validate_call
     def readNormalizationRecord(self, runId: str, useLiteMode: bool, version: Optional[int] = None):
         version = version if version is not None else self.latestVersion
-        record = NormalizationRecord.construct(
+        record = NormalizationRecord.model_construct(
             runNumber=runId,
             useLiteMode=useLiteMode,
             version=version,
+            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef"),
         )
         return record
 
-    @validate_call
-    def _getVersionFromNormalizationIndex(self, runId: str, useLiteMode: bool) -> int:
-        return self.latestVersion
-
-    @validate_call
-    def _getLatestNormalizationVersionNumber(self, stateId: str, useLiteMode: bool) -> int:
-        return self.latestVersion
-
     ### REDUCTION METHODS ###
 
-    def writeReductionRecord(self, record: ReductionRecord, version: Optional[int]) -> ReductionRecord:
-        record.runNumbers.append("writeReductionRecord")
-        return record
+    def readReductionRecord(self, runNumber: str, useLiteMode: bool, version: int):
+        wsname = mtd.unique_name(prefix=f"{runNumber}_{useLiteMode}_{version}_")
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        return ReductionRecord.model_construct(
+            runNumber=runNumber,
+            runNumbers=[runNumber],
+            useLiteMode=useLiteMode,
+            version=version,
+            workspaceNames=[wsname],
+            stateId="0xdeadbeef",
+            calibration=self.readCalibrationRecord(runNumber, useLiteMode, version),
+            normalization=self.readNormalizationRecord(runNumber, useLiteMode, version),
+            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef"),
+        )
 
-    def writeReductionData(self, record: ReductionRecord) -> ReductionRecord:
-        record.runNumbers.append("writeReductionData")
-        return record
+    ### READ / WRITE STATE METHODS ###
+
+    def readDetectorState(self, runId: str):
+        return DetectorState.construct(wav=1.0)
+
+    def checkCalibrationFileExists(self, runId: str):
+        if runId.isdigit():
+            return True
+        else:
+            return False
+
+    ### CALIBRANT SAMPLE METHODS ###
+
+    def readCifFilePath(self, sampleId: str):
+        samplePath: str = Resource.getPath("inputs/calibrantSamples/")
+        fileName: str = Resource.getPath("inputs/calibrantSamples/Silicon_NIST_640D_001.json")
+        filePath = os.path.join(samplePath, fileName)
+        if not os.path.exists(filePath):
+            raise ValueError(f"the file '{filePath}' does not exist")
+        with open(filePath, "r") as f:
+            calibrantSampleDict = json.load(f)
+        filePath = Path(calibrantSampleDict["crystallography"]["cifFile"])
+        # Allow relative paths:
+        if not filePath.is_absolute():
+            filePath = Path(Config["samples.home"]).joinpath(filePath)
+        return str(filePath)
 
     ### GROUPING MAP METHODS ###
 
     def _groupingMapPath(self, stateId) -> Path:
-        return Resource.getPath("inputs/testInstrument/groupingMap.json")
+        return Path(Resource.getPath("inputs/testInstrument/groupingMap.json"))
 
     def _readGroupingMap(self, stateId: str) -> GroupingMap:
         thismap = self._readDefaultGroupingMap()
@@ -144,7 +156,7 @@ class WhateversInTheFridge(LocalDataService):
         return thismap
 
     def _readDefaultGroupingMap(self) -> GroupingMap:
-        thismap = GroupingMap.parse_file(self._groupingMapPath("fakeStateID"))
+        thismap = parse_file_as(GroupingMap, self._groupingMapPath("fakeStateID"))
         thismap = GroupingMap.construct(
             stateId=thismap.stateId,
             nativeFocusGroups=thismap.nativeFocusGroups,

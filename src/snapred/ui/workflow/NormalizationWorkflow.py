@@ -1,5 +1,8 @@
-from snapred.backend.dao.normalization import NormalizationIndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.request import (
+    CreateIndexEntryRequest,
+    CreateNormalizationRecordRequest,
     HasStateRequest,
     NormalizationExportRequest,
     NormalizationRequest,
@@ -182,35 +185,43 @@ class NormalizationWorkflow(WorkflowImplementer):
     @EntryExitLogger(logger=logger)
     def _saveNormalization(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
+        runNumber = view.fieldRunNumber.get()
+        version = view.fieldVersion.get()
+        appliesTo = view.fieldAppliesTo.get(f">={runNumber}")
+        # validate version number
+        version = VersionedObject.parseVersion(version, exclude_default=True)
+        # validate appliesTo field
+        appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
 
         normalizationRecord = self.responses[-1].data
         normalizationRecord.workspaceNames.append(self.responses[-2].data["smoothedVanadium"])
         normalizationRecord.workspaceNames.append(self.responses[-2].data["focusedVanadium"])
         normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
 
-        version = view.fieldVersion.get(None)
-        # validate the version number
-        version = view.fieldVersion.get(None)
-        if version is not None:
-            try:
-                version = int(version)
-                assert version >= 0
-            except (AssertionError, ValueError, TypeError):
-                raise TypeError("Version must be a nonnegative integer.")
-
-        normalizationIndexEntry = NormalizationIndexEntry(
-            runNumber=view.fieldRunNumber.get(),
+        createIndexEntryRequest = CreateIndexEntryRequest(
+            runNumber=runNumber,
             useLiteMode=self.useLiteMode,
-            backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
+            version=version,
+            appliesTo=appliesTo,
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
-            appliesTo=view.fieldAppliesTo.get(),
+        )
+        createRecordRequest = CreateNormalizationRecordRequest(
+            runNumber=runNumber,
+            useLiteMode=self.useLiteMode,
             version=version,
+            calculationParameters=normalizationRecord.calculationParameters,
+            backgroundRunNumber=normalizationRecord.backgroundRunNumber,
+            smoothingParameter=normalizationRecord.smoothingParameter,
+            peakIntensityThreshold=normalizationRecord.peakIntensityThreshold,
+            workspaceNames=normalizationRecord.workspaceNames,
+            calibrationVersionUsed=normalizationRecord.calibrationVersionUsed,
+            crystalDBounds=normalizationRecord.crystalDBounds,
         )
 
         payload = NormalizationExportRequest(
-            normalizationRecord=normalizationRecord,
-            normalizationIndexEntry=normalizationIndexEntry,
+            createIndexEntryRequest=createIndexEntryRequest,
+            createRecordRequest=createRecordRequest,
         )
         response = self.request(path="normalization/save", payload=payload.json())
         return response

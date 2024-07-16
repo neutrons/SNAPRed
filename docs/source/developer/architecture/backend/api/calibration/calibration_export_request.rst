@@ -13,12 +13,12 @@ assessment to permanent storage.
 Attributes:
 -----------
 
-- calibrationRecord (CalibrationRecord): Contains detailed information about the calibration process,
+- createRecordRequest (CreateCalibrationRecordRequest): Contains detailed information about the calibration process,
   including the calibration parameters, run number, crystallographic information, and related workspace
   data. This comprehensive record is essential for documenting the calibration's specifics, facilitating
   future analyses or replication of the calibration.
 
-- calibrationIndexEntry (CalibrationIndexEntry): Provides indexing information for the calibration,
+- createIndexEntryRequest (CreateIndexEntryRequest): Provides indexing information for the calibration,
   including run number, version, comments, and additional metadata that aids in organizing and
   retrieving calibration data within the system. The index entry ensures that the calibration can
   be efficiently referenced and accessed when needed.

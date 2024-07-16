@@ -1,5 +1,5 @@
 import pytest
-from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 
 testData = {
     "runNumber": "1234",
@@ -17,7 +17,7 @@ def test_correctData():
     Test that the correct data is returned when the input is correct.
     """
     # Arrange
-    entry = CalibrationIndexEntry(**testData)
+    entry = IndexEntry(**testData)
     assert entry.appliesTo == testData["appliesTo"]
 
 
@@ -30,7 +30,7 @@ def test_appliesTo():
         # Arrange
         testDataSymbol = testData.copy()
         testDataSymbol["appliesTo"] = f"{symbol}1234"
-        entry = CalibrationIndexEntry(**testDataSymbol)
+        entry = IndexEntry(**testDataSymbol)
         assert symbol in entry.appliesTo
 
 
@@ -43,7 +43,7 @@ def test_appliesToFailsValidation():
     testDataSymbol["appliesTo"] = "1234a"
 
     with pytest.raises(ValueError, match="appliesTo must be in the format of"):
-        CalibrationIndexEntry(**testDataSymbol)
+        IndexEntry(**testDataSymbol)
 
 
 def test_appliesToInvalidSymbol():
@@ -55,4 +55,4 @@ def test_appliesToInvalidSymbol():
     testDataSymbol["appliesTo"] = "*1234"
 
     with pytest.raises(ValueError, match="appliesTo must be in the format of"):
-        CalibrationIndexEntry(**testDataSymbol)
+        IndexEntry(**testDataSymbol)

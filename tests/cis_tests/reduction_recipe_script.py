@@ -64,7 +64,7 @@ groceries["groupingWorkspaces"] = groupingWorkspaces
 # this will prove that the grocery service is able to load it for us now, 
 # duplicated the previous behavior
 localdataservice = LocalDataService()
-normalizationRecord = localdataservice._getCurrentNormalizationRecord(runNumber, isLite)
+normalizationRecord = localdataservice.readNormalizationRecord(runNumber, isLite)
 version = normalizationRecord.version
 normalizationPath = Path(localdataservice._constructNormalizationDataPath(runNumber, isLite, version))
 normalizationWsName = wng.rawVanadium().runNumber(normalizationRecord.runNumber).build()

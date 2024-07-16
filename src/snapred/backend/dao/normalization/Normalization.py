@@ -1,13 +1,7 @@
-from datetime import datetime
-from typing import Any
-
-from pydantic import BaseModel, field_validator
-
-from snapred.backend.dao.state import InstrumentState
-from snapred.meta.Config import Config
+from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 
 
-class Normalization(BaseModel):
+class Normalization(CalculationParameters):
     """
 
     This class represents a normalization opject with essential attributes to track its origin,
@@ -17,19 +11,12 @@ class Normalization(BaseModel):
 
     """
 
-    instrumentState: InstrumentState
+    # inherits from CalculationParameters
+    # - instrumentState: InstrumentState
+    # - seedRun: str
+    # - useLiteMode: bool
+    # - creationDate: datetime
+    # - name: str
+    # - version: Union[int, DEFAULT, UNINITIALIZED]
 
-    # runNumber are `str` everywhere else, but `int` here?  I don't think so... :(
-    seedRun: str
-
-    useLiteMode: bool
-    creationDate: datetime
-    name: str
-    version: int = Config["instrument.startingVersionNumber"]
-
-    @field_validator("seedRun", mode="before")
-    @classmethod
-    def validate_runNumber(cls, v: Any) -> str:
-        if not isinstance(v, str):
-            v = str(v)
-        return v
+    pass

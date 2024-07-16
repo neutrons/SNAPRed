@@ -41,7 +41,6 @@ instrument:
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
-  startingVersionNumber: 0
   minimumRunNumber: 46342
   maxNumberOfRuns: 10
 
@@ -140,6 +139,12 @@ logging:
 
 samples:
   home: ${instrument.calibration.sample.home}
+
+version:
+  friendlyName:
+    error: "uninitialized"  # alphanumeric
+    default: 0 # alphanumeric
+  start: 1   # MUST be nonnegative integer
 
 cis_mode: false
 

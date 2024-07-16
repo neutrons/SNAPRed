@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict
 
@@ -11,7 +11,7 @@ class ReductionRequest(BaseModel):
     useLiteMode: bool
     focusGroups: List[FocusGroup] = []
     userSelectedMaskPath: Optional[str] = None
-    version: Union[int, Literal["*"]] = "*"
+    version: Optional[int] = None
     keepUnfocused: bool = False
     convertUnitsTo: str = None
 

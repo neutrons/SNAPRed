@@ -2,14 +2,15 @@ import time
 from pathlib import Path
 
 from snapred.backend.dao import Limit
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
 from snapred.backend.dao.normalization import (
-    NormalizationIndexEntry,
-    NormalizationRecord,
+    Normalization,
 )
 from snapred.backend.dao.request import (
+    CreateNormalizationRecordRequest,
     FarmFreshIngredients,
     FocusSpectraRequest,
     NormalizationExportRequest,
@@ -32,7 +33,9 @@ from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.redantic import parse_obj_as
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -162,31 +165,45 @@ class NormalizationService(Service):
             peakIntensityThreshold=request.peakIntensityThreshold,
             crystalDBounds=request.crystalDBounds,
         )
-        calibration = self.sousChef.prepCalibration(farmFresh)
-        record = NormalizationRecord(
+        normalization = parse_obj_as(Normalization, self.sousChef.prepCalibration(farmFresh))
+
+        createRecordRequest = CreateNormalizationRecordRequest(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             peakIntensityThreshold=request.peakIntensityThreshold,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
-            calibration=calibration,
+            calculationParameters=normalization,
             crystalDBounds=request.crystalDBounds,
         )
-        return record
+        return self.dataFactoryService.createNormalizationRecord(createRecordRequest)
 
     @FromString
     def saveNormalization(self, request: NormalizationExportRequest):
-        entry = request.normalizationIndexEntry
+        """
+        If no version is attached to the request, this will save at next version number
+        """
+        entry = self.dataFactoryService.createNormalizationIndexEntry(request.createIndexEntryRequest)
+        record = self.dataFactoryService.createNormalizationRecord(request.createRecordRequest)
         version = entry.version
-        normalizationRecord = request.normalizationRecord
-        if version is not None:
-            normalizationRecord.version = version
-        normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
-        normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
-        entry.version = normalizationRecord.version
+
+        # rename the workspaces to include version number
+        savedWorkspaces = []
+        for workspace in record.workspaceNames:
+            newName = workspace + "_" + wnvf.formatVersion(version)
+            self.groceryService.renameWorkspace(workspace, newName)
+            savedWorkspaces.append(newName)
+        record.workspaceNames = savedWorkspaces
+
+        # save the objects at the indicated version
+        self.dataExportService.exportNormalizationRecord(record)
+        self.dataExportService.exportNormalizationWorkspaces(record)
         self.saveNormalizationToIndex(entry)
 
-    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
+    def saveNormalizationToIndex(self, entry: IndexEntry):
+        """
+        Correct version must be attached to the entry.
+        """
         if entry.appliesTo is None:
             entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:

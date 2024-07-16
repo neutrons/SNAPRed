@@ -1,28 +1,31 @@
+import time
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import Field, field_validator
+from snapred.backend.dao.indexing.Versioning import VersionedObject
 
 
-class CalibrationIndexEntry(BaseModel):
+class IndexEntry(VersionedObject, extra="ignore"):
     """
 
-    The CalibrationIndexEntry class is a Pydantic model designed to encapsulate the details of
-    calibration index entries, including essential information like runNumber, version, and
-    comments, along with the author and a timestamp. It features a specialized method, parseAppliesTo,
-    to interpret the appliesTo field, which indicates the applicability of the calibration entry,
-    supporting comparisons with symbols such as '>', '<', '>=', and '<='. Additionally, a validator,
-    appliesToFormatChecker, ensures the appliesTo field conforms to expected formats, either a simple
-    'runNumber' or a comparison format, enhancing data integrity by enforcing consistent entry formats.
+    This is the basic, bare-bones entry for workflow indices.
+    It records a run number, the resolution (native/lite), and a version.
+    The appliesTo field will indicate which runs the record applies to,
+    so that only applicable calibrations/normalizations can be loaded.
+
+    This is meant to coordinate with the Indexer service object.
 
     """
+
+    # inherits from VersionedObject:
+    # - version: int
 
     runNumber: str
     useLiteMode: bool
-    version: Optional[int] = None
     appliesTo: Optional[str] = None
-    comments: str
-    author: str
-    timestamp: Optional[int] = None
+    comments: Optional[str] = None
+    author: Optional[str] = None
+    timestamp: Optional[int] = Field(default_factory=lambda: int(time.time()))
 
     def parseAppliesTo(appliesTo: str):
         symbols = [">=", "<=", "<", ">"]
@@ -32,8 +35,7 @@ class CalibrationIndexEntry(BaseModel):
         runNumber = appliesTo if symbol == "" else appliesTo.split(symbol)[-1]
         return symbol, runNumber
 
-    @field_validator("appliesTo")
-    @classmethod
+    @field_validator("appliesTo", mode="before")
     def appliesToFormatChecker(cls, v):
         """
         This validator ensures that if appliesTo is present,

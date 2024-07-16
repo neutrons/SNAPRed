@@ -2,7 +2,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from mantid.simpleapi import mtd
 from pydantic import validate_call
@@ -20,8 +20,6 @@ from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceNam
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
-
-Version = Union[int, Literal["*"]]
 
 
 @Singleton
@@ -213,7 +211,7 @@ class GroceryService:
         )
 
     @validate_call
-    def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
+    def _createDiffcalTableFilename(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         return str(
             Path(self._getCalibrationDataPath(runNumber, useLiteMode, version))
             / (self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version) + ".h5")
@@ -288,7 +286,7 @@ class GroceryService:
         self,
         runNumber: str,
         useLiteMode: bool,  # noqa: ARG002
-        version: str = Optional[int],
+        version: Optional[int],
     ) -> WorkspaceName:
         return wng.rawVanadium().runNumber(runNumber).version(version).build()
 
@@ -518,28 +516,28 @@ class GroceryService:
         return self.dataService.readDetectorState(runNumber)
 
     @validate_call
-    def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
+    def _getCalibrationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         """
         Get a path to the directory with the calibration data
 
         :param runNumber: a run number, whose state will be looked up
         :type runNumber: str
         :param version: the calibration version to use in the lookup
-        :type version: str
+        :type version: int
         """
-        return self.dataService._constructCalibrationDataPath(runNumber, useLiteMode, version)
+        return self.dataService.calibrationIndexer(runNumber, useLiteMode).versionPath(version)
 
     @validate_call
-    def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[Version]) -> str:
+    def _getNormalizationDataPath(self, runNumber: str, useLiteMode: bool, version: Optional[int]) -> str:
         """
         Get a path to the directory with the normalization data
 
         :param runNumber: a run number, whose state will be looked up
         :type runNumber: str
         :param version: the normalization version to use in the lookup
-        :type version: str
+        :type version: int
         """
-        return self.dataService._constructNormalizationDataPath(runNumber, useLiteMode, version)
+        return self.dataService.normalizationIndexer(runNumber, useLiteMode).versionPath(version)
 
     def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> Dict[str, Any]:
         """
@@ -764,7 +762,6 @@ class GroceryService:
 
         :rtype: Dict[str, Any]
         """
-
         runNumber, version, useLiteMode = item.runNumber, item.version, item.useLiteMode
         tableWorkspaceName = self._createDiffcalTableWorkspaceName(runNumber, useLiteMode, version)
         maskWorkspaceName = self._createDiffcalMaskWorkspaceName(runNumber, useLiteMode, version)
@@ -801,7 +798,7 @@ class GroceryService:
         return data
 
     @validate_call
-    def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: Version) -> WorkspaceName:
+    def fetchDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool, version: int) -> WorkspaceName:
         tableWorkspaceName = self._createDiffcalTableWorkspaceName("default", useLiteMode, version)
         self.mantidSnapper.CalculateDiffCalTable(
             "Generate the default diffcal table",
@@ -898,13 +895,12 @@ class GroceryService:
                         loader="LoadNexusProcessed",
                     )
                 case "diffcal_table":
+                    indexer = self.dataService.calibrationIndexer(item.runNumber, item.useLiteMode)
                     if not isinstance(item.version, int):
-                        item.version = self.dataService._getVersionFromCalibrationIndex(
-                            item.runNumber, item.useLiteMode
-                        )
-                        record = self.dataService.readCalibrationRecord(item.runNumber, item.useLiteMode, item.version)
-                        if record is not None:
-                            item.runNumber = record.runNumber
+                        item.version = indexer.latestApplicableVersion(item.runNumber)
+                    record = indexer.readRecord(item.version)
+                    if record is not None:
+                        item.runNumber = record.runNumber
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
                     # to that of the table workspace.  Because of possible confusion with
                     # the behavior of mask workspace, the workspace name is manually set here.
@@ -923,26 +919,19 @@ class GroceryService:
                     res = self.fetchCalibrationWorkspaces(item)
                     res["workspace"] = maskWorkspaceName
                 case "normalization":
+                    indexer = self.dataService.normalizationIndexer(item.runNumber, item.useLiteMode)
                     if not isinstance(item.version, int):
                         logger.info(f"Version not detected for run {item.runNumber}, fetching from index.")
-                        item.version = self.dataService._getVersionFromNormalizationIndex(
-                            item.runNumber, item.useLiteMode
-                        )
-                        if item.version is None:
+                        item.version = indexer.latestApplicableVersion(item.runNumber)
+                        if not isinstance(item.version, int):
                             raise RuntimeError(
                                 f"Could not find any Normalizations associated with run {item.runNumber}"
                             )
                         logger.info(f"Found version {item.version} for run {item.runNumber}")
-                        record = self.dataService.readNormalizationRecord(
-                            item.runNumber, item.useLiteMode, item.version
-                        )
-                        if record is not None:
-                            item.runNumber = record.runNumber
+                    record = indexer.readRecord(item.version)
+                    if record is not None:
+                        item.runNumber = record.runNumber
                     logger.info(f"Fetching normalization workspace for run {item.runNumber}, version {item.version}")
-                    normalizationWorkspaceName = self._createNormalizationWorkspaceName(  # noqa: F841
-                        item.runNumber, item.useLiteMode, item.version
-                    )
-
                     res = self.fetchNormalizationWorkspaces(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
