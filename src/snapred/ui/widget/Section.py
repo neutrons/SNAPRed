@@ -87,7 +87,7 @@ class Section(wd.QWidget):
             layout = wd.QVBoxLayout()
         layout.addWidget(widget)
         self.contentArea.setLayout(layout)
-        if type(widget) == Section:
+        if type(widget) is Section:
             widget.parentSections.append(self)
             self.childSections.append(widget)
         self.adjustAnimations()
