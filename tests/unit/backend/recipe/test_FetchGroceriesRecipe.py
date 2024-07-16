@@ -6,23 +6,20 @@ from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
-    CompareWorkspaces,
     CreateWorkspace,
     DeleteWorkspace,
     LoadInstrument,
     SaveNexusProcessed,
     mtd,
 )
+from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 
 # needed to make mocked ingredients
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.recipe.FetchGroceriesRecipe import (
     FetchGroceriesRecipe as Recipe,  # noqa: E402
 )
-from snapred.meta.Config import Config, Resource
-
-TheAlgorithmManager: str = "snapred.backend.recipe.algorithm.MantidSnapper.AlgorithmManager"
+from snapred.meta.Config import Resource
 
 
 class TestFetchGroceriesRecipe(unittest.TestCase):
@@ -34,7 +31,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         """
         cls.runNumber = "555"
         cls.filepath = Resource.getPath(f"inputs/test_{cls.runNumber}_fetchgroceriesrx.nxs")
-        cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.instrumentFilepath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.fetchedWSname = "_fetched_grocery"
         cls.groupingScheme = "Native"
         # create some sample data
@@ -102,7 +99,7 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["result"]
         assert res["loader"] == "LoadNexusProcessed"
         assert res["workspace"] == self.fetchedWSname
-        assert CompareWorkspaces(
+        assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
         )
@@ -114,10 +111,26 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
         assert res["result"]
         assert res["loader"] == ""  # this makes sure no loader called
         assert res["workspace"] == self.fetchedWSname
-        assert CompareWorkspaces(
+        assert_wksp_almost_equal(
             Workspace1=self.sampleWS,
             Workspace2=res["workspace"],
         )
+
+    @mock.patch("snapred.backend.recipe.FetchGroceriesRecipe.FetchAlgo")
+    def test_fetch_with_load_event_nexus(self, mockAlgo):
+        """Test the correct behavior of the fetch method"""
+        mock_instance = mockAlgo.return_value
+        mock_instance.execute.return_value = "data"
+        mock_instance.getPropertyValue.return_value = "LoadEventNexus"
+        self.rx.mantidSnapper.RemovePromptPulse = mock.MagicMock()
+
+        self.clearoutWorkspaces()
+        res = self.rx.executeRecipe(self.filepath, self.fetchedWSname, "LoadEventNexus")
+        assert len(res) > 0
+        assert res["result"]
+        assert res["loader"] == "LoadEventNexus"
+        assert res["workspace"] == self.fetchedWSname
+        assert self.rx.mantidSnapper.RemovePromptPulse.called
 
     def test_fetch_failed(self):
         # this is some file that it can't load
@@ -148,17 +161,3 @@ class TestFetchGroceriesRecipe(unittest.TestCase):
                 self.fetchedWSname,
                 "LoadGroupingDefinition",
             )
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004]
-    """Remove handlers from all loggers"""
-    import logging
-
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

@@ -1,14 +1,12 @@
 # ruff: noqa: E722, PT011, PT012
 
 import unittest
-from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
     DeleteWorkspace,
     LoadEmptyInstrument,
 )
-from pydantic import ValidationError
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource
@@ -21,7 +19,7 @@ class TestGroceryListItem(unittest.TestCase):
         cls.runNumber = "555"
         cls.IPTS = Resource.getPath("inputs")
 
-        cls.instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.instrumentDonor = "_test_grocerylistitem_instrument"
         LoadEmptyInstrument(
             OutputWorkspace=cls.instrumentDonor,
@@ -134,18 +132,3 @@ class TestGroceryListItem(unittest.TestCase):
         item1 = GroceryListItem.builder().native().neutron(self.runNumber).build()
         item2 = GroceryListBuilder().native().neutron(self.runNumber).build()
         assert item1 == item2
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

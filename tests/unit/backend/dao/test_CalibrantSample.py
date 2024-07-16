@@ -1,5 +1,5 @@
 # note: this runs the same checks as the calibrant_samples_script CIS test
-
+import datetime
 import unittest
 
 from mantid.simpleapi import CreateWorkspace, DeleteWorkspace, SetSample
@@ -37,8 +37,11 @@ class TestCalibrantSamples(unittest.TestCase):
         return super().tearDown()
 
     def test_isShapedLikeItself(self):
-        assert self.sample == CalibrantSamples.parse_obj(self.sample.dict())
-        assert self.sample == CalibrantSamples.parse_raw(self.sample.json())
+        self.sample.date = str(datetime.datetime.now())
+        sampleFromDict = CalibrantSamples(**self.sample.dict())
+        sampleFromJSON = CalibrantSamples.model_validate_json(self.sample.model_dump_json())
+        assert self.sample == sampleFromDict
+        assert self.sample == sampleFromJSON
 
     def test_setCalibrantSample(self):
         SetSample(

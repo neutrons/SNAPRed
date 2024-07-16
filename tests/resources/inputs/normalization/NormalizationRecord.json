@@ -1,8 +1,11 @@
 {
     "runNumber": 57514,
+    "useLiteMode": true,
+    "version": 7,
     "backgroundRunNumber": 58813,
     "smoothingParameter": 0.5,
-    "calibration":{
+    "peakIntensityThreshold": 0.05,
+    "calculationParameters":{
         "instrumentState": {
             "id": "ab8704b0bc2a2342",
             "peakTailCoefficient": 1.1,
@@ -27,7 +30,9 @@
               "delTOverT": 0.002,
               "delLOverL": 0.00006452,
               "delThNoGuide": 0.0006667,
-              "delThWithGuide": 0.0032
+              "delThWithGuide": 0.0032,
+              "width": 1600.0,
+              "frequency": 60.4
             },
             "detectorState": {
               "arc": [
@@ -60,12 +65,13 @@
               }
             },
             "defaultGroupingSliceValue": 5,
-            "fwhmMultiplierLimit": {
+            "fwhmMultipliers": {
               "minimum": 1.3,
               "maximum": 1.3
             }
           },
           "seedRun": 57514,
+          "useLiteMode": true,
           "creationDate": "2023-06-05T15:49:59.583421",
           "name": "test",
           "version": 0
@@ -75,6 +81,5 @@
         "fitted_strippedFocussedData_stripped_1",
         "fitted_strippedFocussedData_stripped_2"
       ],
-    "version": 7,
-    "dMin": 0.4
+    "crystalDBounds": {"minimum": 0.4, "maximum": 100.0}
 }

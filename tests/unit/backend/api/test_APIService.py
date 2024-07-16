@@ -1,4 +1,8 @@
+import json
 import unittest.mock as mock
+from typing import List
+
+from pydantic import BaseModel
 
 # Mock out of scope modules before importing DataExportService
 
@@ -6,9 +10,6 @@ with mock.patch.dict(
     "sys.modules",
     {"snapred.backend.data.DataExportService": mock.Mock(), "snapred.backend.data.DataFactoryService": mock.Mock()},
 ):
-    from typing import List
-
-    from pydantic import BaseModel
     from snapred.backend.service.ApiService import ApiService
     from snapred.backend.service.Service import Service
     from snapred.backend.service.ServiceDirectory import ServiceDirectory
@@ -40,10 +41,6 @@ with mock.patch.dict(
         mockService = MockService()
         serviceDirectory.registerService(mockService)
         validPaths = apiService.getValidPaths()
-        print(validPaths)
         with Resource.open("/outputs/APIServicePaths.json", "r") as f:
-            import json
-
             actualValidPaths = json.load(f)
-            print(actualValidPaths)
             assert validPaths == actualValidPaths

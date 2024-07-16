@@ -5,21 +5,19 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
-    QSizePolicy,
-    QSpacerItem,
-    QWidget,
 )
 
 from snapred.ui.presenter.InitializeStatePresenter import InitializeStatePresenter
 
 
 class InitializationMenu(QDialog):
-    def __init__(self, runNumber=None, parent=None):
+    def __init__(self, runNumber=None, parent=None, useLiteMode=None):
         super(InitializationMenu, self).__init__(parent)
         self.setWindowTitle("Initialization Menu")
         self.setFixedSize(400, 300)
 
         self.runNumber = runNumber
+        self.useLiteMode = useLiteMode
         self.layout = QGridLayout(self)
         self.setLayout(self.layout)
 
@@ -63,6 +61,9 @@ class InitializationMenu(QDialog):
 
     def getStateName(self):
         return self.stateNameField.text() if self.stateNameField else ""
+
+    def getMode(self):
+        return self.useLiteMode
 
     def handleButtonClicked(self):
         runNumber = self.getRunNumber()

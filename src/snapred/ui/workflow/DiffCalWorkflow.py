@@ -1,17 +1,19 @@
-import json
-from sys import version
-
 from snapred.backend.dao import RunConfig
-from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.request import (
     CalibrationAssessmentRequest,
     CalibrationExportRequest,
+    CreateCalibrationRecordRequest,
+    CreateIndexEntryRequest,
     DiffractionCalibrationRequest,
+    FitMultiplePeaksRequest,
     FocusSpectraRequest,
+    HasStateRequest,
 )
-from snapred.backend.dao.response.CalibrationAssessmentResponse import CalibrationAssessmentResponse
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.Config import Config
+from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 from snapred.ui.view.DiffCalRequestView import DiffCalRequestView
@@ -24,13 +26,24 @@ logger = snapredLogger.getLogger(__name__)
 
 
 class DiffCalWorkflow(WorkflowImplementer):
-    DEFAULT_DMIN = Config["constants.CrystallographicInfo.dMin"]
-    DEFAULT_DMAX = Config["constants.CrystallographicInfo.dMin"]
+    """
+
+    The DiffCalWorkflow class orchestrates a comprehensive process for diffraction calibration in SNAPRed,
+    starting from calibration request setup to the final decision on saving the calibration results. It
+    leverages a series of interconnected views (DiffCalRequestView, DiffCalTweakPeakView,
+    DiffCalAssessmentView, DiffCalSaveView) to guide users through each step of calibration, including
+    parameter input, peak adjustment, calibration assessment, and optional data saving.
+
+    """
+
+    DEFAULT_DMIN = Config["constants.CrystallographicInfo.crystalDMin"]
+    DEFAULT_DMAX = Config["constants.CrystallographicInfo.crystalDMax"]
     DEFAULT_NBINS = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
     DEFAULT_CONV = Config["calibration.diffraction.convergenceThreshold"]
     DEFAULT_PEAK_THRESHOLD = Config["calibration.diffraction.peakIntensityThreshold"]
+    DEFAULT_MAX_CHI_SQ = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
 
-    def __init__(self, jsonForm, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
         # create a tree of flows for the user to successfully execute diffraction calibration
         # DiffCal Request ->
@@ -38,34 +51,22 @@ class DiffCalWorkflow(WorkflowImplementer):
         # Calibrate       ->
         # Assess          ->
         # Save?           ->
-
-        self.assessmentSchema = self.request(path="api/parameters", payload="calibration/assessment").data
-        # for each key, read string and convert to json
-        self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
-
-        self.saveSchema = self.request(path="api/parameters", payload="calibration/save").data
-        self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
-
         self.samplePaths = self.request(path="config/samplePaths").data
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
         self.groupingMap = self.defaultGroupingMap
         self.focusGroups = self.groupingMap.lite
 
         self._requestView = DiffCalRequestView(
-            jsonForm,
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
         self._tweakPeakView = DiffCalTweakPeakView(
-            jsonForm,
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
         self._assessmentView = DiffCalAssessmentView(
-            "Assessing Calibration",
-            self.assessmentSchema,
             parent=parent,
         )
         self._saveView = DiffCalSaveView(parent)
@@ -74,6 +75,8 @@ class DiffCalWorkflow(WorkflowImplementer):
         self._requestView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
         self._requestView.runNumberField.editingFinished.connect(self._populateGroupingDropdown)
         self._tweakPeakView.signalValueChanged.connect(self.onValueChange)
+
+        self.prevFWHM = DiffCalTweakPeakView.FWHM
 
         # 1. input run number and other basic parameters
         # 2. display peak graphs, allow adjustments to view
@@ -90,6 +93,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         )
         self.workflow.presenter.setResetLambda(self.reset)
 
+    @ExceptionToErrLog
     def _populateGroupingDropdown(self):
         # when the run number is updated, freeze the drop down to populate it
         runNumber = self._requestView.runNumberField.text()
@@ -97,27 +101,41 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         self._requestView.groupingFileDropdown.setEnabled(False)
         self._requestView.litemodeToggle.setEnabled(False)
+        # TODO: Use threads, account for fail cases
+        try:
+            # check if the state exists -- if so load its grouping map
+            payload = HasStateRequest(
+                runId=runNumber,
+                useLiteMode=useLiteMode,
+            )
+            hasState = self.request(path="calibration/hasState", payload=payload.json()).data
+            if hasState:
+                self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
+            else:
+                self.groupingMap = self.defaultGroupingMap
+            self.focusGroups = self.groupingMap.getMap(useLiteMode)
 
-        # check if the state exists -- if so load its grouping map
-        hasState = self.request(path="calibration/hasState", payload=runNumber).data
-        if hasState:
-            self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
-        else:
-            self.groupingMap = self.defaultGroupingMap
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            # populate and reenable the drop down
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
 
-        # populate and reenable the drop down
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
         self._requestView.groupingFileDropdown.setEnabled(True)
         self._requestView.litemodeToggle.setEnabled(True)
 
+    @ExceptionToErrLog
     def _switchLiteNativeGroups(self):
         # when the run number is updated, freeze the drop down to populate it
         useLiteMode = self._requestView.litemodeToggle.field.getState()
 
         self._requestView.groupingFileDropdown.setEnabled(False)
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        # TODO: Use threads, account for fail cases
+        try:
+            self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
+
         self._requestView.groupingFileDropdown.setEnabled(True)
 
     def _specifyRun(self, workflowPresenter):
@@ -129,6 +147,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.focusGroupPath = view.groupingFileDropdown.currentText()
         self.calibrantSamplePath = view.sampleDropdown.currentText()
         self.peakFunction = view.peakFunctionDropdown.currentText()
+        self.maxChiSq = self.DEFAULT_MAX_CHI_SQ
 
         self._tweakPeakView.updateRunNumber(self.runNumber)
         self._saveView.updateRunNumber(self.runNumber)
@@ -144,6 +163,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             view.groupingFileDropdown.currentIndex(),
             view.peakFunctionDropdown.currentIndex(),
         )
+        self._tweakPeakView.updatePeakThreshold(self.peakThreshold)
+        self._tweakPeakView.updateMaxChiSq(self.maxChiSq)
 
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
@@ -155,6 +176,8 @@ class DiffCalWorkflow(WorkflowImplementer):
             peakIntensityThreshold=self.peakThreshold,
             convergenceThreshold=self.convergenceThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            fwhmMultipliers=self.prevFWHM,
+            maxChiSq=self.maxChiSq,
         )
 
         self.ingredients = self.request(path="calibration/ingredients", payload=payload.json()).data
@@ -162,65 +185,91 @@ class DiffCalWorkflow(WorkflowImplementer):
 
         # set "previous" values -- this is their initialization
         # these are used to compare if the values have changed
-        self.prevDMin = payload.crystalDMin
-        self.prevDMax = payload.crystalDMax
+        self.prevXtalDMin = payload.crystalDMin
+        self.prevXtalDMax = payload.crystalDMax
         self.prevThreshold = payload.peakIntensityThreshold
+        self.prevFWHM = payload.fwhmMultipliers  # NOTE set in __init__ to defaults
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
+        self.fitPeaksDiagnostic = f"fit_peak_diag_{self.runNumber}_{self.prevGroupingIndex}_pre"
 
         # focus the workspace to view the peaks
-        payload = FocusSpectraRequest(
-            runNumber=self.runNumber,
-            useLiteMode=self.useLiteMode,
-            focusGroup=self.focusGroups[self.focusGroupPath],
-            inputWorkspace=self.groceries["inputWorkspace"],
-            groupingWorkspace=self.groceries["groupingWorkspace"],
+        self._renewFocus(self.prevGroupingIndex)
+        response = self._renewFitPeaks(self.peakFunction)
+
+        self._tweakPeakView.updateGraphs(
+            self.focusedWorkspace,
+            self.ingredients.groupedPeakLists,
+            self.fitPeaksDiagnostic,
         )
-        response = self.request(path="calibration/focus", payload=payload.json())
-        self.focusedWorkspace = response.data[0]
-        self._tweakPeakView.updateGraphs(self.focusedWorkspace, self.ingredients.groupedPeakLists)
         return response
 
-    def onValueChange(self, groupingIndex, dMin, dMax, peakThreshold):
-        if groupingIndex < 0:
-            raise RuntimeError("YOU IDIOT")
+    @ExceptionToErrLog
+    def onValueChange(self, groupingIndex, xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq):
         self._tweakPeakView.disableRecalculateButton()
+        # TODO: This is a temporary solution,
+        # this should have never been setup to all run on the same thread.
+        # It assumed an exception would never be tossed and thus
+        # would never enable the recalc button again if one did
+        try:
+            self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
 
-        self.focusGroupPath = list(self.focusGroups.items())[groupingIndex][0]
+            # if peaks will change, redo only the smoothing
+            xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
+            xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
+            thresholdChanged = peakThreshold != self.prevThreshold
+            peakFunctionChanged = peakFunction != self.peakFunction
+            fwhmChanged = fwhm != self.prevFWHM
+            maxChiSqChanged = maxChiSq != self.maxChiSq
+            if (
+                xtalDMinValueChanged
+                or xtalDMaxValueChanged
+                or thresholdChanged
+                or peakFunctionChanged
+                or fwhmChanged
+                or maxChiSqChanged
+            ):
+                self._renewIngredients(xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq)
+                self._renewFitPeaks(peakFunction)
 
-        # if peaks will change, redo only the smoothing
-        dMinValueChanged = dMin != self.prevDMin
-        dMaxValueChanged = dMax != self.prevDMax
-        thresholdChanged = peakThreshold != self.prevThreshold
-        if dMinValueChanged or dMaxValueChanged or thresholdChanged:
-            self._renewIngredients(dMin, dMax, peakThreshold)
+            # if the grouping file changes, load new grouping and refocus
+            if groupingIndex != self.prevGroupingIndex:
+                self._renewIngredients(xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq)
+                self._renewFocus(groupingIndex)
+                self._renewFitPeaks(peakFunction)
 
-        # if the grouping file changes, load new grouping and refocus
-        if groupingIndex != self.prevGroupingIndex:
-            self._renewFocus(groupingIndex)
-            self._renewIngredients(dMin, dMax, peakThreshold)
+            self._tweakPeakView.updateGraphs(
+                self.focusedWorkspace,
+                self.ingredients.groupedPeakLists,
+                self.fitPeaksDiagnostic,
+            )
 
-        self._tweakPeakView.updateGraphs(self.focusedWorkspace, self.ingredients.groupedPeakLists)
+            # update the values for next call to this method
+            self.prevXtalDMin = xtalDMin
+            self.prevXtalDMax = xtalDMax
+            self.prevFWHM = fwhm
+            self.prevThreshold = peakThreshold
+            self.peakFunction = peakFunction
+            self.prevGroupingIndex = groupingIndex
+            self.maxChiSq = maxChiSq
+        except Exception as e:  # noqa BLE001
+            print(e)
 
         # renable button when graph is updated
         self._tweakPeakView.enableRecalculateButton()
 
-        # update the values for next call to this method
-        self.prevDMin = dMin
-        self.prevDMax = dMax
-        self.prevThreshold = peakThreshold
-        self.prevGroupingIndex = groupingIndex
-
-    def _renewIngredients(self, dMin, dMax, peakThreshold):
+    def _renewIngredients(self, xtalDMin, xtalDMax, peakThreshold, peakFunction, fwhm, maxChiSq):
         payload = DiffractionCalibrationRequest(
             runNumber=self.runNumber,
             useLiteMode=self.useLiteMode,
             focusGroup=self.focusGroups[self.focusGroupPath],
             calibrantSamplePath=self.calibrantSamplePath,
             # fiddly bits
-            peakFunction=self.peakFunction,
-            crystalDMin=dMin,
-            crystalDMax=dMax,
+            peakFunction=peakFunction,
+            crystalDMin=xtalDMin,
+            crystalDMax=xtalDMax,
             peakIntensityThreshold=peakThreshold,
+            fwhmMultipliers=fwhm,
+            maxChiSq=maxChiSq,
         )
         response = self.request(path="calibration/ingredients", payload=payload.json())
         self.ingredients = response.data
@@ -241,6 +290,15 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.groceries["groupingWorkspace"] = response.data[1]
         return response
 
+    def _renewFitPeaks(self, peakFunction):
+        payload = FitMultiplePeaksRequest(
+            inputWorkspace=self.focusedWorkspace,
+            outputWorkspaceGroup=self.fitPeaksDiagnostic,
+            detectorPeaks=self.ingredients.groupedPeakLists,
+            peakFunction=peakFunction,
+        )
+        return self.request(path="calibration/fitpeaks", payload=payload.json())
+
     def _triggerDiffractionCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
 
@@ -255,26 +313,36 @@ class DiffCalWorkflow(WorkflowImplementer):
             useLiteMode=self.useLiteMode,
             # fiddly bits
             peakFunction=self.peakFunction,
-            crystalDMin=self.prevDMin,
-            crystalDMax=self.prevDMax,
+            crystalDMin=self.prevXtalDMin,
+            crystalDMax=self.prevXtalDMax,
             peakIntensityThreshold=self.prevThreshold,
             convergenceThreshold=self.convergenceThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
+            fwhmMultipliers=self.prevFWHM,
+            maxChiSq=self.maxChiSq,
         )
 
         response = self.request(path="calibration/diffraction", payload=payload.json())
 
         payload = CalibrationAssessmentRequest(
             run=RunConfig(runNumber=self.runNumber),
+            useLiteMode=self.useLiteMode,
+            focusGroup=self.focusGroups[self.focusGroupPath],
+            calibrantSamplePath=self.calibrantSamplePath,
             workspaces={
-                wngt.DIFFCAL_OUTPUT: [response.data["outputDSPWorkspace"], response.data["outputTOFWorkspace"]],
+                wngt.DIFFCAL_OUTPUT: [response.data["outputWorkspace"]],
+                wngt.DIFFCAL_DIAG: [response.data["diagnosticWorkspace"]],
                 wngt.DIFFCAL_TABLE: [response.data["calibrationTable"]],
                 wngt.DIFFCAL_MASK: [response.data["maskWorkspace"]],
             },
-            focusGroup=self.focusGroups[self.focusGroupPath],
+            # fiddly bits
+            peakFunction=self.peakFunction,
+            crystalDMin=self.prevXtalDMin,
+            crystalDMax=self.prevXtalDMax,
+            peakIntensityThreshold=self.prevThreshold,
             nBinsAcrossPeakWidth=self.nBinsAcrossPeakWidth,
-            useLiteMode=self.useLiteMode,
-            calibrantSamplePath=self.calibrantSamplePath,
+            fwhmMultipliers=self.prevFWHM,
+            maxChiSq=self.maxChiSq,
         )
 
         response = self.request(path="calibration/assessment", payload=payload.json())
@@ -284,7 +352,7 @@ class DiffCalWorkflow(WorkflowImplementer):
         self.outputs.extend(assessmentResponse.metricWorkspaces)
         for calibrationWorkspaces in self.calibrationRecord.workspaces.values():
             self.outputs.extend(calibrationWorkspaces)
-        self._assessmentView.updateRunNumber(self.runNumber)
+        self._assessmentView.updateRunNumber(self.runNumber, self.useLiteMode)
         return response
 
     def _assessCalibration(self, workflowPresenter):  # noqa: ARG002
@@ -307,21 +375,39 @@ class DiffCalWorkflow(WorkflowImplementer):
 
     def _saveCalibration(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
-        # pull fields from view for calibration save
-        calibrationIndexEntry = CalibrationIndexEntry(
-            runNumber=view.fieldRunNumber.get(),
-            comments=view.fieldComments.get(),
-            author=view.fieldAuthor.get(),
-            appliesTo=view.fieldAppliesTo.get(),
-            version=view.fieldVersion.get(None),
-        )
+        runNumber = view.fieldRunNumber.get()
+        version = view.fieldVersion.get(None)
+        appliesTo = view.fieldAppliesTo.get(f">={runNumber}")
+        # validate the version number
+        version = VersionedObject.parseVersion(version, exclude_default=True)
+        # validate appliesTo field
+        appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
 
         # if this is not the first iteration, account for choice.
         if workflowPresenter.iteration > 1:
             self.calibrationRecord.workspaces = self._getSaveSelection(self._saveView.iterationDropdown)
 
+        createIndexEntryRequest = CreateIndexEntryRequest(
+            runNumber=runNumber,
+            useLiteMode=self.useLiteMode,
+            version=version,
+            appliesTo=appliesTo,
+            comments=view.fieldComments.get(),
+            author=view.fieldAuthor.get(),
+        )
+        createRecordRequest = CreateCalibrationRecordRequest(
+            runNumber=runNumber,
+            useLiteMode=self.useLiteMode,
+            version=version,
+            calculationParameters=self.calibrationRecord.calculationParameters,
+            crystalInfo=self.calibrationRecord.crystalInfo,
+            pixelGroups=self.calibrationRecord.pixelGroups,
+            focusGroupCalibrationMetrics=self.calibrationRecord.focusGroupCalibrationMetrics,
+            workspaces=self.calibrationRecord.workspaces,
+        )
         payload = CalibrationExportRequest(
-            calibrationRecord=self.calibrationRecord, calibrationIndexEntry=calibrationIndexEntry
+            createIndexEntryRequest=createIndexEntryRequest,
+            createRecordRequest=createRecordRequest,
         )
 
         response = self.request(path="calibration/save", payload=payload.json())

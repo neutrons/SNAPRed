@@ -1,7 +1,8 @@
 import pytest
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 from snapred.backend.dao.request.CalibrationAssessmentRequest import CalibrationAssessmentRequest
 from snapred.meta.mantid.AllowedPeakTypes import allowed_peak_type_list
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName as wngn
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
 
 
@@ -11,13 +12,17 @@ def test_literal_bad():
     with pytest.raises(ValidationError) as e:
         CalibrationAssessmentRequest(
             run={"runNumber": "123"},
-            workspaces={wngt.DIFFCAL_OUTPUT: ["nope"]},
+            workspaces={wngt.DIFFCAL_OUTPUT: [wngn("nope")]},
             focusGroup={"name": "nope", "definition": "nope"},
             calibrantSamplePath="nope",
             useLiteMode=False,
-            peakType=bad,
+            peakFunction=bad,
+            crystalDMin=0.0,
+            crystaldMax=10.0,
+            peakIntensityThreshold=1.0,
+            nBinsAcrossPeakWidth=10,
         )
-    assert "peakType" in str(e.value)
+    assert "peakFunction" in str(e.value)
 
 
 def test_literal_good():
@@ -25,11 +30,16 @@ def test_literal_good():
         try:
             CalibrationAssessmentRequest(
                 run={"runNumber": "123"},
-                workspaces={wngt.DIFFCAL_OUTPUT: ["nope"]},
-                focusGroup={"name": "nope", "definition": "nope"},
-                calibrantSamplePath="nope",
+                workspaces={wngt.DIFFCAL_OUTPUT: [wngn("yup")]},
+                focusGroup={"name": "yup", "definition": "yup"},
+                calibrantSamplePath="yup",
                 useLiteMode=False,
-                peakType=good,
+                peakFunction=good,
+                crystalDMin=0.0,
+                crystalDMax=10.0,
+                peakIntensityThreshold=1.0,
+                nBinsAcrossPeakWidth=10,
+                maxChiSq=100.0,
             )
         except ValidationError:
             pytest.fail("unexpected `ValidationError` during test")

@@ -1,4 +1,4 @@
-"""SNAPRed: a Python package for reduction and caliration of the SNAPRed instrument"""
+"""SNAPRed: a Python package for reduction and calibration of the SNAPRed instrument"""
 
 try:
     from ._version import __version__  # noqa: F401

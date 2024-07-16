@@ -3,11 +3,8 @@ import tempfile
 import unittest
 from unittest import mock
 
-import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
-from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
-from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.Config import Config
 
@@ -21,8 +18,9 @@ class TestSousChef(unittest.TestCase):
             runNumber="123",
             useLiteMode=True,
             focusGroup={"name": "apple", "definition": "banana/coconut"},
-            calibrantSamplePath="path/to/sample",
+            calibrantSamplePath="path/to/sample.xyz",
             cifPath="path/to/cif",
+            maxChiSq=100.0,
         )
 
     def tearDown(self):
@@ -33,6 +31,20 @@ class TestSousChef(unittest.TestCase):
     def tearDownClass(cls):
         for ws in mtd.getObjectNames():
             DeleteWorkspace(ws)
+
+    def test_prepManyDetectorPeaks(self):
+        self.instance.prepDetectorPeaks = mock.Mock()
+        self.ingredients.focusGroup = [self.ingredients.focusGroup]
+        res = self.instance.prepManyDetectorPeaks(self.ingredients)
+        assert res[0] == self.instance.prepDetectorPeaks.return_value
+        assert self.instance.prepDetectorPeaks.called_once_with(self.ingredients, purgePeaks=False)
+
+    def test_prepManyPixelGroups(self):
+        self.instance.prepPixelGroup = mock.Mock()
+        self.ingredients.focusGroup = [self.ingredients.focusGroup]
+        res = self.instance.prepManyPixelGroups(self.ingredients)
+        assert res[0] == self.instance.prepPixelGroup.return_value
+        assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
 
     def test_prepFocusGroup_exists(self):
         # create a temp file to be used a the path for the focus group
@@ -59,16 +71,30 @@ class TestSousChef(unittest.TestCase):
 
         assert res == mockGroupingDictionary[self.ingredients.focusGroup.name]
 
-    def test_prepCalibration_nocache(self):
-        runNumber = self.ingredients.runNumber
-
+    def test_prepCalibration(self):
         mockCalibration = mock.Mock()
         self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
 
-        res = self.instance.prepCalibration(runNumber)
+        res = self.instance.prepCalibration(self.ingredients)
 
-        assert self.instance.dataFactoryService.getCalibrationState.called_once_with(runNumber)
+        assert self.instance.dataFactoryService.getCalibrationState.called_once_with(self.ingredients)
         assert res == self.instance.dataFactoryService.getCalibrationState.return_value
+        assert res.instrumentState.fwhmMultipliers.dict() == Config["calibration.parameters.default.FWHMMultiplier"]
+
+    def test_prepCalibration_userFWHM(self):
+        mockCalibration = mock.Mock()
+        self.instance.dataFactoryService.getCalibrationState = mock.Mock(return_value=mockCalibration)
+        fakeLeft = 116
+        fakeRight = 17
+        self.ingredients.fwhmMultipliers = mock.Mock(left=fakeLeft, right=fakeRight)
+
+        res = self.instance.prepCalibration(self.ingredients)
+
+        assert self.instance.dataFactoryService.getCalibrationState.called_once_with(self.ingredients)
+        assert res == self.instance.dataFactoryService.getCalibrationState.return_value
+        assert res.instrumentState.fwhmMultipliers == self.ingredients.fwhmMultipliers
+        assert res.instrumentState.fwhmMultipliers.left == fakeLeft
+        assert res.instrumentState.fwhmMultipliers.right == fakeRight
 
     def test_prepInstrumentState(self):
         runNumber = "123"
@@ -180,8 +206,9 @@ class TestSousChef(unittest.TestCase):
         )
         # ensure the cache is preped
         self.instance._xtalCache[key] = mock.Mock()
+
         # make ingredients with no CIF path
-        incompleteIngredients = FarmFreshIngredients.parse_obj(self.ingredients)
+        incompleteIngredients = self.ingredients.model_copy()
         incompleteIngredients.cifPath = None
 
         # mock out the data factory
@@ -214,29 +241,64 @@ class TestSousChef(unittest.TestCase):
         assert res == PeakIngredients.return_value
 
     @mock.patch(thisService + "DetectorPeakPredictorRecipe")
-    @mock.patch(thisService + "parse_raw_as")
     @mock.patch(thisService + "GroupPeakList")
-    def test_prepDetectorPeaks_nocache(self, GroupPeakList, parse_raw_as, DetectorPeakPredictorRecipe):  # noqa: ARG002
+    def test_prepDetectorPeaks_nocache_nopurge(self, GroupPeakList, DetectorPeakPredictorRecipe):  # noqa: ARG002
         key = (
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
-            Config["constants.CrystallographicInfo.dMin"],
-            Config["constants.CrystallographicInfo.dMax"],
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+            self.ingredients.fwhmMultipliers.left,
+            self.ingredients.fwhmMultipliers.right,
             self.ingredients.peakIntensityThreshold,
+            False,
         )
         # ensure the cache is clear
         assert self.instance._peaksCache == {}
 
         self.instance.prepPeakIngredients = mock.Mock()
-        parse_raw_as.side_effect = lambda x, y: [y]  # noqa: ARG005
+        self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
 
-        res = self.instance.prepDetectorPeaks(self.ingredients)
+        res = self.instance.prepDetectorPeaks(self.ingredients, False)
 
         assert self.instance.prepPeakIngredients.called_once_with(self.ingredients)
         assert DetectorPeakPredictorRecipe.return_value.executeRecipe.called_once_with(Ingredients=self.ingredients)
         assert res == [DetectorPeakPredictorRecipe.return_value.executeRecipe.return_value]
         assert self.instance._peaksCache == {key: [DetectorPeakPredictorRecipe.return_value.executeRecipe.return_value]}
+
+    @mock.patch(thisService + "PurgeOverlappingPeaksRecipe")
+    @mock.patch(thisService + "DetectorPeakPredictorRecipe")
+    @mock.patch(thisService + "GroupPeakList")
+    def test_prepDetectorPeaks_nocache_purge(
+        self,
+        GroupPeakList,  # noqa: ARG002
+        DetectorPeakPredictorRecipe,
+        PurgeOverlappingPeaksRecipe,
+    ):  # noqa: ARG002
+        key = (
+            self.ingredients.runNumber,
+            self.ingredients.useLiteMode,
+            self.ingredients.focusGroup.name,
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+            self.ingredients.fwhmMultipliers.left,
+            self.ingredients.fwhmMultipliers.right,
+            self.ingredients.peakIntensityThreshold,
+            True,
+        )
+        # ensure the cache is clear
+        assert self.instance._peaksCache == {}
+
+        self.instance.prepPeakIngredients = mock.Mock()
+        self.instance.parseGroupPeakList = mock.Mock(side_effect=lambda y: [y])
+
+        res = self.instance.prepDetectorPeaks(self.ingredients)
+
+        assert self.instance.prepPeakIngredients.called_once_with(self.ingredients)
+        assert DetectorPeakPredictorRecipe.return_value.executeRecipe.called_once_with(Ingredients=self.ingredients)
+        assert res == [PurgeOverlappingPeaksRecipe.return_value.executeRecipe.return_value]
+        assert self.instance._peaksCache == {key: [PurgeOverlappingPeaksRecipe.return_value.executeRecipe.return_value]}
 
     @mock.patch(thisService + "DetectorPeakPredictorRecipe")
     def test_prepDetectorPeaks_cache(self, DetectorPeakPredictorRecipe):
@@ -244,9 +306,12 @@ class TestSousChef(unittest.TestCase):
             self.ingredients.runNumber,
             self.ingredients.useLiteMode,
             self.ingredients.focusGroup.name,
-            Config["constants.CrystallographicInfo.dMin"],
-            Config["constants.CrystallographicInfo.dMax"],
+            self.ingredients.crystalDBounds.minimum,
+            self.ingredients.crystalDBounds.maximum,
+            self.ingredients.fwhmMultipliers.left,
+            self.ingredients.fwhmMultipliers.right,
             self.ingredients.peakIntensityThreshold,
+            True,
         )
         # ensure the cache is prepared
         self.instance._peaksCache[key] = [mock.Mock()]
@@ -258,19 +323,27 @@ class TestSousChef(unittest.TestCase):
 
     @mock.patch(thisService + "ReductionIngredients")
     def test_prepReductionIngredients(self, ReductionIngredients):
+        record = mock.Mock(
+            smoothingParamter=1.0,
+            calculationParameters=mock.Mock(calibrantSamplePath="a/b.x"),
+        )
         self.instance.prepRunConfig = mock.Mock()
-        self.instance.prepPixelGroup = mock.Mock()
+        self.instance.prepManyPixelGroups = mock.Mock()
+        self.instance.prepManyDetectorPeaks = mock.Mock()
+        self.instance.dataFactoryService.getCifFilePath = mock.Mock()
         self.instance.dataFactoryService.getReductionState = mock.Mock()
+        self.instance.dataFactoryService.getNormalizationRecord = mock.Mock(return_value=record)
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=record)
 
         res = self.instance.prepReductionIngredients(self.ingredients)
 
-        assert self.instance.prepRunConfig.called_once_with(self.ingredients.runNumber)
-        assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
-        assert self.instance.dataFactoryService.getReductionState.called_once_with(self.ingredients.runNumber)
+        assert self.instance.prepManyPixelGroups.called_once_with(self.ingredients)
+        assert self.instance.dataFactoryService.getCifFilePath.called_once_with("sample")
         assert ReductionIngredients.called_once_with(
-            reductionState=self.instance.dataFactoryService.getReductionState.return_value,
-            runConfig=self.instance.prepRunConfig.return_value,
-            pixelGroup=self.instance.prepPixelGroup.return_value,
+            maskList=[],
+            pixelGroups=self.instance.prepManyPixelGroups.return_value,
+            smoothingParameter=record.smoothingParameter,
+            detectorPeaksMany=self.instance.prepManyDetectorPeaks.return_value,
         )
         assert res == ReductionIngredients.return_value
 

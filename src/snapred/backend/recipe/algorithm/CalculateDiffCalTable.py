@@ -1,7 +1,3 @@
-import json
-from typing import Dict, List, Tuple
-
-import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     ITableWorkspaceProperty,
@@ -50,7 +46,7 @@ class CalculateDiffCalTable(PythonAlgorithm):
         self.log().notice("Creating DIFC table")
 
         # prepare initial diffraction calibration workspace
-        tmpDifc = "_tmp_matrixworkspace"
+        tmpDifc = mtd.unique_name(prefix="_tmp_")
         CalculateDIFC(
             InputWorkspace=self.getPropertyValue("InputWorkspace"),
             OutputWorkspace=tmpDifc,
@@ -83,7 +79,7 @@ class CalculateDiffCalTable(PythonAlgorithm):
         DeleteWorkspace(
             Workspace=tmpDifc,
         )
+        self.setProperty("CalibrationTable", DIFCtable)
 
 
-# Register algorithm with Mantid
 AlgorithmFactory.subscribe(CalculateDiffCalTable)

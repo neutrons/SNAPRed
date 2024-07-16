@@ -1,10 +1,14 @@
 import pytest
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 runNumber = 123
 fRunNumber = str(runNumber).zfill(6)
 version = 1
 fVersion = "v" + str(version).zfill(4)
+stateId = "ab8704b0bc2a2342"
+fStateId = "bc2a2342"
 
 
 def testRunNames():
@@ -58,21 +62,68 @@ def testDiffCalMetricsNames():
     )
 
 
+def testReductionOutputName():
+    assert (  # "reduced_data,{unit},{group},{runNumber},{version}"
+        f"_reduced_dsp_lahdeedah_{fRunNumber}" == wng.reductionOutput().group("lahDeeDah").runNumber(runNumber).build()
+    )
+    assert (
+        f"_reduced_dsp_column_{fRunNumber}_{fVersion}"
+        == wng.reductionOutput().group(wng.Groups.COLUMN).runNumber(runNumber).version(version).build()
+    )
+    assert (
+        f"_reduced_tof_column_{fRunNumber}_{fVersion}"
+        == wng.reductionOutput()
+        .unit(wng.Units.TOF)
+        .group(wng.Groups.COLUMN)
+        .runNumber(runNumber)
+        .version(version)
+        .build()
+    )
+
+
+def testReductionOutputGroupName():
+    assert (  # "reduced_data,{stateId},{version}"
+        f"_reduced_{fStateId}" == wng.reductionOutputGroup().stateId(stateId).build()
+    )
+    assert f"_reduced_{fStateId}_{fVersion}" == wng.reductionOutputGroup().stateId(stateId).version(version).build()
+
+
 def testInvalidKey():
     with pytest.raises(RuntimeError, match=r"Key \[unit\] not a valid property"):
         wng.diffCalMask().runNumber(runNumber).unit(wng.Units.TOF).build()
 
 
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
+def test_formatVersion_use_v_prefix():
+    expected = "v"
+    ans = wnvf.formatVersion(None, use_v_prefix=True)
+    assert ans == expected
 
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)
+
+def test_formatVersion_none():
+    expected = ""
+    ans = wnvf.formatVersion(None, use_v_prefix=False)
+    assert ans == expected
+
+
+def test_formatVersion_default():
+    expected = VERSION_DEFAULT_NAME
+    ans = wnvf.formatVersion(VERSION_DEFAULT, use_v_prefix=False)
+    assert ans == expected
+
+
+def test_formatVersion_str_to_int():
+    expected = "0001"
+    ans = wnvf.formatVersion("1", use_v_prefix=False)
+    assert ans == expected
+
+
+def test_formatVersion_int():
+    expected = "0001"
+    ans = wnvf.formatVersion(1, use_v_prefix=False)
+    assert ans == expected
+
+
+def test_formatVersion_nonsense():
+    expected = ""
+    ans = wnvf.formatVersion("matt", use_v_prefix=False)
+    assert ans == expected

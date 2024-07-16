@@ -6,7 +6,7 @@ from snapred.meta.Config import Config
 
 class VanadiumCorrectionRequest(BaseModel):
     runNumber: str
-    useLiteMode: bool = True  # TODO turn this on inside the view and workflow
+    useLiteMode: bool
     focusGroup: FocusGroup
 
     calibrantSamplePath: str
@@ -15,5 +15,5 @@ class VanadiumCorrectionRequest(BaseModel):
     backgroundWorkspace: str
     outputWorkspace: str
 
-    crystalDMin: float = Config["constants.CrystallographicInfo.dMin"]
-    crystalDMax: float = Config["constants.CrystallographicInfo.dMax"]
+    crystalDMin: float = Config["constants.CrystallographicInfo.crystalDMin"]
+    crystalDMax: float = Config["constants.CrystallographicInfo.crystalDMax"]

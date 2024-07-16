@@ -55,7 +55,7 @@
       }
     },
     "defaultGroupingSliceValue": 5.0,
-    "fwhmMultiplierLimit": {
+    "fwhmMultipliers": {
       "minimum": 1.5,
       "maximum": 1.5
     },
@@ -445,7 +445,7 @@
       }
     ]
   },
-  "peakType": "Gaussian",
+  "peakFunction": "Gaussian",
   "inputWorkspace": "testWS",
   "showResult": false
 }

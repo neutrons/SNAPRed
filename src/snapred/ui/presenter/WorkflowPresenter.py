@@ -1,11 +1,9 @@
-from os import path
-
-from qtpy.QtWidgets import QMainWindow, QMessageBox
+from qtpy.QtWidgets import QMainWindow
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import SNAPRequest
 from snapred.backend.dao.request import ClearWorkspaceRequest
-from snapred.backend.dao.SNAPResponse import ResponseCode
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
 from snapred.ui.model.WorkflowNodeModel import WorkflowNodeModel
@@ -28,6 +26,7 @@ class WorkflowPresenter(object):
         self.resetLambda = self.resetAndClear
         self._hookupSignals()
         self.responseHandler = SNAPResponseHandler(self.view)
+        self.responseHandler.continueAnyway.connect(self.continueAnyway)
 
     @property
     def widget(self):
@@ -146,3 +145,12 @@ class WorkflowPresenter(object):
 
     def _handleComplications(self, result):
         self.responseHandler.handle(result)
+
+    def continueAnyway(self, continueInfo: ContinueWarning.Model):
+        if self.model.continueAnywayHandler:
+            self.model.continueAnywayHandler(continueInfo)
+
+        self.worker = self.worker_pool.createWorker(target=self.model.nextModel.continueAction, args=self)
+        self.worker.success.connect(lambda success: self.advanceWorkflow() if success else None)
+
+        self.worker_pool.submitWorker(self.worker)

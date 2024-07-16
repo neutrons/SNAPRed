@@ -1,7 +1,6 @@
-import os
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-from snapred.backend.dao.RunConfig import RunConfig
+from snapred.backend.data.DataExportService import DataExportService
 from snapred.backend.recipe.GenericRecipe import LiteDataRecipe as Recipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
@@ -14,6 +13,7 @@ class LiteDataService(Service):
     def __init__(self):
         super().__init__()
         self.registerPath("createLiteData", self.reduceLiteData)
+        self.dataExportService = DataExportService()
         return
 
     @staticmethod
@@ -33,6 +33,7 @@ class LiteDataService(Service):
         instrumentDefinition: str = None,
     ) -> Dict[Any, Any]:
         liteDataMap = self._ensureLiteDataMap()
+        runNumber = inputWorkspace.split("_")[-1].lstrip("0")
         try:
             data = Recipe().executeRecipe(
                 InputWorkspace=inputWorkspace,
@@ -40,6 +41,10 @@ class LiteDataService(Service):
                 LiteInstrumentDefinitionFile=instrumentDefinition,
                 OutputWorkspace=outputWorkspace,
             )
+            fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
+            path = fullPath.parent
+            fileName = fullPath.name
+            self.dataExportService.exportWorkspace(path, fileName, outputWorkspace)
         except Exception as e:
             raise e
         return data

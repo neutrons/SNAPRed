@@ -18,7 +18,7 @@ class ConfigLookupService(Service):
         super().__init__()
         self.dataFactoryService = DataFactoryService()
         self.registerPath("", self.getConfigs)
-        self.registerPath("samplePaths", self.getSamplePaths)
+        self.registerPath("samplePaths", self.getSampleFilePaths)
         self.registerPath("groupingMap", self.getGroupingMap)
 
         return
@@ -30,12 +30,12 @@ class ConfigLookupService(Service):
     def getGroupingMap(self, runId: str):
         return self.dataFactoryService.getGroupingMap(runId)
 
-    def getSamplePaths(self):
-        return self.dataFactoryService.getSamplePaths()
+    def getSampleFilePaths(self):
+        return self.dataFactoryService.getSampleFilePaths()
 
     @FromString
     def getConfigs(self, runs: List[RunConfig]):
         data = {}
         for run in runs:
-            data[run.runNumber] = self.dataFactoryService.getReductionState(run.runNumber)
+            data[run.runNumber] = self.dataFactoryService.getReductionState(run.runNumber, run.useLiteMode)
         return data

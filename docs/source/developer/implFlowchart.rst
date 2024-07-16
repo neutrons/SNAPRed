@@ -15,3 +15,21 @@ Implementation Decision Tree
         id3 --> |No| id7["Is it software metadata?"]
         id7 --> |Yes| id4
         id7 --> |No| id8["Does it actually do anything?"]
+
+
+..
+    I'm not sure if linking to existing docs is relavent within this flowchart but I believe to
+    have found the proper way of adding tags to mermaid produced diagrams. Here are two examples
+    for different types of tagging:
+
+    1. Hyperlinks -
+
+        id[Start] --> id1["Does it <a href="https://www.exampleofLoad.com">Load</a>/Save Data from/to Disk?"]
+
+      In this example above, the link will be applied to the text "Load" within the diagram.
+
+    2. Doc Tags -
+
+        id[Start] --> id1["Does it <a href=":doc:`exampleofLoad`">Load</a>/Save Data from/to Disk?"]
+
+      Similar to the example for hyperlinks, the doc link above will be applied to the text "Load" within the diagram.

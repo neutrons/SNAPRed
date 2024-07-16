@@ -1,8 +1,11 @@
-from typing import List
-
 from pydantic import BaseModel
 
 
 class FocusGroup(BaseModel):
-    name: str  # eg Column, Bank, All
-    definition: str  # eg SNS/SNAP/shared/IPTS_xxx/nexus/SNAP+123.nxs
+    # name of grouping schema:
+    # e.g. "Column", "Bank", "All"
+    name: str
+
+    # relative or absolute file path:
+    # * a relative path here is relative to <instrument.calibration.powder.grouping.home>
+    definition: str

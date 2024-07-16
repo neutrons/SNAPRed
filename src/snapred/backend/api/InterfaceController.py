@@ -1,6 +1,7 @@
-import inspect
 import json
+from typing import List
 
+from snapred.backend.api.RequestScheduler import RequestScheduler
 from snapred.backend.dao import SNAPRequest, SNAPResponse
 from snapred.backend.dao.request.InitializeStateHandler import InitializeStateHandler
 from snapred.backend.dao.SNAPResponse import ResponseCode
@@ -12,6 +13,15 @@ from snapred.meta.decorators.Singleton import Singleton
 
 @Singleton
 class InterfaceController:
+    """
+
+    InterfaceController serves as the central controller for handling SNAPRequests and generating SNAPResponses.
+    It utilizes the ServiceFactory to delegate the request to the appropriate service and handles both normal and
+    recoverable exceptions to ensure robustness in request processing. This controller is designed as a Singleton
+    to maintain a single instance throughout the application's lifecycle, ensuring consistent state and behavior.
+
+    """
+
     serviceFactory = ServiceFactory()
 
     def __init__(self):
@@ -40,8 +50,10 @@ class InterfaceController:
             self.logger.error(f"Recoverable error occurred: {str(e)}")
             payloadDict = json.loads(request.payload)
             runNumber = payloadDict["runNumber"]
+            useLiteMode = payloadDict["useLiteMode"]
             if runNumber:
                 InitializeStateHandler.runId = runNumber
+                InitializeStateHandler.useLiteMode = useLiteMode
             response = SNAPResponse(code=ResponseCode.RECOVERABLE, message="state")
 
         except Exception as e:  # noqa BLE001
@@ -54,3 +66,23 @@ class InterfaceController:
 
         self.logger.debug(response.json())
         return response
+
+    def executeBatchRequests(self, requests: List[SNAPRequest]) -> List[SNAPResponse]:
+        # verify all requests have same path
+        for request in requests:
+            if not requests[0].path == request.path:
+                self.logger.error("Mismatch of paths in list of requests")
+                return None
+
+        # reorder the list of requests
+        service = self.serviceFactory.getService(requests[0].path)
+        scheduler = RequestScheduler()
+        groupings = service.getGroupings("")
+        orderedRequests = scheduler.handle(requests, groupings)
+
+        # execute the ordered list of requests
+        responses = []
+        for request in orderedRequests:
+            responses.append(self.executeRequest(request))
+
+        return responses

@@ -13,29 +13,31 @@ from snapred.meta.Config import Config
 
 
 class CrystallographicInfoAlgorithm(PythonAlgorithm):
-    D_MIN = Config["constants.CrystallographicInfo.dMin"]
-    D_MAX = Config["constants.CrystallographicInfo.dMax"]
+    D_MIN = Config["constants.CrystallographicInfo.crystalDMin"]
+    D_MAX = Config["constants.CrystallographicInfo.crystalDMax"]
 
     def category(self):
         return "SNAPRed Sample Data"
 
     def PyInit(self):
         # declare properties
-        self.declareProperty("cifPath", defaultValue="", direction=Direction.Input)
-        self.declareProperty("crystalStructure", defaultValue="", direction=Direction.InOut)
-        self.declareProperty("crystalInfo", defaultValue="", direction=Direction.Output)
-        self.declareProperty("dMin", defaultValue=self.D_MIN, direction=Direction.Input)
-        self.declareProperty("dMax", defaultValue=self.D_MAX, direction=Direction.Input)
+        self.declareProperty("CifPath", defaultValue="", direction=Direction.Input)
+        self.declareProperty("CrystalInfo", defaultValue="", direction=Direction.Output)
+        self.declareProperty("Crystallography", defaultValue="", direction=Direction.InOut)
+        self.declareProperty("crystalDMin", defaultValue=self.D_MIN, direction=Direction.Input)
+        self.declareProperty("crystalDMax", defaultValue=self.D_MAX, direction=Direction.Input)
         self.setRethrows(True)
         self.mantidSnapper = MantidSnapper(self, __name__)
 
     def PyExec(self):
-        cifPath = self.getProperty("cifPath").value
+        cifPath = self.getProperty("CifPath").value
         # run the algo
         self.log().notice("ingest crystallogtaphic info")
 
         # Load the CIF file into an empty workspace
-        if not self.getProperty("cifPath").isDefault:
+        # use this to set the crystallography output
+        # also create a mantid CrystalStructure object
+        if not self.getProperty("CifPath").isDefault:
             ws = "xtal_data"
             self.mantidSnapper.CreateSingleValuedWorkspace(
                 "Creating sample workspace...",
@@ -46,9 +48,8 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
             ws = self.mantidSnapper.mtd[ws]
             xtal = ws.sample().getCrystalStructure()
             xtallography = Crystallography(cifPath, xtal)
-            self.setPropertyValue("crystalStructure", xtallography.json())
-        elif not self.getProperty("crystalStructure").isDefault:
-            xtallography = Crystallography.parse_raw(self.getPropertyValue("crystalStructure"))
+        elif not self.getProperty("Crystallography").isDefault:
+            xtallography = Crystallography.model_validate_json(self.getPropertyValue("Crystallography"))
             xtal = CrystalStructure(
                 xtallography.unitCellString,
                 xtallography.spaceGroupString,
@@ -56,14 +57,15 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
             )
         else:
             raise ValueError("Either cifPath or crystalStructure must be set!")
+        self.setPropertyValue("Crystallography", xtallography.json())
 
         # Generate reflections
         generator = ReflectionGenerator(xtal)
 
         # Create list of unique reflections between 0.1 and 100.0 Angstrom
-        dMin = self.getProperty("dMin").value
-        dMax = self.getProperty("dMax").value
-        hkls = generator.getUniqueHKLsUsingFilter(dMin, dMax, ReflectionConditionFilter.StructureFactor)
+        crystalDMin = self.getProperty("crystalDMin").value
+        crystalDMax = self.getProperty("crystalDMax").value
+        hkls = generator.getUniqueHKLsUsingFilter(crystalDMin, crystalDMax, ReflectionConditionFilter.StructureFactor)
 
         # Calculate d and F^2
         dValues = generator.getDValues(hkls)
@@ -77,8 +79,8 @@ class CrystallographicInfoAlgorithm(PythonAlgorithm):
         dValues = [float(d) for d in dValues]
         fSquared = [float(fsq) for fsq in fSquared]
 
-        xtal = CrystallographicInfo(hkl=hkls, dSpacing=dValues, fSquared=fSquared, multiplicities=multiplicities)
-        self.setProperty("crystalInfo", xtal.json())
+        xtalInfo = CrystallographicInfo(hkl=hkls, dSpacing=dValues, fSquared=fSquared, multiplicities=multiplicities)
+        self.setPropertyValue("CrystalInfo", xtalInfo.json())
         # ws
         self.mantidSnapper.WashDishes(
             "Cleaning up xtal workspace.",

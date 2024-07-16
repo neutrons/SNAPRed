@@ -1,21 +1,20 @@
-import re
 import time
-from typing import Any, Dict
+from pathlib import Path
 
 from snapred.backend.dao import Limit
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.backend.dao.ingredients import (
     GroceryListItem,
 )
 from snapred.backend.dao.normalization import (
     Normalization,
-    NormalizationIndexEntry,
-    NormalizationRecord,
 )
 from snapred.backend.dao.request import (
+    CreateNormalizationRecordRequest,
     FarmFreshIngredients,
     FocusSpectraRequest,
-    NormalizationCalibrationRequest,
     NormalizationExportRequest,
+    NormalizationRequest,
     SmoothDataExcludingPeaksRequest,
     VanadiumCorrectionRequest,
 )
@@ -34,7 +33,9 @@ from snapred.backend.service.Service import Service
 from snapred.backend.service.SousChef import SousChef
 from snapred.meta.decorators.FromString import FromString
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.redantic import parse_obj_as
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -68,21 +69,21 @@ class NormalizationService(Service):
         return "normalization"
 
     @FromString
-    def normalization(self, request: NormalizationCalibrationRequest):
+    def normalization(self, request: NormalizationRequest):
         if not self._sameStates(request.runNumber, request.backgroundRunNumber):
             raise ValueError("Run number and background run number must be of the same Instrument State.")
 
         groupingScheme = request.focusGroup.name
 
         # prepare ingredients
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroup,
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
-            crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
+            crystalDBounds=request.crystalDBounds,
             peakIntensityThreshold=request.peakIntensityThreshold,
         )
         ingredients = self.sousChef.prepNormalizationIngredients(farmFresh)
@@ -154,37 +155,64 @@ class NormalizationService(Service):
         return stateId1 == stateId2
 
     @FromString
-    def normalizationAssessment(self, request: NormalizationCalibrationRequest):
-        calibration = self.dataFactoryService.getCalibrationState(request.runNumber)
-        record = NormalizationRecord(
+    def normalizationAssessment(self, request: NormalizationRequest):
+        farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
+            focusGroup=request.focusGroup,
+            useLiteMode=request.useLiteMode,
+            calibrantSamplePath=request.calibrantSamplePath,
+            fwhmMultipliers=request.fwhmMultipliers,
+            peakIntensityThreshold=request.peakIntensityThreshold,
+            crystalDBounds=request.crystalDBounds,
+        )
+        normalization = parse_obj_as(Normalization, self.sousChef.prepCalibration(farmFresh))
+
+        createRecordRequest = CreateNormalizationRecordRequest(
+            runNumber=request.runNumber,
+            useLiteMode=request.useLiteMode,
+            peakIntensityThreshold=request.peakIntensityThreshold,
             backgroundRunNumber=request.backgroundRunNumber,
             smoothingParameter=request.smoothingParameter,
-            calibration=calibration,
-            dMin=request.crystalDMin,
+            calculationParameters=normalization,
+            crystalDBounds=request.crystalDBounds,
         )
-        return record
+        return self.dataFactoryService.createNormalizationRecord(createRecordRequest)
 
     @FromString
     def saveNormalization(self, request: NormalizationExportRequest):
-        entry = request.normalizationIndexEntry
+        """
+        If no version is attached to the request, this will save at next version number
+        """
+        entry = self.dataFactoryService.createNormalizationIndexEntry(request.createIndexEntryRequest)
+        record = self.dataFactoryService.createNormalizationRecord(request.createRecordRequest)
         version = entry.version
-        normalizationRecord = request.normalizationRecord
-        normalizationRecord.version = version
-        normalizationRecord = self.dataExportService.exportNormalizationRecord(normalizationRecord)
-        normalizationRecord = self.dataExportService.exportNormalizationWorkspaces(normalizationRecord)
+
+        # rename the workspaces to include version number
+        savedWorkspaces = []
+        for workspace in record.workspaceNames:
+            newName = workspace + "_" + wnvf.formatVersion(version)
+            self.groceryService.renameWorkspace(workspace, newName)
+            savedWorkspaces.append(newName)
+        record.workspaceNames = savedWorkspaces
+
+        # save the objects at the indicated version
+        self.dataExportService.exportNormalizationRecord(record)
+        self.dataExportService.exportNormalizationWorkspaces(record)
         self.saveNormalizationToIndex(entry)
 
-    def saveNormalizationToIndex(self, entry: NormalizationIndexEntry):
+    def saveNormalizationToIndex(self, entry: IndexEntry):
+        """
+        Correct version must be attached to the entry.
+        """
         if entry.appliesTo is None:
-            entry.appliesTo = ">" + entry.runNumber
+            entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
             entry.timestamp = int(round(time.time() * 1000))
         logger.info(f"Saving normalization index entry for Run Number {entry.runNumber}")
         self.dataExportService.exportNormalizationIndexEntry(entry)
 
     def vanadiumCorrection(self, request: VanadiumCorrectionRequest):
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -217,7 +245,7 @@ class NormalizationService(Service):
 
     @FromString
     def smoothDataExcludingPeaks(self, request: SmoothDataExcludingPeaksRequest):
-        cifPath = self.dataFactoryService.getCifFilePath(request.calibrantSamplePath.split("/")[-1].split(".")[0])
+        cifPath = self.dataFactoryService.getCifFilePath(Path(request.calibrantSamplePath).stem)
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
@@ -227,7 +255,7 @@ class NormalizationService(Service):
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
             peakIntensityThreshold=request.peakIntensityThreshold,
         )
-        peaks = self.sousChef.prepDetectorPeaks(farmFresh)
+        peaks = self.sousChef.prepDetectorPeaks(farmFresh, purgePeaks=False)
 
         # execute recipe -- the output will be set by the algorithm
         SmoothDataExcludingPeaksRecipe().executeRecipe(

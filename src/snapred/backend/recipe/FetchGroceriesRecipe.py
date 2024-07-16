@@ -1,22 +1,22 @@
-import os
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict
 
-from mantid.simpleapi import CloneWorkspace, mtd
-
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.data.LocalDataService import LocalDataService
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.FetchGroceriesAlgorithm import FetchGroceriesAlgorithm as FetchAlgo
-from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo as LiteDataAlgo
-from snapred.meta.Config import Config
+from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
 
 @Singleton
 class FetchGroceriesRecipe:
+    def __init__(self):
+        # NOTE: workaround, we just add an empty host algorithm.
+        utensils = Utensils()
+        utensils.PyInit()
+        self.mantidSnapper = utensils.mantidSnapper
+
     def executeRecipe(
         self,
         filename: str,
@@ -58,6 +58,20 @@ class FetchGroceriesRecipe:
             data["result"] = algo.execute()
             data["loader"] = algo.getPropertyValue("LoaderType")
             data["workspace"] = workspace
+
+            if data["loader"] == "LoadEventNexus":
+                self.dataService = LocalDataService()
+                config = self.dataService.readInstrumentConfig()
+                width = config.width
+                frequency = config.frequency
+                self.mantidSnapper.RemovePromptPulse(
+                    "Removing prompt pulse",
+                    InputWorkspace=workspace,
+                    OutputWorkspace=workspace,
+                    Width=width,
+                    Frequency=frequency,
+                )
+                self.mantidSnapper.executeQueue()
         except RuntimeError as e:
             raise RuntimeError(str(e).split("\n")[0]) from e
         logger.info(f"Finished fetching {workspace} from {filename}")

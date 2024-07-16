@@ -6,8 +6,21 @@ from snapred.ui.widget.Toggle import Toggle
 
 @Resettable
 class DiffCalRequestView(BackendRequestView):
-    def __init__(self, jsonForm, samples=[], groups=[], parent=None):
-        super().__init__(jsonForm, "", parent=parent)
+    """
+
+    The DiffCalRequestView is a specialized view within the SNAPRed application,
+    designed for configuring and submitting diffraction calibration requests.
+    Adorned with the Resettable decorator for dynamic UI adjustments, it integrates
+    various input fields, toggles, and dropdown menus, including options for run number,
+    lite mode activation, convergence and peak intensity thresholds, and peak function
+    selection from predefined symmetric peak types. This view not only facilitates the
+    precise specification of calibration parameters by the user but also ensures the inputs'
+    validity through a comprehensive verification process.
+
+    """
+
+    def __init__(self, samples=[], groups=[], parent=None):
+        super().__init__(parent=parent)
 
         # input fields
         self.runNumberField = self._labeledField("Run Number")
@@ -51,3 +64,6 @@ class DiffCalRequestView(BackendRequestView):
 
     def getRunNumber(self):
         return self.runNumberField.text()
+
+    def getLiteMode(self):
+        return self.litemodeToggle.field.getState()

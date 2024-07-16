@@ -44,6 +44,9 @@ class LabeledField(QWidget):
     def text(self):
         return self._field.text()
 
+    def convertCommaSepartedToList(self):
+        return self.text().split(",")
+
     def setText(self, text):
         self._field.setText(text)
 

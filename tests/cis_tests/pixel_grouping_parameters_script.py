@@ -5,7 +5,6 @@
 from typing import List
 from pathlib import Path
 import json
-from pydantic import parse_raw_as
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -17,12 +16,15 @@ SNAPRed_module_root = Path(snapred.__file__).parent.parent
 from snapred.backend.recipe.PixelGroupingParametersCalculationRecipe import (
     PixelGroupingParametersCalculationRecipe as pgpRecipe,
 )
-from snapred.backend.dao.ingredients import PixelGroupingIngredients
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-from snapred.backend.dao.state.PixelGroup import PixelGroup
-from snapred.backend.data.DataFactoryService import DataFactoryService
-from snapred.backend.data.GroceryService import GroceryService
 from snapred.meta.Config import Config
+
+## for prepping ingredients
+from snapred.backend.dao.ingredients import PixelGroupingIngredients
+from snapred.backend.dao.request.FarmFreshIngredients import FarmFreshIngredients
+from snapred.backend.service.SousChef import SousChef
+## for fetching workspaces
+from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
+from snapred.backend.data.GroceryService import GroceryService
 
 # Test helper utility routines:
 # -----------------------------
@@ -79,7 +81,7 @@ from util.helpers import (
 )
 SNAPLiteInstrumentFilePath = str(Path(SNAPRed_module_root).parent / 'tests' / 'resources' / 'inputs' / 'pixel_grouping' / 'SNAPLite_Definition.xml')
 
-#User input ###########################
+# USER INPUT ##########################
 runNumber = "58882"
 groupingScheme = 'Column'
 isLite = True
@@ -87,23 +89,20 @@ instrumentFilePath = SNAPLiteInstrumentFilePath
 Config._config["cis_mode"] = False
 #######################################
 
-
-### RUN RECIPE
-runConfig = RunConfig(
+## PREP INGREDIENTS ###################
+farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
-    IPTS=GetIPTS(RunNumber=runNumber,Instrument='SNAP'), 
     useLiteMode=isLite,
+    focusGroup={"name":groupingScheme, "definition":""},
 )
-dataFactoryService = DataFactoryService()
-calibration = dataFactoryService.getCalibrationState(runNumber)
-instrumentState = calibration.instrumentState
-
+instrumentState = SousChef().prepInstrumentState(farmFresh)
 ingredients = PixelGroupingIngredients(
-    instrumentState=calibration.instrumentState,
-    groupingScheme=groupingScheme,
-    nBinsAcrossPeakWidth=Config["calibration.diffraction.nBinsAcrossPeakWidth"],
+    instrumentState=instrumentState,
+    nBinsAcrossPeakWidth=farmFresh.nBinsAcrossPeakWidth,
 )
+#######################################
 
+## FETCH GROCERIES ###################
 clerk = GroceryListItem.builder()
 clerk.name("groupingWorkspace").fromRun(runNumber).grouping(groupingScheme).useLiteMode(isLite).add()
 
@@ -115,7 +114,7 @@ groceries = GroceryService().fetchGroceryDict(
 
 #### CREATE AN INPUT MASK, AS REQUIRED FOR TESTING. ##########
 groupingWSName = groceries['groupingWorkspace']
-maskWSName = groceries['maskWSName']
+maskWSName = groceries["maskWorkspace"]
 
 # The grouping workspace is used as the instrument-donor to make the mask.
 createCompatibleMask(maskWSName, groupingWSName, instrumentFilePath)
@@ -125,25 +124,27 @@ createCompatibleMask(maskWSName, groupingWSName, instrumentFilePath)
 maskWS = mtd[maskWSName]
 groupingWS = mtd[groupingWSName]
 
+print(f"available group numbers: {groupingWS.getGroupIDs()}")
+
 # # mask detectors corresponding to several groups:
-# groupsToMask = (3, 7, 11)
+# groupsToMask = (1, 3, 5)
 # maskGroups(maskWS, groupingWS, groupsToMask)
 
 # # mask detector-id #145 only:
-# maskWS.setMasked(145) 
+# maskWS.setValue(145, True) 
 # ---
 ### OR, all the pixels can be masked in a specific component of the instrument...
 
-# maskComponentByName(maskWS, "West")
+# maskComponentByName(maskWSName, "East")
 # ---
 
+### RUN RECIPE
 pgp = pgpRecipe()
 result = pgp.executeRecipe(ingredients, groceries)
 pixelGroupingParametersList = result["parameters"]
+print(f"masked groups: {[pgp.isMasked for pgp in pixelGroupingParametersList]}")
 
 ### PAUSE
 """
 Stop here and make sure everything looks good.
 """
-assert False
-

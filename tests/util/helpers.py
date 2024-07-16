@@ -5,23 +5,21 @@
 
 import unittest
 from collections.abc import Sequence
-from typing import Any, Dict, List, Tuple
+from typing import Any, Tuple
 
 import numpy as np
-import pytest
 from mantid.api import ITableWorkspace, MatrixWorkspace
 from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
+    CompareWorkspaces,
     CopyInstrumentParameters,
     CreateEmptyTableWorkspace,
     DeleteWorkspace,
     ExtractMask,
     LoadInstrument,
-    ScaleX,
     WorkspaceFactory,
     mtd,
 )
-from snapred.meta.Config import Resource
 
 
 def createCompatibleDiffCalTable(tableWSName: str, templateWSName: str) -> ITableWorkspace:
@@ -178,6 +176,54 @@ def deleteWorkspaceNoThrow(wsName: str):
         DeleteWorkspace(wsName)
     except:  # noqa: E722
         pass
+
+
+def workspacesEqual(Workspace1: str, Workspace2: str, **other_options):
+    """
+    Meant to be called as
+    ``` python
+    assert workspacesEqual(ws1, ws2)
+    ```
+    Parameters:
+    - Workspace1: str -- one of the workspaces to compare
+    - Workspace2: str -- one of the workspaces to compare
+    - other_options: kwargs dict -- other options available to CompareWorkspaces
+    Returns: if the workspaces are equal, will return True
+    Otherwise, will raise an assertion error containing the result of CompareWorkspaces in description
+    """
+    # NOTE this can be re-worked to call `assert_wksp_almost_equal` when that
+    # has been fixed to allow exact comparisons.
+    equal, message = CompareWorkspaces(
+        Workspace1=Workspace1,
+        Workspace2=Workspace2,
+        **other_options,
+    )
+    if not equal:
+        raise AssertionError(message.column("Message"))
+    return equal
+
+
+def workspacesNotEqual(Workspace1: str, Workspace2: str, **other_options):
+    """
+    Meant to be called as
+    ``` python
+    assert workspacesNotEqual(ws1, ws2)
+    ```
+    Parameters:
+    - Workspace1: str -- one of the workspaces to compare
+    - Workspace2: str -- one of the workspaces to compare
+    - other_options: kwargs dict -- other options available to CompareWorkspaces
+    Returns: if the workspaces are NOT equal, will return True
+    If the workspaces ARE equal, will raise an assertion error
+    """
+    equal, _ = CompareWorkspaces(
+        Workspace1=Workspace1,
+        Workspace2=Workspace2,
+        **other_options,
+    )
+    if equal:
+        raise AssertionError(f"Workspaces {Workspace1} and {Workspace2} incorrectly evaluated as equal")
+    return not equal
 
 
 def nameOfRunningTestMethod(testCaseInstance: unittest.TestCase):

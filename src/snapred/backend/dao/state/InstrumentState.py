@@ -1,10 +1,10 @@
-from typing import Any, List, Optional
+from typing import Any
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 from snapred.backend.dao.GSASParameters import GSASParameters
 from snapred.backend.dao.InstrumentConfig import InstrumentConfig
-from snapred.backend.dao.Limit import Limit
+from snapred.backend.dao.Limit import Pair
 from snapred.backend.dao.ObjectSHA import ObjectSHA
 from snapred.backend.dao.ParticleBounds import ParticleBounds
 from snapred.backend.dao.state.DetectorState import DetectorState, GuideState
@@ -21,7 +21,7 @@ class InstrumentState(BaseModel):
     gsasParameters: GSASParameters
     particleBounds: ParticleBounds
     defaultGroupingSliceValue: float
-    fwhmMultiplierLimit: Limit[float]
+    fwhmMultipliers: Pair[float]
     peakTailCoefficient: float
 
     @property
@@ -32,9 +32,20 @@ class InstrumentState(BaseModel):
             else self.instrumentConfig.delThNoGuide
         )
 
-    @validator("id", pre=True, allow_reuse=True)
+    @field_validator("fwhmMultipliers", mode="before")
+    @classmethod
+    def validate_fwhmMultipliers(cls, v: Any) -> Pair[float]:
+        if isinstance(v, dict):
+            v = Pair[float](**v)
+        if not isinstance(v, Pair[float]):
+            # Coerce Generic[T]-derived type
+            v = Pair[float](**v.dict())
+        return v
+
+    @field_validator("id", mode="before")
+    @classmethod
     def str_to_ObjectSHA(cls, v: Any) -> Any:
-        # ObjectSHA stored in JSON as _only_ a single hex string, for the hex digest itself
+        # ObjectSHA to be stored in JSON as _only_ a single hex string, for the hex digest itself
         if isinstance(v, str):
             return ObjectSHA(hex=v, decodedKey=None)
         return v

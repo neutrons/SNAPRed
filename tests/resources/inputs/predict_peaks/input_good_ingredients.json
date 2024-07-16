@@ -22,7 +22,9 @@
       "delTOverT": 0.002,
       "delLOverL": 6.453e-5,
       "delThNoGuide": 3.20e-3,
-      "delThWithGuide": 3.20e-3
+      "delThWithGuide": 3.20e-3,
+      "width": 1600.0,
+      "frequency": 60.4
     },
     "detectorState": {
       "arc": [
@@ -55,13 +57,17 @@
       }
     },
     "defaultGroupingSliceValue": 5,
-    "fwhmMultiplierLimit": {
+    "fwhmMultipliers": {
       "minimum": 1.5,
       "maximum": 1.5
     },
     "peakTailCoefficient": 2.0
   },
   "pixelGroup": {
+    "focusGroup": {
+      "name": "unlikely grouping",
+      "definition": "path/to/here"
+    },
     "timeOfFlight": {
       "minimum": 1959.0,
       "maximum": 14496.6,
@@ -72,7 +78,9 @@
         {
             "groupID": 11,
             "isMasked": false,
+            "L2": 10.0,
             "twoTheta": 2.1108948177427838,
+            "azimuth": 0.0,
             "dResolution": {
                 "minimum": 0.2873164190984029,
                 "maximum": 2.1261415013281812
@@ -82,7 +90,9 @@
         {
             "groupID": 2,
             "isMasked": false,
+            "L2": 10.0,
             "twoTheta": 1.82310673131693,
+            "azimuth": 0.0,
             "dResolution": {
                 "minimum": 0.31627307109869773,
                 "maximum": 2.340420726130363
@@ -92,7 +102,9 @@
         {
             "groupID": 7,
             "isMasked": false,
+            "L2": 10.0,
             "twoTheta": 1.5352228379083572,
+            "azimuth": 0.0,
             "dResolution": {
                 "minimum": 0.36001346277099444,
                 "maximum": 2.6640996245053588
@@ -102,7 +114,9 @@
         {
             "groupID": 8,
             "isMasked": false,
+            "L2": 10.0,
             "twoTheta": 1.440276389170165,
+            "azimuth": 0.0,
             "dResolution": {
                 "minimum": 0.3790816270355628,
                 "maximum": 2.8052040400631646
@@ -112,7 +126,9 @@
         {
             "groupID": 22,
             "isMasked": false,
+            "L2": 10.0,
             "twoTheta": 1.1543988461042238,
+            "azimuth": 0.0,
             "dResolution": {
                 "minimum": 0.4581446222528327,
                 "maximum": 3.3902702046709625
@@ -122,7 +138,9 @@
         {
             "groupID": 106,
             "isMasked": false,
+            "L2": 10.0,
             "twoTheta": 0.8690010092470938,
+            "azimuth": 0.0,
             "dResolution": {
                 "minimum": 0.5938843544407365,
                 "maximum": 4.39474422286145

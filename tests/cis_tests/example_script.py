@@ -29,6 +29,5 @@ print(f"data: {res.data}")
 
 from snapred.backend.dao.calibration.Calibration import Calibration
 
-calibration = Calibration.parse_obj(res.data)
+calibration = Calibration.model_validate(res.data)
 print("success initialize calibration state")
-assert False

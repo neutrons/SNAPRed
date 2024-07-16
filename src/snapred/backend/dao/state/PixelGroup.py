@@ -1,8 +1,7 @@
 from enum import IntEnum
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
-import numpy as np
-from pydantic import BaseModel, parse_obj_as
+from pydantic import BaseModel, field_validator
 
 from snapred.backend.dao.Limit import BinnedValue, Limit
 from snapred.backend.dao.state.FocusGroup import FocusGroup
@@ -14,7 +13,7 @@ class PixelGroup(BaseModel):
     # allow initializtion from either dictionary or list
     pixelGroupingParameters: Union[List[PixelGroupingParameters], Dict[int, PixelGroupingParameters]] = {}
     nBinsAcrossPeakWidth: int = Config["calibration.diffraction.nBinsAcrossPeakWidth"]
-    focusGroup: Optional[FocusGroup]  # TODO this needs to be mandatory
+    focusGroup: FocusGroup
     timeOfFlight: BinnedValue[float]
 
     class BinningMode(IntEnum):
@@ -32,8 +31,16 @@ class PixelGroup(BaseModel):
         return [self.pixelGroupingParameters[gid].isMasked for gid in self.groupIDs]
 
     @property
+    def L2(self) -> List[float]:
+        return [self.pixelGroupingParameters[gid].L2 for gid in self.groupIDs]
+
+    @property
     def twoTheta(self) -> List[float]:
         return [self.pixelGroupingParameters[gid].twoTheta for gid in self.groupIDs]
+
+    @property
+    def azimuth(self) -> List[float]:
+        return [self.pixelGroupingParameters[gid].azimuth for gid in self.groupIDs]
 
     @property
     def dResolution(self) -> List[Limit[float]]:
@@ -53,7 +60,9 @@ class PixelGroup(BaseModel):
                 groupIDs[i]: PixelGroupingParameters(
                     groupID=groupIDs[i],
                     isMasked=kwargs["isMasked"][i],
+                    L2=kwargs["L2"][i],
                     twoTheta=kwargs["twoTheta"][i],
+                    azimuth=kwargs["azimuth"][i],
                     dResolution=kwargs["dResolution"][i],
                     dRelativeResolution=kwargs["dRelativeResolution"][i],
                 )
@@ -62,7 +71,7 @@ class PixelGroup(BaseModel):
         elif isinstance(kwargs["pixelGroupingParameters"], list):
             pixelGroupingParametersList = kwargs["pixelGroupingParameters"]
             kwargs["pixelGroupingParameters"] = {
-                PixelGroupingParameters.parse_obj(p).groupID: p for p in pixelGroupingParametersList
+                PixelGroupingParameters.model_validate(p).groupID: p for p in pixelGroupingParametersList
             }
         return super().__init__(**kwargs)
 
@@ -96,3 +105,13 @@ class PixelGroup(BaseModel):
             self.binningMode * abs(self.pixelGroupingParameters[gid].dRelativeResolution) / Nbin
             for gid in self.groupIDs
         ]
+
+    @field_validator("timeOfFlight", mode="before")
+    @classmethod
+    def validate_TOF(cls, v):
+        if isinstance(v, dict):
+            v = BinnedValue[float](**v)
+        if not isinstance(v, BinnedValue[IntEnum]):
+            # Coerce the Generic[T]-derived type
+            v = BinnedValue[float](**v.dict())
+        return v

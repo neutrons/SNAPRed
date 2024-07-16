@@ -6,7 +6,6 @@ from qtpy.QtWidgets import (
     QApplication,
     QMainWindow,
     QPushButton,
-    QSizePolicy,
     QSplitter,
     QStatusBar,
     QVBoxLayout,
@@ -19,6 +18,12 @@ from snapred.meta.Config import Resource
 from snapred.ui.widget.LogTable import LogTable
 from snapred.ui.widget.TestPanel import TestPanel
 from snapred.ui.widget.ToolBar import ToolBar
+
+# Conditionally import UserDocsButton (temporary)
+try:
+    from snapred.ui.widget.UserDocsButton import UserDocsButton
+except ImportError:
+    UserDocsButton = None
 
 
 class SNAPRedGUI(QMainWindow):
@@ -33,7 +38,7 @@ class SNAPRedGUI(QMainWindow):
         splitter.addWidget(logTable.widget)
 
         # add button to open new window
-        button = QPushButton("Open Test Panel")
+        button = QPushButton("Open Calibration Panel")
         button.clicked.connect(self.openNewWindow)
         splitter.addWidget(button)
 
@@ -67,10 +72,16 @@ class SNAPRedGUI(QMainWindow):
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
 
+        if UserDocsButton:
+            self.userDocButton = UserDocsButton(self)
+            splitter.addWidget(self.userDocButton)
+        else:
+            print("UserDocsButton is not available. Skipping its initialization.")
+
     def openNewWindow(self):
         try:
             self.newWindow = TestPanel(self)
-            self.newWindow.widget.setWindowTitle("Test Panel")
+            self.newWindow.widget.setWindowTitle("Calibration Panel")
             self.newWindow.widget.show()
         except Exception as e:  # noqa: BLE001
             # show error message as popup
@@ -79,9 +90,13 @@ class SNAPRedGUI(QMainWindow):
             traceback.print_exception(e)
             from qtpy.QtWidgets import QMessageBox
 
+            msg = "Sorry!  Error encountered while opening Calibration Panel.\n"
+            msg = msg + "This is usually caused by an issue with the file tree.\n"
+            msg = msg + "An expert user can correct this by editing the application.yml file.\n"
+            msg = msg + "Contact your IS or CIS for help in resolving this issue."
             errorPopup = QMessageBox()
             errorPopup.setIcon(QMessageBox.Critical)
-            errorPopup.setText("Sorry!\nError In TestPanel!\nPlease try again avoiding whatever you just did.")
+            errorPopup.setText(msg)
             errorPopup.setDetailedText(str(e))
             errorPopup.setFixedSize(500, 200)
             errorPopup.exec()

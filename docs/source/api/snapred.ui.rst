@@ -13,6 +13,7 @@ Subpackages
    snapred.ui.view
    snapred.ui.widget
    snapred.ui.workflow
+   snapred.ui.handler
 
 Submodules
 ----------

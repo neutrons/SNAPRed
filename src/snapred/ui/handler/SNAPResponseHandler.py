@@ -1,7 +1,10 @@
+import threading
+
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QMessageBox, QWidget
 
 from snapred.backend.dao.SNAPResponse import ResponseCode
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 
@@ -11,6 +14,7 @@ logger = snapredLogger.getLogger(__name__)
 class SNAPResponseHandler(QWidget):
     signal = Signal(object)
     signalWarning = Signal(str, object)
+    continueAnyway = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -21,11 +25,20 @@ class SNAPResponseHandler(QWidget):
         self.signal.emit(result)
 
     def _handle(self, result):
-        SNAPResponseHandler._handleComplications(result.code, result.message, self)
+        # if no complications, do nothing here (program will continue)
+        # if errors, do nothing here (program will halt)
+        # if a continue warning was raised, receive what user selected
+        # if the user selected to continue anyway, then emit the signal to continue anyway
+        if isinstance(threading.current_thread(), threading._MainThread):
+            SNAPResponseHandler._handleComplications(result.code, result.message, self)
+        else:
+            self.rethrow(result)
 
+    @staticmethod
     def _isErrorCode(code):
         return code >= ResponseCode.ERROR
 
+    @staticmethod
     def _isRecoverableError(code):
         return ResponseCode.RECOVERABLE <= code < ResponseCode.ERROR
 
@@ -37,6 +50,7 @@ class SNAPResponseHandler(QWidget):
         if result.message:
             self.signalWarning.emit(result.message, self)
 
+    # TODO: view is only ever handler, maybe this variable should be updated to reflect that?
     @staticmethod
     def _handleComplications(code, message, view):
         if SNAPResponseHandler._isErrorCode(code):
@@ -61,6 +75,10 @@ class SNAPResponseHandler(QWidget):
                 )
                 messageBox.setDetailedText(f"{message}")
                 messageBox.exec()
+        elif code == ResponseCode.CONTINUE_WARNING:
+            continueInfo = ContinueWarning.Model.model_validate_json(message)
+            if SNAPResponseHandler._handleContinueWarning(continueInfo.message, view):
+                view.continueAnyway.emit(continueInfo)
         elif message:
             SNAPResponseHandler._handleWarning(message, view)
 
@@ -77,6 +95,17 @@ class SNAPResponseHandler(QWidget):
         messageBox.exec()
 
     @staticmethod
+    def _handleContinueWarning(message, view):
+        continueAnyway = QMessageBox.warning(
+            view,
+            "Warning",
+            message,
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        return continueAnyway == QMessageBox.Yes
+
+    @staticmethod
     def handleStateMessage(view):
         """
         Handles a specific 'state' message.
@@ -86,7 +115,9 @@ class SNAPResponseHandler(QWidget):
 
         try:
             logger.info("Handling 'state' message.")
-            initializationMenu = InitializationMenu(runNumber=InitializeStateHandler.runId, parent=view)
+            initializationMenu = InitializationMenu(
+                runNumber=InitializeStateHandler.runId, parent=view, useLiteMode=InitializeStateHandler.useLiteMode
+            )
             initializationMenu.finished.connect(lambda: initializationMenu.deleteLater())
             initializationMenu.show()
         except Exception as e:  # noqa: BLE001

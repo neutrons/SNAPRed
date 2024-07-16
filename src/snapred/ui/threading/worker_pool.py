@@ -1,9 +1,9 @@
-import code
 from typing import Dict, List
 
 from qtpy.QtCore import QObject, QThread, Signal
 
 from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
+from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.meta.decorators.Singleton import Singleton
 
@@ -13,7 +13,6 @@ class Worker(QObject):
     success = Signal(bool)
     result = Signal(object)
     progress = Signal(int)
-
     target = None
     args = None
 
@@ -30,6 +29,8 @@ class Worker(QObject):
             else:
                 results = self.target()
             # results.code = 200 # set to 200 for testing
+        except ContinueWarning as w:
+            results = SNAPResponse(code=ResponseCode.CONTINUE_WARNING, message=w.model.json())
         except RecoverableException as e:
             results = SNAPResponse(code=ResponseCode.RECOVERABLE, message=e.errorMsg)
         except Exception as e:  # noqa: BLE001
@@ -40,9 +41,17 @@ class Worker(QObject):
             traceback.print_exc()
 
             results = SNAPResponse(code=ResponseCode.ERROR, message=str(e))
-        self.result.emit(results)
-        self.success.emit(results.code < ResponseCode.MAX_OK)
-        self.finished.emit()
+
+        if isinstance(results, SNAPResponse):
+            self.result.emit(results)
+            self.success.emit(results.code < ResponseCode.MAX_OK)
+            self.finished.emit()
+        else:
+            if self._dryRun:
+                self.result.emit(SNAPResponse(code=ResponseCode.OK))
+                self.success.emit(True)
+                self.finished.emit()
+            raise ValueError("Worker target must return a SNAPResponse object.")
 
 
 class InfiniteWorker(QObject):

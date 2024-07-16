@@ -29,7 +29,9 @@
       "delTOverT": 0.05,
       "delLOverL": 0.05,
       "delThNoGuide": 0.05,
-      "delThWithGuide": 0.05
+      "delThWithGuide": 0.05,
+      "width": 1600.0,
+      "frequency": 60.4
     },
     "stateConfig": {
       "calibration": {
@@ -56,7 +58,9 @@
             "delTOverT": 0.002,
             "delLOverL": 0.00006452,
             "delThNoGuide": 0.0006667,
-            "delThWithGuide": 0.0032
+            "delThWithGuide": 0.0032,
+            "width": 1600.0,
+            "frequency": 60.4
           },
           "detectorState": {
             "arc": [
@@ -89,13 +93,14 @@
             }
           },
           "defaultGroupingSliceValue": 5,
-          "fwhmMultiplierLimit": {
+          "fwhmMultipliers": {
             "minimum": 2,
             "maximum": 2
           },
           "peakTailCoefficient": 2
         },
         "seedRun": 57514,
+        "useLiteMode": true,
         "creationDate": "2023-09-13T16:40:25.754664",
         "name": "this is a test state initialisation",
         "version": 49
@@ -130,11 +135,17 @@
       "binWidth": 0.0002,
       "binningMode": -1
     },
+    "focusGroup": {
+      "name": "Column",
+      "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
+    },
     "pixelGroupingParameters": [
       {
         "groupID": 1,
         "isMasked": false,
+        "L2": 10.0,
         "twoTheta": 2.1108948177427838,
+        "azimuth": 0.0,
         "dResolution": {
           "minimum": 0.40224298673776404,
           "maximum": 2.0112149336888203
@@ -144,7 +155,9 @@
       {
         "groupID": 2,
         "isMasked": false,
+        "L2": 10.0,
         "twoTheta": 1.82310673131693,
+        "azimuth": 0.0,
         "dResolution": {
           "minimum": 0.44278229953817677,
           "maximum": 2.213911497690884
@@ -154,6 +167,8 @@
       {
         "groupID": 3,
         "isMasked": false,
+        "L2": 10.0,
+        "azimuth": 0.0,
         "twoTheta": 1.5352228379083572,
         "dResolution": {
           "minimum": 0.5040188478793922,
@@ -164,6 +179,8 @@
       {
         "groupID": 4,
         "isMasked": false,
+        "L2": 10.0,
+        "azimuth": 0.0,
         "twoTheta": 1.440276389170165,
         "dResolution": {
           "minimum": 0.530714277849788,
@@ -174,7 +191,9 @@
       {
         "groupID": 5,
         "isMasked": false,
+        "L2": 10.0,
         "twoTheta": 1.1543988461042238,
+        "azimuth": 0.0,
         "dResolution": {
           "minimum": 0.6414024711539658,
           "maximum": 3.207012355769829
@@ -184,7 +203,9 @@
       {
         "groupID": 6,
         "isMasked": false,
+        "L2": 10.0,
         "twoTheta": 0.8690010092470938,
+        "azimuth": 0.0,
         "dResolution": {
           "minimum": 0.831438096217031,
           "maximum": 4.157190481085156

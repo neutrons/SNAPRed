@@ -3,7 +3,6 @@ from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-from pydantic import parse_raw_as
 from typing import List
 
 
@@ -28,7 +27,7 @@ from snapred.meta.Config import Config
 
 #User input ###########################
 runNumber = "58882"
-groupingScheme = "Column (Lite)"
+groupingScheme = "Column"
 cifPath = "/SNS/SNAP/shared/Calibration/CalibrantSamples/Silicon_NIST_640d.cif"
 calibrantSamplePath = "SNS/SNAP/shared/Calibration/CalibrationSamples/Silicon_NIST_640D_001.json"
 peakThreshold = 0.05
@@ -80,13 +79,14 @@ while median > offsetConvergenceLimit or count < 5:
 
 DIFCprev = pixelAlgo.getPropertyValue("CalibrationTable")
 
+outputWS = mtd.unique_name(prefix="output_")
 groupAlgo = GroupAlgo()
 groupAlgo.initialize()
 groupAlgo.setPropertyValue("Ingredients", ingredients.json())
 groupAlgo.setPropertyValue("InputWorkspace", groceries[0])
 groupAlgo.setPropertyValue("GroupingWorkspace", groceries[1])
 groupAlgo.setPropertyValue("PreviousCalibrationTable", DIFCprev)
-groupAlgo.setPropertyValue("OutputWorkspaceDSpacing", "out_ws")
+groupAlgo.setPropertyValue("OutputWorkspaceDSpacing", outputWS)
 groupAlgo.execute()
 
 ### PAUSE
@@ -122,7 +122,6 @@ Stop here and make sure everything still looks good.
 assert False
 
 ### CALL CALIBRATION SERVICE
-from unittest import mock
 diffcalRequest = DiffractionCalibrationRequest(
     runNumber = runNumber,
     calibrantSamplePath = calibrantSamplePath,

@@ -4,7 +4,6 @@ from mantid.simpleapi import (
     DeleteWorkspace,
     mtd,
 )
-from snapred.backend.dao.ingredients import ReductionIngredients
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 
 # the algorithm to test
@@ -12,6 +11,7 @@ from snapred.backend.recipe.algorithm.FocusSpectraAlgorithm import (
     FocusSpectraAlgorithm as ThisAlgo,  # noqa: E402
 )
 from snapred.meta.Config import Resource
+from util.helpers import workspacesEqual
 
 
 class TestFocusSpectra(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestFocusSpectra(unittest.TestCase):
         self.maxOffset = 2
         self.fakeRunNumber = "555"
 
-        self.pixelGroup = PixelGroup.parse_file(Resource.getPath("/inputs/diffcal/fakePixelGroup.json"))
+        self.pixelGroup = PixelGroup.model_validate_json(Resource.read("/inputs/diffcal/fakePixelGroup.json"))
 
         self.fakeRawData = f"_test_focusSpectra_{self.fakeRunNumber}"
         self.fakeGroupingWorkspace = f"_test_focusSpectra_difc_{self.fakeRunNumber}"
@@ -71,7 +71,7 @@ class TestFocusSpectra(unittest.TestCase):
         )
         LoadInstrument(
             Workspace=rawWsName,
-            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP.xml"),
+            Filename=Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml"),
             RewriteSpectraMap=True,
         )
         # also load the focus grouping workspace
@@ -129,7 +129,7 @@ class TestFocusSpectra(unittest.TestCase):
         # assert outputworkspace is focussed correctly
         outputWs = algo.getProperty("OutputWorkspace").valueAsStr
         # write outputWs to file
-        from mantid.simpleapi import CompareWorkspaces, Load, RebinRagged
+        from mantid.simpleapi import Load, RebinRagged
         # assert that outputWs is focussed correctly
 
         RebinRagged(InputWorkspace=outputWs, OutputWorkspace=outputWs, XMin=2000, XMax=14500, Delta=1)
@@ -137,10 +137,7 @@ class TestFocusSpectra(unittest.TestCase):
         assert mtd[outputWs].getNumberHistograms() == mtd[outputWs + "_loaded"].getNumberHistograms()
         # check block size
         assert mtd[outputWs].blocksize() == mtd[outputWs + "_loaded"].blocksize()
-        result, message = CompareWorkspaces(Workspace1=outputWs, Workspace2=outputWs + "_loaded", CheckAllData=True)
-        if not result:
-            raise Exception(message)
-        assert result
+        assert workspacesEqual(outputWs, outputWs + "_loaded", CheckAllData=True)
 
     def test_chopIngredients(self):
         algo = ThisAlgo()
@@ -204,10 +201,11 @@ class TestFocusSpectra(unittest.TestCase):
             Xmin=overallDMin,
             Xmax=overallDMax,
             BinWidth=abs(dBin),
-            XUnit="dSpacing",
+            XUnit="TOF",
             NumBanks=5,  # must wrong for test
             BankPixelWidth=2,  # each bank has 4 pixels, 4 banks, 16 total
         )
+
         algo = ThisAlgo()
         algo.initialize()
         algo.setProperty("InputWorkspace", self.fakeRawData)

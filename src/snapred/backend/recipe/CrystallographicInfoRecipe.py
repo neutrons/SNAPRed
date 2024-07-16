@@ -1,11 +1,9 @@
 from typing import Any, Dict
 
-from mantid.api import AlgorithmManager
-
 from snapred.backend.dao.CrystallographicInfo import CrystallographicInfo
 from snapred.backend.dao.state.CalibrantSample.Crystallography import Crystallography
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.CrystallographicInfoAlgorithm import CrystallographicInfoAlgorithm as Algo
+from snapred.backend.recipe.algorithm.Utensils import Utensils
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
 
@@ -14,26 +12,30 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class CrystallographicInfoRecipe:
-    D_MIN = Config["constants.CrystallographicInfo.dMin"]
-    D_MAX = Config["constants.CrystallographicInfo.dMax"]
+    D_MIN = Config["constants.CrystallographicInfo.crystalDMin"]
+    D_MAX = Config["constants.CrystallographicInfo.crystalDMax"]
 
     def __init__(self):
-        pass
+        # NOTE: workaround, we just add an empty host algorithm.
+        utensils = Utensils()
+        utensils.PyInit()
+        self.mantidSnapper = utensils.mantidSnapper
 
-    def executeRecipe(self, cifPath: str, dMin: float = D_MIN, dMax: float = D_MAX) -> Dict[str, Any]:
+    def executeRecipe(self, cifPath: str, crystalDMin: float = D_MIN, crystalDMax: float = D_MAX) -> Dict[str, Any]:
         logger.info("Ingesting crystal info: %s" % cifPath)
         data: Dict[str, Any] = {}
-        algo = AlgorithmManager.create(Algo.__name__)
-        algo.setPropertyValue("cifPath", cifPath)
-        algo.setProperty("dMin", dMin)
-        algo.setProperty("dMax", dMax)
 
-        try:
-            data["result"] = algo.execute()
-            data["crystalInfo"] = CrystallographicInfo.parse_raw(algo.getPropertyValue("crystalInfo"))
-            data["crystalStructure"] = Crystallography.parse_raw(algo.getPropertyValue("crystalStructure"))
-        except RuntimeError as e:
-            errorString = str(e)
-            raise Exception(errorString.split("\n")[0])
+        xtalInfo, xtallography = self.mantidSnapper.CrystallographicInfoAlgorithm(
+            f"Ingesting crystal info: {cifPath}",
+            cifPath=cifPath,
+            crystalDMin=crystalDMin,
+            crystalDMax=crystalDMax,
+            Crystallography="",  # NOTE must declare to get this as return
+        )
+        self.mantidSnapper.executeQueue()
+        data["result"] = True
+        data["crystalInfo"] = CrystallographicInfo.model_validate_json(xtalInfo.get())
+        data["crystalStructure"] = Crystallography.model_validate_json(xtallography.get())
+
         logger.info("Finished ingesting crystal info: %s" % cifPath)
         return data

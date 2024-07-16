@@ -2,13 +2,12 @@ import json
 from typing import Dict, List
 
 import numpy as np
+import pydantic
 from mantid.api import AlgorithmFactory, IEventWorkspace, MatrixWorkspaceProperty, PropertyMode, PythonAlgorithm
 from mantid.kernel import Direction
-from pydantic import parse_raw_as
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 logger = snapredLogger.getLogger(__name__)
@@ -37,7 +36,7 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
         self.groupIDs = []
         self.predictedPeaks = {}
         for prediction in ingredients:
-            groupPeakList = GroupPeakList.parse_obj(prediction)
+            groupPeakList = GroupPeakList.model_validate(prediction)
             self.groupIDs.append(groupPeakList.groupID)
             self.predictedPeaks[groupPeakList.groupID] = groupPeakList.peaks
 
@@ -62,10 +61,21 @@ class DiffractionSpectrumWeightCalculator(PythonAlgorithm):
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
+        ws = self.getProperty("InputWorkspace").value
+        ingredients = json.loads(self.getPropertyValue("DetectorPeaks"))
+        if ws.getNumberHistograms() != len(ingredients):
+            msg = f"""
+            Number of histograms {ws.getNumberHistograms()}
+            incompatible with groups in DetectorPeaks {len(ingredients)}
+            """
+            errors["InputWorkspace"] = msg
+            errors["DetectorPeaks"] = msg
         return errors
 
     def PyExec(self):
-        predictedPeaksList = parse_raw_as(List[GroupPeakList], self.getPropertyValue("DetectorPeaks"))
+        predictedPeaksList = pydantic.TypeAdapter(List[GroupPeakList]).validate_json(
+            self.getPropertyValue("DetectorPeaks")
+        )
         self.chopIngredients(predictedPeaksList)
         self.unbagGroceries()
 

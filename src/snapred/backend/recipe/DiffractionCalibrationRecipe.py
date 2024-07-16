@@ -5,16 +5,26 @@ from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as
 from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.GroupDiffractionCalibration import GroupDiffractionCalibration
 from snapred.backend.recipe.algorithm.PixelDiffractionCalibration import PixelDiffractionCalibration
-from snapred.backend.recipe.algorithm.WashDishes import WashDishes
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
 
 @Singleton
 class DiffractionCalibrationRecipe:
+    """
+
+    The DiffractionCalibrationRecipe class orchestrates a comprehensive diffraction calibration process
+    tailored for scientific data. Beginning with ingredient preparation through chopIngredients, it processes
+    DiffractionCalibrationIngredients to extract crucial calibration settings.
+    It then manages workspace setup via unbagGroceries, organizing necessary workspaces for calibration tasks.
+    The core of the class lies in executeRecipe, where it combines these preparations to perform calibration using
+    pixel and group-based algorithms, adjusting offsets and refining calibration through iterative steps until
+    convergence criteria are met or maximum iterations are reached.
+
+    """
+
     def __init__(self):
         pass
 
@@ -39,8 +49,8 @@ class DiffractionCalibrationRecipe:
 
         self.rawInput = groceries["inputWorkspace"]
         self.groupingWS = groceries["groupingWorkspace"]
-        self.outputTOFWS = groceries["outputTOFWorkspace"]
-        self.outputDSPWS = groceries["outputDSPWorkspace"]
+        self.diagnosticWS = groceries["diagnosticWorkspace"]
+        self.outputDSPWS = groceries["outputWorkspace"]
         self.calTable = groceries.get("calibrationTable", "")
         self.maskWS = groceries.get("maskWorkspace", "")
 
@@ -94,8 +104,8 @@ class DiffractionCalibrationRecipe:
         groupedAlgo = GroupDiffractionCalibration()
         groupedAlgo.initialize()
         groupedAlgo.setProperty("InputWorkspace", self.rawInput)
-        groupedAlgo.setProperty("OutputWorkspaceTOF", self.outputTOFWS)
-        groupedAlgo.setProperty("OutputWorkspacedSpacing", self.outputDSPWS)
+        groupedAlgo.setProperty("OutputWorkspace", self.outputDSPWS)
+        groupedAlgo.setProperty("DiagnosticWorkspace", self.diagnosticWS)
         groupedAlgo.setProperty("GroupingWorkspace", self.groupingWS)
         groupedAlgo.setProperty("Ingredients", ingredients.json())
         groupedAlgo.setProperty("PreviousCalibrationTable", self.calTable)
@@ -104,8 +114,8 @@ class DiffractionCalibrationRecipe:
         try:
             groupedAlgo.execute()
             data["calibrationTable"] = groupedAlgo.getPropertyValue("FinalCalibrationTable")
-            data["outputTOFWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspaceTOF")
-            data["outputDSPWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspacedSpacing")
+            data["diagnosticWorkspace"] = groupedAlgo.getPropertyValue("DiagnosticWorkspace")
+            data["outputWorkspace"] = groupedAlgo.getPropertyValue("OutputWorkspace")
             data["maskWorkspace"] = groupedAlgo.getPropertyValue("MaskWorkspace")
         except RuntimeError as e:
             errorString = str(e)

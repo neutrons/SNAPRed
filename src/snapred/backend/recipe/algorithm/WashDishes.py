@@ -1,7 +1,3 @@
-import json
-from typing import Dict, List, Tuple
-
-import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction, StringArrayProperty
 from mantid.simpleapi import DeleteWorkspace, DeleteWorkspaces, mtd
@@ -31,8 +27,8 @@ class WashDishes(PythonAlgorithm):
         if workspace != "" and mtd.doesExist(workspace) and not self._CISmode:
             DeleteWorkspace(Workspace=workspace)
         workspaces = self.getProperty("WorkspaceList").value
+        workspaces = [w for w in workspaces if mtd.doesExist(w)]
         if workspaces != [] and not self._CISmode:
-            workspaces = [w for w in workspaces if isinstance(w, str) and mtd.doesExist(w)]
             DeleteWorkspaces(workspaces)
 
 

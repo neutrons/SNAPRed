@@ -1,19 +1,20 @@
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock
 
-from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QComboBox, QMessageBox
-from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.ui.view.DiffCalAssessmentView import DiffCalAssessmentView
 
 
 def test_calibration_record_dropdown(qtbot):
-    view = DiffCalAssessmentView(name="Test", jsonSchemaMap=MagicMock())
+    view = DiffCalAssessmentView()
     assert view.getCalibrationRecordCount() == 0
 
     # test filling in the dropdown
     runNumber = "1234"
-    version = "1"
-    calibrationIndexEntries = [CalibrationIndexEntry(runNumber=runNumber, version=version, comments="", author="")]
+    useLiteMode = False
+    version = 1
+    calibrationIndexEntries = [
+        IndexEntry(runNumber=runNumber, useLiteMode=useLiteMode, version=version, comments="", author="")
+    ]
     view.updateCalibrationRecordList(calibrationIndexEntries)
     assert view.getCalibrationRecordCount() == 1
     assert view.getSelectedCalibrationRecordIndex() == -1
@@ -22,11 +23,11 @@ def test_calibration_record_dropdown(qtbot):
     qtbot.addWidget(view.calibrationRecordDropdown)
     qtbot.keyClicks(view.calibrationRecordDropdown, "Version: 1; Run: 1234")
     assert view.getSelectedCalibrationRecordIndex() == 0
-    assert view.getSelectedCalibrationRecordData() == (runNumber, version)
+    assert view.getSelectedCalibrationRecordData() == (runNumber, useLiteMode, version)
 
 
 def test_error_on_load_calibration_record(qtbot):
-    view = DiffCalAssessmentView(name="Test", jsonSchemaMap=MagicMock())
+    view = DiffCalAssessmentView()
     qtbot.addWidget(view.loadButton)
     view.onError = MagicMock()
     view.loadButton.click()

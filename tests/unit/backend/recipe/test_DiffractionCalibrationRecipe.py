@@ -1,19 +1,10 @@
-import json
 import unittest
-from typing import List
 from unittest import mock
 
 import pytest
-from mantid.api import PythonAlgorithm
-from mantid.kernel import Direction
 from mantid.simpleapi import mtd
-from snapred.backend.dao.DetectorPeak import DetectorPeak
-from snapred.backend.dao.GroupPeakList import GroupPeakList
-from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as TheseIngredients
-from snapred.backend.dao.RunConfig import RunConfig
-from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.DiffractionCalibrationRecipe import DiffractionCalibrationRecipe as Recipe
-from snapred.meta.Config import Config, Resource
+from snapred.meta.Config import Config
 from util.diffraction_calibration_synthetic_data import SyntheticData
 from util.helpers import deleteWorkspaceNoThrow
 
@@ -29,8 +20,8 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
 
         self.fakeRawData = "_test_diffcal_rx"
         self.fakeGroupingWorkspace = "_test_diffcal_rx_grouping"
-        self.fakeTOFOutputWorkspace = "_test_diffcal_rx_tof_output"
-        self.fakeDSPOutputWorkspace = "_test_diffcal_rx_dsp_output"
+        self.fakeDiagnosticWorkspace = "_test_diffcal_rx_diagnostic"
+        self.fakeOutputWorkspace = "_test_diffcal_rx_dsp_output"
         self.fakeTableWorkspace = "_test_diffcal_rx_table"
         self.fakeMaskWorkspace = "_test_diffcal_rx_mask"
         self.syntheticInputs.generateWorkspaces(self.fakeRawData, self.fakeGroupingWorkspace, self.fakeMaskWorkspace)
@@ -38,8 +29,8 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         self.groceryList = {
             "inputWorkspace": self.fakeRawData,
             "groupingWorkspace": self.fakeGroupingWorkspace,
-            "outputTOFWorkspace": self.fakeTOFOutputWorkspace,
-            "outputDSPWorkspace": self.fakeDSPOutputWorkspace,
+            "outputWorkspace": self.fakeOutputWorkspace,
+            "diagnosticWorkspace": self.fakeDiagnosticWorkspace,
             "calibrationTable": self.fakeTableWorkspace,
             "maskWorkspace": self.fakeMaskWorkspace,
         }
@@ -73,7 +64,7 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         assert result["result"]
         assert result["steps"] == [{"medianOffset": x} for x in [4, 2, 1, 0.5]]
         assert result["calibrationTable"] == "passed"
-        assert result["outputTOFWorkspace"] == "passed"
+        assert result["outputWorkspace"] == "passed"
         assert result["maskWorkspace"] == "passed"
 
     @mock.patch(PixelCalAlgo)
@@ -122,7 +113,6 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
 
     def test_execute_with_algos(self):
         # create sample data
-        from datetime import date
 
         rawWS = "_test_diffcal_rx_data"
         groupingWS = "_test_diffcal_grouping"
@@ -155,7 +145,7 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         maxIterations = Config["calibration.diffraction.maximumIterations"]
         assert result["steps"] == [{"medianOffset": 11 - i} for i in range(maxIterations)]
         assert result["calibrationTable"] == "fake"
-        assert result["outputTOFWorkspace"] == "fake"
+        assert result["outputWorkspace"] == "fake"
         assert result["maskWorkspace"] == "fake"
         # change the config then run again
         maxIterations = 7
@@ -165,7 +155,7 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         assert result["result"]
         assert result["steps"] == [{"medianOffset": 11 - i} for i in range(maxIterations)]
         assert result["calibrationTable"] == "fake"
-        assert result["outputTOFWorkspace"] == "fake"
+        assert result["outputWorkspace"] == "fake"
         assert result["maskWorkspace"] == "fake"
 
     @mock.patch(PixelCalAlgo)
@@ -179,20 +169,5 @@ class TestDiffractionCalibrationRecipe(unittest.TestCase):
         assert result["result"]
         assert result["steps"] == [{"medianOffset": i} for i in [2, 1]]
         assert result["calibrationTable"] == "fake"
-        assert result["outputTOFWorkspace"] == "fake"
+        assert result["outputWorkspace"] == "fake"
         assert result["maskWorkspace"] == "fake"
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

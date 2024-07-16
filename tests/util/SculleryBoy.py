@@ -1,10 +1,13 @@
+# ruff: noqa: ARG002
+
 # TODO this needs to be setup to better handle inputs
 
 
 from typing import List
 from unittest import mock
 
-from pydantic import parse_raw_as
+import pydantic
+from snapred.backend.dao.calibration.Calibration import Calibration
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import (
     DiffractionCalibrationIngredients,
@@ -21,9 +24,11 @@ from snapred.backend.dao.state.CalibrantSample import (
     Geometry,
     Material,
 )
+from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.backend.recipe.GenericRecipe import DetectorPeakPredictorRecipe
 from snapred.meta.Config import Resource
+from snapred.meta.redantic import parse_file_as
 
 
 class SculleryBoy:
@@ -37,10 +42,13 @@ class SculleryBoy:
     def __init__(self):
         pass
 
-    def prepCalibration(self, runNumber: str):  # noqa ARG002
-        return {mock.Mock()}
+    def prepCalibration(self, ingredients: FarmFreshIngredients):  # noqa ARG002
+        calibration = parse_file_as(Calibration, Resource.getPath("inputs/calibration/CalibrationParameters.json"))
+        calibration.seedRun = ingredients.runNumber
+        calibration.useLiteMode = ingredients.useLiteMode
+        return calibration
 
-    def prepInstrumentState(self, runNumber: str):  # noqa ARG002
+    def prepInstrumentState(self, ingredients: FarmFreshIngredients):  # noqa ARG002
         return mock.Mock()
 
     def prepRunConfig(self, runNumber: str) -> RunConfig:
@@ -55,14 +63,17 @@ class SculleryBoy:
             crystallography=self._prepCrystallography(),
         )
 
-    def prepFocusGroup(self, ingredients: FarmFreshIngredients):  # noqa ARG002
-        return mock.Mock()
+    def prepFocusGroup(self, ingredients: FarmFreshIngredients) -> FocusGroup:  # noqa ARG002
+        return FocusGroup(
+            name="Natural",
+            definition=Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml"),
+        )
 
-    def prepPixelGroup(self, ingredients: FarmFreshIngredients):  # noqa ARG002
+    def prepPixelGroup(self, ingredients: FarmFreshIngredients = None):  # noqa ARG002
         return PixelGroup(
             pixelGroupingParameters=[],
             nBinsAcrossPeakWidth=7,
-            focusGroup={"name": "several", "definition": "/bread/coconut"},
+            focusGroup=self.prepFocusGroup(ingredients),
             timeOfFlight={"minimum": 0.001, "maximum": 100, "binWidth": 1, "binnindMode": -1},
             binningMode=-1,
         )
@@ -75,24 +86,21 @@ class SculleryBoy:
             path = Resource.getPath("/inputs/predict_peaks/input_good_ingredients.json")
         else:
             path = Resource.getPath("/inputs/predict_peaks/input_fake_ingredients.json")
-        return PeakIngredients.parse_file(path)
+        return parse_file_as(PeakIngredients, path)
 
-    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[GroupPeakList]:
+    def prepDetectorPeaks(self, ingredients: FarmFreshIngredients, purgePeaks=False) -> List[GroupPeakList]:
         try:
             peakList = DetectorPeakPredictorRecipe().executeRecipe(
                 Ingredients=self.prepPeakIngredients(ingredients),
                 PurgeDuplicates=ingredients.get("purge", True),
             )
-            print("yup!")
-            return parse_raw_as(List[GroupPeakList], peakList)
-        except TypeError:
-            return [mock.Mock(spec_set=GroupPeakList)]
-        except AttributeError:
+            return pydantic.TypeAdapter(List[GroupPeakList]).validate_json(peakList)
+        except (TypeError, AttributeError):
             return [mock.Mock(spec_set=GroupPeakList)]
 
     def prepReductionIngredients(self, ingredients: FarmFreshIngredients):  # noqa ARG002
-        path = Resource.getPath("/inputs/normalization/ReductionIngredients.json")
-        return ReductionIngredients.parse_file(path)
+        path = Resource.getPath("/inputs/calibration/ReductionIngredients.json")
+        return parse_file_as(ReductionIngredients, path)
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:
         return NormalizationIngredients(
@@ -108,6 +116,7 @@ class SculleryBoy:
             runConfig=self.prepRunConfig(ingredients.runNumber),
             pixelGroup=self.prepPixelGroup(ingredients),
             groupedPeakLists=self.prepDetectorPeaks(ingredients),
+            maxChiSq=100.0,
         )
 
     # these methods are not in SousChef, but are needed to build other things

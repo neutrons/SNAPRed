@@ -1,0 +1,74 @@
+[
+    {
+        "groupID": 1,
+        "isMasked": true,
+        "L2": 0.6435034924536155,
+        "twoTheta": 2.1948072685221405,
+        "azimuth": -0.4865420246852071,
+        "dResolution": {
+            "minimum": 0.39324008128956384,
+            "maximum": 0.39324008128956384
+        },
+        "dRelativeResolution": 0.002
+    },
+    {
+        "groupID": 2,
+        "isMasked": true,
+        "L2": 0.6002877108720451,
+        "twoTheta": 1.9355231509385677,
+        "azimuth": -0.450496451568636,
+        "dResolution": {
+            "minimum": 0.4249470518130122,
+            "maximum": 0.4249470518130122
+        },
+        "dRelativeResolution": 0.002
+    },
+    {
+        "groupID": 3,
+        "isMasked": true,
+        "L2": 0.6022778357668493,
+        "twoTheta": 1.6576467736325233,
+        "azimuth": -0.41912505549177653,
+        "dResolution": {
+            "minimum": 0.47480217786232154,
+            "maximum": 0.47480217786232154
+        },
+        "dRelativeResolution": 0.002
+    },
+    {
+        "groupID": 4,
+        "isMasked": false,
+        "L2": 0.5895526472785745,
+        "twoTheta": 1.440276389170165,
+        "azimuth": 3.01552764240635e-16,
+        "dResolution": {
+            "minimum": 0.4972444805719205,
+            "maximum": 2.8821554569142678
+        },
+        "dRelativeResolution": 0.004309856397320412
+    },
+    {
+        "groupID": 5,
+        "isMasked": false,
+        "L2": 0.5653734063663974,
+        "twoTheta": 1.1543988461042238,
+        "azimuth": -3.7180906501769567e-16,
+        "dResolution": {
+            "minimum": 0.5764042052602202,
+            "maximum": 3.6500970728103797
+        },
+        "dRelativeResolution": 0.005408489642872038
+    },
+    {
+        "groupID": 6,
+        "isMasked": false,
+        "L2": 0.589552647278573,
+        "twoTheta": 0.8690010092470938,
+        "azimuth": 1.630929187997528e-15,
+        "dResolution": {
+            "minimum": 0.709802497213081,
+            "maximum": 4.97762502979068
+        },
+        "dRelativeResolution": 0.007548513084996265
+    }
+]

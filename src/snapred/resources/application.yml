@@ -1,14 +1,18 @@
 # environment: dev
 
+IPTS:
+  default: /SNS
+  root: /SNS
+
 orchestration:
   path:
     delimiter: /
 
 instrument:
   name: SNAP
-  home: /SNS/SNAP/
+  home: ${IPTS.root}/SNAP
   calibration:
-    home: ${instrument.home}shared/Calibration
+    home: ${instrument.home}/shared/Calibration
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
       extensions:
@@ -21,11 +25,15 @@ instrument:
           - hdf
           - xml
           - nxs
+  reduction:
+    # Here "{IPTS}" will be substituted with the IPTS-directory name for a specified <runNumber>
+    home: ${instrument.home}/{IPTS}/shared/SNAPRed
+
   config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
     pixelResolution: 1179648
     definition:
-      file: ${instrument.home}shared/Malcolm/dataFiles/SNAP_Definition.xml
+      file: ${instrument.home}/shared/Malcolm/dataFiles/SNAP_Definition.xml
   lite:
     pixelResolution: 18432
     definition:
@@ -33,6 +41,8 @@ instrument:
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
+  minimumRunNumber: 46342
+  maxNumberOfRuns: 10
 
 nexus:
   lite:
@@ -54,11 +64,15 @@ calibration:
   file:
     extension: .json
     prefix: SNAPcalibLog
-  reduction:
+  normalization:
     output:
-      extension: .nxs
-      format: "{}_calibration_reduction_result"
+      ws:
+        extension: .nxs
   diffraction:
+    output:
+      extension: .tar
+    diagnostic:
+      extension: .nxs.h5
     maximumIterations: 5
     convergenceThreshold: 0.5
     peakIntensityThreshold: 0.05
@@ -66,7 +80,8 @@ calibration:
     maximumOffset: 10
     maxDSpaceShiftFactor: 2.5
     peakFunction: GAUSSIAN
-    minimumPeaksPerGroup: 4
+    minimumPeaksPerGroup: 2
+    preferredPeaksPerGroup: 4
   parameters:
     default:
       # degrees
@@ -75,11 +90,11 @@ calibration:
       beta:
         - 0.02
         - 0.05
-      FWHMMultiplier:
-        - 2.0
-        - 2.0
+      FWHMMultiplier: {left: 2.0, right: 2.0}
       peakTailCoefficient: 2.0
       smoothing: 0.5
+  fitting:
+    minSignal2Noise: 0.0
 
 mantid:
   workspace:
@@ -95,12 +110,18 @@ mantid:
           metric: "calib_metrics,{metricName},{runNumber},{version}"
           timedMetric: "calib_metrics,{metricName},{runNumber},{timestamp}"
         normCal:
-          rawVanadium: "{unit},{group},{runNumber},raw_van_corr"
-          focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr"
-          smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_cor"
+          rawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
+          focusedRawVanadium: "{unit},{group},{runNumber},raw_van_corr,{version}"
+          smoothedFocusedRawVanadium: "{unit},{group},{runNumber},fitted_van_cor,{version}"
+        reduction:
+          output: "reduced,{unit},{group},{runNumber},{version}"
+          output_group: "reduced,{stateId},{version}"
       units:
         dSpacing: DSP
         timeOfFlight: TOF
+        momentumTransfer: QSP
+        wavelength: LAM
+        diagnostic: diagnostic
       groups:
         unfocussed: Unfoc
         all: All
@@ -117,7 +138,13 @@ logging:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
 
 samples:
-  home: ${instrument.calibration.home}/CalibrantSamples
+  home: ${instrument.calibration.sample.home}
+
+version:
+  friendlyName:
+    error: "uninitialized"  # alphanumeric
+    default: 0 # alphanumeric
+  start: 1   # MUST be nonnegative integer
 
 cis_mode: false
 
@@ -127,8 +154,8 @@ constants:
   m2cm: 10000.0 # conversion factor for m^2 to cm^2
 
   CrystallographicInfo:
-    dMin: 0.4
-    dMax: 100.0
+    crystalDMin: 0.4
+    crystalDMax: 100.0
 
   CalibrationReduction:
     tofMin: 2000
@@ -140,3 +167,16 @@ constants:
 
   GroupDiffractionCalibration:
     MaxChiSq: 100
+
+  ResampleX:
+    NumberBins: 1500
+
+  CropFactors:
+    lowWavelengthCrop: 0.05
+
+docs:
+  user:
+    path: /SNS/SNAP/shared/Malcolm/SNAPUserDocs/_build/html/index.html
+
+metadata:
+  tagPrefix: SNAPRed_

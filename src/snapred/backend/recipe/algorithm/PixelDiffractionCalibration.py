@@ -8,13 +8,12 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceUnitValidator,
 )
 from mantid.dataobjects import MaskWorkspaceProperty
 from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients as Ingredients
-from snapred.backend.recipe.algorithm.CalculateDiffCalTable import CalculateDiffCalTable
-from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -39,7 +38,9 @@ class PixelDiffractionCalibration(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "InputWorkspace", "", Direction.Input, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+            ),
             doc="Workspace containing the TOF neutron data",
         )
         self.declareProperty(
@@ -333,7 +334,7 @@ class PixelDiffractionCalibration(PythonAlgorithm):
         if self._counts == 0:
             self.log().notice("Extraction of calibration constants START!")
             # get the ingredients
-            ingredients = Ingredients.parse_raw(self.getPropertyValue("Ingredients"))
+            ingredients = Ingredients.model_validate_json(self.getPropertyValue("Ingredients"))
             self.chopIngredients(ingredients)
             # load and process the input data for algorithm
             self.unbagGroceries(ingredients)

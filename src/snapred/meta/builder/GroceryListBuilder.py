@@ -1,7 +1,6 @@
 from typing import Dict, List
 
 from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
-from snapred.meta.Config import Config
 
 
 class GroceryListBuilder:
@@ -31,29 +30,37 @@ class GroceryListBuilder:
         self._tokens["runNumber"] = runId
         return self
 
-    def specialOrder(self):
-        self._tokens["isOutput"] = True
-        return self
-
     def diffcal(self, runId: str):
         self._tokens["workspaceType"] = "diffcal"
         self._tokens["runNumber"] = runId
         return self
 
-    def diffcal_output(self, runId: str, version: str = ""):
+    def diffcal_output(self, runId: str, version: int):
         self._tokens["workspaceType"] = "diffcal_output"
         self._tokens["runNumber"] = runId
         self._tokens["version"] = version
         return self
 
-    def diffcal_table(self, runId: str, version: str = ""):
+    def diffcal_diagnostic(self, runId: str, version: int):
+        self._tokens["workspaceType"] = "diffcal_diagnostic"
+        self._tokens["runNumber"] = runId
+        self._tokens["version"] = version
+        return self
+
+    def diffcal_table(self, runId: str, version: int):
         self._tokens["workspaceType"] = "diffcal_table"
         self._tokens["runNumber"] = runId
         self._tokens["version"] = version
         return self
 
-    def diffcal_mask(self, runId: str, version: str = ""):
+    def diffcal_mask(self, runId: str, version: int):
         self._tokens["workspaceType"] = "diffcal_mask"
+        self._tokens["runNumber"] = runId
+        self._tokens["version"] = version
+        return self
+
+    def normalization(self, runId: str, version: int):
+        self._tokens["workspaceType"] = "normalization"
         self._tokens["runNumber"] = runId
         self._tokens["version"] = version
         return self

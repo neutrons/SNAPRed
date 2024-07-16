@@ -1,14 +1,14 @@
 # ruff: noqa: E402, ARG002
 import unittest
 import unittest.mock as mock
-from typing import Any, Dict
-from unittest.mock import ANY, MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
-    CreateWorkspace,
+    CreateSingleValuedWorkspace,
     mtd,
 )
+from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
 
 thisService = "snapred.backend.service.NormalizationService"
 localMock = mock.Mock()
@@ -22,13 +22,13 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
+    from snapred.backend.dao.indexing.IndexEntry import IndexEntry
     from snapred.backend.dao.ingredients import (
         ReductionIngredients,
     )
-    from snapred.backend.dao.normalization import NormalizationIndexEntry
     from snapred.backend.dao.request import (
         FocusSpectraRequest,
-        NormalizationCalibrationRequest,
+        NormalizationRequest,
         SmoothDataExcludingPeaksRequest,
         VanadiumCorrectionRequest,
     )
@@ -41,16 +41,20 @@ with mock.patch.dict(
 
     def readReductionIngredientsFromFile():
         with Resource.open("/inputs/normalization/ReductionIngredients.json", "r") as f:
-            return ReductionIngredients.parse_raw(f.read())
+            return ReductionIngredients.model_validate_json(f.read())
 
     def test_saveNormalization():
         normalizationService = NormalizationService()
         normalizationService.dataExportService.exportNormalizationRecord = mock.Mock()
-        normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version="1.0.0")
+        normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version=1)
         normalizationService.dataExportService.exportNormalizationWorkspaces = mock.Mock()
-        normalizationService.dataExportService.exportNormalizationWorkspaces.return_value = MagicMock(version="1.0.0")
+        normalizationService.dataExportService.exportNormalizationWorkspaces.return_value = MagicMock(version=1)
         normalizationService.dataExportService.exportNormalizationIndexEntry = mock.Mock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = MagicMock("expected")
+        normalizationService.dataFactoryService.createNormalizationIndexEntry = mock.Mock()
+        normalizationService.dataFactoryService.createNormalizationRecord = mock.Mock(
+            return_value=mock.Mock(workspaceNames=[])
+        )
         normalizationService.saveNormalization(mock.Mock())
         assert normalizationService.dataExportService.exportNormalizationRecord.called
         savedEntry = normalizationService.dataExportService.exportNormalizationRecord.call_args.args[0]
@@ -61,10 +65,12 @@ with mock.patch.dict(
         normalizationService = NormalizationService()
         normalizationService.dataExportService.exportNormalizationIndexEntry = MagicMock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = "expected"
-        normalizationService.saveNormalizationToIndex(NormalizationIndexEntry(runNumber="1", backgroundRunNumber="2"))
+        normalizationService.saveNormalizationToIndex(
+            IndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2")
+        )
         assert normalizationService.dataExportService.exportNormalizationIndexEntry.called
         savedEntry = normalizationService.dataExportService.exportNormalizationIndexEntry.call_args.args[0]
-        assert savedEntry.appliesTo == ">1"
+        assert savedEntry.appliesTo == ">=1"
         assert savedEntry.timestamp is not None
 
 
@@ -74,14 +80,14 @@ from snapred.backend.service.NormalizationService import NormalizationService  #
 class TestNormalizationService(unittest.TestCase):
     def setUp(self):
         self.instance = NormalizationService()
-        self.request = NormalizationCalibrationRequest(
+        self.request = NormalizationRequest(
             runNumber="12345",
             backgroundRunNumber="67890",
             useLiteMode=True,
             calibrantSamplePath="path/to/sample",
             focusGroup=FocusGroup(name="apple", definition="path/to/grouping"),
             smoothingParameter=0.5,
-            dMin=0.4,
+            crystalDBounds={"minimum": 0.4, "maximum": 100.0},
         )
 
     def clearoutWorkspaces(self) -> None:
@@ -91,6 +97,23 @@ class TestNormalizationService(unittest.TestCase):
     def tearDown(self) -> None:
         self.clearoutWorkspaces()
         return super().tearDown()
+
+    def test_saveNormalization_workspaces_renamed(self):
+        version = 10
+        wsname = "test"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        self.instance.dataFactoryService.createNormalizationIndexEntry = mock.Mock(
+            return_value=mock.Mock(version=version)
+        )
+        self.instance.dataFactoryService.createNormalizationRecord = mock.Mock(
+            return_value=mock.Mock(version=version, workspaceNames=[wsname])
+        )
+        self.instance.dataExportService.exportNormalizationRecord = mock.Mock()
+        self.instance.dataExportService.exportNormalizationWorkspaces = mock.Mock()
+        self.instance.dataExportService.exportNormalizationIndexEntry = mock.Mock()
+        self.instance.saveNormalization(mock.Mock())
+        savedRecord = self.instance.dataExportService.exportNormalizationRecord.call_args[0]
+        assert savedRecord[0].workspaceNames == [f"{wsname}_v0010"]
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "FocusSpectraRecipe")
@@ -142,6 +165,8 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService = MagicMock()
 
+        FarmFreshIngredients.return_value.get.return_value = True
+
         res = self.instance.vanadiumCorrection(mockRequest)
 
         mockRecipeInst = RawVanadiumCorrectionRecipe.return_value
@@ -188,28 +213,14 @@ class TestNormalizationService(unittest.TestCase):
             Ingredients=self.instance.sousChef.prepDetectorPeaks({}),
         )
 
-    @patch(thisService + "DataFactoryService")
-    @patch(
-        thisService + "NormalizationRecord",
-        return_value=MagicMock(mockId="mock_normalization_record"),
-    )
-    def test_normalizationAssessment(
-        self,
-        mockNormalizationRecord,
-        mockDataFactoryService,
-    ):
-        mockNormalization = MagicMock()
-        mockDataFactoryService = mockDataFactoryService.return_value
-        mockDataFactoryService.getCalibrationState.return_value = mockNormalization
-
+    def test_normalizationAssessment(self):
         self.instance = NormalizationService()
-        self.instance.dataFactoryService.getNormalizationRecord = MagicMock(return_value=mockNormalizationRecord)
+        self.instance.sousChef = SculleryBoy()
+        self.instance.dataFactoryService.createNormalizationRecord = MagicMock()
 
         result = self.instance.normalizationAssessment(self.request)
 
-        mockDataFactoryService.getCalibrationState.assert_called_once_with(self.request.runNumber)
-        expected_record_mockId = "mock_normalization_record"
-        assert result.mockId == expected_record_mockId
+        assert result == self.instance.dataFactoryService.createNormalizationRecord.return_value
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "RawVanadiumCorrectionRecipe")
@@ -262,12 +273,16 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="path/to/cif")
         result = self.instance.normalization(self.request)
-        assert result == {
-            "correctedVanadium": "tof_unfoc_raw_van_corr_012345",
-            "focusedVanadium": f"tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
-            "smoothedVanadium": "dsp_apple_fitted_van_cor_012345",
-            "detectorPeaks": self.instance.sousChef.prepNormalizationIngredients(FarmFreshIngredients()).detectorPeaks,
-        }
+
+        assert (
+            result
+            == NormalizationResponse(
+                correctedVanadium="tof_unfoc_raw_van_corr_012345",
+                focusedVanadium=f"tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
+                smoothedVanadium="dsp_apple_fitted_van_cor_012345",
+                detectorPeaks=self.instance.sousChef.prepNormalizationIngredients(FarmFreshIngredients()).detectorPeaks,
+            ).dict()
+        )
 
     def test_nomaliztionStatesDontMatch(self):
         self.instance = NormalizationService()
@@ -287,18 +302,3 @@ class TestNormalizationService(unittest.TestCase):
         self.instance.dataFactoryService.constructStateId = MagicMock()
         self.instance.dataFactoryService.constructStateId.side_effect = ["state", "different_state"]
         assert not self.instance._sameStates("12345", "different_state")
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

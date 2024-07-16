@@ -1,16 +1,16 @@
-import json
-from sys import version
-
-from snapred.backend.api.InterfaceController import InterfaceController
-from snapred.backend.dao import SNAPRequest, SNAPResponse
-from snapred.backend.dao.normalization import NormalizationIndexEntry, NormalizationRecord
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
+from snapred.backend.dao.indexing.Versioning import VersionedObject
 from snapred.backend.dao.request import (
-    NormalizationCalibrationRequest,
+    CreateIndexEntryRequest,
+    CreateNormalizationRecordRequest,
+    HasStateRequest,
     NormalizationExportRequest,
+    NormalizationRequest,
 )
 from snapred.backend.dao.request.SmoothDataExcludingPeaksRequest import SmoothDataExcludingPeaksRequest
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.EntryExitLogger import EntryExitLogger
+from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.ui.view.NormalizationRequestView import NormalizationRequestView
 from snapred.ui.view.NormalizationSaveView import NormalizationSaveView
 from snapred.ui.view.NormalizationTweakPeakView import NormalizationTweakPeakView
@@ -24,7 +24,7 @@ class NormalizationWorkflow(WorkflowImplementer):
     """
 
     This system orchestrates a full workflow for scientific data normalization, guiding users through each step with
-    interactive PyQt5 widgets and custom views. Starting with default settings for initialization, it progresses
+    interactive qt widgets and custom views. Starting with default settings for initialization, it progresses
     through calibration, parameter adjustments, and ends with saving normalization data, offering views like
     NormalizationRequestView, NormalizationTweakPeakView, and NormalizationSaveView for an interactive user workflow.
     The workflow dynamically adjusts to different datasets and requirements, ensuring adaptability. Key phases include
@@ -34,42 +34,27 @@ class NormalizationWorkflow(WorkflowImplementer):
 
     """
 
-    def __init__(self, jsonForm, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
         self.initializationComplete = False
 
-        # TODO enable set by toggle
-        self.useLiteMode = True
-
-        self.assessmentSchema = self.request(path="api/parameters", payload="normalization/assessment").data
-        self.assessmentSchema = {key: json.loads(value) for key, value in self.assessmentSchema.items()}
-
-        self.saveSchema = self.request(path="api/parameters", payload="normalization/save").data
-        self.saveSchema = {key: json.loads(value) for key, value in self.saveSchema.items()}
-
         self.samplePaths = self.request(path="config/samplePaths").data
         self.defaultGroupingMap = self.request(path="config/groupingMap", payload="tmfinr").data
         self.groupingMap = self.defaultGroupingMap
-        self.focusGroups = self.groupingMap.getMap(self.useLiteMode)
+        self.focusGroups = self.groupingMap.lite
 
         self._requestView = NormalizationRequestView(
-            jsonForm,
             samplePaths=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
         self._tweakPeakView = NormalizationTweakPeakView(
-            jsonForm,
             samples=self.samplePaths,
             groups=list(self.focusGroups.keys()),
             parent=parent,
         )
-        self._saveView = NormalizationSaveView(
-            "Saving Normalization",
-            self.saveSchema,
-            parent,
-        )
+        self._saveView = NormalizationSaveView(parent)
 
         # connect signal to populate the grouping dropdown after run is selected
         self._requestView.litemodeToggle.field.connectUpdate(self._switchLiteNativeGroups)
@@ -78,67 +63,84 @@ class NormalizationWorkflow(WorkflowImplementer):
 
         self.workflow = (
             WorkflowBuilder(cancelLambda=None, parent=parent)
-            .addNode(self._triggerNormalizationCalibration, self._requestView, "Normalization Calibration")
+            .addNode(self._triggerNormalization, self._requestView, "Normalization Calibration")
             .addNode(self._specifyNormalization, self._tweakPeakView, "Tweak Parameters")
-            .addNode(self._saveNormalizationCalibration, self._saveView, "Saving")
+            .addNode(self._saveNormalization, self._saveView, "Saving")
             .build()
         )
         self.workflow.presenter.setResetLambda(self.reset)
 
     @EntryExitLogger(logger=logger)
+    @ExceptionToErrLog
     def _populateGroupingDropdown(self):
         # when the run number is updated, grab the grouping map and populate grouping drop down
         runNumber = self._requestView.runNumberField.text()
-        useLiteMode = self._requestView.litemodeToggle.field.getState()
+        self.useLiteMode = self._requestView.litemodeToggle.field.getState()
 
         self._requestView.litemodeToggle.setEnabled(False)
         self._requestView.groupingFileDropdown.setEnabled(False)
+        # TODO: Use threads, account for fail cases
+        try:
+            # check if the state exists -- if so load its grouping map
+            payload = HasStateRequest(
+                runId=runNumber,
+                useLiteMode=self.useLiteMode,
+            )
+            hasState = self.request(path="calibration/hasState", payload=payload.json()).data
+            # hasState = self.request(path="calibration/hasState", payload=runNumber).data
+            if hasState:
+                self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
+            else:
+                self.groupingMap = self.defaultGroupingMap
+            self.focusGroups = self.groupingMap.getMap(self.useLiteMode)
 
-        # check if the state exists -- if so load its grouping map
-        hasState = self.request(path="calibration/hasState", payload=runNumber).data
-        if hasState:
-            self.groupingMap = self.request(path="config/groupingMap", payload=runNumber).data
-        else:
-            self.groupingMap = self.defaultGroupingMap
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
-
-        # populate and reenable the drop down
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+            # populate and reenable the drop down
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
         self._requestView.litemodeToggle.setEnabled(True)
         self._requestView.groupingFileDropdown.setEnabled(True)
 
     @EntryExitLogger(logger=logger)
+    @ExceptionToErrLog
     def _switchLiteNativeGroups(self):
         # when the run number is updated, freeze the drop down to populate it
         useLiteMode = self._requestView.litemodeToggle.field.getState()
 
         self._requestView.groupingFileDropdown.setEnabled(False)
-        self.focusGroups = self.groupingMap.getMap(useLiteMode)
-        self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        # TODO: Use threads, account for fail cases
+        try:
+            self.focusGroups = self.groupingMap.getMap(useLiteMode)
+            self._requestView.populateGroupingDropdown(list(self.focusGroups.keys()))
+        except Exception as e:  # noqa BLE001
+            print(e)
+
         self._requestView.groupingFileDropdown.setEnabled(True)
 
     @EntryExitLogger(logger=logger)
-    def _triggerNormalizationCalibration(self, workflowPresenter):
+    def _triggerNormalization(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
         # pull fields from view for normalization
 
-        self.runNumber = view.getFieldText("runNumber")
-        self.backgroundRunNumber = view.getFieldText("backgroundRunNumber")
+        self.runNumber = view.runNumberField.field.text()
+        self.useLiteMode = view.litemodeToggle.field.getState()
+        self.backgroundRunNumber = view.backgroundRunNumberField.field.text()
         self.sampleIndex = view.sampleDropdown.currentIndex()
         self.prevGroupingIndex = view.groupingFileDropdown.currentIndex()
         self.samplePath = view.sampleDropdown.currentText()
         self.focusGroupPath = view.groupingFileDropdown.currentText()
-        self.prevDMin = float(self._tweakPeakView.fielddMin.field.text())
-        self.prevDMax = float(self._tweakPeakView.fielddMax.field.text())
+        self.prevXtalDMin = float(self._tweakPeakView.fieldXtalDMin.field.text())
+        self.prevXtalDMax = float(self._tweakPeakView.fieldXtalDMax.field.text())
         self.prevThreshold = float(self._tweakPeakView.fieldThreshold.field.text())
 
         # init the payload
-        payload = NormalizationCalibrationRequest(
+        payload = NormalizationRequest(
             runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=self.focusGroups[self.focusGroupPath],
-            crystalDMin=self.prevDMin,
+            crystalDBounds={"minimum": self.prevXtalDMin, "maximum": self.prevXtalDMax},
         )
         # take the default smoothing param from the default payload value
         self.prevSmoothingParameter = payload.smoothingParameter
@@ -167,54 +169,73 @@ class NormalizationWorkflow(WorkflowImplementer):
 
     @EntryExitLogger(logger=logger)
     def _specifyNormalization(self, workflowPresenter):  # noqa: ARG002
-        payload = NormalizationCalibrationRequest(
+        payload = NormalizationRequest(
             runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=str(self.samplePaths[self.sampleIndex]),
             focusGroup=list(self.focusGroups.items())[self.prevGroupingIndex][1],
             smoothingParameter=self.prevSmoothingParameter,
-            crystalDMin=self.prevDMin,
-            crystalDMax=self.prevDMax,
+            crystalDBounds={"minimum": self.prevXtalDMin, "maximum": self.prevXtalDMax},
             peakIntensityThreshold=self.prevThreshold,
         )
         response = self.request(path="normalization/assessment", payload=payload.json())
         return response
 
     @EntryExitLogger(logger=logger)
-    def _saveNormalizationCalibration(self, workflowPresenter):
+    def _saveNormalization(self, workflowPresenter):
         view = workflowPresenter.widget.tabView
+        runNumber = view.fieldRunNumber.get()
+        version = view.fieldVersion.get()
+        appliesTo = view.fieldAppliesTo.get(f">={runNumber}")
+        # validate version number
+        version = VersionedObject.parseVersion(version, exclude_default=True)
+        # validate appliesTo field
+        appliesTo = IndexEntry.appliesToFormatChecker(appliesTo)
 
         normalizationRecord = self.responses[-1].data
         normalizationRecord.workspaceNames.append(self.responses[-2].data["smoothedVanadium"])
         normalizationRecord.workspaceNames.append(self.responses[-2].data["focusedVanadium"])
         normalizationRecord.workspaceNames.append(self.responses[-2].data["correctedVanadium"])
 
-        normalizationIndexEntry = NormalizationIndexEntry(
-            runNumber=view.fieldRunNumber.get(),
-            backgroundRunNumber=view.fieldBackgroundRunNumber.get(),
+        createIndexEntryRequest = CreateIndexEntryRequest(
+            runNumber=runNumber,
+            useLiteMode=self.useLiteMode,
+            version=version,
+            appliesTo=appliesTo,
             comments=view.fieldComments.get(),
             author=view.fieldAuthor.get(),
-            appliesTo=view.fieldAppliesTo.get(),
-            version=view.fieldVersion.get(None),
+        )
+        createRecordRequest = CreateNormalizationRecordRequest(
+            runNumber=runNumber,
+            useLiteMode=self.useLiteMode,
+            version=version,
+            calculationParameters=normalizationRecord.calculationParameters,
+            backgroundRunNumber=normalizationRecord.backgroundRunNumber,
+            smoothingParameter=normalizationRecord.smoothingParameter,
+            peakIntensityThreshold=normalizationRecord.peakIntensityThreshold,
+            workspaceNames=normalizationRecord.workspaceNames,
+            calibrationVersionUsed=normalizationRecord.calibrationVersionUsed,
+            crystalDBounds=normalizationRecord.crystalDBounds,
         )
 
         payload = NormalizationExportRequest(
-            normalizationRecord=normalizationRecord,
-            normalizationIndexEntry=normalizationIndexEntry,
+            createIndexEntryRequest=createIndexEntryRequest,
+            createRecordRequest=createRecordRequest,
         )
         response = self.request(path="normalization/save", payload=payload.json())
         return response
 
     @EntryExitLogger(logger=logger)
-    def callNormalizationCalibration(self, index, smoothingParameter, dMin, dMax, peakThreshold):
-        payload = NormalizationCalibrationRequest(
+    def callNormalization(self, index, smoothingParameter, xtalDMin, xtalDMax, peakThreshold):
+        payload = NormalizationRequest(
             runNumber=self.runNumber,
+            useLiteMode=self.useLiteMode,
             backgroundRunNumber=self.backgroundRunNumber,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
             smoothingParameter=smoothingParameter,
-            crystalDMin=dMin,
-            crystalDMax=dMax,
+            crystalDBounds={"minimum": xtalDMin, "maximum": xtalDMax},
             peakIntensityThreshold=peakThreshold,
         )
         self.request(path="normalization", payload=payload.json())
@@ -225,19 +246,20 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
     @EntryExitLogger(logger=logger)
-    def applySmoothingUpdate(self, index, smoothingValue, dMin, dMax, peakThreshold):
+    def applySmoothingUpdate(self, index, smoothingValue, xtalDMin, xtalDMax, peakThreshold):
         focusWorkspace = self.responses[-1].data["focusedVanadium"]
         smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
 
         payload = SmoothDataExcludingPeaksRequest(
             inputWorkspace=focusWorkspace,
+            useLiteMode=self.useLiteMode,
             outputWorkspace=smoothWorkspace,
             calibrantSamplePath=self.samplePaths[self.sampleIndex],
             focusGroup=list(self.focusGroups.items())[index][1],
             runNumber=self.runNumber,
             smoothingParameter=smoothingValue,
-            crystalDMin=dMin,
-            crystalDMax=dMax,
+            crystalDMin=xtalDMin,
+            crystalDMax=xtalDMax,
             peakIntensityThreshold=peakThreshold,
         )
         response = self.request(path="normalization/smooth", payload=payload.json())
@@ -246,41 +268,50 @@ class NormalizationWorkflow(WorkflowImplementer):
         self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
 
     @EntryExitLogger(logger=logger)
-    def onNormalizationValueChange(self, index, smoothingValue, dMin, dMax, peakThreshold):  # noqa: ARG002
+    @ExceptionToErrLog
+    def onNormalizationValueChange(self, index, smoothingValue, xtalDMin, xtalDMax, peakThreshold):  # noqa: ARG002
         if not self.initializationComplete:
             return
         # disable recalculate button
         self._tweakPeakView.disableRecalculateButton()
+        # TODO: This is a temporary solution,
+        # this should have never been setup to all run on the same thread.
+        # It assumed an exception would never be tossed and thus
+        # would never enable the recalc button again if one did
+        try:
+            # if the grouping file change, redo whole calculation
+            groupingFileChanged = index != self.prevGroupingIndex
+            # if peaks will change, redo only the smoothing
+            smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
+            xtalDMinValueChanged = xtalDMin != self.prevXtalDMin
+            xtalDMaxValueChanged = xtalDMax != self.prevXtalDMax
+            thresholdChanged = peakThreshold != self.prevThreshold
+            peakListWillChange = (
+                smoothingValueChanged or xtalDMinValueChanged or xtalDMaxValueChanged or thresholdChanged
+            )
 
-        # if the grouping file change, redo whole calculation
-        groupingFileChanged = index != self.prevGroupingIndex
-        # if peaks will change, redo only the smoothing
-        smoothingValueChanged = self.prevSmoothingParameter != smoothingValue
-        dMinValueChanged = dMin != self.prevDMin
-        dMaxValueChanged = dMax != self.prevDMax
-        thresholdChanged = peakThreshold != self.prevThreshold
-        peakListWillChange = smoothingValueChanged or dMinValueChanged or dMaxValueChanged or thresholdChanged
+            # check the case, apply correct update
+            if groupingFileChanged:
+                self.callNormalization(index, smoothingValue, xtalDMin, xtalDMax, peakThreshold)
+            elif peakListWillChange:
+                self.applySmoothingUpdate(index, smoothingValue, xtalDMin, xtalDMax, peakThreshold)
+            elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
+                # if nothing changed but this function was called anyway... just replot stuff with old values
+                focusWorkspace = self.responses[-1].data["focusedVanadium"]
+                smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
+                peaks = self.responses[-1].data["detectorPeaks"]
+                self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
+            else:
+                raise Exception("Expected data not found in the last response")
 
-        # check the case, apply correct update
-        if groupingFileChanged:
-            self.callNormalizationCalibration(index, smoothingValue, dMin, dMax, peakThreshold)
-        elif peakListWillChange:
-            self.applySmoothingUpdate(index, smoothingValue, dMin, dMax, peakThreshold)
-        elif "focusedVanadium" in self.responses[-1].data and "smoothedVanadium" in self.responses[-1].data:
-            # if nothing changed but this function was called anyway... just replot stuff with old values
-            focusWorkspace = self.responses[-1].data["focusedVanadium"]
-            smoothWorkspace = self.responses[-1].data["smoothedVanadium"]
-            peaks = self.responses[-1].data["detectorPeaks"]
-            self._tweakPeakView.updateWorkspaces(focusWorkspace, smoothWorkspace, peaks)
-        else:
-            raise Exception("Expected data not found in the last response")
+            # update the values for next call to this method
+            self.prevGroupingIndex = index
+            self.prevSmoothingParameter = smoothingValue
+            self.prevXtalDMin = xtalDMin
+            self.prevXtalDMax = xtalDMax
+            self.prevThreshold = peakThreshold
+        except Exception as e:  # noqa BLE001
+            print(e)
 
         # renable button when graph is updated
         self._tweakPeakView.enableRecalculateButton()
-
-        # update the values for next call to this method
-        self.prevGroupingIndex = index
-        self.prevSmoothingParameter = smoothingValue
-        self.prevDMin = dMin
-        self.prevDMax = dMax
-        self.prevThreshold = peakThreshold

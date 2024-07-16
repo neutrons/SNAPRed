@@ -4,6 +4,7 @@ import logging
 import socket
 import sys
 
+from mantid.api import Progress
 from mantid.utils.logging import log_to_python
 
 from snapred.meta.Config import Config
@@ -50,6 +51,7 @@ class _SnapRedLogger:
         # Configure Mantid to send messages to Python
         log_to_python()
         self.getLogger("Mantid")
+        self.resetProgress(0, 1.0, 100)
 
     def _setFormatter(self, logger):
         ch = logging.StreamHandler(sys.stdout)
@@ -63,6 +65,18 @@ class _SnapRedLogger:
     def _warning(self, message, vanillaWarn):
         self._warnings.append(message)
         vanillaWarn(message)
+
+    def resetProgress(self, start, end, nreports):
+        self._progressReporter = Progress(None, start=start, end=end, nreports=nreports)
+        self._progressCounter = 0
+
+    def getProgress(self):
+        return self._progressReporter
+
+    def reportProgress(self, message):
+        if self._progressReporter is not None:
+            self._progressReporter.report(self._progressCounter, message)
+            self._progressCounter += 1
 
     def getWarnings(self):
         return self._warnings

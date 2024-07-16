@@ -1,7 +1,4 @@
-import json
 import math
-import pathlib
-from statistics import mean
 
 import numpy as np
 from mantid.api import (
@@ -17,10 +14,12 @@ from mantid.simpleapi import mtd
 from snapred.backend.dao.ingredients.PixelGroupingIngredients import PixelGroupingIngredients
 from snapred.backend.dao.Limit import Limit
 from snapred.backend.dao.state.PixelGroupingParameters import PixelGroupingParameters
+from snapred.backend.log.logger import snapredLogger
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
-from snapred.backend.recipe.algorithm.MaskDetectorFlags import MaskDetectorFlags
 from snapred.meta.Config import Config
 from snapred.meta.redantic import list_to_raw
+
+logger = snapredLogger.getLogger(__name__)
 
 
 class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
@@ -76,7 +75,7 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         self.log().notice("Calculate pixel grouping state-derived parameters")
 
         # define/calculate some auxiliary state-derived parameters
-        ingredients = PixelGroupingIngredients.parse_raw(self.getProperty("Ingredients").value)
+        ingredients = PixelGroupingIngredients.model_validate_json(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
         self.unbagGroceries(ingredients)
 
@@ -134,31 +133,79 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
         for groupIndex, groupID in enumerate(groupIDs):
             detIDs = groupingWS.getDetectorIDsOfGroup(int(groupID))
 
+            groupMeanL2 = 0.0
+
             groupMin2Theta = 2.0 * np.pi
             groupMax2Theta = 0.0
-            groupAverage2Theta = 0.0
+            groupMean2Theta = 0.0
+
+            groupMeanPhi = 0.0
+
             pixelCount = 0
+            normalizationFactor = 0.0
             for detID in detIDs:
                 detIndex = detectorInfo.indexOf(int(detID))
                 if detectorInfo.isMonitor(int(detIndex)) or detectorInfo.isMasked(int(detIndex)):
                     continue
-                pixelCount += 1
-                twoThetaTemp = detectorInfo.twoTheta(int(detIndex))
-                groupMin2Theta = min(groupMin2Theta, twoThetaTemp)
-                groupMax2Theta = max(groupMax2Theta, twoThetaTemp)
-                groupAverage2Theta += twoThetaTemp
-            if pixelCount > 0:
-                groupAverage2Theta /= pixelCount
 
-                dMin = self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMax2Theta / 2.0))) * self.tofMin / self.L
-                dMax = self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMin2Theta / 2.0))) * self.tofMax / self.L
+                twoTheta = detectorInfo.twoTheta(int(detIndex))
+                solidAngleFactor = np.sin(twoTheta / 2.0)
+                groupMin2Theta = min(groupMin2Theta, twoTheta)
+                groupMax2Theta = max(groupMax2Theta, twoTheta)
+
+                twoTheta *= solidAngleFactor
+                groupMean2Theta += twoTheta
+
+                try:
+                    phi = detectorInfo.azimuthal(int(detIndex))
+                    phi *= solidAngleFactor
+                    groupMeanPhi += phi
+                except RuntimeError as e:
+                    # Also entered as defect EWM#5073:
+                    # `DetectorInfo.azimuthal()` has issues in calculating ambiguous azimuth values:
+                    #   * by convention, these values can be set to zero, without overly affecting the mean value.
+                    if "Failed to create up axis orthogonal to the beam direction" not in str(e):
+                        raise
+                    logger.debug(e)
+
+                L2 = detectorInfo.l2(int(detIndex))
+                L2 *= solidAngleFactor
+                groupMeanL2 += L2
+
+                normalizationFactor += solidAngleFactor
+                pixelCount += 1
+
+            if pixelCount > 0:
+                if normalizationFactor > np.finfo(float).eps:
+                    groupMeanL2 /= normalizationFactor
+                    groupMean2Theta /= normalizationFactor
+                    groupMeanPhi /= normalizationFactor
+                else:
+                    # special case: all on-axis pixels
+                    groupMeanL2 = 0.0
+                    groupMean2Theta = 0.0
+                    groupMeanPhi = 0.0
+
+                dMin = (
+                    self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMax2Theta / 2.0))) * self.tofMin / self.L
+                    if groupMax2Theta > np.finfo(float).eps
+                    else 0.0
+                )
+                dMax = (
+                    self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(groupMin2Theta / 2.0))) * self.tofMax / self.L
+                    if groupMin2Theta > np.finfo(float).eps
+                    else 0.0
+                )
+
                 delta_d_over_d = resolutionWS.readY(groupIndex)[0]
 
                 allGroupingParams.append(
                     PixelGroupingParameters(
                         groupID=groupID,
                         isMasked=False,
-                        twoTheta=groupAverage2Theta,
+                        L2=groupMeanL2,
+                        twoTheta=groupMean2Theta,
+                        azimuth=groupMeanPhi,
                         dResolution=Limit(minimum=dMin, maximum=dMax),
                         dRelativeResolution=delta_d_over_d,
                     )
@@ -173,9 +220,17 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                 #     consuming methods need to check either the `PixelGroupingParameters.isMasked` flag,
                 #     or equivalently, test for an _empty_ `dResolution` `Limit` domain.
                 #
-                detID = detIDs[0]
-                detIndex = detectorInfo.indexOf(int(detID))
+                detIndex = None
+                # Find first non-monitor detector:
+                #   * `DetectorInfo.azimuthal()` will raise an exception when called on a monitor.
+                for detID in detIDs:
+                    detIndex = detectorInfo.indexOf(int(detID))
+                    if not detectorInfo.isMonitor(int(detIndex)):
+                        break
+
+                L2 = detectorInfo.l2(int(detIndex))
                 twoTheta = detectorInfo.twoTheta(int(detIndex))
+                phi = detectorInfo.azimuthal(int(detIndex))
                 dMin = self.CONVERSION_FACTOR * (1.0 / (2.0 * math.sin(twoTheta / 2.0))) * self.tofMin / self.L
                 delta_d_over_d = resolutionWS.readY(groupIndex)[0]
                 allGroupingParams.append(
@@ -183,7 +238,9 @@ class PixelGroupingParametersCalculationAlgorithm(PythonAlgorithm):
                         groupID=groupID,
                         # Fully-masked group
                         isMasked=True,
+                        L2=L2,
                         twoTheta=twoTheta,
+                        azimuth=phi,
                         # Empty limit domain
                         dResolution=Limit(minimum=dMin, maximum=dMin),
                         # Resolution value for fully-masked group (as set by `EstimateResolutionDiffraction`):

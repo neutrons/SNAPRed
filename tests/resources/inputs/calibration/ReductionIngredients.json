@@ -1,194 +1,4277 @@
 {
-  "runConfig": {
-    "runNumber": "57514",
-    "IPTS": "/SNS/SNAP/IPTS-28913/",
-    "maskFileName": "",
-    "maskFileDirectory": "/SNS/SNAP/IPTS-28913/shared/",
-    "gsasFileDirectory": "/SNS/SNAP/IPTS-28913/shared/manualReduced/",
-    "calibrationState": null
-  },
-  "reductionState": {
-    "instrumentConfig": {
-      "version": "1.4",
-      "facility": "SNS",
-      "name": "SNAP",
-      "nexusFileExtension": ".nxs.h5",
-      "nexusFilePrefix": "SNAP_",
-      "calibrationFileExtension": "json",
-      "calibrationFilePrefix": "SNAPcalibLog",
-      "calibrationDirectory": "/SNS/SNAP/shared/Calibration/",
-      "pixelGroupingDirectory": "PixelGroupingDefinitions/",
-      "sharedDirectory": "shared/",
-      "nexusDirectory": "nexus/",
-      "reducedDataDirectory": "shared/manualReduced/",
-      "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
-      "bandwidth": 0.1,
-      "maxBandwidth": 0.2,
-      "L1": 20,
-      "L2": 20,
-      "delTOverT": 0.05,
-      "delLOverL": 0.05,
-      "delThNoGuide": 0.05,
-      "delThWithGuide": 0.05
-    },
-    "stateConfig": {
-      "calibration": {
-        "instrumentState": {
-          "id": "04bd2c53f6bf6754",
-          "instrumentConfig": {
-            "version": "1.4",
-            "facility": "SNS",
-            "name": "SNAP",
-            "nexusFileExtension": ".nxs.h5",
-            "nexusFilePrefix": "SNAP_",
-            "calibrationFileExtension": "json",
-            "calibrationFilePrefix": "SNAPcalibLog",
-            "calibrationDirectory": "/SNS/SNAP/shared/Calibration",
-            "pixelGroupingDirectory": "PixelGroupingDefinitions/",
-            "sharedDirectory": "shared/",
-            "nexusDirectory": "nexus/",
-            "reducedDataDirectory": "shared/manualReduced/",
-            "reductionRecordDirectory": "shared/manualReduced/reductionRecord/",
-            "bandwidth": 3,
-            "maxBandwidth": 3.2,
-            "L1": 15,
-            "L2": 0.5,
-            "delTOverT": 0.002,
-            "delLOverL": 0.00006452,
-            "delThNoGuide": 0.0006667,
-            "delThWithGuide": 0.0032
+  "maskList": [],
+  "pixelGroups": [
+    {
+      "pixelGroupingParameters": {
+        "1": {
+          "groupID": 1,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.4888167719149363,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.35983386414596874,
+            "maximum": 4.355830260153734
           },
-          "detectorState": {
-            "arc": [
-              -65.3,
-              104.95
-            ],
-            "wav": 2.1,
-            "freq": 60,
-            "guideStat": 1,
-            "lin": [
-              0.045,
-              0.043
-            ]
-          },
-          "gsasParameters": {
-            "alpha": 0.1,
-            "beta": [
-              0.02,
-              0.05
-            ]
-          },
-          "particleBounds": {
-            "wavelength": {
-              "minimum": 0.6000000000000001,
-              "maximum": 3.6
-            },
-            "tof": {
-              "minimum": 2350.800030332904,
-              "maximum": 14104.800181997423
-            }
-          },
-          "defaultGroupingSliceValue": 5,
-          "fwhmMultiplierLimit": {
-            "minimum": 2,
-            "maximum": 2
-          },
-          "peakTailCoefficient": 2
-        },
-        "seedRun": 57514,
-        "creationDate": "2023-09-13T16:40:25.754664",
-        "name": "this is a test state initialisation",
-        "version": 49
-      },
-      "diffractionCalibrant": null,
-      "normalizationCalibrant": null,
-      "geometryCalibrationFileName": null,
-      "focusGroups": [
-        {
-          "name": "Column",
-          "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Column.lite.xml"
-        },
-        {
-          "name": "Bank",
-          "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGrp_Bank.lite.xml"
-        },
-        {
-          "name": "All",
-          "definition": "/SNS/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.nxs"
+          "dRelativeResolution": 0.009342020503289764
         }
-      ],
-      "stateId": "04bd2c53f6bf6754"
-    },
-    "overrides": null
-  },
-  "pixelGroup": {
-    "timeOfFlight": {
-      "minimum": 2350.800030332904,
-      "maximum": 14104.800181997423,
-      "binWidth": 0.0002,
+      },
+      "nBinsAcrossPeakWidth": 10,
+      "focusGroup": {
+        "name": "All",
+        "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_All.lite.hdf"
+      },
+      "timeOfFlight": {
+        "minimum": 2546.742533573784,
+        "binWidth": 0.0009342020503289763,
+        "maximum": 12000,
+        "binningMode": -1
+      },
       "binningMode": -1
     },
-    "pixelGroupingParameters": [
+    {
+      "pixelGroupingParameters": {
+        "1": {
+          "groupID": 1,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.8230747956560218,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.35983386414596874,
+            "maximum": 2.3643065241537378
+          },
+          "dRelativeResolution": 0.006510460909679324
+        },
+        "2": {
+          "groupID": 2,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.1545587481738246,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.46173472918300634,
+            "maximum": 4.355830260153734
+          },
+          "dRelativeResolution": 0.01149611207805968
+        }
+      },
+      "nBinsAcrossPeakWidth": 10,
+      "focusGroup": {
+        "name": "Bank",
+        "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Bank.lite.hdf"
+      },
+      "timeOfFlight": {
+        "minimum": 2546.742533573784,
+        "binWidth": 0.0006510460909679324,
+        "maximum": 12000,
+        "binningMode": -1
+      },
+      "binningMode": -1
+    },
+    {
+      "pixelGroupingParameters": {
+        "1": {
+          "groupID": 1,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 2.1108948177427838,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.35983386414596874,
+            "maximum": 1.8446004591300944
+          },
+          "dRelativeResolution": 0.005285822142225365
+        },
+        "2": {
+          "groupID": 2,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.82310673131693,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.3897805853492433,
+            "maximum": 2.0555564929623205
+          },
+          "dRelativeResolution": 0.006281306679209721
+        },
+        "3": {
+          "groupID": 3,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.5352228379083572,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.43925160115545075,
+            "maximum": 2.3643065241537378
+          },
+          "dRelativeResolution": 0.007730690425302433
+        },
+        "4": {
+          "groupID": 4,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.440276389170165,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.46173472918300634,
+            "maximum": 2.5221224737819017
+          },
+          "dRelativeResolution": 0.008321708397955027
+        },
+        "5": {
+          "groupID": 5,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.1543988461042238,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.5352414154696261,
+            "maximum": 3.194134388808033
+          },
+          "dRelativeResolution": 0.01064966864886483
+        },
+        "6": {
+          "groupID": 6,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 0.8690010092470938,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.6591133268028296,
+            "maximum": 4.355830260153734
+          },
+          "dRelativeResolution": 0.014622431594735495
+        }
+      },
+      "nBinsAcrossPeakWidth": 10,
+      "focusGroup": {
+        "name": "Column",
+        "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_Column.lite.hdf"
+      },
+      "timeOfFlight": {
+        "minimum": 2546.742533573784,
+        "binWidth": 0.0005285822142225365,
+        "maximum": 12000,
+        "binningMode": -1
+      },
+      "binningMode": -1
+    },
+    {
+      "pixelGroupingParameters": {
+        "1": {
+          "groupID": 1,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.7273751940345703,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.35983386414596874,
+            "maximum": 2.5221224737819017
+          },
+          "dRelativeResolution": 0.007007302163279077
+        },
+        "2": {
+          "groupID": 2,
+          "isMasked": false,
+          "L2": 10.0,
+          "twoTheta": 1.011699927675655,
+          "azimuth": 0.0,
+          "dResolution": {
+            "minimum": 0.5352414154696261,
+            "maximum": 4.355830260153734
+          },
+          "dRelativeResolution": 0.012791226447712764
+        }
+      },
+      "nBinsAcrossPeakWidth": 10,
+      "focusGroup": {
+        "name": "2_4",
+        "definition": "/SNS/users/wqp/SNAP/shared/Calibration/Powder/PixelGroupingDefinitions/SNAPFocGroup_2_4.lite.hdf"
+      },
+      "timeOfFlight": {
+        "minimum": 2546.742533573784,
+        "binWidth": 0.0007007302163279077,
+        "maximum": 12000,
+        "binningMode": -1
+      },
+      "binningMode": -1
+    }
+  ],
+  "detectorPeaksMany": [
+    [
       {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.40461,
+              "minimum": 0.3957091453056382,
+              "maximum": 0.41351583570238204
+            },
+            "peak": {
+              "hkl": [
+                6,
+                4,
+                2
+              ],
+              "dSpacing": 0.4046067941312193,
+              "fSquared": 0.22293044863104217,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.41203,
+              "minimum": 0.40296581324739644,
+              "maximum": 0.4210995382182106
+            },
+            "peak": {
+              "hkl": [
+                7,
+                2,
+                1
+              ],
+              "dSpacing": 0.41203139128882815,
+              "fSquared": 0.2307443342335604,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.41988,
+              "minimum": 0.41064314655614637,
+              "maximum": 0.42912261805641566
+            },
+            "peak": {
+              "hkl": [
+                6,
+                4,
+                0
+              ],
+              "dSpacing": 0.4198803135326872,
+              "fSquared": 0.23883210260348067,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4282,
+              "minimum": 0.41878022080911875,
+              "maximum": 0.43762600641976696
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                3
+              ],
+              "dSpacing": 0.42819558241532574,
+              "fSquared": 0.24720335354480513,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.43703,
+              "minimum": 0.4274159781219391,
+              "maximum": 0.4466507693649661
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                4
+              ],
+              "dSpacing": 0.4370252862630872,
+              "fSquared": 0.2558680233421322,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.44642,
+              "minimum": 0.4365992013073318,
+              "maximum": 0.45624813399907804
+            },
+            "peak": {
+              "hkl": [
+                6,
+                3,
+                1
+              ],
+              "dSpacing": 0.4464247548457976,
+              "fSquared": 0.26483639655456337,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.45646,
+              "minimum": 0.44641848164296216,
+              "maximum": 0.46650952117625744
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                2
+              ],
+              "dSpacing": 0.4564580245562764,
+              "fSquared": 0.2741191182229948,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4672,
+              "minimum": 0.45692217829238496,
+              "maximum": 0.4774865866907267
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                1
+              ],
+              "dSpacing": 0.46719968301522186,
+              "fSquared": 0.2837272065052851,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.47874,
+              "minimum": 0.46820836669807575,
+              "maximum": 0.48928127370391505
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                0
+              ],
+              "dSpacing": 0.478737214972891,
+              "fSquared": 0.29367206575429516,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.49117,
+              "minimum": 0.48036477222012663,
+              "maximum": 0.5019858802143322
+            },
+            "peak": {
+              "hkl": [
+                6,
+                1,
+                1
+              ],
+              "dSpacing": 0.4911740188997228,
+              "fSquared": 0.30396550005432266,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.50463,
+              "minimum": 0.49352868376141323,
+              "maximum": 0.5157431469496877
+            },
+            "peak": {
+              "hkl": [
+                6,
+                0,
+                0
+              ],
+              "dSpacing": 0.5046333333333334,
+              "fSquared": 0.3146197272320004,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.51926,
+              "minimum": 0.5078368398311769,
+              "maximum": 0.5306963734081943
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                3
+              ],
+              "dSpacing": 0.5192634160944883,
+              "fSquared": 0.3256473933582866,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.53524,
+              "minimum": 0.5234652760113985,
+              "maximum": 0.5470295733548787
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                0
+              ],
+              "dSpacing": 0.5352444780191571,
+              "fSquared": 0.33706158775876205,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 0.5528,
+              "minimum": 0.5406391173562551,
+              "maximum": 0.5649776866576154
+            },
+            "peak": {
+              "hkl": [
+                5,
+                2,
+                1
+              ],
+              "dSpacing": 0.5527981198713806,
+              "fSquared": 0.34887585855004843,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.5938,
+              "minimum": 0.5807371165860495,
+              "maximum": 0.6068849297436277
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                1
+              ],
+              "dSpacing": 0.5938004339713936,
+              "fSquared": 0.37376121277629837,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.61805,
+              "minimum": 0.6044537198710946,
+              "maximum": 0.6316718936977245
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                2
+              ],
+              "dSpacing": 0.6180470869332422,
+              "fSquared": 0.3868618339665694,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.64553,
+              "minimum": 0.6313291485526588,
+              "maximum": 0.6597609447669197
+            },
+            "peak": {
+              "hkl": [
+                3,
+                3,
+                2
+              ],
+              "dSpacing": 0.6455291289815173,
+              "fSquared": 0.400421642118206,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.6621460213504786,
+              "maximum": 0.6919697907743274
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.6979603680151979,
+              "maximum": 0.7294028800561595
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.7402980256421199,
+              "maximum": 0.7736550903816682
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.7914082906112764,
+              "maximum": 0.8270782147580531
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.8548219562438782,
+              "maximum": 0.8933631398059269
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.9364067333961515,
+              "maximum": 0.9786447263228535
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0469405520227968,
+              "maximum": 1.094188754015562
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.2088974397421892,
+              "maximum": 1.2634854480882023
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.4805960512842398,
+              "maximum": 1.5474767711038797
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 2.14098,
+              "minimum": 2.0938811040455936,
+              "maximum": 2.1884228550754483
+            },
+            "peak": {
+              "hkl": [
+                1,
+                1,
+                0
+              ],
+              "dSpacing": 2.1409779120766284,
+              "fSquared": 0.5651114443748416,
+              "multiplicity": 12
+            }
+          }
+        ],
         "groupID": 1,
-        "isMasked": false,
-        "twoTheta": 2.1108948177427838,
-        "dResolution": {
-          "minimum": 0.40224298673776404,
-          "maximum": 2.0112149336888203
-        },
-        "dRelativeResolution": 0.002771822370612031
+        "maxfwhm": 0.02354944797720317
+      }
+    ],
+    [
+      {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.40461,
+              "minimum": 0.3984069878646732,
+              "maximum": 0.4108172816422126
+            },
+            "peak": {
+              "hkl": [
+                6,
+                4,
+                2
+              ],
+              "dSpacing": 0.4046067941312193,
+              "fSquared": 0.22293044863104217,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.41203,
+              "minimum": 0.40571316163403004,
+              "maximum": 0.4183514254132434
+            },
+            "peak": {
+              "hkl": [
+                7,
+                2,
+                1
+              ],
+              "dSpacing": 0.41203139128882815,
+              "fSquared": 0.2307443342335604,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.41988,
+              "minimum": 0.41344283009082783,
+              "maximum": 0.4263221110883325
+            },
+            "peak": {
+              "hkl": [
+                6,
+                4,
+                0
+              ],
+              "dSpacing": 0.4198803135326872,
+              "fSquared": 0.23883210260348067,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4282,
+              "minimum": 0.42163534900416383,
+              "maximum": 0.434769988709909
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                3
+              ],
+              "dSpacing": 0.42819558241532574,
+              "fSquared": 0.24720335354480513,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.43703,
+              "minimum": 0.4303299811336449,
+              "maximum": 0.443735802523335
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                4
+              ],
+              "dSpacing": 0.4370252862630872,
+              "fSquared": 0.2558680233421322,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.44642,
+              "minimum": 0.4395758782205701,
+              "maximum": 0.4532704092901303
+            },
+            "peak": {
+              "hkl": [
+                6,
+                3,
+                1
+              ],
+              "dSpacing": 0.4464247548457976,
+              "fSquared": 0.26483639655456337,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.45646,
+              "minimum": 0.44946205852531573,
+              "maximum": 0.46346480114879535
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                2
+              ],
+              "dSpacing": 0.4564580245562764,
+              "fSquared": 0.2741191182229948,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4672,
+              "minimum": 0.4600373785477651,
+              "maximum": 0.4743701344206133
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                1
+              ],
+              "dSpacing": 0.46719968301522186,
+              "fSquared": 0.2837272065052851,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.47874,
+              "minimum": 0.4714004970623743,
+              "maximum": 0.48608776627759903
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                0
+              ],
+              "dSpacing": 0.478737214972891,
+              "fSquared": 0.29367206575429516,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.49117,
+              "minimum": 0.48363982887093065,
+              "maximum": 0.498709301939959
+            },
+            "peak": {
+              "hkl": [
+                6,
+                1,
+                1
+              ],
+              "dSpacing": 0.4911740188997228,
+              "fSquared": 0.30396550005432266,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.50463,
+              "minimum": 0.4968934846078687,
+              "maximum": 0.5123766561713278
+            },
+            "peak": {
+              "hkl": [
+                6,
+                0,
+                0
+              ],
+              "dSpacing": 0.5046333333333334,
+              "fSquared": 0.3146197272320004,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.51926,
+              "minimum": 0.5112991913378975,
+              "maximum": 0.5272321344853594
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                3
+              ],
+              "dSpacing": 0.5192634160944883,
+              "fSquared": 0.3256473933582866,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.53524,
+              "minimum": 0.5270341862552048,
+              "maximum": 0.543458541986009
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                0
+              ],
+              "dSpacing": 0.5352444780191571,
+              "fSquared": 0.33706158775876205,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 0.5528,
+              "minimum": 0.5443250720064875,
+              "maximum": 0.5612893316749837
+            },
+            "peak": {
+              "hkl": [
+                5,
+                2,
+                1
+              ],
+              "dSpacing": 0.5527981198713806,
+              "fSquared": 0.34887585855004843,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.5938,
+              "minimum": 0.5846964670111487,
+              "maximum": 0.6029224301590587
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                1
+              ],
+              "dSpacing": 0.5938004339713936,
+              "fSquared": 0.37376121277629837,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.61805,
+              "minimum": 0.608574742451045,
+              "maximum": 0.6275472124038755
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                2
+              ],
+              "dSpacing": 0.6180470869332422,
+              "fSquared": 0.3868618339665694,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.64553,
+              "minimum": 0.6356334162578084,
+              "maximum": 0.6554523784477279
+            },
+            "peak": {
+              "hkl": [
+                3,
+                3,
+                2
+              ],
+              "dSpacing": 0.6455291289815173,
+              "fSquared": 0.400421642118206,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.6666603754045325,
+              "maximum": 0.6874503212160775
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.7027189150069396,
+              "maximum": 0.7246381553887926
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.745345226911803,
+              "maximum": 0.7686003018704005
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.7968039757293464,
+              "maximum": 0.8216730298267858
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.8606499622672898,
+              "maximum": 0.8875229784244573
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.9427909941247486,
+              "maximum": 0.9722445443758608
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0540783725104095,
+              "maximum": 1.0870296062353118
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.21713948490209,
+              "maximum": 1.255214421862439
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.490690453823606,
+              "maximum": 1.5373433978505797
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 2.14098,
+              "minimum": 2.108156745020819,
+              "maximum": 2.1740980820161466
+            },
+            "peak": {
+              "hkl": [
+                1,
+                1,
+                0
+              ],
+              "dSpacing": 2.1409779120766284,
+              "fSquared": 0.5651114443748416,
+              "multiplicity": 12
+            }
+          }
+        ],
+        "groupID": 1,
+        "maxfwhm": 0.016411627489590467
       },
       {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.4672,
+              "minimum": 0.45455230882575676,
+              "maximum": 0.479858572786497
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                1
+              ],
+              "dSpacing": 0.46719968301522186,
+              "fSquared": 0.2837272065052851,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.47874,
+              "minimum": 0.46577997312344677,
+              "maximum": 0.4917119953099316
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                0
+              ],
+              "dSpacing": 0.478737214972891,
+              "fSquared": 0.29367206575429516,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.49117,
+              "minimum": 0.4778732929822146,
+              "maximum": 0.5044799318762778
+            },
+            "peak": {
+              "hkl": [
+                6,
+                1,
+                1
+              ],
+              "dSpacing": 0.4911740188997228,
+              "fSquared": 0.30396550005432266,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.50463,
+              "minimum": 0.490968932177698,
+              "maximum": 0.518305755495883
+            },
+            "peak": {
+              "hkl": [
+                6,
+                0,
+                0
+              ],
+              "dSpacing": 0.5046333333333334,
+              "fSquared": 0.3146197272320004,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.51926,
+              "minimum": 0.5052028771816361,
+              "maximum": 0.5333335268827667
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                3
+              ],
+              "dSpacing": 0.5192634160944883,
+              "fSquared": 0.3256473933582866,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.53524,
+              "minimum": 0.5207502494569014,
+              "maximum": 0.5497481858377231
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                0
+              ],
+              "dSpacing": 0.5352444780191571,
+              "fSquared": 0.33706158775876205,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 0.5528,
+              "minimum": 0.5378350499882344,
+              "maximum": 0.5677858119758924
+            },
+            "peak": {
+              "hkl": [
+                5,
+                2,
+                1
+              ],
+              "dSpacing": 0.5527981198713806,
+              "fSquared": 0.34887585855004843,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.5938,
+              "minimum": 0.5777250650609771,
+              "maximum": 0.6099023051698734
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                1
+              ],
+              "dSpacing": 0.5938004339713936,
+              "fSquared": 0.37376121277629837,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.61805,
+              "minimum": 0.6013186772469029,
+              "maximum": 0.6348131216648321
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                2
+              ],
+              "dSpacing": 0.6180470869332422,
+              "fSquared": 0.3868618339665694,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.64553,
+              "minimum": 0.6280547033246158,
+              "maximum": 0.663042657139279
+            },
+            "peak": {
+              "hkl": [
+                3,
+                3,
+                2
+              ],
+              "dSpacing": 0.6455291289815173,
+              "fSquared": 0.400421642118206,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.6587117542224585,
+              "maximum": 0.6954127060635634
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.6943403326092017,
+              "maximum": 0.7330333593075127
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.7364583982665469,
+              "maximum": 0.7775075445844501
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.7873035562877702,
+              "maximum": 0.8311990092611441
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.8503883364461285,
+              "maximum": 0.8978173091902077
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.9315499462468936,
+              "maximum": 0.9835284295410204
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0415104989138027,
+              "maximum": 1.099654862586142
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.2026273544938058,
+              "maximum": 1.2698045281023391
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.4729167965330938,
+              "maximum": 1.5552219089046513
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 2.14098,
+              "minimum": 2.0830209978276053,
+              "maximum": 2.1993660229365704
+            },
+            "peak": {
+              "hkl": [
+                1,
+                1,
+                0
+              ],
+              "dSpacing": 2.1409779120766284,
+              "fSquared": 0.5651114443748416,
+              "multiplicity": 12
+            }
+          }
+        ],
         "groupID": 2,
-        "isMasked": false,
-        "twoTheta": 1.82310673131693,
-        "dResolution": {
-          "minimum": 0.44278229953817677,
-          "maximum": 2.213911497690884
-        },
-        "dRelativeResolution": 0.003234525153614593
+        "maxfwhm": 0.028979501086197332
+      }
+    ],
+    [
+      {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.40461,
+              "minimum": 0.3995737945226496,
+              "maximum": 0.4096500840378834
+            },
+            "peak": {
+              "hkl": [
+                6,
+                4,
+                2
+              ],
+              "dSpacing": 0.4046067941312193,
+              "fSquared": 0.22293044863104217,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.41203,
+              "minimum": 0.40690137937437565,
+              "maximum": 0.4171627876502934
+            },
+            "peak": {
+              "hkl": [
+                7,
+                2,
+                1
+              ],
+              "dSpacing": 0.41203139128882815,
+              "fSquared": 0.2307443342335604,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.41988,
+              "minimum": 0.4146536825838887,
+              "maximum": 0.4251108061458383
+            },
+            "peak": {
+              "hkl": [
+                6,
+                4,
+                0
+              ],
+              "dSpacing": 0.4198803135326872,
+              "fSquared": 0.23883210260348067,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4282,
+              "minimum": 0.42287018110220376,
+              "maximum": 0.43353466785288475
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                3
+              ],
+              "dSpacing": 0.42819558241532574,
+              "fSquared": 0.24720335354480513,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.43703,
+              "minimum": 0.4315902763662317,
+              "maximum": 0.44247497769806626
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                4
+              ],
+              "dSpacing": 0.4370252862630872,
+              "fSquared": 0.2558680233421322,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.44642,
+              "minimum": 0.4408632796774784,
+              "maximum": 0.4519824321041173
+            },
+            "peak": {
+              "hkl": [
+                6,
+                3,
+                1
+              ],
+              "dSpacing": 0.4464247548457976,
+              "fSquared": 0.26483639655456337,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.45646,
+              "minimum": 0.4507783939647208,
+              "maximum": 0.46214783758894284
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                2
+              ],
+              "dSpacing": 0.4564580245562764,
+              "fSquared": 0.2741191182229948,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4672,
+              "minimum": 0.46138469082391487,
+              "maximum": 0.47302213420375633
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                1
+              ],
+              "dSpacing": 0.46719968301522186,
+              "fSquared": 0.2837272065052851,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.47874,
+              "minimum": 0.47278108131838226,
+              "maximum": 0.4847064253715349
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                0
+              ],
+              "dSpacing": 0.478737214972891,
+              "fSquared": 0.29367206575429516,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.49117,
+              "minimum": 0.4850562784308244,
+              "maximum": 0.4972920162982152
+            },
+            "peak": {
+              "hkl": [
+                6,
+                1,
+                1
+              ],
+              "dSpacing": 0.4911740188997228,
+              "fSquared": 0.30396550005432266,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.50463,
+              "minimum": 0.4983487481914534,
+              "maximum": 0.5109204640260266
+            },
+            "peak": {
+              "hkl": [
+                6,
+                0,
+                0
+              ],
+              "dSpacing": 0.5046333333333334,
+              "fSquared": 0.3146197272320004,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.51926,
+              "minimum": 0.5127966452114626,
+              "maximum": 0.5257336435390331
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                3
+              ],
+              "dSpacing": 0.5192634160944883,
+              "fSquared": 0.3256473933582866,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.53524,
+              "minimum": 0.5285777263777547,
+              "maximum": 0.5419138363753562
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                0
+              ],
+              "dSpacing": 0.5352444780191571,
+              "fSquared": 0.33706158775876205,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 0.5528,
+              "minimum": 0.5459192333901778,
+              "maximum": 0.5596938513879892
+            },
+            "peak": {
+              "hkl": [
+                5,
+                2,
+                1
+              ],
+              "dSpacing": 0.5527981198713806,
+              "fSquared": 0.34887585855004843,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.5938,
+              "minimum": 0.5864088710288687,
+              "maximum": 0.6012082957823138
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                1
+              ],
+              "dSpacing": 0.5938004339713936,
+              "fSquared": 0.37376121277629837,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.61805,
+              "minimum": 0.6103570690615634,
+              "maximum": 0.6257628754510184
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                2
+              ],
+              "dSpacing": 0.6180470869332422,
+              "fSquared": 0.3868618339665694,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.64553,
+              "minimum": 0.6374949956888474,
+              "maximum": 0.6535884370703747
+            },
+            "peak": {
+              "hkl": [
+                3,
+                3,
+                2
+              ],
+              "dSpacing": 0.6455291289815173,
+              "fSquared": 0.400421642118206,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.6686128163833778,
+              "maximum": 0.6854950694367832
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.7047769685036729,
+              "maximum": 0.722576707463523
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.7475281222871801,
+              "maximum": 0.7664132375565892
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.7991375890452991,
+              "maximum": 0.8193341966775227
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.8631705527324635,
+              "maximum": 0.8849957089918585
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.9455521626367646,
+              "maximum": 0.9694746276806546
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0571654527555092,
+              "maximum": 1.0839308073479381
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.2207041381231267,
+              "maximum": 1.2516338445037571
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.4950562445743603,
+              "maximum": 1.5329561939807994
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          }
+        ],
+        "groupID": 1,
+        "maxfwhm": 0.009421877712819871
       },
       {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.40461,
+              "minimum": 0.3986253205591144,
+              "maximum": 0.4105989488949427
+            },
+            "peak": {
+              "hkl": [
+                6,
+                4,
+                2
+              ],
+              "dSpacing": 0.4046067941312193,
+              "fSquared": 0.22293044863104217,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.41203,
+              "minimum": 0.4059355007671324,
+              "maximum": 0.4181290862233833
+            },
+            "peak": {
+              "hkl": [
+                7,
+                2,
+                1
+              ],
+              "dSpacing": 0.41203139128882815,
+              "fSquared": 0.2307443342335604,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.41988,
+              "minimum": 0.4136694046356109,
+              "maximum": 0.4260955364824099
+            },
+            "peak": {
+              "hkl": [
+                6,
+                4,
+                0
+              ],
+              "dSpacing": 0.4198803135326872,
+              "fSquared": 0.23883210260348067,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4282,
+              "minimum": 0.4218664106091903,
+              "maximum": 0.4345389270388365
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                3
+              ],
+              "dSpacing": 0.42819558241532574,
+              "fSquared": 0.24720335354480513,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.43703,
+              "minimum": 0.4305658073967546,
+              "maximum": 0.4434999761886613
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                4
+              ],
+              "dSpacing": 0.4370252862630872,
+              "fSquared": 0.2558680233421322,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.44642,
+              "minimum": 0.439816776596486,
+              "maximum": 0.453029510836416
+            },
+            "peak": {
+              "hkl": [
+                6,
+                3,
+                1
+              ],
+              "dSpacing": 0.4464247548457976,
+              "fSquared": 0.26483639655456337,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.45646,
+              "minimum": 0.44970837102388533,
+              "maximum": 0.46321848856534775
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                2
+              ],
+              "dSpacing": 0.4564580245562764,
+              "fSquared": 0.2741191182229948,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4672,
+              "minimum": 0.46028948742758213,
+              "maximum": 0.4741180254478347
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                1
+              ],
+              "dSpacing": 0.46719968301522186,
+              "fSquared": 0.2837272065052851,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.47874,
+              "minimum": 0.47165883179028895,
+              "maximum": 0.4858294314474381
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                0
+              ],
+              "dSpacing": 0.478737214972891,
+              "fSquared": 0.29367206575429516,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.49117,
+              "minimum": 0.4839048747093629,
+              "maximum": 0.4984442559885468
+            },
+            "peak": {
+              "hkl": [
+                6,
+                1,
+                1
+              ],
+              "dSpacing": 0.4911740188997228,
+              "fSquared": 0.30396550005432266,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.50463,
+              "minimum": 0.49716579332084543,
+              "maximum": 0.5121043473328742
+            },
+            "peak": {
+              "hkl": [
+                6,
+                0,
+                0
+              ],
+              "dSpacing": 0.5046333333333334,
+              "fSquared": 0.3146197272320004,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.51926,
+              "minimum": 0.5115793946918824,
+              "maximum": 0.5269519309912347
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                3
+              ],
+              "dSpacing": 0.5192634160944883,
+              "fSquared": 0.3256473933582866,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.53524,
+              "minimum": 0.5273230132614879,
+              "maximum": 0.5431697148222333
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                0
+              ],
+              "dSpacing": 0.5352444780191571,
+              "fSquared": 0.33706158775876205,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 0.5528,
+              "minimum": 0.5446233712558926,
+              "maximum": 0.5609910322473549
+            },
+            "peak": {
+              "hkl": [
+                5,
+                2,
+                1
+              ],
+              "dSpacing": 0.5527981198713806,
+              "fSquared": 0.34887585855004843,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.5938,
+              "minimum": 0.5850168918052695,
+              "maximum": 0.6026020051311142
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                1
+              ],
+              "dSpacing": 0.5938004339713936,
+              "fSquared": 0.37376121277629837,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.61805,
+              "minimum": 0.6089082511506986,
+              "maximum": 0.627213703432564
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                2
+              ],
+              "dSpacing": 0.6180470869332422,
+              "fSquared": 0.3868618339665694,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.64553,
+              "minimum": 0.6359817547338675,
+              "maximum": 0.6551040396524984
+            },
+            "peak": {
+              "hkl": [
+                3,
+                3,
+                2
+              ],
+              "dSpacing": 0.6455291289815173,
+              "fSquared": 0.400421642118206,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.6670257158803814,
+              "maximum": 0.6870849803604046
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.7031040176819837,
+              "maximum": 0.7242530522550588
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.7457536899812681,
+              "maximum": 0.7681918382375859
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.7972406411182288,
+              "maximum": 0.8212363637325462
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.8611216147935092,
+              "maximum": 0.8870513249957076
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.9433076635805779,
+              "maximum": 0.9717278737378877
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0546560265229756,
+              "maximum": 1.0864519506392032
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.217806502301397,
+              "maximum": 1.2545474023113001
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.4915073799625362,
+              "maximum": 1.5365264688180902
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          }
+        ],
+        "groupID": 2,
+        "maxfwhm": 0.01119631001873188
+      },
+      {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.44642,
+              "minimum": 0.4382931119894784,
+              "maximum": 0.4545540449919337
+            },
+            "peak": {
+              "hkl": [
+                6,
+                3,
+                1
+              ],
+              "dSpacing": 0.4464247548457976,
+              "fSquared": 0.26483639655456337,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.45646,
+              "minimum": 0.44815046248711243,
+              "maximum": 0.4647773457795364
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                2
+              ],
+              "dSpacing": 0.4564580245562764,
+              "fSquared": 0.2741191182229948,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4672,
+              "minimum": 0.45869491720339883,
+              "maximum": 0.4757136346985535
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                1
+              ],
+              "dSpacing": 0.46719968301522186,
+              "fSquared": 0.2837272065052851,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.47874,
+              "minimum": 0.4700248835322818,
+              "maximum": 0.48746452250667527
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                0
+              ],
+              "dSpacing": 0.478737214972891,
+              "fSquared": 0.29367206575429516,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.49117,
+              "minimum": 0.48222847916822026,
+              "maximum": 0.5001219143001853
+            },
+            "peak": {
+              "hkl": [
+                6,
+                1,
+                1
+              ],
+              "dSpacing": 0.4911740188997228,
+              "fSquared": 0.30396550005432266,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.50463,
+              "minimum": 0.4954434606294564,
+              "maximum": 0.5138280824710919
+            },
+            "peak": {
+              "hkl": [
+                6,
+                0,
+                0
+              ],
+              "dSpacing": 0.5046333333333334,
+              "fSquared": 0.3146197272320004,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.51926,
+              "minimum": 0.5098071289735749,
+              "maximum": 0.5287257630452842
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                3
+              ],
+              "dSpacing": 0.5192634160944883,
+              "fSquared": 0.3256473933582866,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.53524,
+              "minimum": 0.5254962035731772,
+              "maximum": 0.5449982847975178
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                0
+              ],
+              "dSpacing": 0.5352444780191571,
+              "fSquared": 0.33706158775876205,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 0.5528,
+              "minimum": 0.5427366503226878,
+              "maximum": 0.5628797451771318
+            },
+            "peak": {
+              "hkl": [
+                5,
+                2,
+                1
+              ],
+              "dSpacing": 0.5527981198713806,
+              "fSquared": 0.34887585855004843,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.5938,
+              "minimum": 0.5829902284201253,
+              "maximum": 0.6046312819521603
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                1
+              ],
+              "dSpacing": 0.5938004339713936,
+              "fSquared": 0.37376121277629837,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.61805,
+              "minimum": 0.6067988330200897,
+              "maximum": 0.6293261578699554
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                2
+              ],
+              "dSpacing": 0.6180470869332422,
+              "fSquared": 0.3868618339665694,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.64553,
+              "minimum": 0.6337785393522265,
+              "maximum": 0.657310822383578
+            },
+            "peak": {
+              "hkl": [
+                3,
+                3,
+                2
+              ],
+              "dSpacing": 0.6455291289815173,
+              "fSquared": 0.400421642118206,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.6647149640936918,
+              "maximum": 0.6893999774203012
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.7006682714309027,
+              "maximum": 0.7266939252580313
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.7431701909441846,
+              "maximum": 0.7707816338022806
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.7944787644737067,
+              "maximum": 0.8240061241165578
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.8581384470644866,
+              "maximum": 0.8900445802574366
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.9400397670645636,
+              "maximum": 0.975008983012467
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0510024071463542,
+              "maximum": 1.0901232691869218
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.2135876660401794,
+              "maximum": 1.2587902894847456
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.4863403818883691,
+              "maximum": 1.5417258080499194
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 2.14098,
+              "minimum": 2.1020048142927084,
+              "maximum": 2.1802907830086538
+            },
+            "peak": {
+              "hkl": [
+                1,
+                1,
+                0
+              ],
+              "dSpacing": 2.1409779120766284,
+              "fSquared": 0.5651114443748416,
+              "multiplicity": 12
+            }
+          }
+        ],
         "groupID": 3,
-        "isMasked": false,
-        "twoTheta": 1.5352228379083572,
-        "dResolution": {
-          "minimum": 0.5040188478793922,
-          "maximum": 2.5200942393969608
-        },
-        "dRelativeResolution": 0.004014748859873182
+        "maxfwhm": 0.019487592853645815
       },
       {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.4672,
+              "minimum": 0.45804469626385147,
+              "maximum": 0.47636430859080414
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                1
+              ],
+              "dSpacing": 0.46719968301522186,
+              "fSquared": 0.2837272065052851,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.47874,
+              "minimum": 0.469358605336828,
+              "maximum": 0.48813129889432033
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                0
+              ],
+              "dSpacing": 0.478737214972891,
+              "fSquared": 0.29367206575429516,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.49117,
+              "minimum": 0.48154489216321833,
+              "maximum": 0.5008060517967197
+            },
+            "peak": {
+              "hkl": [
+                6,
+                1,
+                1
+              ],
+              "dSpacing": 0.4911740188997228,
+              "fSquared": 0.30396550005432266,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.50463,
+              "minimum": 0.49474114174514283,
+              "maximum": 0.5145310127373679
+            },
+            "peak": {
+              "hkl": [
+                6,
+                0,
+                0
+              ],
+              "dSpacing": 0.5046333333333334,
+              "fSquared": 0.3146197272320004,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.51926,
+              "minimum": 0.5090844488037031,
+              "maximum": 0.5294491260427687
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                3
+              ],
+              "dSpacing": 0.5192634160944883,
+              "fSquared": 0.3256473933582866,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.53524,
+              "minimum": 0.5247512819046969,
+              "maximum": 0.5457439738446127
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                0
+              ],
+              "dSpacing": 0.5352444780191571,
+              "fSquared": 0.33706158775876205,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 0.5528,
+              "minimum": 0.541967298531687,
+              "maximum": 0.5636499653581127
+            },
+            "peak": {
+              "hkl": [
+                5,
+                2,
+                1
+              ],
+              "dSpacing": 0.5527981198713806,
+              "fSquared": 0.34887585855004843,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.5938,
+              "minimum": 0.5821638120287684,
+              "maximum": 0.6054588376434449
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                1
+              ],
+              "dSpacing": 0.5938004339713936,
+              "fSquared": 0.37376121277629837,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.61805,
+              "minimum": 0.6059386715684453,
+              "maximum": 0.6301876429676458
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                2
+              ],
+              "dSpacing": 0.6180470869332422,
+              "fSquared": 0.3868618339665694,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.64553,
+              "minimum": 0.6328801300167521,
+              "maximum": 0.6582107868675656
+            },
+            "peak": {
+              "hkl": [
+                3,
+                3,
+                2
+              ],
+              "dSpacing": 0.6455291289815173,
+              "fSquared": 0.400421642118206,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.6637727044333676,
+              "maximum": 0.6903440877628843
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.6996750425395958,
+              "maximum": 0.7276893891029698
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.7421167126177142,
+              "maximum": 0.7718378570338191
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.7933525487702656,
+              "maximum": 0.8251357766534122
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.8569219950737405,
+              "maximum": 0.8912654298020984
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.938707210673656,
+              "maximum": 0.9763472993666731
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0495125638093936,
+              "maximum": 1.0916208282915953
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.2118673431368905,
+              "maximum": 1.2605210971305696
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.4842334252354283,
+              "maximum": 1.543846863490805
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 2.14098,
+              "minimum": 2.0990251276187872,
+              "maximum": 2.183288244641377
+            },
+            "peak": {
+              "hkl": [
+                1,
+                1,
+                0
+              ],
+              "dSpacing": 2.1409779120766284,
+              "fSquared": 0.5651114443748416,
+              "multiplicity": 12
+            }
+          }
+        ],
         "groupID": 4,
-        "isMasked": false,
-        "twoTheta": 1.440276389170165,
-        "dResolution": {
-          "minimum": 0.530714277849788,
-          "maximum": 2.6535713892489396
-        },
-        "dRelativeResolution": 0.004309856397320412
+        "maxfwhm": 0.020977436190606286
       },
       {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.53524,
+              "minimum": 0.5218171105012788,
+              "maximum": 0.5486813270567724
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                0
+              ],
+              "dSpacing": 0.5352444780191571,
+              "fSquared": 0.33706158775876205,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 0.5528,
+              "minimum": 0.5389368993369253,
+              "maximum": 0.5666839651885669
+            },
+            "peak": {
+              "hkl": [
+                5,
+                2,
+                1
+              ],
+              "dSpacing": 0.5527981198713806,
+              "fSquared": 0.34887585855004843,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.5938,
+              "minimum": 0.5789086411222994,
+              "maximum": 0.6087187324689808
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                1
+              ],
+              "dSpacing": 0.5938004339713936,
+              "fSquared": 0.37376121277629837,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.61805,
+              "minimum": 0.6025505822692213,
+              "maximum": 0.6335812205466826
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                2
+              ],
+              "dSpacing": 0.6180470869332422,
+              "fSquared": 0.3868618339665694,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.64553,
+              "minimum": 0.6293413861564873,
+              "maximum": 0.6617559788944063
+            },
+            "peak": {
+              "hkl": [
+                3,
+                3,
+                2
+              ],
+              "dSpacing": 0.6455291289815173,
+              "fSquared": 0.400421642118206,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.6600612385613139,
+              "maximum": 0.6940632271834003
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.6957628140017049,
+              "maximum": 0.731610884507132
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.737967167624673,
+              "maximum": 0.7759987833225773
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.7889164985774189,
+              "maximum": 0.8295860771086304
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.8521305132362468,
+              "maximum": 0.8960751453709241
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.933458405301113,
+              "maximum": 0.9816199874761393
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0436442210025574,
+              "maximum": 1.0975211632554818
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.2050911645384426,
+              "maximum": 1.267340748983045
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.475934335249346,
+              "maximum": 1.5522044117735738
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 2.14098,
+              "minimum": 2.0872884420051148,
+              "maximum": 2.1950986311873097
+            },
+            "peak": {
+              "hkl": [
+                1,
+                1,
+                0
+              ],
+              "dSpacing": 2.1409779120766284,
+              "fSquared": 0.5651114443748416,
+              "multiplicity": 12
+            }
+          }
+        ],
         "groupID": 5,
-        "isMasked": false,
-        "twoTheta": 1.1543988461042238,
-        "dResolution": {
-          "minimum": 0.6414024711539658,
-          "maximum": 3.207012355769829
-        },
-        "dRelativeResolution": 0.005408489642872038
+        "maxfwhm": 0.026845778997442532
       },
       {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.6537274645694274,
+              "maximum": 0.7004101755485871
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.6890864300020055,
+              "maximum": 0.7383031783764542
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.7308857930246837,
+              "maximum": 0.7830996979618521
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.781346190697258,
+              "maximum": 0.8371808506290392
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.843953646173174,
+              "maximum": 0.9042833171145369
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.924501096220781,
+              "maximum": 0.9906182997629011
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0336296450030082,
+              "maximum": 1.1075906651633922
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.1935273282401233,
+              "maximum": 1.2789792225733467
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.4617715860493674,
+              "maximum": 1.5664675254173048
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 2.14098,
+              "minimum": 2.0672592900060165,
+              "maximum": 2.215254317031724
+            },
+            "peak": {
+              "hkl": [
+                1,
+                1,
+                0
+              ],
+              "dSpacing": 2.1409779120766284,
+              "fSquared": 0.5651114443748416,
+              "multiplicity": 12
+            }
+          }
+        ],
         "groupID": 6,
-        "isMasked": false,
-        "twoTheta": 0.8690010092470938,
-        "dResolution": {
-          "minimum": 0.831438096217031,
-          "maximum": 4.157190481085156
-        },
-        "dRelativeResolution": 0.007548513084996265
+        "maxfwhm": 0.036860354996991675
+      }
+    ],
+    [
+      {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.40461,
+              "minimum": 0.39793360934844124,
+              "maximum": 0.4112908297779724
+            },
+            "peak": {
+              "hkl": [
+                6,
+                4,
+                2
+              ],
+              "dSpacing": 0.4046067941312193,
+              "fSquared": 0.22293044863104217,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.41203,
+              "minimum": 0.4052310965489192,
+              "maximum": 0.4188336727331681
+            },
+            "peak": {
+              "hkl": [
+                7,
+                2,
+                1
+              ],
+              "dSpacing": 0.41203139128882815,
+              "fSquared": 0.2307443342335604,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.41988,
+              "minimum": 0.41295158198847726,
+              "maximum": 0.4268135554944949
+            },
+            "peak": {
+              "hkl": [
+                6,
+                4,
+                0
+              ],
+              "dSpacing": 0.4198803135326872,
+              "fSquared": 0.23883210260348067,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4282,
+              "minimum": 0.42113437227218364,
+              "maximum": 0.4352711774992919
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                3
+              ],
+              "dSpacing": 0.42819558241532574,
+              "fSquared": 0.24720335354480513,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.43703,
+              "minimum": 0.4298186738976622,
+              "maximum": 0.4442473395331985
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                4
+              ],
+              "dSpacing": 0.4370252862630872,
+              "fSquared": 0.2558680233421322,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.44642,
+              "minimum": 0.4390535738719447,
+              "maximum": 0.45379296342980296
+            },
+            "peak": {
+              "hkl": [
+                6,
+                3,
+                1
+              ],
+              "dSpacing": 0.4464247548457976,
+              "fSquared": 0.26483639655456337,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.45646,
+              "minimum": 0.44892801553463735,
+              "maximum": 0.4639991166615038
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                2
+              ],
+              "dSpacing": 0.4564580245562764,
+              "fSquared": 0.2741191182229948,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.4672,
+              "minimum": 0.4594907681202149,
+              "maximum": 0.4749170433243537
+            },
+            "peak": {
+              "hkl": [
+                5,
+                4,
+                1
+              ],
+              "dSpacing": 0.46719968301522186,
+              "fSquared": 0.2837272065052851,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.47874,
+              "minimum": 0.4708403880484476,
+              "maximum": 0.48664820357857674
+            },
+            "peak": {
+              "hkl": [
+                6,
+                2,
+                0
+              ],
+              "dSpacing": 0.478737214972891,
+              "fSquared": 0.29367206575429516,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.49117,
+              "minimum": 0.48306516914783404,
+              "maximum": 0.4992843244131045
+            },
+            "peak": {
+              "hkl": [
+                6,
+                1,
+                1
+              ],
+              "dSpacing": 0.4911740188997228,
+              "fSquared": 0.30396550005432266,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.50463,
+              "minimum": 0.49630307786720224,
+              "maximum": 0.5129674657861961
+            },
+            "peak": {
+              "hkl": [
+                6,
+                0,
+                0
+              ],
+              "dSpacing": 0.5046333333333334,
+              "fSquared": 0.3146197272320004,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.51926,
+              "minimum": 0.5106916678138,
+              "maximum": 0.5278401079632442
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                3
+              ],
+              "dSpacing": 0.5192634160944883,
+              "fSquared": 0.3256473933582866,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.53524,
+              "minimum": 0.5264079653402295,
+              "maximum": 0.5440852685702156
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                0
+              ],
+              "dSpacing": 0.5352444780191571,
+              "fSquared": 0.33706158775876205,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 0.5528,
+              "minimum": 0.5436783138265552,
+              "maximum": 0.5619366620862569
+            },
+            "peak": {
+              "hkl": [
+                5,
+                2,
+                1
+              ],
+              "dSpacing": 0.5527981198713806,
+              "fSquared": 0.34887585855004843,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.5938,
+              "minimum": 0.5840017372823145,
+              "maximum": 0.6036179106371419
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                1
+              ],
+              "dSpacing": 0.5938004339713936,
+              "fSquared": 0.37376121277629837,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.61805,
+              "minimum": 0.6078516448233787,
+              "maximum": 0.6282711822568888
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                2
+              ],
+              "dSpacing": 0.6180470869332422,
+              "fSquared": 0.3868618339665694,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.64553,
+              "minimum": 0.6348781654175008,
+              "maximum": 0.65620865406347
+            },
+            "peak": {
+              "hkl": [
+                3,
+                3,
+                2
+              ],
+              "dSpacing": 0.6455291289815173,
+              "fSquared": 0.400421642118206,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.66586826164063,
+              "maximum": 0.6882436544993376
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.7018839537869727,
+              "maximum": 0.7254745893462886
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.7444596168008033,
+              "maximum": 0.769487720754813
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.7958572186968824,
+              "maximum": 0.8226220515834378
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.8596273477953245,
+              "maximum": 0.8885484906937622
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.9416707760968952,
+              "maximum": 0.9733685579697591
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0528259306804588,
+              "maximum": 1.0882871324216068
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.2156932896467574,
+              "maximum": 1.2566675261084528
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.4889192336016066,
+              "maximum": 1.5391239085624695
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 2.14098,
+              "minimum": 2.1056518613609176,
+              "maximum": 2.1766146786031237
+            },
+            "peak": {
+              "hkl": [
+                1,
+                1,
+                0
+              ],
+              "dSpacing": 2.1409779120766284,
+              "fSquared": 0.5651114443748416,
+              "multiplicity": 12
+            }
+          }
+        ],
+        "groupID": 1,
+        "maxfwhm": 0.017664069319541016
+      },
+      {
+        "peaks": [
+          {
+            "position": {
+              "value": 0.53524,
+              "minimum": 0.5191178815734262,
+              "maximum": 0.5513828819569722
+            },
+            "peak": {
+              "hkl": [
+                4,
+                4,
+                0
+              ],
+              "dSpacing": 0.5352444780191571,
+              "fSquared": 0.33706158775876205,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 0.5528,
+              "minimum": 0.5361491476875455,
+              "maximum": 0.5694743489820299
+            },
+            "peak": {
+              "hkl": [
+                5,
+                2,
+                1
+              ],
+              "dSpacing": 0.5527981198713806,
+              "fSquared": 0.34887585855004843,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.5938,
+              "minimum": 0.5759141154904263,
+              "maximum": 0.6117167113898516
+            },
+            "peak": {
+              "hkl": [
+                4,
+                3,
+                1
+              ],
+              "dSpacing": 0.5938004339713936,
+              "fSquared": 0.37376121277629837,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.61805,
+              "minimum": 0.5994337811730212,
+              "maximum": 0.6367020336964395
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                2
+              ],
+              "dSpacing": 0.6180470869332422,
+              "fSquared": 0.3868618339665694,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.64553,
+              "minimum": 0.6260859935830472,
+              "maximum": 0.6650160852197915
+            },
+            "peak": {
+              "hkl": [
+                3,
+                3,
+                2
+              ],
+              "dSpacing": 0.6455291289815173,
+              "fSquared": 0.400421642118206,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.67704,
+              "minimum": 0.6566469540260226,
+              "maximum": 0.697483121251815
+            },
+            "peak": {
+              "hkl": [
+                4,
+                2,
+                0
+              ],
+              "dSpacing": 0.6770366622273863,
+              "fSquared": 0.4144567320913236,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.71366,
+              "minimum": 0.6921638420979015,
+              "maximum": 0.7352166306945087
+            },
+            "peak": {
+              "hkl": [
+                4,
+                1,
+                1
+              ],
+              "dSpacing": 0.7136593040255428,
+              "fSquared": 0.42898376288340273,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 0.75695,
+              "minimum": 0.7341498814669541,
+              "maximum": 0.7798243894584163
+            },
+            "peak": {
+              "hkl": [
+                4,
+                0,
+                0
+              ],
+              "dSpacing": 0.75695,
+              "fSquared": 0.44401997740274124,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 0.80921,
+              "minimum": 0.7848356480204306,
+              "maximum": 0.833677344921622
+            },
+            "peak": {
+              "hkl": [
+                3,
+                2,
+                1
+              ],
+              "dSpacing": 0.8092135882624386,
+              "fSquared": 0.45958322293498316,
+              "multiplicity": 48
+            }
+          },
+          {
+            "position": {
+              "value": 0.87405,
+              "minimum": 0.8477226908547811,
+              "maximum": 0.9004962970120366
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                2
+              ],
+              "dSpacing": 0.8740505725261744,
+              "fSquared": 0.4756919723270146,
+              "multiplicity": 8
+            }
+          },
+          {
+            "position": {
+              "value": 0.95747,
+              "minimum": 0.9286298778055032,
+              "maximum": 0.9864659737790401
+            },
+            "peak": {
+              "hkl": [
+                3,
+                1,
+                0
+              ],
+              "dSpacing": 0.957474429945782,
+              "fSquared": 0.4923653459133718,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.07049,
+              "minimum": 1.0382457631468522,
+              "maximum": 1.1029430080833984
+            },
+            "peak": {
+              "hkl": [
+                2,
+                2,
+                0
+              ],
+              "dSpacing": 1.0704889560383142,
+              "fSquared": 0.5096231342111867,
+              "multiplicity": 12
+            }
+          },
+          {
+            "position": {
+              "value": 1.23609,
+              "minimum": 1.1988575623460422,
+              "maximum": 1.2736061310826992
+            },
+            "peak": {
+              "hkl": [
+                2,
+                1,
+                1
+              ],
+              "dSpacing": 1.2360941738664843,
+              "fSquared": 0.5274858214106081,
+              "multiplicity": 24
+            }
+          },
+          {
+            "position": {
+              "value": 1.5139,
+              "minimum": 1.4682997629339083,
+              "maximum": 1.5598817183928604
+            },
+            "peak": {
+              "hkl": [
+                2,
+                0,
+                0
+              ],
+              "dSpacing": 1.5139,
+              "fSquared": 0.5459746096885811,
+              "multiplicity": 6
+            }
+          },
+          {
+            "position": {
+              "value": 2.14098,
+              "minimum": 2.0764915262937045,
+              "maximum": 2.2059494239052646
+            },
+            "peak": {
+              "hkl": [
+                1,
+                1,
+                0
+              ],
+              "dSpacing": 2.1409779120766284,
+              "fSquared": 0.5651114443748416,
+              "multiplicity": 12
+            }
+          }
+        ],
+        "groupID": 2,
+        "maxfwhm": 0.03224423685314768
       }
     ]
-  }
+  ],
+  "smoothingParameter": 0.5,
+  "peakIntensityThreshold": 0.05,
+  "calibrantSamplePath": "path/to/sample",
+  "keepUnfocused": false,
+  "convertUnitsTo": "TOF"
 }

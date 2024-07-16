@@ -1,5 +1,3 @@
-import json
-from ast import In
 from typing import Dict
 
 from mantid.api import (
@@ -7,6 +5,7 @@ from mantid.api import (
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceUnitValidator,
 )
 from mantid.kernel import Direction, StringMandatoryValidator
 
@@ -15,13 +14,23 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
 class FocusSpectraAlgorithm(PythonAlgorithm):
+    """
+    This algorithm performs diffraction focusing on TOF data. It converts the
+    input workspace from time-of-flight (TOF) to d-spacing and applies
+    diffraction focusing using a grouping workspace. Optionally, it rebins
+    the output to ensure uniform binning.
+
+    """
+
     def category(self):
         return "SNAPRed Data Processing"
 
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "InputWorkspace", "", Direction.Input, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+            ),
             doc="Workspace containing values at each pixel",
         )
         self.declareProperty(
@@ -29,13 +38,24 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             doc="Workspace defining the grouping for diffraction focusing",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "OutputWorkspace",
+                "",
+                Direction.Output,
+                PropertyMode.Mandatory,
+                validator=WorkspaceUnitValidator("dSpacing"),
+            ),
             doc="The diffraction-focused data",
         )
         self.declareProperty(
             "Ingredients",
             defaultValue="",
             validator=StringMandatoryValidator(),
+            direction=Direction.Input,
+        )
+        self.declareProperty(
+            "RebinOutput",
+            defaultValue=True,
             direction=Direction.Input,
         )
         self.setRethrows(True)
@@ -51,6 +71,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         self.inputWSName = self.getPropertyValue("InputWorkspace")
         self.groupingWSName = self.getPropertyValue("GroupingWorkspace")
         self.outputWSName = self.getPropertyValue("OutputWorkspace")
+        self.rebinOutput = self.getProperty("RebinOutput").value
 
     def validateInputs(self) -> Dict[str, str]:
         errors = {}
@@ -74,7 +95,7 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
         return errors
 
     def PyExec(self):
-        ingredients: Ingredients = Ingredients.parse_raw(self.getPropertyValue("Ingredients"))
+        ingredients: Ingredients = Ingredients.model_validate_json(self.getPropertyValue("Ingredients"))
         self.chopIngredients(ingredients)
         self.unbagGroceries()
 
@@ -96,15 +117,17 @@ class FocusSpectraAlgorithm(PythonAlgorithm):
             OutputWorkspace=self.outputWSName,
             PreserveEvents=True,
         )
-        self.mantidSnapper.RebinRagged(
-            "Rebinning ragged bins...",
-            InputWorkspace=self.outputWSName,
-            XMin=self.dMin,
-            XMax=self.dMax,
-            Delta=self.dBin,
-            OutputWorkspace=self.outputWSName,
-            PreserveEvents=False,
-        )
+        # TODO: Compress events here if preserving events
+        if self.rebinOutput is True:
+            self.mantidSnapper.RebinRagged(
+                "Rebinning ragged bins...",
+                InputWorkspace=self.outputWSName,
+                XMin=self.dMin,
+                XMax=self.dMax,
+                Delta=self.dBin,
+                OutputWorkspace=self.outputWSName,
+                PreserveEvents=False,
+            )
 
         self.mantidSnapper.executeQueue()
         self.setPropertyValue("OutputWorkspace", self.outputWSName)

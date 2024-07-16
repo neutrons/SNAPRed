@@ -1,7 +1,6 @@
 # ruff: noqa: E722, PT011, PT012
 
 import unittest
-from unittest import mock
 
 import pytest
 from mantid.simpleapi import (
@@ -9,10 +8,8 @@ from mantid.simpleapi import (
     LoadEmptyInstrument,
 )
 from pydantic import ValidationError
-from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.meta.builder.GroceryListBuilder import GroceryListBuilder
 from snapred.meta.Config import Resource
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 
 class TestGroceryListBuilder(unittest.TestCase):
@@ -23,7 +20,7 @@ class TestGroceryListBuilder(unittest.TestCase):
         cls.groupingScheme = "Native"
         cls.IPTS = Resource.getPath("inputs")
 
-        cls.instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+        cls.instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         cls.instrumentDonor = "_test_grocerylistitem_instrument"
         LoadEmptyInstrument(
             OutputWorkspace=cls.instrumentDonor,
@@ -42,30 +39,6 @@ class TestGroceryListBuilder(unittest.TestCase):
         assert item.runNumber == self.runNumber
         assert item.useLiteMode is False
         assert item.workspaceType == "diffcal"
-
-    def test_diffcal_output_tof(self):
-        item = GroceryListBuilder().specialOrder().diffcal_output(self.runNumber).unit(wng.Units.TOF).lite().build()
-        assert item.runNumber == self.runNumber
-        assert item.isOutput is True
-        assert item.workspaceType == "diffcal_output"
-
-    def test_diffcal_output_dsp(self):
-        item = GroceryListBuilder().specialOrder().diffcal_output(self.runNumber).unit(wng.Units.DSP).lite().build()
-        assert item.runNumber == self.runNumber
-        assert item.isOutput is True
-        assert item.workspaceType == "diffcal_output"
-
-    def test_diffcal_table(self):
-        item = GroceryListBuilder().specialOrder().diffcal_table(self.runNumber).lite().build()
-        assert item.runNumber == self.runNumber
-        assert item.isOutput is True
-        assert item.workspaceType == "diffcal_table"
-
-    def test_diffcal_mask(self):
-        item = GroceryListBuilder().specialOrder().diffcal_mask(self.runNumber).lite().build()
-        assert item.runNumber == self.runNumber
-        assert item.isOutput is True
-        assert item.workspaceType == "diffcal_mask"
 
     def test_nexus_native_lite(self):
         item = GroceryListBuilder().neutron(self.runNumber).native().build()
@@ -166,7 +139,7 @@ class TestGroceryListBuilder(unittest.TestCase):
 
     def test_diffcal_output_with_instrument(self):
         with pytest.raises(ValueError) as e:
-            GroceryListBuilder().diffcal_output(self.runNumber).native().source(InstrumentName="SNAP").build()
+            GroceryListBuilder().diffcal_output(self.runNumber, 1).native().source(InstrumentName="SNAP").build()
         assert "should not specify an instrument" in str(e.value)
 
     def test_nexus_clean_and_dirty(self):
@@ -260,18 +233,3 @@ class TestGroceryListBuilder(unittest.TestCase):
         # test the list built correctly
         assert len(groceryDict) == 1
         assert groceryDict["TestName"]
-
-
-# this at teardown removes the loggers, eliminating logger error printouts
-# see https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-@pytest.fixture(autouse=True)
-def clear_loggers():  # noqa: PT004
-    """Remove handlers from all loggers"""
-    import logging
-
-    yield  # ... teardown follows:
-    loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-    for logger in loggers:
-        handlers = getattr(logger, "handlers", [])
-        for handler in handlers:
-            logger.removeHandler(handler)

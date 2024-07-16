@@ -1,14 +1,13 @@
 import json
-from typing import Dict, List, Tuple
+from typing import Dict
 
-import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     FileAction,
     FileProperty,
-    MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceProperty,
 )
 from mantid.kernel import (
     Direction,
@@ -16,8 +15,6 @@ from mantid.kernel import (
 )
 
 from snapred.backend.log.logger import snapredLogger
-from snapred.backend.recipe.algorithm.LoadCalibrationWorkspaces import LoadCalibrationWorkspaces
-from snapred.backend.recipe.algorithm.LoadGroupingDefinition import LoadGroupingDefinition
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 logger = snapredLogger.getLogger(__name__)
@@ -44,7 +41,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             doc="Path to file to be loaded",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output),
+            WorkspaceProperty("OutputWorkspace", "", Direction.Output),
             doc="Workspace containing the loaded data",
         )
         self.declareProperty(
@@ -58,6 +55,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     "LoadNexus",
                     "LoadEventNexus",
                     "LoadNexusProcessed",
+                    "ReheatLeftovers",
                 ]
             ),
             direction=Direction.InOut,
@@ -81,7 +79,7 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
             doc="Path of an associated instrument definition file",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("InstrumentDonor", "", Direction.Input, PropertyMode.Optional),
+            WorkspaceProperty("InstrumentDonor", "", Direction.Input, PropertyMode.Optional),
             doc="Workspace to optionally take the instrument from",
         )
         self.setRethrows(True)
@@ -119,7 +117,6 @@ class FetchGroceriesAlgorithm(PythonAlgorithm):
                     "Loading with unspecified loader",
                     Filename=filename,
                     OutputWorkspace=outWS,
-                    LoaderName=loaderType,
                 )
             elif loaderType == "LoadGroupingDefinition":
                 for x in ["InstrumentName", "InstrumentFilename", "InstrumentDonor"]:

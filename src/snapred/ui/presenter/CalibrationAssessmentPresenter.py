@@ -1,5 +1,4 @@
-from qtpy.QtCore import QObject, Qt, Signal
-from qtpy.QtWidgets import QLabel, QMessageBox, QVBoxLayout, QWidget
+from qtpy.QtCore import QObject
 
 from snapred.backend.api.InterfaceController import InterfaceController
 from snapred.backend.dao import RunConfig, SNAPRequest
@@ -12,6 +11,19 @@ from snapred.ui.threading.worker_pool import WorkerPool
 
 
 class CalibrationAssessmentPresenter(QObject):
+    """
+
+    The CalibrationAssessmentPresenter is a component designed to bridge user interactions with
+    the underlying calibration assessment and indexing processes. Leveraging a WorkerPool for
+    asynchronous task execution and an InterfaceController for API communication, it manages
+    user requests from the UI to load specific calibration assessments and the calibration index
+    for a given run number. Upon user action, it initiates requests, such as loading selected
+    calibration assessments based on run ID and version, and updating the UI with the results
+    or error messages as appropriate. This setup allows for non-blocking UI operations,
+    enhancing the application's responsiveness.
+
+    """
+
     worker_pool = WorkerPool()
     interfaceController = InterfaceController()
 
@@ -28,8 +40,13 @@ class CalibrationAssessmentPresenter(QObject):
             self.view.onError("No calibration record selected.")
             return
 
-        runId, version = self.view.getSelectedCalibrationRecordData()
-        payload = CalibrationLoadAssessmentRequest(runId=runId, version=version, checkExistent=True)
+        runId, useLiteMode, version = self.view.getSelectedCalibrationRecordData()
+        payload = CalibrationLoadAssessmentRequest(
+            runId=runId,
+            useLiteMode=useLiteMode,
+            version=version,
+            checkExistent=True,
+        )
         loadAssessmentRequest = SNAPRequest(path="/calibration/loadQualityAssessment", payload=payload.json())
 
         self.view.loadButton.setEnabled(False)
@@ -44,9 +61,9 @@ class CalibrationAssessmentPresenter(QObject):
         if response.code == ResponseCode.ERROR:
             self.view.onError(response.message)
 
-    def loadCalibrationIndex(self, runNumber: str):
+    def loadCalibrationIndex(self, runNumber: str, useLiteMode: bool):
         payload = CalibrationIndexRequest(
-            run=RunConfig(runNumber=runNumber),
+            run=RunConfig(runNumber=runNumber, useLiteMode=useLiteMode),
         )
         loadCalibrationIndexRequest = SNAPRequest(path="calibration/index", payload=payload.json())
 

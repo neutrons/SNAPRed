@@ -19,6 +19,18 @@ logger = snapredLogger.getLogger(__name__)
 
 @Singleton
 class GenerateCalibrationMetricsWorkspaceRecipe:
+    """
+
+    The GenerateCalibrationMetricsWorkspaceRecipe is designed to compile calibration metrics into Mantid
+    workspaces for scientific data analysis. Leveraging the MantidSnapper for its operations and taking
+    CalibrationMetricsWorkspaceIngredients as input, it constructs a table workspace of calibration metrics
+    based on the run ID and either a timestamp or calibration version. The class logs its operations and
+    proceeds to transform this table into matrix workspaces that graphically represent sigma and strain against
+    twoTheta values, allowing for a detailed visualization of calibration quality. Upon successful conversion,
+    it cleans up interim workspaces, ensuring a streamlined workflow.
+
+    """
+
     def __init__(self):
         self.mantidSnapper = MantidSnapper(self, self.__class__.__name__)
 

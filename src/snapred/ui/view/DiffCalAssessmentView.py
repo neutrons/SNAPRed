@@ -1,25 +1,34 @@
-from typing import List, Tuple
+from typing import List
 
 # from qtpy import signals and widgets
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QComboBox, QGridLayout, QLabel, QMessageBox, QPushButton, QWidget
 
-from snapred.backend.dao.calibration import CalibrationIndexEntry
+from snapred.backend.dao.indexing.IndexEntry import IndexEntry
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.presenter.CalibrationAssessmentPresenter import CalibrationAssessmentPresenter
-from snapred.ui.widget.JsonFormList import JsonFormList
 from snapred.ui.widget.LabeledField import LabeledField
 
 
 # TODO rebase on BackendRequestView
 @Resettable
 class DiffCalAssessmentView(QWidget):
-    signalRunNumberUpdate = Signal(str)
+    """
+
+    The DiffCalAssessmentView serves as a user interface within the SNAPRed application,
+    designed to streamline the review and selection of calibration assessments. It employs
+    a combination of informative text, a dropdown menu for calibration record selection,
+    and interactive buttons, all managed through a grid layout for clear user navigation.
+    Integrated with the CalibrationAssessmentPresenter, it facilitates direct communication
+    with the backend to load and display calibration data based on user input.
+
+    """
+
+    signalRunNumberUpdate = Signal(str, bool)
     signalError = Signal(str)
 
-    def __init__(self, name, jsonSchemaMap, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self._jsonFormList = JsonFormList(name, jsonSchemaMap, parent=parent)
 
         self.presenter = CalibrationAssessmentPresenter(self)
 
@@ -51,7 +60,7 @@ class DiffCalAssessmentView(QWidget):
 
         self.signalRunNumberUpdate.connect(self.presenter.loadCalibrationIndex)
 
-    def updateCalibrationRecordList(self, calibrationIndex: List[CalibrationIndexEntry]):
+    def updateCalibrationRecordList(self, calibrationIndex: List[IndexEntry]):
         # reset the combo-box by removing all items except for the first, which is a label
         for item in range(1, self.calibrationRecordDropdown.count()):
             self.calibrationRecordDropdown.removeItem(item)
@@ -59,7 +68,7 @@ class DiffCalAssessmentView(QWidget):
             # populate the combo-box from the input calibration index entries
             for entry in calibrationIndex:
                 name = f"Version: {entry.version}; Run: {entry.runNumber}"
-                self.calibrationRecordDropdown.addItem(name, (entry.runNumber, entry.version))
+                self.calibrationRecordDropdown.addItem(name, (entry.runNumber, entry.useLiteMode, entry.version))
         self.calibrationRecordDropdown.setCurrentIndex(0)
 
     def getCalibrationRecordCount(self):
@@ -82,8 +91,8 @@ class DiffCalAssessmentView(QWidget):
         msgBox.setFixedSize(500, 200)
         msgBox.exec()
 
-    def updateRunNumber(self, runNumber):
-        self.signalRunNumberUpdate.emit(runNumber)
+    def updateRunNumber(self, runNumber, useLiteMode):
+        self.signalRunNumberUpdate.emit(runNumber, useLiteMode)
 
     def verify(self):
         # TODO vwhat fields need to be verified?

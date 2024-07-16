@@ -4,11 +4,8 @@ from snapred.backend.dao.request import (
     ClearWorkspaceRequest,
     RenameWorkspaceRequest,
 )
-from snapred.backend.dao.SNAPResponse import ResponseCode, SNAPResponse
-from snapred.backend.error.RecoverableException import RecoverableException
 from snapred.backend.log.logger import snapredLogger
 from snapred.ui.handler.SNAPResponseHandler import SNAPResponseHandler
-from snapred.ui.view.IterateView import IterateView
 from snapred.ui.widget.ActionPrompt import ActionPrompt
 from snapred.ui.widget.Workflow import Workflow
 
@@ -60,20 +57,23 @@ class WorkflowImplementer:
             self.workflow.widget,
         )
 
-    def request(self, path, payload=None):
-        request = SNAPRequest(path=path, payload=payload)
+    def _request(self, request: SNAPRequest):
         response = self.interfaceController.executeRequest(request)
         self._handleComplications(response)
+        return response
+
+    def request(self, path, payload=None):
+        request = SNAPRequest(path=path, payload=payload)
+        response = self._request(request)
         self.requests.append(request)
         self.responses.append(response)
         return response
 
-    def verifyForm(self, form):
-        form.verify()
-        return True
-
     def _handleComplications(self, result):
-        self.responseHandler.rethrow(result)
+        if result.code == 400:
+            self.responseHandler.rethrow(result)
+        else:
+            self.responseHandler.handle(result)
 
     @property
     def widget(self):

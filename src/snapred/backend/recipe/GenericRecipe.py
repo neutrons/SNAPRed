@@ -5,6 +5,7 @@ from mantid.simpleapi import ConvertTableToMatrixWorkspace
 from pydantic import BaseModel
 
 from snapred.backend.log.logger import snapredLogger
+from snapred.backend.recipe.algorithm.BufferMissingColumnsAlgo import BufferMissingColumnsAlgo
 from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
 from snapred.backend.recipe.algorithm.DetectorPeakPredictor import DetectorPeakPredictor
 from snapred.backend.recipe.algorithm.FitMultiplePeaksAlgorithm import FitMultiplePeaksAlgorithm
@@ -14,9 +15,8 @@ from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreati
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.backend.recipe.algorithm.PurgeOverlappingPeaksAlgorithm import PurgeOverlappingPeaksAlgorithm
 from snapred.backend.recipe.algorithm.RawVanadiumCorrectionAlgorithm import RawVanadiumCorrectionAlgorithm
-from snapred.backend.recipe.algorithm.ReductionAlgorithm import ReductionAlgorithm
 from snapred.backend.recipe.algorithm.SmoothDataExcludingPeaksAlgo import SmoothDataExcludingPeaksAlgo
-from snapred.meta.decorators.FromString import isBaseModel, isListOfBaseModel
+from snapred.meta.decorators.FromString import isBaseModel
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class GenericRecipe(Generic[T]):
     def _baseModelsToStrings(self, **kwargs):
         for key, value in kwargs.items():
             if isBaseModel(value.__class__):
-                kwargs[key] = value.json()
+                kwargs[key] = value.model_dump_json()
             # NOTE the equivalent function isListOfBaseModel was not working
             # in the case of the smoothing algo.  The below does work.
             elif isinstance(value, list) and issubclass(value[0].__class__, BaseModel):
@@ -74,10 +74,6 @@ class PurgeOverlappingPeaksRecipe(GenericRecipe[PurgeOverlappingPeaksAlgorithm])
     pass
 
 
-class ReductionRecipe(GenericRecipe[ReductionAlgorithm]):
-    pass
-
-
 class SmoothDataExcludingPeaksRecipe(GenericRecipe[SmoothDataExcludingPeaksAlgo]):
     pass
 
@@ -103,4 +99,8 @@ class FocusSpectraRecipe(GenericRecipe[FocusSpectraAlgorithm]):
 
 
 class ConvertTableToMatrixWorkspaceRecipe(GenericRecipe[ConvertTableToMatrixWorkspace]):
+    pass
+
+
+class BufferMissingColumnsRecipe(GenericRecipe[BufferMissingColumnsAlgo]):
     pass

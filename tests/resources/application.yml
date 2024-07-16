@@ -1,18 +1,26 @@
 environment: test
 
+IPTS:
+  default: /SNS
+  root: /SNS
+
 orchestration:
   path:
     delimiter: /
 
 instrument:
   name: SNAP
-  home: /SNS/SNAP/
+  # "instrument.home" is overridden in "test.yml":
+  home: ${IPTS.root}/SNAP
   calibration:
-    home: ${instrument.home}shared/Calibration
+    # "instrument.calibration.home" is overridden in "test.yml":
+    home: ${instrument.home}/shared/Calibration
     sample:
+      # "instrument.calibration.sample.home" is overridden in "test.yml":
       home: ${instrument.calibration.home}/CalibrantSamples
       extensions:
         - json
+
     powder:
       home: ${instrument.calibration.home}/Powder
       grouping:
@@ -21,18 +29,26 @@ instrument:
           - xml
           - nxs
           - hdf
+  reduction:
+    # Here "{IPTS}" will be substituted with the IPTS-directory name for a specified <runNumber>
+    home: ${instrument.home}/{IPTS}/shared/SNAPRed
+
   config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
     pixelResolution: 1179648
+    # "instrument.native.definition" is overridden in "test.yml":
     definition:
-      file: ${instrument.home}shared/Malcolm/dataFiles/SNAP_Definition.xml
+      file: ${instrument.home}/shared/Malcolm/dataFiles/SNAP_Definition.xml
   lite:
     pixelResolution: 18432
+    # "instrument.lite.definition" is overridden in "test.yml":
     definition:
       file: ${instrument.calibration.home}/Powder/SNAPLite.xml
     map:
       file: ${instrument.calibration.home}/Powder/LiteGroupMap.hdf
   startingRunNumber: 10000
+  minimumRunNumber: 46342
+  maxNumberOfRuns: 10
 
 nexus:
   lite:
@@ -51,16 +67,19 @@ grouping:
     lite: SNAPLite_grouping_
     native: SNAP_grouping_
 
-
 calibration:
   file:
     extension: .json
     prefix: SNAPcalibLog
-  reduction:
+  normalization:
     output:
-      extension: .nxs
-      format: "{}_calibration_reduction_result"
+      ws:
+        extension: .nxs
   diffraction:
+    output:
+      extension: .tar
+    diagnostic:
+      extension: .nxs.h5
     convergenceThreshold: 0.5
     peakIntensityThreshold: 0.05
     nBinsAcrossPeakWidth: 10
@@ -69,6 +88,7 @@ calibration:
     maxDSpaceShiftFactor: 2.5
     peakFunction: GAUSSIAN
     minimumPeaksPerGroup: 2
+    preferredPeaksPerGroup: 4
   parameters:
     default:
       # degrees
@@ -77,11 +97,11 @@ calibration:
       beta:
         - 1
         - 2
-      FWHMMultiplier:
-        - -2
-        - 2
+      FWHMMultiplier: {left: 2.0, right: 2.0}
       peakTailCoefficient: 2.0
       smoothing: 0.5
+  fitting:
+    minSignal2Noise: 10
 
 mantid:
     workspace:
@@ -97,12 +117,18 @@ mantid:
             metric: "_calib_metrics,{metricName},{runNumber},{version}"
             timedMetric: "_calib_metrics,{metricName},{runNumber},{timestamp}"
           normCal:
-            rawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
-            focusedRawVanadium: "{unit},{group},raw_van_corr,{runNumber}"
-            smoothedFocusedRawVanadium: "{unit},{group},fitted_van_cor,{runNumber}"
+            rawVanadium: "{unit},{group},raw_van_corr,{runNumber},{version}"
+            focusedRawVanadium: "{unit},{group},raw_van_corr,{runNumber},{version}"
+            smoothedFocusedRawVanadium: "{unit},{group},fitted_van_cor,{runNumber},{version}"
+          reduction:
+            output: "_reduced,{unit},{group},{runNumber},{version}"
+            outputGroup: "_reduced,{stateId},{version}"
         units:
           dSpacing: dsp
           timeOfFlight: tof
+          momentumTransfer: qsp
+          wavelength: lam
+          diagnostic: diagnostic
         groups:
           unfocussed: unfoc
           all: all
@@ -115,14 +141,14 @@ localdataservice:
 
 logging:
   # logging.NOTSET: 0, logging.DEBUG: 10, logging.INFO: 20, logging:WARNING: 30, logging.ERROR: 40, logging.CRITICAL: 50
-  level: 10 # 40
+  level:  40
   SNAP:
     format: '%(asctime)s - %(levelname)-8s - %(name)s - %(message)s'
   mantid:
     format: '%Y-%m-%d %H:%M:%S,%i - %p - %s - %t'
 
 samples:
-  home: ${instrument.calibration.home}/CalibrantSamples
+  home: ${instrument.calibration.sample.home}
 
 
 test:
@@ -137,14 +163,20 @@ test:
 
 cis_mode: false
 
+version:
+  friendlyName:
+    error: "uninitialized"
+    default: "0xF"  # this tests alphanumeric defaults
+  start: 0
+
 constants:
   millisecondsPerSecond: 1000
   PeakIntensityFractionThreshold: 0.05
   m2cm: 10000.0 # conversion factor for m^2 to cm^2
 
   CrystallographicInfo:
-    dMin: 0.4
-    dMax: 100.0
+    crystalDMin: 0.4
+    crystalDMax: 100.0
 
   CalibrationReduction:
     tofMin: 2000
@@ -156,3 +188,12 @@ constants:
 
   GroupDiffractionCalibration:
     MaxChiSq: 100
+
+  ResampleX:
+    NumberBins: 1500
+
+  CropFactors:
+    lowWavelengthCrop: 0.05
+
+metadata:
+  tagPrefix: testSNAPfuntime_

@@ -1,15 +1,21 @@
+import json
 import unittest
 from typing import List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
+import pydantic
 import pytest
-from mantid.api import AlgorithmManager
-from mantid.kernel import Direction
-from pydantic import parse_raw_as
+from mantid.api import WorkspaceGroup
+from mantid.simpleapi import CreateSingleValuedWorkspace, CreateWorkspace, mtd
 from snapred.backend.dao.calibration.CalibrationMetric import CalibrationMetric
 from snapred.backend.dao.state import PixelGroup, PixelGroupingParameters
-from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import CalibrationMetricExtractionAlgorithm
+from snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm import (
+    CalibrationMetricExtractionAlgorithm as Algo,
+)
+from snapred.backend.recipe.algorithm.GenerateTableWorkspaceFromListOfDict import (
+    GenerateTableWorkspaceFromListOfDict as Table,
+)
 from snapred.meta.Config import Resource
 
 
@@ -18,12 +24,7 @@ def _removeWhitespace(string):
 
 
 class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
-    # patch the MantidSnapper object
-    @patch(
-        "snapred.backend.recipe.algorithm.CalibrationMetricExtractionAlgorithm.MantidSnapper",
-        return_value=MagicMock(mtd=MagicMock(return_value={"mock_input_workspace": {}})),
-    )
-    def test_pyexec(self, mock_mantid_snapper):  # noqa: ARG002
+    def test_pyexec(self):  # noqa: ARG002
         # Mock input data
         fakeInputWorkspace = "mock_input_workspace"
         vals = np.array([[1.0], [2.0], [3.0]])
@@ -36,24 +37,49 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
             "Workspace": np.array(["ws1", "ws2", "ws3"]),
             "ParameterError": np.array([{}, {}, {}]),
         }
+        fitPeaksDiagnosis = WorkspaceGroup()
+        mtd.addOrReplace(fakeInputWorkspace, fitPeaksDiagnosis)
+        CreateWorkspace(
+            OutputWorkspace="PeakPosition",
+            DataX=vals,
+            DataY=vals,
+        )
+        fitPeaksDiagnosis.add("PeakPosition")
+        table = Table()
+        table.initialize()
+        table.setProperty("ListOfDict", json.dumps([{"wsindex": x, "Sigma": (x + 1.0) / 10.0} for x in [0, 1, 2]]))
+        table.setProperty("OutputWorkspace", "Parameters")
+        table.execute()
+        fitPeaksDiagnosis.add("Parameters")
+        CreateSingleValuedWorkspace(Outputworkspace="Workspace")
+        fitPeaksDiagnosis.add("Workspace")
+        CreateSingleValuedWorkspace(OutputWorkspace="ParameterError")
+        fitPeaksDiagnosis.add("ParameterError")
+
         fakePixelGroupingParameterss = [
             PixelGroupingParameters(
                 groupID=0,
                 isMasked=False,
+                L2=10.0,
                 twoTheta=30.0 * (np.pi / 180.0),
+                azimuth=0.0,
                 dResolution={"minimum": 0.1, "maximum": 0.2},
                 dRelativeResolution=0.1,
             ),
             PixelGroupingParameters(
                 groupID=1,
                 isMasked=False,
+                L2=10.0,
                 twoTheta=40.0 * (np.pi / 180.0),
+                azimuth=0.0,
                 dResolution={"minimum": 0.1, "maximum": 0.2},
                 dRelativeResolution=0.1,
             ),
             PixelGroupingParameters(
                 groupID=2,
                 isMasked=False,
+                L2=10.0,
+                azimuth=0.0,
                 twoTheta=50.0 * (np.pi / 180.0),
                 dResolution={"minimum": 0.1, "maximum": 0.2},
                 dRelativeResolution=0.1,
@@ -61,14 +87,17 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         ]
         fakePixelGroup = PixelGroup(
             pixelGroupingParameters=fakePixelGroupingParameterss,
+            focusGroup={"name": "something", "definition": "path/to/wherever"},
             timeOfFlight={"minimum": 1.0, "maximum": 10.0, "binWidth": 1, "binningMode": 1},
         )
 
         # Create the algorithm instance and set properties
-        algorithm = CalibrationMetricExtractionAlgorithm()
+        algorithm = Algo()
         algorithm.initialize()
         algorithm.setProperty("InputWorkspace", fakeInputWorkspace)
         algorithm.setProperty("PixelGroup", fakePixelGroup.json())
+        # mock out the mtd return
+        algorithm.mantidSnapper = MagicMock()
         algorithm.mantidSnapper.mtd = {
             fakeInputWorkspace: MagicMock(
                 getNumberOfEntries=MagicMock(return_value=4),
@@ -79,11 +108,41 @@ class TestCalibrationMetricExtractionAlgorithm(unittest.TestCase):
         algorithm.execute()
 
         # Get the output metrics property and parse it as a list of dictionaries
-        output_metrics = parse_raw_as(List[CalibrationMetric], algorithm.getProperty("OutputMetrics").value)
+        output_metrics = pydantic.TypeAdapter(List[CalibrationMetric]).validate_json(
+            algorithm.getProperty("OutputMetrics").value
+        )
 
         # Test data is currently not the greatest
-        expected = parse_raw_as(List[CalibrationMetric], Resource.read("outputs/calibration/metrics/expected.json"))
+        expected = pydantic.TypeAdapter(List[CalibrationMetric]).validate_json(
+            Resource.read("outputs/calibration/metrics/expected.json")
+        )
 
         # Assert the output metrics are as expected
         for metric in output_metrics[0].dict():
             assert pytest.approx(expected[0].dict()[metric], 1.0e-6) == output_metrics[0].dict()[metric]
+
+    def test_must_have_workspacegroup(self):
+        notAWorkspaceGroup = "not_a_workspace_group"
+        algo = Algo()
+        with pytest.raises(RuntimeError):
+            algo.setProperty("InputWorkspace", notAWorkspaceGroup)
+
+    def test_validate(self):  # noqa: ARG002
+        fakeInputWorkspace = "mock_input_workspace"
+        fitPeaksDiagnosis = WorkspaceGroup()
+        mtd.addOrReplace(fakeInputWorkspace, fitPeaksDiagnosis)
+        for i in range(3):
+            CreateSingleValuedWorkspace(OutputWorkspace=f"ws{i}")
+            fitPeaksDiagnosis.add(f"ws{i}")
+
+        fakePixelGroup = MagicMock(json=MagicMock(return_value=""))
+
+        # Create the algorithm instance and set properties
+        algorithm = Algo()
+        algorithm.initialize()
+        algorithm.setProperty("InputWorkspace", fakeInputWorkspace)
+        algorithm.setProperty("PixelGroup", fakePixelGroup.json())
+        # Call the PyExec method to test
+        with pytest.raises(RuntimeError) as e:
+            algorithm.execute()
+        assert "InputWorkspace" in str(e.value)

@@ -1,5 +1,3 @@
-import json
-
 import numpy as np
 from mantid.api import AlgorithmFactory, PythonAlgorithm
 from mantid.kernel import Direction, PhysicalConstants
@@ -49,8 +47,8 @@ class DetectorPeakPredictor(PythonAlgorithm):
     def chopIngredients(self, ingredients: PeakIngredients) -> None:
         self.beta_0 = ingredients.instrumentState.gsasParameters.beta[0]
         self.beta_1 = ingredients.instrumentState.gsasParameters.beta[1]
-        self.FWHMMultiplierLeft = ingredients.instrumentState.fwhmMultiplierLimit.minimum
-        self.FWHMMultiplierRight = ingredients.instrumentState.fwhmMultiplierLimit.maximum
+        self.FWHMMultiplierLeft = ingredients.instrumentState.fwhmMultipliers.left
+        self.FWHMMultiplierRight = ingredients.instrumentState.fwhmMultipliers.right
         self.peakTailCoefficient = ingredients.instrumentState.peakTailCoefficient
         self.L = ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2
 
@@ -69,26 +67,28 @@ class DetectorPeakPredictor(PythonAlgorithm):
         dSpacing = np.array(crystalInfo.dSpacing)
         A = fSquared * multiplicity * dSpacing**4
         A = np.append(A, 0)
-        thresholdA = np.max(A) * ingredients.peakIntensityThreshold
-        self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= thresholdA]
+
+        self.goodPeaks = [peak for i, peak in enumerate(crystalInfo.peaks) if A[i] >= 0]
 
         self.purgeDuplicates = self.getProperty("PurgeDuplicates").value
 
         self.allGroupIDs = ingredients.pixelGroup.groupIDs
 
     def PyExec(self) -> None:
-        ingredients = PeakIngredients.parse_raw(self.getProperty("Ingredients").value)
+        ingredients = PeakIngredients.model_validate_json(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
 
         allFocusGroupsPeaks = []
         for groupID in self.allGroupIDs:
             # select only good peaks within the d-spacing range
-            dList = [
-                peak.dSpacing for peak in self.goodPeaks if self.dMin[groupID] <= peak.dSpacing <= self.dMax[groupID]
+            crystalPeakList = [
+                peak for peak in self.goodPeaks if self.dMin[groupID] <= peak.dSpacing <= self.dMax[groupID]
             ]
+            dList = [peak.dSpacing for peak in crystalPeakList]
 
             singleFocusGroupPeaks = []
-            for d in dList:
+            for crystalPeak in crystalPeakList:
+                d = crystalPeak.dSpacing
                 # beta terms
                 beta_T = self.beta_0 + self.beta_1 / d**4  # GSAS-I beta
                 beta_d = (
@@ -103,7 +103,9 @@ class DetectorPeakPredictor(PythonAlgorithm):
                     d = round(d, 5)
 
                 singleFocusGroupPeaks.append(
-                    DetectorPeak(position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight))
+                    DetectorPeak(
+                        position=LimitedValue(value=d, minimum=d - widthLeft, maximum=d + widthRight), peak=crystalPeak
+                    )
                 )
 
             if self.purgeDuplicates:

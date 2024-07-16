@@ -1,10 +1,9 @@
-import json
 import socket
 import unittest.mock as mock
 from typing import List
 
+import pydantic
 import pytest
-from pydantic import parse_raw_as
 
 with mock.patch.dict(
     "sys.modules",
@@ -46,9 +45,8 @@ with mock.patch.dict(
         teardown()
 
     def test_chopIngredients():
-        ingredientsFile = "/inputs/predict_peaks/input_fake_ingredients.json"
-
-        ingredients = PeakIngredients.parse_file(Resource.getPath(ingredientsFile))
+        with open(Resource.getPath("/inputs/predict_peaks/input_fake_ingredients.json"), "r") as ingredientsFile:
+            ingredients = PeakIngredients.model_validate_json(ingredientsFile.read())
         algo = DetectorPeakPredictor()
         algo.initialize()
         algo.chopIngredients(ingredients)
@@ -56,8 +54,8 @@ with mock.patch.dict(
         # check various properties copied over
         assert algo.beta_0 == ingredients.instrumentState.gsasParameters.beta[0]
         assert algo.beta_1 == ingredients.instrumentState.gsasParameters.beta[1]
-        assert algo.FWHMMultiplierLeft == ingredients.instrumentState.fwhmMultiplierLimit.minimum
-        assert algo.FWHMMultiplierRight == ingredients.instrumentState.fwhmMultiplierLimit.maximum
+        assert algo.FWHMMultiplierLeft == ingredients.instrumentState.fwhmMultipliers.left
+        assert algo.FWHMMultiplierRight == ingredients.instrumentState.fwhmMultipliers.right
         assert algo.peakTailCoefficient == ingredients.instrumentState.peakTailCoefficient
         assert (
             algo.L == ingredients.instrumentState.instrumentConfig.L1 + ingredients.instrumentState.instrumentConfig.L2
@@ -66,8 +64,7 @@ with mock.patch.dict(
         # check the peaks threshold
         # NOTE all peaks in test file have dspacing = multiplicity = 1, so ordered by fSquared
         peaks = ingredients.crystalInfo.peaks
-        threshold = ingredients.peakIntensityThreshold * max([peak.fSquared for peak in peaks])
-        goodPeaks = [peak for peak in peaks if peak.fSquared >= threshold]
+        goodPeaks = [peak for peak in peaks if peak.fSquared >= 0]
         assert algo.goodPeaks == goodPeaks
         assert algo.allGroupIDs == ingredients.pixelGroup.groupIDs
 
@@ -75,40 +72,36 @@ with mock.patch.dict(
         ingredientsFile = "/inputs/predict_peaks/input_good_ingredients.json"
         peaksRefFile = "/outputs/predict_peaks/peaks.json"
 
-        ingredients = PeakIngredients.parse_raw(Resource.read(ingredientsFile))
+        ingredients = PeakIngredients.model_validate_json(Resource.read(ingredientsFile))
 
         peakPredictorAlgo = DetectorPeakPredictor()
         peakPredictorAlgo.initialize()
-        peakPredictorAlgo.setProperty("Ingredients", ingredients.json())
+        peakPredictorAlgo.setProperty("Ingredients", ingredients.model_dump_json())
         peakPredictorAlgo.setProperty("PurgeDuplicates", False)
         assert peakPredictorAlgo.execute()
 
-        peaks_cal = parse_raw_as(List[GroupPeakList], peakPredictorAlgo.getProperty("DetectorPeaks").value)
-        peaks_ref = parse_raw_as(List[GroupPeakList], Resource.read(peaksRefFile))
+        peaks_cal = pydantic.TypeAdapter(List[GroupPeakList]).validate_json(
+            peakPredictorAlgo.getProperty("DetectorPeaks").value
+        )
+        peaks_ref = pydantic.TypeAdapter(List[GroupPeakList]).validate_json(Resource.read(peaksRefFile))
         assert peaks_cal == peaks_ref
-
-        # test the threshold -- set to over-1 value and verify no peaks are found
-        ingredients.peakIntensityThreshold = 1.2
-        peakPredictorAlgo.setProperty("Ingredients", ingredients.json())
-        peakPredictorAlgo.execute()
-        no_pos_json = json.loads(peakPredictorAlgo.getProperty("DetectorPeaks").value)
-        for x in no_pos_json:
-            assert len(x["peaks"]) == 0
 
     def test_execute_purge_duplicates():
         ingredientsFile = "/inputs/predict_peaks/input_good_ingredients.json"
         peaksRefFile = "/outputs/predict_peaks/peaks_purged.json"
 
-        ingredients = PeakIngredients.parse_raw(Resource.read(ingredientsFile))
+        ingredients = PeakIngredients.model_validate_json(Resource.read(ingredientsFile))
 
         peakPredictorAlgo = DetectorPeakPredictor()
         peakPredictorAlgo.initialize()
-        peakPredictorAlgo.setProperty("Ingredients", ingredients.json())
+        peakPredictorAlgo.setProperty("Ingredients", ingredients.model_dump_json())
         peakPredictorAlgo.setProperty("PurgeDuplicates", True)
         assert peakPredictorAlgo.execute()
 
-        peaks_cal = parse_raw_as(List[GroupPeakList], peakPredictorAlgo.getProperty("DetectorPeaks").value)
-        peaks_ref = parse_raw_as(List[GroupPeakList], Resource.read(peaksRefFile))
+        peaks_cal = pydantic.TypeAdapter(List[GroupPeakList]).validate_json(
+            peakPredictorAlgo.getProperty("DetectorPeaks").value
+        )
+        peaks_ref = pydantic.TypeAdapter(List[GroupPeakList]).validate_json(Resource.read(peaksRefFile))
         for peakList in peaks_ref:
             for peak in peakList.peaks:
                 peak.position.value = round(peak.value, 5)

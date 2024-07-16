@@ -8,14 +8,11 @@
 
 import secrets
 from collections import namedtuple
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import mantid
 import numpy as np
-from mantid.api import ITableWorkspace, MatrixWorkspace
-from mantid.dataobjects import GroupingWorkspace, MaskWorkspace
 from mantid.simpleapi import (
     ConvertUnits,
     CreateSampleWorkspace,
@@ -26,6 +23,7 @@ from mantid.simpleapi import (
     ScaleX,
     mtd,
 )
+from snapred.backend.dao import CrystallographicInfo
 from snapred.backend.dao.DetectorPeak import DetectorPeak
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.ingredients import DiffractionCalibrationIngredients
@@ -34,6 +32,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.meta.Config import Resource
+from snapred.meta.redantic import parse_file_as
 from util.helpers import *
 
 Peak = namedtuple("Peak", "centre sigma height")
@@ -50,11 +49,11 @@ class SyntheticData(object):
     RANDOM_SEED = 311379324803478887040360489933500222827
 
     # MOCK instruments and configuration files:
-    fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP.xml")
+    fakeInstrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     fakeGroupingFilePath = Resource.getPath("inputs/testInstrument/fakeSNAPFocGroup_Natural.xml")
-    fakeInstrumentStatePath = Resource.read("inputs/diffcal/fakeInstrumentState.json")
-    fakeFocusGroupPath = Resource.read("inputs/diffcal/fakeFocusGroup.json")
-    fakePixelGroupPath = Resource.read("inputs/diffcal/fakePixelGroup.json")
+    fakeInstrumentStatePath = Resource.getPath("inputs/diffcal/fakeInstrumentState.json")
+    fakeFocusGroupPath = Resource.getPath("inputs/diffcal/fakeFocusGroup.json")
+    fakePixelGroupPath = Resource.getPath("inputs/diffcal/fakePixelGroup.json")
 
     # REAL instruments and configuration files:
     SNAPInstrumentFilePath = str(Path(mantid.__file__).parent / "instrument" / "SNAP_Definition.xml")
@@ -67,12 +66,12 @@ class SyntheticData(object):
             IPTS="",
         )
 
-        self.fakeInstrumentState = InstrumentState.parse_raw(SyntheticData.fakeInstrumentStatePath)
+        self.fakeInstrumentState = parse_file_as(InstrumentState, SyntheticData.fakeInstrumentStatePath)
 
-        self.fakeFocusGroup = FocusGroup.parse_raw(SyntheticData.fakeFocusGroupPath)
+        self.fakeFocusGroup = parse_file_as(FocusGroup, SyntheticData.fakeFocusGroupPath)
         self.fakeFocusGroup.definition = SyntheticData.fakeGroupingFilePath
 
-        self.fakePixelGroup = PixelGroup.parse_raw(SyntheticData.fakePixelGroupPath)
+        self.fakePixelGroup = parse_file_as(PixelGroup, SyntheticData.fakePixelGroupPath)
 
         # Place all peaks within the _minimum_ d-space range of any pixel group.
         dMin = max(self.fakePixelGroup.dMin())
@@ -91,17 +90,20 @@ class SyntheticData(object):
             TOFMin, TOFMax, dMin, dMax, self.scale
         )
 
+        crystalPeaks = SyntheticData.crystalInfo().peaks
+
         peakList = [
-            DetectorPeak.parse_obj(
+            DetectorPeak.model_validate(
                 {
                     "position": {
                         "value": p.centre,
                         "minimum": p.centre - SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
                         "maximum": p.centre + SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
-                    }
+                    },
+                    "peak": crystalPeaks[i].dict(),
                 }
             )
-            for p in self.peaks
+            for i, p in enumerate(self.peaks)
         ]
 
         # For testing purposes: every pixel group will use the same peak list;
@@ -111,16 +113,45 @@ class SyntheticData(object):
 
         self.ingredients = DiffractionCalibrationIngredients(
             runConfig=self.fakeRunConfig,
-            focusGroup=self.fakeFocusGroup,
-            instrumentState=self.fakeInstrumentState,
             groupedPeakLists=[
                 GroupPeakList(groupID=key, peaks=peakLists[key], maxfwhm=maxFWHM) for key in peakLists.keys()
             ],
             convergenceThreshold=0.5,
-            calPath=Resource.getPath("outputs/calibration/"),
             maxOffset=100.0,  # bins: '100.0' seems to work
             pixelGroup=self.fakePixelGroup,
+            maxChiSq=100.0,
         )
+
+    @staticmethod
+    def fakeDetectorPeaks(scale: float = 1000.0) -> List[DetectorPeak]:
+        fakePixelGroup = parse_file_as(PixelGroup, SyntheticData.fakePixelGroupPath)
+
+        # Place all peaks within the _minimum_ d-space range of any pixel group.
+        dMin = max(fakePixelGroup.dMin())
+        dMax = min(fakePixelGroup.dMax())
+
+        # The pixel group's TOF-domain will be used to convert the original `CreateSampleWorkspace` 'Powder Diffraction'
+        #   predefined function: this allows peak widths to be properly scaled to generate data for a d-spacing domain.
+        TOFMin = fakePixelGroup.timeOfFlight.minimum
+        TOFMax = fakePixelGroup.timeOfFlight.maximum
+        peaks, _ = SyntheticData._fakePowderDiffractionPeakList(TOFMin, TOFMax, dMin, dMax, scale)
+
+        crystalPeaks = SyntheticData.crystalInfo().peaks
+
+        peakList = [
+            DetectorPeak.model_validate(
+                {
+                    "position": {
+                        "value": p.centre,
+                        "minimum": p.centre - SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
+                        "maximum": p.centre + SyntheticData.fwhmFromSigma(p.sigma) / 2.0,
+                    },
+                    "peak": crystalPeaks[i].dict(),
+                }
+            )
+            for i, p in enumerate(peaks)
+        ]
+        return peakList
 
     @staticmethod
     def random_seed(bits: int) -> int:
@@ -308,3 +339,6 @@ class SyntheticData(object):
 
         # Create the mask workspace 'maskWS':
         createCompatibleMask(maskWS, rawWS, self.fakeInstrumentFilePath)
+
+    def crystalInfo():
+        return CrystallographicInfo.model_validate_json(Resource.read("outputs/crystalinfo/output.json"))

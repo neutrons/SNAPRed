@@ -1,7 +1,18 @@
 instrument:
-  config: ${instrument.calibration.home}/SNAPInstPrm.json
+  home: ${module.root}/resources/inputs
   calibration:
     home: ${instrument.home}
+    sample:
+      home: ${module.root}/resources/outputs/sample
+    powder:
+      grouping:
+        home: ${instrument.home}/testInstrument
+  native:
+    definition:
+      file: ${instrument.home}/pixel_grouping/SNAP_Definition.xml
+  lite:
+    definition:
+      file: ${instrument.home}/pixel_grouping/SNAPLite_Definition.xml
 
 localdataservice:
   config:

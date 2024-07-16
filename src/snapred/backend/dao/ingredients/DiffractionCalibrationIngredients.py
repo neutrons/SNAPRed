@@ -1,6 +1,6 @@
-from typing import Dict, List
+from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from snapred.backend.dao.GroupPeakList import GroupPeakList
 from snapred.backend.dao.RunConfig import RunConfig
@@ -10,7 +10,16 @@ from snapred.meta.mantid.AllowedPeakTypes import SymmetricPeakEnum
 
 
 class DiffractionCalibrationIngredients(BaseModel):
-    """Class to hold the ingredients to diffraction calibration"""
+    """
+
+    The DiffractionCalibrationIngredients class encapsulates all the necessary components for
+    conducting diffraction calibration. It contains a runConfig for the calibration run settings,
+    a pixelGroup specifying the group of pixels under consideration, and a list of groupedPeakLists
+    detailing the peaks identified in each group. Additionally, it defines a convergenceThreshold
+    for calibration accuracy, a peakFunction selected based on system configuration for modeling
+    the peaks, and a maxOffset limit for calibration adjustments.
+
+    """
 
     runConfig: RunConfig
     pixelGroup: PixelGroup
@@ -18,3 +27,6 @@ class DiffractionCalibrationIngredients(BaseModel):
     convergenceThreshold: float = float(Config["calibration.diffraction.convergenceThreshold"])
     peakFunction: SymmetricPeakEnum = SymmetricPeakEnum[Config["calibration.diffraction.peakFunction"]]
     maxOffset: float = Config["calibration.diffraction.maximumOffset"]
+    maxChiSq: float = Config["constants.GroupDiffractionCalibration.MaxChiSq"]
+
+    model_config = ConfigDict(extra="forbid")

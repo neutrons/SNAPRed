@@ -1,13 +1,14 @@
+import pytest
 from snapred.backend.dao.SNAPRequest import SNAPRequest
 
 
-def test_excuteRequest_noop():
+@pytest.mark.integration()
+def test_executeRequest_noop():
     # import must be here or it will put things in a funny state and break other tests
     from snapred.backend.api.InterfaceController import InterfaceController
 
-    expected_keys = [
+    expected_keys = [  # TODO: reduction was removed, re-add this later
         "config",
-        "reduction",
         "stateId",
         "calibration",
         "ingestion",
@@ -16,6 +17,7 @@ def test_excuteRequest_noop():
         "normalization",
         "reduceLiteData",
         "workspace",
+        "metadata",
     ]
     expected_keys.sort()
 

@@ -1,17 +1,13 @@
-from typing import Dict, Tuple
-
-import numpy as np
 from mantid.api import (
     AlgorithmFactory,
     MatrixWorkspaceProperty,
     PropertyMode,
     PythonAlgorithm,
+    WorkspaceUnitValidator,
 )
 from mantid.kernel import Direction, StringMandatoryValidator
 
 from snapred.backend.dao.ingredients import NormalizationIngredients as Ingredients
-from snapred.backend.dao.state.CalibrantSample.CalibrantSamples import CalibrantSamples
-from snapred.backend.recipe.algorithm.MakeDirtyDish import MakeDirtyDish
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
 
@@ -22,15 +18,25 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
     def PyInit(self):
         # declare properties
         self.declareProperty(
-            MatrixWorkspaceProperty("InputWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "InputWorkspace", "", Direction.Input, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+            ),
             doc="Workspace containing the raw vanadium data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("BackgroundWorkspace", "", Direction.Input, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "BackgroundWorkspace",
+                "",
+                Direction.Input,
+                PropertyMode.Mandatory,
+                validator=WorkspaceUnitValidator("TOF"),
+            ),
             doc="Workspace containing the raw vanadium background data",
         )
         self.declareProperty(
-            MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
+            MatrixWorkspaceProperty(
+                "OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory, validator=WorkspaceUnitValidator("TOF")
+            ),
             doc="Workspace containing corrected data; if none given, the InputWorkspace will be overwritten",
         )
         self.declareProperty(
@@ -84,12 +90,6 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
             BinningMode="Logarithmic",
         )
 
-        self.mantidSnapper.NormaliseByCurrent(
-            "Normalize by current",
-            InputWorkspace=outputWS,
-            OutputWorkspace=outputWS,
-        )
-
         self.mantidSnapper.MakeDirtyDish(
             "make a copy of data after chop",
             InputWorkspace=outputWS,
@@ -116,13 +116,24 @@ class RawVanadiumCorrectionAlgorithm(PythonAlgorithm):
 
     def PyExec(self):
         # Load and pre-process vanadium and empty datasets
-        ingredients = Ingredients.parse_raw(self.getProperty("Ingredients").value)
+        ingredients = Ingredients.model_validate_json(self.getProperty("Ingredients").value)
         self.chopIngredients(ingredients)
         self.unbagGroceries()
 
         # Process the raw vanadium and background data
         self.chopNeutronData(self.inputVanadiumWS, self.outputVanadiumWS)
         self.chopNeutronData(self.inputBackgroundWS, self.outputBackgroundWS)
+
+        pcV = self.mantidSnapper.mtd[self.outputVanadiumWS].run().getProtonCharge()
+        pcB = self.mantidSnapper.mtd[self.outputBackgroundWS].run().getProtonCharge()
+        protonCharge = pcV / pcB
+
+        self.mantidSnapper.Scale(
+            "Scale entire workspace by factor value",
+            InputWorkspace=self.outputBackgroundWS,
+            Outputworkspace=self.outputBackgroundWS,
+            Factor=protonCharge,
+        )
 
         # take difference
         self.mantidSnapper.Minus(

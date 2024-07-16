@@ -6,15 +6,16 @@ channels:
 dependencies:
 - python=3.10
 - pip
-- pydantic>=1.10,<2
+- pydantic>=2.7.3,<3
 - mantidworkbench>=6.8.20231213
+- mypy
 - qtpy
 - pre-commit
 - pytest
 - pytest-qt
 - pytest-cov
 - flake8
-- erdantic=0.5.1
+- erdantic>=1.0.3
 - versioningit
 - anaconda-client
 - conda-build
@@ -27,5 +28,6 @@ dependencies:
 - python-build
 - boa
 - pycifrw
+- pyqtwebengine
 - pip:
-  - check-wheel-contents==0.4.0
+  - check-wheel-contents>=0.6.0
