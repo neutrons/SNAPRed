@@ -3,7 +3,7 @@ import unittest.mock as mock
 
 import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
-from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.meta.Config import Resource
 
@@ -47,9 +47,7 @@ def test_fakeInstrument():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    instrumentState = Calibration.model_validate_json(
-        Resource.read("inputs/pixel_grouping/CalibrationParameters.json")
-    ).instrumentState
+    instrumentState = InstrumentState.model_validate_json(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
 
     fullResolution: int = 16
     liteResolution: int = 4
@@ -257,6 +255,7 @@ def test_no_run_twice():
         DeleteWorkspace,
         LoadDetectorsGroupingFile,
         LoadEmptyInstrument,
+        LoadInstrument,
     )
 
     instrumentWorkspace: str = "_test_lite_idf"
@@ -267,11 +266,8 @@ def test_no_run_twice():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
-    instrumentState = Calibration.model_validate_json(
-        Resource.read("inputs/pixel_grouping/CalibrationParameters.json")
-    ).instrumentState
+    instrumentState = InstrumentState.model_validate_json(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
 
-    # load the instrument, and load the grouping file
     LoadEmptyInstrument(
         OutputWorkspace=instrumentWorkspace,
         Filename=fullInstrumentFile,
@@ -304,6 +300,11 @@ def test_no_run_twice():
     ConvertToEventWorkspace(
         InputWorkspace=inputWorkspace,
         OutputWorkspace=inputWorkspace,
+    )
+    LoadInstrument(
+        Workspace=inputWorkspace,
+        Filename=fullInstrumentFile,
+        RewriteSpectraMap=True,
     )
 
     # check that it runs
