@@ -349,6 +349,7 @@ class GroupDiffractionCalibration(PythonAlgorithm):
         # set the outputs
         self.setPropertyValue("DiagnosticWorkspace", self.diagnosticWS)
         self.setPropertyValue("OutputWorkspace", self.outputWSdSpacing)
+        self.setPropertyValue("FinalCalibrationTable", self.DIFCfinal)
 
     def convertAndFocusAndReturn(self, inputWS: str, outputWS: str, note: str, units: str):
         # Use workspace name generator
