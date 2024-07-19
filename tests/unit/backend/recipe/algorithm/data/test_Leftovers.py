@@ -5,6 +5,10 @@ from mantid.api import mtd
 from mantid.simpleapi import *
 from snapred.backend.recipe.algorithm.data.ReheatLeftovers import ReheatLeftovers
 from snapred.backend.recipe.algorithm.data.WrapLeftovers import WrapLeftovers
+from snapred.meta.Config import Config
+
+NUM_BINS = Config["constants.ResampleX.NumberBins"]
+LOG_BINNING = True
 
 
 def compareRaggedWorkspaces(ws1, ws2):
@@ -52,18 +56,29 @@ def test_saveLoad():
     RebinRagged(InputWorkspace="raw", XMin=xMin, XMax=xMax, Delta=delta, PreserveEvents=False, OutputWorkspace="raw")
 
     with tempfile.TemporaryDirectory(prefix="/tmp/") as extractPath:
-        filename = f"{extractPath}/leftovers.tar"
+        filename = f"{extractPath}/leftovers.nxs.h5"
         wrapLeftovers = WrapLeftovers()
         wrapLeftovers.initialize()
         wrapLeftovers.setPropertyValue("InputWorkspace", "raw")
         wrapLeftovers.setPropertyValue("Filename", filename)
         wrapLeftovers.execute()
+        # import pdb; pdb.set_trace()
 
         reheatLeftovers = ReheatLeftovers()
         reheatLeftovers.initialize()
         reheatLeftovers.setPropertyValue("OutputWorkspace", "reheated")
         reheatLeftovers.setPropertyValue("Filename", filename)
         reheatLeftovers.execute()
-        compareRaggedWorkspaces(mtd["raw"], mtd["reheated"])
-        DeleteWorkspace("raw")
-        DeleteWorkspace("reheated")
+
+        # import pdb; pdb.set_trace()
+    # ResampleX(InputWorkspace="raw", OutputWorkspace="expected", whatever other arguments)
+    ResampleX(
+        InputWorkspace="raw",
+        NumberBins=NUM_BINS,
+        LogBinning=LOG_BINNING,
+        OutputWorkspace="expected",
+    )
+    assert compareRaggedWorkspaces(mtd["expected"], mtd["reheated"])
+    DeleteWorkspace("raw")
+    DeleteWorkspace("expected")
+    DeleteWorkspace("reheated")

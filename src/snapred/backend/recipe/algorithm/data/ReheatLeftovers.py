@@ -1,5 +1,4 @@
 import glob
-import tarfile
 import tempfile
 
 from mantid.api import (
@@ -28,7 +27,7 @@ class ReheatLeftovers(PythonAlgorithm):
                 "Filename",
                 defaultValue="",
                 action=FileAction.Load,
-                extensions=["tar"],
+                extensions=["nxs.h5"],
                 direction=Direction.Input,
             ),
             doc="Path to file to be loaded",
@@ -50,8 +49,8 @@ class ReheatLeftovers(PythonAlgorithm):
         self.validate()
 
         with tempfile.TemporaryDirectory(prefix="/tmp/") as extractPath:
-            with tarfile.open(self.filename, "r") as tar:
-                tar.extractall(path=extractPath, filter="data")
+            # with tarfile.open(self.filename, "r") as tar:
+            #     tar.extractall(path=extractPath, filter="data")
 
             # collected all files in extractPath
             files = glob.glob(f"{extractPath}/*")

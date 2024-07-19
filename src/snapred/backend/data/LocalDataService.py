@@ -374,7 +374,7 @@ class LocalDataService:
         for workspace in record.workspaceNames:
             ws = mtd[workspace]
             if ws.isRaggedWorkspace():
-                filename = Path(workspace + ".tar")
+                filename = Path(workspace + ".nxs.h5")
                 self.writeRaggedWorkspace(normalizationDataPath, filename, workspace)
             else:
                 filename = Path(workspace + ".nxs")

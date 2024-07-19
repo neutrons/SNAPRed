@@ -53,7 +53,7 @@ class TestGroceryService(unittest.TestCase):
             wng.diffCalOutput().runNumber(cls.runNumber1).unit(wng.Units.TOF).group(wng.Groups.UNFOC).build()
         )
         cls.sampleWSFilePath = Resource.getPath(f"inputs/test_{cls.runNumber}_groceryservice.nxs")
-        cls.sampleTarWsFilePath = Resource.getPath(f"inputs/{cls.diffCalOutputName}.tar")
+        cls.sampleTarWsFilePath = Resource.getPath(f"inputs/{cls.diffCalOutputName}.nxs.h5")
 
         cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
         Config["instrument"]["native"]["definition"]["file"] = cls.instrumentFilePath
@@ -270,7 +270,7 @@ class TestGroceryService(unittest.TestCase):
         assert wnvf.formatVersion(self.version) in res
         assert "tof" in res
         assert "some" in res
-        assert ".tar" in res
+        assert ".nxs.h5" in res
 
     def test_diffcal_table_filename(self):
         # Test name generation for diffraction-calibration table filename
