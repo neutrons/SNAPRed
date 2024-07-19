@@ -1,0 +1,22 @@
+# this uses the action to merge special branches on push
+# https://github.com/marketplace/actions/merge-branch
+name: Merge protected branches
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [automerge_staging, staging]
+
+jobs:
+  merge-staging-into-next:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref_name == 'automerge_staging' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Merge staging into next
+        uses: devmasx/merge-branch@1.4.0
+        with:
+          type: now
+          target_branch: next
+          message: Merge staging into next
+          github_token: ${{ secrets.GITHUB_TOKEN }}
