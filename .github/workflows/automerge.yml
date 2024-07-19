@@ -5,12 +5,12 @@ name: Merge protected branches
 on:
   workflow_dispatch:
   push:
-    branches: [automerge_staging, staging]
+    branches: [staging]
 
 jobs:
   merge-staging-into-next:
     runs-on: ubuntu-latest
-    if: ${{ github.ref_name == 'automerge_staging' }}
+    if: ${{ github.ref_name == 'staging' }}
     steps:
       - uses: actions/checkout@v4
       - name: Merge staging into next
