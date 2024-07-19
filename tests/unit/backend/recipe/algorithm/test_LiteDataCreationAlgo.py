@@ -395,9 +395,6 @@ def test_no_run_twice():
     liteDataCreationAlgo.setPropertyValue("Ingredients", instrumentState.model_dump_json())
     liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
     assert liteDataCreationAlgo.execute()
-    # liteDataCreationAlgo.mantidSnapper.GroupDetectors.called_once()
-    # liteDataCreationAlgo.mantidSnapper.LoadInstrument.called_once()
-    # liteDataCreationAlgo.mantidSnapper.CompressEvents.called_once()
 
     # cleanup
     DeleteWorkspace(inputWorkspace)
