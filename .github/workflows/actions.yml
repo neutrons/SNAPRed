@@ -38,8 +38,10 @@ jobs:
         xvfb-run --server-args="-screen 0 1280x1024x16" -a python -m pytest --cov=src --cov-report=xml --cov-report=term
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
+      if:
+        github.actor != 'dependabot[bot]'
       with:
-        fail_ci_if_error: false
+        fail_ci_if_error: true
         token: ${{ secrets.CODECOV_TOKEN }} # required
 #    - name: mypy checks
 #      shell: bash -l {0}
