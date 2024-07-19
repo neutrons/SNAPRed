@@ -2,15 +2,13 @@ from random import randint
 from unittest.mock import MagicMock
 
 from mantid.simpleapi import CreateSingleValuedWorkspace, GroupWorkspaces, mtd
-from qtpy.QtWidgets import QApplication
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
 
-def test_rename_on_iterate_list():
+def test_rename_on_iterate_list(qtbot):  # noqa: ARG001
     """
     Test that on iteration, a list of workspaces will be renamed according to the iteration template.
     """
-    test_app = QApplication(["nuffink"])  # noqa
     # setup a list of workspaces to be renamed
     oldNames = ["old1", "old2"]
     for name in oldNames:
@@ -23,14 +21,12 @@ def test_rename_on_iterate_list():
     instance.outputs = oldNames
     instance._iterate(mockPresenter)
     assert instance.collectiveOutputs == newNames
-    del test_app
 
 
-def test_rename_on_iterate_group():
+def test_rename_on_iterate_group(qtbot):  # noqa: ARG001
     """
     Test that on iteration, a workspace group has all of its members renamed.
     """
-    test_app = QApplication(["nuffink"])  # noqa
     # setup a list of workspaces to be renamed
     oldNames = ["parent", "child1", "child2"]
     CreateSingleValuedWorkspace(OutputWorkspace=oldNames[-1])
@@ -51,4 +47,3 @@ def test_rename_on_iterate_group():
     for old, new in zip(oldNames, newNames):
         assert not mtd.doesExist(old)
         assert mtd.doesExist(new)
-    del test_app
