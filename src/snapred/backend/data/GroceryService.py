@@ -333,6 +333,22 @@ class GroceryService:
         )
         self.mantidSnapper.executeQueue()
 
+    def renameWorkspaces(self, oldNames: List[WorkspaceName], newNames: List[WorkspaceName]):
+        """
+        Renames a list of workspaces in Mantid's ADS.
+
+        :param oldNames: the original names of the workspaces in the ADS
+        :type oldNames: List[WorkspaceName]
+        :param newNames: the names to replace the workspace names in the ADS
+        :type newNames: List[WorkspaceName]
+        """
+        self.mantidSnapper.RenameWorkspaces(
+            "Renaming several workspaces",
+            InputWorkspaces=oldNames,
+            WorkspaceNames=newNames,
+        )
+        self.mantidSnapper.executeQueue()
+
     def getWorkspaceForName(self, name: WorkspaceName):
         """
         Simple wrapper of mantid's ADS for the service layer.

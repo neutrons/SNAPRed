@@ -1557,6 +1557,18 @@ class TestGroceryService(unittest.TestCase):
         assert not mtd.doesExist(oldName)
         assert mtd.doesExist(newName)
 
+    def test_renameWorkspaces(self):
+        oldNames = ["old1", "old2"]
+        newNames = ["new1", "new2"]
+        for oldName in oldNames:
+            self.create_dumb_workspace(oldName)
+            assert mtd.doesExist(oldName)
+        self.instance.renameWorkspaces(oldNames, newNames)
+        for oldName in oldNames:
+            assert not mtd.doesExist(oldName)
+        for newName in newNames:
+            assert mtd.doesExist(newName)
+
     def test_clearADS(self):
         rawWsName = self.instance._createRawNeutronWorkspaceName(0, "a")
         self.instance._loadedRuns = {(0, "a"): rawWsName}
