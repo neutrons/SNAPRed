@@ -1,31 +1,14 @@
 import tempfile
 
-import numpy as np
 from mantid.api import mtd
 from mantid.simpleapi import *
 from snapred.backend.recipe.algorithm.data.ReheatLeftovers import ReheatLeftovers
 from snapred.backend.recipe.algorithm.data.WrapLeftovers import WrapLeftovers
 from snapred.meta.Config import Config
+from util.helpers import workspacesEqual
 
 NUM_BINS = Config["constants.ResampleX.NumberBins"]
 LOG_BINNING = True
-
-
-def compareRaggedWorkspaces(ws1, ws2):
-    assert ws1.getNumberHistograms() == ws2.getNumberHistograms()
-
-    assert ws1.isRaggedWorkspace()
-    assert ws2.isRaggedWorkspace()
-
-    for i in range(ws1.getNumberHistograms()):
-        np.testing.assert_allclose(ws1.readX(i), ws2.readX(i))
-        np.testing.assert_allclose(ws1.readY(i), ws2.readY(i))
-        np.testing.assert_allclose(ws1.readE(i), ws2.readE(i))
-        spec1 = ws1.getSpectrum(i)
-        spec2 = ws2.getSpectrum(i)
-        assert spec1.getSpectrumNo() == spec2.getSpectrumNo()
-        for detId1, detId2 in zip(spec1.getDetectorIDs(), spec2.getDetectorIDs()):
-            assert detId1 == detId2
 
 
 def test_saveLoad():
@@ -62,7 +45,6 @@ def test_saveLoad():
         wrapLeftovers.setPropertyValue("InputWorkspace", "raw")
         wrapLeftovers.setPropertyValue("Filename", filename)
         wrapLeftovers.execute()
-        # import pdb; pdb.set_trace()
 
         reheatLeftovers = ReheatLeftovers()
         reheatLeftovers.initialize()
@@ -70,15 +52,13 @@ def test_saveLoad():
         reheatLeftovers.setPropertyValue("Filename", filename)
         reheatLeftovers.execute()
 
-        # import pdb; pdb.set_trace()
-    # ResampleX(InputWorkspace="raw", OutputWorkspace="expected", whatever other arguments)
     ResampleX(
         InputWorkspace="raw",
         NumberBins=NUM_BINS,
         LogBinning=LOG_BINNING,
         OutputWorkspace="expected",
     )
-    assert compareRaggedWorkspaces(mtd["expected"], mtd["reheated"])
+    assert workspacesEqual(mtd["expected"], mtd["reheated"])
     DeleteWorkspace("raw")
     DeleteWorkspace("expected")
     DeleteWorkspace("reheated")

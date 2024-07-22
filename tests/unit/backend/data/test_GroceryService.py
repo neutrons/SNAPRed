@@ -1,7 +1,6 @@
 # ruff: noqa: E722, PT011, PT012, F811
 import json
 import os
-import tarfile
 import unittest
 from pathlib import Path
 from random import randint
@@ -18,6 +17,7 @@ from mantid.simpleapi import (
     GenerateTableWorkspaceFromListOfDict,
     GroupWorkspaces,
     LoadEmptyInstrument,
+    LoadInstrument,
     SaveDiffCal,
     SaveNexusProcessed,
     mtd,
@@ -27,6 +27,7 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata, diffcal_metadata_state_list
 from snapred.backend.data.GroceryService import GroceryService
+from snapred.backend.recipe.algorithm.data.WrapLeftovers import WrapLeftovers
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -66,17 +67,30 @@ class TestGroceryService(unittest.TestCase):
         # create some sample data
         cls.sampleWS = "_grocery_to_fetch"
 
-        LoadEmptyInstrument(
-            Filename=cls.instrumentFilePath,
+        CreateWorkspace(
             OutputWorkspace=cls.sampleWS,
+            DataX=[0.5, 1.5] * 16,
+            DataY=[3] * 16,
+            NSpec=16,
+        )
+        LoadInstrument(
+            Workspace=cls.sampleWS,
+            Filename=cls.instrumentFilePath,
+            RewriteSpectraMap=True,
         )
         SaveNexusProcessed(
             InputWorkspace=cls.sampleWS,
             Filename=cls.sampleWSFilePath,
         )
 
-        with tarfile.open(cls.sampleTarWsFilePath, "w") as tar:
-            tar.add(cls.sampleWSFilePath, arcname="0.nxs")
+        # with tarfile.open(cls.sampleTarWsFilePath, "w") as tar:
+        #     tar.add(cls.sampleWSFilePath, arcname="0.nxs")
+        # call wrap leftovers
+        wrapLeftovers = WrapLeftovers()
+        wrapLeftovers.initialize()
+        wrapLeftovers.setPropertyValue("InputWorkspace", cls.sampleWS)
+        wrapLeftovers.setPropertyValue("Filename", cls.sampleTarWsFilePath)
+        wrapLeftovers.execute()
 
         assert os.path.exists(cls.sampleWSFilePath)
 
@@ -1047,6 +1061,11 @@ class TestGroceryService(unittest.TestCase):
                 .buildList()
             )
             diffCalOutputFilename = self.instance._createDiffcalOutputWorkspaceFilename(groceryList[0])
+            wrapLeftovers = WrapLeftovers()
+            wrapLeftovers.initialize()
+            wrapLeftovers.setPropertyValue("InputWorkspace", self.sampleWS)
+            wrapLeftovers.setPropertyValue("Filename", self.sampleTarWsFilePath)
+            wrapLeftovers.execute()
             tmpRoot.addFileAs(self.sampleTarWsFilePath, diffCalOutputFilename)
             assert Path(diffCalOutputFilename).exists()
 

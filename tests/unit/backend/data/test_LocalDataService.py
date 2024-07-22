@@ -22,6 +22,7 @@ from mantid.simpleapi import (
     CompareWorkspaces,
     CreateGroupingWorkspace,
     CreateSampleWorkspace,
+    CreateWorkspace,
     DeleteWorkspace,
     GroupWorkspaces,
     LoadEmptyInstrument,
@@ -1086,7 +1087,18 @@ def test_writeCalibrationWorkspaces():
             raise RuntimeError(f"unexpected workspace-types in record.workspaces: {workspaces}")
 
         # Create sample workspaces.
-        LoadEmptyInstrument(OutputWorkspace=outputWSName, Filename=fakeInstrumentFilePath)
+        # LoadEmptyInstrument(OutputWorkspace=outputWSName, Filename=fakeInstrumentFilePath)
+        CreateWorkspace(
+            OutputWorkspace=outputWSName,
+            DataX=[0.5, 1.5] * 16,
+            DataY=[3] * 16,
+            NSpec=16,
+        )
+        LoadInstrument(
+            Workspace=outputWSName,
+            Filename=fakeInstrumentFilePath,
+            RewriteSpectraMap=True,
+        )
         # create the diagnostic workspace group
         ws1 = CloneWorkspace(outputWSName)
         GroupWorkspaces(InputWorkspaces=[ws1], OutputWorkspace=diagnosticWSName)
@@ -2046,7 +2058,7 @@ def test_writeRaggedWorkspace():
             NumEvents=500,
             Random=True,
             XUnit="DSP",
-            XMin=0,
+            XMin=0.5,
             XMax=8000,
             BinWidth=100,
         )

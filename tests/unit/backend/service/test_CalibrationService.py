@@ -12,6 +12,7 @@ import pytest
 from mantid.simpleapi import (
     CloneWorkspace,
     CreateSingleValuedWorkspace,
+    CreateWorkspace,
     DeleteWorkspace,
     GroupWorkspaces,
     LoadEmptyInstrument,
@@ -151,6 +152,18 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         createCompatibleDiffCalTable(cls.sampleTableWS, cls.sampleWS)
         createCompatibleMask(cls.sampleMaskWS, cls.sampleWS, cls.instrumentFilePath)
+        CreateWorkspace(
+            OutputWorkspace=cls.sampleWS,
+            DataX=[0.5, 1.5] * 16,
+            DataY=[3] * 16,
+            NSpec=16,
+        )
+        CreateWorkspace(
+            OutputWorkspace=ws,
+            DataX=[0.5, 1.5] * 16,
+            DataY=[3] * 16,
+            NSpec=16,
+        )
 
         # cleanup at per-test teardown
         cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS, cls.sampleDiagnosticWS, ws]
@@ -196,7 +209,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                         filename = Path(wsName + ".nxs.h5")
                         self.instance.dataExportService.exportWorkspace(path, filename, self.sampleDiagnosticWS)
                     case _:
-                        filename = Path(wsName + ".tar")
+                        filename = Path(wsName + ".nxs.h5")
                         self.instance.dataExportService.exportRaggedWorkspace(path, filename, self.sampleWS)
 
         # Write the table and/or mask

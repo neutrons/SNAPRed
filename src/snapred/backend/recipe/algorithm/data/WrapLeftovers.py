@@ -52,28 +52,10 @@ class WrapLeftovers(PythonAlgorithm):
     def unbagGroceries(self):
         self.inputWS = self.mantidSnapper.mtd[self.getPropertyValue("InputWorkspace")]
         self.filename = self.getPropertyValue("Filename")
-        # self.tarFilename = self.filename
-        # self.filename = self.filename[:-4] + "_{index}.nxs.h5"
 
     def PyExec(self) -> None:
         self.unbagGroceries()
         self.validate()
-
-        # for index in range(0, self.inputWS.getNumberHistograms()):
-        #     # timestamp as name
-        #     tmp = str(time.time())
-        #     self.mantidSnapper.ResampleX(
-        #         "Resampling X-axis...",
-        #         InputWorkspace=self.inputWS,
-        #         NumberBins=self.NUM_BINS,
-        #         LogBinning=self.LOG_BINNING,
-        #         OutputWorkspace=tmp,
-        #     )
-
-        #     self.mantidSnapper.SaveNexus(
-        #         f"Saving Spectra {index}", InputWorkspace=tmp, Filename=self.filename.format(index=index)
-        #     )
-        #     self.mantidSnapper.executeQueue()
 
         # timestamp as name
         tmp = str(time.time())
@@ -86,15 +68,6 @@ class WrapLeftovers(PythonAlgorithm):
         )
         self.mantidSnapper.SaveNexus("Saving re-ragged workspace", InputWorkspace=tmp, Filename=self.filename)
         self.mantidSnapper.executeQueue()
-
-        # # finally zip all outputs into a tarball
-        # with tarfile.open(self.tarFilename, "w") as tar:
-        #     for index in range(0, self.inputWS.getNumberHistograms()):
-        #         tar.add(self.filename.format(index=index), arcname=f"{str(index).zfill(2)}.nxs")
-
-        # # clean up
-        # for index in range(0, self.inputWS.getNumberHistograms()):
-        #     os.remove(self.filename.format(index=index))
 
 
 # Register algorithm with Mantid
