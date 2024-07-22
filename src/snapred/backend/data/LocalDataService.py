@@ -201,7 +201,7 @@ class LocalDataService:
         stateID = StateId(
             vdet_arc1=detectorState.arc[0],
             vdet_arc2=detectorState.arc[1],
-            WavelengthUserReq=detectorState.wav,
+            WavelengthReq=detectorState.wav,
             Frequency=detectorState.freq,
             Pos=detectorState.guideStat,
             # TODO: these should probably be added:
@@ -631,16 +631,28 @@ class LocalDataService:
     def readDetectorState(self, runId: str) -> DetectorState:
         detectorState = None
         pvFile = self._readPVFile(runId)
+        wav_value = None
+        wav_key_1 = "entry/DASlogs/BL3:Chop:Gbl:WavelengthReq/value"
+        wav_key_2 = "entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value"
+
+        if wav_key_1 in pvFile:
+            wav_value = pvFile.get(wav_key_1)[0]
+        elif wav_key_2 in pvFile:
+            wav_value = pvFile.get(wav_key_2)[0]
+        else:
+            raise ValueError(f"Could not find wavelength logs in file '{self._constructPVFilePath(runId)}'")
+
         try:
             detectorState = DetectorState(
                 arc=[pvFile.get("entry/DASlogs/det_arc1/value")[0], pvFile.get("entry/DASlogs/det_arc2/value")[0]],
-                wav=pvFile.get("entry/DASlogs/BL3:Chop:Skf1:WavelengthUserReq/value")[0],
+                wav=wav_value,
                 freq=pvFile.get("entry/DASlogs/BL3:Det:TH:BL:Frequency/value")[0],
                 guideStat=pvFile.get("entry/DASlogs/BL3:Mot:OpticsPos:Pos/value")[0],
                 lin=[pvFile.get("entry/DASlogs/det_lin1/value")[0], pvFile.get("entry/DASlogs/det_lin2/value")[0]],
             )
-        except:  # noqa: E722
-            raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")
+        except KeyError as e:
+            raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}': {e}")
+
         return detectorState
 
     @validate_call

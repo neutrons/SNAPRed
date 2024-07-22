@@ -12,7 +12,7 @@ instrument:
   name: SNAP
   home: ${IPTS.root}/SNAP
   calibration:
-    home: ${instrument.home}/shared/Calibration
+    home: /SNS/users/dzj/Calibration_dynamic
     sample:
       home: ${instrument.calibration.home}/CalibrantSamples
       extensions:
