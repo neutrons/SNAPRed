@@ -152,16 +152,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             RewriteSpectraMap=False,
         )
 
-        # This is where I need to use EstimateResolutionDiffraction
-        # For this algo, I need the following:
-        #
-        # input workspace --> outputWorkspaceName (M)
-        # divergence workspace --> ? (?)
-        # output workspace --> outputWorkspaceName (M)
-        # delta TOF --> in microseconds (might be 1?) (M)
-        # wavelength --> number (O)
-        # partial resolution workspaces --> WorkspaceGroup (M)
-
         # Estimate resolution for the unfocused workspace
         resolutionWorkspace = f"{outputWorkspaceName}_resolution"
         self.mantidSnapper.EstimateResolutionDiffraction(
