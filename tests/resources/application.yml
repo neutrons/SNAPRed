@@ -195,9 +195,5 @@ constants:
   CropFactors:
     lowWavelengthCrop: 0.05
 
-compressionParameters:
-  LiteDataCreationParameters:
-    DeltaTOF: 13.3 # units in µs
-
 metadata:
   tagPrefix: testSNAPfuntime_

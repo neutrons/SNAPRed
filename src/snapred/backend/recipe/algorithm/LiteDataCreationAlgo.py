@@ -152,20 +152,6 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             RewriteSpectraMap=False,
         )
 
-        # Estimate resolution for the unfocused workspace
-        resolutionWorkspace = f"{outputWorkspaceName}_resolution"
-        self.mantidSnapper.EstimateResolutionDiffraction(
-            f"Estimating resolution for {outputWorkspaceName}...",
-            InputWorkspace=outputWorkspaceName,
-            OutputWorkspace=resolutionWorkspace,
-            DeltaTOF=Config["compressionParameters.LiteDataCreationParameters.DeltaTOF"],
-        )
-
-        # Calculate ΔΤ as the negative of the minimum deltaDOverD
-        resolutionWS = self.mantidSnapper.mtd[resolutionWorkspace]
-        deltaDOverD = resolutionWS.extractY().flatten()
-        deltaT = -min(deltaDOverD)
-
         # TODO is this necessary?
         self.mantidSnapper.CompressEvents(
             f"Compressing events in {outputWorkspaceName}...",
