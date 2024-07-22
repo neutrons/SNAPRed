@@ -284,3 +284,27 @@ class TestGroupDiffractionCalibration(unittest.TestCase):
                 assert maskWS.isMasked(int(det))
         deleteWorkspaceNoThrow(inputWSName)
         deleteWorkspaceNoThrow(maskWSName)
+
+    def test_final_calibration_table_set_correctly(self):
+        """Test that the final calibration table is set correctly"""
+
+        uniquePrefix = "test_fct_"
+        inputWS, maskWS = mutableWorkspaceClones((self.fakeRawData, self.fakeMaskWorkspace), uniquePrefix)
+        inputWSName, maskWSName = mutableWorkspaceClones(
+            (self.fakeRawData, self.fakeMaskWorkspace), uniquePrefix, name_only=True
+        )
+
+        algo = ThisAlgo()
+        algo.initialize()
+        algo.setProperty("Ingredients", self.fakeIngredients.json())
+        algo.setProperty("InputWorkspace", inputWSName)
+        algo.setProperty("GroupingWorkspace", self.fakeGroupingWorkspace)
+        algo.setProperty("FinalCalibrationTable", "_final_DIFc_table")
+        algo.setProperty("MaskWorkspace", maskWSName)
+        algo.setProperty("OutputWorkspace", f"_test_out_dsp_{self.fakeIngredients.runConfig.runNumber}")
+        algo.setProperty("PreviousCalibrationTable", self.difcWS)
+
+        algo.execute()
+        assert algo.DIFCfinal == algo.getPropertyValue("FinalCalibrationTable")
+        deleteWorkspaceNoThrow(inputWSName)
+        deleteWorkspaceNoThrow(maskWSName)
