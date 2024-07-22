@@ -3,6 +3,7 @@ import unittest.mock as mock
 
 import pytest
 from mantid.simpleapi import DeleteWorkspace, mtd
+from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.LiteDataCreationAlgo import LiteDataCreationAlgo
 from snapred.meta.Config import Resource
 
@@ -46,6 +47,7 @@ def test_fakeInstrument():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+    instrumentState = InstrumentState.model_validate_json(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
 
     fullResolution: int = 16
     liteResolution: int = 4
@@ -81,6 +83,7 @@ def test_fakeInstrument():
     liteDataCreationAlgo.setPropertyValue("OutputWorkspace", liteInstrumentWS)
     liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
     liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
+    liteDataCreationAlgo.setPropertyValue("Ingredients", instrumentState.model_dump_json())
     liteDataCreationAlgo.execute()
 
     # check that the lite data is correct
@@ -252,6 +255,7 @@ def test_no_run_twice():
         DeleteWorkspace,
         LoadDetectorsGroupingFile,
         LoadEmptyInstrument,
+        LoadInstrument,
     )
 
     instrumentWorkspace: str = "_test_lite_idf"
@@ -262,8 +266,8 @@ def test_no_run_twice():
     fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
     liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
     liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+    instrumentState = InstrumentState.model_validate_json(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
 
-    # load the instrument, and load the grouping file
     LoadEmptyInstrument(
         OutputWorkspace=instrumentWorkspace,
         Filename=fullInstrumentFile,
@@ -283,6 +287,7 @@ def test_no_run_twice():
     liteDataCreationAlgo.setPropertyValue("OutputWorkspace", outputWorkspace)
     liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
     liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
+    liteDataCreationAlgo.setPropertyValue("Ingredients", instrumentState.model_dump_json())
 
     # try reducing native resolution, then running again with the Lite output
     CreateWorkspace(
@@ -296,7 +301,11 @@ def test_no_run_twice():
         InputWorkspace=inputWorkspace,
         OutputWorkspace=inputWorkspace,
     )
-
+    LoadInstrument(
+        Workspace=inputWorkspace,
+        Filename=fullInstrumentFile,
+        RewriteSpectraMap=True,
+    )
     # check that it runs
     liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
     assert liteDataCreationAlgo.execute()
@@ -362,22 +371,142 @@ def test_no_run_twice():
     # run with full resolution data and make sure it executes the whole thing
     CreateWorkspace(
         OutputWorkspace=inputWorkspace,
-        DataX=[1] * fullResolution,
+        DataX=[0.5, 1.5] * fullResolution,
         DataY=[1] * fullResolution,
         DataE=[1] * fullResolution,
         NSpec=fullResolution,
     )
+    ConvertToEventWorkspace(
+        InputWorkspace=inputWorkspace,
+        OutputWorkspace=inputWorkspace,
+    )
+    LoadInstrument(
+        Workspace=inputWorkspace,
+        Filename=fullInstrumentFile,
+        RewriteSpectraMap=True,
+    )
     #
     liteDataCreationAlgo.mantidSnapper = mock.MagicMock()
-    liteDataCreationAlgo.setProperty = mock.MagicMock()
+    liteDataCreationAlgo = LiteDataCreationAlgo()
+    liteDataCreationAlgo.initialize()
+    liteDataCreationAlgo.setPropertyValue("OutputWorkspace", outputWorkspace)
+    liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
+    liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
+    liteDataCreationAlgo.setPropertyValue("Ingredients", instrumentState.model_dump_json())
     liteDataCreationAlgo.setPropertyValue("InputWorkspace", inputWorkspace)
     assert liteDataCreationAlgo.execute()
-    liteDataCreationAlgo.mantidSnapper.GroupDetectors.called_once()
-    liteDataCreationAlgo.mantidSnapper.LoadInstrument.called_once()
-    liteDataCreationAlgo.mantidSnapper.CompressEvents.called_once()
 
     # cleanup
     DeleteWorkspace(inputWorkspace)
     DeleteWorkspace(outputWorkspace)
     DeleteWorkspace(instrumentWorkspace)
+    DeleteWorkspace(focusWS)
+
+
+def getWorkspaceMetrics(workspace):
+    memorySize = workspace.getMemorySize()
+    totalEvents = workspace.getNEvents()
+    return memorySize, totalEvents
+
+
+def compareMetrics(initialMetrics, finalMetrics):
+    initialMemorySize, initialTotalEvents = initialMetrics
+    finalMemorySize, finalTotalEvents = finalMetrics
+
+    return finalMemorySize < initialMemorySize and finalTotalEvents < initialTotalEvents
+
+
+def testLiteDataCreationAlgoWithCompressionCheck():
+    from mantid.simpleapi import (
+        ConvertToEventWorkspace,
+        CreateWorkspace,
+        DeleteWorkspace,
+        LoadDetectorsGroupingFile,
+        LoadInstrument,
+        mtd,
+    )
+
+    fullInstrumentWS = "_test_lite_algo_native"
+    liteInstrumentWS = "_test_lite_algo_lite"
+    focusWS = "_test_lite_data_map"
+
+    fullInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
+    liteInstrumentFile = Resource.getPath("inputs/testInstrument/fakeSNAPLite.xml")
+    liteInstrumentMap = Resource.getPath("inputs/testInstrument/fakeSNAPLiteGroupMap.xml")
+    instrumentState = InstrumentState.model_validate_json(Resource.read("inputs/diffcal/fakeInstrumentState.json"))
+
+    fullResolution: int = 16
+    liteResolution: int = 4
+
+    # create simple event data with a different number in each pixel
+    CreateWorkspace(
+        OutputWorkspace=fullInstrumentWS,
+        DataX=[0.5, 1.5] * fullResolution,
+        DataY=range(fullResolution),
+        DataE=[0.01] * fullResolution,
+        NSpec=fullResolution,
+    )
+    ConvertToEventWorkspace(
+        InputWorkspace=fullInstrumentWS,
+        OutputWorkspace=fullInstrumentWS,
+    )
+    # load the instrument, and load the grouping file
+    LoadInstrument(
+        Workspace=fullInstrumentWS,
+        Filename=fullInstrumentFile,
+        RewriteSpectraMap=True,
+    )
+    LoadDetectorsGroupingFile(
+        InputFile=liteInstrumentMap,
+        InputWorkspace=fullInstrumentWS,
+        OutputWorkspace=focusWS,
+    )
+
+    # Get initial metrics before compression
+    initialMetrics = getWorkspaceMetrics(mtd[fullInstrumentWS])
+
+    # run the algorithm
+    liteDataCreationAlgo = LiteDataCreationAlgo()
+    liteDataCreationAlgo.initialize()
+    liteDataCreationAlgo.setPropertyValue("InputWorkspace", fullInstrumentWS)
+    liteDataCreationAlgo.setPropertyValue("OutputWorkspace", liteInstrumentWS)
+    liteDataCreationAlgo.setPropertyValue("LiteDataMapWorkspace", focusWS)
+    liteDataCreationAlgo.setPropertyValue("LiteInstrumentDefinitionFile", liteInstrumentFile)
+    liteDataCreationAlgo.setPropertyValue("Ingredients", instrumentState.model_dump_json())
+    liteDataCreationAlgo.execute()
+
+    # Get final metrics after compression
+    finalMetrics = getWorkspaceMetrics(mtd[liteInstrumentWS])
+
+    # Compare metrics to verify compression effectiveness
+    assert compareMetrics(initialMetrics, finalMetrics), "Compression was not effective"
+
+    # check that the lite data is correct
+    # 1. check the lite data has four histograms
+    # 2. check each histograms has a single pixel
+    # 3. check the pixel ids of histograms are 0, 1, 2, 3 in order
+    # 4. check each superpixel has the sum corresponding to the four banks
+    liteWS = mtd[liteInstrumentWS]
+    fullWS = mtd[fullInstrumentWS]
+    assert liteWS.getNumberHistograms() == liteResolution
+    assert liteWS.getSpectrumNumbers() == list(range(1, liteResolution + 1))
+    for i in range(liteResolution):
+        el = liteWS.getSpectrum(i)
+        assert list(el.getDetectorIDs()) == [i]
+
+    for i in range(liteResolution):
+        assert liteWS.getDetector(i).getID() == i
+
+    summedPixels = [0] * liteResolution
+    for i in range(liteResolution):
+        for j in range(liteResolution):
+            summedPixels[i] += fullWS.readY(liteResolution * i + j)[0]
+        assert summedPixels[i] == liteWS.readY(i)[0]
+
+    # check that the data has been flagged as lite
+    assert "Lite" in liteWS.getComment()
+
+    # clean up
+    DeleteWorkspace(fullInstrumentWS)
+    DeleteWorkspace(liteInstrumentWS)
     DeleteWorkspace(focusWS)
