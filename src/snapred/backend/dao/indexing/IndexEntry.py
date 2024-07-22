@@ -51,7 +51,7 @@ class IndexEntry(VersionedObject, extra="ignore"):
             except ValueError:
                 raise ValueError(
                     "appliesTo must be in the format of 'runNumber',"
-                    "or '\{symbol\}runNumber' where symbol is one of '>', '<', '>=', '<='.."
+                    "or '{{symbol}}runNumber' where symbol is one of '>', '<', '>=', '<='.."
                 )
 
         return v
