@@ -15,7 +15,7 @@ from mantid.simpleapi import (
     CreateWorkspace,
     DeleteWorkspace,
     GroupWorkspaces,
-    LoadEmptyInstrument,
+    LoadInstrument,
     mtd,
 )
 from snapred.backend.dao.calibration.Calibration import Calibration
@@ -137,14 +137,28 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         cls.sampleTableWS = "_sample_diffcal_table"
         cls.sampleMaskWS = "_sample_diffcal_mask"
 
-        LoadEmptyInstrument(
-            Filename=cls.instrumentFilePath,
+        CreateWorkspace(
             OutputWorkspace=cls.sampleWS,
+            DataX=[0.5, 1.5] * 16,
+            DataY=[3] * 16,
+            NSpec=16,
+        )
+        LoadInstrument(
+            Filename=cls.instrumentFilePath,
+            Workspace=cls.sampleWS,
+            RewriteSpectraMap=True,
         )
         ws = mtd.unique_name()
-        LoadEmptyInstrument(
-            Filename=cls.instrumentFilePath,
+        CreateWorkspace(
             OutputWorkspace=ws,
+            DataX=[0.5, 1.5] * 16,
+            DataY=[3] * 16,
+            NSpec=16,
+        )
+        LoadInstrument(
+            Filename=cls.instrumentFilePath,
+            Workspace=ws,
+            RewriteSpectraMap=True,
         )
         GroupWorkspaces(
             InputWorkspaces=[ws],
@@ -152,18 +166,6 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         createCompatibleDiffCalTable(cls.sampleTableWS, cls.sampleWS)
         createCompatibleMask(cls.sampleMaskWS, cls.sampleWS, cls.instrumentFilePath)
-        CreateWorkspace(
-            OutputWorkspace=cls.sampleWS,
-            DataX=[0.5, 1.5] * 16,
-            DataY=[3] * 16,
-            NSpec=16,
-        )
-        CreateWorkspace(
-            OutputWorkspace=ws,
-            DataX=[0.5, 1.5] * 16,
-            DataY=[3] * 16,
-            NSpec=16,
-        )
 
         # cleanup at per-test teardown
         cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS, cls.sampleDiagnosticWS, ws]
