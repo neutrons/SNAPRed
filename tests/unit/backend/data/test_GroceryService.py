@@ -20,6 +20,7 @@ from mantid.simpleapi import (
     LoadInstrument,
     SaveDiffCal,
     SaveNexusProcessed,
+    WrapLeftovers,
     mtd,
 )
 from mantid.testing import assert_almost_equal as assert_wksp_almost_equal
@@ -27,7 +28,6 @@ from snapred.backend.dao.ingredients.GroceryListItem import GroceryListItem
 from snapred.backend.dao.state import DetectorState
 from snapred.backend.dao.WorkspaceMetadata import UNSET, WorkspaceMetadata, diffcal_metadata_state_list
 from snapred.backend.data.GroceryService import GroceryService
-from snapred.backend.recipe.algorithm.data.WrapLeftovers import WrapLeftovers
 from snapred.meta.Config import Config, Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
@@ -84,11 +84,10 @@ class TestGroceryService(unittest.TestCase):
         )
 
         # call wrap leftovers
-        wrapLeftovers = WrapLeftovers()
-        wrapLeftovers.initialize()
-        wrapLeftovers.setPropertyValue("InputWorkspace", cls.sampleWS)
-        wrapLeftovers.setPropertyValue("Filename", cls.sampleTarWsFilePath)
-        wrapLeftovers.execute()
+        WrapLeftovers(
+            InputWorkspace=cls.sampleWS,
+            Filename=cls.sampleTarWsFilePath,
+        )
 
         assert os.path.exists(cls.sampleWSFilePath)
 
@@ -1059,11 +1058,10 @@ class TestGroceryService(unittest.TestCase):
                 .buildList()
             )
             diffCalOutputFilename = self.instance._createDiffcalOutputWorkspaceFilename(groceryList[0])
-            wrapLeftovers = WrapLeftovers()
-            wrapLeftovers.initialize()
-            wrapLeftovers.setPropertyValue("InputWorkspace", self.sampleWS)
-            wrapLeftovers.setPropertyValue("Filename", self.sampleTarWsFilePath)
-            wrapLeftovers.execute()
+            WrapLeftovers(
+                InputWorkspace=self.sampleWS,
+                Filename=self.sampleTarWsFilePath,
+            )
             tmpRoot.addFileAs(self.sampleTarWsFilePath, diffCalOutputFilename)
             assert Path(diffCalOutputFilename).exists()
 

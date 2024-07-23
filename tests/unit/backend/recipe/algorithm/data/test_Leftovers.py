@@ -1,9 +1,15 @@
 import tempfile
 
 from mantid.api import mtd
-from mantid.simpleapi import *
-from snapred.backend.recipe.algorithm.data.ReheatLeftovers import ReheatLeftovers
-from snapred.backend.recipe.algorithm.data.WrapLeftovers import WrapLeftovers
+from mantid.simpleapi import (
+    CreateSampleWorkspace,
+    DeleteWorkspace,
+    LoadInstrument,
+    RebinRagged,
+    ReheatLeftovers,
+    ResampleX,
+    WrapLeftovers,
+)
 from snapred.meta.Config import Config
 from util.helpers import workspacesEqual
 
@@ -40,17 +46,15 @@ def test_saveLoad():
 
     with tempfile.TemporaryDirectory(prefix="/tmp/") as extractPath:
         filename = f"{extractPath}/leftovers.nxs.h5"
-        wrapLeftovers = WrapLeftovers()
-        wrapLeftovers.initialize()
-        wrapLeftovers.setPropertyValue("InputWorkspace", "raw")
-        wrapLeftovers.setPropertyValue("Filename", filename)
-        wrapLeftovers.execute()
+        WrapLeftovers(
+            InputWorkspace="raw",
+            Filename=filename,
+        )
 
-        reheatLeftovers = ReheatLeftovers()
-        reheatLeftovers.initialize()
-        reheatLeftovers.setPropertyValue("OutputWorkspace", "reheated")
-        reheatLeftovers.setPropertyValue("Filename", filename)
-        reheatLeftovers.execute()
+        ReheatLeftovers(
+            OutputWorkspace="reheated",
+            Filename=filename,
+        )
 
     ResampleX(
         InputWorkspace="raw",
