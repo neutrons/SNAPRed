@@ -94,7 +94,9 @@ class ReductionRequestView(BackendRequestView):
 
     def _removeRunNumber(self, runNumber):
         if runNumber not in self.runNumbers:
-            logger.warning(f"[ReductionRequestView]: attempting to remove run {runNumber} not in the list {self.runNumbers}")
+            logger.warning(
+                f"[ReductionRequestView]: attempting to remove run {runNumber} not in the list {self.runNumbers}"
+            )
             return
         self.runNumbers.remove(runNumber)
         self.updateRunNumberList()
