@@ -126,7 +126,6 @@ class ReductionWorkflow(WorkflowImplementer):
                 pixelMasks=pixelMasks,
                 keepUnfocused=self._reductionView.retainUnfocusedDataCheckbox.isChecked(),
                 convertUnitsTo=self._reductionView.convertUnitsDropdown.currentText(),
-                pixelMasks=pixelMasks,
             )
             # TODO: Handle Continue Anyway
             self.request(path="reduction/", payload=payload.json())

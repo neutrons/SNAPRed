@@ -1,6 +1,5 @@
 from typing import List
-
-from qtpy.QtCore import QString, Qt
+from qtpy.QtCore import Qt
 from qtpy.QtGui import QStandardItemModel
 from qtpy.QtWidgets import QComboBox, QStyledItemDelegate, QVBoxLayout, QWidget
 
@@ -18,7 +17,7 @@ class CheckableComboBox(QComboBox):
         else:
             item.setCheckState(Qt.Checked)
 
-    def checkedItems(self) -> List[QString]:
+    def checkedItems(self) -> List[str]:
         checked_items = []
         for index in range(self.count()):
             item = self.model().item(index)
@@ -72,5 +71,5 @@ class MultiSelectDropDown(QWidget):
         self._items = items
         self._initItems()
 
-    def checkedItems(self) -> List[QString]:
+    def checkedItems(self) -> List[str]:
         return self.dropDown.checkedItems()
