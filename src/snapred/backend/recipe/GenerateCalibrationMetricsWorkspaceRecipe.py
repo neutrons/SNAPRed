@@ -11,7 +11,12 @@ from snapred.backend.recipe.GenericRecipe import (
     GenerateTableWorkspaceFromListOfDictRecipe,
 )
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    ValueFormatter as wnvf,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceNameGenerator as wng,
+)
 from snapred.meta.redantic import list_to_raw
 
 logger = snapredLogger.getLogger(__name__)
@@ -38,11 +43,11 @@ class GenerateCalibrationMetricsWorkspaceRecipe:
         runId = ingredients.calibrationRecord.runNumber
 
         if ingredients.timestamp is not None:
-            timestamp = str(ingredients.timestamp)
+            timestamp = ingredients.timestamp
             ws_table = wng.diffCalTimedMetric().runNumber(runId).timestamp(timestamp).metricName("table").build()
-            logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {timestamp}")
+            logger.info(f"Executing recipe {__name__} for run: {runId} timestamp: {wnvf.formatTimestamp(timestamp)}")
         else:
-            version = str(ingredients.calibrationRecord.version)
+            version = ingredients.calibrationRecord.version
             ws_table = wng.diffCalMetric().runNumber(runId).version(version).metricName("table").build()
             logger.info(f"Executing recipe {__name__} for run: {runId} calibration version: {version}")
 

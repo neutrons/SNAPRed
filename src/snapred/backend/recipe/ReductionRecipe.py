@@ -7,7 +7,6 @@ from snapred.backend.recipe.GenerateFocussedVanadiumRecipe import GenerateFocuss
 from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReductionRecipe
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
-from snapred.meta.decorators.Singleton import Singleton
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
@@ -15,22 +14,27 @@ logger = snapredLogger.getLogger(__name__)
 Pallet = Tuple[Ingredients, Dict[str, str]]
 
 
-@Singleton
+# @Singleton
 class ReductionRecipe(Recipe[Ingredients]):
     """
     Currently requires:
         Ingredients:
-            self.maskList = ingredients.maskList
-            self.pixelGroup = ingredients.pixelGroup
-            self.smoothingParameter = ingredients.smoothingParameter
-            self.detectorPeaks = ingredients.detectorPeaks
+            pixelGroups: List[PixelGroup]
+            detectorPeaksMany: List[List[GroupPeakList]]
+            ...
+            misc. scalar parameters
+            ...
+
 
         Groceries:
+            # input workspace
             self.sampleWs = groceries["inputWorkspace"]
-            self.diffcalWs = groceries.get("diffcalWorkspace", "")
+            # normalization
             self.normalizationWs = groceries.get("normalizationWorkspace", "")
-            ~~self.backgroundWs = groceries.get("backgroundWorkspace", "")~~
-            self.groupingWS = groceries["groupingWorkspace"]
+            # combined pixel masks, if any
+            self.maskWs = groceries.get("maskWorkspace")
+            # list of grouping workspaces
+            self.groupingWorkspaces = groceries["groupingWorkspaces"]
     """
 
     def chopIngredients(self, ingredients: Ingredients):
@@ -50,7 +54,8 @@ class ReductionRecipe(Recipe[Ingredients]):
         self.groceries = groceries.copy()
         self.sampleWs = groceries["inputWorkspace"]
         self.normalizationWs = groceries.get("normalizationWorkspace", "")
-        self.groupWorkspaces = groceries["groupingWorkspaces"]
+        self.maskWs = groceries.get("maskWorkspace", "")
+        self.groupingWorkspaces = groceries["groupingWorkspaces"]
 
     def _cloneWorkspace(self, inputWorkspace: str, outputWorkspace: str) -> str:
         self.mantidSnapper.CloneWorkspace(
@@ -101,19 +106,19 @@ class ReductionRecipe(Recipe[Ingredients]):
             self.groceries.update(kwargs)
             recipe().cook(ingredients_, self.groceries)
 
-    def _prepGroupWorkspaces(self, groupingIndex: int):
+    def _prepGroupingWorkspaces(self, groupingIndex: int):
         # TODO:  We need the wng to be able to deconstruct the workspace name
         # so that we can appropriately name the cloned workspaces
         # For now we are just appending it to the end, probably preferable
         # as it keeps the output colocated.
 
-        groupName = self.ingredients.pixelGroups[groupingIndex].focusGroup.name
-        sampleClone = self._cloneWorkspace(self.sampleWs, f"output_{self.sampleWs}_{groupName}")
+        groupingName = self.ingredients.pixelGroups[groupingIndex].focusGroup.name
+        sampleClone = self._cloneWorkspace(self.sampleWs, f"output_{self.sampleWs}_{groupingName}")
         self.groceries["inputWorkspace"] = sampleClone
         normalizationClone = None
         if self.normalizationWs:
             normalizationClone = self._cloneWorkspace(
-                self.normalizationWs, f"output_{self.normalizationWs}_{groupName}"
+                self.normalizationWs, f"output_{self.normalizationWs}_{groupingName}"
             )
             self.groceries["normalizationWorkspace"] = normalizationClone
         return sampleClone, normalizationClone
@@ -131,21 +136,22 @@ class ReductionRecipe(Recipe[Ingredients]):
             PreprocessReductionRecipe,
             self.ingredients.preprocess(),
             inputWorkspace=self.sampleWs,
+            **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
         )
         self._cloneIntermediateWorkspace(self.sampleWs, "sample_preprocessed")
         self._applyRecipe(
             PreprocessReductionRecipe,
             self.ingredients.preprocess(),
             inputWorkspace=self.normalizationWs,
+            **({"maskWorkspace": self.maskWs} if self.maskWs else {}),
         )
         self._cloneIntermediateWorkspace(self.normalizationWs, "normalization_preprocessed")
 
-        for groupingIndex, groupWs in enumerate(self.groupWorkspaces):
-            self.groceries["groupingWorkspace"] = groupWs
+        for groupingIndex, groupingWs in enumerate(self.groupingWorkspaces):
+            self.groceries["groupingWorkspace"] = groupingWs
 
             # Clone
-            sampleClone, normalizationClone = self._prepGroupWorkspaces(groupingIndex)
-            # TODO: Set pixel group specific stuff
+            sampleClone, normalizationClone = self._prepGroupingWorkspaces(groupingIndex)
 
             # 2. ReductionGroupProcessingRecipe
             self._applyRecipe(
@@ -185,6 +191,9 @@ class ReductionRecipe(Recipe[Ingredients]):
                 self._convertWorkspace(normalizationClone, self.convertUnitsTo)
             else:
                 self._deleteWorkspace(normalizationClone)
+
+        if self.maskWs:
+            outputs.append(self.maskWs)
 
         return outputs
 

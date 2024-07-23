@@ -3,7 +3,7 @@ class _PydanticBuilder:
         self.cls = orig_cls
         self.props = {}
         # extract members variables from class
-        self.members = orig_cls.__fields__.keys()
+        self.members = orig_cls.model_fields.keys()
 
     def __getattr__(self, key):
         if key not in self.members:

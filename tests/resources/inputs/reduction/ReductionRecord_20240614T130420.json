@@ -1,9 +1,6 @@
 {
     "useLiteMode": true,
-    "version": 1,
-    "runNumbers": [
-        "57514"
-    ],
+    "runNumber": "57514",
     "calibration": {
         "runNumber": "57514",
         "crystalInfo": {
@@ -956,13 +953,15 @@
             }
         ]
     },
+    "timestamp": 1718384660.538665,
     "stateId": {
         "hex": "ab8704b0bc2a2342",
         "decodedKey": null
     },
     "workspaceNames": [
-        "_reduced_dsp_column_057514_v0001",
-        "_reduced_dsp_bank_057514_v0001",
-        "_reduced_dsp_all_057514_v0001"
+        "_reduced_dsp_column_057514_20240614T130420",
+        "_reduced_dsp_bank_057514_20240614T130420",
+        "_reduced_dsp_all_057514_20240614T130420",
+        "_pixelmask_057514_20240614T130420"
     ]
 }

@@ -22,13 +22,15 @@ logger = snapredLogger.getLogger(__name__)
 
 class LoadCalibrationWorkspaces(PythonAlgorithm):
     """
-    This algorithm creates a table workspace and a mask workspace from a calibration-data hdf5 file.
+    This algorithm loads any or all of the table workspace, mask workspace, and grouping workspace
+    from disk in the 'SaveDiffCal' hdf-5 format.
     inputs:
 
         Filename: str -- path to the input HDF5 format file
         InstrumentDonor: str -- name of the instrument donor workspace
         CalibrationTable: str -- name of the output table workspace
         MaskWorkspace: str -- name of the output mask workspace
+        GroupingWorkspace: str -- name of the output mask workspace
     """
 
     def category(self):
@@ -54,11 +56,15 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
             doc="Workspace to use as an instrument donor",
         )
         self.declareProperty(
-            ITableWorkspaceProperty("CalibrationTable", "", Direction.Output, PropertyMode.Mandatory),
+            ITableWorkspaceProperty("CalibrationTable", "", Direction.Output, PropertyMode.Optional),
             doc="Name of the output table workspace",
         )
         self.declareProperty(
-            MaskWorkspaceProperty("MaskWorkspace", "", Direction.Output, PropertyMode.Mandatory),
+            MaskWorkspaceProperty("MaskWorkspace", "", Direction.Output, PropertyMode.Optional),
+            doc="Name of the output mask workspace",
+        )
+        self.declareProperty(
+            MatrixWorkspaceProperty("GroupingWorkspace", "", Direction.Output, PropertyMode.Optional),
             doc="Name of the output mask workspace",
         )
 
@@ -78,6 +84,14 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
         if extension not in self.supported_file_extensions:
             errors["Filename"] = f"File extension {extension} is not supported"
 
+        tableName = self.getPropertyValue("CalibrationTable")
+        maskName = self.getPropertyValue("MaskWorkspace")
+        groupingName = self.getPropertyValue("GroupingWorkspace")
+        if not tableName and not maskName and not groupingName:
+            errors["CalibrationTable"] = (
+                "at least one of 'CalibrationTable', 'MaskWorkspace', or 'GroupingWorkspace' must be specified"
+            )
+
         return errors
 
     def chopIngredients(self, filePath: str):
@@ -89,31 +103,44 @@ class LoadCalibrationWorkspaces(PythonAlgorithm):
     def PyExec(self) -> None:
         self.calibrationTable = self.getPropertyValue("CalibrationTable")
         self.maskWorkspace = self.getPropertyValue("MaskWorkspace")
+        self.groupingWorkspace = self.getPropertyValue("GroupingWorkspace")
 
         baseName = mtd.unique_hidden_name()
         self.mantidSnapper.LoadDiffCal(
-            "Loading constants table and mask from calibration file...",
+            "Loading workspaces from calibration file...",
             Filename=self.getPropertyValue("Filename"),
             InputWorkspace=self.getPropertyValue("InstrumentDonor"),
-            MakeGroupingWorkspace=False,
-            MakeCalWorkspace=True,
-            MakeMaskWorkspace=True,
+            MakeCalWorkspace=True if self.calibrationTable else False,
+            MakeMaskWorkspace=True if self.maskWorkspace else False,
+            MakeGroupingWorkspace=True if self.groupingWorkspace else False,
             WorkspaceName=baseName,
         )
-        self.mantidSnapper.RenameWorkspace(
-            "Renaming table workspace...",
-            InputWorkspace=baseName + "_cal",
-            OutputWorkspace=self.calibrationTable,
-        )
-        self.mantidSnapper.RenameWorkspace(
-            "Renaming mask workspace...",
-            InputWorkspace=baseName + "_mask",
-            OutputWorkspace=self.maskWorkspace,
-        )
+        if self.calibrationTable:
+            self.mantidSnapper.RenameWorkspace(
+                "Renaming table workspace...",
+                InputWorkspace=baseName + "_cal",
+                OutputWorkspace=self.calibrationTable,
+            )
+        if self.maskWorkspace:
+            self.mantidSnapper.RenameWorkspace(
+                "Renaming mask workspace...",
+                InputWorkspace=baseName + "_mask",
+                OutputWorkspace=self.maskWorkspace,
+            )
+        if self.groupingWorkspace:
+            self.mantidSnapper.RenameWorkspace(
+                "Renaming grouping workspace...",
+                InputWorkspace=baseName + "_group",
+                OutputWorkspace=self.groupingWorkspace,
+            )
         self.mantidSnapper.executeQueue()
 
-        self.setPropertyValue("CalibrationTable", self.calibrationTable)
-        self.setPropertyValue("MaskWorkspace", self.maskWorkspace)
+        if self.calibrationTable:
+            self.setPropertyValue("CalibrationTable", self.calibrationTable)
+        if self.maskWorkspace:
+            self.setPropertyValue("MaskWorkspace", self.maskWorkspace)
+        if self.groupingWorkspace:
+            self.setPropertyValue("GroupingWorkspace", self.groupingWorkspace)
 
 
 # Register algorithm with Mantid

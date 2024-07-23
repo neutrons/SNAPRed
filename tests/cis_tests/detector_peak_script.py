@@ -47,7 +47,7 @@ Config._config['cis_mode'] = False
 farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
     useLiteMode=isLite,
-    focusGroup={"name":groupingScheme, "definition":""},
+    focusGroups=[{"name":groupingScheme, "definition":""}],
     cifPath=cifPath,
     peakIntensityThreshold=peakFractionalThreshold,
 )

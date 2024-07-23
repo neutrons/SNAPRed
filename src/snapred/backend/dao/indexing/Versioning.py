@@ -7,10 +7,18 @@ from snapred.meta.Config import Config
 VERSION_START = Config["version.start"]
 VERSION_NONE_NAME = Config["version.friendlyName.error"]
 VERSION_DEFAULT_NAME = Config["version.friendlyName.default"]
-VERSION_DEFAULT = -1  # SNAPRed Internal flag for default version
+
+# VERSION_DEFAULT is a SNAPRed-internal "magic" integer:
+# * it is implicitely set during `Config` initialization.
+VERSION_DEFAULT = Config["version.default"]
 
 
 class VersionedObject(BaseModel):
+    # Base class for all versioned DAO
+
+    # In pydantic, a leading double underscore activates
+    # the `__pydantic_private__` feature, which limits the visibility
+    # of the attribute to the interior scope of its own class.
     __version: Optional[int] = None
 
     @classmethod

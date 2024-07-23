@@ -29,15 +29,13 @@ from snapred.backend.data.GroceryService import GroceryService
 # Test helper utility routines:
 # -----------------------------
 #
-#  createCompatibleMask(maskWSName: str, templateWSName: str, instrumentFileName: str)
+#  createCompatibleMask(maskWSName: str, templateWSName: str)
 #  #   A mask workspace will be created in the ADS, with no values masked: this workspace will have the
 #  #     format expected by the 'DiffractionCalibrationRecipe', 'PixelDiffractionCalibration', and
 #  #     'GroupDiffractionCalibration' algorithms, and can be used to mask detectors prior to the
 #  #     start of a diffraction-calibration sequence.
 #  #      * maskWSName: the name of the mask workspace to be created
 #  #      * templateWSName: a template workspace to be used for validation
-#  #      * instrumentFileName: a file specifying the instrument to be used to create the mask workspace
-#  #        (this instrument should match the instrument of the template workspace).
 #
 #  setSpectraToZero(inputWS: MatrixWorkspace, nss: Sequence[int])
 #  # Zero out all spectra in a list of spectra
@@ -93,7 +91,7 @@ Config._config["cis_mode"] = False
 farmFresh = FarmFreshIngredients(
     runNumber=runNumber,
     useLiteMode=isLite,
-    focusGroup={"name":groupingScheme, "definition":""},
+    focusGroups=[{"name":groupingScheme, "definition":""}],
 )
 instrumentState = SousChef().prepInstrumentState(farmFresh)
 ingredients = PixelGroupingIngredients(
@@ -117,7 +115,7 @@ groupingWSName = groceries['groupingWorkspace']
 maskWSName = groceries["maskWorkspace"]
 
 # The grouping workspace is used as the instrument-donor to make the mask.
-createCompatibleMask(maskWSName, groupingWSName, instrumentFilePath)
+createCompatibleMask(maskWSName, groupingWSName)
 
 ### Here any specific spectra or isolated detectors can be masked in the input, if required for testing...
 # ---

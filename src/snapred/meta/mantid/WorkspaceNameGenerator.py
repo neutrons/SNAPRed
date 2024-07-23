@@ -1,19 +1,50 @@
 import re
 import sys
+from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import Any, List, NamedTuple, Optional, Tuple
 
 from pydantic import WithJsonSchema
 from pydantic.functional_validators import BeforeValidator
-from typing_extensions import Annotated
+from typing_extensions import Annotated, Self
 
-from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME
 from snapred.meta.Config import Config
+
+# Bypass circular import:
+VERSION_DEFAULT = Config["version.default"]
+VERSION_DEFAULT_NAME = Config["version.friendlyName.default"]
 
 
 class WorkspaceName(str):
+    def __new__(cls, value: Any) -> Self:
+        # Allow use of `WorkspaceName` with `pydantic.BaseModel`:
+        obj = super().__new__(cls, value)
+        obj._builder = getattr(value, "_builder", None)
+        return obj
+
     def __str__(self):
         return self
+
+    def toString(self) -> str:
+        # return an actual string, not a `WorkspaceName`
+        return super(self.__class__, self).__str__()
+
+    def tokens(self, *args: Tuple[str]):
+        # return multiple token values:
+        #   usage:
+        #     multiple-value: runNumber, useLiteMode, version = <builder>.tokens("runNumber", "useLiteMode", "version")
+        #     or single-value: runNumber = <builder>.tokens("runNumber")
+        if self._builder is None:
+            raise RuntimeError(f"no '_builder' attribute is retained for 'WorkspaceName' {self}")
+        values = self._builder.tokens(*args)
+        return tuple(values) if len(values) > 1 else values[0]
+
+    @classmethod
+    def instance(cls, value, builder=None):
+        # factory method
+        wsName = cls(value)
+        wsName._builder = builder
+        return wsName
 
 
 ### THIS IS A KLUGE: 'sphinx' does not like `typing.Annotated`
@@ -42,87 +73,153 @@ class WorkspaceType(str, Enum):
     FOCUSED_RAW_VANADIUM = "focusedRawVanadium"
     SMOOTHED_FOCUSED_RAW_VANADIUM = "smoothedFocusedRawVanadium"
 
-    # "${reduction.home}/<stateSHA>/<lite mode: 'lite' | 'native'>/<grouping>/<runNumber>/<versions...>
-    # <reduction tag>_<lite mode>_<runNumber>_<version tag>
+    # <reduction tag>_<runNumber>_<timestamp>
     REDUCTION_OUTPUT = "reductionOutput"
+    # <reduction tag>_<stateSHA>_<timestamp>
     REDUCTION_OUTPUT_GROUP = "reductionOutputGroup"
+    # <reduction tag>_pixelmask_<runNumber>_<timestamp>
+    REDUCTION_PIXEL_MASK = "reductionPixelMask"
+    # MaskWorkspace_<number tag>
+    REDUCTION_USER_PIXEL_MASK = "userPixelMask"
 
 
 class NameBuilder:
-    def __init__(self, template: str, keys: List[str], delimiter: str, **kwargs):
+    def __init__(self, wsType: WorkspaceType, template: str, keys: List[str], delimiter: str, **kwargs):
         self.template = template
         self.keys = keys
         self.props = kwargs
         self.delimiter = delimiter
 
+        # retain 'workspaceType' property, for internal use:
+        self.keys.append("workspaceType")
+        self.props["workspaceType"] = wsType
+
     def __getattr__(self, key):
         if key not in self.keys:
-            raise RuntimeError(f"Key [{key}] not a valid property for given name.")
+            raise RuntimeError(f"Key '{key}' not a valid property for workspace-type '{self.props['workspaceType']}'.")
 
         def setValue(value):
-            value = ValueFormatter.formatValueByKey(key, value)
+            # IMPORTANT: in the builder, we retain the unformatted values;
+            #   formatting occurs only at the time of build.
             self.props[key] = value
             return self
 
         return setValue
 
+    def tokens(self, *args: Tuple[str]):
+        # return multiple token values:
+        #   usage: runNumber, useLiteMode, version = <builder>.tokens("runNumber", "useLiteMode", "version")
+        values = []
+        for key in args:
+            if key not in self.keys:
+                raise RuntimeError(
+                    f"Key '{key}' not a valid property for workspace-type '{self.props['workspaceType']}'."
+                )
+            values.append(self.props[key])
+        return tuple(values)
+
     def build(self):
-        tokens = self.template.format(**self.props).split(",")
-        tokens = [token.lower() for token in tokens if token != ""]
-        return WorkspaceName(self.delimiter.join(tokens))
+        formattedProperties = {key: ValueFormatter.formatValueByKey(key, value) for key, value in self.props.items()}
+        tokens = self.template.format(**formattedProperties).split(",")
+        tokens = [token for token in tokens if token != ""]
+        return WorkspaceName.instance(self.delimiter.join(tokens), self)
 
 
 class ValueFormatter:
-    class vPrefix:
-        WORKSPACE = True
-        FILE = False
+    class FormatTuple(NamedTuple):
+        WORKSPACE: str
+        PATH: str
 
-    @staticmethod
-    def formatRunNumber(runNumber: str):
-        return str(runNumber).zfill(6)
+    versionFormat = FormatTuple(
+        WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.version.workspace"],
+        PATH=Config["mantid.workspace.nameTemplate.formatter.version.path"],
+    )
+    timestampFormat = FormatTuple(
+        WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.timestamp.workspace"],
+        PATH=Config["mantid.workspace.nameTemplate.formatter.timestamp.path"],
+    )
+    numberTagFormat = FormatTuple(
+        WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.numberTag.workspace"],
+        PATH=Config["mantid.workspace.nameTemplate.formatter.numberTag.path"],
+    )
+    runNumberFormat = FormatTuple(
+        WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.runNumber.workspace"],
+        PATH=Config["mantid.workspace.nameTemplate.formatter.runNumber.path"],
+    )
+    stateIdFormat = FormatTuple(
+        WORKSPACE=Config["mantid.workspace.nameTemplate.formatter.stateId.workspace"],
+        PATH=Config["mantid.workspace.nameTemplate.formatter.stateId.path"],
+    )
 
-    @staticmethod
-    def formatVersion(version: Optional[int], use_v_prefix: vPrefix = vPrefix.WORKSPACE):
+    @classmethod
+    def formatNumberTag(cls, number: int, fmt=numberTagFormat.WORKSPACE):
+        # Mantid-workspace number tag: only resolves if number > 1
+        if number == 1:
+            return ""
+        return fmt.format(number=number)
+
+    @classmethod
+    def pathNumberTag(cls, number: int):
+        # Mantid-workspace number tag: only resolves if number > 1
+        if number == 1:
+            return ""
+        return cls.formatNumberTag(number, fmt=cls.numberTagFormat.PATH)
+
+    @classmethod
+    def formatRunNumber(cls, runNumber: str, fmt=runNumberFormat.WORKSPACE):
+        return fmt.format(runNumber=runNumber)
+
+    @classmethod
+    def pathRunNumber(cls, runNumber: str):
+        return cls.formatRunNumber(runNumber=runNumber, fmt=cls.runNumberFormat.PATH)
+
+    @classmethod
+    def formatVersion(cls, version: Optional[int], fmt=versionFormat.WORKSPACE):
         # handle two special cases of unassigned or default version
-        # in these cases, change the value to a user-specified string
-        if version is None:
-            version = ""
-        elif version == VERSION_DEFAULT:
-            version = VERSION_DEFAULT_NAME
+        # in those cases, format will be a user-specified string
+
+        formattedVersion = ""
+        if version == VERSION_DEFAULT:
+            formattedVersion = f"v{VERSION_DEFAULT_NAME}"
+        elif isinstance(version, int):
+            formattedVersion = fmt.format(version=version)
         elif str(version).isdigit():
-            version = int(version)
-        else:
-            version = ""
+            formattedVersion = fmt.format(version=int(version))
+        return formattedVersion
 
-        # convert the version to an integer, if possible
-        if str(version).isdigit():
-            version = int(version)
+    @classmethod
+    def pathVersion(cls, version: int):
+        # only one special case: default version
 
-        # if the version is an integer, pad with 0s
-        if isinstance(version, int):
-            version = str(version).zfill(4)
+        if version == VERSION_DEFAULT:
+            return f"v_{VERSION_DEFAULT_NAME}"
+        return cls.formatVersion(version, fmt=cls.versionFormat.PATH)
 
-        # use a "v" prefix if required
-        if use_v_prefix:
-            version = "v" + version
+    @classmethod
+    def formatTimestamp(cls, timestamp: Optional[float], fmt=timestampFormat.WORKSPACE):
+        if timestamp is None:
+            return ""
+        if "timestamp" in fmt:
+            return fmt.format(timestamp=int(round(timestamp * 1000.0)))
+        return datetime.fromtimestamp(timestamp).strftime(fmt)
 
-        return version
+    @classmethod
+    def pathTimestamp(cls, timestamp: float):
+        return cls.formatTimestamp(timestamp, fmt=cls.timestampFormat.PATH)
 
-    @staticmethod
-    def fileVersion(version: int):
-        return "v_" + ValueFormatter.formatVersion(version, use_v_prefix=False)
+    @classmethod
+    def formatStateId(cls, stateId: str, fmt=stateIdFormat.WORKSPACE):
+        return fmt.format(stateId=stateId)
 
-    @staticmethod
-    def formatTimestamp(timestamp: str):
-        return "ts" + timestamp
-
-    @staticmethod
-    def formatStateId(stateId: str):
-        return stateId[-8:]
+    @classmethod
+    def pathStateId(cls, stateId: str):
+        return cls.formatStateId(stateId, fmt=cls.stateIdFormat.PATH)
 
     @staticmethod
     def formatValueByKey(key: str, value: any):
         match key:
+            case "numberTag":
+                value = ValueFormatter.formatNumberTag(value)
             case "runNumber":
                 value = ValueFormatter.formatRunNumber(value)
             case "version":
@@ -131,6 +228,11 @@ class ValueFormatter:
                 value = ValueFormatter.formatTimestamp(value)
             case "stateId":
                 value = ValueFormatter.formatStateId(value)
+            case _:
+                # IMPORTANT: moving the lowercase conversion to this location enables case sensitivity
+                #   in both formatter output and in literal tokens from the template itself.
+                # This is now required as Mantid itself uses capitalized names (e.g. "MaskWorkspace_2").
+                value = str(value).lower() if value != "" else ""
         return value
 
 
@@ -198,6 +300,7 @@ class _WorkspaceNameGenerator:
     #       and discourage non-standard names.
     def run(self):
         return NameBuilder(
+            WorkspaceType.RUN,
             self._runTemplate,
             self._runTemplateKeys,
             self._delimiter,
@@ -209,6 +312,7 @@ class _WorkspaceNameGenerator:
 
     def diffCalInput(self):
         return NameBuilder(
+            WorkspaceType.DIFFCAL_INPUT,
             self._diffCalInputTemplate,
             self._diffCalInputTemplateKeys,
             self._delimiter,
@@ -217,40 +321,55 @@ class _WorkspaceNameGenerator:
 
     def diffCalTable(self):
         return NameBuilder(
+            WorkspaceType.DIFFCAL_TABLE,
             self._diffCalTableTemplate,
             self._diffCalTableTemplateKeys,
             self._delimiter,
-            version="",
+            version=None,
         )
 
     def diffCalOutput(self):
         return NameBuilder(
+            WorkspaceType.DIFFCAL_OUTPUT,
             self._diffCalOutputTemplate,
             self._diffCalOutputTemplateKeys,
             self._delimiter,
             unit=self.Units.TOF,
             group=self.Groups.UNFOC,
-            version="",
+            version=None,
+        )
+
+    def diffCalDiagnostic(self):
+        return NameBuilder(
+            WorkspaceType.DIFFCAL_DIAG,
+            self._diffCalDiagnosticTemplate,
+            self._diffCalDiagnosticTemplateKeys,
+            self._delimiter,
+            group=self.Groups.UNFOC,
+            version=None,
         )
 
     def diffCalMask(self):
         return NameBuilder(
+            WorkspaceType.DIFFCAL_MASK,
             self._diffCalMaskTemplate,
             self._diffCalMaskTemplateKeys,
             self._delimiter,
-            version="",
+            version=None,
         )
 
     def diffCalMetric(self):
         return NameBuilder(
+            WorkspaceType.DIFFCAL_METRIC,
             self._diffCalMetricTemplate,
             self._diffCalMetricTemplateKeys,
             self._delimiter,
-            version="",
+            version=None,
         )
 
     def diffCalTimedMetric(self):
         return NameBuilder(
+            WorkspaceType.DIFFCAL_TIMED_METRIC,
             self._diffCalTimedMetricTemplate,
             self._diffCalTimedMetricTemplateKeys,
             self._delimiter,
@@ -258,47 +377,70 @@ class _WorkspaceNameGenerator:
 
     def rawVanadium(self):
         return NameBuilder(
+            WorkspaceType.RAW_VANADIUM,
             self._normCalRawVanadiumTemplate,
             self._normCalRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.TOF,
             group=self.Groups.UNFOC,
-            version="",
+            version=None,
         )
 
     def focusedRawVanadium(self):
         return NameBuilder(
+            WorkspaceType.FOCUSED_RAW_VANADIUM,
             self._normCalFocusedRawVanadiumTemplate,
             self._normCalFocusedRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
-            version="",
+            version=None,
         )
 
     def smoothedFocusedRawVanadium(self):
         return NameBuilder(
+            WorkspaceType.SMOOTHED_FOCUSED_RAW_VANADIUM,
             self._normCalSmoothedFocusedRawVanadiumTemplate,
             self._normCalSmoothedFocusedRawVanadiumTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
-            version="",
+            version=None,
         )
 
     def reductionOutput(self):
         return NameBuilder(
+            WorkspaceType.REDUCTION_OUTPUT,
             self._reductionOutputTemplate,
             self._reductionOutputTemplateKeys,
             self._delimiter,
             unit=self.Units.DSP,
-            version="",
+            timestamp=None,
         )
 
     def reductionOutputGroup(self):
         return NameBuilder(
+            WorkspaceType.REDUCTION_OUTPUT_GROUP,
             self._reductionOutputGroupTemplate,
             self._reductionOutputGroupTemplateKeys,
             self._delimiter,
-            version="",
+            timestamp=None,
+        )
+
+    def reductionPixelMask(self):
+        return NameBuilder(
+            WorkspaceType.REDUCTION_PIXEL_MASK,
+            self._reductionPixelMaskTemplate,
+            self._reductionPixelMaskTemplateKeys,
+            self._delimiter,
+            timestamp=None,
+        )
+
+    def reductionUserPixelMask(self):
+        return NameBuilder(
+            WorkspaceType.REDUCTION_USER_PIXEL_MASK,
+            self._reductionUserPixelMaskTemplate,
+            self._reductionUserPixelMaskTemplateKeys,
+            self._delimiter,
+            numberTag=None,
         )
 
 

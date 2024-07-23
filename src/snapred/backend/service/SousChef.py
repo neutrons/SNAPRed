@@ -99,11 +99,10 @@ class SousChef(Service):
 
     def prepManyPixelGroups(self, ingredients: FarmFreshIngredients) -> List[PixelGroup]:
         pixelGroups = []
-        focusGroups = ingredients.focusGroup
-        for focusGroup in focusGroups:
-            ingredients.focusGroup = focusGroup
-            pixelGroups.append(self.prepPixelGroup(ingredients))
-        ingredients.focusGroup = focusGroups
+        ingredients_ = ingredients.model_copy()
+        for focusGroup in ingredients.focusGroups:
+            ingredients_.focusGroup = focusGroup
+            pixelGroups.append(self.prepPixelGroup(ingredients_))
         return pixelGroups
 
     def _getInstrumentDefinitionFilename(self, useLiteMode: bool) -> str:
@@ -168,36 +167,38 @@ class SousChef(Service):
 
     def prepManyDetectorPeaks(self, ingredients: FarmFreshIngredients) -> List[List[GroupPeakList]]:
         detectorPeaks = []
-        focusGroups = ingredients.focusGroup
-        for focusGroup in focusGroups:
-            ingredients.focusGroup = focusGroup
-            detectorPeaks.append(self.prepDetectorPeaks(ingredients, purgePeaks=False))
-        ingredients.focusGroup = focusGroups
+        ingredients_ = ingredients.model_copy()
+        for focusGroup in ingredients.focusGroups:
+            ingredients_.focusGroup = focusGroup
+            detectorPeaks.append(self.prepDetectorPeaks(ingredients_, purgePeaks=False))
         return detectorPeaks
 
-    def prepReductionIngredients(self, ingredients: FarmFreshIngredients) -> ReductionIngredients:
-        # some of the reduction ingredients MUST match those used in the calibration/normalization processes
+    def prepReductionIngredients(
+        self,
+        ingredients: FarmFreshIngredients,
+    ) -> ReductionIngredients:
+        # Calibration and normalization may have distinct versions,
+        #   but they must both be from the same instrument state and <lite mode>.
         calibrationRecord = self.dataFactoryService.getCalibrationRecord(
-            ingredients.runNumber,
-            ingredients.useLiteMode,
+            ingredients.runNumber, ingredients.useLiteMode, ingredients.versions.calibration
         )
         normalizationRecord = self.dataFactoryService.getNormalizationRecord(
-            ingredients.runNumber,
-            ingredients.useLiteMode,
+            ingredients.runNumber, ingredients.useLiteMode, ingredients.versions.normalization
         )
-        # grab information from records
-        ingredients.calibrantSamplePath = calibrationRecord.calculationParameters.calibrantSamplePath
-        ingredients.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients.calibrantSamplePath).stem)
-        ingredients.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
+
+        ingredients_ = ingredients.model_copy()
+        ingredients_.calibrantSamplePath = calibrationRecord.calculationParameters.calibrantSamplePath
+        ingredients_.cifPath = self.dataFactoryService.getCifFilePath(Path(ingredients_.calibrantSamplePath).stem)
+        ingredients_.peakIntensityThreshold = normalizationRecord.peakIntensityThreshold
+
         return ReductionIngredients(
-            maskList=[],  # TODO coming soon to a store near you!
-            pixelGroups=self.prepManyPixelGroups(ingredients),
+            pixelGroups=self.prepManyPixelGroups(ingredients_),
             smoothingParameter=normalizationRecord.smoothingParameter,
-            calibrantSamplePath=ingredients.calibrantSamplePath,
-            peakIntensityThreshold=ingredients.peakIntensityThreshold,
-            detectorPeaksMany=self.prepManyDetectorPeaks(ingredients),
-            keepUnfocused=ingredients.keepUnfocused,
-            convertUnitsTo=ingredients.convertUnitsTo,
+            keepUnfocused=ingredients_.keepUnfocused,
+            convertUnitsTo=ingredients_.convertUnitsTo,
+            calibrantSamplePath=ingredients_.calibrantSamplePath,
+            peakIntensityThreshold=ingredients_.peakIntensityThreshold,
+            detectorPeaksMany=self.prepManyDetectorPeaks(ingredients_),
         )
 
     def prepNormalizationIngredients(self, ingredients: FarmFreshIngredients) -> NormalizationIngredients:

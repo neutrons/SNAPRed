@@ -83,7 +83,7 @@ def script(goldenData):
         farmFresh = FarmFreshIngredients(
             runNumber=runNumber,
             useLiteMode=isLite,
-            focusGroup={"name": groupingScheme, "definition": ""},
+            focusGroups=[{"name": groupingScheme, "definition": ""}],
             cifPath=cifPath,
             calibrantSamplePath=calibrantSamplePath,
             peakIntensityThresold=peakThreshold,

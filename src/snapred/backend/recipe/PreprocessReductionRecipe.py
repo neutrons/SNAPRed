@@ -16,10 +16,7 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
         """
         Chops off the needed elements of the ingredients.
         """
-        self.maskList = ingredients.maskList
-        if not self.maskList:
-            logger.info("No mask list provided. Will not apply any masking.")
-            self.maskList = []
+        pass
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
         """
@@ -29,21 +26,24 @@ class PreprocessReductionRecipe(Recipe[Ingredients]):
         """
         self.sampleWs = groceries["inputWorkspace"]
         self.diffcalWs = groceries.get("diffcalWorkspace", "")
+        self.maskWs = groceries.get("maskWorkspace", "")
 
     def queueAlgos(self):
         """
-        Queues up the procesing algorithms for the recipe.
+        Queues up the processing algorithms for the recipe.
         Requires: unbagged groceries and chopped ingredients.
         """
+
+        if self.maskWs:
+            self.mantidSnapper.MaskDetectorFlags(
+                "Applying pixel mask...",
+                MaskWorkspace=self.maskWs,
+                OutputWorkspace=self.sampleWs,
+            )
+
         if self.diffcalWs:
             self.mantidSnapper.ApplyDiffCal(
                 "Applying diffcal..", InstrumentWorkspace=self.sampleWs, CalibrationWorkspace=self.diffcalWs
-            )
-        for maskWs in self.maskList:
-            self.mantidSnapper.MaskDetectorFlags(
-                "Masking workspace...",
-                MaskWorkspace=maskWs,
-                OutputWorkspace=self.sampleWs,
             )
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:

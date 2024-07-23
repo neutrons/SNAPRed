@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from snapred.backend.dao.calibration import CalibrationRecord
 
@@ -16,4 +16,15 @@ class CalibrationMetricsWorkspaceIngredients(BaseModel):
     """
 
     calibrationRecord: CalibrationRecord
-    timestamp: Optional[int] = None
+    timestamp: Optional[float] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_timestamp(cls, v: Any):
+        if isinstance(v, dict):
+            if "timestamp" in v:
+                timestamp = v["timestamp"]
+                # support reading the _legacy_ timestamp integer encoding
+                if isinstance(timestamp, int):
+                    v["timestamp"] = float(timestamp) / 1000.0
+        return v

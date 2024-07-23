@@ -265,8 +265,8 @@ class TestNormalizationService(unittest.TestCase):
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "GroceryService")
-    def test_cachedNormalization(self, mockGroceryService, FarmFreshIngredients):
-        FarmFreshIngredients.return_value = {"purge": True}
+    def test_cachedNormalization(self, mockGroceryService, mockFarmFreshIngredients):
+        mockFarmFreshIngredients.return_value = {"purge": True}
         mockGroceryService.workSpaceDoesExist = mock.Mock(return_value=True)
         self.instance = NormalizationService()
         self.instance._sameStates = MagicMock(return_value=True)
@@ -277,10 +277,12 @@ class TestNormalizationService(unittest.TestCase):
         assert (
             result
             == NormalizationResponse(
-                correctedVanadium="tof_unfoc_raw_van_corr_012345",
-                focusedVanadium=f"tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
-                smoothedVanadium="dsp_apple_fitted_van_cor_012345",
-                detectorPeaks=self.instance.sousChef.prepNormalizationIngredients(FarmFreshIngredients()).detectorPeaks,
+                correctedVanadium="_tof_unfoc_raw_van_corr_012345",
+                focusedVanadium=f"_tof_{self.request.focusGroup.name}_s+f-vanadium_012345",
+                smoothedVanadium="_dsp_apple_fitted_van_corr_012345",
+                detectorPeaks=self.instance.sousChef.prepNormalizationIngredients(
+                    mockFarmFreshIngredients()
+                ).detectorPeaks,
             ).dict()
         )
 

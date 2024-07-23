@@ -59,6 +59,7 @@ class TestDataFactoryService(unittest.TestCase):
             calibration=mockCalibration,
         )
         cls.mockLookupService.readRunConfig.return_value = RunConfig.construct({})
+
         # these are treated specially to give the return of a mocked indexer
         cls.mockLookupService.calibrationIndexer.return_value = mock.Mock(
             versionPath=mock.Mock(side_effect=lambda *x: cls.expected(cls, "Calibration", *x)),
@@ -98,16 +99,6 @@ class TestDataFactoryService(unittest.TestCase):
             nonexistent = tmpdir + "/0x0f.biscuit"
             assert not os.path.isfile(nonexistent)
             assert not DataFactoryService().fileExists(nonexistent)
-
-    def test_getReductionState(self):
-        actual = self.instance.getReductionState("123", False)
-        assert type(actual) is ReductionState
-
-    def test_getReductionState_cache(self):
-        previous = ReductionState.construct()
-        self.instance.cache["456"] = previous
-        actual = self.instance.getReductionState("456", False)
-        assert actual == previous
 
     def test_getRunConfig(self):
         actual = self.instance.getRunConfig(mock.Mock())
@@ -253,6 +244,23 @@ class TestDataFactoryService(unittest.TestCase):
             assert actual == self.expected("Normalization", "123", self.version)
 
     ## TEST REDUCTION METHODS
+
+    def test_getReductionState(self):
+        actual = self.instance.getReductionState("123", False)
+        assert type(actual) is ReductionState
+
+    def test_getReductionState_cache(self):
+        previous = ReductionState.construct()
+        self.instance.cache["456"] = previous
+        actual = self.instance.getReductionState("456", False)
+        assert actual == previous
+
+    def test_getCompatibleReductionMasks(self):
+        runNumber = "12345"
+        useLiteMode = True
+        arg = (runNumber, useLiteMode)
+        actual = self.instance.getCompatibleReductionMasks(*arg)
+        assert actual == self.expected(*arg)
 
     def test_getReductionDataPath(self):
         for useLiteMode in [True, False]:

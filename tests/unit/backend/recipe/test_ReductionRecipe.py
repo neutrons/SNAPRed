@@ -42,7 +42,7 @@ class ReductionRecipeTest(TestCase):
         recipe.unbagGroceries(groceries)
         assert recipe.sampleWs == groceries["inputWorkspace"]
         assert recipe.normalizationWs == groceries["normalizationWorkspace"]
-        assert recipe.groupWorkspaces == groceries["groupingWorkspaces"]
+        assert recipe.groupingWorkspaces == groceries["groupingWorkspaces"]
 
         groceries = {
             "inputWorkspace": "sample",
@@ -100,9 +100,9 @@ class ReductionRecipeTest(TestCase):
         assert recipe.groceries["inputWorkspace"] == inputWS
         assert mockRecipe.cook.called_once_with(recipe.ingredients, recipe.groceries)
 
-    def test_prepGroupWorkspaces(self):
+    def test_prepGroupingWorkspaces(self):
         recipe = ReductionRecipe()
-        recipe.groupWorkspaces = ["group1", "group2"]
+        recipe.groupingWorkspaces = ["group1", "group2"]
         recipe.normalizationWs = "norm"
         recipe.mantidSnapper = mock.Mock()
         recipe.groceries = {}
@@ -114,7 +114,7 @@ class ReductionRecipeTest(TestCase):
         recipe._cloneWorkspace = mock.Mock()
         recipe._cloneWorkspace.return_value = "cloned"
 
-        sampleClone, normClone = recipe._prepGroupWorkspaces(0)
+        sampleClone, normClone = recipe._prepGroupingWorkspaces(0)
 
         assert recipe.groceries["inputWorkspace"] == "cloned"
         assert recipe.groceries["normalizationWorkspace"] == "cloned"
@@ -174,11 +174,12 @@ class ReductionRecipeTest(TestCase):
         recipe._cloneIntermediateWorkspace = mock.Mock()
         recipe._deleteWorkspace = mock.Mock()
         recipe._convertWorkspace = mock.Mock()
-        recipe._prepGroupWorkspaces = mock.Mock()
-        recipe._prepGroupWorkspaces.return_value = ("sample_grouped", "norm_grouped")
+        recipe._prepGroupingWorkspaces = mock.Mock()
+        recipe._prepGroupingWorkspaces.return_value = ("sample_grouped", "norm_grouped")
         recipe.sampleWs = "sample"
+        recipe.maskWs = "mask"
         recipe.normalizationWs = "norm"
-        recipe.groupWorkspaces = ["group1", "group2"]
+        recipe.groupingWorkspaces = ["group1", "group2"]
         recipe.keepUnfocused = True
         recipe.convertUnitsTo = "dSpacing"
 

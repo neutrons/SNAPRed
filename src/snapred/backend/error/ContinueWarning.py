@@ -6,7 +6,7 @@ from pydantic import BaseModel
 class ContinueWarning(Exception):
     """
     The user has chosen to do something inadvisable, but not invalid.
-    Warn the user, but allow the user to continue with poor decision.
+    Warn the user, but allow the user to continue.
     """
 
     class Type(Flag):
@@ -19,6 +19,6 @@ class ContinueWarning(Exception):
         flags: "ContinueWarning.Type"
 
     def __init__(self, message: str, flags: "Type"):
-        ContinueWarning.Model.update_forward_refs()
+        ContinueWarning.Model.model_rebuild(force=True)
         self.model = ContinueWarning.Model(message=message, flags=flags)
         super().__init__(message)

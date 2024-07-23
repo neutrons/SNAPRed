@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 from pydantic import validate_call
@@ -40,6 +41,9 @@ class DataExportService:
         ext = "nexus.lite.extension"
         fileName = Config[pre] + str(runNumber) + Config[ext]
         return Path(path, fileName)
+
+    def getUniqueTimestamp(self) -> time.struct_time:
+        return self.dataService.getUniqueTimestamp()
 
     ##### CALIBRATION METHODS #####
 
@@ -101,13 +105,15 @@ class DataExportService:
 
     def exportReductionRecord(self, record: ReductionRecord):
         """
-        If no version given, will save at current time
+        Record must have correct timestamp and workspace names finalized.
+        - side effect: creates output directories when required.
         """
         self.dataService.writeReductionRecord(record)
 
     def exportReductionData(self, record: ReductionRecord):
         """
-        If no version given, will save at current time
+        Record must have correct timestamp and workspace names finalized:
+        - 'exportReductionRecord' must have been called previously.
         """
         self.dataService.writeReductionData(record)
 
@@ -116,13 +122,13 @@ class DataExportService:
     # @validate_call # until further notice: does not work with 'WorkspaceName'
     def exportWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
-        Write a MatrixWorkspace (derived) workspace to disk in nexus format.
+        Write a MatrixWorkspace-derived workspace to disk in nexus format.
         """
         return self.dataService.writeWorkspace(path, filename, workspaceName)
 
     # @validate_call # until further notice: does not work with 'WorkspaceName'
     def exportRaggedWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName):
         """
-        Write a MatrixWorkspace (derived) workspace to disk in nexus format.
+        Write a MatrixWorkspace-derived workspace to disk in nexus format.
         """
         return self.dataService.writeRaggedWorkspace(path, filename, workspaceName)

@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from random import randint
 from typing import List
+from unittest import mock
 
 import pytest
 from pydantic import ValidationError
@@ -18,7 +19,6 @@ from snapred.backend.dao.indexing.Record import Record
 from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_START
 from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
-from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.data.Indexer import Indexer, IndexerType
 from snapred.meta.Config import Resource
 from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
@@ -124,7 +124,7 @@ class TestIndexer(unittest.TestCase):
 
     def versionPath(self, version):
         # a path where version files should be written
-        return self.path / wnvf.fileVersion(version)
+        return self.path / wnvf.pathVersion(version)
 
     def recordPath(self, version):
         # a filepath where records should be written
@@ -195,7 +195,14 @@ class TestIndexer(unittest.TestCase):
         self.prepareIndex(indexVersions)
         self.prepareRecords(recordVersions)
 
-        with pytest.raises(FileNotFoundError) as e:
+        with (  # noqa: PT012
+            pytest.raises(FileNotFoundError) as e,
+            mock.patch.dict(IndexerModule.sys.modules) as mockModules,
+        ):
+            # "pytest" in `sys.modules` will suppress the exception,
+            #     which otherwise always occurs during the teardown,
+            #       even when nothing is wrong.
+            del mockModules["pytest"]
             self.initIndexer()
         assert str(missingVersion) in str(e)
 
@@ -303,7 +310,14 @@ class TestIndexer(unittest.TestCase):
         for version in dirVersions:
             self.writeRecordVersion(version)
 
-        with pytest.raises(FileNotFoundError) as e:
+        with (  # noqa: PT012
+            pytest.raises(FileNotFoundError) as e,
+            mock.patch.dict(IndexerModule.sys.modules) as mockModules,
+        ):
+            # "pytest" in `sys.modules` will suppress the exception,
+            #     which otherwise always occurs during the teardown,
+            #       even when nothing is wrong.
+            del mockModules["pytest"]
             self.initIndexer()
         assert str(3) in str(e)
 
@@ -925,17 +939,6 @@ class TestIndexer(unittest.TestCase):
         indexer.writeRecord(record)
         res = indexer.readRecord(record.version)
         assert type(res) is NormalizationRecord
-        assert res == record
-
-    def test_readWriteRecord_reduction(self):
-        # prepare the record
-        record = parse_file_as(ReductionRecord, Resource.getPath("inputs/reduction/ReductionRecord_v0001.json"))
-        record.version = randint(2, 100)
-        # write then read in the record
-        indexer = self.initIndexer(IndexerType.REDUCTION)
-        indexer.writeRecord(record)
-        res = indexer.readRecord(record.version)
-        assert type(res) is ReductionRecord
         assert res == record
 
     ### TEST STATE PARAMETER READ / WRITE METHODS ###

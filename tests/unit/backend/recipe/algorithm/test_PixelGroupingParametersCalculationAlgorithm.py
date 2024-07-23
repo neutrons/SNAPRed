@@ -147,7 +147,6 @@ class PixelGroupCalculation(unittest.TestCase):
             createCompatibleMask(
                 maskWSName=maskWSName,
                 templateWSName=cls.localInstrumentWorkspace,
-                instrumentFilePath=cls.localInstrumentFilename,
             )
 
             match x:
@@ -217,7 +216,6 @@ class PixelGroupCalculation(unittest.TestCase):
                 createCompatibleMask(
                     maskWSName=maskWSName,
                     templateWSName=cls.SNAPInstrumentWorkspace,
-                    instrumentFilePath=cls.SNAPInstrumentFilename,
                 )
                 match x:
                     case cls.westMasked:
@@ -248,7 +246,6 @@ class PixelGroupCalculation(unittest.TestCase):
                 createCompatibleMask(
                     maskWSName=maskWSName,
                     templateWSName=cls.SNAPLiteInstrumentWorkspace,
-                    instrumentFilePath=cls.SNAPLiteInstrumentFilename,
                 )
                 match x:
                     case cls.westMasked:
@@ -304,7 +301,6 @@ class PixelGroupCalculation(unittest.TestCase):
                 createCompatibleMask(
                     maskWSName=maskWSName,
                     templateWSName=cls.SNAPLiteInstrumentWorkspace,
-                    instrumentFilePath=cls.SNAPLiteInstrumentFilename,
                 )
                 match x:
                     case cls.westMasked:
