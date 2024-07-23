@@ -11,11 +11,11 @@ logger = snapredLogger.getLogger(__name__)
 
 
 @Resettable
-class ReductionView(BackendRequestView):
+class ReductionRequestView(BackendRequestView):
     signalRemoveRunNumber = Signal(int)
 
     def __init__(self, pixelMasks=[], parent=None):
-        super(ReductionView, self).__init__(parent=parent)
+        super(ReductionRequestView, self).__init__(parent=parent)
 
         self.runNumbers = []
         self.pixelMaskDropdown = self._multiSelectDropDown("Select Pixel Mask(s)", pixelMasks)
@@ -94,7 +94,7 @@ class ReductionView(BackendRequestView):
 
     def _removeRunNumber(self, runNumber):
         if runNumber not in self.runNumbers:
-            logger.warning(f"[ReductionView]: attempting to remove run {runNumber} not in the list {self.runNumbers}")
+            logger.warning(f"[ReductionRequestView]: attempting to remove run {runNumber} not in the list {self.runNumbers}")
             return
         self.runNumbers.remove(runNumber)
         self.updateRunNumberList()

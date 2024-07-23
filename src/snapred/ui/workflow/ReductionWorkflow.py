@@ -10,7 +10,7 @@ from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
-from snapred.ui.view.reduction.ReductionView import ReductionView
+from snapred.ui.view.reduction.ReductionRequestView import ReductionRequestView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
@@ -21,7 +21,7 @@ class ReductionWorkflow(WorkflowImplementer):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._reductionView = ReductionView(parent=parent)
+        self._reductionView = ReductionRequestView(parent=parent)
         self.continueAnywayFlags = None
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
@@ -116,7 +116,6 @@ class ReductionWorkflow(WorkflowImplementer):
         view = workflowPresenter.widget.tabView  # noqa: F841
 
         runNumbers = self._reductionView.getRunNumbers()
-        pixelMasks = self._reconstructPixelMaskNames(self._reductionView.getPixelMasks())
         pixelMasks = self._reconstructPixelMaskNames(self._reductionView.getPixelMasks())
 
         for runNumber in runNumbers:

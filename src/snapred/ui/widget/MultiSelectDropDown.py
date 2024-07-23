@@ -1,4 +1,5 @@
-from qtpy.QtCore import Qt
+from typing import List
+from qtpy.QtCore import Qt, QString
 from qtpy.QtGui import QStandardItemModel
 from qtpy.QtWidgets import QComboBox, QStyledItemDelegate, QVBoxLayout, QWidget
 
@@ -16,7 +17,7 @@ class CheckableComboBox(QComboBox):
         else:
             item.setCheckState(Qt.Checked)
 
-    def checkedItems(self):
+    def checkedItems(self) -> List[QString]:
         checked_items = []
         for index in range(self.count()):
             item = self.model().item(index)
@@ -36,7 +37,7 @@ class CheckableComboBoxDelegate(QStyledItemDelegate):
 
 
 class MultiSelectComboBox(CheckableComboBox):
-    def __init__(self, items, parent=None):
+    def __init__(self, items: List[str], parent=None):
         super(MultiSelectComboBox, self).__init__(parent)
         self.addItems(items)
         for index in range(self.count()):
@@ -47,7 +48,7 @@ class MultiSelectComboBox(CheckableComboBox):
 
 
 class MultiSelectDropDown(QWidget):
-    def __init__(self, label, items=[], parent=None):
+    def __init__(self, label: str, items: List[str] = [], parent=None):
         super(MultiSelectDropDown, self).__init__(parent)
         self.setStyleSheet("background-color: #F5E9E2;")
         self._label = label
@@ -66,9 +67,9 @@ class MultiSelectDropDown(QWidget):
         self.dropDown.addItems(self._items)
         self.dropDown.model().item(0).setEnabled(False)
 
-    def setItems(self, items=[]):
+    def setItems(self, items: List[str] = []):
         self._items = items
         self._initItems()
 
-    def checkedItems(self):
+    def checkedItems(self) -> List[QString]:
         return self.dropDown.checkedItems()
