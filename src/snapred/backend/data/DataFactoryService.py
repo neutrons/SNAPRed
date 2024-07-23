@@ -189,6 +189,11 @@ class DataFactoryService:
     def getReductionData(self, runId: str, useLiteMode: bool, version: int) -> ReductionRecord:
         return self.lookupService.readReductionData(runId, useLiteMode, version)
 
+    @validate_call
+    def getCompatibleReductionMasks(self, runNumber: str, useLiteMode: bool) -> List[WorkspaceName]:
+        # Assemble a list of masks, both resident and otherwise, that are compatible with the current reduction
+        return self.lookupService.getCompatibleReductionMasks(runNumber, useLiteMode)
+
     ##### WORKSPACE METHODS #####
 
     def workspaceDoesExist(self, name):

@@ -1,4 +1,3 @@
-import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -68,9 +67,6 @@ class CalibrationService(Service):
 
     """
 
-    dataFactoryService: "DataFactoryService"
-    dataExportService: "DataExportService"
-    MILLISECONDS_PER_SECOND = Config["constants.millisecondsPerSecond"]
     MINIMUM_PEAKS_PER_GROUP = Config["calibration.diffraction.minimumPeaksPerGroup"]
 
     # register the service in ServiceFactory please!
@@ -108,7 +104,7 @@ class CalibrationService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroup,
+            focusGroups=[request.focusGroup],
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             # fiddly-bits
@@ -162,7 +158,7 @@ class CalibrationService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroup,
+            focusGroups=[request.focusGroup],
         )
         ingredients = self.sousChef.prepPixelGroup(farmFresh)
         # fetch the grouping workspace
@@ -274,7 +270,7 @@ class CalibrationService(Service):
         if entry.appliesTo is None:
             entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
-            entry.timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
+            entry.timestamp = self.dataExportService.getUniqueTimestamp()
         logger.info("Saving calibration index entry for Run Number {}".format(entry.runNumber))
         self.dataExportService.exportCalibrationIndexEntry(entry)
 
@@ -414,7 +410,7 @@ class CalibrationService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.run.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroup,
+            focusGroups=[request.focusGroup],
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             # fiddly bits
@@ -446,7 +442,7 @@ class CalibrationService(Service):
         )
         record = self.dataFactoryService.createCalibrationRecord(createRecordRequest)
 
-        timestamp = int(round(time.time() * self.MILLISECONDS_PER_SECOND))
+        timestamp = self.dataExportService.getUniqueTimestamp()
         metricWorkspaces = GenerateCalibrationMetricsWorkspaceRecipe().executeRecipe(
             CalibrationMetricsWorkspaceIngredients(calibrationRecord=record, timestamp=timestamp)
         )

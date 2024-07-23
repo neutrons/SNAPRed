@@ -16,6 +16,6 @@ Attributes:
   This reference is pivotal as it directly links the workspace ingredients to the specific calibration data
   set, ensuring that the workspace is accurately populated with relevant calibration metrics.
 
-- timestamp (Optional[int]): An optional Unix timestamp that marks the time of workspace generation. This
+- timestamp (Optional[float]): An optional Unix timestamp that marks the time of workspace generation. This
   attribute is useful for tracking when the workspace was created, enabling temporal analyses of calibration
   metrics and supporting versioning or historical comparisons of calibration data.

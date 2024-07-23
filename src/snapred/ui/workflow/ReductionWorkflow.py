@@ -1,10 +1,13 @@
 from typing import Dict, List
 
+from typing import Dict, List
+
 from snapred.backend.dao.request import ReductionRequest
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
 from snapred.ui.view.reduction.ReductionView import ReductionView
@@ -20,6 +23,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         self._reductionView = ReductionView(parent=parent)
         self.continueAnywayFlags = None
+        self._compatibleMasks: Dict[str, WorkspaceName] = {}
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
 
         self._reductionView.enterRunNumberButton.clicked.connect(lambda: self._populatePixelMaskDropdown())
@@ -113,6 +117,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         runNumbers = self._reductionView.getRunNumbers()
         pixelMasks = self._reconstructPixelMaskNames(self._reductionView.getPixelMasks())
+        pixelMasks = self._reconstructPixelMaskNames(self._reductionView.getPixelMasks())
 
         for runNumber in runNumbers:
             payload = ReductionRequest(
@@ -122,6 +127,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 pixelMasks=pixelMasks,
                 keepUnfocused=self._reductionView.retainUnfocusedDataCheckbox.isChecked(),
                 convertUnitsTo=self._reductionView.convertUnitsDropdown.currentText(),
+                pixelMasks=pixelMasks,
             )
             # TODO: Handle Continue Anyway
             self.request(path="reduction/", payload=payload.json())

@@ -338,7 +338,7 @@ class SyntheticData(object):
         )
 
         # Create the mask workspace 'maskWS':
-        createCompatibleMask(maskWS, rawWS, self.fakeInstrumentFilePath)
+        createCompatibleMask(maskWS, rawWS)
 
     def crystalInfo():
         return CrystallographicInfo.model_validate_json(Resource.read("outputs/crystalinfo/output.json"))

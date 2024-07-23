@@ -17,7 +17,7 @@ class TestSousChef(unittest.TestCase):
         self.ingredients = FarmFreshIngredients(
             runNumber="123",
             useLiteMode=True,
-            focusGroup={"name": "apple", "definition": "banana/coconut"},
+            focusGroups=[{"name": "apple", "definition": "banana/coconut"}],
             calibrantSamplePath="path/to/sample.xyz",
             cifPath="path/to/cif",
             maxChiSq=100.0,
@@ -34,14 +34,12 @@ class TestSousChef(unittest.TestCase):
 
     def test_prepManyDetectorPeaks(self):
         self.instance.prepDetectorPeaks = mock.Mock()
-        self.ingredients.focusGroup = [self.ingredients.focusGroup]
         res = self.instance.prepManyDetectorPeaks(self.ingredients)
         assert res[0] == self.instance.prepDetectorPeaks.return_value
         assert self.instance.prepDetectorPeaks.called_once_with(self.ingredients, purgePeaks=False)
 
     def test_prepManyPixelGroups(self):
         self.instance.prepPixelGroup = mock.Mock()
-        self.ingredients.focusGroup = [self.ingredients.focusGroup]
         res = self.instance.prepManyPixelGroups(self.ingredients)
         assert res[0] == self.instance.prepPixelGroup.return_value
         assert self.instance.prepPixelGroup.called_once_with(self.ingredients)
@@ -326,6 +324,7 @@ class TestSousChef(unittest.TestCase):
         record = mock.Mock(
             smoothingParamter=1.0,
             calculationParameters=mock.Mock(calibrantSamplePath="a/b.x"),
+            peakIntensityThreshold=1.0e-5,
         )
         self.instance.prepRunConfig = mock.Mock()
         self.instance.prepManyPixelGroups = mock.Mock()
@@ -340,7 +339,6 @@ class TestSousChef(unittest.TestCase):
         assert self.instance.prepManyPixelGroups.called_once_with(self.ingredients)
         assert self.instance.dataFactoryService.getCifFilePath.called_once_with("sample")
         assert ReductionIngredients.called_once_with(
-            maskList=[],
             pixelGroups=self.instance.prepManyPixelGroups.return_value,
             smoothingParameter=record.smoothingParameter,
             detectorPeaksMany=self.instance.prepManyDetectorPeaks.return_value,

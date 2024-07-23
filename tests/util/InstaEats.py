@@ -238,7 +238,7 @@ class InstaEats(GroceryService):
                     res = self.fetchCalibrationWorkspaces(item)
                     res["workspace"] = maskWorkspaceName
                 case "normalization":
-                    res = self.fetchNormalizationWorkspaces(item)
+                    res = self.fetchNormalizationWorkspace(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
             # check that the fetch operation succeeded and if so append the workspace

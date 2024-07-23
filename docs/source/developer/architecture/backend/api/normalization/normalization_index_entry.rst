@@ -36,7 +36,7 @@ Attributes:
 - author (Optional[str]): Author's name who created or modified the entry; optional. Records
   the individual responsible for the entry, aiding in traceability.
 
-- timestamp (Optional[int]): Unix timestamp of creation or last update; optional.Timestamps
+- timestamp (Optional[float]): Unix timestamp of creation or last update; optional.Timestamps
   offer temporal context to the entry's creation or modification.
 
 

@@ -1,7 +1,9 @@
 # ruff: noqa: E722, PT011, PT012, F811
 import json
 import os
+import shutil
 import tarfile
+import time
 import unittest
 from pathlib import Path
 from random import randint
@@ -10,6 +12,7 @@ from unittest.mock import ANY
 
 import pytest
 import snapred.backend.recipe.algorithm  # noqa: F401
+from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import V3D, Quat
 from mantid.simpleapi import (
     CloneWorkspace,
@@ -33,7 +36,7 @@ from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as
 from util.helpers import createCompatibleDiffCalTable, createCompatibleMask
 from util.instrument_helpers import mapFromSampleLogs
 from util.kernel_helpers import tupleFromQuat, tupleFromV3D
-from util.state_helpers import state_root_redirect
+from util.state_helpers import reduction_root_redirect, state_root_redirect
 from util.WhateversInTheFridge import WhateversInTheFridge
 
 ThisService = "snapred.backend.data.GroceryService."
@@ -49,6 +52,7 @@ class TestGroceryService(unittest.TestCase):
         cls.runNumber = "555"
         cls.runNumber1 = "556"
         cls.useLiteMode = False
+        cls.timestamp = time.time()
         cls.diffCalOutputName = (
             wng.diffCalOutput().runNumber(cls.runNumber1).unit(wng.Units.TOF).group(wng.Groups.UNFOC).build()
         )
@@ -85,10 +89,11 @@ class TestGroceryService(unittest.TestCase):
 
         cls.difc_name = "diffract_consts"
         cls.sampleDiffCalFilePath = Resource.getPath(f"inputs/test_diffcal_{cls.runNumber}_groceryservice.h5")
+        cls.samplePixelMaskFilePath = Resource.getPath(f"inputs/test_pixelmask_{cls.runNumber}_groceryservice.h5")
         cls.sampleTableWS = "_table_grocery_to_fetch"
         createCompatibleDiffCalTable(cls.sampleTableWS, cls.sampleWS)
         cls.sampleMaskWS = "_mask_grocery_to_fetch"
-        createCompatibleMask(cls.sampleMaskWS, cls.sampleWS, cls.instrumentFilePath)
+        createCompatibleMask(cls.sampleMaskWS, cls.sampleWS)
 
         SaveDiffCal(
             CalibrationWorkspace=cls.sampleTableWS,
@@ -96,6 +101,13 @@ class TestGroceryService(unittest.TestCase):
             Filename=cls.sampleDiffCalFilePath,
         )
         assert os.path.exists(cls.sampleDiffCalFilePath)
+
+        # Save the mask by itself
+        SaveDiffCal(
+            MaskWorkspace=cls.sampleMaskWS,
+            Filename=cls.samplePixelMaskFilePath,
+        )
+        assert os.path.exists(cls.samplePixelMaskFilePath)
 
         # rather than the LocalDataService, just grab whatevers in the fridge
         cls.fridge = WhateversInTheFridge()
@@ -293,10 +305,10 @@ class TestGroceryService(unittest.TestCase):
         """Test the creation of a plain nexus workspace name"""
         res = self.instance._createNeutronWorkspaceName(self.runNumber, False)
         fRunNumber = wnvf.formatRunNumber(self.runNumber)
-        assert res == f"tof_all_{fRunNumber}"
+        assert res == f"_tof_all_{fRunNumber}"
         # now use lite mode
         res = self.instance._createNeutronWorkspaceName(self.runNumber, True)
-        assert res == f"tof_all_lite_{fRunNumber}"
+        assert res == f"_tof_all_lite_{fRunNumber}"
 
     def test_neutron_workspacename_raw(self):
         """Test the creation of a raw nexus workspace name"""
@@ -644,7 +656,7 @@ class TestGroceryService(unittest.TestCase):
     def test_workspaceTagFunctions(self):
         wsname = mtd.unique_name(prefix="testWorkspaceTags_")
         tagValues = diffcal_metadata_state_list
-        properties = list(WorkspaceMetadata.schema()["properties"].keys())
+        properties = list(WorkspaceMetadata.model_json_schema()["properties"].keys())
         logName = properties[0]
 
         # Make sure correct error is thrown if workspace does not exist
@@ -1263,6 +1275,36 @@ class TestGroceryService(unittest.TestCase):
         assert mtd[normalizationWorkspaceName].getTitle() == testTitle
         assert self.instance.grocer.executeRecipe.call_count == 0
 
+    def test_fetch_grocery_list_reductionPixelMask(self):
+        # Test of workspace type "reduction_pixel_mask" as `Input` argument in the `GroceryList`
+        self.instance._fetchInstrumentDonor = mock.Mock(return_value=self.sampleWS)
+
+        stateId = "ab8704b0bc2a2342"
+        with reduction_root_redirect(self.instance.dataService, stateId=stateId):
+            groceryList = (
+                GroceryListItem.builder()
+                .reduction_pixel_mask(self.runNumber1, self.timestamp)
+                .useLiteMode(self.useLiteMode)
+                .buildList()
+            )
+
+            # reduction pixelmask filename
+            tmpPath = self.instance.dataService._constructReductionDataPath(
+                self.runNumber1, self.useLiteMode, self.timestamp
+            )
+            tmpPath.mkdir(parents=True)
+
+            maskWorkspaceName = wng.reductionPixelMask().runNumber(self.runNumber1).timestamp(self.timestamp).build()
+            maskWorkspaceFilename = maskWorkspaceName + ".h5"
+            shutil.copy2(self.samplePixelMaskFilePath, tmpPath / maskWorkspaceFilename)
+            assert (tmpPath / maskWorkspaceFilename).exists()
+            assert not mtd.doesExist(maskWorkspaceName)
+
+            items = self.instance.fetchGroceryList(groceryList)
+            assert items[0] == maskWorkspaceName
+            assert mtd.doesExist(maskWorkspaceName)
+            assert isinstance(mtd[maskWorkspaceName], MaskWorkspace)
+
     def test_fetch_grocery_list_unknown_type(self):
         groceryList = GroceryListItem.builder().native().diffcal_mask(self.runNumber, self.version).buildList()
         groceryList[0].workspaceType = "banana"
@@ -1300,35 +1342,47 @@ class TestGroceryService(unittest.TestCase):
         assert self.instance.fetchGroupingDefinition.called_with(groupItemWithSource)
         assert self.instance.fetchNeutronDataCached.called_with(self.runNumber, False, "")
 
-    def test_update_instrument_parameters(self):
-        tmpName = mtd.unique_hidden_name()
+    def test_updateInstrumentParameters(self):
+        wsName = mtd.unique_hidden_name()
         CloneWorkspace(
             InputWorkspace=self.sampleWS,
-            OutputWorkspace=tmpName,
+            OutputWorkspace=wsName,
         )
-        assert mtd.doesExist(tmpName)
+        assert mtd.doesExist(wsName)
 
         # Verify that there is a _zero_ relative location prior to updating instrument location parameters
-        ws = mtd[tmpName]
+        ws = mtd[wsName]
         # Exact float comparison is intended: these should match
         assert ws.getInstrument().getComponentByName("West").getRelativeRot() == Quat(1.0, 0.0, 0.0, 0.0)
         assert ws.getInstrument().getComponentByName("West").getRelativePos() == V3D(0.0, 0.0, 0.0)
         assert ws.getInstrument().getComponentByName("East").getRelativeRot() == Quat(1.0, 0.0, 0.0, 0.0)
         assert ws.getInstrument().getComponentByName("East").getRelativePos() == V3D(0.0, 0.0, 0.0)
 
-        self.instance.updateInstrumentParameters(tmpName, self.detectorState1)
+        self.instance.updateInstrumentParameters(wsName, self.detectorState1)
 
         # Verify that all of the log-derived parameters have been added
-        sampleLogs = mapFromSampleLogs(tmpName, ("det_lin1", "det_lin2", "det_arc1", "det_arc2"))
+        requiredLogs = (
+            "det_arc1",
+            "det_arc2",
+            "BL3:Chop:Skf1:WavelengthUserReq",
+            "BL3:Det:TH:BL:Frequency",
+            "BL3:Mot:OpticsPos:Pos",
+            "det_lin1",
+            "det_lin2",
+        )
+        sampleLogs = mapFromSampleLogs(wsName, requiredLogs)
 
         # Exact float comparison is intended: these should match
-        assert sampleLogs["det_lin1"] == self.detectorState1.lin[0]
-        assert sampleLogs["det_lin2"] == self.detectorState1.lin[1]
+        # Exact float comparison is intended: these should match
         assert sampleLogs["det_arc1"] == self.detectorState1.arc[0]
         assert sampleLogs["det_arc2"] == self.detectorState1.arc[1]
+        assert sampleLogs["BL3:Chop:Skf1:WavelengthUserReq"] == self.detectorState1.wav
+        assert sampleLogs["BL3:Det:TH:BL:Frequency"] == self.detectorState1.freq
+        assert sampleLogs["BL3:Mot:OpticsPos:Pos"] == self.detectorState1.guideStat
+        assert sampleLogs["det_lin1"] == self.detectorState1.lin[0]
+        assert sampleLogs["det_lin2"] == self.detectorState1.lin[1]
 
         # Verify that the relative location changes correctly after updating the instrument location parameters
-        ws = mtd[tmpName]
         assert pytest.approx(tupleFromQuat(ws.getInstrument().getComponentByName("West").getRelativeRot()), 1.0e-6) == (
             -0.008726535498373997,
             0.0,
@@ -1389,13 +1443,25 @@ class TestGroceryService(unittest.TestCase):
         assert not testWS == self.sampleWS
 
         # Verify that the instrument workspace has log-derived parameters from `self.detectorState2`.
-        sampleLogs = mapFromSampleLogs(testWS, ("det_lin1", "det_lin2", "det_arc1", "det_arc2"))
+        requiredLogs = (
+            "det_arc1",
+            "det_arc2",
+            "BL3:Chop:Skf1:WavelengthUserReq",
+            "BL3:Det:TH:BL:Frequency",
+            "BL3:Mot:OpticsPos:Pos",
+            "det_lin1",
+            "det_lin2",
+        )
+        sampleLogs = mapFromSampleLogs(testWS, requiredLogs)
 
         # Exact float comparison is intended: these should match
-        assert sampleLogs["det_lin1"] == self.detectorState2.lin[0]
-        assert sampleLogs["det_lin2"] == self.detectorState2.lin[1]
         assert sampleLogs["det_arc1"] == self.detectorState2.arc[0]
         assert sampleLogs["det_arc2"] == self.detectorState2.arc[1]
+        assert sampleLogs["BL3:Chop:Skf1:WavelengthUserReq"] == self.detectorState2.wav
+        assert sampleLogs["BL3:Det:TH:BL:Frequency"] == self.detectorState2.freq
+        assert sampleLogs["BL3:Mot:OpticsPos:Pos"] == self.detectorState2.guideStat
+        assert sampleLogs["det_lin1"] == self.detectorState2.lin[0]
+        assert sampleLogs["det_lin2"] == self.detectorState2.lin[1]
 
     def test_fetch_instrument_donor_empty_instrument_is_cached(self):
         self.instance._getDetectorState = mock.Mock(return_value=self.detectorState2)
@@ -1422,6 +1488,34 @@ class TestGroceryService(unittest.TestCase):
     def test_get_detector_state(self):
         detectorState = self.instance._getDetectorState(self.runNumber)
         assert detectorState == self.detectorState1
+
+    def test_fetchCompatibleMask(self):
+        # Add an actual instrument state to the sample workspace
+        instrumentWs = mtd.unique_hidden_name()
+        CloneWorkspace(
+            InputWorkspace=self.sampleWS,
+            OutputWorkspace=instrumentWs,
+        )
+        assert mtd.doesExist(instrumentWs)
+
+        self.instance.updateInstrumentParameters(instrumentWs, self.detectorState1)
+        stateId, _ = self.instance.dataService.stateIdFromWorkspace(instrumentWs)
+
+        with mock.patch.object(self.instance, "_fetchInstrumentDonor", mock.Mock(return_value=instrumentWs)):
+            maskWsName = mtd.unique_hidden_name()
+            self.instance.fetchCompatiblePixelMask(maskWsName, self.runNumber, self.useLiteMode)
+
+            # Mask shall have a number of spectra equal to the number of non-monitor pixels
+            #   in the template workspace's instrument.
+            pixelCount = mtd[instrumentWs].getInstrument().getNumberDetectors(True)
+            assert mtd[maskWsName].getNumberHistograms() == pixelCount
+
+            # Mask shall have the same instrument state as the template workspace.
+            maskStateId, _ = self.instance.dataService.stateIdFromWorkspace(maskWsName)
+            assert maskStateId == stateId
+
+            # Mask shall be blank.
+            assert mtd[maskWsName].getNumberMasked() == 0
 
     @mock.patch(ThisService + "mtd")
     def test_unique_hidden_name(self, mockADS):

@@ -1,6 +1,5 @@
 import os
 import tarfile
-import time
 
 from mantid.api import (
     AlgorithmFactory,
@@ -11,6 +10,7 @@ from mantid.api import (
     PythonAlgorithm,
 )
 from mantid.kernel import Direction
+from mantid.simpleapi import mtd
 
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 
@@ -58,8 +58,7 @@ class WrapLeftovers(PythonAlgorithm):
         self.validate()
 
         for index in range(0, self.inputWS.getNumberHistograms()):
-            # timestamp as name
-            tmp = str(time.time())
+            tmp = mtd.unique_hidden_name()
             self.mantidSnapper.ExtractSpectra(
                 f"Extracting Spectra {index}",
                 InputWorkspace=self.inputWS,

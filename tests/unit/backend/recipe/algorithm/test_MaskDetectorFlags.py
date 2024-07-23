@@ -30,7 +30,7 @@ class TestMaskDetectorFlags:
             Filename=instrumentFilename,
             OutputWorkspace=cls.instrumentWS,
         )
-        createCompatibleMask(cls.maskWS, cls.instrumentWS, instrumentFilename)
+        createCompatibleMask(cls.maskWS, cls.instrumentWS)
         LoadDetectorsGroupingFile(
             InputFile=groupingFilename,
             InputWorkspace=cls.instrumentWS,

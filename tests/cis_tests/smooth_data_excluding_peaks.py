@@ -32,7 +32,7 @@ smoothingParameter = 0.05
 farmFresh = FarmFreshIngredients(
   runNumber = runNumber,
   useLiteMode=isLite,
-  focusGroup={"name": groupingScheme, "definition": ""},
+  focusGroups=[{"name": groupingScheme, "definition": ""}],
   cifPath=cifPath,
 )
 peaks = SousChef().prepDetectorPeaks(farmFresh)

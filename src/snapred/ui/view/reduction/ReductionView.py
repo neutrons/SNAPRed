@@ -1,9 +1,12 @@
+from typing import List
+
 from qtpy.QtCore import Signal
-from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
-from snapred.backend.log.logger import snapredLogger
+from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from snapred.meta.decorators.Resettable import Resettable
 from snapred.ui.view.BackendRequestView import BackendRequestView
 from snapred.ui.widget.Toggle import Toggle
+
+logger = snapredLogger.getLogger(__name__)
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -67,14 +70,15 @@ class ReductionView(BackendRequestView):
     def addRunNumber(self):
         runNumberList = self.parseInputRunNumbers()
         if runNumberList is not None:
+            # remove duplicates
             noDuplicates = set(self.runNumbers)
             noDuplicates.update(runNumberList)
             self.runNumbers = list(noDuplicates)
             self.updateRunNumberList()
             self.runNumberInput.clear()
 
-    def parseInputRunNumbers(self):
-        # Warning: run numbers are strings.
+    def parseInputRunNumbers(self) -> List[str]:
+        # WARNING: run numbers are strings.
         #   For now, it's OK to parse them as integer, but they should not be passed around that way.
         runNumberString = self.runNumberInput.text().strip()
         if runNumberString:
@@ -90,6 +94,9 @@ class ReductionView(BackendRequestView):
         self.signalRemoveRunNumber.emit(runNumber)
 
     def _removeRunNumber(self, runNumber):
+        if runNumber not in self.runNumbers:
+            logger.warning(f"[ReductionView]: attempting to remove run {runNumber} not in the list {self.runNumbers}")
+            return
         self.runNumbers.remove(runNumber)
         self.updateRunNumberList()
 

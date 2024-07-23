@@ -15,12 +15,13 @@ def isBaseModel(clazz: type) -> bool:
     return inspect.isclass(clazz) and issubclass(clazz, BaseModel)
 
 
-# only works on postional args for now
+# only works on positional args for now
 def FromString(func: callable):
     @functools.wraps(func)
     def inner(*args, **kwargs):
         """
-        do operations with func
+        For any function argument that is derived from `BaseModel`,
+          if a string value is passed, automatically convert it into the correct model.
         """
         # get type of funct args
         fullArgSpec: tuple = inspect.getfullargspec(func)

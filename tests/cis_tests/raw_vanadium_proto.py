@@ -40,7 +40,7 @@ idf = '/SNS/SNAP/shared/Calibration_old/SNAPLite.xml'
 farmFresh = FarmFreshIngredients(
     runNumber=VRun,
     useLiteMode=liteMode,
-    focusGroup={"name": groupingScheme, "definition": ""},
+    focusGroups=[{"name": groupingScheme, "definition": ""}],
     calibrantSamplePath = calibrantSamplePath,
 )
 ingredients = SousChef().prepNormalizationIngredients(farmFresh)
