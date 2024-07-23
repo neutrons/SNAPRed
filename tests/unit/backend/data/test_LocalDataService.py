@@ -1087,7 +1087,6 @@ def test_writeCalibrationWorkspaces():
             raise RuntimeError(f"unexpected workspace-types in record.workspaces: {workspaces}")
 
         # Create sample workspaces.
-        # LoadEmptyInstrument(OutputWorkspace=outputWSName, Filename=fakeInstrumentFilePath)
         CreateWorkspace(
             OutputWorkspace=outputWSName,
             DataX=[0.5, 1.5] * 16,

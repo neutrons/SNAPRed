@@ -83,8 +83,6 @@ class TestGroceryService(unittest.TestCase):
             Filename=cls.sampleWSFilePath,
         )
 
-        # with tarfile.open(cls.sampleTarWsFilePath, "w") as tar:
-        #     tar.add(cls.sampleWSFilePath, arcname="0.nxs")
         # call wrap leftovers
         wrapLeftovers = WrapLeftovers()
         wrapLeftovers.initialize()
