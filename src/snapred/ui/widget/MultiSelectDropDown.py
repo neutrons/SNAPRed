@@ -1,4 +1,5 @@
 from typing import List
+
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QStandardItemModel
 from qtpy.QtWidgets import QComboBox, QStyledItemDelegate, QVBoxLayout, QWidget

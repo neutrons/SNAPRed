@@ -1,16 +1,13 @@
 from typing import Dict, List
 
-from typing import Dict, List
-
 from snapred.backend.dao.request import ReductionRequest
 from snapred.backend.dao.SNAPResponse import SNAPResponse
 from snapred.backend.error.ContinueWarning import ContinueWarning
 from snapred.backend.log.logger import snapredLogger
 from snapred.meta.decorators.ExceptionToErrLog import ExceptionToErrLog
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
-from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
 from snapred.ui.view.reduction.ReductionRequestView import ReductionRequestView
+from snapred.ui.view.reduction.ReductionSaveView import ReductionSaveView
 from snapred.ui.workflow.WorkflowBuilder import WorkflowBuilder
 from snapred.ui.workflow.WorkflowImplementer import WorkflowImplementer
 
