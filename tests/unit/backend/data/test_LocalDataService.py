@@ -253,7 +253,7 @@ def test_readStateConfig_default():
         indexer.index = {VERSION_DEFAULT: mock.Mock()}  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
-    assert actual.stateId == "ab8704b0bc2a2342"
+    assert actual.stateId == "4143c2b05e38867f"
 
 
 def test_readStateConfig_previous():
@@ -269,7 +269,7 @@ def test_readStateConfig_previous():
         indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
         actual = localDataService.readStateConfig("57514", True)
     assert actual is not None
-    assert actual.stateId == "ab8704b0bc2a2342"
+    assert actual.stateId == "4143c2b05e38867f"
 
 
 def test_readStateConfig_attaches_grouping_map():
@@ -1969,7 +1969,7 @@ def test_readGroupingMap_default_not_found():
 def test_readGroupingMap_initialized_state():
     # Test that '_readGroupingMap' for an initialized state returns the state's <grouping map>.
     service = LocalDataService()
-    stateId = "ab8704b0bc2a2342"
+    stateId = "4143c2b05e38867f"
     with state_root_redirect(service, stateId=stateId) as tmpRoot:
         service._constructCalibrationStateRoot(stateId).mkdir()
         tmpRoot.addFileAs(
