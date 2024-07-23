@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 from snapred.backend.data.DataExportService import DataExportService
+from snapred.backend.data.DataFactoryService import DataFactoryService
 from snapred.backend.recipe.GenericRecipe import LiteDataRecipe as Recipe
 from snapred.backend.service.Service import Service
 from snapred.meta.decorators.FromString import FromString
@@ -14,6 +15,7 @@ class LiteDataService(Service):
         super().__init__()
         self.registerPath("createLiteData", self.reduceLiteData)
         self.dataExportService = DataExportService()
+        self.dataFactoryService = DataFactoryService()
         return
 
     @staticmethod
@@ -34,12 +36,15 @@ class LiteDataService(Service):
     ) -> Dict[Any, Any]:
         liteDataMap = self._ensureLiteDataMap()
         runNumber = inputWorkspace.split("_")[-1].lstrip("0")
+        calibration = self.dataFactoryService.getCalibrationState(runNumber, True)
+        ingredients = calibration.instrumentState
         try:
             data = Recipe().executeRecipe(
                 InputWorkspace=inputWorkspace,
                 LiteDataMapWorkspace=liteDataMap,
                 LiteInstrumentDefinitionFile=instrumentDefinition,
                 OutputWorkspace=outputWorkspace,
+                Ingredients=ingredients.model_dump_json(),
             )
             fullPath = self.dataExportService.getFullLiteDataFilePath(runNumber)
             path = fullPath.parent

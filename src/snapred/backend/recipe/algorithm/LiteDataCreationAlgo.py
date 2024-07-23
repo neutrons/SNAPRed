@@ -8,6 +8,7 @@ from mantid.api import (
 )
 from mantid.kernel import Direction
 
+from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 
@@ -28,6 +29,11 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         self.declareProperty(
             MatrixWorkspaceProperty("OutputWorkspace", "", Direction.Output, PropertyMode.Mandatory),
             doc="the workspace reduced to lite resolution and compressed",
+        )
+        self.declareProperty(
+            "Ingredients",
+            defaultValue="",
+            direction=Direction.Input,
         )
         # TODO this is needed by LoadInstrument, which needs to be removed
         self.declareProperty(
@@ -58,9 +64,18 @@ class LiteDataCreationAlgo(PythonAlgorithm):
         self._liteModeResolution = len(groupWS.getGroupIDs())
         return errors
 
+    def chopIngredients(self, ingredients: InstrumentState):
+        self.deltaTOverT = ingredients.instrumentConfig.delTOverT
+        self.delLOverL = ingredients.instrumentConfig.delLOverL
+        self.L = ingredients.instrumentConfig.L1 + ingredients.instrumentConfig.L2
+        self.delL = self.delLOverL * self.L
+        self.delTheta = ingredients.delTh
+        return
+
     def PyExec(self):
         self.log().notice("Lite Data Creation START!")
-
+        ingredients = InstrumentState.model_validate_json(self.getProperty("Ingredients").value)
+        self.chopIngredients(ingredients)
         # load input workspace
         inputWorkspaceName = self.getPropertyValue("InputWorkspace")
         outputWorkspaceName = self.getPropertyValue("OutputWorkspace")
@@ -98,6 +113,36 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             CopyGroupingFromWorkspace=groupingWorkspaceName,
         )
 
+        # Estimate resolution for the unfocused workspace
+        resolutionWorkspaceName = f"{outputWorkspaceName}_resolution"
+        partialResolutionWorkspaceName = f"{resolutionWorkspaceName}_partial"
+        resolutionWorkspaceName = self.mantidSnapper.CloneWorkspace(
+            "Workspace already lite, cloning it to output",
+            InputWorkspace=outputWorkspaceName,
+            OutputWorkspace=resolutionWorkspaceName,
+        )
+
+        self.mantidSnapper.EstimateResolutionDiffraction(
+            f"Estimating resolution for {outputWorkspaceName}...",
+            InputWorkspace=resolutionWorkspaceName,
+            OutputWorkspace=resolutionWorkspaceName,
+            PartialResolutionWorkspaces=partialResolutionWorkspaceName,
+            DeltaTOFOverTOF=self.deltaTOverT,
+            SourceDeltaL=self.delL,
+            SourceDeltaTheta=self.delTheta,
+        )
+
+        self.mantidSnapper.WashDishes(
+            "Remove the partial resolution workspace",
+            Workspace=partialResolutionWorkspaceName,
+        )
+
+        # Calculate ΔΤ as the negative of the minimum deltaDOverD
+        self.mantidSnapper.executeQueue()
+        resolutionWS = self.mantidSnapper.mtd[resolutionWorkspaceName]
+        deltaDOverD = resolutionWS.extractY().flatten()
+        deltaT = -min(deltaDOverD)
+
         # TODO how can this be removed?
         # replace instrument definition with lite
         self.mantidSnapper.LoadInstrument(
@@ -112,7 +157,7 @@ class LiteDataCreationAlgo(PythonAlgorithm):
             f"Compressing events in {outputWorkspaceName}...",
             InputWorkspace=outputWorkspaceName,
             OutputWorkspace=outputWorkspaceName,
-            Tolerance=1,
+            Tolerance=deltaT,
         )
 
         if autoDelete is True:

@@ -28,6 +28,10 @@ class TestLiteDataService(unittest.TestCase):
 
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite_map")
+        liteDataService.dataFactoryService.getCalibrationState = Mock()
+        liteDataService.dataFactoryService.getCalibrationState.return_value.instrumentState = Mock()
+        liteDataService.dataFactoryService.getCalibrationState.return_value.instrumentState.model_dump_json.return_value = "{}"  # noqa: E501
+
         with TemporaryDirectory(dir=Resource.getPath("outputs"), suffix="/") as tmpdir:
             outputPath = Path(tmpdir, "555.nxs.h5")
             assert not outputPath.exists()
@@ -36,10 +40,12 @@ class TestLiteDataService(unittest.TestCase):
             liteDataService.reduceLiteData(inputWorkspace, outputWorkspace)
             assert outputPath.exists()
 
-        assert executeRecipe.called_with(
+        executeRecipe.assert_called_with(
             InputWorkspace=inputWorkspace,
             OutputWorkspace=outputWorkspace,
-            LiteDataMapWorkspace=liteDataService._ensureLiteDataMap.return_value,
+            LiteDataMapWorkspace="lite_map",
+            LiteInstrumentDefinitionFile=None,
+            Ingredients="{}",
         )
 
     @patch("snapred.backend.recipe.GenericRecipe.GenericRecipe.executeRecipe")
@@ -47,10 +53,11 @@ class TestLiteDataService(unittest.TestCase):
         mock_executeRecipe.return_value = {}
         mock_executeRecipe.side_effect = RuntimeError("oops!")
 
-        from snapred.backend.service.LiteDataService import LiteDataService
-
         liteDataService = LiteDataService()
         liteDataService._ensureLiteDataMap = Mock(return_value="lite map")
+        liteDataService.dataFactoryService.getCalibrationState = Mock()
+        liteDataService.dataFactoryService.getCalibrationState.return_value.instrumentState = Mock()
+        liteDataService.dataFactoryService.getCalibrationState.return_value.instrumentState.model_dump_json.return_value = "{}"  # noqa: E501
 
         inputWorkspace = "_test_liteservice_555"
         outputWorkspace = "_test_output_lite_"
