@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from mantid.simpleapi import (
+    CreateSingleValuedWorkspace,
     mtd,
 )
 from snapred.backend.dao.response.NormalizationResponse import NormalizationResponse
@@ -21,10 +22,10 @@ with mock.patch.dict(
         "snapred.backend.log.logger": mock.Mock(),
     },
 ):
+    from snapred.backend.dao.indexing.IndexEntry import IndexEntry
     from snapred.backend.dao.ingredients import (
         ReductionIngredients,
     )
-    from snapred.backend.dao.normalization import NormalizationIndexEntry
     from snapred.backend.dao.request import (
         FocusSpectraRequest,
         NormalizationRequest,
@@ -45,11 +46,15 @@ with mock.patch.dict(
     def test_saveNormalization():
         normalizationService = NormalizationService()
         normalizationService.dataExportService.exportNormalizationRecord = mock.Mock()
-        normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version="1.0.0")
+        normalizationService.dataExportService.exportNormalizationRecord.return_value = MagicMock(version=1)
         normalizationService.dataExportService.exportNormalizationWorkspaces = mock.Mock()
-        normalizationService.dataExportService.exportNormalizationWorkspaces.return_value = MagicMock(version="1.0.0")
+        normalizationService.dataExportService.exportNormalizationWorkspaces.return_value = MagicMock(version=1)
         normalizationService.dataExportService.exportNormalizationIndexEntry = mock.Mock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = MagicMock("expected")
+        normalizationService.dataFactoryService.createNormalizationIndexEntry = mock.Mock()
+        normalizationService.dataFactoryService.createNormalizationRecord = mock.Mock(
+            return_value=mock.Mock(workspaceNames=[])
+        )
         normalizationService.saveNormalization(mock.Mock())
         assert normalizationService.dataExportService.exportNormalizationRecord.called
         savedEntry = normalizationService.dataExportService.exportNormalizationRecord.call_args.args[0]
@@ -61,7 +66,7 @@ with mock.patch.dict(
         normalizationService.dataExportService.exportNormalizationIndexEntry = MagicMock()
         normalizationService.dataExportService.exportNormalizationIndexEntry.return_value = "expected"
         normalizationService.saveNormalizationToIndex(
-            NormalizationIndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2")
+            IndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2")
         )
         assert normalizationService.dataExportService.exportNormalizationIndexEntry.called
         savedEntry = normalizationService.dataExportService.exportNormalizationIndexEntry.call_args.args[0]
@@ -92,6 +97,23 @@ class TestNormalizationService(unittest.TestCase):
     def tearDown(self) -> None:
         self.clearoutWorkspaces()
         return super().tearDown()
+
+    def test_saveNormalization_workspaces_renamed(self):
+        version = 10
+        wsname = "test"
+        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+        self.instance.dataFactoryService.createNormalizationIndexEntry = mock.Mock(
+            return_value=mock.Mock(version=version)
+        )
+        self.instance.dataFactoryService.createNormalizationRecord = mock.Mock(
+            return_value=mock.Mock(version=version, workspaceNames=[wsname])
+        )
+        self.instance.dataExportService.exportNormalizationRecord = mock.Mock()
+        self.instance.dataExportService.exportNormalizationWorkspaces = mock.Mock()
+        self.instance.dataExportService.exportNormalizationIndexEntry = mock.Mock()
+        self.instance.saveNormalization(mock.Mock())
+        savedRecord = self.instance.dataExportService.exportNormalizationRecord.call_args[0]
+        assert savedRecord[0].workspaceNames == [f"{wsname}_v0010"]
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "FocusSpectraRecipe")
@@ -191,21 +213,14 @@ class TestNormalizationService(unittest.TestCase):
             Ingredients=self.instance.sousChef.prepDetectorPeaks({}),
         )
 
-    @patch(
-        thisService + "NormalizationRecord",
-        return_value=MagicMock(mockId="mock_normalization_record"),
-    )
-    def test_normalizationAssessment(
-        self,
-        NormalizationRecord,
-    ):
+    def test_normalizationAssessment(self):
         self.instance = NormalizationService()
         self.instance.sousChef = SculleryBoy()
-        self.instance.dataFactoryService.getNormalizationRecord = MagicMock(return_value=MagicMock())
+        self.instance.dataFactoryService.createNormalizationRecord = MagicMock()
 
         result = self.instance.normalizationAssessment(self.request)
 
-        assert result.mockId == NormalizationRecord.return_value.mockId
+        assert result == self.instance.dataFactoryService.createNormalizationRecord.return_value
 
     @patch(thisService + "FarmFreshIngredients")
     @patch(thisService + "RawVanadiumCorrectionRecipe")

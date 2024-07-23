@@ -41,6 +41,12 @@ class ReductionWorkflow(WorkflowImplementer):
         )
         self.workflow.presenter.setResetLambda(self.reset)
 
+        self._reductionView.retainUnfocusedDataCheckbox.checkedChanged.connect(self._enableConvertToUnits)
+
+    def _enableConvertToUnits(self):
+        state = self._reductionView.retainUnfocusedDataCheckbox.isChecked()
+        self._reductionView.convertUnitsDropdown.setEnabled(state)
+
     def _nothing(self, workflowPresenter):  # noqa: ARG002
         return SNAPResponse(code=200)
 
@@ -60,7 +66,7 @@ class ReductionWorkflow(WorkflowImplementer):
 
         self._reductionView.liteModeToggle.setEnabled(False)
         self._reductionView.pixelMaskDropdown.setEnabled(False)
-
+        self._reductionView.retainUnfocusedDataCheckbox.setEnabled(False)
         # Assemble the list of compatible masks for the current reduction state --
         #   note that all run numbers should be from the same state.
         compatibleMasks = []
@@ -83,6 +89,16 @@ class ReductionWorkflow(WorkflowImplementer):
 
         self._reductionView.liteModeToggle.setEnabled(True)
         self._reductionView.pixelMaskDropdown.setEnabled(True)
+        self._reductionView.retainUnfocusedDataCheckbox.setEnabled(True)
+        # self._reductionView.convertUnitsDropdown.setEnabled(True)
+
+    def _reconstructPixelMaskNames(self, pixelMasks: List[str]) -> List[WorkspaceName]:
+        return [self._compatibleMasks[name] for name in pixelMasks]
+
+    def _onPixelMaskSelection(self):
+        selectedKeys = self._reductionView.getPixelMasks()
+        selectedWorkspaceNames = self._reconstructPixelMaskNames(selectedKeys)
+        ReductionRequest.pixelMasks = selectedWorkspaceNames
 
     def _reconstructPixelMaskNames(self, pixelMasks: List[str]) -> List[WorkspaceName]:
         return [self._compatibleMasks[name] for name in pixelMasks]
@@ -104,6 +120,8 @@ class ReductionWorkflow(WorkflowImplementer):
                 useLiteMode=self._reductionView.liteModeToggle.field.getState(),
                 continueFlags=self.continueAnywayFlags,
                 pixelMasks=pixelMasks,
+                keepUnfocused=self._reductionView.retainUnfocusedDataCheckbox.isChecked(),
+                convertUnitsTo=self._reductionView.convertUnitsDropdown.currentText(),
             )
             # TODO: Handle Continue Anyway
             self.request(path="reduction/", payload=payload.json())

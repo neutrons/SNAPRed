@@ -1,4 +1,5 @@
 import json
+import time
 from typing import Any, Dict, List
 
 from snapred.backend.dao.ingredients import GroceryListItem, ReductionIngredients
@@ -33,9 +34,6 @@ class ReductionService(Service):
     This is a separate call to GroceryService, before the call to load the other workspace data.
 
     """
-
-    dataFactoryService: "DataFactoryService"
-    dataExportService: "DataExportService"
 
     def __init__(self):
         super().__init__()
@@ -153,6 +151,8 @@ class ReductionService(Service):
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
             focusGroup=request.focusGroups,
+            keepUnfocused=request.keepUnfocused,
+            convertUnitsTo=request.convertUnitsTo,
         )
         return self.sousChef.prepReductionIngredients(farmFresh)
 
@@ -178,19 +178,28 @@ class ReductionService(Service):
         """
         # gather input workspace and the diffcal table
         self.groceryClerk.name("inputWorkspace").neutron(request.runNumber).useLiteMode(request.useLiteMode).add()
-        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber).useLiteMode(
+        calVersion = self.dataFactoryService.getThisOrLatestCalibrationVersion(request.runNumber, request.useLiteMode)
+        self.groceryClerk.name("diffcalWorkspace").diffcal_table(request.runNumber, calVersion).useLiteMode(
             request.useLiteMode
         ).add()
-        self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber).useLiteMode(
+        normVersion = self.dataFactoryService.getThisOrLatestNormalizationVersion(
+            request.runNumber, request.useLiteMode
+        )
+        self.groceryClerk.name("normalizationWorkspace").normalization(request.runNumber, normVersion).useLiteMode(
             request.useLiteMode
         ).add()
         return self.groceryService.fetchGroceryDict(groceryDict=self.groceryClerk.buildDict())
 
     @FromString
     def saveReduction(self, request: ReductionExportRequest):
+        version = request.version
+        if version is None:
+            version = int(time.time())
         record = request.reductionRecord
-        record = self.dataExportService.exportReductionRecord(record)
-        record = self.dataExportService.exportReductionData(record)
+        record.version = version
+        record.calculationParameters.version = version
+        self.dataExportService.exportReductionRecord(record)
+        self.dataExportService.exportReductionData(record)
 
     def loadReduction(self):
         raise NotImplementedError("SNAPRed cannot load reductions")
@@ -215,9 +224,8 @@ class ReductionService(Service):
         versions = {}
         for request in requests:
             runNumber = str(json.loads(request.payload)["runNumber"])
-            stateID, _ = self.dataFactoryService.constructStateId(runNumber)
             useLiteMode = bool(json.loads(request.payload)["useLiteMode"])
-            normalVersion = self.dataFactoryService.getNormalizationVersion(str(stateID), useLiteMode)
+            normalVersion = self.dataFactoryService.getThisOrCurrentNormalizationVersion(runNumber, useLiteMode)
             version = "normalization_" + str(normalVersion)
             if versions.get(version) is None:
                 versions[version] = []

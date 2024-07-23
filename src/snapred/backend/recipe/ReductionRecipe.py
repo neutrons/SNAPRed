@@ -8,6 +8,7 @@ from snapred.backend.recipe.PreprocessReductionRecipe import PreprocessReduction
 from snapred.backend.recipe.Recipe import Recipe, WorkspaceName
 from snapred.backend.recipe.ReductionGroupProcessingRecipe import ReductionGroupProcessingRecipe
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -37,6 +38,8 @@ class ReductionRecipe(Recipe[Ingredients]):
         Chops off the needed elements of the ingredients.
         """
         self.ingredients = ingredients.copy()
+        self.keepUnfocused = self.ingredients.keepUnfocused
+        self.convertUnitsTo = self.ingredients.convertUnitsTo
 
     def unbagGroceries(self, groceries: Dict[str, Any]):
         """
@@ -70,6 +73,27 @@ class ReductionRecipe(Recipe[Ingredients]):
             "Deleting workspace...",
             Workspace=workspace,
         )
+        self.mantidSnapper.executeQueue()
+
+    def _convertWorkspace(self, workspace: str, units: str):
+        unitsAbrev = ""
+        if units == "TOF":
+            unitsAbrev = wng.Units.TOF
+        elif units == "Wavelength":
+            unitsAbrev = wng.Units.LAM
+        elif units == "MomentumTransfer":
+            unitsAbrev = wng.Units.QSP
+        elif units == "dSpacing":
+            unitsAbrev = wng.Units.DSP
+        outWS = workspace.replace("tof", unitsAbrev.lower())
+        self.mantidSnapper.ConvertUnits(
+            "Convert the clone of the final output back to TOFl",
+            InputWorkspace=workspace,
+            OutputWorkspace=outWS,
+            Target=units,
+        )
+        if outWS != workspace:
+            self._deleteWorkspace(workspace)
         self.mantidSnapper.executeQueue()
 
     def _applyRecipe(self, recipe: Type[Recipe], ingredients_, **kwargs):
@@ -156,7 +180,12 @@ class ReductionRecipe(Recipe[Ingredients]):
 
             # Cleanup
             outputs.append(sampleClone)
-            self._deleteWorkspace(normalizationClone)
+
+            if self.keepUnfocused:
+                self._convertWorkspace(normalizationClone, self.convertUnitsTo)
+            else:
+                self._deleteWorkspace(normalizationClone)
+
         return outputs
 
     def cook(self, ingredients: Ingredients, groceries: Dict[str, str]) -> Dict[str, Any]:

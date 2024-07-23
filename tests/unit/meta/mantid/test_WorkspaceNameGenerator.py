@@ -1,4 +1,6 @@
 import pytest
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VERSION_DEFAULT_NAME
+from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 
 runNumber = 123
@@ -89,3 +91,39 @@ def testReductionOutputGroupName():
 def testInvalidKey():
     with pytest.raises(RuntimeError, match=r"Key \[unit\] not a valid property"):
         wng.diffCalMask().runNumber(runNumber).unit(wng.Units.TOF).build()
+
+
+def test_formatVersion_use_v_prefix():
+    expected = "v"
+    ans = wnvf.formatVersion(None, use_v_prefix=True)
+    assert ans == expected
+
+
+def test_formatVersion_none():
+    expected = ""
+    ans = wnvf.formatVersion(None, use_v_prefix=False)
+    assert ans == expected
+
+
+def test_formatVersion_default():
+    expected = VERSION_DEFAULT_NAME
+    ans = wnvf.formatVersion(VERSION_DEFAULT, use_v_prefix=False)
+    assert ans == expected
+
+
+def test_formatVersion_str_to_int():
+    expected = "0001"
+    ans = wnvf.formatVersion("1", use_v_prefix=False)
+    assert ans == expected
+
+
+def test_formatVersion_int():
+    expected = "0001"
+    ans = wnvf.formatVersion(1, use_v_prefix=False)
+    assert ans == expected
+
+
+def test_formatVersion_nonsense():
+    expected = ""
+    ans = wnvf.formatVersion("matt", use_v_prefix=False)
+    assert ans == expected

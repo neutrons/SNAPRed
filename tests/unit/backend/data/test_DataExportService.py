@@ -2,8 +2,6 @@ import unittest
 import unittest.mock as mock
 from pathlib import Path
 
-from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry  # noqa: E402
-from snapred.backend.dao.normalization.NormalizationIndexEntry import NormalizationIndexEntry  # noqa: E402
 from snapred.backend.data.DataExportService import DataExportService  # noqa: E402
 from snapred.backend.data.LocalDataService import LocalDataService
 
@@ -18,7 +16,6 @@ class TestDataExportService(unittest.TestCase):
 
     def setUp(self):
         self.instance = DataExportService(dataService=self.mockLookupService)
-        # self.instance.lookupService = self.mockLookupService
         assert isinstance(self.instance, DataExportService)
         return super().setUp()
 
@@ -37,16 +34,10 @@ class TestDataExportService(unittest.TestCase):
         self.instance.getFullLiteDataFilePath(mock.Mock())
         assert self.instance.dataService.getIPTS.called
 
-    ##### TEST REDUCTION METHODS #####
-
-    # NOTE will exist in future
-
     ##### TEST CALIBRATION METHODS #####
 
     def test_exportCalibrationIndexEntry(self):
-        self.instance.exportCalibrationIndexEntry(
-            CalibrationIndexEntry(runNumber="1", useLiteMode=True, comments="", author="")
-        )
+        self.instance.exportCalibrationIndexEntry(mock.Mock())
         assert self.instance.dataService.writeCalibrationIndexEntry.called
 
     def test_exportCalibrationRecord(self):
@@ -68,9 +59,7 @@ class TestDataExportService(unittest.TestCase):
     ##### TEST NORMALIZATION METHODS #####
 
     def test_exportNormalizationIndexEntry(self):
-        self.instance.exportNormalizationIndexEntry(
-            NormalizationIndexEntry(runNumber="1", useLiteMode=True, backgroundRunNumber="2", comments="", author="")
-        )
+        self.instance.exportNormalizationIndexEntry(mock.Mock())
         assert self.instance.dataService.writeNormalizationIndexEntry.called
 
     def test_exportNormalizationRecord(self):

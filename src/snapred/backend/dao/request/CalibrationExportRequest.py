@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
-from snapred.backend.dao.calibration.CalibrationIndexEntry import CalibrationIndexEntry
-from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
+from snapred.backend.dao.request.CreateCalibrationRecordRequest import CreateCalibrationRecordRequest
+from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntryRequest
 
 
-class CalibrationExportRequest(BaseModel):
+class CalibrationExportRequest(BaseModel, extra="forbid"):
     """
 
     The CalibrationExportRequest class facilitates the process of saving completed and satisfactorily
@@ -15,5 +15,14 @@ class CalibrationExportRequest(BaseModel):
 
     """
 
-    calibrationRecord: CalibrationRecord
-    calibrationIndexEntry: CalibrationIndexEntry
+    createIndexEntryRequest: CreateIndexEntryRequest
+    createRecordRequest: CreateCalibrationRecordRequest
+
+    @model_validator(mode="after")
+    def same_version(self):
+        if self.createIndexEntryRequest.version != self.createRecordRequest.version:
+            raise ValueError(
+                f"Version {self.createIndexEntryRequest.version} does not match {self.createRecordRequest.version}"
+            )
+        else:
+            return self

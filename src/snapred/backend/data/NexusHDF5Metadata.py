@@ -21,7 +21,7 @@ class NexusHDF5Metadata:
         if isinstance(s, Enum):
             # order matters: may be strenum or intenum
             return s.value
-        elif issubclass(type(s), str) and not type(s) == str:  # noqa: E721
+        elif issubclass(type(s), str) and type(s) is not str:  # noqa: E721
             # (e.g. `WorkspaceName` type): coerce it back to an _actual_ string
             return super(type(s), s).__str__()
         elif isinstance(s, (Number, str, bytes)):

@@ -30,9 +30,9 @@ def test_literal_good():
         try:
             CalibrationAssessmentRequest(
                 run={"runNumber": "123"},
-                workspaces={wngt.DIFFCAL_OUTPUT: [wngn("nope")]},
-                focusGroup={"name": "nope", "definition": "nope"},
-                calibrantSamplePath="nope",
+                workspaces={wngt.DIFFCAL_OUTPUT: [wngn("yup")]},
+                focusGroup={"name": "yup", "definition": "yup"},
+                calibrantSamplePath="yup",
                 useLiteMode=False,
                 peakFunction=good,
                 crystalDMin=0.0,

@@ -39,12 +39,16 @@ class ReductionView(BackendRequestView):
 
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
         self.liteModeToggle = self._labeledLineEdit("Lite Mode", Toggle(parent=self, state=True))
-        self.retainUnfocusedDataCheckbox = self._labeledCheckBox("Retain Unfocussed Data")
+        self.retainUnfocusedDataCheckbox = self._labeledCheckBox("Retain Unfocused Data")
+        self.convertUnitsDropdown = self._sampleDropDown(
+            "Convert Units", ["TOF", "dSpacing", "Wavelength", "MomentumTransfer"]
+        )
 
         # Set field properties
         self.liteModeToggle.setEnabled(False)
         self.retainUnfocusedDataCheckbox.setEnabled(False)
         self.pixelMaskDropdown.setEnabled(False)
+        self.convertUnitsDropdown.setEnabled(False)
 
         # Add widgets to layout
         self.layout.addLayout(self.runNumberLayout)
@@ -52,6 +56,7 @@ class ReductionView(BackendRequestView):
         self.layout.addWidget(self.liteModeToggle)
         self.layout.addWidget(self.pixelMaskDropdown)
         self.layout.addWidget(self.retainUnfocusedDataCheckbox)
+        self.layout.addWidget(self.convertUnitsDropdown)
 
         # Connect buttons to methods
         self.enterRunNumberButton.clicked.connect(self.addRunNumber)
@@ -106,6 +111,9 @@ class ReductionView(BackendRequestView):
         # They dont need to select a pixel mask
         # if self.pixelMaskDropdown.currentIndex() < 0:
         #     raise ValueError("Please select a pixel mask.")
+        if self.retainUnfocusedDataCheckbox.isChecked():
+            if self.convertUnitsDropdown.currentIndex() < 0:
+                raise ValueError("Please select units to convert to")
         return True
 
     def getRunNumbers(self):

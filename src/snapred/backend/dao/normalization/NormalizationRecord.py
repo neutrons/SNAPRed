@@ -1,14 +1,15 @@
 from typing import Any, List
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import field_serializer, field_validator
 
-from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.indexing.Record import Record
+from snapred.backend.dao.indexing.Versioning import VERSION_DEFAULT, VersionedObject
 from snapred.backend.dao.Limit import Limit
-from snapred.meta.Config import Config
+from snapred.backend.dao.normalization.Normalization import Normalization
 from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
 
 
-class NormalizationRecord(BaseModel):
+class NormalizationRecord(Record, extra="ignore"):
     """
 
     This class is crucial for tracking the specifics of each normalization step, facilitating
@@ -18,25 +19,33 @@ class NormalizationRecord(BaseModel):
 
     """
 
-    runNumber: str
-    useLiteMode: bool
+    # inherits from Record
+    # - runNumber
+    # - useLiteMode
+    # - version
+    # override this to point at the correct daughter class
+    calculationParameters: Normalization
+
+    # specific to normalization records
     backgroundRunNumber: str
     smoothingParameter: float
     peakIntensityThreshold: float
     # detectorPeaks: List[DetectorPeak] # TODO: need to save this for reference during reduction
-    calibration: Calibration
     workspaceNames: List[WorkspaceName] = []
-    version: int = Config["instrument.startingVersionNumber"]
+    calibrationVersionUsed: int = VERSION_DEFAULT
     crystalDBounds: Limit[float]
 
-    @field_validator("runNumber", "backgroundRunNumber", mode="before")
+    # must also parse integers as background run numbers
+    @field_validator("backgroundRunNumber", mode="before")
     @classmethod
-    def validate_runNumber(cls, v: Any) -> Any:
-        if isinstance(v, int):
-            v = str(v)
-        return v
+    def validate_backgroundRunNumber(cls, v: Any) -> Any:
+        return cls.validate_runNumber(v)
 
-    model_config = ConfigDict(
-        # required in order to use 'WorkspaceName'
-        arbitrary_types_allowed=True,
-    )
+    @field_validator("calibrationVersionUsed", mode="before")
+    @classmethod
+    def version_is_integer(cls, v: Any) -> Any:
+        return VersionedObject.parseVersion(v)
+
+    @field_serializer("calibrationVersionUsed", when_used="json")
+    def write_user_defaults(self, value: Any):  # noqa ARG002
+        return VersionedObject.writeVersion(self.calibrationVersionUsed)

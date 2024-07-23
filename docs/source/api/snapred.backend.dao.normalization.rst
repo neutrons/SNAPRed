@@ -12,14 +12,6 @@ snapred.backend.dao.normalization.Normalization module
     :undoc-members:
     :show-inheritance:
 
-snapred.backend.dao.normalization.NormalizationIndexEntry module
-----------------------------------------------------------------
-
-.. automodule:: snapred.backend.dao.normalization.NormalizationIndexEntry
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 snapred.backend.dao.normalization.NormalizationRecord module
 ------------------------------------------------------------
 

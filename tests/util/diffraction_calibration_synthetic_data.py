@@ -32,6 +32,7 @@ from snapred.backend.dao.state.FocusGroup import FocusGroup
 from snapred.backend.dao.state.InstrumentState import InstrumentState
 from snapred.backend.dao.state.PixelGroup import PixelGroup
 from snapred.meta.Config import Resource
+from snapred.meta.redantic import parse_file_as
 from util.helpers import *
 
 Peak = namedtuple("Peak", "centre sigma height")
@@ -65,12 +66,12 @@ class SyntheticData(object):
             IPTS="",
         )
 
-        self.fakeInstrumentState = InstrumentState.parse_file(SyntheticData.fakeInstrumentStatePath)
+        self.fakeInstrumentState = parse_file_as(InstrumentState, SyntheticData.fakeInstrumentStatePath)
 
-        self.fakeFocusGroup = FocusGroup.parse_file(SyntheticData.fakeFocusGroupPath)
+        self.fakeFocusGroup = parse_file_as(FocusGroup, SyntheticData.fakeFocusGroupPath)
         self.fakeFocusGroup.definition = SyntheticData.fakeGroupingFilePath
 
-        self.fakePixelGroup = PixelGroup.parse_file(SyntheticData.fakePixelGroupPath)
+        self.fakePixelGroup = parse_file_as(PixelGroup, SyntheticData.fakePixelGroupPath)
 
         # Place all peaks within the _minimum_ d-space range of any pixel group.
         dMin = max(self.fakePixelGroup.dMin())
@@ -123,7 +124,7 @@ class SyntheticData(object):
 
     @staticmethod
     def fakeDetectorPeaks(scale: float = 1000.0) -> List[DetectorPeak]:
-        fakePixelGroup = PixelGroup.parse_file(SyntheticData.fakePixelGroupPath)
+        fakePixelGroup = parse_file_as(PixelGroup, SyntheticData.fakePixelGroupPath)
 
         # Place all peaks within the _minimum_ d-space range of any pixel group.
         dMin = max(fakePixelGroup.dMin())
