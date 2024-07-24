@@ -18,9 +18,8 @@ class ReductionWorkflow(WorkflowImplementer):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._reductionView = ReductionRequestView(parent=parent)
+        self._reductionView = ReductionRequestView(parent=parent, populatePixelMaskDropdown=self._populatePixelMaskDropdown)
         self.continueAnywayFlags = None
-        self._compatibleMasks: Dict[str, WorkspaceName] = {}
         self._compatibleMasks: Dict[str, WorkspaceName] = {}
 
         self._reductionView.enterRunNumberButton.clicked.connect(lambda: self._populatePixelMaskDropdown())
@@ -92,14 +91,6 @@ class ReductionWorkflow(WorkflowImplementer):
         self._reductionView.pixelMaskDropdown.setEnabled(True)
         self._reductionView.retainUnfocusedDataCheckbox.setEnabled(True)
         # self._reductionView.convertUnitsDropdown.setEnabled(True)
-
-    def _reconstructPixelMaskNames(self, pixelMasks: List[str]) -> List[WorkspaceName]:
-        return [self._compatibleMasks[name] for name in pixelMasks]
-
-    def _onPixelMaskSelection(self):
-        selectedKeys = self._reductionView.getPixelMasks()
-        selectedWorkspaceNames = self._reconstructPixelMaskNames(selectedKeys)
-        ReductionRequest.pixelMasks = selectedWorkspaceNames
 
     def _reconstructPixelMaskNames(self, pixelMasks: List[str]) -> List[WorkspaceName]:
         return [self._compatibleMasks[name] for name in pixelMasks]

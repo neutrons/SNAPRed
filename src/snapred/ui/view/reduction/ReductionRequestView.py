@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Callable
 
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
@@ -14,14 +14,12 @@ logger = snapredLogger.getLogger(__name__)
 class ReductionRequestView(BackendRequestView):
     signalRemoveRunNumber = Signal(int)
 
-    def __init__(self, pixelMasks=[], parent=None):
+    def __init__(self, parent=None, populatePixelMaskDropdown: Optional[Callable[[], None]] = None):
         super(ReductionRequestView, self).__init__(parent=parent)
 
         self.runNumbers = []
-        self.pixelMaskDropdown = self._multiSelectDropDown("Select Pixel Mask(s)", pixelMasks)
-
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
+        self.pixelMaskDropdown = self._multiSelectDropDown("Select Pixel Mask(s)", [])
+        self.populatePixelMaskDropdown = populatePixelMaskDropdown
 
         # Horizontal layout for run number input and button
         self.runNumberLayout = QHBoxLayout()
@@ -40,7 +38,7 @@ class ReductionRequestView(BackendRequestView):
         self.runNumberDisplay.setReadOnly(True)
 
         # Lite mode toggle, pixel masks dropdown, and retain unfocused data checkbox
-        self.liteModeToggle = self._labeledLineEdit("Lite Mode", Toggle(parent=self, state=True))
+        self.liteModeToggle = self._labeledField("Lite Mode", Toggle(parent=self, state=True))
         self.retainUnfocusedDataCheckbox = self._labeledCheckBox("Retain Unfocused Data")
         self.convertUnitsDropdown = self._sampleDropDown(
             "Convert Units", ["TOF", "dSpacing", "Wavelength", "MomentumTransfer"]
@@ -53,7 +51,7 @@ class ReductionRequestView(BackendRequestView):
         self.convertUnitsDropdown.setEnabled(False)
 
         # Add widgets to layout
-        self.layout.addLayout(self.runNumberLayout)
+        self.layout.addLayout(self.runNumberLayout, 0, 0)
         self.layout.addWidget(self.runNumberDisplay)
         self.layout.addWidget(self.liteModeToggle)
         self.layout.addWidget(self.pixelMaskDropdown)
@@ -75,6 +73,8 @@ class ReductionRequestView(BackendRequestView):
             self.runNumbers = list(noDuplicates)
             self.updateRunNumberList()
             self.runNumberInput.clear()
+            if self.populatePixelMaskDropdown:
+                self.populatePixelMaskDropdown()
 
     def parseInputRunNumbers(self) -> List[str]:
         # WARNING: run numbers are strings.
