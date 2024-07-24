@@ -1,4 +1,4 @@
-from typing import List, Optional, Callable
+from typing import Callable, List, Optional
 
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QHBoxLayout, QLineEdit, QPushButton, QTextEdit, QVBoxLayout
