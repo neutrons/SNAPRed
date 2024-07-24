@@ -10,7 +10,7 @@ from snapred.backend.dao.calibration.CalibrationRecord import CalibrationRecord
 from snapred.backend.dao.indexing.CalculationParameters import CalculationParameters
 from snapred.backend.dao.normalization.NormalizationRecord import NormalizationRecord
 from snapred.backend.dao.ObjectSHA import ObjectSHA
-from snapred.backend.dao.reduction import ReductionRecord
+from snapred.backend.dao.reduction.ReductionRecord import ReductionRecord
 from snapred.backend.dao.state import GroupingMap
 from snapred.backend.dao.state.DetectorState import DetectorState
 from snapred.backend.dao.state.InstrumentState import InstrumentState
@@ -21,6 +21,7 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config, Resource
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
+from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
 from snapred.meta.redantic import parse_file_as
 
 logger = snapredLogger.getLogger(__name__)
@@ -103,19 +104,19 @@ class WhateversInTheFridge(LocalDataService):
 
     ### REDUCTION METHODS ###
 
-    def readReductionRecord(self, runNumber: str, useLiteMode: bool, version: int):
-        wsname = mtd.unique_name(prefix=f"{runNumber}_{useLiteMode}_{version}_")
-        CreateSingleValuedWorkspace(OutputWorkspace=wsname)
+    def readReductionRecord(self, runNumber: str, useLiteMode: bool, timestamp: float):
+        wsName = (
+            wng.reductionOutput().unit(wng.Units.DSP).group("bank").runNumber(runNumber).timestamp(timestamp).build()
+        )
+        CreateSingleValuedWorkspace(OutputWorkspace=wsName)
         return ReductionRecord.model_construct(
             runNumber=runNumber,
-            runNumbers=[runNumber],
             useLiteMode=useLiteMode,
-            version=version,
-            workspaceNames=[wsname],
-            stateId="0xdeadbeef",
-            calibration=self.readCalibrationRecord(runNumber, useLiteMode, version),
-            normalization=self.readNormalizationRecord(runNumber, useLiteMode, version),
-            calculationParameters=self.calculationParameters_with_stateId("0xdeadbeef"),
+            timestamp=timestamp,
+            workspaceNames=[wsName],
+            stateId="0xdeadbeefdeadbeef",
+            calibration=self.readCalibrationRecord(runNumber, useLiteMode, 1),
+            normalization=self.readNormalizationRecord(runNumber, useLiteMode, 1),
         )
 
     ### READ / WRITE STATE METHODS ###

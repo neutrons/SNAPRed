@@ -1,5 +1,5 @@
 # ruff: noqa: E722, PT011, PT012
-
+import time
 import unittest
 
 import pytest
@@ -17,6 +17,9 @@ class TestGroceryListItem(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.runNumber = "555"
+        cls.useLiteMode = True
+        cls.version = 1
+        cls.timestamp = time.time()
         cls.IPTS = Resource.getPath("inputs")
 
         cls.instrumentFilename = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
@@ -58,6 +61,16 @@ class TestGroceryListItem(unittest.TestCase):
             )
         except:
             pytest.fail("Failed to make a valid GroceryListItem for grouping")
+        # make a reduction_pixel_mask item
+        try:
+            GroceryListItem(
+                workspaceType="reduction_pixel_mask",
+                runNumber=self.runNumber,
+                useLiteMode=True,
+                timestamp=self.timestamp,
+            )
+        except:
+            pytest.fail("Failed to make a valid GroceryListItem for 'reduction_pixel_mask'")
 
     def test_nexus_needs_runNumber(self):
         with pytest.raises(ValueError) as e:
@@ -125,6 +138,22 @@ class TestGroceryListItem(unittest.TestCase):
                 instrumentPropertySource="InstrumentDonor",
             )
             assert "if 'instrumentPropertySource' is specified then 'instrumentSource' must be specified" in e.msg()
+
+    def test_reduction_pixel_mask_needs_runNumber(self):
+        with pytest.raises(ValueError, match="requires a run number"):
+            GroceryListItem(
+                workspaceType="reduction_pixel_mask",
+                useLiteMode=True,
+                timestamp=self.timestamp,
+            )
+
+    def test_reduction_pixel_mask_needs_timestamp(self):
+        with pytest.raises(ValueError, match="requires a timestamp"):
+            GroceryListItem(
+                workspaceType="reduction_pixel_mask",
+                runNumber=self.runNumber,
+                useLiteMode=True,
+            )
 
     def test_builder(self):
         builder = GroceryListItem.builder()

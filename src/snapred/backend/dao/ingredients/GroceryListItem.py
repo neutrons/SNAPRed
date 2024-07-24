@@ -20,6 +20,7 @@ GroceryTypes = Literal[
     "diffcal_table",
     "diffcal_mask",
     "normalization",
+    "reduction_pixel_mask",
 ]
 
 grocery_types = list(get_args(GroceryTypes))
@@ -41,12 +42,18 @@ class GroceryListItem(BaseModel):
 
     # optional loader:
     # -- "" tells FetchGroceries to choose the loader
-    loader: Literal["", "LoadGroupingDefinition", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed"] = ""
+    loader: Literal[
+        "", "LoadGroupingDefinition", "LoadCalibrationWorkspaces", "LoadNexus", "LoadEventNexus", "LoadNexusProcessed"
+    ] = ""
+
+    # optional: Mantid-workspace number tag (only output if != 1)
+    numberTag: Optional[int] = None
 
     # the correct combination of the below must be set -- neutron and grouping require a runNumber,
     #   grouping additionally requires a groupingScheme
     runNumber: Optional[str] = None
     version: Optional[int] = None
+    timestamp: Optional[float] = None
     groupingScheme: Optional[str] = None
 
     unit: Optional[KnownUnits] = None
@@ -131,14 +138,14 @@ class GroceryListItem(BaseModel):
                     if v.get("instrumentPropertySource") is not None:
                         raise ValueError("Loading diffcal-output data should not specify an instrument")
                     if v.get("useLiteMode") is None:
-                        raise ValueError("Loading diffcal output requires resolution (lite/native)")
+                        raise ValueError("Loading diffcal output requires specifying resolution (lite/native)")
                     if v.get("version") is None:
                         raise ValueError("diffcal output can only be loaded with a version number")
                 case "diffcal_table" | "diffcal_mask":
                     if v.get("runNumber") is None:
                         raise ValueError(f"diffraction-calibration {v['workspaceType']} requires a run number")
                     if v.get("useLiteMode") is None:
-                        raise ValueError("Loading diffcal table requires resolution (lite/native)")
+                        raise ValueError("Loading diffcal table requires specifying resolution (lite/native)")
                     if v.get("version") is None:
                         raise ValueError("diffcal tables can only be loaded with a version number")
                 case "normalization":
@@ -146,6 +153,13 @@ class GroceryListItem(BaseModel):
                         raise ValueError(f"normalization {v['workspaceType']} requires run number")
                     if v.get("version") is None:
                         raise ValueError("normalization output can only be loaded with a version number")
+                case "reduction_pixel_mask":
+                    if v.get("runNumber") is None:
+                        raise ValueError(f"reduction {v['workspaceType']} requires a run number")
+                    if v.get("useLiteMode") is None:
+                        raise ValueError("reduction {v['workspaceType']} requires specifying resolution (lite/native)")
+                    if v.get("timestamp") is None:
+                        raise ValueError(f"reduction {v['workspaceType']} requires a timestamp")
                 case _:
                     raise ValueError(f"unrecognized 'workspaceType': '{v['workspaceType']}'")
         return v

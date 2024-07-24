@@ -1,9 +1,11 @@
 # ruff: noqa: E402, ARG002
 import json
 import tempfile
+import time
 import unittest
 import unittest.mock as mock
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 from unittest.mock import MagicMock, patch
@@ -19,6 +21,10 @@ from mantid.simpleapi import (
     mtd,
 )
 from snapred.backend.dao.calibration.Calibration import Calibration
+from snapred.backend.dao.ingredients import CalibrationMetricsWorkspaceIngredients
+from snapred.backend.dao.request.CalibrationExportRequest import CalibrationExportRequest
+from snapred.backend.dao.request.CreateCalibrationRecordRequest import CreateCalibrationRecordRequest
+from snapred.backend.dao.request.CreateIndexEntryRequest import CreateIndexEntryRequest
 from snapred.backend.dao.request.InitializeStateRequest import InitializeStateRequest
 from snapred.backend.dao.RunConfig import RunConfig
 from snapred.backend.dao.StateConfig import StateConfig
@@ -91,7 +97,11 @@ with mock.patch.dict(
         calibrationService.dataExportService.exportCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.createCalibrationIndexEntry = mock.Mock()
         calibrationService.dataFactoryService.createCalibrationRecord = mock.Mock(
-            return_value=mock.Mock(workspaces=workspaces)
+            return_value=mock.Mock(
+                runNumber="012345",
+                focusGroupCalibrationMetrics=mock.Mock(focusGroupName="group"),
+                workspaces=workspaces,
+            )
         )
         calibrationService.save(mock.Mock())
         assert calibrationService.dataExportService.exportCalibrationRecord.called
@@ -122,6 +132,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def setUpClass(cls):
         cls.runNumber = "555"
         cls.version = "1"
+        cls.timestamp = time.time()
 
         cls.SNAPInstrumentFilePath = Config["instrument"]["native"]["definition"]["file"]
         cls.instrumentFilePath = Resource.getPath("inputs/testInstrument/fakeSNAP_Definition.xml")
@@ -165,7 +176,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             OutputWorkspace=cls.sampleDiagnosticWS,
         )
         createCompatibleDiffCalTable(cls.sampleTableWS, cls.sampleWS)
-        createCompatibleMask(cls.sampleMaskWS, cls.sampleWS, cls.instrumentFilePath)
+        createCompatibleMask(cls.sampleMaskWS, cls.sampleWS)
 
         # cleanup at per-test teardown
         cls.excludeAtTeardown = [cls.sampleWS, cls.sampleTableWS, cls.sampleMaskWS, cls.sampleDiagnosticWS, ws]
@@ -272,7 +283,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             calibrationRecord=CalibrationRecord.model_validate_json(
                 Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
             ),
-            timestamp="123",
+            timestamp=123.123,
         ),
     )
     def test_assessQuality(
@@ -332,23 +343,25 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Assert expected calibration metric workspaces have been generated
         for metric in ["sigma", "strain"]:
-            wsName = wng.diffCalTimedMetric().runNumber("57514").timestamp("123").metricName(metric).build()
+            wsName = wng.diffCalTimedMetric().runNumber("57514").timestamp(123.123).metricName(metric).build()
             assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 
     def test_save_respects_version(self):
         record = parse_file_as(CalibrationRecord, Resource.getPath("inputs/calibration/CalibrationRecord_v0001.json"))
-        record.calculationParameters.creationDate = "0"
+        record.calculationParameters.creationDate = datetime.today()
         record.workspaces = {
-            "diffCalOutput": ["_dsp_diffoc_057514"],
-            "diffCalDiagnostic": ["_diagnostic_diffoc_057514"],
-            "diffCalTable": ["_diffract_consts_057514"],
-            "diffCalMask": ["_diffract_consts_mask_057514"],
+            wngt.DIFFCAL_OUTPUT: ["_dsp_diffoc_057514"],
+            wngt.DIFFCAL_DIAG: ["_diagnostic_diffoc_057514"],
+            wngt.DIFFCAL_TABLE: ["_diffract_consts_057514"],
+            wngt.DIFFCAL_MASK: ["_diffract_consts_mask_057514"],
         }
-        CloneWorkspace(InputWorkspace=self.sampleWS, OutputWorkspace=record.workspaces["diffCalOutput"][0])
-        CloneWorkspace(InputWorkspace=self.sampleWS, OutputWorkspace=record.workspaces["diffCalDiagnostic"][0])
-        CloneWorkspace(InputWorkspace=self.sampleTableWS, Outputworkspace=record.workspaces["diffCalTable"][0])
-        CloneWorkspace(InputWorkspace=self.sampleMaskWS, OutputWorkspace=record.workspaces["diffCalMask"][0])
+        CloneWorkspace(InputWorkspace=self.sampleWS, OutputWorkspace=record.workspaces[wngt.DIFFCAL_OUTPUT][0])
+        CloneWorkspace(InputWorkspace=self.sampleWS, OutputWorkspace=record.workspaces[wngt.DIFFCAL_DIAG][0])
+        CloneWorkspace(InputWorkspace=self.sampleTableWS, Outputworkspace=record.workspaces[wngt.DIFFCAL_TABLE][0])
+        CloneWorkspace(InputWorkspace=self.sampleMaskWS, OutputWorkspace=record.workspaces[wngt.DIFFCAL_MASK][0])
         version = record.version
+        """
+        # This form additionally tests usage of `@FromString`, which should probably be deprecated.
         request = {
             "createIndexEntryRequest": {
                 "runNumber": record.runNumber,
@@ -357,12 +370,26 @@ class TestCalibrationServiceMethods(unittest.TestCase):
                 "appliesTo": f">={record.runNumber}",
                 "author": "",
                 "comments": "",
-                "timestamp": 0,
+                "timestamp": time.time(),
             },
             "createRecordRequest": record.model_dump(),
         }
+        """
+        request = CalibrationExportRequest(
+            createIndexEntryRequest=CreateIndexEntryRequest(
+                runNumber=record.runNumber,
+                useLiteMode=record.useLiteMode,
+                version=record.version,
+                appliesTo=f">={record.runNumber}",
+                author="",
+                comments="",
+                timestamp=time.time(),
+            ),
+            createRecordRequest=CreateCalibrationRecordRequest(**record.model_dump()),
+        )
         with state_root_redirect(self.localDataService) as tmpRoot:
-            self.instance.save(json.dumps(request))
+            pass
+            self.instance.save(request)
             savedRecord = parse_file_as(
                 CalibrationRecord, tmpRoot.path() / "lite/diffraction/v_0001/CalibrationRecord.json"
             )
@@ -384,19 +411,26 @@ class TestCalibrationServiceMethods(unittest.TestCase):
             assert str(mockRequest.runId) in str(excinfo.value)
             assert str(mockRequest.version) in str(excinfo.value)
 
-    @patch(thisService + "CalibrationMetricsWorkspaceIngredients", return_value=MagicMock())
+    @patch(thisService + "CalibrationMetricsWorkspaceIngredients")
     def test_load_quality_assessment_no_calibration_metrics_exception(
         self,
         mockCalibrationMetricsWorkspaceIngredients,
     ):
-        mockRequest = MagicMock(runId=self.runNumber, version=self.version, checkExistent=False)
-        calibRecord = CalibrationRecord.model_validate_json(
+        mockRequest = mock.Mock(runId=self.runNumber, version=self.version, checkExistent=False)
+        calibrationRecord = CalibrationRecord.model_validate_json(
             Resource.read("inputs/calibration/CalibrationRecord_v0001.json")
         )
-        self.instance.dataFactoryService.getCalibrationRecord = MagicMock(return_value=calibRecord)
-        with pytest.raises(Exception) as excinfo:  # noqa: PT011
+
+        # Clear the input metrics list
+        calibrationRecord.focusGroupCalibrationMetrics.calibrationMetric = []
+        mockCalibrationMetricsWorkspaceIngredients.return_value = mock.Mock(
+            spec=CalibrationMetricsWorkspaceIngredients,
+            calibrationRecord=calibrationRecord,
+            timestamp=self.timestamp,
+        )
+        self.instance.dataFactoryService.getCalibrationRecord = mock.Mock(return_value=calibrationRecord)
+        with pytest.raises(Exception, match=r".*input table is empty.*"):
             self.instance.loadQualityAssessment(mockRequest)
-        assert "The input table is empty" in str(excinfo.value)
 
     def test_load_quality_assessment_check_existent_metrics(self):
         path = Resource.getPath("outputs")
@@ -516,7 +550,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Call the method to test. Use a mocked run and a mocked version
         mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
-        with pytest.raises(RuntimeError, match=r"without a units token in its name"):
+        with pytest.raises(RuntimeError, match=r".*without a units token in its name.*"):
             self.instance.loadQualityAssessment(mockRequest)
 
     def test_load_quality_assessment_dsp_and_diag(self):
@@ -555,7 +589,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         # Call the method to test. Use a mocked run and a mocked version
         mockRequest = MagicMock(runId=calibRecord.runNumber, version=calibRecord.version, checkExistent=False)
-        with pytest.raises(RuntimeError, match=r"not implemented: unable to load unexpected"):
+        with pytest.raises(RuntimeError, match=r".*not implemented: unable to load unexpected.*"):
             self.instance.loadQualityAssessment(mockRequest)
 
     @patch(thisService + "FarmFreshIngredients", spec_set=FarmFreshIngredients)
@@ -581,7 +615,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         self.instance.groceryService.fetchGroceryDict = mock.Mock(return_value={"grocery1": "orange"})
 
         # Call the method with the provided parameters
-        request = mock.Mock()
+        request = mock.Mock(runNumber="12345", focusGroup=mock.Mock(name="group1"))
         res = self.instance.fetchDiffractionCalibrationGroceries(request)
 
         # Perform assertions to check the result and method calls
@@ -634,7 +668,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
 
         FocusSpectraRecipe().executeRecipe.return_value = mock.Mock()
 
-        request = mock.Mock()
+        request = mock.Mock(runNumber="12345", focusGroup=mock.Mock(name="group1"))
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
 
@@ -671,7 +705,7 @@ class TestCalibrationServiceMethods(unittest.TestCase):
     def test_focusSpectra_exists(self, FocusSpectraRecipe, FarmFreshIngredients):
         self.instance.sousChef = SculleryBoy()
 
-        request = mock.Mock()
+        request = mock.Mock(runNumber="12345", focusGroup=mock.Mock(name="group1"))
         self.instance.groceryClerk = mock.Mock()
         self.instance.groceryService.fetchGroupingDefinition = mock.Mock(return_value={"workspace": "orange"})
 

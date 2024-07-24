@@ -1,4 +1,3 @@
-import time
 from pathlib import Path
 
 from snapred.backend.dao import Limit
@@ -80,7 +79,7 @@ class NormalizationService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroup,
+            focusGroups=[request.focusGroup],
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             crystalDBounds=request.crystalDBounds,
@@ -158,7 +157,7 @@ class NormalizationService(Service):
     def normalizationAssessment(self, request: NormalizationRequest):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
-            focusGroup=request.focusGroup,
+            focusGroups=[request.focusGroup],
             useLiteMode=request.useLiteMode,
             calibrantSamplePath=request.calibrantSamplePath,
             fwhmMultipliers=request.fwhmMultipliers,
@@ -207,7 +206,7 @@ class NormalizationService(Service):
         if entry.appliesTo is None:
             entry.appliesTo = ">=" + entry.runNumber
         if entry.timestamp is None:
-            entry.timestamp = int(round(time.time() * 1000))
+            entry.timestamp = self.dataExportService.getUniqueTimestamp()
         logger.info(f"Saving normalization index entry for Run Number {entry.runNumber}")
         self.dataExportService.exportNormalizationIndexEntry(entry)
 
@@ -216,7 +215,7 @@ class NormalizationService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroup,
+            focusGroups=[request.focusGroup],
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),
@@ -233,7 +232,7 @@ class NormalizationService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroup,
+            focusGroups=[request.focusGroup],
         )
         ingredients = self.sousChef.prepPixelGroup(farmFresh)
         return FocusSpectraRecipe().executeRecipe(
@@ -249,7 +248,7 @@ class NormalizationService(Service):
         farmFresh = FarmFreshIngredients(
             runNumber=request.runNumber,
             useLiteMode=request.useLiteMode,
-            focusGroup=request.focusGroup,
+            focusGroups=[request.focusGroup],
             cifPath=cifPath,
             calibrantSamplePath=request.calibrantSamplePath,
             crystalDBounds=Limit(minimum=request.crystalDMin, maximum=request.crystalDMax),

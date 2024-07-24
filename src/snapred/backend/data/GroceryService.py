@@ -4,7 +4,13 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from mantid.simpleapi import mtd
+import numpy as np
+from mantid.dataobjects import MaskWorkspace
+from mantid.simpleapi import (
+    CreateWorkspace,
+    ExtractMask,
+    mtd,
+)
 from pydantic import validate_call
 
 from snapred.backend.dao.ingredients import GroceryListItem
@@ -16,8 +22,13 @@ from snapred.backend.recipe.FetchGroceriesRecipe import FetchGroceriesRecipe
 from snapred.backend.service.WorkspaceMetadataService import WorkspaceMetadataService
 from snapred.meta.Config import Config
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import NameBuilder, WorkspaceName
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    NameBuilder,
+    WorkspaceName,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceNameGenerator as wng,
+)
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -227,6 +238,13 @@ class GroceryService:
             )
         )
 
+    @validate_call
+    def _createReductionPixelMaskWorkspaceFilename(self, runNumber: str, useLiteMode: bool, timestamp: float) -> str:
+        return str(
+            Path(self._getReductionDataPath(runNumber, useLiteMode, timestamp))
+            / (self._createReductionPixelMaskWorkspaceName(runNumber, useLiteMode, timestamp) + ".h5")
+        )
+
     ## WORKSPACE NAME METHODS
 
     def _createNeutronWorkspaceNameBuilder(self, runNumber: str, useLiteMode: bool) -> NameBuilder:
@@ -289,6 +307,14 @@ class GroceryService:
         version: Optional[int],
     ) -> WorkspaceName:
         return wng.rawVanadium().runNumber(runNumber).version(version).build()
+
+    def _createReductionPixelMaskWorkspaceName(
+        self,
+        runNumber: str,
+        useLiteMode: bool,  # noqa: ARG002
+        timestamp: Optional[float],
+    ) -> WorkspaceName:
+        return wng.reductionPixelMask().runNumber(runNumber).timestamp(timestamp).build()
 
     ## ACCESSING WORKSPACES
     """
@@ -478,27 +504,63 @@ class GroceryService:
         :param wsName: the workspace with the instrument to be updated
         :type wsName: WorkspaceName
         :param detectorState: the detector state which contains the mutable parameters to be applied
-        :type detectorSttate: DetectorState
+        :type detectorState: DetectorState
         """
-        # Moved from `PixelGroupingParametersCalculationAlgorithm` for more general application here.
 
-        # Add sample logs with detector "arc" and "lin" parameters to the workspace
-        # NOTE after adding the logs, it is necessary to update the instrument to
-        #  factor in these new parameters, or else calculations will be inconsistent.
-        #  This is done with a call to `ws->populateInstrumentParameters()` from within mantid.
-        #  This call only needs to happen with the last log
-        logsAdded = 0
-        for paramName in ("arc", "lin"):
-            for index in range(2):
-                self.mantidSnapper.AddSampleLog(
-                    f"Updating parameter {paramName}{str(index + 1)}",
-                    Workspace=wsName,
-                    LogName=f"det_{paramName}{str(index + 1)}",
-                    LogText=str(getattr(detectorState, paramName)[index]),
-                    LogType="Number Series",
-                    UpdateInstrumentParameters=(logsAdded >= 3),
-                )
-                logsAdded += 1
+        # Add _ALL_ of the sample logs required to determine the instrument state:
+        #
+        #   * these logs include `det_arc..` and `det_lin..` parameters, which determine
+        #   the instrument position, as well as the logs for <wavelength>, <frequency>
+        #   and <guide state>.
+        #
+        #   * NOTE: after adding the logs, it is necessary to update the instrument to
+        #   factor in these new parameters, or else calculations will be inconsistent.
+        #   This is done with a call to `ws->populateInstrumentParameters()` from within mantid.
+        #   This call only needs to happen with the last log
+
+        logNames = [
+            "det_arc1",
+            "det_arc2",
+            "BL3:Chop:Skf1:WavelengthUserReq",
+            "BL3:Det:TH:BL:Frequency",
+            "BL3:Mot:OpticsPos:Pos",
+            "det_lin1",
+            "det_lin2",
+        ]
+        logTypes = [
+            "Number Series",
+            "Number Series",
+            "Number Series",
+            "Number Series",
+            "Number Series",
+            "Number Series",
+            "Number Series",
+        ]
+        logValues = [
+            str(detectorState.arc[0]),
+            str(detectorState.arc[1]),
+            str(detectorState.wav),
+            str(detectorState.freq),
+            str(detectorState.guideStat),
+            str(detectorState.lin[0]),
+            str(detectorState.lin[1]),
+        ]
+        self.mantidSnapper.AddSampleLogMultiple(
+            f"Updating instrument parameters for {wsName}",
+            Workspace=wsName,
+            LogNames=logNames[:-1],
+            LogValues=logValues[:-1],
+            LogTypes=logTypes[:-1],
+            ParseType=False,
+        )
+        self.mantidSnapper.AddSampleLog(
+            "...",
+            Workspace=wsName,
+            LogName=logNames[-1],
+            logText=logValues[-1],
+            logType=logTypes[-1],
+            UpdateInstrumentParameters=True,
+        )
         self.mantidSnapper.executeQueue()
 
     def _getDetectorState(self, runNumber: str) -> DetectorState:
@@ -509,8 +571,6 @@ class GroceryService:
         :type runNumber: str
         :return: detector state object corresponding to the run number
         :rtype: DetectorState
-
-
         """
         # This method is provided to facilitate workspace loading with a _complete_ instrument state
         return self.dataService.readDetectorState(runNumber)
@@ -538,6 +598,18 @@ class GroceryService:
         :type version: int
         """
         return self.dataService.normalizationIndexer(runNumber, useLiteMode).versionPath(version)
+
+    @validate_call
+    def _getReductionDataPath(self, runNumber: str, useLiteMode: bool, timestamp: float) -> str:
+        """
+        Get a path to the directory with the reduction data
+
+        :param runNumber: a run number, whose state will be looked up
+        :type runNumber: str
+        :param timestamp: the reduction timestamp to use in the lookup
+        :type timestamp: float
+        """
+        return self.dataService._constructReductionDataPath(runNumber, useLiteMode, timestamp)
 
     def fetchWorkspace(self, filePath: str, name: WorkspaceName, loader: str = "") -> Dict[str, Any]:
         """
@@ -811,9 +883,9 @@ class GroceryService:
         else:
             raise RuntimeError(f"Could not create a default diffcal file for run {runNumber}")
 
-    def fetchNormalizationWorkspaces(self, item: GroceryListItem) -> Dict[str, Any]:
+    def fetchNormalizationWorkspace(self, item: GroceryListItem) -> Dict[str, Any]:
         """
-        Fetch normalization workspaces
+        Fetch normalization workspace
 
         :param item: a GroceryListItem corresponding to the normalization workspaces
         :type item: GroceryListItem
@@ -839,22 +911,100 @@ class GroceryService:
         else:
             filename = self._createNormalizationWorkspaceFilename(runNumber, useLiteMode, version)
 
-            # Unless overridden: use a cached workspace as the instrument donor.
-            instrumentPropertySource, instrumentSource = (
-                ("InstrumentDonor", self._fetchInstrumentDonor(runNumber, useLiteMode))
-                if not item.instrumentPropertySource
-                else (item.instrumentPropertySource, item.instrumentSource)
-            )
+            # Note: 'LoadNexusProcessed' neither requires nor makes use of an instrument donor.
             data = self.grocer.executeRecipe(
                 filename=filename,
                 workspace=workspaceName,
                 loader="LoadNexusProcessed",
-                instrumentPropertySource=instrumentPropertySource,
-                instrumentSource=instrumentSource,
             )
             data["workspace"] = workspaceName
 
         return data
+
+    def fetchReductionPixelMask(self, item: GroceryListItem) -> Dict[str, Any]:
+        """
+        Fetch a reduction pixel mask
+
+        :param item: a GroceryListItem corresponding to the pixel mask workspace
+        :type item: GroceryListItem
+        :return: a dictionary with
+
+            - "result", true if everything ran correctly
+            - "loader", either "LoadCalibrationWorkspaces" or "cached"
+            - "workspace", the name of the new workspace in the ADS;
+
+        :rtype: Dict[str, Any]
+        """
+        maskWorkspaceName = self._createReductionPixelMaskWorkspaceName(
+            item.runNumber, item.useLiteMode, item.timestamp
+        )
+        if self.workspaceDoesExist(maskWorkspaceName):
+            data = {
+                "result": True,
+                "loader": "cached",
+                "workspace": maskWorkspaceName,
+            }
+        else:
+            filename = self._createReductionPixelMaskWorkspaceFilename(item.runNumber, item.useLiteMode, item.timestamp)
+
+            # Unless overridden: use a cached workspace as the instrument donor.
+            instrumentPropertySource, instrumentSource = (
+                ("InstrumentDonor", self._fetchInstrumentDonor(item.runNumber, item.useLiteMode))
+                if not item.instrumentPropertySource
+                else (item.instrumentPropertySource, item.instrumentSource)
+            )
+
+            # For now, reduction pixel masks share the "LoadCalibrationWorkspaces" loader
+            data = self.grocer.executeRecipe(
+                filename=filename,
+                workspace=maskWorkspaceName,
+                loader="LoadCalibrationWorkspaces",
+                instrumentPropertySource=instrumentPropertySource,
+                instrumentSource=instrumentSource,
+                loaderArgs=json.dumps({"MaskWorkspace": maskWorkspaceName}),
+            )
+
+        return data
+
+    # @validate_call # For the moment, `@validate_call` is not supported with `WorkspaceName`.
+    def fetchCompatiblePixelMask(self, maskWSName: WorkspaceName, runNumber: str, useLiteMode: bool) -> WorkspaceName:
+        # Fetch a blank mask workspace compatible with the specified <run number> and <lite mode>
+
+        templateWSName = self._fetchInstrumentDonor(runNumber, useLiteMode)
+
+        ### The following code _duplicates_ that found in        ###
+        ###     `tests/util/helpers.py`::`createCompatibleMask`: ###
+
+        # Number of non-monitor pixels
+        pixelCount = mtd[templateWSName].getInstrument().getNumberDetectors(True)
+
+        mask = CreateWorkspace(
+            OutputWorkspace=maskWSName,
+            NSpec=pixelCount,
+            DataX=list(np.zeros((pixelCount,))),
+            DataY=list(np.zeros((pixelCount,))),
+            ParentWorkspace=templateWSName,
+        )
+
+        # Rebuild the spectra map "by hand" to exclude detectors which are monitors.
+        info = mask.detectorInfo()
+        ids = info.detectorIDs()
+
+        # Warning: <detector info>.indexOf(id_) != <workspace index of detectors excluding monitors>
+        wi = 0
+        for id_ in ids:
+            if info.isMonitor(info.indexOf(int(id_))):
+                continue
+            s = mask.getSpectrum(wi)
+            s.setSpectrumNo(wi)
+            s.setDetectorID(int(id_))
+            wi += 1
+
+        # Convert workspace to a MaskWorkspace instance.
+        ExtractMask(OutputWorkspace=maskWSName, InputWorkspace=maskWSName)
+        assert isinstance(mtd[maskWSName], MaskWorkspace)
+
+        return maskWSName
 
     def fetchGroceryList(self, groceryList: List[GroceryListItem]) -> List[WorkspaceName]:
         """
@@ -901,18 +1051,26 @@ class GroceryService:
                     record = indexer.readRecord(item.version)
                     if record is not None:
                         item.runNumber = record.runNumber
+
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
                     # to that of the table workspace.  Because of possible confusion with
-                    # the behavior of mask workspace, the workspace name is manually set here.
+                    # the behavior of the mask workspace, the workspace name is overridden here.
                     tableWorkspaceName = self._createDiffcalTableWorkspaceName(
                         item.runNumber, item.useLiteMode, item.version
                     )
                     res = self.fetchCalibrationWorkspaces(item)
                     res["workspace"] = tableWorkspaceName
                 case "diffcal_mask":
+                    indexer = self.dataService.calibrationIndexer(item.runNumber, item.useLiteMode)
+                    if not isinstance(item.version, int):
+                        item.version = indexer.latestApplicableVersion(item.runNumber)
+                    record = indexer.readRecord(item.version)
+                    if record is not None:
+                        item.runNumber = record.runNumber
+
                     # NOTE: fetchCalibrationWorkspaces will set the workspace name
-                    # to that of the table workspace, not the mask.  This must be
-                    # manually overwritten with correct workspace name.
+                    # to that of the table workspace, not the mask.  This name is
+                    # overridden here.
                     maskWorkspaceName = self._createDiffcalMaskWorkspaceName(
                         item.runNumber, item.useLiteMode, item.version
                     )
@@ -932,7 +1090,12 @@ class GroceryService:
                     if record is not None:
                         item.runNumber = record.runNumber
                     logger.info(f"Fetching normalization workspace for run {item.runNumber}, version {item.version}")
-                    res = self.fetchNormalizationWorkspaces(item)
+                    res = self.fetchNormalizationWorkspace(item)
+                case "reduction_pixel_mask":
+                    maskWorkspaceName = self._createReductionPixelMaskWorkspaceName(  # noqa: F841
+                        item.runNumber, item.useLiteMode, item.timestamp
+                    )
+                    res = self.fetchReductionPixelMask(item)
                 case _:
                     raise RuntimeError(f"unrecognized 'workspaceType': '{item.workspaceType}'")
             # check that the fetch operation succeeded and if so append the workspace

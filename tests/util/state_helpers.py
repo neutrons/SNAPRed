@@ -82,7 +82,7 @@ class state_root_redirect:
             self.tmppath = self.tmppath / Path(self.stateId)
         else:
             self.stateId = str(self.tmppath.parts[-1])
-        self.dataService._generateStateId = lambda *x, **y: (self.stateId, "gibberish")  # noqa ARG005
+        self.dataService._generateStateId = lambda *x, **y: (self.stateId, None)  # noqa ARG005
         self.dataService._constructCalibrationStateRoot = lambda *x, **y: self.tmppath  # noqa ARG005
         return self
 
@@ -106,11 +106,11 @@ class state_root_redirect:
 class reduction_root_redirect:
     """
     This context manager will create a temporary directory and patch a LocalDataService so that its
-    state root directory points inside the temporary directory.  Files can be easily added to the
+    reduction state root directory points inside the temporary directory.  Files can be easily added to the
     directory using `addFileAs`.  Usage is
 
     ```
-    with state_root_redirect(instance.dataService) as tmpRoot:
+    with reduction_root_redirect(instance.dataService) as tmpRoot:
         <code here>
         tmpRoot.addFileAs(some_file, target_in_tmp_root)
         <more code here>
@@ -130,7 +130,7 @@ class reduction_root_redirect:
             self.tmppath = self.tmppath / Path(self.stateId)
         else:
             self.stateId = str(self.tmppath.parts[-1])
-        self.dataService._generateStateId = lambda *x, **y: (self.stateId, "gibberish")  # noqa ARG005
+        self.dataService._generateStateId = lambda *x, **y: (self.stateId, None)  # noqa ARG005
         self.dataService._constructReductionStateRoot = lambda *x, **y: self.tmppath  # noqa ARG005
         return self
 

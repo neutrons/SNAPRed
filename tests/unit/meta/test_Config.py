@@ -20,6 +20,11 @@ def test_find_root_dir_test_env():
     assert _find_root_dir().endswith("/tests")
 
 
+def test_version_default():
+    # Test that Config["version.default"] is implicitely set
+    assert isinstance(Config["version.default"], int)
+
+
 @mock.patch.dict(os.environ, values={"env": "dev"}, clear=True)
 def test_find_root_dir_non_test_env():
     # Test that a non-test environment's `MODULE_ROOT` is set to the SNAPRed module directory
@@ -37,7 +42,7 @@ def test_find_root_dir_special_test_env():
 @mock.patch.dict(sys.modules, clear=True)
 def test_find_root_dir_failure():
     # Test that not being able to define the `MODULE_ROOT` raises an exception.
-    with pytest.raises(Exception, match="Unable to determine root directory"):
+    with pytest.raises(Exception, match="Unable to determine SNAPRed-module root directory"):
         _find_root_dir()
 
 

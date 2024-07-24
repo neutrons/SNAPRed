@@ -2,12 +2,15 @@ import datetime
 import glob
 import json
 import os
+import re
+import time
 from errno import ENOENT as NOT_FOUND
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import h5py
+from mantid.dataobjects import MaskWorkspace
 from mantid.kernel import PhysicalConstants
 from mantid.simpleapi import GetIPTS, mtd
 from pydantic import validate_call
@@ -48,11 +51,19 @@ from snapred.backend.recipe.algorithm.MantidSnapper import MantidSnapper
 from snapred.meta.Config import Config
 from snapred.meta.decorators.ExceptionHandler import ExceptionHandler
 from snapred.meta.decorators.Singleton import Singleton
-from snapred.meta.mantid.WorkspaceNameGenerator import ValueFormatter as wnvf
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceName
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceNameGenerator as wng
-from snapred.meta.mantid.WorkspaceNameGenerator import WorkspaceType as wngt
-from snapred.meta.redantic import parse_file_as, write_model_pretty
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    ValueFormatter as wnvf,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceName,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceNameGenerator as wng,
+)
+from snapred.meta.mantid.WorkspaceNameGenerator import (
+    WorkspaceType as wngt,
+)
+from snapred.meta.redantic import write_model_pretty
 
 logger = snapredLogger.getLogger(__name__)
 
@@ -73,6 +84,7 @@ class LocalDataService:
     verifyPaths: bool = True
 
     # conversion factor from microsecond/Angstrom to meters
+    # (TODO: FIX THIS COMMENT! Obviously `m2cm` doesn't convert from 1.0 / Angstrom to 1.0 / meters.)
     CONVERSION_FACTOR = Config["constants.m2cm"] * PhysicalConstants.h / PhysicalConstants.NeutronMass
 
     def __init__(self) -> None:
@@ -149,6 +161,29 @@ class LocalDataService:
             stateId=diffCalibration.instrumentState.id,
         )
 
+    @staticmethod
+    def getUniqueTimestamp() -> float:
+        """
+        Generate a unique timestamp:
+
+        * on some operating systems `time.time()` only has resolution to seconds;
+
+        * this method checks its own most-recently returned value, and if necessary,
+          increments it.
+
+        * the complete `float` representation of the unix timestamp is retained,
+          in order to allow arbitrary formatting.
+
+        """
+        _previousTimestamp = getattr(LocalDataService.getUniqueTimestamp, "_previousTimestamp", None)
+        nextTimestamp = time.time()
+        if _previousTimestamp is not None:
+            # compare as `time.struct_time`
+            if nextTimestamp < _previousTimestamp or time.gmtime(nextTimestamp) == time.gmtime(_previousTimestamp):
+                nextTimestamp = _previousTimestamp + 1.0
+        LocalDataService.getUniqueTimestamp._previousTimestamp = nextTimestamp
+        return nextTimestamp
+
     @lru_cache
     def getIPTS(self, runNumber: str, instrumentName: str = Config["instrument.name"]) -> str:
         ipts = GetIPTS(runNumber, instrumentName)
@@ -198,6 +233,10 @@ class LocalDataService:
     @ExceptionHandler(StateValidationException)
     def _generateStateId(self, runId: str) -> Tuple[str, str]:
         detectorState = self.readDetectorState(runId)
+        SHA = self._stateIdFromDetectorState(detectorState)
+        return SHA.hex, SHA.decodedKey
+
+    def _stateIdFromDetectorState(self, detectorState: DetectorState) -> ObjectSHA:
         stateID = StateId(
             vdet_arc1=detectorState.arc[0],
             vdet_arc2=detectorState.arc[1],
@@ -209,8 +248,11 @@ class LocalDataService:
             # det_lin1=detectorState.lin[0],
             # det_lin2=detectorState.lin[1],
         )
-        SHA = ObjectSHA.fromObject(stateID)
+        return ObjectSHA.fromObject(stateID)
 
+    def stateIdFromWorkspace(self, wsName: WorkspaceName) -> Tuple[str, str]:
+        detectorState = self.detectorStateFromWorkspace(wsName)
+        SHA = self._stateIdFromDetectorState(detectorState)
         return SHA.hex, SHA.decodedKey
 
     def _findMatchingFileList(self, pattern, throws=True) -> List[str]:
@@ -227,6 +269,10 @@ class LocalDataService:
         return fileList
 
     ##### PATH METHODS #####
+
+    def _appendTimestamp(self, root: Path, timestamp: float) -> Path:
+        # Append a timestamp directory to a data path
+        return root / wnvf.pathTimestamp(timestamp)
 
     def _constructCalibrationStateRoot(self, stateId) -> Path:
         return Path(Config["instrument.calibration.powder.home"], str(stateId))
@@ -251,26 +297,74 @@ class LocalDataService:
 
     @validate_call
     def _constructReductionDataRoot(self, runNumber: str, useLiteMode: bool) -> Path:
-        reductionStateRoot = self._constructReductionStateRoot(runNumber)
         mode = "lite" if useLiteMode else "native"
-        return reductionStateRoot / mode / runNumber
+        return self._constructReductionStateRoot(runNumber) / mode / runNumber
 
     @validate_call
-    def _constructReductionDataPath(self, runNumber: str, useLiteMode: bool, version: int) -> Path:
-        return self._constructReductionDataRoot(runNumber, useLiteMode) / wnvf.fileVersion(version)
+    def _constructReductionDataPath(self, runNumber: str, useLiteMode: bool, timestamp: float) -> Path:
+        return self._appendTimestamp(self._constructReductionDataRoot(runNumber, useLiteMode), timestamp)
 
     @validate_call
-    def _constructReductionRecordFilePath(self, runNumber: str, useLiteMode: bool, version: int) -> Path:
-        recordPath = self._constructReductionDataPath(runNumber, useLiteMode, version) / "ReductionRecord.json"
+    def _constructReductionRecordFilePath(self, runNumber: str, useLiteMode: bool, timestamp: float) -> Path:
+        recordPath = self._constructReductionDataPath(runNumber, useLiteMode, timestamp) / "ReductionRecord.json"
         return recordPath
 
     @validate_call
-    def _constructReductionDataFilePath(self, runNumber: str, useLiteMode: bool, version: int) -> Path:
+    def _constructReductionDataFilePath(self, runNumber: str, useLiteMode: bool, timestamp: float) -> Path:
         stateId, _ = self._generateStateId(runNumber)
-        fileName = wng.reductionOutputGroup().stateId(stateId).version(version).build()
+
+        # In order to facilitate eventual application to reductions containing multiple runNumber,
+        #   the output file is named as the <reduction output-group> (including only the stateSHA).
+        # If this causes confusion in the interim, this should be changed to `wng.reductionOutput`.
+        fileName = wng.reductionOutputGroup().stateId(stateId).timestamp(timestamp).build()
         fileName += Config["nexus.file.extension"]
-        filePath = self._constructReductionDataPath(runNumber, useLiteMode, version) / fileName
+        filePath = self._constructReductionDataPath(runNumber, useLiteMode, timestamp) / fileName
         return filePath
+
+    @validate_call
+    def _reducedRuns(self, runNumber: str, useLiteMode: bool) -> List[str]:
+        # A list of already reduced runs sharing the same state as the specified run
+        runNumberFormat = re.compile(r"[0-9]{6}$")
+        mode = "lite" if useLiteMode else "native"
+        stateModeRoot = self._constructReductionStateRoot(runNumber) / mode
+        runs = []
+        if stateModeRoot.exists():
+            with os.scandir(stateModeRoot) as entries:
+                for entry in entries:
+                    if entry.is_dir():
+                        if runNumberFormat.match(entry.name):
+                            runs.append(entry.name)
+        return runs
+
+    @validate_call
+    def _reducedTimestamps(self, runNumber: str, useLiteMode: bool) -> List[int]:
+        # A list of timestamps from existing reduced data for the specified run and grouping.
+
+        # Implementation notes:
+        # * in python >=3.11, the iso-format parsing can be replaced by
+        #   `<datetime class>.fromisoformat(entry.name).timestamp()`
+
+        timestampPathTag = re.compile(Config["mantid.workspace.nameTemplate.formatter.timestamp.path_regx"])
+        reductionDataRoot = self._constructReductionDataRoot(runNumber, useLiteMode)
+        tss = []
+        if reductionDataRoot.exists():
+            with os.scandir(reductionDataRoot) as entries:
+                for entry in entries:
+                    if entry.is_dir():
+                        part = entry.name
+                        match_ = timestampPathTag.match(part)
+                        if match_:
+                            tss.append(
+                                datetime.datetime(
+                                    year=int(match_.group(1)),
+                                    month=int(match_.group(2)),
+                                    day=int(match_.group(3)),
+                                    hour=int(match_.group(4)),
+                                    minute=int(match_.group(5)),
+                                    second=int(match_.group(6)),
+                                ).timestamp()
+                            )
+        return tss
 
     ##### INDEX / VERSION METHODS #####
 
@@ -316,14 +410,6 @@ class LocalDataService:
         The entry must have correct version.
         """
         self.normalizationIndexer(entry.runNumber, entry.useLiteMode).addIndexEntry(entry)
-
-    # TODO delete this and replace with something else.
-    def _getLatestReductionVersionNumber(self, runNumber: str, useLiteMode: bool) -> int:
-        dataRoot = self._constructReductionDataRoot(runNumber, useLiteMode)
-        versions = []
-        for dire in dataRoot.glob("v_*"):
-            versions.append(int(str(dire).split("_")[-1]))
-        return max(versions)
 
     ##### NORMALIZATION METHODS #####
 
@@ -457,88 +543,101 @@ class LocalDataService:
     ##### REDUCTION METHODS #####
 
     @validate_call
-    def readReductionRecord(self, runNumber: str, useLiteMode: bool, version: Optional[int] = None) -> ReductionRecord:
+    def readReductionRecord(self, runNumber: str, useLiteMode: bool, timestamp: float) -> ReductionRecord:
         """
-        Will return a reduction record for the given version.
-        If no version given, will choose the most recent version.
+        Return a reduction record for the specified timestamp.
         """
-        if version is None:
-            version = self._getLatestReductionVersionNumber(runNumber, useLiteMode)
-        record = None
-        if version is not None:
-            filePath: Path = self._constructReductionRecordFilePath(runNumber, useLiteMode, version)
-            record = parse_file_as(ReductionRecord, filePath)
+        filePath: Path = self._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
+        if not filePath.exists():
+            raise RuntimeError(f"expected reduction record file at '{filePath}' does not exist")
+        with open(filePath, "r") as f:
+            record = ReductionRecord.model_validate_json(f.read())
         return record
 
-    def writeReductionRecord(self, record: ReductionRecord):
+    def writeReductionRecord(self, record: ReductionRecord) -> ReductionRecord:
         """
-        Persists a `ReductionRecord` to either a new version folder, or overwrites a specific version.
-        * side effect: creates the version directory if none exists;
+        Persists a `ReductionRecord` to either a new timestamp folder, or overwrites a specific timestamp.
+        * timestamp must be set and output-workspaces list finalized.
+        * must be called before any call to `writeReductionData`.
+        * side effect: creates the output directories when required.
         """
-        # For the moment, a single run number is assumed:
-        runNumber = record.runNumbers[0]
-        version = record.version
 
-        filePath: Path = self._constructReductionRecordFilePath(runNumber, record.useLiteMode, version)
+        runNumber, useLiteMode, timestamp = record.runNumber, record.useLiteMode, record.timestamp
+
+        filePath: Path = self._constructReductionRecordFilePath(runNumber, useLiteMode, timestamp)
+        if filePath.exists():
+            logger.warning(f"overwriting existing reduction record at '{filePath}'")
+
         if not filePath.parent.exists():
             filePath.parent.mkdir(parents=True, exist_ok=True)
         write_model_pretty(record, filePath)
-        logger.info(f"wrote ReductionRecord: version: {version}")
+        logger.info(f"wrote reduction record to file: {filePath}")
 
     def writeReductionData(self, record: ReductionRecord):
         """
         Persists the reduction data associated with a `ReductionRecord`
-        * side effect: creates the version directory if none exists
+        * `writeReductionRecord` must have been called prior to this method.
         """
 
-        # For the moment, a single run number is assumed:
-        runNumber = record.runNumbers[0]
-        version = record.version
+        runNumber, useLiteMode, timestamp = record.runNumber, record.useLiteMode, record.timestamp
 
-        dataFilePath = self._constructReductionDataFilePath(runNumber, record.useLiteMode, version)
-        if not dataFilePath.parent.exists():
-            # write reduction record must be called first
-            self.writeReductionRecord(record)
+        filePath = self._constructReductionDataFilePath(runNumber, useLiteMode, timestamp)
+        if filePath.exists():
+            logger.warning(f"overwriting existing reduction data at '{filePath}'")
+
+        if not filePath.parent.exists():
+            # WARNING: `writeReductionRecord` must be called before `writeReductionData`.
+            raise RuntimeError(f"reduction version directories {filePath.parent} do not exist")
 
         for ws in record.workspaceNames:
             # Append workspaces to hdf5 file, in order of the `workspaces` list
-            ws_ = mtd[ws]
-            if ws_.isRaggedWorkspace():
-                self.writeRaggedWorkspace(dataFilePath.parent, Path(dataFilePath.name), ws)
-            else:
-                self.writeWorkspace(dataFilePath.parent, Path(dataFilePath.name), ws, append=True)
+            if mtd[ws].isRaggedWorkspace():
+                # Please do not remove this exception, unless you actually intend to implement this feature.
+                raise RuntimeError("not implemented: append ragged workspace to reduction data file")
+
+            self.writeWorkspace(filePath.parent, Path(filePath.name), ws, append=True)
+
+            if ws.tokens("workspaceType") == wngt.REDUCTION_PIXEL_MASK:
+                # Write an additional copy of the combined pixel mask as a separate `SaveDiffCal`-format file
+                maskFilename = ws + ".h5"
+                self.writePixelMask(filePath.parent, Path(maskFilename), ws)
 
         # Append the "metadata" group, containing the `ReductionRecord` metadata
-        with h5py.File(dataFilePath, "a") as h5:
+        with h5py.File(filePath, "a") as h5:
             n5m.insertMetadataGroup(h5, record.dict(), "/metadata")
 
-        logger.info(f"wrote reduction data to {dataFilePath}: version: {version}")
+        logger.info(f"wrote reduction data to file '{filePath}'")
 
     @validate_call
-    def readReductionData(self, runNumber: str, useLiteMode: bool, version: int) -> ReductionRecord:
+    def readReductionData(self, runNumber: str, useLiteMode: bool, timestamp: float) -> ReductionRecord:
         """
         This method is complementary to `writeReductionData`:
         * it is provided primarily for diagnostic purposes, and is not yet connected to any workflow
-        * note that the "version" argument is mandatory.
         """
-        dataFilePath = self._constructReductionDataFilePath(runNumber, useLiteMode, version)
-        if not dataFilePath.exists():
-            raise RuntimeError(f"[readReductionData]: file {dataFilePath} does not exist")
+        filePath = self._constructReductionDataFilePath(runNumber, useLiteMode, timestamp)
+        if not filePath.exists():
+            raise RuntimeError(f"[readReductionData]: file '{filePath}' does not exist")
 
         # read the metadata first, in order to use the workspaceNames list
         record = None
-        with h5py.File(dataFilePath, "r") as h5:
+        with h5py.File(filePath, "r") as h5:
             record = ReductionRecord.model_validate(n5m.extractMetadataGroup(h5, "/metadata"))
         for ws in record.workspaceNames:
             if mtd.doesExist(ws):
-                raise RuntimeError(f"[readReductionData]: workspace {ws} already exists in the ADS")
+                raise RuntimeError(f"[readReductionData]: workspace '{ws}' already exists in the ADS")
 
         # Read the workspaces, one by one;
         #   * as an alternative, these could be loaded into a group workspace with a single call to `readWorkspace`.
+        pixelMaskKeyword = Config["mantid.workspace.nameTemplate.template.reduction.pixelMask"].split(",")[0]
         for n, ws in enumerate(record.workspaceNames):
-            self.readWorkspace(dataFilePath.parent, Path(dataFilePath.name), ws, entryNumber=n + 1)
-
-        logger.info(f"loaded reduction data from {dataFilePath}: version: {version}")
+            self.readWorkspace(filePath.parent, Path(filePath.name), ws, entryNumber=n + 1)
+            # ensure that any mask workspace is actually a `MaskWorkspace` instance
+            if pixelMaskKeyword in ws:
+                self.mantidSnapper.ExtractMask(
+                    f"converting '{ws}' to MaskWorkspace instance", OutputWorkspace=ws, InputWorkspace=ws
+                )
+        self.mantidSnapper.executeQueue()
+        logger.info(f"loaded reduction data from '{filePath}'")
         return record
 
     ##### CALIBRANT SAMPLE METHODS #####
@@ -643,6 +742,23 @@ class LocalDataService:
             raise ValueError(f"Could not find all required logs in file '{self._constructPVFilePath(runId)}'")
         return detectorState
 
+    def detectorStateFromWorkspace(self, wsName: WorkspaceName) -> DetectorState:
+        detectorState = None
+        try:
+            logs = mtd[wsName].getRun()
+            detectorState = DetectorState(
+                arc=[logs.getProperty("det_arc1").value[0], logs.getProperty("det_arc2").value[0]],
+                wav=logs.getProperty("BL3:Chop:Skf1:WavelengthUserReq").value[0],
+                freq=logs.getProperty("BL3:Det:TH:BL:Frequency").value[0],
+                guideStat=logs.getProperty("BL3:Mot:OpticsPos:Pos").value[0],
+                lin=[logs.getProperty("det_lin1").value[0], logs.getProperty("det_lin2").value[0]],
+            )
+        except Exception as e:  # noqa: E722
+            raise RuntimeError(
+                f"Workspace '{wsName}' does not have all required logs to assemble a DetectorState"
+            ) from e
+        return detectorState
+
     @validate_call
     def _writeDefaultDiffCalTable(self, runNumber: str, useLiteMode: bool):
         from snapred.backend.data.GroceryService import GroceryService
@@ -658,7 +774,7 @@ class LocalDataService:
 
     @validate_call
     @ExceptionHandler(StateValidationException)
-    # NOTE if you are debugigng and got here, coment out the ExceptionHandler and try again
+    # NOTE: if you are debugging and got here, comment out the `@ExceptionHandler` and try again.
     def initializeState(self, runId: str, useLiteMode: bool, name: str = None):
         stateId, _ = self._generateStateId(runId)
 
@@ -718,7 +834,7 @@ class LocalDataService:
                 creationDate=datetime.datetime.now(),
                 version=version,
             )
-            # NOTE a bare record without other CalibrationRecord data
+            # NOTE: this creates a bare record without any other CalibrationRecord data
             record = Record(
                 runNumber=runId,
                 useLiteMode=liteMode,
@@ -731,7 +847,7 @@ class LocalDataService:
                 version=version,
                 appliesTo=">=0",
                 author="SNAPRed Internal",
-                comments="The default condition for loading StateConfigs if none other found",
+                comments="The default configuration when loading StateConfig if none other is found",
             )
             # write the calibration state
             indexer.writeRecord(record)
@@ -825,6 +941,76 @@ class LocalDataService:
     def _groupingMapPath(self, stateId) -> Path:
         return self._constructCalibrationStateRoot(stateId) / "groupingMap.json"
 
+    ## PIXEL-MASK SUPPORT METHODS
+
+    def isCompatibleMask(self, wsName: WorkspaceName, runNumber: str, useLiteMode: bool) -> bool:
+        """
+        Test if a MaskWorkspace is compatible with a specified run number and lite-mode flag:
+        * a compatible mask is a MaskWorkspace;
+        * a compatible mask has the same number of spectra as non-monitor pixels in the instrument.
+        * a compatible mask has the same instrument state as the run number;
+        """
+        if not isinstance(mtd[wsName], MaskWorkspace):
+            return False
+        targetPixelCount = (
+            Config["instrument.lite.pixelResolution"] if useLiteMode else Config["instrument.native.pixelResolution"]
+        )
+        if mtd[wsName].getNumberHistograms() != targetPixelCount:
+            return False
+        expectedStateId, _ = self._generateStateId(runNumber)
+        actualStateId, _ = self.stateIdFromWorkspace(wsName)
+        if actualStateId != expectedStateId:
+            return False
+        return True
+
+    @validate_call
+    def getCompatibleReductionMasks(self, runNumber: str, useLiteMode: bool) -> List[WorkspaceName]:
+        # Assemble a list of masks, both resident and otherwise, that are compatible with the current reduction
+
+        masks: Set[WorkspaceName] = set()
+        excludedCount = 0
+
+        # First: add all masks from previous reductions in the same state
+        for run in self._reducedRuns(runNumber, useLiteMode):
+            for ts in self._reducedTimestamps(runNumber, useLiteMode):
+                maskName = wng.reductionPixelMask().runNumber(runNumber).timestamp(ts).build()
+                maskFilePath = self._constructReductionDataPath(runNumber, useLiteMode, ts) / (maskName + ".h5")
+
+                # Implementation notes:
+                # * No compatibility check is required for reduction masks on the filesystem:
+                #     they are guaranteed to be compatible;
+
+                if maskName not in masks and maskFilePath.exists():
+                    # Ensure that any _resident_ mask is compatible:
+                    if mtd.doesExist(maskName) and not self.isCompatibleMask(maskName, runNumber, useLiteMode):
+                        # There is a possible name collision
+                        # between reduction pixel masks from different lite-mode settings.
+                        #   This clause bypasses that collision in the most straightforward way:
+                        #     such a mask will be excluded, even if there may be a compatible mask
+                        #     of the same name on the filesystem.
+                        excludedCount += 1
+                        continue
+                    masks.add(maskName)
+
+        # Next: add compatible user-created masks that are already resident in the ADS
+        mantidMaskName = re.compile(r"MaskWorkspace(_[0-9]+)?")
+        wsNames = mtd.getObjectNames()
+        for ws in wsNames:
+            if mantidMaskName.match(ws):
+                if not self.isCompatibleMask(ws, runNumber, useLiteMode):
+                    excludedCount += 1
+                    continue
+                masks.add(ws)
+
+        if excludedCount > 0:
+            logger.warning(
+                f"Excluded {excludedCount} incompatible pixel masks "
+                + f"from a total of {excludedCount + len(masks)} masks:\n"
+                + "  please make sure that both the instrument state, and the lite-mode setting are the same."
+            )
+
+        return list(masks)
+
     ## WRITING AND READING WORKSPACES TO / FROM DISK
 
     def writeWorkspace(self, path: Path, filename: Path, workspaceName: WorkspaceName, append=False):
@@ -900,9 +1086,7 @@ class LocalDataService:
         -- up to three workspaces may be written to one 'SaveDiffCal' hdf-5 format file.
         """
         if filename.suffix != ".h5":
-            raise RuntimeError(
-                f"[writeCalibrationWorkspaces]: specify filename including '.h5' extension, not {filename}"
-            )
+            raise RuntimeError(f"[writeDiffCalWorkspaces]: specify filename including '.h5' extension, not {filename}")
         self.mantidSnapper.SaveDiffCal(
             "Save a diffcal table or grouping file",
             CalibrationWorkspace=tableWorkspaceName,
@@ -911,3 +1095,16 @@ class LocalDataService:
             Filename=str(path / filename),
         )
         self.mantidSnapper.executeQueue()
+
+    def writePixelMask(
+        self,
+        path: Path,
+        filename: Path,
+        maskWorkspaceName: WorkspaceName,
+    ):
+        """
+        Write a MaskWorkspace to disk in 'SaveDiffCal' hdf-5 format
+        """
+        # At present, this method is just a wrapper for 'writeDiffCalWorkspaces':
+        #   its existence allows for the separation of pixel-mask I/O from diffraction-calibration workspace I/O.
+        self.writeDiffCalWorkspaces(path, filename, maskWorkspaceName=maskWorkspaceName)
