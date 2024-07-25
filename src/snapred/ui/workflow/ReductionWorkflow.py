@@ -108,6 +108,7 @@ class ReductionWorkflow(WorkflowImplementer):
         runNumbers = self._reductionView.getRunNumbers()
         pixelMasks = self._reconstructPixelMaskNames(self._reductionView.getPixelMasks())
 
+
         for runNumber in runNumbers:
             payload = ReductionRequest(
                 runNumber=runNumber,
@@ -118,8 +119,7 @@ class ReductionWorkflow(WorkflowImplementer):
                 convertUnitsTo=self._reductionView.convertUnitsDropdown.currentText(),
             )
             # TODO: Handle Continue Anyway
-            self.request(path="reduction/", payload=payload.json())
-            self._reductionView.removeRunNumber(runNumber)
+            self.request(path="reduction/", payload=payload)
 
             # Note: the run number is deliberately not deleted from the run numbers list.
 

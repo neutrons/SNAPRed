@@ -324,7 +324,8 @@ class LocalDataService:
     @validate_call
     def _reducedRuns(self, runNumber: str, useLiteMode: bool) -> List[str]:
         # A list of already reduced runs sharing the same state as the specified run
-        runNumberFormat = re.compile(r"[0-9]{6}$")
+        # NOTE: fix this, double check with WORKSPACE name generator for formatting numbers, check consistency
+        runNumberFormat = re.compile(r"[0-9]\d{4,}$")
         mode = "lite" if useLiteMode else "native"
         stateModeRoot = self._constructReductionStateRoot(runNumber) / mode
         runs = []
@@ -966,13 +967,13 @@ class LocalDataService:
     @validate_call
     def getCompatibleReductionMasks(self, runNumber: str, useLiteMode: bool) -> List[WorkspaceName]:
         # Assemble a list of masks, both resident and otherwise, that are compatible with the current reduction
-
         masks: Set[WorkspaceName] = set()
         excludedCount = 0
 
         # First: add all masks from previous reductions in the same state
         for run in self._reducedRuns(runNumber, useLiteMode):
             for ts in self._reducedTimestamps(runNumber, useLiteMode):
+
                 maskName = wng.reductionPixelMask().runNumber(runNumber).timestamp(ts).build()
                 maskFilePath = self._constructReductionDataPath(runNumber, useLiteMode, ts) / (maskName + ".h5")
 

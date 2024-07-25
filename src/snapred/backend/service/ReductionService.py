@@ -81,7 +81,6 @@ class ReductionService(Service):
         request.focusGroups = groupingResults["focusGroups"]
 
         ingredients = self.prepReductionIngredients(request)
-
         groceries = self.fetchReductionGroceries(request)
         # attach the list of grouping workspaces to the grocery dictionary
         groceries["groupingWorkspaces"] = groupingResults["groupingWorkspaces"]
