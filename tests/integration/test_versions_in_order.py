@@ -292,7 +292,7 @@ class TestVersioning(TestCase):
         # ensure the new state has grouping map, calibration state, and default diffcal table
         diffCalTableName = wng.diffCalTable().runNumber("default").version(VERSION_DEFAULT).build()
         assert self.localDataService._groupingMapPath(self.stateId).exists()
-        versionDir = wnvf.fileVersion(VERSION_DEFAULT)
+        versionDir = wnvf.pathVersion(VERSION_DEFAULT)
         assert Path(self.stateRoot, "lite", "diffraction", versionDir, "CalibrationParameters.json").exists()
         assert Path(self.stateRoot, "native", "diffraction", versionDir, "CalibrationParameters.json").exists()
         assert Path(self.stateRoot, "lite", "diffraction", versionDir, diffCalTableName + ".h5").exists()
