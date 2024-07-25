@@ -328,7 +328,7 @@ def test_readStateConfig_calls_prepareStateRoot():
         indexer.index = {version: mock.Mock()}  # NOTE manually update the Indexer
         assert not localDataService._groupingMapPath(tmpRoot.stateId).exists()
         localDataService._prepareStateRoot = mock.Mock(
-            side_effect=lambda x: tmpRoot.saveObjectAt(
+            side_effect=lambda x: tmpRoot.saveObjectAt(  # noqa ARG005
                 groupingMap,
                 localDataService._groupingMapPath(tmpRoot.stateId),
             )

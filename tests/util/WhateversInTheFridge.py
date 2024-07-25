@@ -64,8 +64,8 @@ class WhateversInTheFridge(LocalDataService):
 
     @ExceptionHandler(StateValidationException)
     def _generateStateId(self, runId: str) -> Tuple[str, str]:
-        id = DAOFactory.magical_state_id.copy()
-        return id.hex, id.decodedKey
+        stateId = DAOFactory.magical_state_id.copy()
+        return stateId.hex, stateId.decodedKey
 
     ### CALIBRATION METHODS ###
 

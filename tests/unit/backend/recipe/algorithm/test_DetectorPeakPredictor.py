@@ -68,7 +68,6 @@ with mock.patch.dict(
         assert algo.allGroupIDs == ingredients.pixelGroup.groupIDs
 
     def test_execute():
-        ingredientsFile = "/inputs/predict_peaks/input_good_ingredients.json"
         peaksRefFile = "/outputs/predict_peaks/peaks.json"
 
         ingredients = DAOFactory.good_peak_ingredients.copy()
@@ -86,7 +85,6 @@ with mock.patch.dict(
         assert peaks_cal == peaks_ref
 
     def test_execute_purge_duplicates():
-        ingredientsFile = "/inputs/predict_peaks/input_good_ingredients.json"
         peaksRefFile = "/outputs/predict_peaks/peaks_purged.json"
 
         ingredients = DAOFactory.good_peak_ingredients.copy()

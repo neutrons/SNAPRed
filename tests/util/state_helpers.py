@@ -104,10 +104,10 @@ class state_root_redirect:
         shutil.copy2(source, target)
         assert Path(target).exists()
 
-    def saveObjectAt(self, object: BaseModel, target: str):
+    def saveObjectAt(self, thing: BaseModel, target: str):
         assert Path(self.tmpdir.name) in Path(target).parents
         Path(target).parent.mkdir(parents=True, exist_ok=True)
-        write_model_pretty(object, target)
+        write_model_pretty(thing, target)
         assert Path(target).exists()
 
 

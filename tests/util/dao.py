@@ -302,7 +302,7 @@ class DAOFactory:
     ## CRYSTALLOGRAPHIC INFO
 
     @classmethod
-    def xtalInfo(cls, runNumber: str, useLiteMode: bool):
+    def xtalInfo(cls, runNumber: str, useLiteMode: bool):  # noqa ARG003
         return cls.default_xtal_info.copy()
 
     default_xtal_peak = CrystallographicPeak(
