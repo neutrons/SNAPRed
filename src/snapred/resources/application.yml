@@ -27,7 +27,7 @@ instrument:
           - nxs
   reduction:
     # Here "{IPTS}" will be substituted with the IPTS-directory name for a specified <runNumber>
-    home: ${instrument.home}/shared/Calibration
+    home: ${instrument.home}/{IPTS}/shared/SNAPRed
 
   config: ${instrument.calibration.home}/SNAPInstPrm.json
   native:
