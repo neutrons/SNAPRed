@@ -31,7 +31,7 @@ class CheckableComboBoxDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         item = index.model().itemFromIndex(index)
         if item.checkState() == Qt.Checked:
-            option.text = "✔ " + item.text()
+            option.text = "\u2713 " + item.text()
         else:
             option.text = item.text()
         super(CheckableComboBoxDelegate, self).paint(painter, option, index)
