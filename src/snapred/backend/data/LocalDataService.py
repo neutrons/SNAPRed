@@ -325,7 +325,7 @@ class LocalDataService:
     def _reducedRuns(self, runNumber: str, useLiteMode: bool) -> List[str]:
         # A list of already reduced runs sharing the same state as the specified run
         # NOTE: fix this, double check with WORKSPACE name generator for formatting numbers, check consistency
-        runNumberFormat = re.compile(r"[0-9]\d{4,}$")
+        runNumberFormat = re.compile(r"\d{5,}$")
         mode = "lite" if useLiteMode else "native"
         stateModeRoot = self._constructReductionStateRoot(runNumber) / mode
         runs = []
