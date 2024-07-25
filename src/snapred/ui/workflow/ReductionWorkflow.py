@@ -108,7 +108,6 @@ class ReductionWorkflow(WorkflowImplementer):
         runNumbers = self._reductionView.getRunNumbers()
         pixelMasks = self._reconstructPixelMaskNames(self._reductionView.getPixelMasks())
 
-
         for runNumber in runNumbers:
             payload = ReductionRequest(
                 runNumber=runNumber,

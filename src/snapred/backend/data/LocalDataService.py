@@ -973,7 +973,6 @@ class LocalDataService:
         # First: add all masks from previous reductions in the same state
         for run in self._reducedRuns(runNumber, useLiteMode):
             for ts in self._reducedTimestamps(runNumber, useLiteMode):
-
                 maskName = wng.reductionPixelMask().runNumber(runNumber).timestamp(ts).build()
                 maskFilePath = self._constructReductionDataPath(runNumber, useLiteMode, ts) / (maskName + ".h5")
 
