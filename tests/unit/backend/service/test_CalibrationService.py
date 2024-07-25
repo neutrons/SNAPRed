@@ -250,38 +250,26 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         )
         assert metric == FocusGroupMetric.return_value
 
-    @patch(
-        thisService + "CalibrationAssessmentResponse",
-        return_value=MagicMock(mockId="mock_calibration_assessment_response"),
-    )
-    @patch(thisService + "CreateCalibrationRecordRequest")
     @patch(thisService + "FitMultiplePeaksRecipe")
-    @patch(thisService + "FarmFreshIngredients")
-    @patch(
-        thisService + "CalibrationMetricsWorkspaceIngredients",
-        return_value=MagicMock(
-            calibrationRecord=DAOFactory.calibrationRecord("57514", True, 1),
-            timestamp=123.123,
-        ),
-    )
     def test_assessQuality(
         self,
-        CalibrationMetricsWorkspaceIngredients,
-        FarmFreshIngredients,
         FitMultiplePeaksRecipe,
-        CreateCalibrationRecordRequest,
-        CalibrationAssessmentResponse,
     ):
         # Mock input data
         fakeMetrics = DAOFactory.focusGroupCalibrationMetric_Column
+        time = 123.123
+        expectedRecord = DAOFactory.calibrationRecord()
+        expectedWorkspaces = [
+            wng.diffCalTimedMetric().runNumber(expectedRecord.runNumber).timestamp(time).metricName(metric).build()
+            for metric in ["sigma", "strain"]
+        ]
 
         # Mock the necessary method calls
         self.instance.sousChef = SculleryBoy()
         self.instance.dataFactoryService.getCifFilePath = MagicMock(return_value="good/cif/path")
-        self.instance.dataFactoryService.createCalibrationRecord = MagicMock()
+        self.instance.dataFactoryService.createCalibrationRecord = MagicMock(return_value=expectedRecord)
+        self.instance.dataExportService.getUniqueTimestamp = MagicMock(return_value=time)
         self.instance._collectMetrics = MagicMock(return_value=fakeMetrics)
-
-        FarmFreshIngredients.return_value.get.return_value = True
 
         # Call the method to test
         request = CalibrationAssessmentRequest(
@@ -304,16 +292,17 @@ class TestCalibrationServiceMethods(unittest.TestCase):
         response = self.instance.assessQuality(request)
 
         # Assert correct method calls
-        assert FarmFreshIngredients.call_count == 1
         assert FitMultiplePeaksRecipe.called_once_with(self.instance.sousChef.prepPeakIngredients({}))
         assert self.instance.dataFactoryService.getCifFilePath.called_once_with("biscuit")
 
         # Assert the result is as expected
-        assert response == CalibrationAssessmentResponse.return_value
+        assert response.model_dump() == {
+            "record": expectedRecord.model_dump(),
+            "metricWorkspaces": expectedWorkspaces,
+        }
 
         # Assert expected calibration metric workspaces have been generated
-        for metric in ["sigma", "strain"]:
-            wsName = wng.diffCalTimedMetric().runNumber("57514").timestamp(123.123).metricName(metric).build()
+        for wsName in expectedWorkspaces:
             assert self.instance.dataFactoryService.workspaceDoesExist(wsName)
 
     def test_save_respects_version(self):
